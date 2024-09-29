@@ -1,0 +1,17 @@
+.header-container {
+  height: var(--header-height);
+}
+
+.header-inner {
+  z-index: 1;
+  background: var(--color-background);
+  height: inherit;
+  padding: 10px;
+  top: 0;
+  left: 0;
+  right: 0;  
+}
+
+.header-row {
+  height: var(--header-row-height);
+}

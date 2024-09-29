@@ -1,0 +1,91 @@
+.container {
+  margin-bottom: 16px;
+  margin-left: 24px;
+}
+
+.label {
+  color: #717171;
+  letter-spacing: -0.56px;
+}
+
+.my-slots {
+  display: flex;
+  padding: 4px 10px;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+  border-radius: 8px;
+
+  border: 1px solid rgba(103, 192, 255, 0.12);
+  background: rgba(62, 98, 189, 0.15);
+  color: #2a7edf;
+}
+
+.my-slots:hover {
+  background: rgba(62, 98, 189, 0.32);
+}
+
+.my-slots[data-state="on"] {
+  background: rgba(62, 98, 189, 0.72);
+  color: #6aafff;
+
+  .label {
+    color: #b6adad;
+  }
+}
+
+.my-slots:focus {
+  box-shadow: 0 0 0 2px black;
+}
+
+.skipped-slots {
+  display: flex;
+  padding: 4px 10px;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+  border-radius: 8px;
+
+  background: rgba(189, 62, 62, 0.15);
+  color: #ff3c3c;
+  border: 1px solid rgba(255, 103, 103, 0.12);
+}
+
+.skipped-slots:hover {
+  background: rgba(189, 62, 62, 0.32);
+}
+
+.skipped-slots[data-state="on"] {
+  background: rgba(189, 62, 62, 0.72);
+  color: #ff7072;
+
+  .label {
+    color: #b6adad;
+  }
+}
+
+.skipped-slots:focus {
+  box-shadow: 0 0 0 2px black;
+}
+
+.disabled {
+  border: 1px rgba(178, 178, 178, 0.12);
+  background: rgba(114, 114, 114, 0.15);
+  color: #424242;
+
+  &:hover {
+    background: rgba(114, 114, 114, 0.15);
+  }
+}
+
+.skip-rate-label {
+  color: #646464;
+  line-height: normal;
+  letter-spacing: -0.56px;
+}
+
+.skip-rate-value {
+  color: #ff3c3c;
+  line-height: normal;
+  letter-spacing: -0.56px;
+}

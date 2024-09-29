@@ -1,0 +1,21 @@
+.label {
+  color: #737373;
+  letter-spacing: -0.56px;
+}
+
+.progress {
+  height: 8px;
+  width: 60px;
+  background: #303134;
+
+  div {
+    background: #167b91;
+  }
+}
+
+.value {
+  color: #cacaca;
+  letter-spacing: -0.56px;
+  min-width: 50px;
+  /* min-width: 80px; */
+}

@@ -1,0 +1,30 @@
+.progress {
+  max-height: 11px;
+  min-width: 140px;
+  background: #24262b;
+
+  div {
+    background: #167b91;
+  }
+}
+
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  > div {
+    flex: 1 1 auto;
+    min-width: 180px;
+  }
+
+  /* display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); */
+}
+
+.vote-distance {
+  color: #7b837c;
+  font-size: 12px;
+  font-style: normal;
+  padding-left: 6px;
+}

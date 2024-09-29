@@ -1,0 +1,5 @@
+.sankey {
+    aspect-ratio: 5;
+    min-height: 250px;
+    position: relative;
+}

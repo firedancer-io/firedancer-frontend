@@ -1,0 +1,12 @@
+.card {
+  border-radius: 8px;
+  border: 1px solid #30323a;
+  background: #151b25;
+  padding: 10px;
+
+  &.skipped {
+    /* border-radius: 8px; */
+    border: 1px rgba(255, 71, 71, 0.38);
+    background: rgba(189, 62, 62, 0.15);
+  }
+}

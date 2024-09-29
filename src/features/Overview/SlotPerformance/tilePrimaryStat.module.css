@@ -1,0 +1,34 @@
+.stat-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 3px;
+  background: #141528;
+
+  .label {
+    color: #dddee0;
+    font-size: 10px;
+  }
+
+  .value-container {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 1px;
+    min-width: 35px;
+
+    .value {
+      color: #db8f38;
+      /* color: red; */
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .pct {
+      color: #db8f38;
+      font-size: 8px;
+    }
+  }
+}

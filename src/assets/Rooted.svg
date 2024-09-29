@@ -1,0 +1,23 @@
+<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="8.5" cy="2.5" r="1.5" fill="#1CE7C2"/>
+<circle cx="4.5" cy="6.5" r="1.5" fill="#1CE7C2"/>
+<circle cx="2.5" cy="11.5" r="1.5" fill="#1CE7C2"/>
+<circle cx="6.5" cy="11.5" r="1.5" fill="#1CE7C2"/>
+<circle cx="10.5" cy="11.5" r="1.5" fill="#1CE7C2"/>
+<circle cx="14.5" cy="11.5" r="1.5" fill="#1CE7C2"/>
+<circle cx="2.5" cy="15.5" r="1.5" fill="#1CE7C2"/>
+<circle cx="6.5" cy="15.5" r="1.5" fill="#1CE7C2"/>
+<circle cx="10.5" cy="15.5" r="1.5" fill="#1CE7C2"/>
+<circle cx="14.5" cy="15.5" r="1.5" fill="#1CE7C2"/>
+<circle cx="12.5" cy="6.5" r="1.5" fill="#1CE7C2"/>
+<line x1="8.35355" y1="1.64645" x2="13.3536" y2="6.64645" stroke="#1CE7C2"/>
+<line x1="3.64645" y1="6.64645" x2="8.64645" y2="1.64645" stroke="#1CE7C2"/>
+<line x1="12.4642" y1="6.8143" x2="14.4642" y2="11.8143" stroke="#1CE7C2"/>
+<line x1="10.5358" y1="11.8143" x2="12.5356" y2="6.81427" stroke="#1CE7C2"/>
+<line x1="2.53576" y1="11.8143" x2="4.53576" y2="6.8143" stroke="#1CE7C2"/>
+<line x1="4.46424" y1="6.81432" x2="6.46412" y2="11.8144" stroke="#1CE7C2"/>
+<line x1="2.5" y1="11" x2="2.5" y2="16" stroke="#1CE7C2"/>
+<line x1="6.5" y1="11" x2="6.5" y2="16" stroke="#1CE7C2"/>
+<line x1="10.5" y1="11" x2="10.5" y2="16" stroke="#1CE7C2"/>
+<line x1="14.5" y1="11" x2="14.5" y2="16" stroke="#1CE7C2"/>
+</svg>

@@ -1,0 +1,44 @@
+.app {
+  /* radix tokens */
+  --color-background: #070b14;
+  --default-font-family: "Inter";
+  /* --letter-spacing: -0.56px; */
+  font-family: "Inter";
+  font-display: optional;
+  --scaling: 0.875;
+  --cursor-button: pointer;
+
+  /* custom tokens */
+  --white-heading: #f7f8f8;
+  --green-live: #3cff73;
+
+  --header-row-height: 34px;
+  /* headder height + epoch bar height + 10 padding top/bottom */
+  --header-height: 121px;
+
+  /* --display-p3: blue;
+  --gray-12: blue; */
+  /* color(display-p3 0.93 0.933 0.94) */
+
+  /* --color-background: var(--gray-4); */
+  /* background: blue; */
+  /* background: #070B14; */
+  /* --color-overlay: var(--black-a6);
+    --color-panel-solid: white;
+    --color-panel-translucent: rgba(255, 255, 255, 0.7);
+    --color-surface: rgba(255, 255, 255, 0.85); */
+}
+
+.rt-TooltipContent {
+  background: #131923;
+  border: 1px solid #2e343e;
+  border-radius: 8px;
+}
+
+.rt-TooltipText {
+  color: #8e909d;
+}
+
+.rt-TooltipArrow {
+  fill: #131923;
+}

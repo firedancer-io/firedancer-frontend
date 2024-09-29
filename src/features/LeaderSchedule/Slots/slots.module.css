@@ -1,0 +1,7 @@
+.my-slots {
+  border-top: 5px solid rgba(42, 126, 223, 0.65) !important;
+  border-right: 1px solid rgba(42, 126, 223, 0.65) !important;
+  border-bottom: 1px solid rgba(42, 126, 223, 0.65) !important;
+  border-left: 1px solid rgba(42, 126, 223, 0.65) !important;
+  background: rgba(42, 126, 223, 0.2);
+}

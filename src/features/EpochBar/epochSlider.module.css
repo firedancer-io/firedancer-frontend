@@ -1,0 +1,86 @@
+@import "@radix-ui/colors/black-alpha.css";
+@import "@radix-ui/colors/violet.css";
+
+.container {
+  /* width: "100%";    */
+  position: relative;
+  flex-grow: 1;
+}
+
+.epoch-progress {
+  height: 100%;
+  background: #142d53;
+  border-top-left-radius: 9999px;
+  border-bottom-left-radius: 9999px;
+}
+
+.leader-slot {
+  height: 100%;
+  background: #2a7edf;
+  width: 5px;
+  position: absolute;
+  top: 0px;
+  opacity: .5;
+  &:hover {
+    filter: brightness(1.5);
+  }
+}
+
+.skipped-slot {
+  height: 100%;
+  background: #ff5353;
+  width: 3px;
+  position: absolute;
+  top: 0px;
+  &:hover {
+    filter: brightness(1.5);
+  }
+}
+
+.skipped-slot-icon {
+  width: 12px;
+  position: absolute;
+  left: -6px;
+  top: -15px;
+  &:hover {
+    filter: brightness(1.5);
+  }
+}
+
+.slider-root {
+  position: relative;
+  display: flex;
+  align-items: center;
+  user-select: none;
+  touch-action: none;
+}
+
+.slider-track {
+  background: #24262b;
+  position: relative;
+  flex-grow: 1;
+  border-radius: 9999px;
+  height: 10px;
+  /* To round leader slots markers at beginning/end of epoch slider */
+  overflow: hidden;
+}
+
+.slider-thumb {
+  display: block;
+  width: 10px;
+  height: 20px;
+  box-shadow: 0 2px 8px var(--black-a7);
+  background: var(--gray-7);
+  border: 1px solid var(--gray-12);
+  border-radius: 2px;
+  opacity: 0.5;
+  z-index: 10000000;
+}
+
+.slider-thumb:hover {
+  background: var(--gray-3);
+}
+.slider-thumb:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--gray-a8);
+}

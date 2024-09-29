@@ -1,0 +1,50 @@
+.card {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #1c1e2b;
+  background: #101123;
+
+  .name-text {
+    color: #b2bcc9;
+    letter-spacing: -0.56px;
+    /* padding-right: 4px; */
+    width: 240px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .pubkey-text {
+    color: #b2bcc9;
+    letter-spacing: -0.56px;
+    /* padding-right: 4px; */
+    min-width: 390px;
+  }
+
+  &.two-away {
+    border: 1px solid #2a2c38;
+    background: #131524;
+    opacity: 1.6;
+  }
+
+  &.one-away {
+    border: 1px solid #295060;
+    background: #142432;
+    /* opacity: 1.2 */
+  }
+
+  .next-leader {
+    color: #41b9d3;
+    letter-spacing: -0.56px;
+  }
+
+  .slot {
+    color: #72aff6;
+  }
+
+  .time-till {
+    color: #b2bcc9;
+    letter-spacing: -0.56px;
+    min-width: 250px;
+  }
+}

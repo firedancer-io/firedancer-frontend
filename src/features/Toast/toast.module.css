@@ -1,0 +1,47 @@
+.container {
+  position: absolute;
+  top: 14px;
+  transform: translateX(-50%);
+  left: 50%;
+  display: flex;
+  justify-content: center;
+  z-index: 100;
+
+  .toast {
+    border-radius: 10px;
+    padding: 8px;
+    min-width: 180px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+
+    &.disconnected {
+      background: repeating-linear-gradient(
+        115deg,
+        #ff3c3c,
+        #ff3c3c 7px,
+        #ff7878 7px,
+        #ff7878 8px
+      );
+    }
+
+    &.connecting {
+      background: repeating-linear-gradient(
+        115deg,
+        #ff9d0a,
+        #ff9d0a 7px,
+        #ffc267 7px,
+        #ffc267 8px
+      );
+    }
+
+    .text {
+      color: #000;
+      font-size: 18px;
+      font-style: normal;
+      font-weight: 600;
+      letter-spacing: -0.72px;
+    }
+  }
+}
