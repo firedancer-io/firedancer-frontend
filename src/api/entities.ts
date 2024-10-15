@@ -54,6 +54,7 @@ export const tileTypeSchema = z.enum([
   "http",
   "plugin",
   "gui",
+  "cswtch",
 ]);
 
 export const tileSchema = z.object({

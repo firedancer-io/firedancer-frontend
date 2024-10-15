@@ -259,7 +259,7 @@ function SlotSankey({ slot }: { slot?: number }) {
           height={height}
           width={width}
           data={data}
-          margin={{ top: 10, right: 80, bottom: 35, left: 65 }}
+          margin={{ top: 10, right: 80, bottom: 35, left: 85 }}
           align="center"
           isInteractive={false}
           nodeThickness={0}

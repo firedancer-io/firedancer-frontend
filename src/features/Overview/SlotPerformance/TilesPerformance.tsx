@@ -45,12 +45,23 @@ export default function TilesPerformance() {
         if (!timers.tile_timers.length) return aggTimers;
         const groupedIdle: Record<string, number[]> = {};
 
+        if (timers.tile_timers.length !== tiles.length) {
+          console.warn(
+            "Length mismatch between tiles and time timers",
+            timers.tile_timers,
+            tiles
+          );
+        }
+
         for (let i = 0; i < timers.tile_timers.length; i++) {
           const timer = timers.tile_timers[i];
           if (timer === -1) continue;
 
-          groupedIdle[tiles[i].kind] ??= [];
-          groupedIdle[tiles[i].kind].push(timer);
+          const tile = tiles[i];
+          if (!tile) continue;
+
+          groupedIdle[tile.kind] ??= [];
+          groupedIdle[tile.kind].push(timer);
         }
 
         for (const [tile, idleArr] of Object.entries(groupedIdle)) {
