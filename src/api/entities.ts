@@ -101,6 +101,7 @@ const txnWaterfallOutSchema = z.object({
   pack_retained: z.number(),
   pack_leader_slow: z.number(),
   pack_wait_full: z.number(),
+  pack_expired: z.number(),
   bank_invalid: z.number(),
   block_success: z.number(),
   block_fail: z.number(),

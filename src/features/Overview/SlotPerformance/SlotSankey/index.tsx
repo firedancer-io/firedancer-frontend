@@ -43,6 +43,7 @@ function getLinks(
     waterfall.in.retained +
     packCount -
     waterfall.out.pack_invalid -
+    waterfall.out.pack_expired -
     waterfall.out.pack_leader_slow -
     waterfall.out.pack_retained -
     waterfall.out.pack_wait_full;
@@ -155,6 +156,11 @@ function getLinks(
       source: SlotNode.Pack,
       target: SlotNode.PackInvalid,
       value: getValue(waterfall.out.pack_invalid),
+    },
+    {
+      source: SlotNode.Pack,
+      target: SlotNode.PackExpired,
+      value: getValue(waterfall.out.pack_expired),
     },
     {
       source: SlotNode.Pack,
