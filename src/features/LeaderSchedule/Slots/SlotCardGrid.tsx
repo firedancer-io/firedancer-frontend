@@ -66,10 +66,10 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
   useEffect(() => {
     const getValues = (publish: SlotPublish): RowValues => {
       // TODO: fix backend
-      const txnsConfirmed = fixValue(publish.transactions ?? 0);
-      const totalTxns = fixValue(
-        (txnsConfirmed ?? 0) + (publish.failed_transactions ?? 0)
-      );
+      const txnsFailed = fixValue(publish.failed_transactions ?? 0);
+      const totalTxns = fixValue(publish.transactions ?? 0);
+      const txnsConfirmed = totalTxns - txnsFailed;
+
       const durationText =
         publish.duration_nanos !== null
           ? `${Math.trunc(publish.duration_nanos / 1_000_000)} ms`
