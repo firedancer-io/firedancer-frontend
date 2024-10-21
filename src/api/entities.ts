@@ -206,7 +206,6 @@ export const slotPublishSchema = z.object({
   compute_units: z.number().nullable(),
   duration_nanos: z.number().nullable(),
   completed_time_nanos: z.number().nullable(),
-  fees: z.number().nullable(),
 });
 
 export const tpsHistorySchema = z.array(
