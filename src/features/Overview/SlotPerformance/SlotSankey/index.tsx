@@ -21,7 +21,8 @@ function getLinks(
     waterfall.in.retained +
     waterfall.in.gossip;
 
-  const quicCount = waterfall.in.quic + waterfall.in.udp;
+  const quicCount =
+    waterfall.in.quic + waterfall.in.udp - waterfall.out.net_overrun;
 
   const verificationCount =
     quicCount -
@@ -37,7 +38,9 @@ function getLinks(
     waterfall.out.verify_failed -
     waterfall.out.verify_duplicate;
 
-  const packCount = dedupCount - waterfall.out.dedup_duplicate;
+  const resolvCount = dedupCount - waterfall.out.dedup_duplicate;
+
+  const packCount = resolvCount - waterfall.out.resolv_failed;
 
   const bankCount =
     waterfall.in.retained +
@@ -79,6 +82,11 @@ function getLinks(
       source: SlotNode.IncUdp,
       target: SlotNode.SlotStart,
       value: getValue(waterfall.in.udp),
+    },
+    {
+      source: SlotNode.SlotStart,
+      target: SlotNode.NetOverrun,
+      value: getValue(waterfall.out.net_overrun),
     },
     {
       source: SlotNode.SlotStart,
@@ -139,6 +147,16 @@ function getLinks(
     },
     {
       source: SlotNode.Dedup,
+      target: SlotNode.Resolv,
+      value: getValue(resolvCount),
+    },
+    {
+      source: SlotNode.Resolv,
+      target: SlotNode.ResolvFailed,
+      value: getValue(waterfall.out.resolv_failed),
+    },
+    {
+      source: SlotNode.Resolv,
       target: SlotNode.Pack,
       value: getValue(packCount),
     },

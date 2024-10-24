@@ -15,7 +15,9 @@ export default function TilesPerformance() {
 
   const tiles = useAtomValue(tilesAtom);
   const tileCounts = countBy(tiles, (t) => t.kind);
-  const groupedLiveIdlePerTile = liveTileTimers?.reduce<Record<TileType, number[]>>(
+  const groupedLiveIdlePerTile = liveTileTimers?.reduce<
+    Record<TileType, number[]>
+  >(
     (grouped, timer, i) => {
       const tile = tiles?.[i];
       if (!tile) return grouped;
@@ -47,7 +49,7 @@ export default function TilesPerformance() {
         }
 
         for (let i = 0; i < timers.tile_timers.length; i++) {
-          const timer   = timers.tile_timers[i];
+          const timer = timers.tile_timers[i];
 
           const tile = tiles[i];
           if (!tile) continue;
@@ -56,7 +58,9 @@ export default function TilesPerformance() {
           idleTimersPerTileType[tile.kind].push(timer);
         }
 
-        for (const [tile, idlePerTile] of Object.entries(idleTimersPerTileType)) {
+        for (const [tile, idlePerTile] of Object.entries(
+          idleTimersPerTileType
+        )) {
           aggTimerPerTileType[tile] ??= [];
           aggTimerPerTileType[tile].push(idlePerTile);
         }
@@ -75,7 +79,7 @@ export default function TilesPerformance() {
         tileCount={tileCounts["net"]}
         liveIdlePerTile={groupedLiveIdlePerTile?.["net"]}
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["net"]}
-        statLabel="Ingress" 
+        statLabel="Ingress"
         metricType="net_in"
       />
       <TileCard
@@ -101,6 +105,13 @@ export default function TilesPerformance() {
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["dedup"]}
         statLabel="Dupes"
         metricType="dedup"
+      />
+      <TileCard
+        header="resolv"
+        tileCount={tileCounts["resolv"]}
+        liveIdlePerTile={groupedLiveIdlePerTile?.["resolv"]}
+        queryIdlePerTile={showLive ? undefined : queryIdleData?.["resolv"]}
+        statLabel="Resolv"
       />
       <TileCard
         header="pack"

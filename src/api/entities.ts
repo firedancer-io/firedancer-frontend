@@ -44,6 +44,7 @@ export const tileTypeSchema = z.enum([
   "quic",
   "verify",
   "dedup",
+  "resolv",
   "pack",
   "bank",
   "poh",
@@ -89,6 +90,7 @@ const txnWaterfallInSchema = z.object({
 });
 
 const txnWaterfallOutSchema = z.object({
+  net_overrun: z.number(),
   quic_overrun: z.number(),
   quic_quic_invalid: z.number(),
   quic_udp_invalid: z.number(),
@@ -97,6 +99,7 @@ const txnWaterfallOutSchema = z.object({
   verify_failed: z.number(),
   verify_duplicate: z.number(),
   dedup_duplicate: z.number(),
+  resolv_failed: z.number(),
   pack_invalid: z.number(),
   pack_retained: z.number(),
   pack_leader_slow: z.number(),

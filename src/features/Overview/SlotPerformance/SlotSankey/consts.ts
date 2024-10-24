@@ -12,9 +12,11 @@ export const enum SlotNode {
   QUIC = "QUIC:tile",
   Verification = "verify:tile",
   Dedup = "dedup:tile",
+  Resolv = "resolv:tile",
   Pack = "pack:tile",
   Bank = "bank:tile",
 
+  NetOverrun = "Too slow:net",
   QUICOverrun = "Too slow:quic",
   QUICInvalid = "Malformed",
   VerifyOverrun = "Too slow:verify",
@@ -22,6 +24,7 @@ export const enum SlotNode {
   VerifyFailed = "Bad signature",
   VerifyDuplicate = "Duplicate:verify",
   DedupDeuplicate = "Duplicate:dedup",
+  ResolvFailed = "Failed",
   PackInvalid = "Unpackable",
   PackExpired = "Expired",
   PackRetained = "Retained:pack",
@@ -40,11 +43,13 @@ export const tileNodes: SlotNode[] = [
   SlotNode.QUIC,
   SlotNode.Verification,
   SlotNode.Dedup,
+  SlotNode.Resolv,
   SlotNode.Pack,
   SlotNode.Bank,
 ];
 
 export const droppedSlotNodes: SlotNode[] = [
+  SlotNode.NetOverrun,
   SlotNode.QUICOverrun,
   SlotNode.QUICInvalid,
   SlotNode.VerifyOverrun,
@@ -52,6 +57,7 @@ export const droppedSlotNodes: SlotNode[] = [
   SlotNode.VerifyFailed,
   SlotNode.VerifyDuplicate,
   SlotNode.DedupDeuplicate,
+  SlotNode.ResolvFailed,
   SlotNode.PackInvalid,
   SlotNode.PackExpired,
   SlotNode.PackRetained,
@@ -78,6 +84,7 @@ export const slotNodes = [
     id: SlotNode.IncUdp,
   },
   { id: SlotNode.PackRetained, labelPositionOverride: "right" },
+  { id: SlotNode.NetOverrun, labelPositionOverride: "right" },
   { id: SlotNode.QUICOverrun, labelPositionOverride: "right" },
   { id: SlotNode.QUICInvalid, labelPositionOverride: "right" },
   { id: SlotNode.VerifyOverrun, labelPositionOverride: "right" },
@@ -85,6 +92,7 @@ export const slotNodes = [
   { id: SlotNode.VerifyFailed, labelPositionOverride: "right" },
   { id: SlotNode.VerifyDuplicate, labelPositionOverride: "right" },
   { id: SlotNode.DedupDeuplicate, labelPositionOverride: "right" },
+  { id: SlotNode.ResolvFailed, labelPositionOverride: "right" },
   { id: SlotNode.PackInvalid, labelPositionOverride: "right" },
   { id: SlotNode.PackExpired, labelPositionOverride: "right" },
   { id: SlotNode.PackLeaderSlow, labelPositionOverride: "right" },
@@ -108,10 +116,15 @@ export const slotNodes = [
     alignLabelBottom: true,
   },
   {
+    id: SlotNode.Resolv,
+    alignLabelBottom: true,
+  },
+  {
     id: SlotNode.IncGossip,
   },
   {
     id: SlotNode.IncRetained,
+    labelPositionOverride: "left"
   },
   {
     id: SlotNode.Pack,
