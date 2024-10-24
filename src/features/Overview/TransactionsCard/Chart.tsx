@@ -106,7 +106,7 @@ export default function Chart() {
                       y={scaledPaths.totalTpsY - 3}
                       fill="#8E909D"
                       fontSize="8"
-                      fontFamily="Inter"
+                      fontFamily="Inter-Tight"
                     >
                       {maxTotalTps.toLocaleString()}
                     </text>

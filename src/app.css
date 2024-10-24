@@ -1,9 +1,8 @@
 .app {
   /* radix tokens */
   --color-background: #070b14;
-  --default-font-family: "Inter";
-  /* --letter-spacing: -0.56px; */
-  font-family: "Inter";
+  --default-font-family: "Inter Tight";
+  font-family: "Inter Tight";
   font-display: optional;
   --scaling: 0.875;
   --cursor-button: pointer;

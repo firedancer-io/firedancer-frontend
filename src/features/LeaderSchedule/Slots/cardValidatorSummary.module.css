@@ -1,20 +1,16 @@
 .my-slots {
   color: #41b9d3;
-  letter-spacing: -0.56px;
 
   border-radius: 10px;
   background: rgba(250, 250, 250, 0.05);
   padding: 2px 5px;
-
-  /* flex-shrink: 1; */
 }
 
 .name {
   color: #b2bcc9;
   font-size: 24px;
   line-height: normal;
-  letter-spacing: -0.96px;
-  width: 420px;
+  width: 365px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -22,14 +18,11 @@
 
 .pubkey {
   color: #b2bcc9;
-  /* font- */
   font-style: normal;
   line-height: normal;
-  letter-spacing: -0.56px;
 }
 
 .time {
   color: #67696a;
   line-height: normal;
-  letter-spacing: -0.56px;
 }

@@ -11,12 +11,10 @@
 
   .cluster-name {
     border-radius: 5px;
-    /* background: #1ce7c2; */
     padding: 2px 5px;
     color: #000;
     font-weight: 700;
     line-height: normal;
-    letter-spacing: -0.56px;
   }
 
   .version {

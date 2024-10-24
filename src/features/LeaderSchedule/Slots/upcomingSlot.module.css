@@ -6,8 +6,6 @@
 
   .name-text {
     color: #b2bcc9;
-    letter-spacing: -0.56px;
-    /* padding-right: 4px; */
     width: 240px;
     overflow: hidden;
     white-space: nowrap;
@@ -16,8 +14,6 @@
 
   .pubkey-text {
     color: #b2bcc9;
-    letter-spacing: -0.56px;
-    /* padding-right: 4px; */
     min-width: 390px;
   }
 
@@ -35,7 +31,6 @@
 
   .next-leader {
     color: #41b9d3;
-    letter-spacing: -0.56px;
   }
 
   .slot {
@@ -44,7 +39,6 @@
 
   .time-till {
     color: #b2bcc9;
-    letter-spacing: -0.56px;
     min-width: 250px;
   }
 }

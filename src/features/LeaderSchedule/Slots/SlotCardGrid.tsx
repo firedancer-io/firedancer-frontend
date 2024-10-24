@@ -1,4 +1,4 @@
-import { Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Flex, Grid, Text, Tooltip } from "@radix-ui/themes";
 import styles from "./slotCardGrid.module.css";
 import { useAtomValue } from "jotai";
 import {
@@ -17,6 +17,8 @@ import skippedIcon from "../../../assets/Skipped.svg";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import { fixValue } from "../../../utils";
 import { useRafLoop } from "react-use";
+import { lamportsPerSol } from "../../../consts";
+import { formatNumberLamports } from "../../Overview/ValidatorsCard/formatAmt";
 
 interface SlotCardGridProps {
   slot: number;
@@ -28,6 +30,7 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
     <div className={styles.grid}>
       <Text className={styles.headerText}>Slot</Text>
       <Text className={styles.headerText}>Transactions</Text>
+      <Text className={styles.headerText}>Fees</Text>
       <Text className={styles.headerText}>Duration</Text>
       <Text className={styles.headerText}>Compute&nbsp;Units</Text>
       {new Array(4).fill(0).map((_, i) => {
@@ -47,6 +50,9 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
 interface RowValues {
   txnsConfirmed: number;
   totalTxns: number;
+  totalFees: string;
+  transactionFeeFull: string;
+  priorityFeeFull: string;
   durationText: string;
   computeUnitsText: string;
   isSkipped: boolean;
@@ -70,6 +76,21 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
       const totalTxns = fixValue(publish.transactions ?? 0);
       const txnsConfirmed = totalTxns - txnsFailed;
 
+      const totalFees = formatNumberLamports(
+        (publish.transaction_fee ?? 0) + (publish.priority_fee ?? 0),
+        7
+      );
+
+      const transactionFeeFull =
+        publish.transaction_fee != null
+          ? (publish.transaction_fee / lamportsPerSol).toString()
+          : "0";
+
+      const priorityFeeFull =
+        publish.priority_fee != null
+          ? (publish.priority_fee / lamportsPerSol).toString()
+          : "0";
+
       const durationText =
         publish.duration_nanos !== null
           ? `${Math.trunc(publish.duration_nanos / 1_000_000)} ms`
@@ -86,6 +107,9 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
       return {
         txnsConfirmed,
         totalTxns,
+        totalFees,
+        transactionFeeFull,
+        priorityFeeFull,
         durationText,
         computeUnitsText,
         isSkipped,
@@ -127,6 +151,20 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
       <Text className={`${styles.rowText} ${active ? styles.active : ""}`}>
         {getText(`${values?.txnsConfirmed} / ${values?.totalTxns}`)}
       </Text>
+      <Tooltip
+        content={
+          <Grid columns="auto auto" rows="2" gapX="3">
+            <Text>Transaction</Text>
+            <Text>Priority</Text>
+            <Text>{values?.transactionFeeFull} SOL</Text>
+            <Text>{values?.priorityFeeFull} SOL</Text>
+          </Grid>
+        }
+      >
+        <Text className={`${styles.rowText} ${active ? styles.active : ""}`}>
+          {getText(values?.totalFees)}
+        </Text>
+      </Tooltip>
       <Text className={`${styles.rowText} ${active ? styles.active : ""}`}>
         {getText(values?.durationText)}
       </Text>

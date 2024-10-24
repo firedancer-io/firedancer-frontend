@@ -203,6 +203,8 @@ export const slotPublishSchema = z.object({
   transactions: z.number().nullable(),
   vote_transactions: z.number().nullable(),
   failed_transactions: z.number().nullable(),
+  priority_fee: z.number().nullable(),
+  transaction_fee: z.number().nullable(),
   compute_units: z.number().nullable(),
   duration_nanos: z.number().nullable(),
   completed_time_nanos: z.number().nullable(),

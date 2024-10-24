@@ -1,6 +1,5 @@
 .label {
   color: #737373;
-  letter-spacing: -0.56px;
 }
 
 .progress {
@@ -15,7 +14,5 @@
 
 .value {
   color: #cacaca;
-  letter-spacing: -0.56px;
   min-width: 50px;
-  /* min-width: 80px; */
 }

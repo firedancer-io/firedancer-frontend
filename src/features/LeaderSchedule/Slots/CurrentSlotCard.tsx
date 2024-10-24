@@ -20,7 +20,7 @@ export default function CurrentSlotCard({ slot }: CurrentSlotCardProps) {
 
   return (
     <div className={`${styles.card} ${isLeader ? sharedStyles.mySlots : ""}`}>
-      <Flex gap="4" align="start">
+      <Flex gap="1" align="start">
         <CardValidatorSummary slot={slot} />
         <Box flexGrow="1" />
         <SlotCardGrid slot={slot} currentSlot={currentSlot} />

@@ -45,8 +45,6 @@
     }
 
     &.skipped {
-      /* border-radius: 5px; */
-      /* border: 1px solid #7e2f21; */
       background: #3c2525;
     }
 
@@ -54,7 +52,6 @@
       color: #c567ea;
       font-size: 6px;
       line-height: normal;
-      letter-spacing: -0.12px;
       position: absolute;
       top: 2px;
       right: 5px;
