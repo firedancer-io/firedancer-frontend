@@ -8,14 +8,18 @@ import { useAtomValue } from "jotai";
 import TilePrimaryStat from "./TilePrimaryStat";
 import TileBusy from "./TileBusy";
 import { selectedSlotAtom } from "./atoms";
+import TileSparkLineExpandedContainer from "./TileSparkLineExpandedContainer";
+import { useMeasure } from "react-use";
+import { isDefined } from "../../../utils";
+import React, { useMemo } from "react";
 
 interface TileCardProps {
   header: string;
   subHeader?: string;
   tileCount: number;
   statLabel: string;
-  liveTiles?: number[];
-  queryIdle?: number[];
+  liveIdlePerTile?: number[];
+  queryIdlePerTile?: number[][];
   metricType?: keyof TilePrimaryMetric;
 }
 
@@ -24,59 +28,119 @@ export default function TileCard({
   subHeader,
   tileCount,
   statLabel,
-  liveTiles,
-  queryIdle,
+  liveIdlePerTile,
+  queryIdlePerTile,
   metricType,
 }: TileCardProps) {
-  const liveBusy = liveTiles?.map((idle) => 1 - idle) ?? [];
-  const queryBusy = queryIdle?.map((idle) => 1 - idle);
+  const [ref, { width }] = useMeasure<HTMLDivElement>();
   const selectedSlot = useAtomValue(selectedSlotAtom);
-  const busy = (!selectedSlot ? liveBusy : queryBusy)?.filter((b) => b <= 1);
+
+  const tileCountArr = useMemo<unknown[]>(
+    () => new Array(tileCount).fill(0),
+    [tileCount]
+  );
+
+  const liveBusyPerTile = liveIdlePerTile
+    ?.filter((idle) => idle !== -1)
+    .map((idle) => 1 - idle);
+
+  const aggQueryBusyPerTs = queryIdlePerTile
+    ?.map((idlePerTile) => {
+      const filtered = idlePerTile.filter((idle) => idle !== -1);
+      if (!filtered.length) return;
+      return 1 - mean(filtered);
+    })
+    .filter(isDefined);
+
+  const aggQueryBusyPerTile = tileCountArr.map((_, i) => {
+    const queryIdle = queryIdlePerTile
+      ?.map((idlePerTile) => 1 - idlePerTile[i])
+      .filter((b) => b !== undefined && b <= 1);
+
+    if (!queryIdle?.length) return;
+
+    return mean(queryIdle);
+  });
+
+  const busy = (!selectedSlot ? liveBusyPerTile : aggQueryBusyPerTile)?.filter(
+    (b) => b !== undefined && b <= 1
+  );
   const avgBusy = busy?.length ? mean(busy) : undefined;
 
   return (
-    <Card>
-      <Flex direction="column" justify="between" height="100%" gap="1">
-        <Flex justify="between" gap="1">
-          <Flex direction="column" gap="0">
-            <Text className={styles.header}>{header}</Text>
-            {subHeader && <Text className={styles.subHeader}>{subHeader}</Text>}
-          </Flex>
-          {metricType && (
-            <TilePrimaryStat type={metricType} label={statLabel} />
-          )}
-        </Flex>
-        <TileSparkLine value={avgBusy} queryBusy={queryBusy} />
-        <Flex gap="1">
-          <div className={styles.tileContainer}>
-            {new Array(tileCount).fill(0).map((_, i) => {
-              const tileBusy = busy?.[i];
-              if (tileBusy === undefined) {
+    <Flex ref={ref}>
+      <Card>
+        <Flex direction="column" justify="between" height="100%" gap="1">
+          <TileHeader
+            header={header}
+            subHeader={subHeader}
+            statLabel={statLabel}
+            metricType={metricType}
+          />
+          <TileSparkLine value={avgBusy} queryBusy={aggQueryBusyPerTs} />
+          <TileSparkLineExpandedContainer
+            tileCountArr={tileCountArr}
+            liveBusyPerTile={liveBusyPerTile}
+            queryIdlePerTile={queryIdlePerTile}
+            width={width}
+            header={
+              <TileHeader
+                header={header}
+                subHeader={subHeader}
+                statLabel={statLabel}
+                metricType={metricType}
+              />
+            }
+          >
+            <div className={styles.tileContainer}>
+              {tileCountArr.map((_, i) => {
+                const tileBusy = busy?.[i];
+                if (tileBusy === undefined) {
+                  return (
+                    <div
+                      key={i}
+                      className={styles.tile}
+                      style={{
+                        background: `gray`,
+                      }}
+                    />
+                  );
+                }
+
                 return (
                   <div
                     key={i}
                     className={styles.tile}
-                    style={{
-                      background: `gray`,
-                    }}
+                    style={
+                      {
+                        "--busy": `${tileBusy * 100}%`,
+                      } as React.CSSProperties
+                    }
                   />
                 );
-              }
-
-              return (
-                <div
-                  key={i}
-                  className={styles.tile}
-                  style={{
-                    background: `color-mix(in oklab, #E13131 ${tileBusy * 100}%, #5f6fa9)`,
-                  }}
-                />
-              );
-            })}
-          </div>
-          <TileBusy busy={avgBusy} />
+              })}
+            </div>
+            <TileBusy busy={avgBusy} />
+          </TileSparkLineExpandedContainer>
         </Flex>
+      </Card>
+    </Flex>
+  );
+}
+
+function TileHeader({
+  header,
+  subHeader,
+  metricType,
+  statLabel,
+}: Pick<TileCardProps, "header" | "subHeader" | "metricType" | "statLabel">) {
+  return (
+    <Flex justify="between" gap="1">
+      <Flex direction="column" gap="0">
+        <Text className={styles.header}>{header}</Text>
+        {subHeader && <Text className={styles.subHeader}>{subHeader}</Text>}
       </Flex>
-    </Card>
+      {metricType && <TilePrimaryStat type={metricType} label={statLabel} />}
+    </Flex>
   );
 }

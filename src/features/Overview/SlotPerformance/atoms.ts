@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { tileTimerAtom } from "../../../api/atoms";
 
 export const selectedSlotStrAtom = atom<string>();
 
@@ -14,3 +15,12 @@ export enum DisplayType {
 }
 
 export const sankeyDisplayTypeAtom = atom(DisplayType.Count);
+
+export const liveTileTimerfallAtom = atom((get) => {
+  const selectedSlot = get(selectedSlotAtom);
+  if (selectedSlot) return;
+
+  return get(tileTimerAtom);
+});
+
+export const isTileSparkLineExpandedAtom = atom(false);

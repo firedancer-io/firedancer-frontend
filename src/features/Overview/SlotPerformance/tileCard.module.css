@@ -19,6 +19,6 @@
     width: 6px;
     height: 6px;
     border-radius: 1px;
-    background: #5f6fa9;
+    background: color-mix(in oklab, #E13131 var(--busy), #5f6fa9)
   }
 }

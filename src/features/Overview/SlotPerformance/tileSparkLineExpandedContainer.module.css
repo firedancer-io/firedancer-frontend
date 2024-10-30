@@ -1,0 +1,10 @@
+.btn {
+  all: unset;
+  cursor: var(--cursor-button);
+  display: flex;
+  gap: var(--space-1);
+
+  &:hover {
+    filter: brightness(1.4);
+  }
+}
