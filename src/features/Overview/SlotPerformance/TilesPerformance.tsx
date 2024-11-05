@@ -7,6 +7,7 @@ import { liveTileTimerfallAtom, selectedSlotAtom } from "./atoms";
 import { useMemo } from "react";
 import useSlotQuery from "../../../hooks/useSlotQuery";
 import { TileType } from "../../../api/types";
+import { tileTypeSchema } from "../../../api/entities";
 
 export default function TilesPerformance() {
   const liveTileTimers = useAtomValue(liveTileTimerfallAtom);
@@ -22,8 +23,13 @@ export default function TilesPerformance() {
       const tile = tiles?.[i];
       if (!tile) return grouped;
 
-      grouped[tile.kind] ??= [];
-      grouped[tile.kind].push(timer);
+      const parsedTileKind = tileTypeSchema.safeParse(tile.kind);
+      if (parsedTileKind.error) {
+        return grouped;
+      }
+
+      grouped[parsedTileKind.data] ??= [];
+      grouped[parsedTileKind.data].push(timer);
 
       return grouped;
     },

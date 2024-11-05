@@ -59,7 +59,7 @@ export const tileTypeSchema = z.enum([
 ]);
 
 export const tileSchema = z.object({
-  kind: tileTypeSchema,
+  kind: z.string(),
   kind_id: z.number(),
 });
 
@@ -139,7 +139,7 @@ export const liveTilePrimaryMetricSchema = z.object({
 });
 
 export const tileTimerSchema = z.object({
-  tile: tileTypeSchema,
+  tile: z.string(),
   kind_id: z.number(),
   idle: z.number(),
 });
