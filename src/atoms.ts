@@ -179,6 +179,7 @@ export const setSlotResponseAtom = atom(
   (_, set, response: SlotReponse) => {
     const slot = response.publish.slot;
     set(slotResponseAtom, (draft) => {
+      response.tile_timers ??= draft[slot]?.tile_timers;
       draft[slot] = response;
     });
   }
