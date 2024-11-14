@@ -27,8 +27,11 @@ function getLinks(
   const verificationCount =
     quicCount -
     waterfall.out.quic_overrun -
-    waterfall.out.quic_quic_invalid -
-    waterfall.out.quic_udp_invalid;
+    waterfall.out.quic_frag_drop -
+    waterfall.out.quic_frag_drop_g -
+    waterfall.out.quic_aborted -
+    waterfall.out.tpu_quic_invalid -
+    waterfall.out.tpu_udp_invalid;
 
   const dedupCount =
     waterfall.in.gossip +
@@ -102,8 +105,23 @@ function getLinks(
       source: SlotNode.QUIC,
       target: SlotNode.QUICInvalid,
       value: getValue(
-        waterfall.out.quic_quic_invalid + waterfall.out.quic_udp_invalid
+        waterfall.out.tpu_quic_invalid + waterfall.out.tpu_udp_invalid
       ),
+    },
+    {
+      source: SlotNode.QUIC,
+      target: SlotNode.QUICTooManyStreams,
+      value: getValue(waterfall.out.quic_frag_drop),
+    },
+    {
+      source: SlotNode.QUIC,
+      target: SlotNode.QUICTooManyFrags,
+      value: getValue(waterfall.out.quic_frag_drop_g),
+    },
+    {
+      source: SlotNode.QUIC,
+      target: SlotNode.QUICAborted,
+      value: getValue(waterfall.out.quic_aborted),
     },
     {
       source: SlotNode.QUIC,

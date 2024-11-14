@@ -92,8 +92,11 @@ const txnWaterfallInSchema = z.object({
 const txnWaterfallOutSchema = z.object({
   net_overrun: z.number(),
   quic_overrun: z.number(),
-  quic_quic_invalid: z.number(),
-  quic_udp_invalid: z.number(),
+  quic_frag_drop: z.number(),
+  quic_frag_drop_g: z.number(),
+  quic_aborted: z.number(),
+  tpu_quic_invalid: z.number(),
+  tpu_udp_invalid: z.number(),
   verify_overrun: z.number(),
   verify_parse: z.number(),
   verify_failed: z.number(),
