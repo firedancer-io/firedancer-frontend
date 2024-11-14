@@ -163,9 +163,18 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
                 fontSize: "14px",
               }}
             >
-              <tspan x="0" dy="0em" style={{ fill: labelFill }}>
-                {labelText}
-              </tspan>
+              {getLabelParts(labelText).map((part, i) => {
+                return (
+                  <tspan
+                    key={part}
+                    x="0"
+                    dy={i === 0 ? "-.5em" : "1em"}
+                    style={{ fill: labelFill }}
+                  >
+                    {part}
+                  </tspan>
+                );
+              })}
               <tspan x="0" dy="1em" style={{ fill: valueFill }}>
                 {label.value?.toLocaleString()}
                 {usePct && "%"}
@@ -199,4 +208,21 @@ function getLabelFill(label: SlotNode, value: number) {
   }
 
   return [baseLabelColor, baseLabelColor];
+}
+
+function getLabelParts(labelText: string) {
+  if (labelText.length < 15 || !labelText.includes(" ")) return [labelText];
+
+  const midIndex = Math.trunc(labelText.length / 2);
+  const firstIndex = labelText.lastIndexOf(" ", midIndex);
+  const lastIndex = labelText.indexOf(" ", midIndex + 1);
+  const splitIndex =
+    midIndex - firstIndex < lastIndex - midIndex || lastIndex === -1
+      ? firstIndex
+      : lastIndex;
+
+  return [
+    labelText.substring(0, splitIndex),
+    labelText.substring(splitIndex + 1),
+  ];
 }
