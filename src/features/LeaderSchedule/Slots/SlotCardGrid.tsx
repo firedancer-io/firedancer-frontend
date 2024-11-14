@@ -29,7 +29,7 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
   return (
     <div className={styles.grid}>
       <Text className={styles.headerText}>Slot</Text>
-      <Text className={styles.headerText}>Transactions</Text>
+      <Text className={styles.headerText}>Votes / Non-votes</Text>
       <Text className={styles.headerText}>Fees</Text>
       <Text className={styles.headerText}>Duration</Text>
       <Text className={styles.headerText}>Compute&nbsp;Units</Text>
@@ -48,8 +48,8 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
 }
 
 interface RowValues {
-  txnsConfirmed: number;
-  totalTxns: number;
+  voteTxns: string;
+  nonVoteTxns: string;
   totalFees: string;
   transactionFeeFull: string;
   priorityFeeFull: string;
@@ -72,9 +72,9 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
   useEffect(() => {
     const getValues = (publish: SlotPublish): RowValues => {
       // TODO: fix backend
-      const txnsFailed = fixValue(publish.failed_transactions ?? 0);
+      const voteTxns = fixValue(publish.vote_transactions ?? 0);
       const totalTxns = fixValue(publish.transactions ?? 0);
-      const txnsConfirmed = totalTxns - txnsFailed;
+      const nonVoteTxns = totalTxns - voteTxns;
 
       const totalFees = formatNumberLamports(
         (publish.transaction_fee ?? 0) + (publish.priority_fee ?? 0),
@@ -105,8 +105,8 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
       const computeUnitsText = `${computeUnits.toLocaleString()} (${computeUnitPct?.toFixed(0)}%)`;
 
       return {
-        txnsConfirmed,
-        totalTxns,
+        voteTxns: voteTxns.toLocaleString(),
+        nonVoteTxns: nonVoteTxns.toLocaleString(),
         totalFees,
         transactionFeeFull,
         priorityFeeFull,
@@ -149,7 +149,7 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
         )}
       </Flex>
       <Text className={`${styles.rowText} ${active ? styles.active : ""}`}>
-        {getText(`${values?.txnsConfirmed} / ${values?.totalTxns}`)}
+        {getText(`${values?.voteTxns} / ${values?.nonVoteTxns}`)}
       </Text>
       <Tooltip
         content={

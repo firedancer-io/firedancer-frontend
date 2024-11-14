@@ -2,14 +2,11 @@ import styles from "./sankeyControls.module.css";
 import { Text } from "@radix-ui/themes";
 import * as ToggleGroup from "@radix-ui/react-toggle-group";
 import { useAtom, useAtomValue } from "jotai";
-import {
-  DisplayType,
-  sankeyDisplayTypeAtom,
-  selectedSlotAtom,
-} from "./atoms";
+import { DisplayType, sankeyDisplayTypeAtom, selectedSlotAtom } from "./atoms";
 import useSlotQuery from "../../../hooks/useSlotQuery";
 import { fixValue } from "../../../utils";
 import { useMemo } from "react";
+import { lamportsPerSol } from "../../../consts";
 
 export default function SankeyControls() {
   const [value, setValue] = useAtom(sankeyDisplayTypeAtom);
@@ -51,42 +48,63 @@ function SlotStats() {
   const values = useMemo(() => {
     if (!query.slotResponse) return;
 
-    const txnsConfirmed = fixValue(
-      query.slotResponse.publish.transactions ?? 0
+    const voteTxns = fixValue(
+      query.slotResponse.publish.vote_transactions ?? 0
     );
-    const totalTxns = fixValue(
-      txnsConfirmed + (query.slotResponse.publish.failed_transactions ?? 0)
-    );
-    const successRate = totalTxns ? (txnsConfirmed / totalTxns) * 100 : 0;
+    const totalTxns = fixValue(query.slotResponse.publish.transactions ?? 0);
+    const nonVoteTxns = totalTxns - voteTxns;
+
+    const transactionFeeFull =
+      query.slotResponse.publish.transaction_fee != null
+        ? (
+            query.slotResponse.publish.transaction_fee / lamportsPerSol
+          ).toLocaleString()
+        : "0";
+
+    const priorityFeeFull =
+      query.slotResponse.publish.priority_fee != null
+        ? (
+            query.slotResponse.publish.priority_fee / lamportsPerSol
+          ).toLocaleString()
+        : "0";
 
     const computeUnits = fixValue(
       query.slotResponse?.publish.compute_units ?? 0
     );
 
-    return { successRate, computeUnits };
+    return {
+      computeUnits,
+      voteTxns,
+      nonVoteTxns,
+      transactionFeeFull,
+      priorityFeeFull,
+    };
   }, [query.slotResponse]);
 
   if (!selectedSlot) return;
 
   return (
     <div className={styles.stats}>
-      <Text>Slot Success Rate</Text>
-      <Text
-        className={styles.successRate}
-        style={{
-          color:
-            values !== undefined && values.successRate < 50
-              ? "#FF5152"
-              : undefined,
-        }}
-      >
-        {values?.successRate === 100
-          ? "100"
-          : (values?.successRate.toFixed(2) ?? "-")}
-        %
+      <Text>Priority Fees</Text>
+      <Text style={{ textAlign: "right" }}>
+        {values?.priorityFeeFull ?? "-"}
+      </Text>
+      <Text>Transaction Fees</Text>
+      <Text style={{ textAlign: "right" }}>
+        {values?.transactionFeeFull ?? "-"}
+      </Text>
+      <Text>Vote Transactions</Text>
+      <Text style={{ textAlign: "right" }}>
+        {values?.voteTxns?.toLocaleString() ?? "-"}
+      </Text>
+      <Text>Non-vote Transactions</Text>
+      <Text style={{ textAlign: "right" }}>
+        {values?.nonVoteTxns?.toLocaleString() ?? "-"}
       </Text>
       <Text>Compute Units</Text>
-      <Text>{values?.computeUnits?.toLocaleString() ?? "-"}</Text>
+      <Text style={{ textAlign: "right" }}>
+        {values?.computeUnits?.toLocaleString() ?? "-"}
+      </Text>
     </div>
   );
 }
