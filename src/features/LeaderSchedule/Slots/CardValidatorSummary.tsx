@@ -9,7 +9,7 @@ import PeerIcon from "../../../components/PeerIcon";
 import { identityKeyAtom } from "../../../api/atoms";
 import styles from "./cardValidatorSummary.module.css";
 import useSlotQuery from "../../../hooks/useSlotQuery";
-import { useInterval, useUpdate } from "react-use";
+import { useHarmonicIntervalFn, useUpdate } from "react-use";
 
 interface CardValidatorSummaryProps {
   slot: number;
@@ -49,7 +49,7 @@ function TimeAgo({ slot, showTime }: CardValidatorSummaryProps) {
   const query = useSlotQuery(slot);
   const update = useUpdate();
 
-  useInterval(update, 1_000);
+  useHarmonicIntervalFn(update, 1_000);
 
   const slotDateTime = useMemo(() => {
     if (!query.slotResponse?.publish.completed_time_nanos) return;

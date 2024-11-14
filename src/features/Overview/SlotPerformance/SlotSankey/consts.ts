@@ -1,5 +1,5 @@
 export const enum SlotNode {
-  IncRetained = "Retained:inc",
+  IncRetained = "Buffered:inc",
   IncQuic = "QUIC",
   IncUdp = "UDP",
   IncGossip = "Gossip",
@@ -24,11 +24,11 @@ export const enum SlotNode {
   VerifyFailed = "Bad signature",
   VerifyDuplicate = "Duplicate:verify",
   DedupDeuplicate = "Duplicate:dedup",
-  ResolvFailed = "Failed",
+  ResolvFailed = "Bad LUT",
   PackInvalid = "Unpackable",
   PackExpired = "Expired",
-  PackRetained = "Retained:pack",
-  PackLeaderSlow = "Execution too slow",
+  PackRetained = "Buffered:pack",
+  PackLeaderSlow = "Buffer full",
   PackWaitFull = "Storage full",
   BankInvalid = "Unexecutable",
 

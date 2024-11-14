@@ -4,13 +4,18 @@ import { usePubKey } from "../../../hooks/usePubKey";
 import styles from "./upcomingSlot.module.css";
 import sharedStyles from "./slots.module.css";
 import { useAtomValue } from "jotai";
-import { currentLeaderSlotAtom, slotDurationAtom } from "../../../atoms";
+import {
+  currentLeaderSlotAtom,
+  currentSlotAtom,
+  slotDurationAtom,
+} from "../../../atoms";
 import usePeer from "../../../hooks/usePeer";
 import { identityKeyAtom } from "../../../api/atoms";
-import { useMemo } from "react";
+import { useReducer } from "react";
 import { DateTime, Duration } from "luxon";
 import { getTimeTillText, slowDateTimeNow } from "../../../utils";
 import PeerIcon from "../../../components/PeerIcon";
+import { useHarmonicIntervalFn } from "react-use";
 
 interface UpcomingSlotCardProps {
   slot: number;
@@ -21,7 +26,6 @@ export default function UpcomingSlotCard({ slot }: UpcomingSlotCardProps) {
   const myPubkey = useAtomValue(identityKeyAtom);
   const pubkey = usePubKey(slot);
   const peer = usePeer(pubkey ?? "");
-  const slotDuration = useAtomValue(slotDurationAtom);
 
   const isLeader = myPubkey === pubkey;
   const isOneAway =
@@ -30,20 +34,6 @@ export default function UpcomingSlotCard({ slot }: UpcomingSlotCardProps) {
   const isTwoAway =
     currentLeaderSlot !== undefined &&
     slot === currentLeaderSlot + slotsPerLeader * 2;
-
-  const timeTill = useMemo(() => {
-    if (!currentLeaderSlot) return;
-
-    return Duration.fromMillis(
-      slotDuration * (slot - currentLeaderSlot)
-    ).rescale();
-  }, [currentLeaderSlot, slot, slotDuration]);
-
-  const slotTime = useMemo(() => {
-    if (!timeTill) return;
-
-    return slowDateTimeNow.plus(timeTill);
-  }, [timeTill]);
 
   const name = peer?.info?.name ?? (isLeader ? "You" : "Private");
 
@@ -60,11 +50,54 @@ export default function UpcomingSlotCard({ slot }: UpcomingSlotCardProps) {
         <Flex flexGrow="1" justify="center">
           <Text className={styles.slot}>{slot}</Text>
         </Flex>
-        <Text className={styles.timeTill}>
-          {slotTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)} (
-          {getTimeTillText(timeTill)})
-        </Text>
+        <TimeTillText slot={slot} />
       </Flex>
     </div>
   );
+}
+
+interface TimeTillTextProps {
+  slot: number;
+}
+
+function TimeTillText({ slot }: TimeTillTextProps) {
+  const currentSlot = useAtomValue(currentSlotAtom);
+  const slotDuration = useAtomValue(slotDurationAtom);
+
+  const timeTill = currentSlot
+    ? Duration.fromMillis(slotDuration * (slot - currentSlot)).rescale()
+    : undefined;
+
+  const [dtText, setDtText] = useReducer(dtTextReducer, getDtText(timeTill));
+
+  const [timeTillText, setTimeTillText] = useReducer(
+    timeTillTextReducer,
+    getTimeTillText(timeTill)
+  );
+
+  useHarmonicIntervalFn(() => {
+    setTimeTillText(timeTill);
+    setDtText(timeTill);
+  }, 1_000);
+
+  return (
+    <Text className={styles.timeTill}>
+      {dtText} ({timeTillText})
+    </Text>
+  );
+}
+
+function dtTextReducer(_: string, timeTill: Duration | undefined) {
+  return getDtText(timeTill);
+}
+
+function timeTillTextReducer(_: string, timeTill: Duration | undefined) {
+  return getTimeTillText(timeTill);
+}
+
+function getDtText(timeTill?: Duration) {
+  if (!timeTill) return "";
+
+  const slotDt = slowDateTimeNow.plus(timeTill);
+  return slotDt?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS);
 }
