@@ -58,14 +58,12 @@ function SlotStats() {
       query.slotResponse.publish.transaction_fee != null
         ? (
             query.slotResponse.publish.transaction_fee / lamportsPerSol
-          ).toLocaleString()
+          ).toString()
         : "0";
 
     const priorityFeeFull =
       query.slotResponse.publish.priority_fee != null
-        ? (
-            query.slotResponse.publish.priority_fee / lamportsPerSol
-          ).toLocaleString()
+        ? (query.slotResponse.publish.priority_fee / lamportsPerSol).toString()
         : "0";
 
     const computeUnits = fixValue(
