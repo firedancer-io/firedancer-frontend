@@ -7,6 +7,7 @@
 
   .item {
     flex: 1;
+    background: #1B659933;
     border: 0px solid #900;
     border: solid 1px transparent;
     justify-content: "left";
@@ -23,15 +24,16 @@
     }
 
     .slot-text {
-      color: #737373;
+      color: #a4a3a3;
       line-height: normal;
       flex: 1;
       text-align: center;
     }
 
     &[data-state="checked"] {
-      border: 1px solid #23639e;
-      background: rgba(35, 77, 107, 0.4);
+      border: 1px solid #1d6fba;
+      background: #29699766;
+
       &::after {
         outline: unset;
       }

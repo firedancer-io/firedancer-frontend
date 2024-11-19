@@ -42,7 +42,7 @@ export default function UpcomingSlotCard({ slot }: UpcomingSlotCardProps) {
       className={`${styles.card} ${isOneAway ? styles.oneAway : ""} ${isTwoAway ? styles.twoAway : ""} ${isLeader ? sharedStyles.mySlots : ""}`}
     >
       <Flex gap="2">
-        <Flex gap="1" minWidth="300px" align="center">
+        <Flex gap="2" minWidth="300px" align="center">
           <PeerIcon url={peer?.info?.icon_url} size={24} isYou={isLeader} />
           <Text className={styles.nameText}>{name}</Text>
         </Flex>

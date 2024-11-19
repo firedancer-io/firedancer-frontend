@@ -144,13 +144,10 @@ function Uptime() {
   const getValue = () => {
     if (!uptime) return "-";
 
-    const uptimeDuration = Duration.fromMillis(
-      uptime.uptimeNanos / 1_000_000
-    ).rescale();
+    const uptimeDuration = Duration.fromMillis(uptime.uptimeNanos / 1_000_000);
+    const diffDuration = slowDateTimeNow.diff(uptime.ts);
 
-    const diffDuration = slowDateTimeNow.diff(uptime.ts).rescale();
-
-    const text = getTimeTillText(uptimeDuration.plus(diffDuration), {
+    const text = getTimeTillText(uptimeDuration.plus(diffDuration).rescale(), {
       showSeconds: false,
     });
     return text;

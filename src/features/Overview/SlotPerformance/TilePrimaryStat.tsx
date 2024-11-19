@@ -39,13 +39,15 @@ function getFormatted(type: keyof TilePrimaryMetric, value?: number) {
   if (value === undefined || value === -1) return "-";
 
   if (type === "net_in" || type === "net_out") {
-    const bytes = byteSize(value * 8);
-    const bits = Number(bytes.value);
+    const bytes = value * 8;
+    const bsRes = byteSize(value * 8, {
+      precision: bytes > 1_000_000_000 ? 2 : 0,
+    });
+    const bits = Number(bsRes.value);
     if (!value) return "0";
 
-    const unit = bytes.unit.replace("B", "b");
-
-    return `${Math.trunc(bits)} ${unit}/s`;
+    const unit = bsRes.unit.replace("B", "b");
+    return `${bits} ${unit}/s`;
   }
 
   if (type === "verify" || type === "dedup" || type === "pack") {
