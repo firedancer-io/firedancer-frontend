@@ -17,6 +17,7 @@
     column-gap: 10px;
     row-gap: 4px;
     min-width: 170px;
+    font-variant-numeric: tabular-nums;
 
     border-radius: 5px;
     background: #15252f;

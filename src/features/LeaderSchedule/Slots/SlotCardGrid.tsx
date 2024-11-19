@@ -29,10 +29,25 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
   return (
     <div className={styles.grid}>
       <Text className={styles.headerText}>Slot</Text>
-      <Text className={styles.headerText}>Votes / Non-votes</Text>
-      <Text className={styles.headerText}>Fees</Text>
-      <Text className={styles.headerText}>Duration</Text>
-      <Text className={styles.headerText}>Compute&nbsp;Units</Text>
+      <Text className={styles.headerText} align="right">
+        Votes
+      </Text>
+      <Text className={styles.headerText} align="right">
+        Non-votes
+      </Text>
+      <Text className={styles.headerText} align="right">
+        Fees
+      </Text>
+      <Text className={styles.headerText} align="right">
+        Duration
+      </Text>
+      <Text
+        className={styles.headerText}
+        align="right"
+        style={{ gridColumnStart: "span 2" }}
+      >
+        Compute&nbsp;Units
+      </Text>
       {new Array(4).fill(0).map((_, i) => {
         const cardSlot = slot + i;
         return (
@@ -54,7 +69,8 @@ interface RowValues {
   transactionFeeFull: string;
   priorityFeeFull: string;
   durationText: string;
-  computeUnitsText: string;
+  computeUnits: number;
+  computeUnitsPct: number;
   isSkipped: boolean;
 }
 
@@ -98,11 +114,10 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
       const isSkipped = publish.skipped;
 
       const computeUnits = fixValue(publish?.compute_units ?? 0);
-      const computeUnitPct =
+      const computeUnitsPct =
         publish.compute_units != null
           ? (publish.compute_units / 48_000_000) * 100
           : 0;
-      const computeUnitsText = `${computeUnits.toLocaleString()} (${computeUnitPct?.toFixed(0)}%)`;
 
       return {
         voteTxns: voteTxns.toLocaleString(),
@@ -111,7 +126,8 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
         transactionFeeFull,
         priorityFeeFull,
         durationText,
-        computeUnitsText,
+        computeUnits,
+        computeUnitsPct,
         isSkipped,
       };
     };
@@ -125,11 +141,11 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
   const isCurrent = slot === currentSlot;
 
   const getText = (text?: string | number, suffix?: string) => {
-    if (typeof text === "number") text = Math.trunc(text);
     if (isFuture || isCurrent) return "-";
-    // if (isCurrent) return "Calculating...";
     if (!values && !response.hasWaitedForData) return "Loading...";
     if (!values) return "-";
+
+    if (typeof text === "number") text = Math.trunc(text);
     return `${text}${suffix ?? ""}`;
   };
 
@@ -148,8 +164,17 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
           </Tooltip>
         )}
       </Flex>
-      <Text className={`${styles.rowText} ${active ? styles.active : ""}`}>
-        {getText(`${values?.voteTxns} / ${values?.nonVoteTxns}`)}
+      <Text
+        className={`${styles.rowText} ${active ? styles.active : ""}`}
+        align="right"
+      >
+        {getText(values?.voteTxns)}
+      </Text>
+      <Text
+        className={`${styles.rowText} ${active ? styles.active : ""}`}
+        align="right"
+      >
+        {getText(values?.nonVoteTxns)}
       </Text>
       <Tooltip
         content={
@@ -161,16 +186,47 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
           </Grid>
         }
       >
-        <Text className={`${styles.rowText} ${active ? styles.active : ""}`}>
+        <Text
+          className={`${styles.rowText} ${active ? styles.active : ""}`}
+          align="right"
+        >
           {getText(values?.totalFees)}
         </Text>
       </Tooltip>
-      <Text className={`${styles.rowText} ${active ? styles.active : ""}`}>
+      <Text
+        className={`${styles.rowText} ${active ? styles.active : ""}`}
+        align="right"
+      >
         {getText(values?.durationText)}
       </Text>
-      <Text className={`${styles.rowText} ${active ? styles.active : ""}`}>
-        {getText(values?.computeUnitsText)}
-      </Text>
+      {values?.computeUnits !== undefined ? (
+        <>
+          <Text
+            className={`${styles.rowText} ${active ? styles.active : ""}`}
+            align="right"
+            style={{ padding: 0 }}
+          >
+            {getText(values?.computeUnits.toLocaleString())}
+          </Text>
+          <Text
+            className={`${styles.rowText} ${active ? styles.active : ""}`}
+            align="right"
+            style={{ padding: 0 }}
+          >
+            {values?.computeUnitsPct !== undefined
+              ? `\u00A0(${getText(values?.computeUnitsPct)}%)`
+              : null}
+          </Text>
+        </>
+      ) : (
+        <Text
+          className={`${styles.rowText} ${active ? styles.active : ""}`}
+          style={{ gridColumnStart: "span 2" }}
+          align="right"
+        >
+          {getText()}
+        </Text>
+      )}
     </>
   );
 }

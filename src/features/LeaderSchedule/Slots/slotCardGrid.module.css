@@ -1,9 +1,11 @@
 .grid {
   display: grid;
-  grid: auto-flow / minMax(140px, auto) minMax(160px, auto)  minMax(85px, auto) minMax(110px, auto) minMax(
-      160px,
+  grid:
+    auto-flow / minMax(140px, auto) minMax(80px, auto) minMax(80px, auto) minMax(
+      85px,
       auto
-    );
+    )
+    minMax(110px, auto) minMax(100px, auto) minMax(40px, auto);
   row-gap: 1px;
 
   .header-text {
@@ -15,6 +17,7 @@
   .row-text {
     color: #8a8a8a;
     padding: 0 6px;
+    font-variant-numeric: tabular-nums;
 
     .slot-text {
       min-width: 79px;
