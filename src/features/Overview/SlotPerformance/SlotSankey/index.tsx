@@ -28,8 +28,7 @@ function getLinks(
     quicCount -
     waterfall.out.quic_overrun -
     waterfall.out.quic_frag_drop -
-    waterfall.out.quic_frag_drop_g -
-    waterfall.out.quic_aborted -
+    waterfall.out.quic_abandoned -
     waterfall.out.tpu_quic_invalid -
     waterfall.out.tpu_udp_invalid;
 
@@ -110,18 +109,13 @@ function getLinks(
     },
     {
       source: SlotNode.QUIC,
-      target: SlotNode.QUICTooManyStreams,
+      target: SlotNode.QUICTooManyFrags,
       value: getValue(waterfall.out.quic_frag_drop),
     },
     {
       source: SlotNode.QUIC,
-      target: SlotNode.QUICTooManyFrags,
-      value: getValue(waterfall.out.quic_frag_drop_g),
-    },
-    {
-      source: SlotNode.QUIC,
-      target: SlotNode.QUICAborted,
-      value: getValue(waterfall.out.quic_aborted),
+      target: SlotNode.QUICAbandoned,
+      value: getValue(waterfall.out.quic_abandoned),
     },
     {
       source: SlotNode.QUIC,
