@@ -145,7 +145,7 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
     if (!values && !response.hasWaitedForData) return "Loading...";
     if (!values) return "-";
 
-    if (typeof text === "number") text = Math.trunc(text);
+    if (typeof text === "number") text = Math.round(text);
     return `${text}${suffix ?? ""}`;
   };
 
