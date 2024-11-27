@@ -5,7 +5,7 @@
       85px,
       auto
     )
-    minMax(75px, auto) minMax(100px, auto) minMax(40px, auto);
+    minMax(75px, auto) minMax(100px, auto) minMax(49px, auto);
   row-gap: 1px;
 
   .header-text {
