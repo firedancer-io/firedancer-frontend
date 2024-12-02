@@ -14,8 +14,8 @@ import {
   SlotLevel,
   SlotReponse,
 } from "./api/types";
-import { merge, sum } from "lodash";
-import { getLeaderSlots } from "./utils";
+import { merge } from "lodash";
+import { getLeaderSlots, getStake } from "./utils";
 import { searchLeaderSlotsAtom } from "./features/LeaderSchedule/atoms";
 import { selectedSlotAtom } from "./features/Overview/SlotPerformance/atoms";
 
@@ -426,7 +426,7 @@ export const myStakeAmountAtom = atom((get) => {
   const myPeer = peers[idKey];
   if (!myPeer) return;
 
-  return sum(myPeer.vote.map(({ activated_stake }) => activated_stake));
+  return getStake(myPeer);
 });
 
 export const myStakePctAtom = atom((get) => {

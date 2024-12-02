@@ -7,10 +7,9 @@ import PeerIcon from "../../components/PeerIcon";
 import { myStakePctAtom, myStakeAmountAtom } from "../../atoms";
 import { useEffect } from "react";
 import { Duration } from "luxon";
-import { getTimeTillText, slowDateTimeNow } from "../../utils";
+import { getFmtStake, getTimeTillText, slowDateTimeNow } from "../../utils";
 import { formatNumber } from "../../numUtils";
 import { useInterval, useUpdate, useWindowSize } from "react-use";
-import { lamportsPerSol } from "../../consts";
 
 export default function IdentityKey() {
   const identityKey = useAtomValue(identityKeyAtom);
@@ -83,27 +82,12 @@ function StakePct() {
 }
 
 function StakeValue() {
-  const stakeValue = useAtomValue(myStakeAmountAtom);
-
-  let value = "-";
-
-  if (stakeValue !== undefined) {
-    const solAmount = stakeValue / lamportsPerSol;
-    if (solAmount < 1) {
-      value = solAmount.toLocaleString();
-    } else {
-      value = solAmount.toLocaleString(undefined, {
-        // minimumFractionDigits: 2,
-        maximumFractionDigits: 0,
-      });
-    }
-    value += " SOL";
-  }
+  const stake = useAtomValue(myStakeAmountAtom);
 
   return (
     <Label
       label="Stake Amount"
-      value={value}
+      value={getFmtStake(stake) ?? "-"}
       tooltip="Amount of total stake that is delegated to this validator"
     />
   );

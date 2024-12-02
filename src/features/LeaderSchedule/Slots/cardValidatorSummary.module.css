@@ -16,13 +16,26 @@
   text-overflow: ellipsis;
 }
 
-.pubkey {
-  color: #b2bcc9;
+.primary-text {
   font-style: normal;
   line-height: normal;
+  color: #b2bcc9;
 }
 
-.time {
-  color: #67696a;
+.secondary-text {
   line-height: normal;
+  font-size: 12px;
+  color: #67696a;
+}
+
+.divider {
+  color: #b2bcc9;
+}
+
+.fd-text {
+  color: #008970;
+}
+
+.agave-text {
+  color: #a94dde;
 }

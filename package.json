@@ -26,6 +26,7 @@
     "@types/lodash": "^4.17.9",
     "@types/luxon": "^3.4.2",
     "byte-size": "^9.0.0",
+    "clsx": "^2.1.1",
     "events": "^3.3.0",
     "immer": "^10.1.1",
     "jotai": "^2.10.0",
