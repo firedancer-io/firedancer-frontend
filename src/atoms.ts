@@ -499,7 +499,8 @@ export const slotDurationAtom = atom((get) => {
   return Math.max(50, Math.min(durationMs, 1_000 * 10));
 });
 
-const _skipRateAtom = atomWithImmer<Record<number, number>>({});
+/** epoch -> skip rate */
+const _skipRateAtom = atomWithImmer<Record<number, SkipRate>>({});
 
 export const skipRateAtom = atom(
   (get) => {
@@ -510,7 +511,7 @@ export const skipRateAtom = atom(
   },
   (_, set, skipRate: SkipRate) => {
     set(_skipRateAtom, (draft) => {
-      draft[skipRate.epoch] = skipRate.skip_rate;
+      draft[skipRate.epoch] = skipRate;
     });
   }
 );

@@ -107,10 +107,16 @@ function SkipRate() {
   let value = "-";
 
   if (skipRate !== undefined) {
-    value = (skipRate * 100).toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    });
+    if (skipRate.slots_processed)
+      if (skipRate.slots_processed === 0 || skipRate.slots_skipped === 0) {
+        value = "0";
+      } else {
+        const skipRatePct = skipRate.slots_skipped / skipRate.slots_processed;
+        value = (skipRatePct * 100).toLocaleString(undefined, {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2,
+        });
+      }
 
     value += "%";
   }
@@ -118,7 +124,9 @@ function SkipRate() {
   return (
     <Flex justify="center" align="center" gap="1">
       <Text className={styles.skipRateLabel}>Skip Rate</Text>
-      <Text className={skipRate ? styles.skipRateValue : styles.skipRateLabel}>{value}</Text>
+      <Text className={skipRate ? styles.skipRateValue : styles.skipRateLabel}>
+        {value}
+      </Text>
     </Flex>
   );
 }

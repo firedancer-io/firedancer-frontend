@@ -184,6 +184,7 @@ export function useSetAtomWsData() {
             setSkipRate(value);
             break;
           }
+          case "first_processed_slot":
           case "root_slot":
           case "optimistically_confirmed_slot":
           case "completed_slot":
@@ -246,12 +247,12 @@ export function useSetAtomWsData() {
         console.debug(msg);
       }
     } catch (e) {
-      console.error(msg);
-
       if (e instanceof ZodError) {
-        console.error(e.message);
-        console.error(e.errors);
+        console.debug(msg)
+        console.debug(e.message);
+        console.debug(e.errors);
       } else {
+        console.error(msg);
         console.error(e);
       }
     }

@@ -60,7 +60,6 @@ export default function connectWebSocket(
     }
 
     if (ws && ws.readyState === WebSocket.OPEN) {
-      logDebug("WS", "Sending message", message);
       ws.send(JSON.stringify(message));
     } else {
       logWarning("WS", "Attempting to send on closed WebSocket", message);
