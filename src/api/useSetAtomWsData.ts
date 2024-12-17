@@ -248,9 +248,17 @@ export function useSetAtomWsData() {
       }
     } catch (e) {
       if (e instanceof ZodError) {
-        console.debug(msg)
-        console.debug(e.message);
-        console.debug(e.errors);
+        if (
+          e.errors.every(({ code }) => code === "invalid_union_discriminator")
+        ) {
+          console.debug(msg);
+          console.debug(e.message);
+          console.debug(e.errors);
+        } else {
+          console.error(msg);
+          console.error(e.message);
+          console.error(e.errors);
+        }
       } else {
         console.error(msg);
         console.error(e);
