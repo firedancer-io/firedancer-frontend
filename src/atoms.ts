@@ -115,7 +115,7 @@ export const setSlotStatusAtom = atom(
   }
 );
 
-const slotCacheBounds = 100;
+const slotCacheBounds = 1_000;
 
 export const deleteSlotStatusBoundsAtom = atom(null, (get, set) => {
   const slotOverride = get(slotOverrideAtom);
