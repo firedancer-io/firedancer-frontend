@@ -59,7 +59,7 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
       let textAnchor;
 
       if (layout === "horizontal") {
-        y = node.y + node.height / 2;
+        y = node.y + node.height / 2 - 5;
         if (node.alignLabelBottom) {
           y = node.y1;
         }
@@ -169,7 +169,7 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
                   <tspan
                     key={part}
                     x="0"
-                    dy={i === 0 ? "-.5em" : "1em"}
+                    dy={i === 0 ? "0em" : "1em"}
                     style={{ fill: labelFill }}
                   >
                     {part}
