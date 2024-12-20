@@ -1,5 +1,5 @@
 import { useSprings, animated } from "@react-spring/web";
-import { useTheme, useMotionConfig } from "@nivo/core";
+import { useTheme } from "@nivo/core";
 import {
   DefaultLink,
   DefaultNode,
@@ -24,6 +24,7 @@ import {
   retainedSlotNodes,
   droppedSlotNodes,
 } from "../features/Overview/SlotPerformance/SlotSankey/consts";
+import { useCustomMotionConfig } from "./useCustomMotionConfig";
 
 const store = getDefaultStore();
 
@@ -120,7 +121,7 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
       };
     });
 
-  const { animate, config: springConfig } = useMotionConfig();
+  const { animate, config: springConfig } = useCustomMotionConfig();
   const springs = useSprings(
     labels.length,
     labels.map((label) => {

@@ -1,6 +1,6 @@
 import { createElement, useCallback, MouseEvent } from "react";
 import { useSpring, animated } from "@react-spring/web";
-import { useAnimatedPath, useMotionConfig } from "@nivo/core";
+import { useAnimatedPath } from "@nivo/core";
 import { useTooltip } from "@nivo/tooltip";
 import { SankeyLinkGradient } from "./SankeyLinkGradient";
 import {
@@ -23,6 +23,7 @@ import {
   droppedSlotNodes,
 } from "../features/Overview/SlotPerformance/SlotSankey/consts";
 import { useShowNode } from "./useShowNode";
+import { useCustomMotionConfig } from "./useCustomMotionConfig";
 
 interface SankeyLinksItemProps<N extends DefaultNode, L extends DefaultLink> {
   link: SankeyLinkDatum<N, L>;
@@ -51,8 +52,7 @@ export const SankeyLinksItem = <N extends DefaultNode, L extends DefaultLink>({
   onClick,
 }: SankeyLinksItemProps<N, L>) => {
   const linkId = `${link.source.id}.${link.target.id}.${link.index}`;
-
-  const { animate, config: springConfig } = useMotionConfig();
+  const { animate, config: springConfig } = useCustomMotionConfig();
   const animatedPath = useAnimatedPath(path);
   const animatedProps = useSpring({
     color,

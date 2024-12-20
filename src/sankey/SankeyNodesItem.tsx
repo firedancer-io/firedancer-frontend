@@ -1,6 +1,5 @@
 import { createElement, useCallback, MouseEvent } from "react";
 import { useSpring, animated } from "@react-spring/web";
-import { useMotionConfig } from "@nivo/core";
 import { useTooltip } from "@nivo/tooltip";
 import {
   DefaultLink,
@@ -9,6 +8,7 @@ import {
   SankeyNodeDatum,
 } from "./types";
 import { startEndNodeColor } from "./consts";
+import { useCustomMotionConfig } from "./useCustomMotionConfig";
 
 interface SankeyNodesItemProps<N extends DefaultNode, L extends DefaultLink> {
   node: SankeyNodeDatum<N, L>;
@@ -42,7 +42,7 @@ export const SankeyNodesItem = <N extends DefaultNode, L extends DefaultLink>({
   onClick,
   tooltip,
 }: SankeyNodesItemProps<N, L>) => {
-  const { animate, config: springConfig } = useMotionConfig();
+  const { animate, config: springConfig } = useCustomMotionConfig();
   const animatedProps = useSpring({
     x,
     y,

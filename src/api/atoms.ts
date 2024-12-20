@@ -21,6 +21,7 @@ import {
   VoteDistance,
 } from "./types";
 import { DateTime } from "luxon";
+import { rafAtom } from "../atomUtils";
 
 export const versionAtom = atom<Version | undefined>(undefined);
 
@@ -52,7 +53,7 @@ export const estimatedSlotDurationAtom = atom<
 
 export const estimatedTpsAtom = atom<EstimatedTps | undefined>(undefined);
 
-export const liveTxnWaterfallAtom = atom<LiveTxnWaterfall | undefined>(
+export const liveTxnWaterfallAtom = rafAtom<LiveTxnWaterfall | undefined>(
   undefined
 );
 

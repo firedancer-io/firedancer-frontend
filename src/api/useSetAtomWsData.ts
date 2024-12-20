@@ -46,6 +46,12 @@ import { useThrottledCallback } from "use-debounce";
 import { useInterval } from "react-use";
 import { useServerMessages } from "./ws/utils";
 import { DateTime } from "luxon";
+import {
+  estimatedTpsDebounceMs,
+  liveMetricsDebounceMs,
+  tileTimerDebounceMs,
+  waterfallDebounceMs,
+} from "./consts";
 
 const minuteNanos = 1_000_000 * 60 * 1_000;
 
@@ -71,14 +77,14 @@ export function useSetAtomWsData() {
   const setEstimatedTps = useSetAtom(estimatedTpsAtom);
   const setDbEstimatedTps = useThrottledCallback((value?: EstimatedTps) => {
     setEstimatedTps(value);
-  }, 400);
+  }, estimatedTpsDebounceMs);
 
   const setLivePrimaryMetrics = useSetAtom(liveTilePrimaryMetricAtom);
   const setDbLivePrimaryMetrics = useThrottledCallback(
     (value?: LiveTilePrimaryMetric) => {
       setLivePrimaryMetrics(value);
     },
-    100
+    liveMetricsDebounceMs
   );
 
   const setLiveTxnWaterfall = useSetAtom(liveTxnWaterfallAtom);
@@ -86,13 +92,13 @@ export function useSetAtomWsData() {
     (value?: LiveTxnWaterfall) => {
       setLiveTxnWaterfall(value);
     },
-    100
+    waterfallDebounceMs
   );
 
   const setTileTimer = useSetAtom(tileTimerAtom);
   const setDbTileTimer = useThrottledCallback((value?: number[]) => {
     setTileTimer(value);
-  }, 25);
+  }, tileTimerDebounceMs);
 
   const setStartupProgress = useSetAtom(startupProgressAtom);
 
