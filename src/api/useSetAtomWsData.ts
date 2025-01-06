@@ -1,6 +1,7 @@
 import { useAtom, useSetAtom } from "jotai";
 import {
   balanceAtom,
+  blockEngineAtom,
   clusterAtom,
   estimatedSlotDurationAtom,
   estimatedTpsAtom,
@@ -18,6 +19,7 @@ import {
   voteStateAtom,
 } from "./atoms";
 import {
+  blockEngineSchema,
   epochSchema,
   peersSchema,
   slotSchema,
@@ -121,6 +123,8 @@ export function useSetAtomWsData() {
   const addPeers = useSetAtom(addPeersAtom);
   const updatePeers = useSetAtom(updatePeersAtom);
   const removePeers = useSetAtom(removePeersAtom);
+
+  const setBlockEngine = useSetAtom(blockEngineAtom);
 
   useServerMessages((msg) => {
     try {
@@ -248,6 +252,14 @@ export function useSetAtomWsData() {
                 }
               }
             }
+            break;
+          }
+        }
+      } else if (topic === "block_engine") {
+        const { key, value } = blockEngineSchema.parse(msg);
+        switch (key) {
+          case "update": {
+            setBlockEngine(value);
             break;
           }
         }
