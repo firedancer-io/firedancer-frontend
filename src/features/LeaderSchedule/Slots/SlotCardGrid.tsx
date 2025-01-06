@@ -39,6 +39,9 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
         Fees
       </Text>
       <Text className={styles.headerText} align="right">
+        Tips
+      </Text>
+      <Text className={styles.headerText} align="right">
         Duration
       </Text>
       <Text
@@ -68,6 +71,7 @@ interface RowValues {
   totalFees: string;
   transactionFeeFull: string;
   priorityFeeFull: string;
+  tips: string;
   durationText: string;
   computeUnits: number;
   computeUnitsPct: number;
@@ -107,6 +111,9 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
           ? (publish.priority_fee / lamportsPerSol).toString()
           : "0";
 
+      const tips =
+        publish.tips != null ? (publish.tips / lamportsPerSol).toString() : "0";
+
       const durationText =
         publish.duration_nanos !== null
           ? `${Math.trunc(publish.duration_nanos / 1_000_000)} ms`
@@ -125,6 +132,7 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
         totalFees,
         transactionFeeFull,
         priorityFeeFull,
+        tips,
         durationText,
         computeUnits,
         computeUnitsPct,
@@ -193,6 +201,12 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
           {getText(values?.totalFees)}
         </Text>
       </Tooltip>
+      <Text
+        className={`${styles.rowText} ${active ? styles.active : ""}`}
+        align="right"
+      >
+        {getText(values?.tips)}
+      </Text>
       <Text
         className={`${styles.rowText} ${active ? styles.active : ""}`}
         align="right"

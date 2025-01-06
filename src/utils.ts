@@ -21,6 +21,18 @@ export function getTimeTillText(
 
   let text = "";
 
+  if (duration.years) {
+    text += `${duration.years}y`;
+  }
+
+  if (duration.months) {
+    text += `${duration.months}m`;
+  }
+
+  if (duration.weeks) {
+    text += `${duration.weeks}w`;
+  }
+
   if (duration.days) {
     text += `${duration.days}d`;
   }

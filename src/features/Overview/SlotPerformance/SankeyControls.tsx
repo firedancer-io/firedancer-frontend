@@ -56,14 +56,19 @@ function SlotStats() {
 
     const transactionFeeFull =
       query.slotResponse.publish.transaction_fee != null
-        ? (
-            query.slotResponse.publish.transaction_fee / lamportsPerSol
-          ).toFixed(9)
+        ? (query.slotResponse.publish.transaction_fee / lamportsPerSol).toFixed(
+            9
+          )
         : "0";
 
     const priorityFeeFull =
       query.slotResponse.publish.priority_fee != null
         ? (query.slotResponse.publish.priority_fee / lamportsPerSol).toFixed(9)
+        : "0";
+
+    const tips =
+      query.slotResponse.publish.tips != null
+        ? (query.slotResponse.publish.tips / lamportsPerSol).toFixed(9)
         : "0";
 
     const computeUnits = fixValue(
@@ -76,6 +81,7 @@ function SlotStats() {
       nonVoteTxns,
       transactionFeeFull,
       priorityFeeFull,
+      tips,
     };
   }, [query.slotResponse]);
 
@@ -91,6 +97,8 @@ function SlotStats() {
       <Text style={{ textAlign: "right" }}>
         {values?.transactionFeeFull ?? "-"}
       </Text>
+      <Text>Tips</Text>
+      <Text style={{ textAlign: "right" }}>{values?.tips ?? "-"}</Text>
       <Text>Vote Transactions</Text>
       <Text style={{ textAlign: "right" }}>
         {values?.voteTxns?.toLocaleString() ?? "-"}
