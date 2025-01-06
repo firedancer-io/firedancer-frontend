@@ -19,6 +19,7 @@ import {
   TpsHistory,
   VoteState,
   VoteDistance,
+  BlockEngineUpdate,
 } from "./types";
 import { DateTime } from "luxon";
 import { rafAtom } from "../atomUtils";
@@ -72,3 +73,5 @@ export const voteStateAtom = atom<VoteState | undefined>(undefined);
 export const voteDistanceAtom = atom<VoteDistance | undefined>(undefined);
 
 export const skippedSlotsAtom = atom<SkippedSlots | undefined>(undefined);
+
+export const blockEngineAtom = atom<BlockEngineUpdate | undefined>(undefined);
