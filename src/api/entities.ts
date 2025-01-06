@@ -231,8 +231,9 @@ export const voteDistanceSchema = z.number();
 
 export const skipRateSchema = z.object({
   epoch: z.number(),
-  slots_processed: z.number(),
-  slots_skipped: z.number(),
+  skip_rate: z.number(),
+  // slots_processed: z.number(),
+  // slots_skipped: z.number(),
 });
 
 export const firstProcessedSlotSchema = z.object({

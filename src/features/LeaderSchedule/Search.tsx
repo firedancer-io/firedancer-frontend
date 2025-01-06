@@ -107,16 +107,20 @@ function SkipRate() {
   let value = "-";
 
   if (skipRate !== undefined) {
-    if (skipRate.slots_processed)
-      if (skipRate.slots_processed === 0 || skipRate.slots_skipped === 0) {
-        value = "0";
-      } else {
-        const skipRatePct = skipRate.slots_skipped / skipRate.slots_processed;
-        value = (skipRatePct * 100).toLocaleString(undefined, {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 2,
-        });
-      }
+    // if (skipRate.slots_processed)
+    //   if (skipRate.slots_processed === 0 || skipRate.slots_skipped === 0) {
+    //     value = "0";
+    //   } else {
+    //     const skipRatePct = skipRate.slots_skipped / skipRate.slots_processed;
+    //     value = (skipRatePct * 100).toLocaleString(undefined, {
+    //       minimumFractionDigits: 0,
+    //       maximumFractionDigits: 2,
+    //     });
+    //   }
+    value = (skipRate.skip_rate * 100).toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
 
     value += "%";
   }
