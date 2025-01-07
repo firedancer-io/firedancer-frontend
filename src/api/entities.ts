@@ -92,6 +92,7 @@ const txnWaterfallInSchema = z.object({
   quic: z.number(),
   udp: z.number(),
   gossip: z.number(),
+  block_engine: z.number(),
 });
 
 const txnWaterfallOutSchema = z.object({
