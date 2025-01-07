@@ -115,12 +115,13 @@ function getLinks(
     waterfall.in.quic + waterfall.in.udp - getNetOut(waterfall.out);
   const verificationCount = quicCount - getQuicOut(waterfall.out);
   const dedupCount =
-    waterfall.in.gossip + verificationCount - getVerifyOut(waterfall.out);
+    waterfall.in.block_engine + waterfall.in.gossip + verificationCount - getVerifyOut(waterfall.out);
   const resolvCount = dedupCount - getDedupOut(waterfall.out);
   const packCount =
     resolvRetainedIn +
     resolvCount -
     getResolvOut(waterfall.out, resolvRetainedOut);
+
   const bankCount =
     waterfall.in.pack_retained + packCount - getPackOut(waterfall.out);
   const blockCount = bankCount - waterfall.out.bank_invalid;
@@ -184,6 +185,11 @@ function getLinks(
       source: SlotNode.IncGossip,
       target: SlotNode.Verification,
       value: getValue(waterfall.in.gossip),
+    },
+    {
+      source: SlotNode.IncBlockEngine,
+      target: SlotNode.Verification,
+      value: getValue(waterfall.in.block_engine),
     },
     {
       source: SlotNode.Verification,
