@@ -22,7 +22,7 @@ export default function Slots() {
   };
 
   return (
-    <Container overflow="hidden" flexShrink="1" onWheel={handleWheel} maxWidth="1170px">
+    <Container overflow="hidden" flexShrink="1" onWheel={handleWheel} maxWidth="1200px">
       <Search />
       <ResetLive />
       <Flex direction="column" gap="4">
