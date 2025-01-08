@@ -2,10 +2,10 @@
   display: grid;
   grid:
     auto-flow / minMax(140px, auto) minMax(80px, auto) minMax(80px, auto) minMax(
-      85px,
+      100px,
       auto
     )
-    minMax(85px, auto)
+    minMax(100px, auto)
     minMax(75px, auto) minMax(100px, auto) minMax(49px, auto);
   row-gap: 1px;
 

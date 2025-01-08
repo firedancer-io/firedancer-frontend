@@ -98,7 +98,7 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
 
       const totalFees = formatNumberLamports(
         (publish.transaction_fee ?? 0) + (publish.priority_fee ?? 0),
-        7
+        9
       );
 
       const transactionFeeFull =
@@ -111,8 +111,7 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
           ? (publish.priority_fee / lamportsPerSol).toString()
           : "0";
 
-      const tips =
-        publish.tips != null ? (publish.tips / lamportsPerSol).toString() : "0";
+      const tips = formatNumberLamports(publish.tips ?? 0, 9);
 
       const durationText =
         publish.duration_nanos !== null
