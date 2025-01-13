@@ -37,7 +37,7 @@ export const messageEventType = "m";
 export function ConnectionProvider({ children }: PropsWithChildren) {
   const [ctxValue, _setCtxValue] = useState(defaultCtxValue);
   // connect to current host via websocket
-  const websocketUrl = `ws://${window.location.hostname}:${window.location.port}/websocket`;
+  const websocketUrl = `${window.location.protocol.startsWith("https") ? "wss" : "ws"}://${window.location.hostname}:${window.location.port}/websocket`;
 
   const setSocketState = useSetAtom(socketStateAtom);
 
