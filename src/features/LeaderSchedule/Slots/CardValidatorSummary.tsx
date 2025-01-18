@@ -1,8 +1,8 @@
-import { Flex, Text } from "@radix-ui/themes";
+import { Flex, Text, TextProps } from "@radix-ui/themes";
 import { usePubKey } from "../../../hooks/usePubKey";
 import usePeer from "../../../hooks/usePeer";
 import { DateTime } from "luxon";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import {
   getStake,
   getFmtStake,
@@ -100,22 +100,29 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
     .filter(isDefined)
     .join(" - ");
 
+  const ref = useRef<HTMLDivElement>(null);
   if (!message) return null;
 
   const isFd = validator?.startsWith("Frankendancer");
 
+  const shouldWrap = (ref.current?.scrollWidth ?? 0) > 364;
+  const textProps: TextProps = shouldWrap
+    ? { style: { flexBasis: 0 } }
+    : { wrap: "nowrap" };
+
   return (
-    <Flex gap="1" className={styles.secondaryText}>
+    <Flex gap="1" className={styles.secondaryText} ref={ref}>
       <Text
         className={clsx({
           [styles.fdText]: isFd,
           [styles.agaveText]: !isFd,
         })}
+        {...textProps}
       >
         {validator}
       </Text>
       <Text className={styles.divider}>&bull;</Text>
-      <Text>
+      <Text {...textProps}>
         {getStakeMsg(peer, peerStats?.activeStake, peerStats?.delinquentStake)}
       </Text>
       <Text className={styles.divider}>&bull;</Text>

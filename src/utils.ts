@@ -88,5 +88,5 @@ export function getFmtStake(stake?: number) {
     });
   }
 
-  return `${value} SOL`;
+  return `${value}\xa0SOL`;
 }
