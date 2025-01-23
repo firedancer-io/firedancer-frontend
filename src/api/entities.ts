@@ -16,16 +16,11 @@ const slotTopicSchema = z.object({
   topic: z.literal("slot"),
 });
 
-const blockEngineTopicSchema = z.object({
-  topic: z.literal("block_engine"),
-});
-
 export const topicSchema = z.discriminatedUnion("topic", [
   summaryTopicSchema,
   epochTopicSchema,
   peersTopicSchema,
   slotTopicSchema,
-  blockEngineTopicSchema,
 ]);
 
 export const versionSchema = z.string();
@@ -430,24 +425,5 @@ export const slotSchema = z.discriminatedUnion("key", [
   slotTopicSchema.extend({
     key: z.literal("query"),
     value: slotResponseSchema.nullable(),
-  }),
-]);
-
-export const blockEngineStatusSchema = z.enum([
-  "disconnected",
-  "connecting",
-  "connected",
-]);
-
-export const blockEngineUpdateSchema = z.object({
-  name: z.string(),
-  url: z.string(),
-  status: blockEngineStatusSchema,
-});
-
-export const blockEngineSchema = z.discriminatedUnion("key", [
-  blockEngineTopicSchema.extend({
-    key: z.literal("update"),
-    value: blockEngineUpdateSchema,
   }),
 ]);

@@ -1,8 +1,6 @@
 import { z } from "zod";
 import {
   balanceSchema,
-  blockEngineStatusSchema,
-  blockEngineUpdateSchema,
   clusterSchema,
   completedSlotSchema,
   epochNewSchema,
@@ -112,7 +110,3 @@ export type SlotPublish = z.infer<typeof slotPublishSchema>;
 export type SlotReponse = z.infer<typeof slotResponseSchema>;
 
 export type SkippedSlots = z.infer<typeof slotSkippedHistorySchema>;
-
-export type BlockEngineUpdate = z.infer<typeof blockEngineUpdateSchema>;
-
-export type BlockEngineStatus = z.infer<typeof blockEngineStatusSchema>;
