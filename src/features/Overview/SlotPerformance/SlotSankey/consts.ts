@@ -3,7 +3,6 @@ export const enum SlotNode {
   IncQuic = "QUIC",
   IncUdp = "UDP",
   IncGossip = "Gossip",
-  IncBlockEngine = "Jito",
 
   SlotStart = "Received",
   SlotEnd = "Packed",
@@ -113,9 +112,6 @@ export const slotNodes = [
   {
     id: SlotNode.QUIC,
     alignLabelBottom: true,
-  },
-  {
-    id: SlotNode.IncBlockEngine,
   },
   {
     id: SlotNode.Verification,

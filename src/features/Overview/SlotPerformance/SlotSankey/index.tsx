@@ -57,8 +57,7 @@ function getLinks(
     waterfall.in.quic +
     waterfall.in.udp +
     waterfall.in.retained +
-    waterfall.in.gossip +
-    waterfall.in.block_engine;
+    waterfall.in.gossip;
 
   const getValue = getGetValue({ displayType, durationNanos, totalIncoming });
 
@@ -74,7 +73,6 @@ function getLinks(
     waterfall.out.tpu_udp_invalid;
 
   const dedupCount =
-    waterfall.in.block_engine +
     waterfall.in.gossip +
     verificationCount -
     waterfall.out.verify_overrun -
@@ -156,11 +154,6 @@ function getLinks(
       source: SlotNode.IncGossip,
       target: SlotNode.Verification,
       value: getValue(waterfall.in.gossip),
-    },
-    {
-      source: SlotNode.IncBlockEngine,
-      target: SlotNode.Verification,
-      value: getValue(waterfall.in.block_engine),
     },
     {
       source: SlotNode.Verification,
