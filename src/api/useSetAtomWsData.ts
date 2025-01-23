@@ -54,6 +54,7 @@ import {
   tileTimerDebounceMs,
   waterfallDebounceMs,
 } from "./consts";
+import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
 
 const minuteNanos = 1_000_000 * 60 * 1_000;
 
@@ -89,10 +90,12 @@ export function useSetAtomWsData() {
     liveMetricsDebounceMs
   );
 
+  const setRateLiveTxnWaterfall = useSetAtom(rateLiveWaterfallAtom);
   const setLiveTxnWaterfall = useSetAtom(liveTxnWaterfallAtom);
   const setDbLiveTxnWaterfall = useThrottledCallback(
     (value?: LiveTxnWaterfall) => {
       setLiveTxnWaterfall(value);
+      setRateLiveTxnWaterfall(value?.waterfall);
     },
     waterfallDebounceMs
   );
@@ -138,7 +141,6 @@ export function useSetAtomWsData() {
             break;
           }
           case "identity_key": {
-            // setIdentityKey("ftvxmtUHUfpL2TmTDXdX6bLS6DBg5v4JJFuSF45ddd1");
             setIdentityKey(value);
             break;
           }

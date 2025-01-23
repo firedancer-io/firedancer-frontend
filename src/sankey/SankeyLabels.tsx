@@ -28,6 +28,19 @@ import { useCustomMotionConfig } from "./useCustomMotionConfig";
 
 const store = getDefaultStore();
 
+function getSuffix() {
+  const displayType = store.get(sankeyDisplayTypeAtom);
+
+  switch (displayType) {
+    case DisplayType.Pct:
+      return "%";
+    case DisplayType.Rate:
+      return "/s";
+    default:
+      return "";
+  }
+}
+
 interface SankeyLabelsProps<N extends DefaultNode, L extends DefaultLink> {
   nodes: SankeyNodeDatum<N, L>[];
   layout: SankeyCommonProps<N, L>["layout"];
@@ -133,8 +146,6 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
     })
   );
 
-  const usePct = store.get(sankeyDisplayTypeAtom) === DisplayType.Pct;
-
   return (
     <>
       {springs.map((animatedProps, index) => {
@@ -178,7 +189,7 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
               })}
               <tspan x="0" dy="1em" style={{ fill: valueFill }}>
                 {label.value?.toLocaleString()}
-                {usePct && "%"}
+                {getSuffix()}
               </tspan>
             </animated.text>
           </ShowNode>

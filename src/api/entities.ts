@@ -87,7 +87,7 @@ export const estimatedTpsSchema = z.object({
   nonvote_failed: z.number(),
 });
 
-const txnWaterfallInSchema = z.object({
+export const txnWaterfallInSchema = z.object({
   retained: z.number(),
   quic: z.number(),
   udp: z.number(),
@@ -95,7 +95,7 @@ const txnWaterfallInSchema = z.object({
   block_engine: z.number(),
 });
 
-const txnWaterfallOutSchema = z.object({
+export const txnWaterfallOutSchema = z.object({
   net_overrun: z.number(),
   quic_overrun: z.number(),
   quic_frag_drop: z.number(),

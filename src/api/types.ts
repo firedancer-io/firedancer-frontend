@@ -28,6 +28,8 @@ import {
   tileTimerSchema,
   tileTypeSchema,
   tpsHistorySchema,
+  txnWaterfallInSchema,
+  txnWaterfallOutSchema,
   txnWaterfallSchema,
   uptimeNanosSchema,
   versionSchema,
@@ -75,6 +77,8 @@ export type LiveTilePrimaryMetric = z.infer<typeof liveTilePrimaryMetricSchema>;
 
 export type TilePrimaryMetric = z.infer<typeof tilePrimaryMetricSchema>;
 
+export type TxnWaterfallIn = z.infer<typeof txnWaterfallInSchema>;
+export type TxnWaterfallOut = z.infer<typeof txnWaterfallOutSchema>;
 export type TxnWaterfall = z.infer<typeof txnWaterfallSchema>;
 
 export type TileType = z.infer<typeof tileTypeSchema>;

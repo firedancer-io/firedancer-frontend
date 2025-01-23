@@ -200,10 +200,21 @@ export default function d3Sankey() {
 
   function computeNodeValues({ nodes }) {
     for (const node of nodes) {
-      node.value =
-        node.fixedValue === undefined
-          ? Math.max(sum(node.sourceLinks, value), sum(node.targetLinks, value))
-          : node.fixedValue;
+      if (node.fixedValue === undefined) {
+        let nodeValue = -Infinity;
+        if (node.sourceLinks.length) {
+          nodeValue = Math.max(sum(node.sourceLinks, value));
+        }
+        if (node.targetLinks.length) {
+          nodeValue = Math.max(sum(node.targetLinks, value));
+        }
+        if (nodeValue === -Infinity) {
+          nodeValue = 0;
+        }
+        node.value = nodeValue;
+      } else {
+        node.value = node.fixedValue;
+      }
     }
   }
 
@@ -293,7 +304,6 @@ export default function d3Sankey() {
     for (let i = 0; i < columns.length; i++) {
       const nodes = columns[i];
 
-
       let y = y0;
       for (const node of nodes) {
         let height = Math.max(node.value * ky, minNodeHeight);
@@ -338,7 +348,7 @@ export default function d3Sankey() {
         let y = 0;
         let w = 0;
         for (const { source, value } of target.targetLinks) {
-          let v = (value ? value : 1) * (target.layer - source.layer);
+          let v = (value ? Math.abs(value) : 1) * (target.layer - source.layer);
           y += targetTop(source, target) * v;
           w += v;
         }
@@ -371,7 +381,7 @@ export default function d3Sankey() {
         let y = 0;
         let w = 0;
         for (const { target, value } of source.sourceLinks) {
-          let v = (value ? value : 1) * (target.layer - source.layer);
+          let v = (value ? Math.abs(value) : 1) * (target.layer - source.layer);
           y += sourceTop(source, target) * v;
           w += v;
         }

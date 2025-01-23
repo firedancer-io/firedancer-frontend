@@ -1,17 +1,55 @@
 import { useMemo } from "react";
 import { Sankey } from "../../../../sankey";
 import AutoSizer from "react-virtualized-auto-sizer";
-import { atom, useAtomValue } from "jotai";
-import { DisplayType, sankeyDisplayTypeAtom, selectedSlotAtom } from "../atoms";
-import { liveTxnWaterfallAtom } from "../../../../api/atoms";
+import { useAtomValue } from "jotai";
+import {
+  DisplayType,
+  liveWaterfallAtom,
+  sankeyDisplayTypeAtom,
+  selectedSlotAtom,
+} from "../atoms";
 import { TxnWaterfall } from "../../../../api/types";
 import useSlotQuery from "../../../../hooks/useSlotQuery";
 import { Flex, Spinner, Text } from "@radix-ui/themes";
 import { SlotNode, slotNodes } from "./consts";
 
+function getGetValue({
+  displayType,
+  durationNanos,
+  totalIncoming,
+}: {
+  displayType: DisplayType;
+  durationNanos?: number | null;
+  totalIncoming: number;
+}) {
+  return function getValue(value: number) {
+    switch (displayType) {
+      case DisplayType.Count:
+        return value;
+      case DisplayType.Pct: {
+        let pct = Math.max(
+          0,
+          Math.round((value / totalIncoming) * 100_00) / 100
+        );
+        if (!pct && value) {
+          pct = 0.01;
+        }
+        return pct;
+      }
+      case DisplayType.Rate: {
+        if (!durationNanos) return value;
+
+        const durationSeconds = durationNanos / 1_000_000_000;
+        return Math.trunc(value / durationSeconds);
+      }
+    }
+  };
+}
+
 function getLinks(
   waterfall: TxnWaterfall,
   displayType: DisplayType,
+  durationNanos?: number | null,
   totalTransactions?: number | null,
   failedTransactions?: number | null
 ) {
@@ -21,6 +59,8 @@ function getLinks(
     waterfall.in.retained +
     waterfall.in.gossip +
     waterfall.in.block_engine;
+
+  const getValue = getGetValue({ displayType, durationNanos, totalIncoming });
 
   const quicCount =
     waterfall.in.quic + waterfall.in.udp - waterfall.out.net_overrun;
@@ -63,18 +103,6 @@ function getLinks(
     totalTransactions != null
       ? totalTransactions - blockFailure
       : waterfall.out.block_success;
-
-  const getValue = (value: number) => {
-    if (displayType === DisplayType.Count) {
-      return value;
-    }
-
-    let pct = Math.max(0, Math.round((value / totalIncoming) * 100_00) / 100);
-    if (!pct && value) {
-      pct = 0.01;
-    }
-    return pct;
-  };
 
   return [
     {
@@ -242,11 +270,6 @@ function getLinks(
   ];
 }
 
-const liveWaterfallAtom = atom((get) => {
-  const selectedSlot = get(selectedSlotAtom);
-  if (!selectedSlot) return get(liveTxnWaterfallAtom)?.waterfall;
-});
-
 export default function Container() {
   const slot = useAtomValue(selectedSlotAtom);
 
@@ -267,6 +290,7 @@ function SlotSankey({ slot }: { slot?: number }) {
     const links = getLinks(
       waterfall,
       displayType,
+      query.slotResponse?.publish.duration_nanos,
       query.slotResponse?.publish.transactions,
       query.slotResponse?.publish.failed_transactions
     );

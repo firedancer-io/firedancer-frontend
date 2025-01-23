@@ -35,6 +35,14 @@ export default function SankeyControls() {
         >
           Pct %
         </ToggleGroup.Item>
+        <ToggleGroup.Item
+          className={styles.toggleGroupItem}
+          value={DisplayType.Rate}
+          aria-label={DisplayType.Rate}
+          onClick={() => setValue(DisplayType.Rate)}
+        >
+          Rate
+        </ToggleGroup.Item>
       </ToggleGroup.Root>
       <SlotStats />
     </div>
