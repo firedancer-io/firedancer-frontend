@@ -115,6 +115,9 @@ export const slotNodes = [
     alignLabelBottom: true,
   },
   {
+    id: SlotNode.IncBlockEngine,
+  },
+  {
     id: SlotNode.Verification,
     alignLabelBottom: true,
   },
@@ -130,11 +133,8 @@ export const slotNodes = [
     id: SlotNode.IncGossip,
   },
   {
-    id: SlotNode.IncBlockEngine,
-  },
-  {
     id: SlotNode.IncRetained,
-    labelPositionOverride: "left",
+    labelPositionOverride: "left"
   },
   {
     id: SlotNode.Pack,
