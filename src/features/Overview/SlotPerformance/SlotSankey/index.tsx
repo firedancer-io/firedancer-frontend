@@ -74,13 +74,13 @@ function getDedupOut(out: TxnWaterfallOut) {
   return out.dedup_duplicate;
 }
 
-function getResolvOut(out: TxnWaterfallOut) {
+function getResolvOut(out: TxnWaterfallOut, resolvRetainedOut: number) {
   return (
     out.resolv_expired +
     out.resolv_lut_failed +
     out.resolv_no_ledger +
-    out.resolv_retained +
-    out.resolv_ancient
+    out.resolv_ancient +
+    resolvRetainedOut
   );
 }
 
@@ -104,6 +104,13 @@ function getLinks(
   const totalIncoming = sum(Object.values(waterfall.in));
   const getValue = getGetValue({ displayType, durationNanos, totalIncoming });
 
+  const resolvShared = Math.min(
+    waterfall.in.resolv_retained,
+    waterfall.out.resolv_retained
+  );
+  const resolvRetainedIn = waterfall.in.resolv_retained - resolvShared;
+  const resolvRetainedOut = waterfall.out.resolv_retained - resolvShared;
+
   const quicCount =
     waterfall.in.quic + waterfall.in.udp - getNetOut(waterfall.out);
   const verificationCount = quicCount - getQuicOut(waterfall.out);
@@ -111,7 +118,9 @@ function getLinks(
     waterfall.in.gossip + verificationCount - getVerifyOut(waterfall.out);
   const resolvCount = dedupCount - getDedupOut(waterfall.out);
   const packCount =
-    waterfall.in.resolv_retained + resolvCount - getResolvOut(waterfall.out);
+    resolvRetainedIn +
+    resolvCount -
+    getResolvOut(waterfall.out, resolvRetainedOut);
   const bankCount =
     waterfall.in.pack_retained + packCount - getPackOut(waterfall.out);
   const blockCount = bankCount - waterfall.out.bank_invalid;
@@ -214,12 +223,12 @@ function getLinks(
     {
       source: SlotNode.IncResolvRetained,
       target: SlotNode.Resolv,
-      value: getValue(waterfall.in.resolv_retained),
+      value: getValue(resolvRetainedIn),
     },
     {
       source: SlotNode.Resolv,
       target: SlotNode.ResolvRetained,
-      value: getValue(waterfall.out.resolv_retained),
+      value: getValue(resolvRetainedOut),
     },
     {
       source: SlotNode.Resolv,
