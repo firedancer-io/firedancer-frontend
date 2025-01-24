@@ -72,6 +72,7 @@ interface RowValues {
   transactionFeeFull: string;
   priorityFeeFull: string;
   tips: string;
+  tipsFull: string;
   durationText: string;
   computeUnits: number;
   computeUnitsPct: number;
@@ -95,10 +96,10 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
       const voteTxns = fixValue(publish.vote_transactions ?? 0);
       const totalTxns = fixValue(publish.transactions ?? 0);
       const nonVoteTxns = totalTxns - voteTxns;
-
       const totalFees = formatNumberLamports(
         (publish.transaction_fee ?? 0) + (publish.priority_fee ?? 0),
-        9
+        3,
+        { decimals: 3, trailingZeroes: true }
       );
 
       const transactionFeeFull =
@@ -111,7 +112,12 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
           ? (publish.priority_fee / lamportsPerSol).toString()
           : "0";
 
-      const tips = formatNumberLamports(publish.tips ?? 0, 9);
+      const tips = formatNumberLamports(publish.tips ?? 0, 3, {
+        decimals: 3,
+        trailingZeroes: true,
+      });
+      const tipsFull =
+        publish.tips != null ? (publish.tips / lamportsPerSol).toString() : "0";
 
       const durationText =
         publish.duration_nanos !== null
@@ -132,6 +138,7 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
         transactionFeeFull,
         priorityFeeFull,
         tips,
+        tipsFull,
         durationText,
         computeUnits,
         computeUnitsPct,
@@ -200,12 +207,14 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
           {getText(values?.totalFees)}
         </Text>
       </Tooltip>
-      <Text
-        className={`${styles.rowText} ${active ? styles.active : ""}`}
-        align="right"
-      >
-        {getText(values?.tips)}
-      </Text>
+      <Tooltip content={`${values?.tipsFull} SOL`}>
+        <Text
+          className={`${styles.rowText} ${active ? styles.active : ""}`}
+          align="right"
+        >
+          {getText(values?.tips)}
+        </Text>
+      </Tooltip>
       <Text
         className={`${styles.rowText} ${active ? styles.active : ""}`}
         align="right"
