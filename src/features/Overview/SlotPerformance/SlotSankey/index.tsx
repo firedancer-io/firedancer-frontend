@@ -86,10 +86,10 @@ function getResolvOut(out: TxnWaterfallOut) {
 
 function getPackOut(out: TxnWaterfallOut) {
   return (
-    out.pack_invalid -
-    out.pack_expired -
-    out.pack_leader_slow -
-    out.pack_retained -
+    out.pack_invalid +
+    out.pack_expired +
+    out.pack_leader_slow +
+    out.pack_retained +
     out.pack_wait_full
   );
 }
