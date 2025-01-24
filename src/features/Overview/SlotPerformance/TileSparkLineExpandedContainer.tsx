@@ -71,7 +71,7 @@ export default function TileSparkLineExpandedContainer({
             : tileCountArr?.map((_, i) => {
                 const queryBusy = queryIdlePerTile
                   ?.map((idlePerTile) =>
-                    idlePerTile[i] !== undefined
+                    idlePerTile[i] !== undefined && idlePerTile[i] !== -1
                       ? 1 - idlePerTile[i]
                       : undefined
                   )
