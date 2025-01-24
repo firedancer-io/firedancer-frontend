@@ -218,6 +218,11 @@ function getLinks(
     },
     {
       source: SlotNode.Resolv,
+      target: SlotNode.ResolvRetained,
+      value: getValue(waterfall.out.resolv_retained),
+    },
+    {
+      source: SlotNode.Resolv,
       target: SlotNode.ResolvFailed,
       value: getValue(waterfall.out.resolv_lut_failed),
     },
@@ -233,12 +238,6 @@ function getLinks(
       target: SlotNode.ResolvNoLedger,
       value: getValue(waterfall.out.resolv_no_ledger),
     },
-    {
-      source: SlotNode.Resolv,
-      target: SlotNode.ResolvRetained,
-      value: getValue(waterfall.out.resolv_retained),
-    },
-
     {
       source: SlotNode.Resolv,
       target: SlotNode.Pack,
