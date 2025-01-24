@@ -83,7 +83,8 @@ export const estimatedTpsSchema = z.object({
 });
 
 export const txnWaterfallInSchema = z.object({
-  retained: z.number(),
+  pack_retained: z.number(),
+  resolv_retained: z.number(),
   quic: z.number(),
   udp: z.number(),
   gossip: z.number(),
@@ -101,7 +102,11 @@ export const txnWaterfallOutSchema = z.object({
   verify_failed: z.number(),
   verify_duplicate: z.number(),
   dedup_duplicate: z.number(),
-  resolv_failed: z.number(),
+  resolv_lut_failed: z.number(),
+  resolv_expired: z.number(),
+  resolv_no_ledger: z.number(),
+  resolv_ancient: z.number(),
+  resolv_retained: z.number(),
   pack_invalid: z.number(),
   pack_retained: z.number(),
   pack_leader_slow: z.number(),

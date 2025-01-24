@@ -8,10 +8,11 @@ import {
   sankeyDisplayTypeAtom,
   selectedSlotAtom,
 } from "../atoms";
-import { TxnWaterfall } from "../../../../api/types";
+import { TxnWaterfall, TxnWaterfallOut } from "../../../../api/types";
 import useSlotQuery from "../../../../hooks/useSlotQuery";
 import { Flex, Spinner, Text } from "@radix-ui/themes";
 import { SlotNode, slotNodes } from "./consts";
+import { sum } from "lodash";
 
 function getGetValue({
   displayType,
@@ -46,6 +47,53 @@ function getGetValue({
   };
 }
 
+function getNetOut(out: TxnWaterfallOut) {
+  return out.net_overrun;
+}
+
+function getQuicOut(out: TxnWaterfallOut) {
+  return (
+    out.quic_overrun +
+    out.quic_frag_drop +
+    out.quic_abandoned +
+    out.tpu_quic_invalid +
+    out.tpu_udp_invalid
+  );
+}
+
+function getVerifyOut(out: TxnWaterfallOut) {
+  return (
+    out.verify_overrun +
+    out.verify_parse +
+    out.verify_failed +
+    out.verify_duplicate
+  );
+}
+
+function getDedupOut(out: TxnWaterfallOut) {
+  return out.dedup_duplicate;
+}
+
+function getResolvOut(out: TxnWaterfallOut) {
+  return (
+    out.resolv_expired +
+    out.resolv_lut_failed +
+    out.resolv_no_ledger +
+    out.resolv_retained +
+    out.resolv_ancient
+  );
+}
+
+function getPackOut(out: TxnWaterfallOut) {
+  return (
+    out.pack_invalid -
+    out.pack_expired -
+    out.pack_leader_slow -
+    out.pack_retained -
+    out.pack_wait_full
+  );
+}
+
 function getLinks(
   waterfall: TxnWaterfall,
   displayType: DisplayType,
@@ -53,46 +101,19 @@ function getLinks(
   totalTransactions?: number | null,
   failedTransactions?: number | null
 ) {
-  const totalIncoming =
-    waterfall.in.quic +
-    waterfall.in.udp +
-    waterfall.in.retained +
-    waterfall.in.gossip;
-
+  const totalIncoming = sum(Object.values(waterfall.in));
   const getValue = getGetValue({ displayType, durationNanos, totalIncoming });
 
   const quicCount =
-    waterfall.in.quic + waterfall.in.udp - waterfall.out.net_overrun;
-
-  const verificationCount =
-    quicCount -
-    waterfall.out.quic_overrun -
-    waterfall.out.quic_frag_drop -
-    waterfall.out.quic_abandoned -
-    waterfall.out.tpu_quic_invalid -
-    waterfall.out.tpu_udp_invalid;
-
+    waterfall.in.quic + waterfall.in.udp - getNetOut(waterfall.out);
+  const verificationCount = quicCount - getQuicOut(waterfall.out);
   const dedupCount =
-    waterfall.in.gossip +
-    verificationCount -
-    waterfall.out.verify_overrun -
-    waterfall.out.verify_parse -
-    waterfall.out.verify_failed -
-    waterfall.out.verify_duplicate;
-
-  const resolvCount = dedupCount - waterfall.out.dedup_duplicate;
-
-  const packCount = resolvCount - waterfall.out.resolv_failed;
-
+    waterfall.in.gossip + verificationCount - getVerifyOut(waterfall.out);
+  const resolvCount = dedupCount - getDedupOut(waterfall.out);
+  const packCount =
+    waterfall.in.resolv_retained + resolvCount - getResolvOut(waterfall.out);
   const bankCount =
-    waterfall.in.retained +
-    packCount -
-    waterfall.out.pack_invalid -
-    waterfall.out.pack_expired -
-    waterfall.out.pack_leader_slow -
-    waterfall.out.pack_retained -
-    waterfall.out.pack_wait_full;
-
+    waterfall.in.pack_retained + packCount - getPackOut(waterfall.out);
   const blockCount = bankCount - waterfall.out.bank_invalid;
 
   const blockFailure = failedTransactions ?? waterfall.out.block_fail;
@@ -191,19 +212,42 @@ function getLinks(
       value: getValue(resolvCount),
     },
     {
+      source: SlotNode.IncResolvRetained,
+      target: SlotNode.Resolv,
+      value: getValue(waterfall.in.resolv_retained),
+    },
+    {
       source: SlotNode.Resolv,
       target: SlotNode.ResolvFailed,
-      value: getValue(waterfall.out.resolv_failed),
+      value: getValue(waterfall.out.resolv_lut_failed),
     },
+    {
+      source: SlotNode.Resolv,
+      target: SlotNode.ResolvExpired,
+      value: getValue(
+        waterfall.out.resolv_expired + waterfall.out.resolv_ancient
+      ),
+    },
+    {
+      source: SlotNode.Resolv,
+      target: SlotNode.ResolvNoLedger,
+      value: getValue(waterfall.out.resolv_no_ledger),
+    },
+    {
+      source: SlotNode.Resolv,
+      target: SlotNode.ResolvRetained,
+      value: getValue(waterfall.out.resolv_retained),
+    },
+
     {
       source: SlotNode.Resolv,
       target: SlotNode.Pack,
       value: getValue(packCount),
     },
     {
-      source: SlotNode.IncRetained,
+      source: SlotNode.IncPackRetained,
       target: SlotNode.Pack,
-      value: getValue(waterfall.in.retained),
+      value: getValue(waterfall.in.pack_retained),
     },
     {
       source: SlotNode.Pack,
