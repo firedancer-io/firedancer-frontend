@@ -104,6 +104,7 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
   if (!message) return null;
 
   const isFd = validator?.startsWith("Frankendancer");
+  const isAgave = validator && !isFd;
 
   const shouldWrap = (ref.current?.scrollWidth ?? 0) > 364;
   const textProps: TextProps = shouldWrap
@@ -115,18 +116,18 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
       <Text
         className={clsx({
           [styles.fdText]: isFd,
-          [styles.agaveText]: !isFd,
+          [styles.agaveText]: isAgave,
         })}
         {...textProps}
       >
-        {validator}
+        {validator || "Unknown"}
       </Text>
       <Text className={styles.divider}>&bull;</Text>
       <Text {...textProps}>
         {getStakeMsg(peer, peerStats?.activeStake, peerStats?.delinquentStake)}
       </Text>
       <Text className={styles.divider}>&bull;</Text>
-      <Text>{peer?.gossip?.sockets["tvu"]?.split(":")[0]}</Text>
+      <Text>{peer?.gossip?.sockets["tvu"]?.split(":")[0] || "Offline"}</Text>
     </Flex>
   );
 }
