@@ -60,7 +60,7 @@ export default function Search() {
     <Flex className={styles.container} gap="2">
       <Box minWidth="400px" style={{ justifySelf: "center" }}>
         <TextField.Root
-          placeholder="Name, pubkey, or slot (accepts multiple values separated by ; or ,)"
+          placeholder="Name, pubkey, or slot (separate with , or ; for multiple values)"
           variant="soft"
           color="gray"
           onChange={(e) => {
