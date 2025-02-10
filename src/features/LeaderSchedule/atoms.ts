@@ -51,15 +51,17 @@ export const setSearchLeaderSlotsAtom = atom(
       return;
     }
 
-    searchText = searchText.trim().toLowerCase();
+    const searchTextParts = searchText
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter((s) => !!s);
 
     const leaderNames = get(allLeaderNamesAtom);
-
     const searchPubkeys = leaderNames
-      ?.filter(
-        ({ name, pubkey }) =>
-          name?.includes(searchText) ||
-          pubkey.toLowerCase().includes(searchText)
+      ?.filter(({ name, pubkey }) =>
+        searchTextParts.some(
+          (s) => name?.includes(s) || pubkey.toLowerCase().includes(s)
+        )
       )
       .map(({ pubkey }) => pubkey);
 
@@ -69,9 +71,11 @@ export const setSearchLeaderSlotsAtom = atom(
       return;
     }
 
-    const leaderSlots = searchPubkeys.flatMap((pubkey) => {
-      return getLeaderSlots(epoch, pubkey);
-    });
+    const leaderSlots = searchPubkeys
+      .flatMap((pubkey) => {
+        return getLeaderSlots(epoch, pubkey);
+      })
+      .sort();
 
     set(searchLeaderSlotsAtom, leaderSlots);
   }
@@ -111,7 +115,7 @@ export const setSlotOverrideScrollAtom = atom(
 
         if (currentSlotIndex >= 0) {
           const slotIndex = Math.min(
-            Math.max(currentSlotIndex + Math.trunc(slotOffset/4), 0),
+            Math.max(currentSlotIndex + Math.trunc(slotOffset / 4), 0),
             searchLeaderSlots.length - 1
           );
           set(slotOverrideAtom, searchLeaderSlots[slotIndex]);

@@ -39,7 +39,7 @@ export default function SnapshotProgress({
 
   return (
     <Flex>
-      <Flex direction="column" className={styles.container}>
+      <Flex direction="column">
         <Box minHeight="10px" />
         <Progress value={pct} className={styles.progress} />
         <Flex minHeight="10px">

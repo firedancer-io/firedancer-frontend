@@ -60,12 +60,13 @@ export default function SlotCardList() {
       let slot = 0;
 
       if (searchLeaderSlots?.length) {
-        const slots = [...searchLeaderSlots].reverse();
+        const descSlots = [...searchLeaderSlots].reverse();
+
         if (slotOverride === undefined) {
-          if (slots.length <= cardCount) {
-            slot = slots[i];
+          if (descSlots.length <= cardCount) {
+            slot = descSlots[i];
           } else {
-            const firstPastSlotIndex = slots.findIndex(
+            const firstPastSlotIndex = descSlots.findIndex(
               (slot) => slot < currentLeaderSlot
             );
             const initPastSlotGroups = 3;
@@ -73,13 +74,15 @@ export default function SlotCardList() {
               firstPastSlotIndex - initPastSlotGroups,
               0
             );
-            slot = slots[i + indexOffset];
+            slot = descSlots[i + indexOffset];
           }
         } else {
-          const slotDiffs = slots.map((slot) => Math.abs(slot - slotOverride));
+          const slotDiffs = descSlots.map((slot) =>
+            Math.abs(slot - slotOverride)
+          );
           const minDiff = Math.min(...slotDiffs);
           const indexOffset = Math.max(slotDiffs.indexOf(minDiff) - 3, 0);
-          slot = slots[i + indexOffset];
+          slot = descSlots[i + indexOffset];
         }
 
         if (!slot) break;

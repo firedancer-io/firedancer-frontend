@@ -3,7 +3,6 @@ import SlotCardList from "./SlotCardList";
 import { useSetAtom } from "jotai";
 import { slotsPerLeader } from "../../../consts";
 import ResetLive from "./ResetLive";
-// import { searchPubkeysAtom } from "../atoms";
 import { setSlotOverrideScrollAtom } from "../atoms";
 import Search from "../Search";
 
@@ -14,7 +13,7 @@ export default function Slots() {
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || !e.deltaY) return;
 
     const slotOffset =
-      Math.max(Math.trunc(Math.abs(e.deltaY) / 100), 1) *
+      Math.max(Math.trunc(Math.abs(e.deltaY) / 80), 1) *
       slotsPerLeader *
       (e.deltaY > 0 ? -1 : 1);
       
