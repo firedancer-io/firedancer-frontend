@@ -1,4 +1,4 @@
-import { Flex, Text } from "@radix-ui/themes";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import Card from "../../../components/Card";
 import styles from "./tileCard.module.css";
 import TileSparkLine from "./TileSparkLine";
@@ -77,6 +77,7 @@ export default function TileCard({
             statLabel={statLabel}
             metricType={metricType}
           />
+          <Box flexGrow="1" />
           <TileSparkLine value={avgBusy} queryBusy={aggQueryBusyPerTs} />
           <TileSparkLineExpandedContainer
             tileCountArr={tileCountArr}
