@@ -40,6 +40,8 @@ export const clusterSchema = z.enum([
   "unknown",
 ]);
 
+export const commitHashSchema = z.string();
+
 export const identityKeySchema = z.string();
 
 export const uptimeNanosSchema = z.number();
@@ -265,6 +267,10 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("cluster"),
     value: clusterSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("commit_hash"),
+    value: commitHashSchema,
   }),
   summaryTopicSchema.extend({
     key: z.literal("identity_key"),

@@ -2,6 +2,7 @@ import { atom } from "jotai";
 import {
   Version,
   Cluster,
+  CommitHash,
   IdentityKey,
   RootSlot,
   OptimisticallyConfirmedSlot,
@@ -27,6 +28,8 @@ import { rafAtom } from "../atomUtils";
 export const versionAtom = atom<Version | undefined>(undefined);
 
 export const clusterAtom = atom<Cluster | undefined>(undefined);
+
+export const commitHashAtom = atom<CommitHash | undefined>(undefined);
 
 export const identityKeyAtom = atom<IdentityKey | undefined>(undefined);
 

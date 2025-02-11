@@ -9,6 +9,7 @@ import {
   estimatedSlotDurationSchema,
   estimatedSlotSchema,
   estimatedTpsSchema,
+  commitHashSchema,
   identityKeySchema,
   liveTilePrimaryMetricSchema,
   liveTxnWaterfallSchema,
@@ -40,6 +41,8 @@ import {
 export type Version = z.infer<typeof versionSchema>;
 
 export type Cluster = z.infer<typeof clusterSchema>;
+
+export type CommitHash = z.infer<typeof commitHashSchema>;
 
 export type IdentityKey = z.infer<typeof identityKeySchema>;
 
