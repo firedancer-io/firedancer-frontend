@@ -6,6 +6,7 @@ import {
   estimatedSlotDurationAtom,
   estimatedTpsAtom,
   identityKeyAtom,
+  commitHashAtom,
   liveTilePrimaryMetricAtom,
   liveTxnWaterfallAtom,
   skippedSlotsAtom,
@@ -61,6 +62,7 @@ const minuteNanos = 1_000_000 * 60 * 1_000;
 export function useSetAtomWsData() {
   const setVersion = useSetAtom(versionAtom);
   const setCluster = useSetAtom(clusterAtom);
+  const setCommitHash = useSetAtom(commitHashAtom);
   const setIdentityKey = useSetAtom(identityKeyAtom);
 
   const setTiles = useSetAtom(tilesAtom);
@@ -138,6 +140,10 @@ export function useSetAtomWsData() {
           }
           case "cluster": {
             setCluster(value);
+            break;
+          }
+          case "commit_hash": {
+            setCommitHash(value);
             break;
           }
           case "identity_key": {

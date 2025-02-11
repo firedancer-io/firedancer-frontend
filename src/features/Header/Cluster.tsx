@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { blockEngineAtom, clusterAtom, versionAtom } from "../../api/atoms";
+import { blockEngineAtom, clusterAtom, versionAtom, commitHashAtom } from "../../api/atoms";
 import { Text, Tooltip } from "@radix-ui/themes";
 import styles from "./cluster.module.css";
 import connectedIcon from "../../assets/power.svg";
@@ -14,6 +14,7 @@ import { BlockEngineUpdate } from "../../api/types";
 export default function Cluster() {
   const cluster = useAtomValue(clusterAtom);
   const version = useAtomValue(versionAtom);
+  const commitHash = useAtomValue(commitHashAtom);
   const socketState = useAtomValue(socketStateAtom);
   const { width } = useWindowSize();
   const isSmallScreen = width < 600;
@@ -43,7 +44,7 @@ export default function Cluster() {
         </Text>
       </Tooltip>
       {!isSmallScreen && (
-        <Tooltip content="Current validator software version">
+        <Tooltip content={`Current validator software version. Commit Hash: ${commitHash || "unknown"}`}>
           <Text className={styles.version}>v{version}</Text>
         </Tooltip>
       )}
