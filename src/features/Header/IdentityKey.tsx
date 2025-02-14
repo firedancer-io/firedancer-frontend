@@ -5,20 +5,22 @@ import styles from "./identityKey.module.css";
 import usePeer from "../../hooks/usePeer";
 import PeerIcon from "../../components/PeerIcon";
 import { myStakePctAtom, myStakeAmountAtom } from "../../atoms";
-import { useEffect } from "react";
+import { PropsWithChildren, useEffect } from "react";
 import { Duration } from "luxon";
 import { getFmtStake, getTimeTillText, slowDateTimeNow } from "../../utils";
 import { formatNumber } from "../../numUtils";
-import { useInterval, useUpdate, useWindowSize } from "react-use";
+import { useInterval, useMedia, useUpdate } from "react-use";
+import Dropdown from "../../components/Dropdown";
+import clsx from "clsx";
 
 export default function IdentityKey() {
   const identityKey = useAtomValue(identityKeyAtom);
   const peer = usePeer(identityKey);
 
-  const { width } = useWindowSize();
-  const isXSmallScreen = width < 750;
-  const isSmallScreen = width < 900;
-  const isMediumScreen = width < 1366;
+  const isXXNarrowScreen = useMedia("(min-width: 500px)");
+  const isXNarrowScreen = useMedia("(min-width: 750px)");
+  const isNarrowScreen = useMedia("(min-width: 900px)");
+  const isWideScreen = useMedia("(min-width: 1366px)");
 
   useEffect(() => {
     let title = "Firedancer";
@@ -32,30 +34,75 @@ export default function IdentityKey() {
   }, [identityKey, peer]);
 
   const identityKeyLabel =
-    isMediumScreen && identityKey
-      ? `${identityKey.substring(0, 9)}...`
-      : identityKey;
+    isWideScreen || !identityKey
+      ? identityKey
+      : `${identityKey.substring(0, 8)}...`;
+
+  return (
+    <DropdownContainer showDropdown={!isNarrowScreen}>
+      <div className={clsx(styles.container, styles.horizontal)}>
+        {isXXNarrowScreen && (
+          <PeerIcon url={peer?.info?.icon_url} size={24} isYou />
+        )}
+        <Label
+          label="Validator Name"
+          value={identityKeyLabel}
+          tooltip="The validators identity public key"
+        />
+        {isXNarrowScreen && (
+          <>
+            <StakeValue />
+            <StakePct />
+          </>
+        )}
+        {isNarrowScreen && (
+          <>
+            <Uptime />
+            <Commission />
+          </>
+        )}
+      </div>
+    </DropdownContainer>
+  );
+}
+
+interface DropdownContainerProps {
+  showDropdown: boolean;
+}
+
+function DropdownContainer({
+  showDropdown,
+  children,
+}: PropsWithChildren<DropdownContainerProps>) {
+  if (!showDropdown) {
+    return children;
+  }
+
+  return (
+    <Dropdown dropdownMenu={<DropdownMenu />} noPadding>
+      {children}
+    </Dropdown>
+  );
+}
+
+function DropdownMenu() {
+  const identityKey = useAtomValue(identityKeyAtom);
+  const peer = usePeer(identityKey);
 
   return (
     <div className={styles.container}>
-      <PeerIcon url={peer?.info?.icon_url} size={24} isYou />
-      <Label
-        label="Validator Name"
-        value={identityKeyLabel}
-        tooltip="The validators identity public key"
-      />
-      {!isXSmallScreen && (
-        <>
-          <StakeValue />
-          <StakePct />
-        </>
-      )}
-      {!isSmallScreen && (
-        <>
-          <Uptime />
-          <Commission />
-        </>
-      )}
+      <Flex gap="2">
+        <PeerIcon url={peer?.info?.icon_url} size={24} isYou />
+        <Label
+          label="Validator Name"
+          value={identityKey}
+          tooltip="The validators identity public key"
+        />
+      </Flex>
+      <StakeValue />
+      <StakePct />
+      <Uptime />
+      <Commission />
     </div>
   );
 }

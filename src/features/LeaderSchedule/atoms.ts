@@ -52,7 +52,7 @@ export const setSearchLeaderSlotsAtom = atom(
     }
 
     const searchTextParts = searchText
-      .split(",")
+      .split(/[,;]/)
       .map((s) => s.trim().toLowerCase())
       .filter((s) => !!s);
 

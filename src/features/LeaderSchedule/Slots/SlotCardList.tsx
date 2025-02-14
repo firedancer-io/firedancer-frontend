@@ -13,6 +13,7 @@ import {
   slotOverrideAtom,
 } from "../../../atoms";
 import { searchLeaderSlotsAtom } from "../atoms";
+import { useMedia } from "react-use";
 
 export const initUpcomingSlotCardCount = 3;
 const initSlotCardCount = 10;
@@ -205,37 +206,41 @@ function SlotCardSection({
   children,
   sectionName,
 }: PropsWithChildren<{ sectionName: string }>) {
+  const isWideScreen = useMedia("(min-width: 700px)");
+
   return (
     <Flex gap="2" align="stretch">
-      <Flex direction="column" gap="2" align="center">
-        <div
-          style={{
-            width: "1px",
-            flex: 1,
-            background: "#676767",
-            height: "10px",
-          }}
-        />
-        <Text
-          style={{
-            transform: "rotate(180deg)",
-            writingMode: "vertical-rl",
-            color: "#8A8A8A",
-          }}
-          size="2"
-        >
-          {sectionName}
-        </Text>
-        <div
-          style={{
-            width: "1px",
-            flex: 1,
-            background: "#676767",
-            height: "10px",
-          }}
-        />
-      </Flex>
-      <Flex direction="column" flexGrow="1" gap="2">
+      {isWideScreen && (
+        <Flex direction="column" gap="2" align="center">
+          <div
+            style={{
+              width: "1px",
+              flex: 1,
+              background: "#676767",
+              height: "10px",
+            }}
+          />
+          <Text
+            style={{
+              transform: "rotate(180deg)",
+              writingMode: "vertical-rl",
+              color: "#8A8A8A",
+            }}
+            size="2"
+          >
+            {sectionName}
+          </Text>
+          <div
+            style={{
+              width: "1px",
+              flex: 1,
+              background: "#676767",
+              height: "10px",
+            }}
+          />
+        </Flex>
+      )}
+      <Flex direction="column" flexGrow="1" gap="2" minWidth="0">
         {children}
       </Flex>
     </Flex>

@@ -15,6 +15,13 @@
   .pubkey-text {
     color: #b2bcc9;
     min-width: 390px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    &.narrow-screen {
+      min-width: inherit;
+    }
   }
 
   &.two-away {
@@ -40,5 +47,9 @@
   .time-till {
     color: #b2bcc9;
     min-width: 250px;
+
+    &.narrow-screen {
+      min-width: inherit;
+    }
   }
 }

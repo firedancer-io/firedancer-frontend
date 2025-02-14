@@ -1,12 +1,17 @@
 import { Flex } from "@radix-ui/themes";
 import NavLink from "./NavLink";
-import { useWindowSize } from "react-use";
+import { useMedia } from "react-use";
 import DropDownNavLinks from "./DropDownNavLinks";
 
 export default function NavLinks() {
-  const { width } = useWindowSize();
+  const isWideScreen = useMedia("(min-width: 1366px)");
+  const isNarrowScreen = useMedia("(max-width: 430px)");
 
-  if (width < 1366) {
+  if(isNarrowScreen){
+    return null;
+  }
+
+  if (!isWideScreen) {
     return <DropDownNavLinks />;
   }
 

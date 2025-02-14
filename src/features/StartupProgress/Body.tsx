@@ -130,8 +130,8 @@ export default function Body() {
   }, [api, showStartupProgress]);
 
   return (
-    <animated.div className={styles.container} style={springs}>
-      <Flex direction="column" gap="4" minWidth="410px">
+    <animated.div className={styles.outerContainer} style={springs}>
+      <Flex direction="column" gap="4" className={styles.innerContainer}>
         <Box flexGrow="1" />
         <img
           src={fdLogo}

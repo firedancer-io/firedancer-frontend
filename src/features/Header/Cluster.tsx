@@ -1,5 +1,10 @@
 import { useAtomValue } from "jotai";
-import { blockEngineAtom, clusterAtom, versionAtom, commitHashAtom } from "../../api/atoms";
+import {
+  blockEngineAtom,
+  clusterAtom,
+  versionAtom,
+  commitHashAtom,
+} from "../../api/atoms";
 import { Text, Tooltip } from "@radix-ui/themes";
 import styles from "./cluster.module.css";
 import connectedIcon from "../../assets/power.svg";
@@ -8,7 +13,7 @@ import disconnectedIcon from "../../assets/power_off_red.svg";
 import { socketStateAtom } from "../../api/ws/atoms";
 import { SocketState } from "../../api/ws/types";
 import { getClusterColor } from "./util";
-import { useWindowSize } from "react-use";
+import { useMedia } from "react-use";
 import { BlockEngineUpdate } from "../../api/types";
 
 export default function Cluster() {
@@ -16,8 +21,7 @@ export default function Cluster() {
   const version = useAtomValue(versionAtom);
   const commitHash = useAtomValue(commitHashAtom);
   const socketState = useAtomValue(socketStateAtom);
-  const { width } = useWindowSize();
-  const isSmallScreen = width < 600;
+  const isWideScreen = useMedia("(min-width: 600px)");
 
   if (!cluster && !version) return null;
 
@@ -43,8 +47,10 @@ export default function Cluster() {
           {clusterText}
         </Text>
       </Tooltip>
-      {!isSmallScreen && (
-        <Tooltip content={`Current validator software version. Commit Hash: ${commitHash || "unknown"}`}>
+      {isWideScreen && (
+        <Tooltip
+          content={`Current validator software version. Commit Hash: ${commitHash || "unknown"}`}
+        >
           <Text className={styles.version}>v{version}</Text>
         </Tooltip>
       )}

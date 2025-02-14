@@ -1,6 +1,6 @@
 import { Flex, Grid, Text, Tooltip } from "@radix-ui/themes";
 import styles from "./slotCardGrid.module.css";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   currentSlotAtom,
   getSlotStatus,
@@ -16,9 +16,15 @@ import rootedIcon from "../../../assets/Rooted.svg";
 import skippedIcon from "../../../assets/Skipped.svg";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import { fixValue } from "../../../utils";
-import { useRafLoop } from "react-use";
+import { useMedia, useRafLoop } from "react-use";
 import { lamportsPerSol } from "../../../consts";
 import { formatNumberLamports } from "../../Overview/ValidatorsCard/formatAmt";
+import {
+  setScrollFuncsAtom,
+  deleteScrollFuncsAtom,
+  scrollAllFuncsAtom,
+} from "./atoms";
+import clsx from "clsx";
 
 interface SlotCardGridProps {
   slot: number;
@@ -26,42 +32,132 @@ interface SlotCardGridProps {
 }
 
 export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const setScroll = useSetAtom(setScrollFuncsAtom);
+  const deleteScroll = useSetAtom(deleteScrollFuncsAtom);
+  const scrollAll = useSetAtom(scrollAllFuncsAtom);
+
+  useEffect(() => {
+    setScroll(slot, (scrollLeft: number) => {
+      ref.current?.scrollTo(scrollLeft, 0);
+    });
+    return () => deleteScroll(slot);
+  }, [deleteScroll, setScroll, slot]);
+
   return (
-    <div className={styles.grid}>
-      <Text className={styles.headerText}>Slot</Text>
-      <Text className={styles.headerText} align="right">
-        Votes
-      </Text>
-      <Text className={styles.headerText} align="right">
-        Non-votes
-      </Text>
-      <Text className={styles.headerText} align="right">
-        Fees
-      </Text>
-      <Text className={styles.headerText} align="right">
-        Tips
-      </Text>
-      <Text className={styles.headerText} align="right">
-        Duration
-      </Text>
-      <Text
-        className={styles.headerText}
-        align="right"
-        style={{ gridColumnStart: "span 2" }}
+    <Flex minWidth="0">
+      <SlotColumn slot={slot} currentSlot={currentSlot} />
+      <div
+        className={styles.grid}
+        ref={ref}
+        onScroll={(e) => {
+          scrollAll(slot, e.currentTarget.scrollLeft);
+        }}
       >
-        Compute&nbsp;Units
+        <Text className={styles.headerText} align="right">
+          Votes
+        </Text>
+        <Text className={styles.headerText} align="right">
+          Non-votes
+        </Text>
+        <Text className={styles.headerText} align="right">
+          Fees
+        </Text>
+        <Text className={styles.headerText} align="right">
+          Tips
+        </Text>
+        <Text className={styles.headerText} align="right">
+          Duration
+        </Text>
+        <Text
+          className={styles.headerText}
+          align="right"
+          style={{ gridColumnStart: "span 2" }}
+        >
+          Compute&nbsp;Units
+        </Text>
+        {new Array(4).fill(0).map((_, i) => {
+          const cardSlot = slot + i;
+          return (
+            <SlotCardRow
+              key={cardSlot}
+              slot={cardSlot}
+              active={cardSlot === currentSlot}
+            />
+          );
+        })}
+      </div>
+    </Flex>
+  );
+}
+
+interface SlotCardGridProps {
+  slot: number;
+  currentSlot?: number;
+}
+
+function SlotColumn({ slot, currentSlot }: SlotCardGridProps) {
+  const isWideScreen = useMedia("(min-width: 700px)");
+
+  return (
+    <Flex direction="column" gap="1px">
+      <Text className={styles.headerText}>
+        {isWideScreen ? "Slot" : "\u00A0"}
       </Text>
       {new Array(4).fill(0).map((_, i) => {
         const cardSlot = slot + i;
+        const isActive = cardSlot === currentSlot;
+        const isCurrent = slot === currentSlot;
+
         return (
-          <SlotCardRow
+          <SlotText
             key={cardSlot}
             slot={cardSlot}
-            active={cardSlot === currentSlot}
+            isActive={isActive}
+            isCurrent={isCurrent}
+            isWideScreen={isWideScreen}
           />
         );
       })}
-    </div>
+    </Flex>
+  );
+}
+
+interface SlotTextProps {
+  slot: number;
+  isActive: boolean;
+  isCurrent: boolean;
+}
+
+function SlotText({
+  slot,
+  isActive,
+  isCurrent,
+  isWideScreen,
+}: SlotTextProps & { isWideScreen: boolean }) {
+  const response = useSlotQuery(slot);
+
+  return (
+    <Flex
+      className={clsx(styles.rowText, {
+        [styles.active]: isActive,
+        [styles.narrowScreen]: !isWideScreen,
+      })}
+      align="center"
+      gap={isWideScreen ? "2" : "0"}
+    >
+      {isWideScreen ? (
+        <Text className={styles.slotText}>{slot}</Text>
+      ) : (
+        <Text>&nbsp;</Text>
+      )}
+      <StatusIcon slot={slot} isCurrent={isCurrent} />
+      {!!response.slotResponse?.publish.skipped && (
+        <Tooltip content="Slot was skipped">
+          <img src={skippedIcon} alt="skipped" className={styles.icon} />
+        </Tooltip>
+      )}
+    </Flex>
   );
 }
 
@@ -76,7 +172,6 @@ interface RowValues {
   durationText: string;
   computeUnits: number;
   computeUnitsPct: number;
-  isSkipped: boolean;
 }
 
 interface SlotCardRowProps {
@@ -123,7 +218,6 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
         publish.duration_nanos !== null
           ? `${Math.trunc(publish.duration_nanos / 1_000_000)} ms`
           : "-";
-      const isSkipped = publish.skipped;
 
       const computeUnits = fixValue(publish?.compute_units ?? 0);
       const computeUnitsPct =
@@ -142,7 +236,6 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
         durationText,
         computeUnits,
         computeUnitsPct,
-        isSkipped,
       };
     };
 
@@ -165,19 +258,6 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
 
   return (
     <>
-      <Flex
-        className={`${styles.rowText} ${active ? styles.active : ""}`}
-        align="center"
-        gap="2"
-      >
-        <Text className={styles.slotText}>{slot}</Text>
-        <StatusIcon slot={slot} isCurrent={isCurrent} />
-        {!!values?.isSkipped && (
-          <Tooltip content="Slot was skipped">
-            <img src={skippedIcon} alt="skipped" className={styles.icon} />
-          </Tooltip>
-        )}
-      </Flex>
       <Text
         className={`${styles.rowText} ${active ? styles.active : ""}`}
         align="right"

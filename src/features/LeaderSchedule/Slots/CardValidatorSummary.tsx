@@ -1,4 +1,4 @@
-import { Flex, Text, TextProps } from "@radix-ui/themes";
+import { Box, Flex, Text, TextProps } from "@radix-ui/themes";
 import { usePubKey } from "../../../hooks/usePubKey";
 import usePeer from "../../../hooks/usePeer";
 import { DateTime } from "luxon";
@@ -15,11 +15,12 @@ import PeerIcon from "../../../components/PeerIcon";
 import { identityKeyAtom } from "../../../api/atoms";
 import styles from "./cardValidatorSummary.module.css";
 import useSlotQuery from "../../../hooks/useSlotQuery";
-import { useHarmonicIntervalFn, useUpdate } from "react-use";
+import { useHarmonicIntervalFn, useMedia, useUpdate } from "react-use";
 import { Peer } from "../../../api/types";
 import { peerStatsAtom } from "../../../atoms";
 import { formatNumber } from "../../../numUtils";
 import clsx from "clsx";
+import ArrowDropdown from "../../../components/ArrowDropdown";
 
 interface CardValidatorSummaryProps {
   slot: number;
@@ -39,7 +40,7 @@ export default function CardValidatorSummary({
   const name = peer?.info?.name ?? (isLeader ? "You" : "Private");
 
   return (
-    <>
+    <Flex gap="1">
       <PeerIcon url={peer?.info?.icon_url} size={40} isYou={isLeader} />
       <Flex
         direction="column"
@@ -52,7 +53,64 @@ export default function CardValidatorSummary({
         <ValidatorInfo peer={peer} />
         <TimeAgo slot={slot} showTime={showTime} />
       </Flex>
-    </>
+    </Flex>
+  );
+}
+
+export function CardValidatorSummaryMobile({
+  slot,
+  showTime,
+}: CardValidatorSummaryProps) {
+  const pubkey = usePubKey(slot);
+  const myPubkey = useAtomValue(identityKeyAtom);
+  const peer = usePeer(pubkey ?? "");
+
+  const isLeader = myPubkey === pubkey;
+  const isWideScreen = useMedia("(min-width: 700px)");
+
+  let name = peer?.info?.name ?? (isLeader ? "You" : "");
+  if (!name) {
+    if (isWideScreen) {
+      name = "Private";
+    } else {
+      name = pubkey ? `${pubkey.substring(0, 8)}...` : "Private";
+    }
+  }
+
+  return (
+    <Flex direction="column" className={styles.containerMobile} gap="1">
+      <Flex gap="1">
+        {isWideScreen ? (
+          <>
+            <PeerIcon url={peer?.info?.icon_url} size={16} isYou={isLeader} />
+            <Text className={clsx(styles.name, styles.mobile)}>{name}</Text>
+            <Box flexGrow="1" />
+            <Text className={styles.primaryText}>{pubkey}</Text>
+          </>
+        ) : (
+          <>
+            <Text className={styles.text}>{slot}</Text>
+            <Box flexGrow="1" />
+            <PeerIcon url={peer?.info?.icon_url} size={16} isYou={isLeader} />
+            <Text className={styles.text}>{name}</Text>
+            <ArrowDropdown>
+              <Flex gap="1" direction="column">
+                <Text className={styles.secondaryText}>{pubkey}</Text>
+                <ValidatorInfo peer={peer} />
+                <TimeAgo slot={slot} showTime={showTime} />
+              </Flex>
+            </ArrowDropdown>
+          </>
+        )}
+      </Flex>
+      {isWideScreen && (
+        <Flex gap="1">
+          <ValidatorInfo peer={peer} />
+          <Box flexGrow="1" />
+          <TimeAgo slot={slot} showTime={showTime} />
+        </Flex>
+      )}
+    </Flex>
   );
 }
 

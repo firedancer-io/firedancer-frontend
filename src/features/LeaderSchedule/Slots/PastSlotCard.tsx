@@ -1,12 +1,16 @@
-import { Flex, Box } from "@radix-ui/themes";
+import { Flex } from "@radix-ui/themes";
 import styles from "./pastSlotCard.module.css";
 import sharedStyles from "./slots.module.css";
 import SlotCardGrid from "./SlotCardGrid";
-import CardValidatorSummary from "./CardValidatorSummary";
+import CardValidatorSummary, {
+  CardValidatorSummaryMobile,
+} from "./CardValidatorSummary";
 import useSlotQuery from "../../../hooks/useSlotQuery";
 import { identityKeyAtom } from "../../../api/atoms";
 import { useAtomValue } from "jotai";
 import { usePubKey } from "../../../hooks/usePubKey";
+import { useMedia } from "react-use";
+import clsx from "clsx";
 
 interface PastSlotCardProps {
   slot: number;
@@ -21,21 +25,32 @@ export function PastSlotCard({ slot }: PastSlotCardProps) {
   const response1 = useSlotQuery(slot + 1);
   const response2 = useSlotQuery(slot + 3);
   const response3 = useSlotQuery(slot + 3);
-  const skipped =
+  const isSkipped =
     response.slotResponse?.publish.skipped ||
     response1.slotResponse?.publish.skipped ||
     response2.slotResponse?.publish.skipped ||
     response3.slotResponse?.publish.skipped;
 
+  const isWideScreen = useMedia("(min-width: 900px)");
+
   return (
     <div
-      className={`${styles.card} ${isLeader ? sharedStyles.mySlots : ""} ${skipped ? styles.skipped : ""}`}
+      className={clsx(styles.card, {
+        [sharedStyles.mySlots]: isLeader,
+        [styles.skipped]: isSkipped,
+      })}
     >
-      <Flex gap="1" align="start">
-        <CardValidatorSummary slot={slot} showTime />
-        <Box flexGrow="1" />
-        <SlotCardGrid slot={slot} />
-      </Flex>
+      {isWideScreen ? (
+        <Flex gap="1" align="start" justify="between">
+          <CardValidatorSummary slot={slot} showTime />
+          <SlotCardGrid slot={slot} />
+        </Flex>
+      ) : (
+        <Flex direction="column" gap="1">
+          <CardValidatorSummaryMobile slot={slot} showTime />
+          <SlotCardGrid slot={slot} />
+        </Flex>
+      )}
     </div>
   );
 }

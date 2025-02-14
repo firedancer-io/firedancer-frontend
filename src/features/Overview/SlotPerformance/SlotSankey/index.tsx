@@ -115,7 +115,10 @@ function getLinks(
     waterfall.in.quic + waterfall.in.udp - getNetOut(waterfall.out);
   const verificationCount = quicCount - getQuicOut(waterfall.out);
   const dedupCount =
-    waterfall.in.block_engine + waterfall.in.gossip + verificationCount - getVerifyOut(waterfall.out);
+    waterfall.in.block_engine +
+    waterfall.in.gossip +
+    verificationCount -
+    getVerifyOut(waterfall.out);
   const resolvCount = dedupCount - getDedupOut(waterfall.out);
   const packCount =
     resolvRetainedIn +
@@ -372,25 +375,32 @@ function SlotSankey({ slot }: { slot?: number }) {
 
   return (
     <AutoSizer>
-      {({ height, width }) => (
-        <Sankey
-          height={height}
-          width={width}
-          data={data}
-          margin={{ top: 10, right: 80, bottom: 35, left: 85 }}
-          align="center"
-          isInteractive={false}
-          nodeThickness={0}
-          nodeSpacing={getNodeSpacing(height)}
-          nodeBorderWidth={1}
-          sort="input"
-          nodeBorderRadius={3}
-          linkOpacity={1}
-          enableLinkGradient
-          labelPosition="outside"
-          labelPadding={16}
-        />
-      )}
+      {({ height, width }) => {
+        if (width < 600) {
+          const swap = height;
+          height = width;
+          width = swap;
+        }
+        return (
+          <Sankey
+            height={height}
+            width={width}
+            data={data}
+            margin={{ top: 10, right: 80, bottom: 35, left: 85 }}
+            align="center"
+            isInteractive={false}
+            nodeThickness={0}
+            nodeSpacing={getNodeSpacing(height)}
+            nodeBorderWidth={1}
+            sort="input"
+            nodeBorderRadius={3}
+            linkOpacity={1}
+            enableLinkGradient
+            labelPosition="outside"
+            labelPadding={16}
+          />
+        );
+      }}
     </AutoSizer>
   );
 }

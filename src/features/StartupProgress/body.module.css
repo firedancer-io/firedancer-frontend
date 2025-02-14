@@ -1,4 +1,4 @@
-.container {
+.outer-container {
   height: 100vh;
   width: 100%;
   position: absolute;
@@ -6,4 +6,15 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  container: outer-container / inline-size;
+}
+
+.inner-container {
+  min-width: 410px;
+}
+
+@container outer-container (width < 430px) {
+  .inner-container {
+    min-width: 310px;
+  }
 }

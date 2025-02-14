@@ -1,6 +1,29 @@
 .container {
   margin-bottom: 16px;
   margin-left: 24px;
+  container: search / inline-size;
+
+  input:placeholder-shown {
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 700px) {
+  .container {
+    margin-bottom: 8px;
+    margin-left: 0px;
+  }
+}
+
+.search-box {
+  justify-self: "center";
+  min-width: 400px;
+}
+
+@container search (width < 600px) {
+  .search-box {
+    min-width: 100%;
+  }
 }
 
 .label {

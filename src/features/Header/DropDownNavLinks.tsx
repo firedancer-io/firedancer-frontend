@@ -6,8 +6,9 @@ import { Button } from "@radix-ui/themes";
 import dropDownIcon from "../../assets/dropdown_arrow.svg";
 import { useAtomValue } from "jotai";
 import { containerElAtom } from "../../atoms";
+import { PropsWithChildren } from "react";
 
-export default function DropDownNavLinks() {
+export default function DropDownNavLinks({ children }: PropsWithChildren) {
   const containerEl = useAtomValue(containerElAtom);
 
   const location = useLocation();
@@ -21,12 +22,14 @@ export default function DropDownNavLinks() {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <Button className={styles.button}>
-          {route}
-          <img src={dropDownIcon} style={{ height: "6px" }} />
-        </Button>
+        {children || (
+          <Button className={styles.button}>
+            {route}
+            <img src={dropDownIcon} style={{ height: "6px" }} />
+          </Button>
+        )}
       </DropdownMenu.Trigger>
-      <DropdownMenu.Portal container={containerEl}>
+      <DropdownMenu.Portal container={containerEl} >
         <DropdownMenu.Content className={styles.content} sideOffset={5}>
           <DropdownMenu.Item className={styles.item}>
             <NavLink to="/" label="Overview" />

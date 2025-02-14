@@ -57,8 +57,8 @@ export default function Search() {
   if (!isVisible) return;
 
   return (
-    <Flex className={styles.container} gap="2">
-      <Box minWidth="400px" style={{ justifySelf: "center" }}>
+    <Flex className={styles.container} gap="2" wrap="wrap">
+      <Box className={styles.searchBox}>
         <TextField.Root
           placeholder="Name, pubkey, or slot (separate with , or ; for multiple values)"
           variant="soft"
@@ -208,7 +208,6 @@ function SkippedSlots({ resetSearchText }: SkippedSlotsProps) {
       setSearchType(SearchType.SkippedSlots);
 
       const slotStarts = skippedSlots?.map((slot) => slot - (slot % 4));
-      // setSlotOverride(slotStarts?.[slotStarts?.length - 1]);
       setSearch([...new Set(slotStarts)]);
     }
   };

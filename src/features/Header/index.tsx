@@ -8,6 +8,7 @@ import Logo from "./Logo";
 import EpochBar from "../EpochBar";
 import CluserIndicator from "./ClusterIndicator";
 import NavLinks from "./NavLinks";
+import MenuNavLinks from "./MenuNavLinks";
 
 export default function Header() {
   // TODO move somehere it won't trigger re-renders
@@ -31,6 +32,7 @@ export default function Header() {
       <Flex className={styles.headerInner} direction="column">
         <CluserIndicator />
         <Flex className={styles.headerRow} justify="between" align="center">
+          <MenuNavLinks />
           <Flex gap="2" align="start">
             <Logo />
             <Cluster />
