@@ -22,18 +22,22 @@ export function getTimeTillText(
   let text = "";
 
   if (duration.years) {
+    if (text) text += " ";
     text += `${duration.years}y`;
   }
 
   if (duration.months) {
+    if (text) text += " ";
     text += `${duration.months}m`;
   }
 
   if (duration.weeks) {
+    if (text) text += " ";
     text += `${duration.weeks}w`;
   }
 
   if (duration.days) {
+    if (text) text += " ";
     text += `${duration.days}d`;
   }
 
