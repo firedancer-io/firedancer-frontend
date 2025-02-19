@@ -1,15 +1,29 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue, useSetAtom } from "jotai";
 import {
   getHasQueryedAtom,
   getIsFutureSlotAtom,
   getSlotResponseAtom,
+  hasQueryedAtom,
   setHasQueryedAtom,
 } from "../atoms";
 import { useMount } from "react-use";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWebSocketSend } from "../api/ws/utils";
 
-export default function useSlotQuery(slot?: number, needsTimers?: boolean) {
+const checkQueryAtom = atom(
+  null,
+  (get, set, slot: number, callback: () => void) => {
+    if (get(hasQueryedAtom)[slot]) return;
+
+    set(setHasQueryedAtom, slot);
+    callback();
+  }
+);
+
+export default function useSlotQuery(
+  slot?: number,
+  options?: { requiresTimers?: boolean; requiresComputeUnits?: boolean }
+) {
   const wsSend = useWebSocketSend();
 
   const slotResponse = useAtomValue(
@@ -18,42 +32,37 @@ export default function useSlotQuery(slot?: number, needsTimers?: boolean) {
   const hasQueryed = useAtomValue(
     useMemo(() => getHasQueryedAtom(slot), [slot])
   );
-  const setHasQueryed = useSetAtom(setHasQueryedAtom);
+  const checkQuery = useSetAtom(checkQueryAtom);
+
   const isFutureSlot = useAtomValue(
     useMemo(() => getIsFutureSlotAtom(slot), [slot])
   );
 
   const query = useCallback(() => {
-    if (hasQueryed) return;
     if (!slot) return;
 
-    const stillNeedsTimer = needsTimers && !slotResponse?.tile_timers;
-    if (slotResponse && !stillNeedsTimer) return;
+    const queryTimers = options?.requiresTimers && !slotResponse?.tile_timers;
+    const queryComputeUnits =
+      options?.requiresComputeUnits && !slotResponse?.compute_units;
+
     if (isFutureSlot) return;
 
-    wsSend({
-      topic: "slot",
-      key: "query",
-      id: 1,
-      params: {
-        slot: slot,
-      },
-    });
-    setHasQueryed(slot);
-  }, [
-    hasQueryed,
-    isFutureSlot,
-    needsTimers,
-    setHasQueryed,
-    slot,
-    slotResponse,
-    wsSend,
-  ]);
+    if (!slotResponse || queryTimers || queryComputeUnits) {
+      checkQuery(slot, () =>
+        wsSend({
+          topic: "slot",
+          key: "query",
+          id: 1,
+          params: {
+            slot: slot,
+          },
+        })
+      );
+    }
+  }, [checkQuery, isFutureSlot, options, slot, slotResponse, wsSend]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(query, [slot]);
-
-  // useInterval(query, 5_000);
 
   const [waitingForData, setWaitingForData] = useState(true);
   useMount(() => {

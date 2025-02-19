@@ -206,6 +206,15 @@ export const startupProgressSchema = z.object({
   waiting_for_supermajority_stake_percent: z.number().nullable(),
 });
 
+export const computeUnitsSchema = z.object({
+  max_compute_units: z.number(),
+  start_timestamp_nanos: z.number(),
+  target_end_timestamp_nanos: z.number(),
+  compute_unit_timestamps_nanos: z.number().array(),
+  compute_units_deltas: z.number().array(),
+  active_bank_count: z.number().array().optional(),
+});
+
 export const slotLevelSchema = z.enum([
   "incomplete",
   "completed",
@@ -418,6 +427,7 @@ export const slotResponseSchema = z.object({
   waterfall: txnWaterfallSchema.nullable(),
   tile_primary_metric: tilePrimaryMetricSchema.nullable(),
   tile_timers: tsTileTimersSchema.array().nullable().optional(),
+  compute_units: computeUnitsSchema.nullable().optional(),
 });
 
 export const slotSkippedHistorySchema = z.number().array();
