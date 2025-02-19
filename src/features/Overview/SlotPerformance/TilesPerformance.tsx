@@ -2,8 +2,11 @@ import styles from "./tilesPerformance.module.css";
 import TileCard from "./TileCard";
 import { useAtomValue } from "jotai";
 import { tilesAtom } from "../../../api/atoms";
-import { countBy } from "lodash";
-import { liveTileTimerfallAtom, selectedSlotAtom } from "./atoms";
+import {
+  liveTileTimerfallAtom,
+  selectedSlotAtom,
+  tileCountAtom,
+} from "./atoms";
 import { useMemo } from "react";
 import useSlotQuery from "../../../hooks/useSlotQuery";
 import { TileType } from "../../../api/types";
@@ -13,9 +16,9 @@ export default function TilesPerformance() {
   const liveTileTimers = useAtomValue(liveTileTimerfallAtom);
   const slot = useAtomValue(selectedSlotAtom);
   const showLive = !slot;
-
   const tiles = useAtomValue(tilesAtom);
-  const tileCounts = countBy(tiles, (t) => t.kind);
+  const tileCounts = useAtomValue(tileCountAtom);
+
   const groupedLiveIdlePerTile = liveTileTimers?.reduce<
     Record<TileType, number[]>
   >(
@@ -36,7 +39,7 @@ export default function TilesPerformance() {
     {} as Record<TileType, number[]>
   );
 
-  const query = useSlotQuery(slot, true);
+  const query = useSlotQuery(slot, { requiresTimers: true });
 
   const queryIdleData = useMemo(() => {
     if (!query.slotResponse?.tile_timers?.length || showLive || !tiles) return;
