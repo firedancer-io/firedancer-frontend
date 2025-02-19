@@ -1,8 +1,13 @@
 import { atom } from "jotai";
-import { liveTxnWaterfallAtom, tileTimerAtom } from "../../../api/atoms";
+import {
+  liveTxnWaterfallAtom,
+  tilesAtom,
+  tileTimerAtom,
+} from "../../../api/atoms";
 import { TxnWaterfall } from "../../../api/types";
 import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
+import { countBy } from "lodash";
 
 export const selectedSlotStrAtom = atom<string>();
 
@@ -109,3 +114,8 @@ export const rateLiveWaterfallAtom = atom(
 );
 
 export const isTileSparkLineExpandedAtom = atom(false);
+
+export const tileCountAtom = atom((get) => {
+  const tiles = get(tilesAtom);
+  return countBy(tiles, (t) => t.kind);
+});

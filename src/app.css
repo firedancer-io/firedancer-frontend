@@ -15,17 +15,7 @@
   /* headder height + epoch bar height + 10 padding top/bottom */
   --header-height: 121px;
 
-  /* --display-p3: blue;
-  --gray-12: blue; */
-  /* color(display-p3 0.93 0.933 0.94) */
-
-  /* --color-background: var(--gray-4); */
-  /* background: blue; */
-  /* background: #070B14; */
-  /* --color-overlay: var(--black-a6);
-    --color-panel-solid: white;
-    --color-panel-translucent: rgba(255, 255, 255, 0.7);
-    --color-surface: rgba(255, 255, 255, 0.85); */
+  font-variant-numeric: tabular-nums;
 }
 
 .rt-TooltipContent {

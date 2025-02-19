@@ -152,7 +152,7 @@ export const deleteSlotStatusBoundsAtom = atom(null, (get, set) => {
   }
 });
 
-const hasQueryedAtom = atomWithImmer<Record<number, boolean>>({});
+export const hasQueryedAtom = atomWithImmer<Record<number, boolean>>({});
 
 export const getHasQueryedAtom = (slot?: number) =>
   atom((get) => (slot !== undefined ? !!get(hasQueryedAtom)[slot] : false));

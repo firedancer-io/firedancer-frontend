@@ -8,6 +8,7 @@ import SankeyControls from "./SankeyControls";
 import styles from "./SlotSankey/slotSankey.module.css";
 import ResetLive from "./ResetLive";
 import LiveSankeyIndicator from "./LiveSankeyIndicator";
+import ComputeUnitsCard from "./ComputeUnitsCard";
 
 export default function SlotPerformance() {
   return (
@@ -24,6 +25,7 @@ export default function SlotPerformance() {
         <SlotSelector />
         <SankeyContainer />
         <TilesPerformance />
+        {/* <ComputeUnitsCard /> */}
       </Flex>
     </Card>
   );
@@ -31,7 +33,7 @@ export default function SlotPerformance() {
 
 function SankeyContainer() {
   return (
-    <div className={styles.sankeyContainer} >
+    <div className={styles.sankeyContainer}>
       <ResetLive />
       <SankeyControls />
       <SlotSankey />

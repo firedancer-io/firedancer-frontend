@@ -7,6 +7,7 @@ import { useMount } from "react-use";
 import { slotOverrideAtom } from "../../atoms";
 import ValidatorsCard from "./ValidatorsCard";
 import SlotStatusCard from "./StatusCard";
+import ComputeUnitsCard from "./SlotPerformance/ComputeUnitsCard";
 
 export default function Overview() {
   const setSlotOverride = useSetAtom(slotOverrideAtom);
@@ -26,6 +27,7 @@ export default function Overview() {
         <ValidatorsCard />
       </div>
       <SlotPerformance />
+      <ComputeUnitsCard />
     </Flex>
   );
 }

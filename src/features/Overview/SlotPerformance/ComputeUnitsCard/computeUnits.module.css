@@ -1,0 +1,75 @@
+.tooltip {
+  padding: 4px;
+  border-radius: 5px;
+  background: #121212;
+  display: grid;
+  grid: auto-flow / auto auto;
+  column-gap: 8px;
+
+  span {
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+    text-align: right;
+  }
+
+  .active-banks {
+    color: #ba7b1d;
+  }
+
+  .compute-units {
+    color: #1d77cb;
+  }
+
+  .elapsed-time {
+    color: #6a6a6e;
+  }
+
+  .label {
+    font-weight: 600;
+    text-align: left;
+  }
+}
+
+.chart {
+  flex-grow: 1;
+  aspect-ratio: 4;
+  min-height: 250px;
+  position: relative;
+
+  .legend {
+    position: absolute;
+    top: 30px;
+    left: 80px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 5px;
+    background: #121212;
+    padding: 5px;
+    opacity: 0.6;
+
+    .title {
+      color: #1d77cb;
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: normal;
+    }
+
+    .grid {
+      display: grid;
+      grid: auto-flow / auto auto;
+      margin-top: 4px;
+
+      span {
+        color: #6a6a6e;
+        font-size: 12px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: normal;
+        text-align: right;
+      }
+    }
+  }
+}
