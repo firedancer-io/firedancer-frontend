@@ -106,14 +106,12 @@ function SlotColumn({ slot, currentSlot }: SlotCardGridProps) {
       </Text>
       {new Array(4).fill(0).map((_, i) => {
         const cardSlot = slot + i;
-        const isActive = cardSlot === currentSlot;
-        const isCurrent = slot === currentSlot;
+        const isCurrent = cardSlot === currentSlot;
 
         return (
           <SlotText
             key={cardSlot}
             slot={cardSlot}
-            isActive={isActive}
             isCurrent={isCurrent}
             isWideScreen={isWideScreen}
           />
@@ -125,13 +123,11 @@ function SlotColumn({ slot, currentSlot }: SlotCardGridProps) {
 
 interface SlotTextProps {
   slot: number;
-  isActive: boolean;
   isCurrent: boolean;
 }
 
 function SlotText({
   slot,
-  isActive,
   isCurrent,
   isWideScreen,
 }: SlotTextProps & { isWideScreen: boolean }) {
@@ -140,7 +136,7 @@ function SlotText({
   return (
     <Flex
       className={clsx(styles.rowText, {
-        [styles.active]: isActive,
+        [styles.active]: isCurrent,
         [styles.narrowScreen]: !isWideScreen,
       })}
       align="center"
