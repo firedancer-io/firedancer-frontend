@@ -7,13 +7,6 @@
   flex-grow: 1;
 }
 
-.epoch-progress {
-  height: 100%;
-  background: #142d53;
-  border-top-left-radius: 9999px;
-  border-bottom-left-radius: 9999px;
-}
-
 .leader-slot {
   height: 100%;
   background: #2a7edf;
@@ -56,7 +49,6 @@
 }
 
 .slider-track {
-  background: #24262b;
   position: relative;
   flex-grow: 1;
   border-radius: 9999px;
@@ -74,7 +66,6 @@
   border: 1px solid var(--gray-12);
   border-radius: 2px;
   opacity: 0.5;
-  z-index: 10000000;
 }
 
 .slider-thumb:hover {

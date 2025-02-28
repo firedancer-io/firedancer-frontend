@@ -19,6 +19,7 @@ import {
   leaderSlotsAtom,
   epochAtom,
 } from "../../atoms";
+import { startupProgressAtom } from "../../api/atoms";
 import { useInterval, useMeasure } from "react-use";
 import { Epoch } from "../../api/types";
 
@@ -41,7 +42,8 @@ function slotToEpochPct({
     epochStartSlot === epochEndSlot
   )
     return 0;
-
+  
+  slot = Math.min(Math.max(slot, epochStartSlot), epochEndSlot);
   const totalEpochSlots = epochEndSlot - epochStartSlot;
   const epochSlotProgress = slot - epochStartSlot;
   return epochSlotProgress / totalEpochSlots;
@@ -68,7 +70,7 @@ function valueToSlot(
   return Math.trunc(totalEpochSlots * pct) + epochStartSlot;
 }
 
-function epochProgressPctReducer(
+function epochPctReducer(
   _: number,
   params: { slot?: number; epochStartSlot?: number; epochEndSlot?: number }
 ): number {
@@ -121,6 +123,7 @@ function EpochSlider({ canChange }: EpochSliderProps) {
   const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
   const [slotOverride, setSlotOverride] = useAtom(slotOverrideAtom);
   const leaderSlots = useAtomValue(leaderSlotsAtom);
+  const startupProgress = useAtomValue(startupProgressAtom);
   const skippedSlots = useAtomValue(skippedSlotsAtom);
   const [value, setValue] = useState(() => {
     return [
@@ -138,9 +141,19 @@ function EpochSlider({ canChange }: EpochSliderProps) {
   const leaderSlotWidth = Math.trunc(width / 300);
 
   const [epochProgressPct, updateEpochProgressPct] = useReducer(
-    epochProgressPctReducer,
+    epochPctReducer,
     {
       slot: currentLeaderSlot,
+      epochStartSlot: epoch?.start_slot,
+      epochEndSlot: epoch?.end_slot,
+    },
+    slotToEpochPct
+  );
+
+  const [epochSnapshotPct, updateEpochSnapshotPct] = useReducer(
+    epochPctReducer,
+    {
+      slot: startupProgress?.downloading_incremental_snapshot_slot ?? undefined,
       epochStartSlot: epoch?.start_slot,
       epochEndSlot: epoch?.end_slot,
     },
@@ -152,6 +165,11 @@ function EpochSlider({ canChange }: EpochSliderProps) {
       startTransition(() => {
         updateEpochProgressPct({
           slot: currentLeaderSlot,
+          epochStartSlot: epoch?.start_slot,
+          epochEndSlot: epoch?.end_slot,
+        });
+        updateEpochSnapshotPct({
+          slot: startupProgress?.downloading_incremental_snapshot_slot ?? undefined,
           epochStartSlot: epoch?.start_slot,
           epochEndSlot: epoch?.end_slot,
         });
@@ -225,11 +243,9 @@ function EpochSlider({ canChange }: EpochSliderProps) {
         onValueCommit={() => (isChangingValueRef.current = false)}
         max={sliderMaxValue}
       >
-        <Slider.Track className={styles.sliderTrack}>
-          <Box
-            className={styles.epochProgress}
-            width={`${epochProgressPct * 100}%`}
-          />
+        <Slider.Track className={styles.sliderTrack} style={{
+          background: `linear-gradient(to right, #14534e 0%, #14534e ${epochSnapshotPct * 100}%, #142d53 ${epochSnapshotPct * 100}%, #142d53 ${Math.max(epochSnapshotPct, epochProgressPct) * 100}%, #24262b ${Math.max(epochSnapshotPct, epochProgressPct) * 100}%)`
+        }}>
           {leaderSlotPcts?.map(({ slot, pct }) => (
             <MLeaderSlot
               key={slot}
@@ -257,6 +273,12 @@ const isFutureSlotAtom = (slot: number) =>
     return slot > (currentSlot ?? 0);
   });
 
+const isSnapshotSlotAtom = (slot: number) =>
+  atom((get) => {
+    const incrementalSnapshotSlot = get(startupProgressAtom)?.downloading_incremental_snapshot_slot;
+    return slot > (incrementalSnapshotSlot ?? 0);
+  });
+
 interface LeaderSlotProps {
   slot: number;
   pct: number;
@@ -267,6 +289,9 @@ function LeaderSlot({ slot, pct, width }: LeaderSlotProps) {
   const setSlotOverride = useSetAtom(slotOverrideAtom);
   const isFutureSlot = useAtomValue(
     useMemo(() => isFutureSlotAtom(slot), [slot])
+  );
+  const isSnapshotSlot = useAtomValue(
+    useMemo(() => isSnapshotSlotAtom(slot), [slot])
   );
   const onLeaderSlotClicked = (slot: number) => (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -279,7 +304,7 @@ function LeaderSlot({ slot, pct, width }: LeaderSlotProps) {
       className={styles.leaderSlot}
       style={{
         left: `${pct * 100}%`,
-        background: isFutureSlot ? "rgba(255, 255, 255, 0.20)" : undefined,
+        background: isFutureSlot || isSnapshotSlot ? "rgba(255, 255, 255, 0.20)" : undefined,
         width: `${width}px`,
       }}
       onPointerDown={onLeaderSlotClicked(slot)}

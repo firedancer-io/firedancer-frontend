@@ -6,7 +6,7 @@ import CardValidatorSummary, {
   CardValidatorSummaryMobile,
 } from "./CardValidatorSummary";
 import useSlotQuery from "../../../hooks/useSlotQuery";
-import { identityKeyAtom } from "../../../api/atoms";
+import { identityKeyAtom, startupProgressAtom } from "../../../api/atoms";
 import { useAtomValue } from "jotai";
 import { usePubKey } from "../../../hooks/usePubKey";
 import { useMedia } from "react-use";
@@ -31,6 +31,8 @@ export function PastSlotCard({ slot }: PastSlotCardProps) {
     response2.slotResponse?.publish.skipped ||
     response3.slotResponse?.publish.skipped;
 
+  const startupProgress = useAtomValue(startupProgressAtom);
+
   const isWideScreen = useMedia("(min-width: 900px)");
 
   return (
@@ -38,6 +40,7 @@ export function PastSlotCard({ slot }: PastSlotCardProps) {
       className={clsx(styles.card, {
         [sharedStyles.mySlots]: isLeader,
         [styles.skipped]: isSkipped,
+        [styles.snapshot]: slot < (startupProgress?.downloading_incremental_snapshot_slot ?? 0),
       })}
     >
       {isWideScreen ? (
