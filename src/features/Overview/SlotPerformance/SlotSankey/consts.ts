@@ -1,4 +1,5 @@
 export const enum SlotNode {
+  IncPackCranked = "Crank:inc",
   IncPackRetained = "Buffered:inc",
   IncResolvRetained = "Unresolved:inc",
   IncQuic = "QUIC",
@@ -147,6 +148,9 @@ export const slotNodes = [
   {
     id: SlotNode.IncResolvRetained,
     labelPositionOverride: "left",
+  },
+  {
+    id: SlotNode.IncPackCranked
   },
   {
     id: SlotNode.IncPackRetained,

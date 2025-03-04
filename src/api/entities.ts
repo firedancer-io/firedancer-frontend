@@ -90,6 +90,7 @@ export const estimatedTpsSchema = z.object({
 });
 
 export const txnWaterfallInSchema = z.object({
+  pack_cranked: z.number(),
   pack_retained: z.number(),
   resolv_retained: z.number(),
   quic: z.number(),
