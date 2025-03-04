@@ -126,7 +126,7 @@ function getLinks(
     getResolvOut(waterfall.out, resolvRetainedOut);
 
   const bankCount =
-    waterfall.in.pack_retained + packCount - getPackOut(waterfall.out);
+    waterfall.in.pack_retained + waterfall.in.pack_cranked + packCount - getPackOut(waterfall.out);
   const blockCount = bankCount - waterfall.out.bank_invalid;
 
   const blockFailure = failedTransactions ?? waterfall.out.block_fail;
@@ -260,6 +260,11 @@ function getLinks(
       source: SlotNode.Resolv,
       target: SlotNode.Pack,
       value: getValue(packCount),
+    },
+    {
+      source: SlotNode.IncPackCranked,
+      target: SlotNode.Pack,
+      value: getValue(waterfall.in.pack_cranked),
     },
     {
       source: SlotNode.IncPackRetained,
