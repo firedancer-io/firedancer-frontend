@@ -202,7 +202,6 @@ export function useSetAtomWsData() {
             setSkipRate(value);
             break;
           }
-          case "first_processed_slot":
           case "root_slot":
           case "optimistically_confirmed_slot":
           case "completed_slot":

@@ -250,11 +250,6 @@ export const skipRateSchema = z.object({
   // slots_skipped: z.number(),
 });
 
-export const firstProcessedSlotSchema = z.object({
-  epoch: z.number(),
-  slot: z.number().nullable(),
-});
-
 export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("ping"),
@@ -344,10 +339,6 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("skip_rate"),
     value: skipRateSchema,
-  }),
-  summaryTopicSchema.extend({
-    key: z.literal("first_processed_slot"),
-    value: firstProcessedSlotSchema,
   }),
 ]);
 
