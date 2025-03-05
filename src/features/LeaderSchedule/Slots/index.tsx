@@ -73,6 +73,8 @@ export default function Slots() {
     hammer.get("swipe").set({ direction: Hammer.DIRECTION_VERTICAL });
 
     hammer.on("panup pandown", (e) => {
+      if (!e.pointerType.includes("touch")) return;
+
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       setScroll(-(e.changedPointers[0]?.["movementY"] ?? 0) * 5);
     });
