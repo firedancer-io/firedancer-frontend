@@ -5,6 +5,7 @@ import {
   estimatedSlotDurationAtom,
   identityKeyAtom,
   skippedSlotsAtom,
+  startupProgressAtom,
 } from "./api/atoms";
 import {
   Epoch,
@@ -220,6 +221,13 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
     });
   }
 });
+
+export const firstProcessedSlotAtom = atom((get) => {
+  const startupProgress = get(startupProgressAtom);
+  if(!(startupProgress?.downloading_incremental_snapshot_slot)) return;
+
+  return startupProgress.downloading_incremental_snapshot_slot + 1; 
+})
 
 const _currentSlotAtom = atom<number | undefined>(undefined);
 export const currentSlotAtom = atom(

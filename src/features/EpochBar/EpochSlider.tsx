@@ -13,12 +13,15 @@ import { Box } from "@radix-ui/themes";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { skippedSlotsAtom } from "../../api/atoms";
 import warning from "../../assets/warning_16dp_FF5353_FILL1_wght400_GRAD0_opsz20.svg";
+import green_flag from "../../assets/flag.svg";
 import {
   currentLeaderSlotAtom,
   slotOverrideAtom,
   leaderSlotsAtom,
   epochAtom,
+  firstProcessedSlotAtom,
 } from "../../atoms";
+import { startupProgressAtom } from "../../api/atoms";
 import { useInterval, useMeasure } from "react-use";
 import { Epoch } from "../../api/types";
 
@@ -42,6 +45,7 @@ function slotToEpochPct({
   )
     return 0;
 
+  slot = Math.min(Math.max(slot, epochStartSlot), epochEndSlot);
   const totalEpochSlots = epochEndSlot - epochStartSlot;
   const epochSlotProgress = slot - epochStartSlot;
   return epochSlotProgress / totalEpochSlots;
@@ -122,6 +126,7 @@ function EpochSlider({ canChange }: EpochSliderProps) {
   const [slotOverride, setSlotOverride] = useAtom(slotOverrideAtom);
   const leaderSlots = useAtomValue(leaderSlotsAtom);
   const skippedSlots = useAtomValue(skippedSlotsAtom);
+  const firstProcessedSlot = useAtomValue(firstProcessedSlotAtom);
   const [value, setValue] = useState(() => {
     return [
       pctToValue(
@@ -190,6 +195,15 @@ function EpochSlider({ canChange }: EpochSliderProps) {
     return removeNearbyPct(pcts, 0.003);
   }, [epoch, skippedSlots]);
 
+  const firstProcessedSlotPct = useMemo(() => {
+    if (!firstProcessedSlot || !epoch) return;
+    return slotToEpochPct({
+      slot: firstProcessedSlot,
+      epochStartSlot: epoch.start_slot,
+      epochEndSlot: epoch.end_slot,
+    });
+  }, [epoch, firstProcessedSlot]);
+
   // Sync the slider position with user scrolling the leader schedule
   useEffect(() => {
     if (isChangingValueRef.current) return;
@@ -242,6 +256,7 @@ function EpochSlider({ canChange }: EpochSliderProps) {
         {skippedSlotPcts?.map(({ slot, pct }) => (
           <SkippedSlot key={slot} slot={slot} pct={pct} />
         ))}
+        {!!firstProcessedSlotPct && !!firstProcessedSlot && <FirstProcessedSlot slot={firstProcessedSlot} pct={firstProcessedSlotPct}/>}
         <Slider.Thumb
           className={styles.sliderThumb}
           style={{ cursor: canChange ? "grab" : "unset" }}
@@ -318,6 +333,42 @@ function SkippedSlot({ slot, pct }: SkippedSlotProps) {
         className={styles.skippedSlotIcon}
         style={{
           left: `calc(${pct * 100}% - 6px)`,
+        }}
+        onPointerDown={onLeaderSlotClicked(slot)}
+      />
+    </>
+  );
+}
+
+interface FirstProcessedSlotProps {
+  slot: number;
+  pct: number;
+}
+
+function FirstProcessedSlot({ slot, pct }: FirstProcessedSlotProps) {
+  const setSlotOverride = useSetAtom(slotOverrideAtom);
+
+  const onLeaderSlotClicked = (slot: number) => (e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setSlotOverride(slot);
+  };
+
+  return (
+    <>
+      <Box
+        className={styles.firstProcessedSlot}
+        style={{
+          left: `${pct * 100}%`,
+        }}
+        onPointerDown={onLeaderSlotClicked(slot)}
+      />
+      <img
+        src={green_flag}
+        alt="first processed slot"
+        className={styles.firstProcessedSlotIcon}
+        style={{
+          left: `calc(${pct * 100}%)`,
         }}
         onPointerDown={onLeaderSlotClicked(slot)}
       />

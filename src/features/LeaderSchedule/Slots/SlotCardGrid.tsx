@@ -3,6 +3,7 @@ import styles from "./slotCardGrid.module.css";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   currentSlotAtom,
+  firstProcessedSlotAtom,
   getSlotStatus,
   slotDurationAtom,
 } from "../../../atoms";
@@ -25,6 +26,7 @@ import {
   scrollAllFuncsAtom,
 } from "./atoms";
 import clsx from "clsx";
+import { startupProgressAtom } from "../../../api/atoms";
 
 interface SlotCardGridProps {
   slot: number;
@@ -176,6 +178,7 @@ interface SlotCardRowProps {
 }
 
 function SlotCardRow({ slot, active }: SlotCardRowProps) {
+  const firstProcessedSlot = useAtomValue(firstProcessedSlotAtom);
   const currentSlot = useAtomValue(currentSlotAtom);
   const response = useSlotQuery(slot);
 
@@ -242,9 +245,10 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
 
   const isFuture = slot > (currentSlot ?? Infinity);
   const isCurrent = slot === currentSlot;
+  const isSnapshot = slot < (firstProcessedSlot ?? 0);
 
   const getText = (text?: string | number, suffix?: string) => {
-    if (isFuture || isCurrent) return "-";
+    if (isFuture || isCurrent || isSnapshot) return "-";
     if (!values && !response.hasWaitedForData) return "Loading...";
     if (!values) return "-";
 
