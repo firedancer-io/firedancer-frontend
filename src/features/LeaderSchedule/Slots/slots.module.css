@@ -10,6 +10,10 @@
   touch-action: none;
 
   & * {
-    touch-action:none
+    touch-action: none;
+  }
+
+  span {
+    user-select: text;
   }
 }
