@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import checker from "vite-plugin-checker";
 import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
 import license from "rollup-plugin-license";
+import { buffer } from "stream/consumers";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -30,6 +31,11 @@ export default defineConfig({
           },
         }),
       ],
+    },
+    assetsInlineLimit: (filePath: string, content: Buffer) => {
+      if (filePath.endsWith(".wasm")) return true;
+      if (content.byteLength <= 4096) return true;
+      return false;
     },
   },
   plugins: [

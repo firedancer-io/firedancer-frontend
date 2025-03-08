@@ -9,6 +9,7 @@ import {
 } from "./api/atoms";
 import {
   Epoch,
+  LeaderSchedule,
   Peer,
   PeerRemove,
   SkipRate,
@@ -19,8 +20,65 @@ import { merge } from "lodash";
 import { getLeaderSlots, getStake } from "./utils";
 import { searchLeaderSlotsAtom } from "./features/LeaderSchedule/atoms";
 import { selectedSlotAtom } from "./features/Overview/SlotPerformance/atoms";
+import lschedWasm from './assets/lsched.wasm?init';
+import bs58 from "bs58";
 
 export const containerElAtom = atom<HTMLDivElement | null>();
+
+export async function computeLeaderSchedule(epoch: Epoch) {
+  // const source = await fetch(lschedWasm);
+  // const wasmModule = await WebAssembly.instantiate(await source.arrayBuffer());
+  const wasmModule = await lschedWasm();
+
+  const {
+    fd_epoch_leaders_wasm_init,
+    fd_epoch_leaders_wasm_get_pubkeys,
+    fd_epoch_leaders_wasm_get_stakes,
+    fd_epoch_leaders_wasm_get_sched_cnt,
+    fd_epoch_leaders_wasm_get_sched,
+    memory,
+  } = wasmModule.exports as {
+    fd_epoch_leaders_wasm_init: (epoch: bigint, slot0: bigint, slotCnt: bigint, pubCnt: bigint, excludedStake: bigint) => void,
+    fd_epoch_leaders_wasm_get_pubkeys: () => bigint,
+    fd_epoch_leaders_wasm_get_stakes: () => bigint,
+    fd_epoch_leaders_wasm_get_sched_cnt: () => number,
+    fd_epoch_leaders_wasm_get_sched: () => bigint,
+    memory: WebAssembly.Memory,
+  };
+
+  // Populate pubkeys and corresponding stake
+  const memoryDataArray = new Uint8Array(memory.buffer);
+  const memoryDataView = new DataView(memory.buffer);
+  epoch.staked_pubkeys.forEach((pubkey, index) => {
+    const pubkeyBytes: Uint8Array = bs58.decode(pubkey);
+    memoryDataArray.set(pubkeyBytes, Number(fd_epoch_leaders_wasm_get_pubkeys()) + (index * 32));
+    memoryDataView.setBigUint64(Number(fd_epoch_leaders_wasm_get_stakes()) + (index * 8), BigInt(epoch.staked_lamports[index]), true);
+  });
+
+  fd_epoch_leaders_wasm_init(
+    BigInt(epoch.epoch),                           // epoch
+    BigInt(epoch.start_slot),                      // slot0
+    BigInt(epoch.end_slot - epoch.start_slot + 1), // slot_cnt
+    BigInt(epoch.staked_pubkeys.length),           // pub_cnt
+    BigInt(epoch.excluded_stake_lamports),         // excluded_stake
+  );
+
+  const schedCnt = fd_epoch_leaders_wasm_get_sched_cnt();
+  const sched = new Uint32Array(memory.buffer, Number(fd_epoch_leaders_wasm_get_sched()), schedCnt);
+
+  return Array.from(sched);
+}
+
+const _leaderScheduleAtom = atom<LeaderSchedule | undefined>(undefined);
+export const leaderScheduleAtom = atom(
+  (get) => {
+    return get(_leaderScheduleAtom);
+  },
+  async (get, set, epoch: Epoch) => {
+    const lsched = await computeLeaderSchedule(epoch);
+    set(_leaderScheduleAtom, lsched);
+  }
+)
 
 const _epochsAtom = atomWithImmer<Epoch[]>([]);
 export const epochAtom = atom(
@@ -245,21 +303,23 @@ export const currentSlotAtom = atom(
 /** In order array of your leader slots (only first slot in group of 4) */
 export const leaderSlotsAtom = atom((get) => {
   const epoch = get(epochAtom);
+  const leaderSchedule = get(leaderScheduleAtom);
   const pubkey = get(identityKeyAtom);
 
-  if (!epoch || !pubkey) return;
+  if (!epoch || !pubkey || !leaderSchedule) return;
 
-  return getLeaderSlots(epoch, pubkey);
+  return getLeaderSlots(epoch, leaderSchedule, pubkey);
 });
 
 /** In order array of your leader slots (only first slot in group of 4) */
 export const nextEpochLeaderSlotsAtom = atom((get) => {
   const epoch = get(nextEpochAtom);
+  const leaderSchedule = get(leaderScheduleAtom);
   const pubkey = get(identityKeyAtom);
 
-  if (!epoch || !pubkey) return;
+  if (!epoch || !pubkey || !leaderSchedule) return;
 
-  return getLeaderSlots(epoch, pubkey);
+  return getLeaderSlots(epoch, leaderSchedule, pubkey);
 });
 
 // let _skippedSlots: number[] | undefined = undefined;
@@ -448,12 +508,13 @@ export const myStakePctAtom = atom((get) => {
 
 export const allLeaderNamesAtom = atom((get) => {
   const epoch = get(epochAtom);
+  const leaderSchedule = get(leaderScheduleAtom);
   const peers = get(peersAtom);
 
-  if (!epoch || !peers) return;
+  if (!epoch || !peers || !leaderSchedule) return;
 
   const uniquePubkeys = new Set(
-    epoch.leader_slots.map((i) => epoch.staked_pubkeys[i])
+    leaderSchedule.map((i) => epoch.staked_pubkeys[i])
   );
   const leadersWithNames = [...uniquePubkeys].map((pubkey) => ({
     pubkey: pubkey,

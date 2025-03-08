@@ -38,6 +38,7 @@ import {
   deleteSlotStatusBoundsAtom,
   deleteSlotResponseBoundsAtom,
   skipRateAtom,
+  leaderScheduleAtom,
 } from "../atoms";
 import {
   EstimatedSlotDuration,
@@ -119,6 +120,7 @@ export function useSetAtomWsData() {
   const setSlotResponse = useSetAtom(setSlotResponseAtom);
 
   const [epoch, setEpoch] = useAtom(epochAtom);
+  const setleaderSchedule = useSetAtom(leaderScheduleAtom);
 
   const setSlotStatus = useSetAtom(setSlotStatusAtom);
 
@@ -214,6 +216,7 @@ export function useSetAtomWsData() {
         switch (key) {
           case "new":
             setEpoch(value);
+            setleaderSchedule(value).catch((msg) => console.error(msg));
             break;
         }
       } else if (topic === "peers") {
