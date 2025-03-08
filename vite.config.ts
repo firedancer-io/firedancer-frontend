@@ -47,4 +47,9 @@ export default defineConfig({
       overlay: false,
     }),
   ],
+  test: {
+    chaiConfig: {
+      showDiff: false,
+    },
+  },
 });

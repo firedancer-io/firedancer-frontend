@@ -348,7 +348,7 @@ export const epochNewSchema = z.object({
   end_slot: z.number(),
   excluded_stake_lamports: z.number(),
   staked_pubkeys: z.string().array(),
-  staked_lamports: z.number().array(),
+  staked_lamports: z.string().array(), // We need to use bigint otherwise we will lose precision
   leader_slots: z.number().array(),
 });
 
