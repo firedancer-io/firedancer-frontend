@@ -150,7 +150,8 @@ export const slotNodes = [
     labelPositionOverride: "left",
   },
   {
-    id: SlotNode.IncPackCranked
+    id: SlotNode.IncPackCranked,
+    labelPositionOverride: "left",
   },
   {
     id: SlotNode.IncPackRetained,
