@@ -1,6 +1,6 @@
 import { useAtom, useSetAtom } from "jotai";
 import {
-  balanceAtom,
+  identityBalanceAtom,
   blockEngineAtom,
   clusterAtom,
   estimatedSlotDurationAtom,
@@ -67,7 +67,7 @@ export function useSetAtomWsData() {
 
   const setTiles = useSetAtom(tilesAtom);
 
-  const setBalance = useSetAtom(balanceAtom);
+  const setIdentityBalance = useSetAtom(identityBalanceAtom);
 
   const [uptime, setUptime] = useAtom(uptimeAtom);
   const uptimeMins =
@@ -158,8 +158,8 @@ export function useSetAtomWsData() {
             setTiles(value);
             break;
           }
-          case "balance": {
-            setBalance(value);
+          case "identity_balance": {
+            setIdentityBalance(value);
             break;
           }
           case "estimated_slot_duration_nanos": {
