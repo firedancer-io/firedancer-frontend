@@ -10,7 +10,7 @@ import {
   EstimatedSlot,
   EstimatedTps,
   EstimatedSlotDuration,
-  Balance,
+  IdentityBalance,
   UptimeNanos,
   LiveTxnWaterfall,
   StartupProgress,
@@ -39,7 +39,7 @@ export const uptimeAtom = atom<
 
 export const tilesAtom = atom<Tile[] | undefined>(undefined);
 
-export const balanceAtom = atom<Balance | undefined>(undefined);
+export const identityBalanceAtom = atom<IdentityBalance | undefined>(undefined);
 
 export const rootSlotAtom = atom<RootSlot | undefined>(undefined);
 

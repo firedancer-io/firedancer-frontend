@@ -1,6 +1,6 @@
 import { z } from "zod";
 import {
-  balanceSchema,
+  identityBalanceSchema,
   blockEngineStatusSchema,
   blockEngineUpdateSchema,
   clusterSchema,
@@ -50,7 +50,7 @@ export type UptimeNanos = z.infer<typeof uptimeNanosSchema>;
 
 export type Tile = z.infer<typeof tileSchema>;
 
-export type Balance = z.infer<typeof balanceSchema>;
+export type IdentityBalance = z.infer<typeof identityBalanceSchema>;
 
 export type RootSlot = z.infer<typeof rootSlotSchema>;
 

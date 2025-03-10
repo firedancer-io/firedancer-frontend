@@ -70,7 +70,7 @@ export const tileSchema = z.object({
   kind_id: z.number(),
 });
 
-export const balanceSchema = z.number();
+export const identityBalanceSchema = z.number();
 
 export const rootSlotSchema = z.number();
 
@@ -281,8 +281,8 @@ export const summarySchema = z.discriminatedUnion("key", [
     value: tileSchema.array(),
   }),
   summaryTopicSchema.extend({
-    key: z.literal("balance"),
-    value: balanceSchema,
+    key: z.literal("identity_balance"),
+    value: identityBalanceSchema,
   }),
   summaryTopicSchema.extend({
     key: z.literal("root_slot"),
