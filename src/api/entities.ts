@@ -395,6 +395,10 @@ export const peerRemoveSchema = z.object({
   identity_pubkey: z.string(),
 });
 
+const rpcCountUpdateSchema = z.object({
+  rpc_count: z.number(),
+});
+
 const peersUpdateSchema = z.object({
   add: z.array(peerUpdateSchema).optional(),
   update: z.array(peerUpdateSchema).optional(),
@@ -405,6 +409,10 @@ export const peersSchema = z.discriminatedUnion("key", [
   peersTopicSchema.extend({
     key: z.literal("update"),
     value: peersUpdateSchema,
+  }),
+  peersTopicSchema.extend({
+    key: z.literal("rpc"),
+    value: rpcCountUpdateSchema,
   }),
 ]);
 
