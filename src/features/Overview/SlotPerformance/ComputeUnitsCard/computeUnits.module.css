@@ -34,7 +34,7 @@
 
 .chart {
   flex-grow: 1;
-  aspect-ratio: 4;
+  height: 25vw;
   min-height: 250px;
   position: relative;
 
@@ -47,7 +47,7 @@
     border-radius: 5px;
     background: #121212;
     padding: 5px;
-    opacity: 0.6;
+    opacity: 0.9;
 
     .title {
       color: #1d77cb;
@@ -72,4 +72,30 @@
       }
     }
   }
+}
+
+.chart-wrapper {
+  user-select: none;
+  height: 100%;
+  overflow: hidden;
+
+  &.mod-key-down :global(.recharts-wrapper > .recharts-surface) {
+    cursor: grab;
+  }
+
+  &.panning :global(.recharts-wrapper > .recharts-surface) {
+    cursor: grabbing;
+  }
+
+  &.nopan :global(.recharts-wrapper > .recharts-surface) {
+    cursor: not-allowed;
+  }
+
+  &.zooming :global(.recharts-wrapper > .recharts-surface) {
+    cursor: zoom-in;
+  }
+}
+
+.bank-ref-area {
+  mix-blend-mode: hard-light;
 }

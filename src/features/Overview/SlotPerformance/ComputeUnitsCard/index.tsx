@@ -7,25 +7,30 @@ import Chart from "./Chart";
 import { Flex } from "@radix-ui/themes";
 import styles from "./computeUnits.module.css";
 import Legend from "./Legend";
+import Actions from "./Actions";
 
 export default function ComputeUnitsCard() {
   const slot = useAtomValue(selectedSlotAtom);
   const query = useSlotQuery(slot, { requiresComputeUnits: true });
 
   const tileCount = useAtomValue(tileCountAtom);
+  const bankTileCount = tileCount["bank"];
 
   if (!slot || !query.slotResponse?.compute_units) return null;
 
   return (
     <Card style={{ marginTop: "8px" }}>
       <Flex direction="column" height="100%" gap="2">
-        <CardHeader text="CU Progression" />
+        <Flex gap="3">
+          <CardHeader text="CU Progression" />
+          <Actions />
+        </Flex>
         <div className={styles.chart}>
           <Chart
             computeUnits={query.slotResponse.compute_units}
-            bankTileCount={tileCount["bank"]}
+            bankTileCount={bankTileCount}
           />
-          <Legend />
+          <Legend bankTileCount={bankTileCount} />
         </div>
       </Flex>
     </Card>

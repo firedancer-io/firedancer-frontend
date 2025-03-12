@@ -181,6 +181,7 @@ export const setSlotResponseAtom = atom(
     const slot = response.publish.slot;
     set(slotResponseAtom, (draft) => {
       response.tile_timers ??= draft[slot]?.tile_timers;
+      response.compute_units ??= draft[slot]?.compute_units;
       draft[slot] = response;
     });
   }
