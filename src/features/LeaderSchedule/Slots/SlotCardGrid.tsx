@@ -26,7 +26,6 @@ import {
   scrollAllFuncsAtom,
 } from "./atoms";
 import clsx from "clsx";
-import { startupProgressAtom } from "../../../api/atoms";
 
 interface SlotCardGridProps {
   slot: number;

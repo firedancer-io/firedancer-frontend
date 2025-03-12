@@ -1,10 +1,10 @@
 import { DateTime, Duration } from "luxon";
-import { Epoch, Peer } from "./api/types";
+import { Epoch, LeaderSchedule, Peer } from "./api/types";
 import { lamportsPerSol, slotsPerLeader } from "./consts";
 import { sum } from "lodash";
 
-export function getLeaderSlots(epoch: Epoch, pubkey: string) {
-  return epoch.leader_slots.reduce<number[]>((leaderSlots, pubkeyIndex, i) => {
+export function getLeaderSlots(epoch: Epoch, leaderSchedule: LeaderSchedule, pubkey: string) {
+  return leaderSchedule.reduce<number[]>((leaderSlots, pubkeyIndex, i) => {
     if (epoch.staked_pubkeys[pubkeyIndex] === pubkey)
       leaderSlots.push(i * slotsPerLeader + epoch.start_slot);
     return leaderSlots;

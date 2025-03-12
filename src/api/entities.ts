@@ -348,9 +348,11 @@ export const epochNewSchema = z.object({
   end_slot: z.number(),
   excluded_stake_lamports: z.number(),
   staked_pubkeys: z.string().array(),
-  staked_lamports: z.number().array(),
-  leader_slots: z.number().array(),
+  // We use string since number is inaccurate for integers larger than Number.MAX_SAFE_INTEGER
+  staked_lamports: z.string().array(),
 });
+
+export const leaderScheduleSchema = z.number().array();
 
 export const epochSchema = z.discriminatedUnion("key", [
   epochTopicSchema.extend({

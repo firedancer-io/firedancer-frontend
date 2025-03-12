@@ -21,7 +21,6 @@ import {
   epochAtom,
   firstProcessedSlotAtom,
 } from "../../atoms";
-import { startupProgressAtom } from "../../api/atoms";
 import { useInterval, useMeasure } from "react-use";
 import { Epoch } from "../../api/types";
 

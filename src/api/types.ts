@@ -36,6 +36,7 @@ import {
   versionSchema,
   voteDistanceSchema,
   voteStateSchema,
+  leaderScheduleSchema,
 } from "./entities";
 
 export type Version = z.infer<typeof versionSchema>;
@@ -99,6 +100,8 @@ export type VoteState = z.infer<typeof voteStateSchema>;
 export type VoteDistance = z.infer<typeof voteDistanceSchema>;
 
 export type SkipRate = z.infer<typeof skipRateSchema>;
+
+export type LeaderSchedule = z.infer<typeof leaderScheduleSchema>;
 
 export type Epoch = z.infer<typeof epochNewSchema>;
 

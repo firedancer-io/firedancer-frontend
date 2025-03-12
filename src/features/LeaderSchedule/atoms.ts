@@ -3,6 +3,7 @@ import {
   allLeaderNamesAtom,
   currentLeaderSlotAtom,
   epochAtom,
+  leaderScheduleAtom,
   slotOverrideAtom,
 } from "../../atoms";
 import { getLeaderSlots } from "../../utils";
@@ -22,7 +23,8 @@ export const setSearchLeaderSlotsAtom = atom(
   null,
   (get, set, searchText: string) => {
     const epoch = get(epochAtom);
-    if (!epoch) return;
+    const leaderSchedule = get(leaderScheduleAtom);
+    if (!epoch || !leaderSchedule) return;
 
     searchText = searchText.trim();
 
@@ -73,7 +75,7 @@ export const setSearchLeaderSlotsAtom = atom(
 
     const leaderSlots = searchPubkeys
       .flatMap((pubkey) => {
-        return getLeaderSlots(epoch, pubkey);
+        return getLeaderSlots(epoch, leaderSchedule, pubkey);
       })
       .sort();
 
