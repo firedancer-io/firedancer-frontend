@@ -26,7 +26,6 @@ import {
   scrollAllFuncsAtom,
 } from "./atoms";
 import clsx from "clsx";
-import { startupProgressAtom } from "../../../api/atoms";
 
 interface SlotCardGridProps {
   slot: number;
@@ -150,10 +149,12 @@ function SlotText({
         <Text>&nbsp;</Text>
       )}
       <StatusIcon slot={slot} isCurrent={isCurrent} />
-      {!!response.slotResponse?.publish.skipped && (
+      {response.slotResponse?.publish.skipped ? (
         <Tooltip content="Slot was skipped">
           <img src={skippedIcon} alt="skipped" className={styles.icon} />
         </Tooltip>
+      ) : (
+        <div className={styles.icon} />
       )}
     </Flex>
   );
@@ -338,7 +339,7 @@ function StatusIcon({ slot, isCurrent }: { slot: number; isCurrent: boolean }) {
 
   if (isCurrent) return <LoadingIcon />;
 
-  if (status === "incomplete") return null;
+  if (status === "incomplete") return <div className={styles.icon} />;
 
   if (status === "optimistically_confirmed") {
     return (
