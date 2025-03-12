@@ -36,7 +36,10 @@
   flex-grow: 1;
   height: 25vw;
   min-height: 250px;
+  max-height: 600px;
   position: relative;
+  margin-left: -16px;
+  margin-right: -16px;
 
   .legend {
     position: absolute;

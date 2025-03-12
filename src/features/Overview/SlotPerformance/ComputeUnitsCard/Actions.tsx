@@ -28,6 +28,7 @@ export default function Actions() {
         aria-label="Toggle fit to Y"
         pressed={fitYToData}
         onPressedChange={(pressed) => setFitYToData(pressed)}
+        disabled={!canZoomOut}
       >
         <HeightIcon /> Fit
       </Toggle.Root>

@@ -6,13 +6,13 @@ import {
   XAxis,
   YAxis,
   ReferenceLine,
-  Legend,
   Tooltip,
   ReferenceArea,
   Polygon,
   Rectangle,
   RectangleProps,
   LineChart,
+  CartesianGrid,
 } from "recharts";
 import { Segment } from "recharts/types/cartesian/ReferenceLine";
 import ChartTooltip from "./ChartTooltip";
@@ -23,7 +23,7 @@ import { CategoricalChartState } from "recharts/types/chart/types";
 import clsx from "clsx";
 import styles from "./computeUnits.module.css";
 import memoize from "micro-memoize";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import {
   fitYToDataAtom,
   isMaxZoomRangeAtom,
@@ -293,6 +293,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
   const [isPanning, setIsPanning] = useState(false);
   const [dragRange, setDragRange] = useState<[number, number]>();
 
+  const [fitYToData, setFitYToData] = useAtom(fitYToDataAtom);
   const [zoomRange, setZoomRange] = useAtom(zoomRangeAtom);
   const setIsMaxZoomRange = useSetAtom(isMaxZoomRangeAtom);
   useUnmount(() => {
@@ -302,9 +303,10 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
 
   useEffect(() => {
     if (zoomRange === undefined) {
+      setFitYToData(false);
       setIsMaxZoomRange(false);
     }
-  }, [setIsMaxZoomRange, zoomRange]);
+  }, [setFitYToData, setIsMaxZoomRange, zoomRange]);
 
   const hoverPosRef = useRef<number>();
   const hoverTs = useRef<number>();
@@ -327,7 +329,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
   const visStartTs = zoomRange?.[0] ?? 0;
   const visEndTs = zoomRange?.[1] ?? dataEndTs;
   const xDomain = useMemo(
-    () => extendDomain([visStartTs, visEndTs], 1),
+    () => extendDomain([visStartTs, visEndTs], 1.5),
     [visStartTs, visEndTs]
   );
 
@@ -347,7 +349,6 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
     [xDomain, xLabelCount]
   );
 
-  const fitYToData = useAtomValue(fitYToDataAtom);
   const cuDomain = useMemo(
     () =>
       fitYToData
@@ -356,7 +357,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
     [computeUnits.max_compute_units, data, fitYToData, zoomRange]
   );
   const yDomain = useMemo<Domain>(
-    () => cuDomain ?? [0, computeUnits.max_compute_units + 2_000_000],
+    () => cuDomain ?? [0, computeUnits.max_compute_units + 1_000_000],
     [computeUnits.max_compute_units, cuDomain]
   );
 
@@ -369,9 +370,17 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
     .fill(0)
     .map((_, i) => i + 1);
 
-  const handleKey = (e: KeyboardEvent) => setIsModKeyDown(hasModKey(e));
+  const handleKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") setDragRange(undefined);
+    setIsModKeyDown(hasModKey(e));
+  };
+
   useEventListener("keydown", handleKey);
   useEventListener("keyup", handleKey);
+  // To cancel zoom if mouse is released outside chart
+  useEventListener("mouseup", (e: MouseEvent) => {
+    setDragRange(undefined);
+  });
 
   const containerElRef = useRef<HTMLDivElement>(null);
   useEventListener(
@@ -470,14 +479,17 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
 
   const onMouseDown = (
     chartState?: CategoricalChartState,
-    evt?: React.MouseEvent
+    e?: React.MouseEvent
   ) => {
-    if (chartState?.activeLabel && evt?.button === 0) {
+    if (chartState?.activeLabel && (e?.button === 0 || e?.button === 1)) {
       isMouseDownRef.current = true;
 
-      const currentTs = +chartState.activeLabel;
+      if (e.button === 1) {
+        e.preventDefault();
+      }
 
-      if (hasModKey(evt)) {
+      const currentTs = +chartState.activeLabel;
+      if (hasModKey(e) || e.button === 1) {
         setIsPanning(true);
         lastPanTs.current = chartState.chartX;
       } else {
@@ -704,7 +716,6 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
       onWheel={onWheel}
       onMouseMove={onContainerMouseMove}
       onMouseOut={onContainerMouseOut}
-      onDoubleClick={() => setZoomRange(undefined)}
     >
       <AutoSizer onResize={(size) => setChartWidth(size.width)}>
         {({ height, width }) => {
@@ -715,12 +726,14 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
               data={data}
               margin={{
                 top: 10,
-                left: 10,
+                right: 15,
               }}
               onMouseDown={onMouseDown}
               onMouseMove={onMouseMove}
               onMouseUp={onMouseUp}
+              onDoubleClick={() => setZoomRange(undefined)}
             >
+              <CartesianGrid stroke="#C6C6C6" opacity={0.1} />
               <Line
                 yAxisId={bankCountAxisId}
                 type="stepAfter"
@@ -916,6 +929,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                 type="number"
                 domain={[0, (dataMax: number) => dataMax + 1]}
                 ticks={activeBankCountTicks}
+                hide
                 orientation="right"
                 name="active bank tiles"
               />
@@ -930,7 +944,6 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                 />
               )}
               <Tooltip content={<ChartTooltip />} isAnimationActive={false} />
-              <Legend />
             </LineChart>
           );
         }}
