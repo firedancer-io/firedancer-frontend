@@ -38,6 +38,7 @@ import {
   deleteSlotStatusBoundsAtom,
   deleteSlotResponseBoundsAtom,
   skipRateAtom,
+  rpcCountAtom,
 } from "../atoms";
 import {
   EstimatedSlotDuration,
@@ -125,6 +126,7 @@ export function useSetAtomWsData() {
   const addPeers = useSetAtom(addPeersAtom);
   const updatePeers = useSetAtom(updatePeersAtom);
   const removePeers = useSetAtom(removePeersAtom);
+  const setRpcCount = useSetAtom(rpcCountAtom)
 
   const setBlockEngine = useSetAtom(blockEngineAtom);
 
@@ -218,6 +220,7 @@ export function useSetAtomWsData() {
         }
       } else if (topic === "peers") {
         const { value } = peersSchema.parse(msg);
+        setRpcCount(value.num_rpc ?? 0);
         addPeers(value.add);
         updatePeers(value.update);
         removePeers(value.remove);

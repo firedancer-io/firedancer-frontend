@@ -388,14 +388,14 @@ export const removePeersAtom = atom(null, (get, set, peers?: PeerRemove[]) => {
   }, removePeerDelay);
 });
 
+export const rpcCountAtom = atom<number>(0);
+
 export const peerStatsAtom = atom((get) => {
   const peers = get(peersAtom);
+  const rpcCount = get(rpcCountAtom);
   if (!peers) return;
 
   const activePeers = Object.values(peers).filter((p) => !p.removed);
-  const rpc = activePeers.filter(
-    (p) => p.vote.every((v) => !v.activated_stake) && !!p.gossip
-  );
   const validators = activePeers.filter((p) =>
     p.vote.some((v) => v.activated_stake)
   );
@@ -417,7 +417,7 @@ export const peerStatsAtom = atom((get) => {
   );
 
   return {
-    rpcCount: rpc.length,
+    rpcCount: rpcCount,
     validatorCount: validators.length,
     activeStake,
     delinquentStake,

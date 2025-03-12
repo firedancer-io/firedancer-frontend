@@ -396,6 +396,7 @@ export const peerRemoveSchema = z.object({
 });
 
 const peersUpdateSchema = z.object({
+  num_rpc: z.number().optional(),
   add: z.array(peerUpdateSchema).optional(),
   update: z.array(peerUpdateSchema).optional(),
   remove: z.array(peerRemoveSchema).optional(),
