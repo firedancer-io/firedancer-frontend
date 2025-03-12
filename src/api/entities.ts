@@ -208,11 +208,11 @@ export const startupProgressSchema = z.object({
 
 export const computeUnitsSchema = z.object({
   max_compute_units: z.number(),
-  start_timestamp_nanos: z.number(),
-  target_end_timestamp_nanos: z.number(),
-  compute_unit_timestamps_nanos: z.number().array(),
+  start_timestamp_nanos: z.coerce.bigint(),
+  target_end_timestamp_nanos: z.coerce.bigint(),
+  compute_unit_timestamps_nanos: z.coerce.bigint().array(),
   compute_units_deltas: z.number().array(),
-  active_bank_count: z.number().array().optional(),
+  active_bank_count: z.number().array(),
 });
 
 export const slotLevelSchema = z.enum([

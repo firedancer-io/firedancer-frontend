@@ -1,18 +1,45 @@
 import AutoSizer from "react-virtualized-auto-sizer";
 import { ComputeUnits } from "../../../../api/types";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Line,
   XAxis,
   YAxis,
-  LineChart,
   ReferenceLine,
   Legend,
   Tooltip,
+  ReferenceArea,
+  Polygon,
+  Rectangle,
+  RectangleProps,
+  LineChart,
 } from "recharts";
 import { Segment } from "recharts/types/cartesian/ReferenceLine";
-import { useMedia } from "react-use";
 import ChartTooltip from "./ChartTooltip";
+import { useEventListener } from "../../../../hooks/useEventListener";
+import { hasModKey } from "../../../../utils";
+import { useDebouncedCallback, useThrottledCallback } from "use-debounce";
+import { CategoricalChartState } from "recharts/types/chart/types";
+import clsx from "clsx";
+import styles from "./computeUnits.module.css";
+import memoize from "micro-memoize";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import {
+  fitYToDataAtom,
+  isMaxZoomRangeAtom,
+  triggerZoomAtom,
+  zoomRangeAtom,
+} from "./atoms";
+import Hammer from "hammerjs";
+import { useUnmount } from "react-use";
+import { Domain, ZoomRange } from "./types";
+import {
+  extendDomain,
+  notEqual,
+  prettyIntervals,
+  withinDomain,
+} from "./chartUtils";
+import { AxisDomain, Coordinate } from "recharts/types/util/types";
 
 interface ChartProps {
   computeUnits: ComputeUnits;
@@ -20,168 +47,165 @@ interface ChartProps {
 }
 
 interface ChartData {
-  timestamp: number;
+  timestampNanos: number;
   computeUnits: number;
   activeBankCount: number;
 }
 
-function getData(computeUnits: ComputeUnits): ChartData[] {
-  const dataMap: Map<
-    number,
-    {
-      timestamp: number;
-      computeUnits?: number;
-      activeBankCount?: number;
-    }
-  > = new Map([
-    [
-      computeUnits.start_timestamp_nanos,
-      { timestamp: computeUnits.start_timestamp_nanos, computeUnits: 0 },
-    ],
-    [
-      computeUnits.target_end_timestamp_nanos,
-      { timestamp: computeUnits.target_end_timestamp_nanos },
-    ],
-  ]);
+const minRangeNanos = 50_000;
+const wheelZoomInSpeed = 12;
+const wheelZoomOutSpeed = 20;
+const wheelScrollSpeed = 1 / 3_000;
+const smNanosThreshold = 5_000_000;
+const mdNanosThreshold = 50_000_000;
+const _segmentColors = [
+  { fill: "#1E9C50", opacity: 0.15 },
+  { fill: "#AE5511", opacity: 0.15 },
+  { fill: "#CF321D", opacity: 0.15 },
+  { fill: "#F40505", opacity: 0.15 },
+  { fill: "#F40505", opacity: 0.2 },
+];
+const getSegmentColor = (index: number) => {
+  return _segmentColors[index] ?? _segmentColors[_segmentColors.length - 1];
+};
+const cuAxisId = "computeUnits";
+const bankCountAxisId = "activeBankCount";
+const defaultCuTicks = [
+  8_000_000, 16_000_000, 24_000_000, 32_000_000, 40_000_000, 48_000_000,
+];
 
-  const computeUnitsCoors: { x: number; y: number }[] = [];
+const cusPerNs = 1 / 8;
+const tickLabelWidth = 110;
+const minTickCount = 3;
+
+function getChartData(computeUnits: ComputeUnits): ChartData[] {
+  const data: ChartData[] = [
+    { timestampNanos: 0, computeUnits: 0, activeBankCount: 0 },
+  ];
+
   for (let i = 0; i < computeUnits.compute_unit_timestamps_nanos.length; i++) {
-    computeUnitsCoors.push({
-      x: computeUnits.compute_unit_timestamps_nanos[i],
-      y:
-        computeUnits.compute_units_deltas[i] +
-        (computeUnitsCoors[i - 1]?.y ?? 0),
-    });
-  }
+    const prev = data[data.length - 1];
 
-  const dsComputeUnitsCoors = computeUnitsCoors; // simplify(computeUnitsCoors, 50_000);
-
-  for (let i = 0; i < dsComputeUnitsCoors.length; i++) {
-    const { x, y } = dsComputeUnitsCoors[i];
-    let dataPoint = dataMap.get(x);
-
-    if (!dataPoint) {
-      dataPoint = { timestamp: x };
-      dataMap.set(x, dataPoint);
-    }
-
-    dataPoint.computeUnits = y;
-  }
-
-  if (computeUnits.active_bank_count) {
-    const activeBankCoors: { x: number; y: number }[] = [];
-    for (
-      let i = 0;
-      i < computeUnits.compute_unit_timestamps_nanos.length;
-      i++
+    if (
+      prev &&
+      computeUnits.compute_unit_timestamps_nanos[i - 1] ===
+        computeUnits.compute_unit_timestamps_nanos[i]
     ) {
-      activeBankCoors.push({
-        x: computeUnits.compute_unit_timestamps_nanos[i],
-        y: computeUnits.active_bank_count[i],
+      prev.computeUnits += computeUnits.compute_units_deltas[i];
+      prev.activeBankCount = computeUnits.active_bank_count[i];
+    } else {
+      data.push({
+        timestampNanos: Number(
+          computeUnits.compute_unit_timestamps_nanos[i] -
+            computeUnits.start_timestamp_nanos
+        ),
+        computeUnits: prev.computeUnits + computeUnits.compute_units_deltas[i],
+        activeBankCount: computeUnits.active_bank_count[i],
       });
     }
-
-    const dsActiveBankCoors = activeBankCoors; // simplify(activeBankCoors);
-
-    for (let i = 0; i < dsActiveBankCoors.length; i++) {
-      const { x, y } = dsActiveBankCoors[i];
-      let dataPoint = dataMap.get(x);
-
-      if (!dataPoint) {
-        dataPoint = { timestamp: x };
-        dataMap.set(x, dataPoint);
-      }
-
-      dataPoint.activeBankCount = y;
-    }
   }
-
-  const data = [...dataMap]
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map<ChartData>(([, dataPoint], i, arr) => {
-      return {
-        timestamp:
-          (dataPoint.timestamp - computeUnits.start_timestamp_nanos) /
-          1_000_000,
-        computeUnits:
-          dataPoint.computeUnits ?? arr[i - 1]?.[1]?.computeUnits ?? 0,
-        activeBankCount:
-          dataPoint.activeBankCount ?? arr[i - 1]?.[1]?.activeBankCount ?? 0,
-      };
-    })
-    .flatMap<ChartData>((data, i, arr) => {
-      const prevBankCount = arr[i - 1]?.activeBankCount;
-      const bankChanged =
-        prevBankCount !== undefined && prevBankCount !== data.activeBankCount;
-      const prevComputeUnits = arr[i - 1]?.computeUnits;
-      const computeUnitsChanged =
-        prevComputeUnits !== undefined &&
-        prevComputeUnits !== data.computeUnits;
-
-      if (bankChanged || computeUnitsChanged) {
-        return [
-          {
-            timestamp: data.timestamp,
-            activeBankCount: prevBankCount,
-            computeUnits: prevComputeUnits,
-          },
-          data,
-        ];
-      }
-
-      return [data];
-    });
 
   return data;
 }
 
-function getXAxisTicks(computeUnits: ComputeUnits, msInterval: number) {
-  const maxMsTick = Math.max(
-    Number(
-      (computeUnits.target_end_timestamp_nanos -
-        computeUnits.start_timestamp_nanos) /
-        1_000_000
-    ),
-    computeUnits.compute_unit_timestamps_nanos.length
-      ? (computeUnits.compute_unit_timestamps_nanos[
-          computeUnits.compute_unit_timestamps_nanos.length - 1
-        ] -
-          computeUnits.start_timestamp_nanos) /
-          1_000_000
-      : 0
-  );
+const getXTicks = memoize(function getXTicks(
+  tsMinNanos: number,
+  tsMaxNanos: number,
+  intervalCount: number
+) {
+  return prettyIntervals(tsMinNanos, tsMaxNanos, intervalCount);
+});
 
-  let msTick = 0;
-  const ticks: number[] = [];
-  while (msTick + 30 < maxMsTick) {
-    ticks.push(msTick);
-    msTick += msInterval;
+function getDataDomain(
+  data: ChartData[],
+  maxComputeUnits: number,
+  zoomRange: ZoomRange | undefined
+): Domain | undefined {
+  if (!data.length) return;
+
+  const startTime = zoomRange?.[0] ?? 0;
+  const endTime = zoomRange?.[1] ?? data[data.length - 1].timestampNanos;
+
+  // Find start of the time range
+  let ix = data.findIndex((d) => d.timestampNanos >= startTime);
+  if (ix < 0) return;
+
+  // Adjust to include an additional data point at the start of the time range
+  if (ix > 0) ix -= 1;
+
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+
+  for (; ix < data.length; ix++) {
+    const pt = data[ix];
+    // if (pt.timestampNanos > endTime) break;
+
+    if (pt !== undefined) {
+      min = Math.min(min, pt.computeUnits);
+      max = Math.max(max, pt.computeUnits);
+    }
+
+    // Doing the check after the min/max means we included an additional data point past
+    // the end of the time range as well, for nicer data display when zooming
+    if (pt.timestampNanos > endTime) break;
   }
 
-  ticks.push(maxMsTick);
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return;
 
-  return ticks;
+  const domain = extendDomain([min, max], 100);
+  return [Math.max(0, domain[0]), Math.min(maxComputeUnits, domain[1])];
 }
 
-function getSegmentCus({
-  x,
+function getCuByTs({
+  ts,
   bankCount,
-  cusPerNs,
   tEnd,
   maxComputeUnits,
 }: {
-  x: number;
+  ts: number;
   bankCount: number;
-  cusPerNs: number;
   tEnd: number;
   maxComputeUnits: number;
 }) {
-  return bankCount * cusPerNs * (x - tEnd) + maxComputeUnits;
+  return Math.round(bankCount * cusPerNs * (ts - tEnd) + maxComputeUnits);
 }
 
-const cusPerNs = 1 / 8;
+function getTsByCu({
+  computeUnits,
+  bankCount,
+  tEnd,
+  maxComputeUnits,
+}: {
+  computeUnits: number;
+  bankCount: number;
+  tEnd: number;
+  maxComputeUnits: number;
+}) {
+  return Math.round(
+    (computeUnits - maxComputeUnits) / bankCount / cusPerNs + tEnd
+  );
+}
 
-function getSegments(computeUnits: ComputeUnits, bankTileCount: number) {
+function getBankCount({
+  computeUnits,
+  ts,
+  tEnd,
+  maxComputeUnits,
+}: {
+  computeUnits: number;
+  ts: number;
+  tEnd: number;
+  maxComputeUnits: number;
+}) {
+  return Math.trunc((computeUnits - maxComputeUnits) / cusPerNs / (ts - tEnd));
+}
+
+function getSegments(
+  computeUnits: ComputeUnits,
+  bankTileCount: number,
+  xDomain: Domain,
+  yDomain: Domain
+) {
   const segments: Segment[][] = [];
   const tEnd =
     0.95 *
@@ -190,154 +214,727 @@ function getSegments(computeUnits: ComputeUnits, bankTileCount: number) {
         computeUnits.start_timestamp_nanos
     );
 
-  for (let i = 1; i <= bankTileCount; i++) {
-    const xIntercept =
-      (-computeUnits.max_compute_units / i / cusPerNs + tEnd) / 1_000_000;
-    const x0Cus = getSegmentCus({
-      x: 0,
-      bankCount: i,
-      cusPerNs,
+  const getCusAtTs = (ts: number, bankCount: number) => {
+    return getCuByTs({
+      ts,
+      bankCount,
       tEnd,
       maxComputeUnits: computeUnits.max_compute_units,
     });
+  };
+
+  for (let bankCount = 1; bankCount <= bankTileCount; bankCount++) {
+    const y0Ts = getTsByCu({
+      computeUnits: yDomain[0],
+      tEnd,
+      maxComputeUnits: computeUnits.max_compute_units,
+      bankCount,
+    });
+    const t0X = withinDomain(xDomain, y0Ts) ? y0Ts : xDomain[0];
+    const t0Y = getCusAtTs(t0X, bankCount);
+
+    const y1Ts = getTsByCu({
+      computeUnits: Math.min(yDomain[1], computeUnits.max_compute_units),
+      tEnd,
+      maxComputeUnits: computeUnits.max_compute_units,
+      bankCount,
+    });
+
+    const t1X = withinDomain(xDomain, y1Ts) ? y1Ts : xDomain[1];
+    const t1Y = getCusAtTs(t1X, bankCount);
 
     segments.push([
-      x0Cus >= 0
-        ? {
-            x: 0,
-            y: x0Cus,
-          }
-        : {
-            x: xIntercept,
-            y: 0,
-          },
-      {
-        x: tEnd / 1_000_000,
-        y: getSegmentCus({
-          x: tEnd,
-          bankCount: i,
-          cusPerNs,
-          tEnd,
-          maxComputeUnits: computeUnits.max_compute_units,
-        }),
-      },
+      { x: t0X, y: t0Y },
+      { x: t1X, y: t1Y },
     ]);
   }
+
   return segments;
 }
 
-const segmentColors = ["#1E9C50", "#AE5511", "#CF321D", "#F40505"];
+function getPolygonPoints(
+  a: [Coordinate, Coordinate],
+  b: [Coordinate, Coordinate]
+) {
+  // Assuming lines never intersect
+  if (a[0].x > b[0].x || a[1].x > b[1].x) {
+    const swap = a;
+    a = b;
+    b = swap;
+  }
+
+  const resPoints = [...a];
+  const curPoint = () => resPoints[resPoints.length - 1];
+
+  if (notEqual(a[1].x, b[1].x, 1)) {
+    resPoints.push({ x: b[1].x, y: a[1].y });
+  }
+  // TODO: fix adding extra unneeded points
+  if (notEqual(curPoint().y, b[1].y, 1)) {
+    resPoints.push({ x: curPoint().x, y: b[1].y });
+  }
+
+  resPoints.push(b[1], b[0]);
+
+  if (notEqual(curPoint().x, a[0].x, 1)) {
+    resPoints.push({ x: a[0].x, y: curPoint().y });
+  }
+
+  if (notEqual(curPoint().y, a[0].y, 1)) {
+    resPoints.push({ x: curPoint().x, y: a[0].y });
+  }
+
+  return resPoints;
+}
 
 export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
-  const isWideScreen = useMedia("(min-width: 900px)");
-  const isNarrowScreen = useMedia("(max-width: 600px)");
+  const isMouseDownRef = useRef(false);
+  const [isModKeyDown, setIsModKeyDown] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
+  const [dragRange, setDragRange] = useState<[number, number]>();
 
-  const data = useMemo(() => getData(computeUnits), [computeUnits]);
+  const [zoomRange, setZoomRange] = useAtom(zoomRangeAtom);
+  const setIsMaxZoomRange = useSetAtom(isMaxZoomRangeAtom);
+  useUnmount(() => {
+    setZoomRange(undefined);
+    setIsMaxZoomRange(false);
+  });
+
+  useEffect(() => {
+    if (zoomRange === undefined) {
+      setIsMaxZoomRange(false);
+    }
+  }, [setIsMaxZoomRange, zoomRange]);
+
+  const hoverPosRef = useRef<number>();
+  const hoverTs = useRef<number>();
+  const lastPanTs = useRef<number>();
+
+  const isDragging = dragRange !== undefined;
+  const isActiveDragging = isDragging && dragRange[0] !== dragRange[1];
+  const isZoomed = zoomRange !== undefined;
+
+  const data = useMemo(() => getChartData(computeUnits), [computeUnits]);
+
+  const slotDurationNanos = Number(
+    computeUnits.target_end_timestamp_nanos - computeUnits.start_timestamp_nanos
+  );
+  const dataStartTs = 0;
+  const dataEndTs =
+    slotDurationNanos > data[data.length - 1].timestampNanos
+      ? slotDurationNanos
+      : data[data.length - 1].timestampNanos;
+  const visStartTs = zoomRange?.[0] ?? 0;
+  const visEndTs = zoomRange?.[1] ?? dataEndTs;
+  const xDomain = useMemo(
+    () => extendDomain([visStartTs, visEndTs], 1),
+    [visStartTs, visEndTs]
+  );
+
+  const [_chartWidth, _setChartWidth] = useState(0);
+  const setChartWidth = useDebouncedCallback((value: number) => {
+    _setChartWidth(value);
+  }, 500);
+
+  // For chart margin and y axis ticks
+  const chartWidth = Math.max(0, _chartWidth - 100);
+  const xLabelCount = Math.max(
+    minTickCount,
+    Math.trunc(chartWidth / tickLabelWidth)
+  );
+  const xTicks = useMemo(
+    () => getXTicks(xDomain[0], xDomain[1], xLabelCount),
+    [xDomain, xLabelCount]
+  );
+
+  const fitYToData = useAtomValue(fitYToDataAtom);
+  const cuDomain = useMemo(
+    () =>
+      fitYToData
+        ? getDataDomain(data, computeUnits.max_compute_units, zoomRange)
+        : undefined,
+    [computeUnits.max_compute_units, data, fitYToData, zoomRange]
+  );
+  const yDomain = useMemo<Domain>(
+    () => cuDomain ?? [0, computeUnits.max_compute_units + 2_000_000],
+    [computeUnits.max_compute_units, cuDomain]
+  );
+
+  const segments = useMemo(
+    () => getSegments(computeUnits, bankTileCount, xDomain, yDomain),
+    [bankTileCount, computeUnits, xDomain, yDomain]
+  );
+
   const activeBankCountTicks = new Array(bankTileCount)
     .fill(0)
     .map((_, i) => i + 1);
 
-  const XAxisTicks = getXAxisTicks(
-    computeUnits,
-    isWideScreen ? 50 : !isNarrowScreen ? 100 : 200
+  const handleKey = (e: KeyboardEvent) => setIsModKeyDown(hasModKey(e));
+  useEventListener("keydown", handleKey);
+  useEventListener("keyup", handleKey);
+
+  const containerElRef = useRef<HTMLDivElement>(null);
+  useEventListener(
+    "wheel",
+    (e: WheelEvent) => {
+      if (hasModKey(e)) {
+        e.preventDefault();
+      }
+    },
+    containerElRef.current ?? undefined
   );
-  const segments = getSegments(computeUnits, bankTileCount);
+
+  const updateZoom = (
+    newStartTs: number,
+    newEndTs: number,
+    isPanning = false
+  ) => {
+    // No data => no zoom
+    if (dataStartTs === dataEndTs) {
+      setZoomRange(undefined);
+      return;
+    }
+
+    newStartTs = Math.max(Math.trunc(newStartTs), dataStartTs);
+    newEndTs = Math.min(Math.trunc(newEndTs), dataEndTs);
+
+    if (newEndTs - newStartTs < minRangeNanos) {
+      setIsMaxZoomRange(true);
+
+      // Ensure the zoom range does not go below a minimum
+      newStartTs = Math.max(
+        Math.trunc((newStartTs + newEndTs - minRangeNanos) / 2),
+        dataStartTs
+      );
+      newEndTs = newStartTs + minRangeNanos;
+
+      if (newEndTs > dataEndTs) {
+        newEndTs = dataEndTs;
+        newStartTs = newEndTs - minRangeNanos;
+      }
+    }
+
+    if (newStartTs > dataEndTs - minRangeNanos) {
+      // Ensure the zoom range does not go beyond the data
+      const curRange = newEndTs - newStartTs;
+      newStartTs = dataEndTs - minRangeNanos;
+      newEndTs = newStartTs + curRange;
+    }
+
+    // Prevent scooting the range when zooming
+    if (!isPanning && newEndTs - newStartTs === visEndTs - visStartTs) {
+      return;
+    }
+
+    if (newStartTs !== visStartTs || newEndTs !== visEndTs) {
+      if (newStartTs === dataStartTs && newEndTs === dataEndTs) {
+        // Disable zoom when zooming out to full range
+        setZoomRange(undefined);
+      } else {
+        setZoomRange([newStartTs, newEndTs]);
+        if (!isPanning) {
+          setIsMaxZoomRange(false);
+        }
+      }
+    }
+  };
+
+  const updateDrag = useThrottledCallback(
+    (dragEnd: number) =>
+      setDragRange(([dragStart] = [dragEnd, dragEnd]) => [dragStart, dragEnd]),
+    50
+  );
+
+  const updatePan = (panAmount: number) => {
+    const range = visEndTs - visStartTs;
+    const newStartTs = visStartTs + panAmount;
+    const newEndTs = visEndTs + panAmount;
+
+    if (newStartTs < dataStartTs) {
+      updateZoom(dataStartTs, dataStartTs + range, true);
+    } else if (newEndTs > dataEndTs) {
+      updateZoom(dataEndTs - range, dataEndTs, true);
+    } else {
+      updateZoom(newStartTs, newEndTs, true);
+    }
+  };
+
+  const updatePanByDrag = useThrottledCallback((panPosition: number) => {
+    if (isZoomed && chartWidth && lastPanTs.current !== undefined) {
+      const range = visEndTs - visStartTs;
+      const relativePanAmt = (lastPanTs.current - panPosition) / chartWidth;
+      updatePan(relativePanAmt * range);
+      lastPanTs.current = panPosition;
+    }
+  }, 50);
+
+  const onMouseDown = (
+    chartState?: CategoricalChartState,
+    evt?: React.MouseEvent
+  ) => {
+    if (chartState?.activeLabel && evt?.button === 0) {
+      isMouseDownRef.current = true;
+
+      const currentTs = +chartState.activeLabel;
+
+      if (hasModKey(evt)) {
+        setIsPanning(true);
+        lastPanTs.current = chartState.chartX;
+      } else {
+        setDragRange([currentTs, currentTs]);
+      }
+    }
+  };
+
+  const onMouseUp = (chartState?: CategoricalChartState) => {
+    if (!isMouseDownRef.current) return;
+
+    isMouseDownRef.current = false;
+    setIsPanning(false);
+    setDragRange(undefined);
+
+    if (isPanning) return;
+    if (isActiveDragging) {
+      // Handle drag-to-zoom
+      const [dragStart, dragEnd] = dragRange;
+      updateZoom(Math.min(dragStart, dragEnd), Math.max(dragStart, dragEnd));
+    }
+  };
+
+  const onContainerMouseMove = ({ clientX }: React.MouseEvent) => {
+    hoverPosRef.current = clientX;
+  };
+
+  const onContainerMouseOut = ({ clientX }: React.MouseEvent) => {
+    hoverPosRef.current = undefined;
+  };
+
+  const onMouseMove = (chartState?: CategoricalChartState) => {
+    hoverTs.current = undefined;
+
+    if (chartState?.activeLabel) {
+      const currentTs = +chartState.activeLabel;
+      hoverTs.current = currentTs;
+
+      if (isDragging) {
+        updateDrag(currentTs);
+      } else if (isZoomed && isPanning && chartState.chartX !== undefined) {
+        // Handle drag-to-pan
+        updatePanByDrag(chartState.chartX);
+      }
+    }
+  };
+
+  const onWheel = (e: React.WheelEvent) => {
+    if (!hasModKey(e)) return;
+
+    const { deltaX, deltaY, shiftKey, currentTarget, target, detail } = e;
+
+    // Using detail to differentiate dispatched events
+    if (detail !== -1) {
+      try {
+        let tgt = target as HTMLElement | null;
+        while (tgt && !tgt.classList.contains("recharts-surface"))
+          tgt = tgt.parentElement;
+        if (
+          !tgt ||
+          tgt.parentElement?.classList.contains("recharts-legend-item")
+        )
+          return;
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!isMouseDownRef.current && (deltaY || deltaX)) {
+      const range = visEndTs - visStartTs;
+
+      if (shiftKey || deltaX) {
+        updatePan(range * (deltaX || deltaY) * wheelScrollSpeed);
+      }
+
+      if (!shiftKey && deltaY) {
+        const adjustFactor =
+          deltaY < 0
+            ? (wheelZoomInSpeed * deltaY) / 1e4
+            : (wheelZoomOutSpeed * deltaY) / 1e4;
+        const zoomAmt = range * -adjustFactor;
+
+        let hoverRelPos = 0.5;
+        if (hoverTs.current !== undefined) {
+          // Use hovered data point time label as zoom focus
+          hoverRelPos = (hoverTs.current - visStartTs) / range;
+        } else if (hoverPosRef.current !== undefined) {
+          // Use chart container hover position as a rough zoom focus
+          if (hoverPosRef.current > currentTarget.clientWidth / 2) {
+            hoverRelPos = (dataEndTs - visStartTs) / range;
+          } else {
+            hoverRelPos = 0;
+          }
+        }
+
+        // Adjust zoom focus for more pleasant behavior
+        if (deltaY > 0) {
+          // Zooming out, ensure a minimum of visual range is extended at the chart edges
+          hoverRelPos = Math.max(0.1, Math.min(0.9, hoverRelPos));
+        } else {
+          // Zooming in, bias zoom target towards the center of the chart
+          hoverRelPos = (hoverRelPos - 0.5) * 1.1 + 0.5;
+        }
+
+        updateZoom(
+          visStartTs + zoomAmt * hoverRelPos,
+          visEndTs - zoomAmt * (1 - hoverRelPos)
+        );
+      }
+    }
+  };
+
+  const setTriggerZoom = useSetAtom(triggerZoomAtom);
+  useEffect(() => {
+    setTriggerZoom((action) => {
+      switch (action) {
+        case "in":
+          containerElRef.current?.dispatchEvent(
+            new WheelEvent("wheel", {
+              deltaY: -350,
+              ctrlKey: true,
+              bubbles: true,
+              detail: -1,
+            })
+          );
+          return;
+        case "out":
+          containerElRef.current?.dispatchEvent(
+            new WheelEvent("wheel", {
+              deltaY: 350,
+              ctrlKey: true,
+              bubbles: true,
+              detail: -1,
+            })
+          );
+          return;
+        case "reset":
+          setZoomRange(undefined);
+          return;
+      }
+    });
+  }, [setTriggerZoom, setZoomRange]);
+
+  useEffect(() => {
+    if (!containerElRef.current) return;
+
+    const hammer = new Hammer(containerElRef.current);
+
+    hammer.add(
+      new Hammer.Pan({ event: "pan", direction: Hammer.DIRECTION_HORIZONTAL })
+    );
+
+    hammer.on("panleft panright", (e) => {
+      if (!e.pointerType.includes("touch")) return;
+
+      containerElRef.current?.dispatchEvent(
+        new WheelEvent("wheel", {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          deltaX: -(e.changedPointers[0]?.["movementX"] ?? 0) * 10,
+          shiftKey: true,
+          bubbles: true,
+          detail: -1,
+        })
+      );
+    });
+
+    hammer.get("pinch").set({ enable: true, pointers: 2 });
+    hammer.on("pinchout", (e) => {
+      if (!e.pointerType.includes("touch")) return;
+
+      containerElRef.current?.dispatchEvent(
+        new WheelEvent("wheel", {
+          deltaY: -e.scale * 100,
+          ctrlKey: true,
+          bubbles: true,
+          detail: -1,
+        })
+      );
+    });
+
+    hammer.on("pinchin", (e) => {
+      if (!e.pointerType.includes("touch")) return;
+
+      containerElRef.current?.dispatchEvent(
+        new WheelEvent("wheel", {
+          deltaY: e.scale * 100,
+          ctrlKey: true,
+          bubbles: true,
+          detail: -1,
+        })
+      );
+    });
+
+    return () => {
+      hammer.destroy();
+    };
+  }, []);
+
+  const useActiveBanksLargeStroke = xDomain[1] - xDomain[0] < smNanosThreshold;
+  const useActiveBanksMdStroke =
+    !useActiveBanksLargeStroke && xDomain[1] - xDomain[0] < mdNanosThreshold;
+
+  const tEnd =
+    0.95 *
+    Number(
+      computeUnits.target_end_timestamp_nanos -
+        computeUnits.start_timestamp_nanos
+    );
+
+  const prevPolyPoints = useRef<[Coordinate, Coordinate][]>([]);
+  prevPolyPoints.current = [];
+
+  const graphRectProps = useRef<RectangleProps>();
 
   return (
-    <AutoSizer>
-      {({ height, width }) => {
-        return (
-          <LineChart
-            width={width}
-            height={height}
-            data={data}
-            margin={{
-              top: 10,
-            }}
-          >
-            <Line
-              yAxisId="activeBankCount"
-              type="monotone"
-              dataKey="activeBankCount"
-              stroke="#BA7B1D"
-              strokeWidth={0.3}
-              dot={false}
-              name="banks active"
-              isAnimationActive={false}
-            />
-            {segments.map((segment, i) => {
-              return (
-                <ReferenceLine
-                  key={i}
-                  segment={segment}
-                  stroke={
-                    segmentColors[i] ?? segmentColors[segmentColors.length - 1]
-                  }
-                  strokeDasharray="3 3"
-                  yAxisId="computeUnits"
-                  strokeWidth={1}
-                />
-              );
-            })}
-            <ReferenceLine
-              y={computeUnits.max_compute_units}
-              stroke="#2a7edf"
-              strokeDasharray="3 3"
-              yAxisId="computeUnits"
-              strokeWidth={0.4}
-            />
-
-            <Line
-              yAxisId="computeUnits"
-              type="monotone"
-              dataKey="computeUnits"
-              stroke="#1288F6"
-              strokeWidth={1}
-              dot={false}
-              name="CUs"
-              isAnimationActive={false}
-            />
-            <XAxis
-              dataKey="timestamp"
-              scale="time"
-              type="number"
-              interval={0}
-              ticks={XAxisTicks}
-              tickFormatter={(tick) =>
-                typeof tick === "number" ? `${tick}ms` : `${tick}`
-              }
-            />
-            <YAxis
-              yAxisId="computeUnits"
-              scale="linear"
-              type="number"
-              domain={[0, computeUnits.max_compute_units + 2_000_000]}
-              ticks={[
-                8_000_000, 16_000_000, 24_000_000, 32_000_000, 40_000_000,
-                48_000_000,
-              ]}
-              minTickGap={0}
-              tickFormatter={(tick) => {
-                if (typeof tick !== "number") return "";
-
-                if (tick !== 24_000_000 && tick !== 48_000_000) return "";
-                return `${tick / 1_000_000}M`;
+    <div
+      className={clsx(styles.chartWrapper, {
+        [styles.panning]: isPanning && isZoomed,
+        [styles.nopan]: isPanning && !isZoomed,
+        [styles.zooming]: isActiveDragging,
+        [styles.modKeyDown]: isModKeyDown && isZoomed,
+      })}
+      ref={containerElRef}
+      onWheel={onWheel}
+      onMouseMove={onContainerMouseMove}
+      onMouseOut={onContainerMouseOut}
+      onDoubleClick={() => setZoomRange(undefined)}
+    >
+      <AutoSizer onResize={(size) => setChartWidth(size.width)}>
+        {({ height, width }) => {
+          return (
+            <LineChart
+              width={width}
+              height={height}
+              data={data}
+              margin={{
+                top: 10,
+                left: 10,
               }}
-            />
-            <YAxis
-              yAxisId="activeBankCount"
-              scale="linear"
-              type="number"
-              domain={[0, (dataMax: number) => dataMax + 1]}
-              ticks={activeBankCountTicks}
-              orientation="right"
-              name="active bank tiles"
-            />
-            <Tooltip content={<ChartTooltip />} isAnimationActive={false} />
-            <Legend />
-          </LineChart>
-        );
-      }}
-    </AutoSizer>
+              onMouseDown={onMouseDown}
+              onMouseMove={onMouseMove}
+              onMouseUp={onMouseUp}
+            >
+              <Line
+                yAxisId={bankCountAxisId}
+                type="stepAfter"
+                dataKey="activeBankCount"
+                stroke="#BA7B1D"
+                strokeWidth={
+                  useActiveBanksLargeStroke
+                    ? 0.9
+                    : useActiveBanksMdStroke
+                      ? 0.6
+                      : 0.2
+                }
+                dot={false}
+                name="banks active"
+                isAnimationActive={false}
+              />
+              {segments.map((segment, i) => {
+                return (
+                  <ReferenceLine
+                    key={`line-${i}`}
+                    segment={segment}
+                    stroke={getSegmentColor(i).fill}
+                    strokeDasharray="3 3"
+                    yAxisId={cuAxisId}
+                    strokeWidth={1}
+                  />
+                );
+              })}
+              <ReferenceArea
+                yAxisId={cuAxisId}
+                x1={xDomain[0]}
+                x2={xDomain[1]}
+                y1={yDomain[0]}
+                y2={Math.min(yDomain[1], computeUnits.max_compute_units)}
+                shape={(props) => {
+                  graphRectProps.current = props as RectangleProps;
+                  return <></>;
+                }}
+              />
+              {segments.map((segment, i) => {
+                return (
+                  <ReferenceLine
+                    key={`area-${i}`}
+                    segment={segment}
+                    yAxisId={cuAxisId}
+                    shape={(props: {
+                      x1: number;
+                      y1: number;
+                      x2: number;
+                      y2: number;
+                    }) => {
+                      const points: [Coordinate, Coordinate] = [
+                        { x: props.x1, y: props.y1 },
+                        { x: props.x2, y: props.y2 },
+                      ];
+                      prevPolyPoints.current[i] = [...points];
+
+                      const leftAxisLinePoints = [
+                        {
+                          x: graphRectProps.current?.x ?? 0,
+                          y:
+                            (graphRectProps.current?.y ?? 0) +
+                            (graphRectProps.current?.height ?? 0),
+                        },
+                        {
+                          x: graphRectProps.current?.x ?? 0,
+                          y: graphRectProps.current?.y ?? 0,
+                        },
+                      ];
+
+                      return (
+                        <Polygon
+                          points={getPolygonPoints(
+                            prevPolyPoints.current[i - 1] ?? leftAxisLinePoints,
+                            points
+                          )}
+                          fillOpacity={getSegmentColor(i).opacity}
+                          fill={getSegmentColor(i).fill}
+                          className={styles.bankRefArea}
+                        />
+                      );
+                    }}
+                  />
+                );
+              })}
+
+              <ReferenceLine
+                x={xDomain[0]}
+                yAxisId={cuAxisId}
+                shape={() => {
+                  if (!prevPolyPoints.current.length) {
+                    const bankCount = Math.min(
+                      bankTileCount,
+                      Math.abs(
+                        getBankCount({
+                          computeUnits: yDomain[1] - yDomain[0] + yDomain[0],
+                          ts: xDomain[1] - xDomain[0] + xDomain[0],
+                          tEnd,
+                          maxComputeUnits: computeUnits.max_compute_units,
+                        })
+                      )
+                    );
+
+                    return (
+                      <Rectangle
+                        {...graphRectProps.current}
+                        fill={getSegmentColor(bankCount).fill}
+                        fillOpacity={getSegmentColor(bankCount).opacity}
+                      />
+                    );
+                  }
+
+                  const rightAxisLinePoints: [Coordinate, Coordinate] = [
+                    {
+                      x:
+                        (graphRectProps.current?.x ?? 0) +
+                        (graphRectProps.current?.width ?? 0),
+                      y:
+                        (graphRectProps.current?.y ?? 0) +
+                        (graphRectProps.current?.height ?? 0),
+                    },
+                    {
+                      x:
+                        (graphRectProps.current?.x ?? 0) +
+                        (graphRectProps.current?.width ?? 0),
+                      y: graphRectProps.current?.y ?? 0,
+                    },
+                  ];
+
+                  return (
+                    <Polygon
+                      points={getPolygonPoints(
+                        prevPolyPoints.current[
+                          prevPolyPoints.current.length - 1
+                        ],
+                        rightAxisLinePoints
+                      )}
+                      fillOpacity={
+                        getSegmentColor(prevPolyPoints.current.length).opacity
+                      }
+                      className={styles.bankRefArea}
+                      fill={getSegmentColor(prevPolyPoints.current.length).fill}
+                    />
+                  );
+                }}
+              />
+              <ReferenceLine
+                y={computeUnits.max_compute_units}
+                stroke="#2a7edf"
+                strokeDasharray="3 3"
+                yAxisId={cuAxisId}
+                strokeWidth={0.4}
+              />
+              <Line
+                yAxisId={cuAxisId}
+                type="stepAfter"
+                dataKey="computeUnits"
+                stroke="#1288F6"
+                strokeWidth={1.3}
+                dot={false}
+                name="CUs"
+                isAnimationActive={false}
+              />
+              <XAxis
+                dataKey="timestampNanos"
+                scale="time"
+                type="number"
+                interval={0}
+                ticks={xTicks}
+                tickFormatter={(tick) =>
+                  typeof tick === "number" ? `${tick / 1_000_000}ms` : `${tick}`
+                }
+                domain={xDomain as AxisDomain}
+                allowDataOverflow
+              />
+              <YAxis
+                yAxisId={cuAxisId}
+                scale="linear"
+                type="number"
+                domain={yDomain as AxisDomain}
+                ticks={cuDomain ? undefined : defaultCuTicks}
+                allowDataOverflow={!!cuDomain}
+                minTickGap={0}
+                tickFormatter={(tick) => {
+                  if (typeof tick !== "number") return "";
+
+                  return `${tick / 1_000_000}M`;
+                }}
+              />
+              <YAxis
+                yAxisId={bankCountAxisId}
+                scale="linear"
+                type="number"
+                domain={[0, (dataMax: number) => dataMax + 1]}
+                ticks={activeBankCountTicks}
+                orientation="right"
+                name="active bank tiles"
+              />
+
+              {isActiveDragging && (
+                <ReferenceArea
+                  x1={dragRange[0]}
+                  x2={dragRange[1]}
+                  opacity={0.5}
+                  ifOverflow="hidden"
+                  yAxisId="computeUnits"
+                />
+              )}
+              <Tooltip content={<ChartTooltip />} isAnimationActive={false} />
+              <Legend />
+            </LineChart>
+          );
+        }}
+      </AutoSizer>
+    </div>
   );
 }

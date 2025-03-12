@@ -94,3 +94,13 @@ export function getFmtStake(stake?: number) {
 
   return `${value}\xa0SOL`;
 }
+
+/** Dumb workaround for Array.isArray type checking with eslint for readonly arrays */
+export const isArray = <T>(arg: unknown): arg is ReadonlyArray<T> =>
+  Array.isArray(arg);
+
+export const hasModKey = ({
+  shiftKey,
+  ctrlKey,
+  metaKey,
+}: KeyboardEvent | React.MouseEvent | WheelEvent) => shiftKey || ctrlKey || metaKey;

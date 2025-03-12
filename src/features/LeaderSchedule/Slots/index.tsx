@@ -70,7 +70,6 @@ export default function Slots() {
     const hammer = new Hammer(ref.current);
 
     hammer.get("pan").set({ direction: Hammer.DIRECTION_VERTICAL });
-    hammer.get("swipe").set({ direction: Hammer.DIRECTION_VERTICAL });
 
     hammer.on("panup pandown", (e) => {
       if (!e.pointerType.includes("touch")) return;
