@@ -39,6 +39,7 @@ import {
   deleteSlotStatusBoundsAtom,
   deleteSlotResponseBoundsAtom,
   skipRateAtom,
+  rpcCountAtom,
 } from "../atoms";
 import {
   EstimatedSlotDuration,
@@ -128,6 +129,7 @@ export function useSetAtomWsData() {
   const addPeers = useSetAtom(addPeersAtom);
   const updatePeers = useSetAtom(updatePeersAtom);
   const removePeers = useSetAtom(removePeersAtom);
+  const setRpcCount = useSetAtom(rpcCountAtom)
 
   const setBlockEngine = useSetAtom(blockEngineAtom);
 
@@ -247,10 +249,19 @@ export function useSetAtomWsData() {
             break;
         }
       } else if (topic === "peers") {
-        const { value } = peersSchema.parse(msg);
-        addPeers(value.add);
-        updatePeers(value.update);
-        removePeers(value.remove);
+        const { key, value } = peersSchema.parse(msg);
+        switch (key) {
+          case "update": {
+            addPeers(value.add);
+            updatePeers(value.update);
+            removePeers(value.remove);
+            break;
+          }
+          case "rpc": {
+            setRpcCount(value.rpc_count);
+            break;
+          }
+        }
       } else if (topic === "slot") {
         const { key, value } = slotSchema.parse(msg);
         switch (key) {
