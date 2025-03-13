@@ -23,7 +23,7 @@ export function PastSlotCard({ slot }: PastSlotCardProps) {
 
   const query = useSlotQueryPublish(slot);
   const query1 = useSlotQueryPublish(slot + 1);
-  const query2 = useSlotQueryPublish(slot + 3);
+  const query2 = useSlotQueryPublish(slot + 2);
   const query3 = useSlotQueryPublish(slot + 3);
   const isSkipped =
     query.publish?.skipped ||
