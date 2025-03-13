@@ -13,7 +13,7 @@ import {
   PeerRemove,
   SkipRate,
   SlotLevel,
-  SlotReponse,
+  SlotResponse,
 } from "./api/types";
 import { merge } from "lodash";
 import { getLeaderSlots, getStake } from "./utils";
@@ -153,34 +153,26 @@ export const deleteSlotStatusBoundsAtom = atom(null, (get, set) => {
   }
 });
 
-const hasQueryedAtom = atomWithImmer<Record<number, boolean>>({});
+const slotResponseAtom = atomWithImmer<Record<number, SlotResponse>>({});
 
-export const getHasQueryedAtom = (slot?: number) =>
-  atom((get) => (slot !== undefined ? !!get(hasQueryedAtom)[slot] : false));
-
-export const setHasQueryedAtom = atom(null, (_, set, slot: number) => {
-  set(hasQueryedAtom, (draft) => {
-    draft[slot] = true;
-  });
-});
-
-export const deleteHasQueryedAtom = atom(null, (get, set, slot: number) => {
-  set(hasQueryedAtom, (draft) => {
-    delete draft[slot];
-  });
-});
-
-const slotResponseAtom = atomWithImmer<Record<number, SlotReponse>>({});
+export const getSlotPublishAtom = (slot?: number) =>
+  atom((get) =>
+    slot !== undefined ? get(slotResponseAtom)[slot]?.publish : undefined
+  );
 
 export const getSlotResponseAtom = (slot?: number) =>
   atom((get) => (slot !== undefined ? get(slotResponseAtom)[slot] : undefined));
 
 export const setSlotResponseAtom = atom(
   null,
-  (_, set, response: SlotReponse) => {
+  (_, set, response: SlotResponse) => {
     const slot = response.publish.slot;
     set(slotResponseAtom, (draft) => {
+      response.compute_units ??= draft[slot]?.compute_units;
+      response.tile_primary_metric ??= draft[slot]?.tile_primary_metric;
       response.tile_timers ??= draft[slot]?.tile_timers;
+      response.waterfall ??= draft[slot]?.waterfall;
+
       draft[slot] = response;
     });
   }
@@ -215,7 +207,7 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
           (numberVal < cacheSlotMin || numberVal > cacheSlotMax)
         ) {
           delete draft[numberVal];
-          set(deleteHasQueryedAtom, numberVal);
+          // set(deleteHasQueryedAtom, numberVal);
         }
       }
     });
@@ -224,10 +216,10 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
 
 export const firstProcessedSlotAtom = atom((get) => {
   const startupProgress = get(startupProgressAtom);
-  if(!(startupProgress?.downloading_incremental_snapshot_slot)) return;
+  if (!startupProgress?.downloading_incremental_snapshot_slot) return;
 
-  return startupProgress.downloading_incremental_snapshot_slot + 1; 
-})
+  return startupProgress.downloading_incremental_snapshot_slot + 1;
+});
 
 const _currentSlotAtom = atom<number | undefined>(undefined);
 export const currentSlotAtom = atom(

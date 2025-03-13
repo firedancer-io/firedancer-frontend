@@ -1,4 +1,4 @@
-import memoized from "micro-memoize";
+import memoize from "micro-memoize";
 
 export function getNumOfDecimals(a: number) {
   if (!isFinite(a) || a < 1e-32) return 0;
@@ -19,7 +19,7 @@ export interface NumberFormatOptions {
 export const numberFormat = ({ decimals = 4, significantDigits, trailingZeroes = true }: NumberFormatOptions = {}): Intl.NumberFormat =>
   nfMemo(decimals, significantDigits, trailingZeroes);
 
-const nfMemo = memoized(
+const nfMemo = memoize(
   (decimals?: number, significantDigits?: number, trailingZeroes?: boolean) => {
     return new Intl.NumberFormat(undefined, {
       minimumFractionDigits: !trailingZeroes ? 0 : decimals,
@@ -29,7 +29,7 @@ const nfMemo = memoized(
       maximumSignificantDigits: significantDigits,
     });
   },
-  { maxAge: Infinity }
+  { maxSize: 100 }
 );
 
 export type FormatNumberOptions =

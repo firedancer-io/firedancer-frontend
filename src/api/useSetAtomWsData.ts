@@ -44,6 +44,7 @@ import {
   EstimatedTps,
   LiveTilePrimaryMetric,
   LiveTxnWaterfall,
+  SlotResponse,
 } from "./types";
 import { useThrottledCallback } from "use-debounce";
 import { useInterval } from "react-use";
@@ -127,6 +128,29 @@ export function useSetAtomWsData() {
   const removePeers = useSetAtom(removePeersAtom);
 
   const setBlockEngine = useSetAtom(blockEngineAtom);
+
+  const handleSlotUpdate = (value: SlotResponse) => {
+    setSlotStatus(value.publish.slot, value.publish.level);
+
+    if (value.publish.mine) {
+      if (value.publish.skipped) {
+        setSkippedSlots((prev) =>
+          [
+            ...(prev ?? []).filter((slot) => slot !== value.publish.slot),
+            value.publish.slot,
+          ].sort()
+        );
+      } else {
+        setSkippedSlots((prev) => {
+          if (prev?.some((slot) => slot === value.publish.slot)) {
+            return prev?.filter((slot) => slot !== value.publish.slot);
+          } else {
+            return prev;
+          }
+        });
+      }
+    }
+  };
 
   useServerMessages((msg) => {
     try {
@@ -231,31 +255,8 @@ export function useSetAtomWsData() {
           case "update":
           case "query": {
             if (value) {
-              setSlotStatus(value.publish.slot, value.publish.level);
               setSlotResponse(value);
-
-              if (value.publish.mine) {
-                if (value.publish.skipped) {
-                  setSkippedSlots((prev) =>
-                    [
-                      ...(prev ?? []).filter(
-                        (slot) => slot !== value.publish.slot
-                      ),
-                      value.publish.slot,
-                    ].sort()
-                  );
-                } else {
-                  setSkippedSlots((prev) => {
-                    if (prev?.some((slot) => slot === value.publish.slot)) {
-                      return prev?.filter(
-                        (slot) => slot !== value.publish.slot
-                      );
-                    } else {
-                      return prev;
-                    }
-                  });
-                }
-              }
+              handleSlotUpdate(value);
             }
             break;
           }

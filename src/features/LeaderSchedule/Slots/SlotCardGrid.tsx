@@ -9,7 +9,7 @@ import {
 } from "../../../atoms";
 import { useEffect, useMemo, useRef, useState } from "react";
 import "react-circular-progressbar/dist/styles.css";
-import useSlotQuery from "../../../hooks/useSlotQuery";
+import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import { SlotPublish } from "../../../api/types";
 import processedIcon from "../../../assets/checkOutline.svg";
 import optimisticalyConfirmedIcon from "../../../assets/checkFill.svg";
@@ -132,7 +132,7 @@ function SlotText({
   isCurrent,
   isWideScreen,
 }: SlotTextProps & { isWideScreen: boolean }) {
-  const response = useSlotQuery(slot);
+  const queryPublish = useSlotQueryPublish(slot);
 
   return (
     <Flex
@@ -149,7 +149,7 @@ function SlotText({
         <Text>&nbsp;</Text>
       )}
       <StatusIcon slot={slot} isCurrent={isCurrent} />
-      {response.slotResponse?.publish.skipped ? (
+      {queryPublish.publish?.skipped ? (
         <Tooltip content="Slot was skipped">
           <img src={skippedIcon} alt="skipped" className={styles.icon} />
         </Tooltip>
@@ -181,7 +181,7 @@ interface SlotCardRowProps {
 function SlotCardRow({ slot, active }: SlotCardRowProps) {
   const firstProcessedSlot = useAtomValue(firstProcessedSlotAtom);
   const currentSlot = useAtomValue(currentSlotAtom);
-  const response = useSlotQuery(slot);
+  const queryPublish = useSlotQueryPublish(slot);
 
   const [values, setValues] = useState<RowValues | undefined>();
 
@@ -239,10 +239,10 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
       };
     };
 
-    if (response.slotResponse?.publish) {
-      setValues(getValues(response.slotResponse.publish));
+    if (queryPublish.publish) {
+      setValues(getValues(queryPublish.publish));
     }
-  }, [response.slotResponse?.publish, slot]);
+  }, [queryPublish.publish, slot]);
 
   const isFuture = slot > (currentSlot ?? Infinity);
   const isCurrent = slot === currentSlot;
@@ -250,7 +250,7 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
 
   const getText = (text?: string | number, suffix?: string) => {
     if (isFuture || isCurrent || isSnapshot) return "-";
-    if (!values && !response.hasWaitedForData) return "Loading...";
+    if (!values && !queryPublish.hasWaitedForData) return "Loading...";
     if (!values) return "-";
 
     if (typeof text === "number") text = Math.round(text);

@@ -1,66 +1,86 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import {
-  getHasQueryedAtom,
   getIsFutureSlotAtom,
+  getSlotPublishAtom,
   getSlotResponseAtom,
-  setHasQueryedAtom,
 } from "../atoms";
 import { useMount } from "react-use";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWebSocketSend } from "../api/ws/utils";
+import memoize from "micro-memoize";
+import { SendMessage } from "../api/ws/types";
+import { throttle } from "lodash";
 
-export default function useSlotQuery(slot?: number, needsTimers?: boolean) {
+const getSendQuery = memoize(
+  (wsSend: SendMessage, slot: number, isDetailed: boolean) => {
+    return throttle(
+      () => {
+        wsSend({
+          topic: "slot",
+          key: isDetailed ? "query_detailed" : "query",
+          id: 1,
+          params: {
+            slot: slot,
+          },
+        });
+      },
+      5_000,
+      { trailing: false }
+    );
+  },
+  { maxSize: 250 }
+);
+
+function useSlotQuery(
+  slot: number | undefined,
+  isDetailed: boolean,
+  skipQuery: boolean
+) {
   const wsSend = useWebSocketSend();
 
-  const slotResponse = useAtomValue(
-    useMemo(() => getSlotResponseAtom(slot), [slot])
-  );
-  const hasQueryed = useAtomValue(
-    useMemo(() => getHasQueryedAtom(slot), [slot])
-  );
-  const setHasQueryed = useSetAtom(setHasQueryedAtom);
   const isFutureSlot = useAtomValue(
     useMemo(() => getIsFutureSlotAtom(slot), [slot])
   );
 
   const query = useCallback(() => {
-    if (hasQueryed) return;
     if (!slot) return;
-
-    const stillNeedsTimer = needsTimers && !slotResponse?.tile_timers;
-    if (slotResponse && !stillNeedsTimer) return;
     if (isFutureSlot) return;
+    if (skipQuery) return;
 
-    wsSend({
-      topic: "slot",
-      key: "query",
-      id: 1,
-      params: {
-        slot: slot,
-      },
-    });
-    setHasQueryed(slot);
-  }, [
-    hasQueryed,
-    isFutureSlot,
-    needsTimers,
-    setHasQueryed,
-    slot,
-    slotResponse,
-    wsSend,
-  ]);
+    const sendQuery = getSendQuery(wsSend, slot, isDetailed);
+    sendQuery();
+  }, [isDetailed, isFutureSlot, slot, skipQuery, wsSend]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(query, [slot]);
-
-  // useInterval(query, 5_000);
 
   const [waitingForData, setWaitingForData] = useState(true);
   useMount(() => {
     setTimeout(() => setWaitingForData(false), 3_000);
   });
 
-  const hasWaitedForData = hasQueryed && !waitingForData;
+  const hasWaitedForData = !waitingForData;
 
-  return { slotResponse, hasWaitedForData };
+  return { hasWaitedForData };
+}
+
+export function useSlotQueryPublish(slot?: number) {
+  const publish = useAtomValue(useMemo(() => getSlotPublishAtom(slot), [slot]));
+
+  const skipQuery = !!publish;
+
+  const { hasWaitedForData } = useSlotQuery(slot, false, skipQuery);
+
+  return { publish, hasWaitedForData };
+}
+
+export function useSlotQueryResponse(slot?: number) {
+  const response = useAtomValue(
+    useMemo(() => getSlotResponseAtom(slot), [slot])
+  );
+  const skipQuery = !!response?.compute_units;
+
+  const { hasWaitedForData } = useSlotQuery(slot, true, skipQuery);
+
+  return { response, hasWaitedForData };
 }

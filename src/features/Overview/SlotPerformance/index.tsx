@@ -31,7 +31,7 @@ export default function SlotPerformance() {
 
 function SankeyContainer() {
   return (
-    <div className={styles.sankeyContainer} >
+    <div className={styles.sankeyContainer}>
       <ResetLive />
       <SankeyControls />
       <SlotSankey />

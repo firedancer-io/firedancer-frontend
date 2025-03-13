@@ -14,13 +14,13 @@ import { useAtomValue } from "jotai";
 import PeerIcon from "../../../components/PeerIcon";
 import { identityKeyAtom } from "../../../api/atoms";
 import styles from "./cardValidatorSummary.module.css";
-import useSlotQuery from "../../../hooks/useSlotQuery";
 import { useHarmonicIntervalFn, useMedia, useUpdate } from "react-use";
 import { Peer } from "../../../api/types";
 import { peerStatsAtom } from "../../../atoms";
 import { formatNumber } from "../../../numUtils";
 import clsx from "clsx";
 import ArrowDropdown from "../../../components/ArrowDropdown";
+import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 
 interface CardValidatorSummaryProps {
   slot: number;
@@ -191,18 +191,18 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
 }
 
 function TimeAgo({ slot, showTime }: CardValidatorSummaryProps) {
-  const query = useSlotQuery(slot);
+  const query = useSlotQueryPublish(slot);
   const update = useUpdate();
 
   useHarmonicIntervalFn(update, 1_000);
 
   const slotDateTime = useMemo(() => {
-    if (!query.slotResponse?.publish.completed_time_nanos) return;
+    if (!query.publish?.completed_time_nanos) return;
 
     return DateTime.fromMillis(
-      Math.trunc(query.slotResponse.publish.completed_time_nanos / 1_000_000)
+      Math.trunc(query.publish?.completed_time_nanos / 1_000_000)
     );
-  }, [query.slotResponse]);
+  }, [query.publish]);
 
   const getDiffDuration = () => {
     if (!showTime || !slotDateTime) return;

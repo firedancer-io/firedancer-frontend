@@ -9,10 +9,10 @@ import {
   selectedSlotAtom,
 } from "../atoms";
 import { TxnWaterfall, TxnWaterfallOut } from "../../../../api/types";
-import useSlotQuery from "../../../../hooks/useSlotQuery";
 import { Flex, Spinner, Text } from "@radix-ui/themes";
 import { SlotNode, slotNodes } from "./consts";
 import { sum } from "lodash";
+import { useSlotQueryResponse } from "../../../../hooks/useSlotQuery";
 
 function getGetValue({
   displayType,
@@ -126,7 +126,10 @@ function getLinks(
     getResolvOut(waterfall.out, resolvRetainedOut);
 
   const bankCount =
-    waterfall.in.pack_retained + waterfall.in.pack_cranked + packCount - getPackOut(waterfall.out);
+    waterfall.in.pack_retained +
+    waterfall.in.pack_cranked +
+    packCount -
+    getPackOut(waterfall.out);
   const blockCount = bankCount - waterfall.out.bank_invalid;
 
   const blockFailure = failedTransactions ?? waterfall.out.block_fail;
@@ -339,19 +342,19 @@ function SlotSankey({ slot }: { slot?: number }) {
   const displayType = useAtomValue(sankeyDisplayTypeAtom);
   const liveWaterfall = useAtomValue(liveWaterfallAtom);
 
-  const query = useSlotQuery(slot);
+  const query = useSlotQueryResponse(slot);
 
   const data = useMemo(() => {
-    const waterfall = liveWaterfall ?? query.slotResponse?.waterfall;
+    const waterfall = liveWaterfall ?? query.response?.waterfall;
 
     if (!waterfall) return;
 
     const links = getLinks(
       waterfall,
       displayType,
-      query.slotResponse?.publish.duration_nanos,
-      query.slotResponse?.publish.transactions,
-      query.slotResponse?.publish.failed_transactions
+      query.response?.publish.duration_nanos,
+      query.response?.publish.transactions,
+      query.response?.publish.failed_transactions
     );
 
     const linkNodes = links.flatMap((l) => [l.source, l.target]);
@@ -360,7 +363,7 @@ function SlotSankey({ slot }: { slot?: number }) {
       nodes: slotNodes.filter((n) => linkNodes.includes(n.id)),
       links: links,
     };
-  }, [displayType, liveWaterfall, query.slotResponse]);
+  }, [displayType, liveWaterfall, query.response]);
 
   if (!data || !data.links.length) {
     if (!query.hasWaitedForData) {

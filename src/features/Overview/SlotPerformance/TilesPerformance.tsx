@@ -2,20 +2,23 @@ import styles from "./tilesPerformance.module.css";
 import TileCard from "./TileCard";
 import { useAtomValue } from "jotai";
 import { tilesAtom } from "../../../api/atoms";
-import { countBy } from "lodash";
-import { liveTileTimerfallAtom, selectedSlotAtom } from "./atoms";
+import {
+  liveTileTimerfallAtom,
+  selectedSlotAtom,
+  tileCountAtom,
+} from "./atoms";
 import { useMemo } from "react";
-import useSlotQuery from "../../../hooks/useSlotQuery";
 import { TileType } from "../../../api/types";
 import { tileTypeSchema } from "../../../api/entities";
+import { useSlotQueryResponse } from "../../../hooks/useSlotQuery";
 
 export default function TilesPerformance() {
   const liveTileTimers = useAtomValue(liveTileTimerfallAtom);
   const slot = useAtomValue(selectedSlotAtom);
   const showLive = !slot;
-
   const tiles = useAtomValue(tilesAtom);
-  const tileCounts = countBy(tiles, (t) => t.kind);
+  const tileCounts = useAtomValue(tileCountAtom);
+
   const groupedLiveIdlePerTile = liveTileTimers?.reduce<
     Record<TileType, number[]>
   >(
@@ -36,12 +39,12 @@ export default function TilesPerformance() {
     {} as Record<TileType, number[]>
   );
 
-  const query = useSlotQuery(slot, true);
+  const query = useSlotQueryResponse(slot);
 
   const queryIdleData = useMemo(() => {
-    if (!query.slotResponse?.tile_timers?.length || showLive || !tiles) return;
+    if (!query.response?.tile_timers?.length || showLive || !tiles) return;
 
-    return query.slotResponse.tile_timers.reduce<Record<string, number[][]>>(
+    return query.response.tile_timers.reduce<Record<string, number[][]>>(
       (aggTimerPerTileType, timers) => {
         if (!timers.tile_timers.length) return aggTimerPerTileType;
         const idleTimersPerTileType: Record<string, number[]> = {};
@@ -75,7 +78,7 @@ export default function TilesPerformance() {
       },
       {}
     );
-  }, [query.slotResponse?.tile_timers, showLive, tiles]);
+  }, [query.response?.tile_timers, showLive, tiles]);
 
   return (
     <div className={styles.container}>

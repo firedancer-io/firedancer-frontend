@@ -5,12 +5,12 @@ import SlotCardGrid from "./SlotCardGrid";
 import CardValidatorSummary, {
   CardValidatorSummaryMobile,
 } from "./CardValidatorSummary";
-import useSlotQuery from "../../../hooks/useSlotQuery";
 import { identityKeyAtom } from "../../../api/atoms";
 import { useAtomValue } from "jotai";
 import { usePubKey } from "../../../hooks/usePubKey";
 import { useMedia } from "react-use";
 import clsx from "clsx";
+import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 
 interface PastSlotCardProps {
   slot: number;
@@ -21,15 +21,15 @@ export function PastSlotCard({ slot }: PastSlotCardProps) {
   const pubkey = usePubKey(slot);
   const isLeader = myPubkey === pubkey;
 
-  const response = useSlotQuery(slot);
-  const response1 = useSlotQuery(slot + 1);
-  const response2 = useSlotQuery(slot + 3);
-  const response3 = useSlotQuery(slot + 3);
+  const query = useSlotQueryPublish(slot);
+  const query1 = useSlotQueryPublish(slot + 1);
+  const query2 = useSlotQueryPublish(slot + 2);
+  const query3 = useSlotQueryPublish(slot + 3);
   const isSkipped =
-    response.slotResponse?.publish.skipped ||
-    response1.slotResponse?.publish.skipped ||
-    response2.slotResponse?.publish.skipped ||
-    response3.slotResponse?.publish.skipped;
+    query.publish?.skipped ||
+    query1.publish?.skipped ||
+    query2.publish?.skipped ||
+    query3.publish?.skipped;
 
   const isWideScreen = useMedia("(min-width: 900px)");
 
