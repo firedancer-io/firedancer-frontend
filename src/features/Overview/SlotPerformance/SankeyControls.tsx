@@ -3,7 +3,7 @@ import { Text } from "@radix-ui/themes";
 import * as ToggleGroup from "@radix-ui/react-toggle-group";
 import { useAtom, useAtomValue } from "jotai";
 import { DisplayType, sankeyDisplayTypeAtom, selectedSlotAtom } from "./atoms";
-import useSlotQuery from "../../../hooks/useSlotQuery";
+import { useSlotQueryResponse } from "../../../hooks/useSlotQuery";
 import { fixValue } from "../../../utils";
 import { useMemo } from "react";
 import { lamportsPerSol } from "../../../consts";
@@ -51,37 +51,31 @@ export default function SankeyControls() {
 
 function SlotStats() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
-  const query = useSlotQuery(selectedSlot);
+  const query = useSlotQueryResponse(selectedSlot);
 
   const values = useMemo(() => {
-    if (!query.slotResponse) return;
+    if (!query.response?.publish) return;
 
-    const voteTxns = fixValue(
-      query.slotResponse.publish.vote_transactions ?? 0
-    );
-    const totalTxns = fixValue(query.slotResponse.publish.transactions ?? 0);
+    const voteTxns = fixValue(query.response.publish.vote_transactions ?? 0);
+    const totalTxns = fixValue(query.response.publish.transactions ?? 0);
     const nonVoteTxns = totalTxns - voteTxns;
 
     const transactionFeeFull =
-      query.slotResponse.publish.transaction_fee != null
-        ? (query.slotResponse.publish.transaction_fee / lamportsPerSol).toFixed(
-            9
-          )
+      query.response.publish.transaction_fee != null
+        ? (query.response.publish.transaction_fee / lamportsPerSol).toFixed(9)
         : "0";
 
     const priorityFeeFull =
-      query.slotResponse.publish.priority_fee != null
-        ? (query.slotResponse.publish.priority_fee / lamportsPerSol).toFixed(9)
+      query.response.publish.priority_fee != null
+        ? (query.response.publish.priority_fee / lamportsPerSol).toFixed(9)
         : "0";
 
     const tips =
-      query.slotResponse.publish.tips != null
-        ? (query.slotResponse.publish.tips / lamportsPerSol).toFixed(9)
+      query.response.publish.tips != null
+        ? (query.response.publish.tips / lamportsPerSol).toFixed(9)
         : "0";
 
-    const computeUnits = fixValue(
-      query.slotResponse?.publish.compute_units ?? 0
-    );
+    const computeUnits = fixValue(query.response.publish.compute_units ?? 0);
 
     return {
       computeUnits,
@@ -91,7 +85,7 @@ function SlotStats() {
       priorityFeeFull,
       tips,
     };
-  }, [query.slotResponse]);
+  }, [query.response]);
 
   if (!selectedSlot) return;
 

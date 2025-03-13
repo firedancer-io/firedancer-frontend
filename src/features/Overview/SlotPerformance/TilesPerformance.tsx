@@ -8,9 +8,9 @@ import {
   tileCountAtom,
 } from "./atoms";
 import { useMemo } from "react";
-import useSlotQuery from "../../../hooks/useSlotQuery";
 import { TileType } from "../../../api/types";
 import { tileTypeSchema } from "../../../api/entities";
+import { useSlotQueryResponse } from "../../../hooks/useSlotQuery";
 
 export default function TilesPerformance() {
   const liveTileTimers = useAtomValue(liveTileTimerfallAtom);
@@ -39,12 +39,12 @@ export default function TilesPerformance() {
     {} as Record<TileType, number[]>
   );
 
-  const query = useSlotQuery(slot, { requiresTimers: true });
+  const query = useSlotQueryResponse(slot);
 
   const queryIdleData = useMemo(() => {
-    if (!query.slotResponse?.tile_timers?.length || showLive || !tiles) return;
+    if (!query.response?.tile_timers?.length || showLive || !tiles) return;
 
-    return query.slotResponse.tile_timers.reduce<Record<string, number[][]>>(
+    return query.response.tile_timers.reduce<Record<string, number[][]>>(
       (aggTimerPerTileType, timers) => {
         if (!timers.tile_timers.length) return aggTimerPerTileType;
         const idleTimersPerTileType: Record<string, number[]> = {};
@@ -78,7 +78,7 @@ export default function TilesPerformance() {
       },
       {}
     );
-  }, [query.slotResponse?.tile_timers, showLive, tiles]);
+  }, [query.response?.tile_timers, showLive, tiles]);
 
   return (
     <div className={styles.container}>

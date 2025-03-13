@@ -424,8 +424,8 @@ const tsTileTimersSchema = z.object({
 
 export const slotResponseSchema = z.object({
   publish: slotPublishSchema,
-  waterfall: txnWaterfallSchema.nullable(),
-  tile_primary_metric: tilePrimaryMetricSchema.nullable(),
+  waterfall: txnWaterfallSchema.nullable().optional(),
+  tile_primary_metric: tilePrimaryMetricSchema.nullable().optional(),
   tile_timers: tsTileTimersSchema.array().nullable().optional(),
   compute_units: computeUnitsSchema.nullable().optional(),
 });

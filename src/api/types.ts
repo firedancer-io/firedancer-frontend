@@ -115,7 +115,7 @@ export type ComputeUnits = z.infer<typeof computeUnitsSchema>;
 
 export type SlotPublish = z.infer<typeof slotPublishSchema>;
 
-export type SlotReponse = z.infer<typeof slotResponseSchema>;
+export type SlotResponse = z.infer<typeof slotResponseSchema>;
 
 export type SkippedSlots = z.infer<typeof slotSkippedHistorySchema>;
 
