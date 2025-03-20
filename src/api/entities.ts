@@ -44,7 +44,7 @@ export const commitHashSchema = z.string();
 
 export const identityKeySchema = z.string();
 
-export const uptimeNanosSchema = z.number();
+export const uptimeNanosSchema = z.coerce.number();
 
 export const tileTypeSchema = z.enum([
   "net",
@@ -67,63 +67,63 @@ export const tileTypeSchema = z.enum([
 
 export const tileSchema = z.object({
   kind: z.string(),
-  kind_id: z.number(),
+  kind_id: z.coerce.number(),
 });
 
-export const identityBalanceSchema = z.number();
+export const identityBalanceSchema = z.coerce.number();
 
-export const rootSlotSchema = z.number();
+export const rootSlotSchema = z.coerce.number();
 
-export const optimisticallyConfirmedSlotSchema = z.number();
+export const optimisticallyConfirmedSlotSchema = z.coerce.number();
 
-export const completedSlotSchema = z.number();
+export const completedSlotSchema = z.coerce.number();
 
-export const estimatedSlotSchema = z.number();
+export const estimatedSlotSchema = z.coerce.number();
 
-export const estimatedSlotDurationSchema = z.number();
+export const estimatedSlotDurationSchema = z.coerce.number();
 
 export const estimatedTpsSchema = z.object({
-  total: z.number(),
-  vote: z.number(),
-  nonvote_success: z.number(),
-  nonvote_failed: z.number(),
+  total: z.coerce.number(),
+  vote: z.coerce.number(),
+  nonvote_success: z.coerce.number(),
+  nonvote_failed: z.coerce.number(),
 });
 
 export const txnWaterfallInSchema = z.object({
-  pack_cranked: z.number(),
-  pack_retained: z.number(),
-  resolv_retained: z.number(),
-  quic: z.number(),
-  udp: z.number(),
-  gossip: z.number(),
-  block_engine: z.number(),
+  pack_cranked: z.coerce.number(),
+  pack_retained: z.coerce.number(),
+  resolv_retained: z.coerce.number(),
+  quic: z.coerce.number(),
+  udp: z.coerce.number(),
+  gossip: z.coerce.number(),
+  block_engine: z.coerce.number(),
 });
 
 export const txnWaterfallOutSchema = z.object({
-  net_overrun: z.number(),
-  quic_overrun: z.number(),
-  quic_frag_drop: z.number(),
-  quic_abandoned: z.number(),
-  tpu_quic_invalid: z.number(),
-  tpu_udp_invalid: z.number(),
-  verify_overrun: z.number(),
-  verify_parse: z.number(),
-  verify_failed: z.number(),
-  verify_duplicate: z.number(),
-  dedup_duplicate: z.number(),
-  resolv_lut_failed: z.number(),
-  resolv_expired: z.number(),
-  resolv_no_ledger: z.number(),
-  resolv_ancient: z.number(),
-  resolv_retained: z.number(),
-  pack_invalid: z.number(),
-  pack_retained: z.number(),
-  pack_leader_slow: z.number(),
-  pack_wait_full: z.number(),
-  pack_expired: z.number(),
-  bank_invalid: z.number(),
-  block_success: z.number(),
-  block_fail: z.number(),
+  net_overrun: z.coerce.number(),
+  quic_overrun: z.coerce.number(),
+  quic_frag_drop: z.coerce.number(),
+  quic_abandoned: z.coerce.number(),
+  tpu_quic_invalid: z.coerce.number(),
+  tpu_udp_invalid: z.coerce.number(),
+  verify_overrun: z.coerce.number(),
+  verify_parse: z.coerce.number(),
+  verify_failed: z.coerce.number(),
+  verify_duplicate: z.coerce.number(),
+  dedup_duplicate: z.coerce.number(),
+  resolv_lut_failed: z.coerce.number(),
+  resolv_expired: z.coerce.number(),
+  resolv_no_ledger: z.coerce.number(),
+  resolv_ancient: z.coerce.number(),
+  resolv_retained: z.coerce.number(),
+  pack_invalid: z.coerce.number(),
+  pack_retained: z.coerce.number(),
+  pack_leader_slow: z.coerce.number(),
+  pack_wait_full: z.coerce.number(),
+  pack_expired: z.coerce.number(),
+  bank_invalid: z.coerce.number(),
+  block_success: z.coerce.number(),
+  block_fail: z.coerce.number(),
 });
 
 export const txnWaterfallSchema = z.object({
@@ -132,32 +132,32 @@ export const txnWaterfallSchema = z.object({
 });
 
 export const liveTxnWaterfallSchema = z.object({
-  next_leader_slot: z.number().nullable(),
+  next_leader_slot: z.coerce.number().nullable(),
   waterfall: txnWaterfallSchema,
 });
 
 export const tilePrimaryMetricSchema = z.object({
-  net_in: z.number(),
-  quic: z.number(),
-  verify: z.number(),
-  dedup: z.number(),
-  pack: z.number(),
-  bank: z.number(),
-  poh: z.number(),
-  shred: z.number(),
-  store: z.number(),
-  net_out: z.number(),
+  net_in: z.coerce.number(),
+  quic: z.coerce.number(),
+  verify: z.coerce.number(),
+  dedup: z.coerce.number(),
+  pack: z.coerce.number(),
+  bank: z.coerce.number(),
+  poh: z.coerce.number(),
+  shred: z.coerce.number(),
+  store: z.coerce.number(),
+  net_out: z.coerce.number(),
 });
 
 export const liveTilePrimaryMetricSchema = z.object({
-  next_leader_slot: z.number().nullable(),
+  next_leader_slot: z.coerce.number().nullable(),
   tile_primary_metric: tilePrimaryMetricSchema,
 });
 
 export const tileTimerSchema = z.object({
   tile: z.string(),
-  kind_id: z.number(),
-  idle: z.number(),
+  kind_id: z.coerce.number(),
+  idle: z.coerce.number(),
 });
 
 export const startupPhaseSchema = z.enum([
@@ -180,39 +180,46 @@ export const startupProgressSchema = z.object({
   phase: startupPhaseSchema,
 
   // downloading_full_snapshot
-  downloading_full_snapshot_slot: z.number().nullable(),
+  downloading_full_snapshot_slot: z.coerce.number().nullable(),
   downloading_full_snapshot_peer: z.string().nullable(),
-  downloading_full_snapshot_elapsed_secs: z.number().nullable(),
-  downloading_full_snapshot_remaining_secs: z.number().nullable(),
-  downloading_full_snapshot_throughput: z.number().nullable(),
-  downloading_full_snapshot_total_bytes: z.number().nullable(),
-  downloading_full_snapshot_current_bytes: z.number().nullable(),
+  downloading_full_snapshot_elapsed_secs: z.coerce.number().nullable(),
+  downloading_full_snapshot_remaining_secs: z.coerce.number().nullable(),
+  downloading_full_snapshot_throughput: z.coerce.number().nullable(),
+  downloading_full_snapshot_total_bytes: z.coerce.number().nullable(),
+  downloading_full_snapshot_current_bytes: z.coerce.number().nullable(),
 
   // downloading incremental snapshot
-  downloading_incremental_snapshot_slot: z.number().nullable(),
+  downloading_incremental_snapshot_slot: z.coerce.number().nullable(),
   downloading_incremental_snapshot_peer: z.string().nullable(),
-  downloading_incremental_snapshot_elapsed_secs: z.number().nullable(),
-  downloading_incremental_snapshot_remaining_secs: z.number().nullable(),
-  downloading_incremental_snapshot_throughput: z.number().nullable(),
-  downloading_incremental_snapshot_total_bytes: z.number().nullable(),
-  downloading_incremental_snapshot_current_bytes: z.number().nullable(),
+  downloading_incremental_snapshot_elapsed_secs: z.coerce.number().nullable(),
+  downloading_incremental_snapshot_remaining_secs: z.coerce.number().nullable(),
+  downloading_incremental_snapshot_throughput: z.coerce.number().nullable(),
+  downloading_incremental_snapshot_total_bytes: z.coerce.number().nullable(),
+  downloading_incremental_snapshot_current_bytes: z.coerce.number().nullable(),
 
   // processing ledger
-  ledger_slot: z.number().nullable(),
-  ledger_max_slot: z.number().nullable(),
+  ledger_slot: z.coerce.number().nullable(),
+  ledger_max_slot: z.coerce.number().nullable(),
 
   // waiting for supermajority
-  waiting_for_supermajority_slot: z.number().nullable(),
-  waiting_for_supermajority_stake_percent: z.number().nullable(),
+  waiting_for_supermajority_slot: z.coerce.number().nullable(),
+  waiting_for_supermajority_stake_percent: z.coerce.number().nullable(),
 });
 
 export const computeUnitsSchema = z.object({
-  max_compute_units: z.number(),
+  max_compute_units: z.coerce.number(),
   start_timestamp_nanos: z.coerce.bigint(),
   target_end_timestamp_nanos: z.coerce.bigint(),
-  compute_unit_timestamps_nanos: z.coerce.bigint().array(),
-  compute_units_deltas: z.number().array(),
-  active_bank_count: z.number().array(),
+  txn_start_timestamps_nanos: z.coerce.bigint().array(),
+  txn_stop_timestamps_nanos: z.coerce.bigint().array(),
+  txn_compute_units_requested: z.coerce.number().array(),
+  txn_compute_units_estimated: z.coerce.number().array(),
+  txn_compute_units_rebated: z.coerce.number().array(),
+  txn_micro_lamports_per_cu: z.coerce.bigint().array(),
+  txn_error_code: z.coerce.number().array(),
+  txn_from_bundle: z.boolean().array(),
+  txn_is_simple_vote: z.boolean().array(),
+  txn_bank_idx: z.coerce.number().array(),
 });
 
 export const slotLevelSchema = z.enum([
@@ -224,46 +231,46 @@ export const slotLevelSchema = z.enum([
 ]);
 
 export const slotPublishSchema = z.object({
-  slot: z.number(),
+  slot: z.coerce.number(),
   mine: z.boolean(),
   skipped: z.boolean(),
   level: slotLevelSchema,
-  transactions: z.number().nullable(),
-  vote_transactions: z.number().nullable(),
-  failed_transactions: z.number().nullable(),
-  priority_fee: z.number().nullable(),
-  transaction_fee: z.number().nullable(),
-  tips: z.number().nullable(),
-  compute_units: z.number().nullable(),
-  duration_nanos: z.number().nullable(),
-  completed_time_nanos: z.number().nullable(),
+  transactions: z.coerce.number().nullable(),
+  vote_transactions: z.coerce.number().nullable(),
+  failed_transactions: z.coerce.number().nullable(),
+  priority_fee: z.coerce.number().nullable(),
+  transaction_fee: z.coerce.number().nullable(),
+  tips: z.coerce.number().nullable(),
+  compute_units: z.coerce.number().nullable(),
+  duration_nanos: z.coerce.number().nullable(),
+  completed_time_nanos: z.coerce.number().nullable(),
 });
 
 export const tpsHistorySchema = z.array(
   z.tuple([
-    z.number(), // total
-    z.number(), // vote
-    z.number(), // nonvote_success
-    z.number(), // nonvote_failed
+    z.coerce.number(), // total
+    z.coerce.number(), // vote
+    z.coerce.number(), // nonvote_success
+    z.coerce.number(), // nonvote_failed
   ])
 );
 
 export const voteStateSchema = z.enum(["voting", "non-voting", "delinquent"]);
 
-export const voteDistanceSchema = z.number();
+export const voteDistanceSchema = z.coerce.number();
 
 export const skipRateSchema = z.object({
-  epoch: z.number(),
-  skip_rate: z.number(),
-  // slots_processed: z.number(),
-  // slots_skipped: z.number(),
+  epoch: z.coerce.number(),
+  skip_rate: z.coerce.number(),
+  // slots_processed: z.coerce.number(),
+  // slots_skipped: z.coerce.number(),
 });
 
 export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("ping"),
     value: z.null(),
-    id: z.number(),
+    id: z.coerce.number(),
   }),
   summaryTopicSchema.extend({
     key: z.literal("version"),
@@ -327,7 +334,7 @@ export const summarySchema = z.discriminatedUnion("key", [
   }),
   summaryTopicSchema.extend({
     key: z.literal("live_tile_timers"),
-    value: z.number().array(),
+    value: z.coerce.number().array(),
   }),
   summaryTopicSchema.extend({
     key: z.literal("startup_progress"),
@@ -352,13 +359,13 @@ export const summarySchema = z.discriminatedUnion("key", [
 ]);
 
 export const epochNewSchema = z.object({
-  epoch: z.number(),
-  start_slot: z.number(),
-  end_slot: z.number(),
-  excluded_stake_lamports: z.number(),
+  epoch: z.coerce.number(),
+  start_slot: z.coerce.number(),
+  end_slot: z.coerce.number(),
+  excluded_stake_lamports: z.coerce.bigint(),
   staked_pubkeys: z.string().array(),
-  staked_lamports: z.number().array(),
-  leader_slots: z.number().array(),
+  staked_lamports: z.coerce.bigint().array(),
+  leader_slots: z.coerce.number().array(),
 });
 
 export const epochSchema = z.discriminatedUnion("key", [
@@ -369,20 +376,20 @@ export const epochSchema = z.discriminatedUnion("key", [
 ]);
 
 const peerUpdateGossipSchema = z.object({
-  wallclock: z.number(),
-  shred_version: z.number(),
+  wallclock: z.coerce.number(),
+  shred_version: z.coerce.number(),
   version: z.string().nullable(),
-  feature_set: z.number().nullable(),
+  feature_set: z.coerce.number().nullable(),
   sockets: z.record(z.string(), z.string()),
 });
 
 const peerUpdateVoteAccountSchema = z.object({
   vote_account: z.string(),
-  activated_stake: z.number(),
-  last_vote: z.nullable(z.number()),
-  root_slot: z.nullable(z.number()),
-  epoch_credits: z.number(),
-  commission: z.number(),
+  activated_stake: z.coerce.number(),
+  last_vote: z.nullable(z.coerce.number()),
+  root_slot: z.nullable(z.coerce.number()),
+  epoch_credits: z.coerce.number(),
+  commission: z.coerce.number(),
   delinquent: z.boolean(),
 });
 
@@ -418,8 +425,8 @@ export const peersSchema = z.discriminatedUnion("key", [
 ]);
 
 const tsTileTimersSchema = z.object({
-  timestamp_nanos: z.number(),
-  tile_timers: z.number().array(),
+  timestamp_nanos: z.coerce.number(),
+  tile_timers: z.coerce.number().array(),
 });
 
 export const slotResponseSchema = z.object({
@@ -430,7 +437,7 @@ export const slotResponseSchema = z.object({
   compute_units: computeUnitsSchema.nullable().optional(),
 });
 
-export const slotSkippedHistorySchema = z.number().array();
+export const slotSkippedHistorySchema = z.coerce.number().array();
 
 export const slotSchema = z.discriminatedUnion("key", [
   slotTopicSchema.extend({

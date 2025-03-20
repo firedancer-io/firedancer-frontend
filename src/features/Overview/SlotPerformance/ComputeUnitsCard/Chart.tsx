@@ -79,33 +79,59 @@ const tickLabelWidth = 110;
 const minTickCount = 3;
 
 function getChartData(computeUnits: ComputeUnits): ChartData[] {
-  const data: ChartData[] = [
+  const data = [];
+
+  for (let i = 0; i < computeUnits.txn_start_timestamps_nanos.length; i++) {
+    data.push({
+      timestampNanos: computeUnits.txn_start_timestamps_nanos[i],
+      computeUnitsDelta: computeUnits.txn_compute_units_requested[i],
+      bank: computeUnits.txn_bank_idx[i],
+      start: true,
+    });
+  }
+
+  for (let i = 0; i < computeUnits.txn_stop_timestamps_nanos.length; i++) {
+    data.push({
+      timestampNanos: computeUnits.txn_stop_timestamps_nanos[i],
+      computeUnitsDelta: -computeUnits.txn_compute_units_rebated[i],
+      bank: computeUnits.txn_bank_idx[i],
+      start: false,
+    });
+  }
+
+  data.sort((a, b) => a.timestampNanos < b.timestampNanos ? -1 : a.timestampNanos > b.timestampNanos ? 1 : 0 );
+  
+  const chartData: ChartData[] = [
     { timestampNanos: 0, computeUnits: 0, activeBankCount: 0 },
   ];
+  const activeBanks = new Map<number, number>();
+  for (let i = 0; i < data.length; i++) {
+    const prev = chartData[chartData.length - 1];
 
-  for (let i = 0; i < computeUnits.compute_unit_timestamps_nanos.length; i++) {
-    const prev = data[data.length - 1];
+    if (data[i].start) {
+      activeBanks.set(data[i].bank, (activeBanks.get(data[i].bank) ?? 0) + 1);
+    } else {
+      activeBanks.set(data[i].bank, (activeBanks.get(data[i].bank) ?? 0) - 1);
+    }
+
+    let active_bank_cnt = 0;
+    activeBanks.forEach((txn_cnt) => active_bank_cnt+= (txn_cnt>0 ? 1 : 0) )
 
     if (
-      prev &&
-      computeUnits.compute_unit_timestamps_nanos[i - 1] ===
-        computeUnits.compute_unit_timestamps_nanos[i]
+      i>0 && data[i - 1].timestampNanos === data[i].timestampNanos
     ) {
-      prev.computeUnits += computeUnits.compute_units_deltas[i];
-      prev.activeBankCount = computeUnits.active_bank_count[i];
+      prev.computeUnits += data[i].computeUnitsDelta;
+      prev.activeBankCount = active_bank_cnt;
     } else {
-      data.push({
-        timestampNanos: Number(
-          computeUnits.compute_unit_timestamps_nanos[i] -
-            computeUnits.start_timestamp_nanos
-        ),
-        computeUnits: prev.computeUnits + computeUnits.compute_units_deltas[i],
-        activeBankCount: computeUnits.active_bank_count[i],
+      chartData.push({
+        timestampNanos: Number( data[i].timestampNanos - computeUnits.start_timestamp_nanos ),
+        computeUnits: prev.computeUnits + data[i].computeUnitsDelta,
+        activeBankCount: active_bank_cnt,
       });
     }
   }
 
-  return data;
+  return chartData;
 }
 
 const getXTicks = memoize(function getXTicks(

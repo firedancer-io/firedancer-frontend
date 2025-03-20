@@ -1,7 +1,9 @@
 import { ClientMessage, ConnectionStatus, SocketState } from "./types";
 import { logDebug, logWarning } from "../../logger";
+import JSONBig from 'json-bigint';
 
 const RECONNECT_DELAY = 3_000;
+const jsonBigIntParser = JSONBig({ useNativeBigInt: true });
 
 let reconnectTimer: ReturnType<typeof setTimeout>;
 
@@ -42,7 +44,7 @@ export default function connectWebSocket(
     ws.onmessage = function onmessage(ev: MessageEvent<string>) {
       if (this !== ws || isDisposing) return;
       try {
-        const json = JSON.parse(ev.data) as unknown;
+        const json = jsonBigIntParser.parse(ev.data) as unknown;
         onMessage(json);
       } catch (e) {
         console.error(e);
