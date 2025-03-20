@@ -47,6 +47,7 @@ export const identityKeySchema = z.string();
 export const uptimeNanosSchema = z.number();
 
 export const tileTypeSchema = z.enum([
+  "sock",
   "net",
   "quic",
   "verify",

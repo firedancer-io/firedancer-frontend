@@ -80,14 +80,16 @@ export default function TilesPerformance() {
     );
   }, [query.response?.tile_timers, showLive, tiles]);
 
+  const netType = tileCounts["net"] ? "net" : "sock" as const
+
   return (
     <div className={styles.container}>
       <TileCard
-        header="net"
+        header={netType}
         subHeader="(in)"
-        tileCount={tileCounts["net"]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.["net"]}
-        queryIdlePerTile={showLive ? undefined : queryIdleData?.["net"]}
+        tileCount={tileCounts[netType]}
+        liveIdlePerTile={groupedLiveIdlePerTile?.[netType]}
+        queryIdlePerTile={showLive ? undefined : queryIdleData?.[netType]}
         statLabel="Ingress"
         metricType="net_in"
       />
@@ -163,11 +165,11 @@ export default function TilesPerformance() {
         // metricType="store"
       />
       <TileCard
-        header="net"
+        header={netType}
         subHeader="(out)"
-        tileCount={tileCounts["net"]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.["net"]}
-        queryIdlePerTile={showLive ? undefined : queryIdleData?.["net"]}
+        tileCount={tileCounts[netType]}
+        liveIdlePerTile={groupedLiveIdlePerTile?.[netType]}
+        queryIdlePerTile={showLive ? undefined : queryIdleData?.[netType]}
         statLabel="Egress" // mbs
         metricType="net_out"
       />
