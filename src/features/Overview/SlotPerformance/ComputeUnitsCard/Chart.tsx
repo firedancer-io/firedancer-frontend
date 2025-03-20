@@ -43,6 +43,7 @@ import { AxisDomain, Coordinate } from "recharts/types/util/types";
 
 interface ChartProps {
   computeUnits: ComputeUnits;
+  maxComputeUnits: number;
   bankTileCount: number;
 }
 
@@ -79,33 +80,52 @@ const tickLabelWidth = 110;
 const minTickCount = 3;
 
 function getChartData(computeUnits: ComputeUnits): ChartData[] {
-  const data: ChartData[] = [
-    { timestampNanos: 0, computeUnits: 0, activeBankCount: 0 },
-  ];
+  const events = [
+    ...computeUnits.txn_start_timestamps_nanos.map((timestamp, i) => ({
+      timestampNanos: timestamp,
+      txn_idx: i,
+      start: true,
+    })),
+    ...computeUnits.txn_end_timestamps_nanos.map((timestamp, i) => ({
+      timestampNanos: timestamp,
+      txn_idx: i,
+      start: false,
+    })),
+  ].sort((a, b) => Number(a.timestampNanos - b.timestampNanos));
 
-  for (let i = 0; i < computeUnits.compute_unit_timestamps_nanos.length; i++) {
-    const prev = data[data.length - 1];
+  const activeBanks = Array(64).fill(false);
+  return events.reduce<ChartData[]>(
+    (chartData, event, i) => {
+      const txn_idx = event.txn_idx;
+      const cus_delta = computeUnits.txn_landed[txn_idx]
+        ? event.start
+          ? computeUnits.txn_max_compute_units[txn_idx]
+          : -computeUnits.txn_max_compute_units[txn_idx] +
+            computeUnits.txn_compute_units_consumed[txn_idx]
+        : 0;
 
-    if (
-      prev &&
-      computeUnits.compute_unit_timestamps_nanos[i - 1] ===
-        computeUnits.compute_unit_timestamps_nanos[i]
-    ) {
-      prev.computeUnits += computeUnits.compute_units_deltas[i];
-      prev.activeBankCount = computeUnits.active_bank_count[i];
-    } else {
-      data.push({
-        timestampNanos: Number(
-          computeUnits.compute_unit_timestamps_nanos[i] -
-            computeUnits.start_timestamp_nanos,
-        ),
-        computeUnits: prev.computeUnits + computeUnits.compute_units_deltas[i],
-        activeBankCount: computeUnits.active_bank_count[i],
-      });
-    }
-  }
+      const prev = chartData[chartData.length - 1];
+      activeBanks[computeUnits.txn_bank_idx[txn_idx]] = event.start;
+      const activeBankCount = activeBanks.filter(
+        (is_active) => is_active,
+      ).length;
 
-  return data;
+      if (i > 0 && events[i - 1].timestampNanos === event.timestampNanos) {
+        prev.computeUnits += cus_delta;
+        prev.activeBankCount = activeBankCount;
+      } else {
+        chartData.push({
+          timestampNanos: Number(
+            event.timestampNanos - computeUnits.start_timestamp_nanos,
+          ),
+          computeUnits: prev.computeUnits + cus_delta,
+          activeBankCount,
+        });
+      }
+      return chartData;
+    },
+    [{ timestampNanos: 0, computeUnits: 0, activeBankCount: 0 }],
+  );
 }
 
 const getXTicks = memoize(function getXTicks(
@@ -202,6 +222,7 @@ function getBankCount({
 
 function getSegments(
   computeUnits: ComputeUnits,
+  maxComputeUnits: number,
   bankTileCount: number,
   xDomain: Domain,
   yDomain: Domain,
@@ -219,7 +240,7 @@ function getSegments(
       ts,
       bankCount,
       tEnd,
-      maxComputeUnits: computeUnits.max_compute_units,
+      maxComputeUnits: maxComputeUnits,
     });
   };
 
@@ -227,16 +248,16 @@ function getSegments(
     const y0Ts = getTsByCu({
       computeUnits: yDomain[0],
       tEnd,
-      maxComputeUnits: computeUnits.max_compute_units,
+      maxComputeUnits: maxComputeUnits,
       bankCount,
     });
     const t0X = withinDomain(xDomain, y0Ts) ? y0Ts : xDomain[0];
     const t0Y = getCusAtTs(t0X, bankCount);
 
     const y1Ts = getTsByCu({
-      computeUnits: Math.min(yDomain[1], computeUnits.max_compute_units),
+      computeUnits: Math.min(yDomain[1], maxComputeUnits),
       tEnd,
-      maxComputeUnits: computeUnits.max_compute_units,
+      maxComputeUnits: maxComputeUnits,
       bankCount,
     });
 
@@ -287,7 +308,11 @@ function getPolygonPoints(
   return resPoints;
 }
 
-export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
+export default function Chart({
+  computeUnits,
+  maxComputeUnits,
+  bankTileCount,
+}: ChartProps) {
   const isMouseDownRef = useRef(false);
   const [isModKeyDown, setIsModKeyDown] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -352,20 +377,25 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
 
   const cuDomain = useMemo(
     () =>
-      fitYToData
-        ? getDataDomain(data, computeUnits.max_compute_units, zoomRange)
-        : undefined,
-    [computeUnits.max_compute_units, data, fitYToData, zoomRange],
+      fitYToData ? getDataDomain(data, maxComputeUnits, zoomRange) : undefined,
+    [maxComputeUnits, data, fitYToData, zoomRange],
   );
 
   const yDomain = useMemo<Domain>(
-    () => cuDomain ?? [0, computeUnits.max_compute_units + 1_000_000],
-    [computeUnits.max_compute_units, cuDomain],
+    () => cuDomain ?? [0, maxComputeUnits + 1_000_000],
+    [maxComputeUnits, cuDomain],
   );
 
   const segments = useMemo(
-    () => getSegments(computeUnits, bankTileCount, xDomain, yDomain),
-    [bankTileCount, computeUnits, xDomain, yDomain],
+    () =>
+      getSegments(
+        computeUnits,
+        maxComputeUnits,
+        bankTileCount,
+        xDomain,
+        yDomain,
+      ),
+    [bankTileCount, computeUnits, maxComputeUnits, xDomain, yDomain],
   );
 
   const activeBankCountTicks = new Array(bankTileCount)
@@ -694,12 +724,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
   const useActiveBanksMdStroke =
     !useActiveBanksLargeStroke && xDomain[1] - xDomain[0] < mdNanosThreshold;
 
-  const tEnd =
-    0.95 *
-    Number(
-      computeUnits.target_end_timestamp_nanos -
-        computeUnits.start_timestamp_nanos,
-    );
+  const tEnd = 0.95 * slotDurationNanos;
 
   const prevPolyPoints = useRef<[Coordinate, Coordinate][]>([]);
   prevPolyPoints.current = [];
@@ -770,7 +795,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                 x1={xDomain[0]}
                 x2={xDomain[1]}
                 y1={yDomain[0]}
-                y2={Math.min(yDomain[1], computeUnits.max_compute_units)}
+                y2={Math.min(yDomain[1], maxComputeUnits)}
                 shape={(props) => {
                   graphRectProps.current = props as RectangleProps;
                   return <></>;
@@ -835,7 +860,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                           computeUnits: yDomain[1] - yDomain[0] + yDomain[0],
                           ts: xDomain[1] - xDomain[0] + xDomain[0],
                           tEnd,
-                          maxComputeUnits: computeUnits.max_compute_units,
+                          maxComputeUnits: maxComputeUnits,
                         }),
                       ),
                     );
@@ -884,7 +909,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                 }}
               />
               <ReferenceLine
-                y={computeUnits.max_compute_units}
+                y={maxComputeUnits}
                 stroke="#2a7edf"
                 strokeDasharray="3 3"
                 yAxisId={cuAxisId}
