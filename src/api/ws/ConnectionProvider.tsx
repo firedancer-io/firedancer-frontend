@@ -13,7 +13,7 @@ import {
 } from "./ConnectionContext";
 
 const VITE_WEBSOCKET_URL = (
-  import.meta.env.VITE_WEBSOCKET_URL as string
+  (import.meta.env.VITE_WEBSOCKET_URL as string) ?? ""
 ).trim();
 
 export function ConnectionProvider({ children }: PropsWithChildren) {

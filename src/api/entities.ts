@@ -209,13 +209,24 @@ export const startupProgressSchema = z.object({
   waiting_for_supermajority_stake_percent: z.number().nullable(),
 });
 
-export const computeUnitsSchema = z.object({
-  max_compute_units: z.number(),
+export const slotTransactionsSchema = z.object({
   start_timestamp_nanos: z.coerce.bigint(),
   target_end_timestamp_nanos: z.coerce.bigint(),
-  compute_unit_timestamps_nanos: z.coerce.bigint().array(),
-  compute_units_deltas: z.number().array(),
-  active_bank_count: z.number().array(),
+  txn_start_timestamps_nanos: z.coerce.bigint().array(),
+  txn_stop_timestamps_nanos: z.coerce.bigint().array(),
+  txn_compute_units_requested: z.number().array(),
+  txn_max_compute_units: z.number().array(),
+  txn_compute_units_consumed: z.number().array(),
+  txn_priority_fee: z.coerce.bigint().array(),
+  txn_tips: z.coerce.bigint().array(),
+  txn_error_code: z.number().array(),
+  txn_from_bundle: z.boolean().array(),
+  txn_is_simple_vote: z.boolean().array(),
+  txn_bank_idx: z.number().array(),
+  txn_load_end_timstamps_nanos: z.coerce.bigint().array(),
+  txn_exec_end_timstamps_nanos: z.coerce.bigint().array(),
+  txn_microblock_id: z.number().array(),
+  txn_landed: z.boolean().array(),
 });
 
 export const slotLevelSchema = z.enum([
@@ -237,6 +248,7 @@ export const slotPublishSchema = z.object({
   priority_fee: z.coerce.bigint().nullable(),
   transaction_fee: z.coerce.bigint().nullable(),
   tips: z.coerce.bigint().nullable(),
+  max_compute_units: z.number().nullable(),
   compute_units: z.number().nullable(),
   duration_nanos: z.number().nullable(),
   completed_time_nanos: z.coerce.bigint().nullable(),
@@ -436,7 +448,7 @@ export const slotResponseSchema = z.object({
   waterfall: txnWaterfallSchema.nullable().optional(),
   tile_primary_metric: tilePrimaryMetricSchema.nullable().optional(),
   tile_timers: tsTileTimersSchema.array().nullable().optional(),
-  compute_units: computeUnitsSchema.nullable().optional(),
+  transactions: slotTransactionsSchema.nullable().optional(),
 });
 
 export const slotSkippedHistorySchema = z.number().array();
