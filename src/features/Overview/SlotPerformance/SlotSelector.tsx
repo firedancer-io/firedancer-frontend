@@ -16,8 +16,8 @@ import styles from "./slotSelector.module.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import NavigatePrev from "./NavigatePrev";
 import NavigateNext from "./NavigateNext";
-import { selectedSlotStrAtom } from "./atoms";
 import skippedIcon from "../../../assets/Skipped.svg";
+import { useSlotSearchParam } from "../useSearchParams";
 
 function getAllLeaderSlots(leaderSlots?: number[]) {
   return leaderSlots?.reduce<{ slot: number; order: number }[]>((acc, slot) => {
@@ -54,8 +54,7 @@ export default function SlotSelector() {
   const isCurrentlyLeader = useAtomValue(isCurrentlyLeaderAtom);
   const [slotOverride, setSlotOverride] = useAtom(slotOverrideAtom);
 
-  const [selectedSlotOverride, setSelectedSlotOverride] =
-    useAtom(selectedSlotStrAtom);
+  const { selectedSlot, setSelectedSlot } = useSlotSearchParam();
 
   const [indexOverride, setIndexOverride] = useState<number>();
 
@@ -149,6 +148,7 @@ export default function SlotSelector() {
         index: slotDiffs.indexOf(minDiff),
         maxIndex,
       });
+
       if (newIndex === maxIndex) {
         setIndexOverride(undefined);
       } else {
@@ -157,8 +157,7 @@ export default function SlotSelector() {
     } else {
       setIndexOverride(undefined);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slotOverride]);
+  }, [slotOverride, allLeaderSlots, maxIndex]);
 
   const viewableSlots = allLeaderSlots?.slice(
     index,
@@ -166,10 +165,11 @@ export default function SlotSelector() {
   );
 
   const selected =
-    selectedSlotOverride ||
-    (isLiveSelectorVisible && viewableSlots?.length
-      ? `${viewableSlots?.[viewableSlots.length - 1].slot}`
-      : undefined);
+    selectedSlot !== undefined
+      ? `${selectedSlot}`
+      : isLiveSelectorVisible && viewableSlots?.length
+        ? `${viewableSlots?.[viewableSlots.length - 1].slot}`
+        : undefined;
 
   const isPrevDisabled = indexOverride !== undefined && indexOverride <= 0;
   const isNextDisabled = isLiveSelectorVisible;
@@ -204,12 +204,12 @@ export default function SlotSelector() {
               isLiveSelectorVisible &&
               value === `${viewableSlots?.[viewableSlots.length - 1].slot}`
             ) {
-              setSelectedSlotOverride(undefined);
+              setSelectedSlot(undefined);
               setIndexOverride(undefined);
               setSlotOverrideTimeout();
               setSlotOverride(undefined);
             } else {
-              setSelectedSlotOverride(value);
+              setSelectedSlot(isNaN(Number(value)) ? undefined : Number(value));
               setIndexOverride(index);
               setSlotOverrideTimeout();
               setSlotOverride(allLeaderSlots?.[index]?.slot);

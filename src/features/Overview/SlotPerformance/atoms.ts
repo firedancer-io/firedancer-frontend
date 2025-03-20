@@ -9,13 +9,8 @@ import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
 import { countBy } from "lodash";
 
-export const selectedSlotStrAtom = atom<string>();
-
-export const selectedSlotAtom = atom((get) => {
-  const slot: number = Number(get(selectedSlotStrAtom));
-  if (isNaN(slot)) return undefined;
-  return slot;
-});
+// Note: do not user setter directly as it's derived from search params
+export const selectedSlotAtom = atom<number>();
 
 export enum DisplayType {
   Count = "Count",

@@ -1,12 +1,12 @@
-import { useAtom, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { slotOverrideAtom } from "../../../atoms";
 import styles from "./resetLive.module.css";
 import { Button } from "@radix-ui/themes";
-import { selectedSlotStrAtom } from "./atoms";
+import { useSlotSearchParam } from "../useSearchParams";
 
 export default function ResetLive() {
   const setSlotOverride = useSetAtom(slotOverrideAtom);
-  const [selectedSlot, setSelectedSlot] = useAtom(selectedSlotStrAtom);
+  const { selectedSlot, setSelectedSlot } = useSlotSearchParam();
 
   if (!selectedSlot) return null;
 

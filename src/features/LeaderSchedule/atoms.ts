@@ -8,13 +8,6 @@ import {
 import { getLeaderSlots } from "../../utils";
 import { slotsPerLeader } from "../../consts";
 
-export const enum SearchType {
-  MySlots,
-  SkippedSlots,
-  Text,
-}
-
-export const searchTypeAtom = atom<SearchType>(SearchType.Text);
 
 export const searchLeaderSlotsAtom = atom<number[] | undefined>(undefined);
 
@@ -31,8 +24,6 @@ export const setSearchLeaderSlotsAtom = atom(
       set(slotOverrideAtom, undefined);
       return;
     }
-
-    set(searchTypeAtom, SearchType.Text);
 
     const searchSlot = parseInt(searchText, 10);
     if (

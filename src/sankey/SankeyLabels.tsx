@@ -36,7 +36,7 @@ function getSuffix() {
       return "%";
     case DisplayType.Rate:
       return "/s";
-    default:
+    case DisplayType.Count:
       return "";
   }
 }

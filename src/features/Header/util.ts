@@ -15,7 +15,7 @@ export function getClusterColor(cluster?: Cluster) {
     case "pythtest":
       return "#E71C88";
     case "unknown":
-    default:
+    case undefined:
       return "#898989";
   }
 }

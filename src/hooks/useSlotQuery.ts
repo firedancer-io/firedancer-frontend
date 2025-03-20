@@ -51,8 +51,7 @@ function useSlotQuery(
     sendQuery();
   }, [isDetailed, isFutureSlot, slot, skipQuery, wsSend]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(query, [slot]);
+  useEffect(query, [query]);
 
   const [waitingForData, setWaitingForData] = useState(true);
   useMount(() => {

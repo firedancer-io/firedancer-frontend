@@ -8,14 +8,9 @@ import {
   Reset,
   Tooltip,
 } from "@radix-ui/themes";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import {
-  setSearchLeaderSlotsAtom,
-  SearchType,
-  searchTypeAtom,
-  searchLeaderSlotsAtom,
-} from "./atoms";
-import { useMount, useUnmount } from "react-use";
+import { atom, useAtomValue, useSetAtom } from "jotai";
+import { setSearchLeaderSlotsAtom, searchLeaderSlotsAtom } from "./atoms";
+import { useMount } from "react-use";
 import {
   currentLeaderSlotAtom,
   leaderSlotsAtom,
@@ -26,32 +21,45 @@ import { useDebouncedCallback } from "use-debounce";
 import NextSlotStatus from "../Overview/SlotPerformance/NextSlotStatus";
 import styles from "./search.module.css";
 import { skippedSlotsAtom } from "../../api/atoms";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import * as Toggle from "@radix-ui/react-toggle";
+import { SearchTypeEnum } from "../../routes/leaderSchedule";
+import {
+  useSearchTextSearchParam,
+  useSearchTypeSearchParam,
+} from "./useSearchParams";
 
 const isVisibleAtom = atom((get) => !!get(currentLeaderSlotAtom));
 
 export default function Search() {
   const isVisible = useAtomValue(isVisibleAtom);
   const setSearch = useSetAtom(setSearchLeaderSlotsAtom);
-  const [localSearch, setLocalSearch] = useState("");
 
-  const setSearchType = useSetAtom(searchTypeAtom);
   const setSlotOverride = useSetAtom(slotOverrideAtom);
+
+  const { searchType } = useSearchTypeSearchParam();
+  const { searchText, setSearchText } = useSearchTextSearchParam();
+  const [localValue, setLocalValue] = useState(searchText);
 
   const debouncedSetSearch = useDebouncedCallback((value: string) => {
     setSearch(value);
-  }, 1000);
+    setSearchText(value);
+  }, 1_000);
+
+  if (!debouncedSetSearch.isPending() && localValue !== searchText) {
+    setLocalValue(searchText);
+  }
 
   const reset = () => {
-    setLocalSearch("");
+    setSearchText("");
     setSlotOverride(undefined);
     setSearch("");
   };
 
-  useMount(reset);
-  useUnmount(() => {
-    setSearchType(SearchType.Text);
+  useMount(() => {
+    if (searchType === SearchTypeEnum.text) {
+      setSearch(searchText);
+    }
   });
 
   if (!isVisible) return;
@@ -64,11 +72,10 @@ export default function Search() {
           variant="soft"
           color="gray"
           onChange={(e) => {
-            setSearchType(SearchType.Text);
-            setLocalSearch(e.currentTarget.value);
+            setLocalValue(e.currentTarget.value);
             debouncedSetSearch(e.currentTarget.value);
           }}
-          value={localSearch}
+          value={localValue}
         >
           <TextField.Slot>
             <MagnifyingGlassIcon
@@ -77,7 +84,7 @@ export default function Search() {
               style={{ color: "#AFB2C2" }}
             />
           </TextField.Slot>
-          {localSearch && (
+          {localValue && (
             <TextField.Slot>
               <IconButton size="1" variant="ghost">
                 <Cross1Icon
@@ -107,16 +114,6 @@ function SkipRate() {
   let value = "-";
 
   if (skipRate !== undefined) {
-    // if (skipRate.slots_processed)
-    //   if (skipRate.slots_processed === 0 || skipRate.slots_skipped === 0) {
-    //     value = "0";
-    //   } else {
-    //     const skipRatePct = skipRate.slots_skipped / skipRate.slots_processed;
-    //     value = (skipRatePct * 100).toLocaleString(undefined, {
-    //       minimumFractionDigits: 0,
-    //       maximumFractionDigits: 2,
-    //     });
-    //   }
     value = (skipRate.skip_rate * 100).toLocaleString(undefined, {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
@@ -140,29 +137,41 @@ interface MySlotsProps {
 }
 
 function MySlots({ resetSearchText }: MySlotsProps) {
-  const slots = useAtomValue(leaderSlotsAtom);
+  const leaderSlots = useAtomValue(leaderSlotsAtom);
   const setSearch = useSetAtom(searchLeaderSlotsAtom);
   const setSlotOverride = useSetAtom(slotOverrideAtom);
 
-  const [searchType, setSearchType] = useAtom(searchTypeAtom);
+  const { searchType, setSearchType } = useSearchTypeSearchParam();
 
-  const slotCount = (slots?.length ?? 0) * 4;
+  const slotCount = (leaderSlots?.length ?? 0) * 4;
+
+  const setMySlots = useCallback(() => {
+    setSearch(leaderSlots);
+  }, [setSearch, leaderSlots]);
+
+  useEffect(() => {
+    if (searchType === SearchTypeEnum.mySlots) {
+      setSearch(leaderSlots);
+    }
+    // On mount / data load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaderSlots, setSearch]);
 
   const handleClick = () => {
     resetSearchText();
 
     setSlotOverride(undefined);
 
-    if (searchType === SearchType.MySlots) {
-      setSearchType(SearchType.Text);
+    if (searchType === SearchTypeEnum.mySlots) {
+      setSearchType(SearchTypeEnum.text);
     } else {
-      setSearchType(SearchType.MySlots);
-      setSearch(slots);
+      setSearchType(SearchTypeEnum.mySlots);
+      setMySlots();
     }
   };
 
-  const isSelected = searchType === SearchType.MySlots;
-  const isDisabled = !slots?.length;
+  const isSelected = searchType === SearchTypeEnum.mySlots;
+  const isDisabled = !leaderSlots?.length;
 
   return (
     <Tooltip content="Number of slots this validator is leader in the current epoch. Toggle to filter">
@@ -193,26 +202,37 @@ function SkippedSlots({ resetSearchText }: SkippedSlotsProps) {
   const setSearch = useSetAtom(searchLeaderSlotsAtom);
   const setSlotOverride = useSetAtom(slotOverrideAtom);
 
-  const [searchType, setSearchType] = useAtom(searchTypeAtom);
+  const { searchType, setSearchType } = useSearchTypeSearchParam();
 
   const skippedCount = skippedSlots?.length ?? 0;
+
+  const setSkippedSlots = useCallback(() => {
+    const slotStarts = skippedSlots?.map((slot) => slot - (slot % 4));
+    setSearch([...new Set(slotStarts)]);
+  }, [setSearch, skippedSlots]);
+
+  useEffect(() => {
+    if (searchType === SearchTypeEnum.skippedSlots) {
+      setSkippedSlots();
+    }
+    // On mount / data load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setSkippedSlots]);
 
   const handleClick = () => {
     resetSearchText();
 
     setSlotOverride(undefined);
 
-    if (searchType === SearchType.SkippedSlots) {
-      setSearchType(SearchType.Text);
+    if (searchType === SearchTypeEnum.skippedSlots) {
+      setSearchType(SearchTypeEnum.text);
     } else if (skippedSlots?.length) {
-      setSearchType(SearchType.SkippedSlots);
-
-      const slotStarts = skippedSlots?.map((slot) => slot - (slot % 4));
-      setSearch([...new Set(slotStarts)]);
+      setSearchType(SearchTypeEnum.skippedSlots);
+      setSkippedSlots();
     }
   };
 
-  const isSelected = searchType === SearchType.SkippedSlots;
+  const isSelected = searchType === SearchTypeEnum.skippedSlots;
   const isDisabled = !skippedSlots?.length;
 
   return (
@@ -224,7 +244,7 @@ function SkippedSlots({ resetSearchText }: SkippedSlotsProps) {
             onClick={handleClick}
             aria-label="Toggle skipped slots"
             pressed={isSelected}
-            disabled={isDisabled}
+            disabled={!isSelected && isDisabled}
           >
             <Text className={styles.label}>My Skipped Slots</Text>
             <Text>{skippedCount}</Text>

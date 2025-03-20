@@ -1,10 +1,11 @@
 import { Flex } from "@radix-ui/themes";
 import Slots from "./Slots";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
+import { epochAtom, slotOverrideAtom } from "../../atoms";
 import { useMount } from "react-use";
-import { slotOverrideAtom } from "../../atoms";
 
 export function LeaderSchedule() {
+  const epoch = useAtomValue(epochAtom);
   const setSlotOverride = useSetAtom(slotOverrideAtom);
 
   useMount(() => setSlotOverride(undefined));
@@ -14,6 +15,8 @@ export function LeaderSchedule() {
       setSlotOverride(undefined);
     }
   };
+
+  if (!epoch) return;
 
   return (
     <Flex

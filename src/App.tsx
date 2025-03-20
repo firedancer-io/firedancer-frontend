@@ -4,27 +4,10 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import "./app.css";
 import { routeTree } from "./routeTree.gen";
 import { ConnectionProvider } from "./api/ws/ConnectionContext";
-import { getDefaultStore, useSetAtom } from "jotai";
-import { containerElAtom, slotOverrideAtom } from "./atoms";
-import { selectedSlotStrAtom } from "./features/Overview/SlotPerformance/atoms";
-import {
-  searchLeaderSlotsAtom,
-  SearchType,
-  searchTypeAtom,
-} from "./features/LeaderSchedule/atoms";
-
-const store = getDefaultStore();
+import { useSetAtom } from "jotai";
+import { containerElAtom } from "./atoms";
 
 const router = createRouter({ routeTree });
-
-router.subscribe("onBeforeLoad", (_) => {
-  store.set(slotOverrideAtom, undefined);
-
-  store.set(selectedSlotStrAtom, undefined);
-
-  store.set(searchTypeAtom, SearchType.Text);
-  store.set(searchLeaderSlotsAtom, undefined);
-});
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {

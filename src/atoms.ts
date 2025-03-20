@@ -40,19 +40,6 @@ export const epochAtom = atom(
   (get, set, epoch: Epoch) => {
     set(_epochsAtom, (draft) => {
       draft.push(epoch);
-      // if (draft.length > 2) {
-      //   const removed = draft.splice(0, draft.length - 2);
-      //   for (const removedEpoch of removed) {
-      //     for (
-      //       let i = removedEpoch.start_slot;
-      //       i <= removedEpoch.end_slot;
-      //       i++
-      //     ) {
-      //       set(deleteSlotStatusAtom, i);
-      //       set(deleteSlotResponseAtom, i);
-      //     }
-      //   }
-      // }
     });
   }
 );
@@ -207,7 +194,6 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
           (numberVal < cacheSlotMin || numberVal > cacheSlotMax)
         ) {
           delete draft[numberVal];
-          // set(deleteHasQueryedAtom, numberVal);
         }
       }
     });
