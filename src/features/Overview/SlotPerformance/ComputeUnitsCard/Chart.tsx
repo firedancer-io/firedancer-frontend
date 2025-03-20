@@ -79,33 +79,51 @@ const tickLabelWidth = 110;
 const minTickCount = 3;
 
 function getChartData(computeUnits: ComputeUnits): ChartData[] {
-  const data: ChartData[] = [
-    { timestampNanos: 0, computeUnits: 0, activeBankCount: 0 },
-  ];
+  const events = [
+    ...computeUnits.txn_start_timestamps_nanos.map((timestamp, i) => ({
+      timestampNanos: timestamp,
+      computeUnitsDelta: computeUnits.txn_max_compute_units[i],
+      bank: computeUnits.txn_bank_idx[i],
+      start: 1,
+    })),
+    ...computeUnits.txn_stop_timestamps_nanos.map((timestamp, i) => ({
+      timestampNanos: timestamp,
+      computeUnitsDelta:
+        computeUnits.txn_compute_units_consumed[i] -
+        computeUnits.txn_max_compute_units[i],
+      bank: computeUnits.txn_bank_idx[i],
+      start: -1,
+    })),
+  ].sort((a, b) => Number(a.timestampNanos - b.timestampNanos));
 
-  for (let i = 0; i < computeUnits.compute_unit_timestamps_nanos.length; i++) {
-    const prev = data[data.length - 1];
+  const activeBanks = new Map<number, number>();
+  return events.reduce<ChartData[]>(
+    (chartData, event, i) => {
+      const prev = chartData[chartData.length - 1];
+      activeBanks.set(
+        event.bank,
+        (activeBanks.get(event.bank) ?? 0) + event.start,
+      );
+      const activeBankCount = Array.from(activeBanks.values()).filter(
+        (count) => count > 0,
+      ).length;
 
-    if (
-      prev &&
-      computeUnits.compute_unit_timestamps_nanos[i - 1] ===
-        computeUnits.compute_unit_timestamps_nanos[i]
-    ) {
-      prev.computeUnits += computeUnits.compute_units_deltas[i];
-      prev.activeBankCount = computeUnits.active_bank_count[i];
-    } else {
-      data.push({
-        timestampNanos: Number(
-          computeUnits.compute_unit_timestamps_nanos[i] -
-            computeUnits.start_timestamp_nanos,
-        ),
-        computeUnits: prev.computeUnits + computeUnits.compute_units_deltas[i],
-        activeBankCount: computeUnits.active_bank_count[i],
-      });
-    }
-  }
-
-  return data;
+      if (i > 0 && events[i - 1].timestampNanos === event.timestampNanos) {
+        prev.computeUnits += event.computeUnitsDelta;
+        prev.activeBankCount = activeBankCount;
+      } else {
+        chartData.push({
+          timestampNanos: Number(
+            event.timestampNanos - computeUnits.start_timestamp_nanos,
+          ),
+          computeUnits: prev.computeUnits + event.computeUnitsDelta,
+          activeBankCount,
+        });
+      }
+      return chartData;
+    },
+    [{ timestampNanos: 0, computeUnits: 0, activeBankCount: 0 }],
+  );
 }
 
 const getXTicks = memoize(function getXTicks(
@@ -694,12 +712,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
   const useActiveBanksMdStroke =
     !useActiveBanksLargeStroke && xDomain[1] - xDomain[0] < mdNanosThreshold;
 
-  const tEnd =
-    0.95 *
-    Number(
-      computeUnits.target_end_timestamp_nanos -
-        computeUnits.start_timestamp_nanos,
-    );
+  const tEnd = 0.95 * slotDurationNanos;
 
   const prevPolyPoints = useRef<[Coordinate, Coordinate][]>([]);
   prevPolyPoints.current = [];

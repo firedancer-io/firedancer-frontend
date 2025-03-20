@@ -77,7 +77,7 @@ export function useSlotQueryResponse(slot?: number) {
   const response = useAtomValue(
     useMemo(() => getSlotResponseAtom(slot), [slot]),
   );
-  const skipQuery = !!response?.compute_units;
+  const skipQuery = !!response?.transactions;
 
   const { hasWaitedForData } = useSlotQuery(slot, true, skipQuery);
 
