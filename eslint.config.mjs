@@ -7,7 +7,6 @@ import reactRefresh from "eslint-plugin-react-refresh";
 
 // Override type, the analyzer misses eslint-plugin-react's flat configs
 /** @type {typeof eslintReact.configs} */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const eslintReactConfigsFlat = eslintReact.configs.flat;
 
 // eslint-plugin-react-hooks specifies an incorrect value for `plugins`
@@ -25,10 +24,10 @@ export default tseslint.config(
   eslintReactConfigsFlat["jsx-runtime"],
   eslintReactHooksFlat.recommended,
   prettier,
+  { ignores: ["**/dist/"] },
   {
     plugins: {
       "@typescript-eslint": tseslint.plugin,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       "react-refresh": reactRefresh,
     },
 
@@ -62,7 +61,7 @@ export default tseslint.config(
       "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/restrict-template-expressions": [
         "error",
-        { allowNumber: true, allowBoolean: true,  },
+        { allowNumber: true, allowBoolean: true },
       ],
       "@typescript-eslint/no-unsafe-enum-comparison": "off",
       "@typescript-eslint/prefer-promise-reject-errors": [
@@ -107,5 +106,5 @@ export default tseslint.config(
       "@typescript-eslint/no-useless-constructor": "warn",
       "react/prop-types": "off",
     },
-  }
+  },
 );

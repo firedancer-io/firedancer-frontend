@@ -106,20 +106,20 @@ export type SankeyLayerId = "links" | "nodes" | "labels" | "legends";
 
 export type SankeyMouseHandler<N extends DefaultNode, L extends DefaultLink> = (
   data: SankeyNodeDatum<N, L> | SankeyLinkDatum<N, L>,
-  event: MouseEvent
+  event: MouseEvent,
 ) => void;
 
 export type SankeyAlignType = "center" | "justify" | "start" | "end";
 export type SankeyAlignFunction = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   node: SankeyNodeMinimal<any, any>,
-  n: number
+  n: number,
 ) => number;
 
 export type SankeySortType = "auto" | "input" | "ascending" | "descending";
 export type SankeySortFunction<N extends DefaultNode, L extends DefaultLink> = (
   a: SankeyNodeDatum<N, L>,
-  b: SankeyNodeDatum<N, L>
+  b: SankeyNodeDatum<N, L>,
 ) => number;
 
 export interface SankeyCommonProps<

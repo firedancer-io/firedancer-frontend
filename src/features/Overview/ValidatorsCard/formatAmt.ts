@@ -4,7 +4,7 @@ import { formatNumber, FormatNumberOptions } from "../../../numUtils";
 export function formatNumberLamports(
   value: number,
   decimalCount: number = 3,
-  formatOptions?: FormatNumberOptions
+  formatOptions?: FormatNumberOptions,
 ) {
   if (value === 0) return "0";
 
@@ -19,6 +19,6 @@ export function formatNumberLamports(
       significantDigits: 4,
       trailingZeroes: false,
       decimalsOnZero: false,
-    }
+    },
   );
 }

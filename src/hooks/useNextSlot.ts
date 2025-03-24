@@ -51,7 +51,7 @@ export default function useNextSlot() {
     if (nextLeaderSlot == null || estimatedSlot == null) return;
 
     return Duration.fromMillis(
-      slotDuration * (nextLeaderSlot - estimatedSlot)
+      slotDuration * (nextLeaderSlot - estimatedSlot),
     ).rescale();
   }, [estimatedSlot, nextLeaderSlot, slotDuration]);
 

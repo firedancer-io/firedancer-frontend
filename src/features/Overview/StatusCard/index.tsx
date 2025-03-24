@@ -106,7 +106,7 @@ function VoteDistanceText() {
   const voteState = useAtomValue(voteStateAtom);
 
   if (voteDistance == null) return null;
-  if(voteState === "delinquent") return null;
+  if (voteState === "delinquent") return null;
 
   const value = voteDistance > 150 ? "> 150" : voteDistance;
 

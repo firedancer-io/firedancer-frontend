@@ -13,7 +13,7 @@ export function getLeaderSlots(epoch: Epoch, pubkey: string) {
 
 export function getTimeTillText(
   duration?: Duration,
-  options: { showSeconds: boolean } = { showSeconds: true }
+  options: { showSeconds: boolean } = { showSeconds: true },
 ) {
   if (!duration) return "Never";
 
@@ -103,4 +103,5 @@ export const hasModKey = ({
   shiftKey,
   ctrlKey,
   metaKey,
-}: KeyboardEvent | React.MouseEvent | WheelEvent) => shiftKey || ctrlKey || metaKey;
+}: KeyboardEvent | React.MouseEvent | WheelEvent) =>
+  shiftKey || ctrlKey || metaKey;

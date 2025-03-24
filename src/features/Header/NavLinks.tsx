@@ -7,7 +7,7 @@ export default function NavLinks() {
   const isWideScreen = useMedia("(min-width: 1366px)");
   const isNarrowScreen = useMedia("(max-width: 430px)");
 
-  if(isNarrowScreen){
+  if (isNarrowScreen) {
     return null;
   }
 

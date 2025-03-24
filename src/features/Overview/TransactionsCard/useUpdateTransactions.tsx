@@ -14,7 +14,7 @@ export default function useUpdateTransactions() {
     if (!tpsHistory) return;
 
     const empty: undefined[] = new Array<undefined>(
-      maxTransactionChartPoints
+      maxTransactionChartPoints,
     ).fill(undefined);
 
     const tps = [
@@ -45,7 +45,7 @@ export default function useUpdateTransactions() {
             nonvote_success,
             nonvote_failed,
           },
-        ]
+        ],
       ),
     ];
     setTpsData(tps.slice(tps.length - maxTransactionChartPoints));

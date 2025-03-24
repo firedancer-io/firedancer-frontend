@@ -246,7 +246,7 @@ export const tpsHistorySchema = z.array(
     z.number(), // vote
     z.number(), // nonvote_success
     z.number(), // nonvote_failed
-  ])
+  ]),
 );
 
 export const voteStateSchema = z.enum(["voting", "non-voting", "delinquent"]);

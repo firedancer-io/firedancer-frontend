@@ -10,7 +10,7 @@ export function useSlotSearchParam() {
     (slot?: number) => {
       void navigate({ search: { slot }, replace: true });
     },
-    [navigate]
+    [navigate],
   );
 
   return { selectedSlot: slot, setSelectedSlot };

@@ -17,7 +17,7 @@ export const sankeyAlignmentPropMapping = {
 };
 
 export const sankeyAlignmentPropKeys = Object.keys(
-  sankeyAlignmentPropMapping
+  sankeyAlignmentPropMapping,
 ) as SankeyAlignType[];
 
 export const sankeyAlignmentFromProp = (prop: SankeyAlignType) =>

@@ -140,7 +140,7 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
 
   const [timeTillText, setTimeTillText] = useReducer(
     timeTillTextReducer,
-    getTimeTillText(timeTill)
+    getTimeTillText(timeTill),
   );
 
   useHarmonicIntervalFn(() => {

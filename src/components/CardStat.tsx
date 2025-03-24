@@ -40,7 +40,7 @@ export default function CardStat({
         </Text>
         {appendValue && (
           <Text className={styles.appendValue}>{appendValue}</Text>
-        )}  
+        )}
         {children}
       </Flex>
     </Flex>

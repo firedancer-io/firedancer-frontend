@@ -111,7 +111,7 @@ const InnerSankey = <N extends DefaultNode, L extends DefaultLink>({
     links
       .filter(
         ({ source, target }) =>
-          source.id === currentNode.id || target.id === currentNode.id
+          source.id === currentNode.id || target.id === currentNode.id,
       )
       .forEach(({ source, target }) => {
         currentNodeIds.push(source.id);

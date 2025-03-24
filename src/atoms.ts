@@ -31,7 +31,7 @@ export const epochAtom = atom(
 
     const epoch = epochs.find(
       ({ start_slot, end_slot }) =>
-        currentSlot >= start_slot && currentSlot <= end_slot
+        currentSlot >= start_slot && currentSlot <= end_slot,
     );
     if (!epoch) return;
 
@@ -41,7 +41,7 @@ export const epochAtom = atom(
     set(_epochsAtom, (draft) => {
       draft.push(epoch);
     });
-  }
+  },
 );
 
 export const nextEpochAtom = atom((get) => {
@@ -49,7 +49,7 @@ export const nextEpochAtom = atom((get) => {
   if (!currentEpoch) return;
 
   const nextEpoch = get(_epochsAtom).find(
-    (epoch) => epoch.epoch === currentEpoch?.epoch + 1
+    (epoch) => epoch.epoch === currentEpoch?.epoch + 1,
   );
 
   return nextEpoch;
@@ -70,12 +70,12 @@ export const slotOverrideAtom = atom(
     if (startOverrideSlot !== undefined) {
       startOverrideSlot = Math.min(
         epoch.end_slot,
-        Math.max(startOverrideSlot, epoch.start_slot)
+        Math.max(startOverrideSlot, epoch.start_slot),
       );
     }
 
     set(_slotOverrideAtom, startOverrideSlot);
-  }
+  },
 );
 
 const slotStatusAtom = atomWithImmer<Record<number, SlotLevel>>({});
@@ -84,7 +84,7 @@ export const getSlotStatus = (slot?: number) =>
   atom((get) =>
     slot !== undefined
       ? get(slotStatusAtom)[slot] || "incomplete"
-      : "incomplete"
+      : "incomplete",
   );
 
 export const setSlotStatusAtom = atom(
@@ -100,7 +100,7 @@ export const setSlotStatusAtom = atom(
     set(slotStatusAtom, (draft) => {
       draft[slot] = level;
     });
-  }
+  },
 );
 
 const slotCacheBounds = 1_000;
@@ -144,7 +144,7 @@ const slotResponseAtom = atomWithImmer<Record<number, SlotResponse>>({});
 
 export const getSlotPublishAtom = (slot?: number) =>
   atom((get) =>
-    slot !== undefined ? get(slotResponseAtom)[slot]?.publish : undefined
+    slot !== undefined ? get(slotResponseAtom)[slot]?.publish : undefined,
   );
 
 export const getSlotResponseAtom = (slot?: number) =>
@@ -162,7 +162,7 @@ export const setSlotResponseAtom = atom(
 
       draft[slot] = response;
     });
-  }
+  },
 );
 
 export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
@@ -217,7 +217,7 @@ export const currentSlotAtom = atom(
     }
 
     set(_currentSlotAtom, (prev) => Math.max(slot, prev ?? 0));
-  }
+  },
 );
 
 /** In order array of your leader slots (only first slot in group of 4) */
@@ -279,7 +279,7 @@ export const nextLeaderSlotAtom = atom(
       if (i >= leaderSlots.length) return undefined;
       return i;
     });
-  }
+  },
 );
 
 export const nextEpochLeaderSlotAtom = atom((get) => {
@@ -372,26 +372,26 @@ export const peerStatsAtom = atom((get) => {
 
   const activePeers = Object.values(peers).filter((p) => !p.removed);
   const rpc = activePeers.filter(
-    (p) => p.vote.every((v) => !v.activated_stake) && !!p.gossip
+    (p) => p.vote.every((v) => !v.activated_stake) && !!p.gossip,
   );
   const validators = activePeers.filter((p) =>
-    p.vote.some((v) => v.activated_stake)
+    p.vote.some((v) => v.activated_stake),
   );
   const activeStake = activePeers.reduce(
     (stake, p) =>
       p.vote.reduce(
         (acc, v) => (v.delinquent ? acc : acc + v.activated_stake),
-        0
+        0,
       ) + stake,
-    0
+    0,
   );
   const delinquentStake = activePeers.reduce(
     (stake, p) =>
       p.vote.reduce(
         (acc, v) => (v.delinquent ? acc + v.activated_stake : acc),
-        0
+        0,
       ) + stake,
-    0
+    0,
   );
 
   return {
@@ -431,7 +431,7 @@ export const allLeaderNamesAtom = atom((get) => {
   if (!epoch || !peers) return;
 
   const uniquePubkeys = new Set(
-    epoch.leader_slots.map((i) => epoch.staked_pubkeys[i])
+    epoch.leader_slots.map((i) => epoch.staked_pubkeys[i]),
   );
   const leadersWithNames = [...uniquePubkeys].map((pubkey) => ({
     pubkey: pubkey,
@@ -499,5 +499,5 @@ export const skipRateAtom = atom(
     set(_skipRateAtom, (draft) => {
       draft[skipRate.epoch] = skipRate;
     });
-  }
+  },
 );

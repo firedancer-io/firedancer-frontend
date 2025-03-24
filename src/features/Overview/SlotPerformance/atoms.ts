@@ -64,7 +64,7 @@ export const rateLiveWaterfallAtom = atom(
             leastRecent.waterfall.in[key as keyof typeof draft.in];
 
           draft.in[key as keyof typeof draft.in] = Math.trunc(
-            diffValue / diffS
+            diffValue / diffS,
           );
         }
       }
@@ -76,7 +76,7 @@ export const rateLiveWaterfallAtom = atom(
             leastRecent.waterfall.out[key as keyof typeof draft.out];
 
           draft.out[key as keyof typeof draft.out] = Math.trunc(
-            diffValue / diffS
+            diffValue / diffS,
           );
         }
       }
@@ -99,13 +99,13 @@ export const rateLiveWaterfallAtom = atom(
       while (
         draft.length > 1 &&
         Object.values(draft[0].waterfall.in).some(
-          (leastRecent, i) => mostRecent[i] - leastRecent < 0
+          (leastRecent, i) => mostRecent[i] - leastRecent < 0,
         )
       ) {
         draft.shift();
       }
     });
-  }
+  },
 );
 
 export const isTileSparkLineExpandedAtom = atom(false);

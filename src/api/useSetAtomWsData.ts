@@ -77,7 +77,7 @@ export function useSetAtomWsData() {
   const setEstimatedSlotDuration = useSetAtom(estimatedSlotDurationAtom);
   const setDbEstimatedSlotDuration = useThrottledCallback(
     (value?: EstimatedSlotDuration) => setEstimatedSlotDuration(value),
-    uptimeMins !== undefined && uptimeMins > 5 ? 1_000 * 60 : 1_000
+    uptimeMins !== undefined && uptimeMins > 5 ? 1_000 * 60 : 1_000,
   );
 
   const setEstimatedTps = useSetAtom(estimatedTpsAtom);
@@ -90,7 +90,7 @@ export function useSetAtomWsData() {
     (value?: LiveTilePrimaryMetric) => {
       setLivePrimaryMetrics(value);
     },
-    liveMetricsDebounceMs
+    liveMetricsDebounceMs,
   );
 
   const setRateLiveTxnWaterfall = useSetAtom(rateLiveWaterfallAtom);
@@ -100,7 +100,7 @@ export function useSetAtomWsData() {
       setLiveTxnWaterfall(value);
       setRateLiveTxnWaterfall(value?.waterfall);
     },
-    waterfallDebounceMs
+    waterfallDebounceMs,
   );
 
   const setTileTimer = useSetAtom(tileTimerAtom);
@@ -138,7 +138,7 @@ export function useSetAtomWsData() {
           [
             ...(prev ?? []).filter((slot) => slot !== value.publish.slot),
             value.publish.slot,
-          ].sort()
+          ].sort(),
         );
       } else {
         setSkippedSlots((prev) => {
@@ -302,7 +302,7 @@ export function useSetAtomWsData() {
     if (epoch) {
       setSkippedSlots((prev) => {
         return prev?.filter(
-          (slot) => slot >= epoch.start_slot && slot <= epoch.end_slot
+          (slot) => slot >= epoch.start_slot && slot <= epoch.end_slot,
         );
       });
     }

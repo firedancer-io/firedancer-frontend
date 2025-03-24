@@ -103,7 +103,7 @@ function Tooltip(
     label: string;
     value: number;
     color: string;
-  }>
+  }>,
 ) {
   const value = props.datum.value;
   const fmtValue = formatNumberLamports(value);

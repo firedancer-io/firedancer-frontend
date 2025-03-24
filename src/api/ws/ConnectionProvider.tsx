@@ -1,38 +1,16 @@
 import EventEmitter from "events";
 import { useSetAtom } from "jotai";
-import {
-  PropsWithChildren,
-  createContext,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { PropsWithChildren, useCallback, useEffect, useState } from "react";
 import connectWebSocket from "./connectWebSocket";
-import { ConnectionStatus, SendMessage, SocketState } from "./types";
+import { ConnectionStatus } from "./types";
 import { socketStateAtom } from "./atoms";
 import UpdateAtoms from "../UpdateAtoms";
-
-interface ConnectionContextType {
-  emitter: EventEmitter;
-  sendMessage: SendMessage;
-  isActive: boolean;
-  connectionStatus: ConnectionStatus;
-}
-
-const defaultCtxValue: ConnectionContextType = {
-  emitter: new EventEmitter().setMaxListeners(1e3),
-  sendMessage(_msg) {
-    // noop
-  },
-  isActive: false,
-  connectionStatus: {
-    socketState: SocketState.Disconnected,
-  },
-};
-
-export const ConnectionContext = createContext(defaultCtxValue);
-
-export const messageEventType = "m";
+import {
+  ConnectionContext,
+  ConnectionContextType,
+  defaultCtxValue,
+  messageEventType,
+} from "./ConnectionContext";
 
 export function ConnectionProvider({ children }: PropsWithChildren) {
   const [ctxValue, _setCtxValue] = useState(defaultCtxValue);
@@ -51,12 +29,12 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
         return { ...state, ...newContext };
       });
     },
-    []
+    [],
   );
 
   const resetContext = useCallback(
     () => updateContext(defaultCtxValue),
-    [updateContext]
+    [updateContext],
   );
 
   useEffect(() => {
@@ -77,7 +55,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
     const [sendMessage, dispose] = connectWebSocket(
       websocketUrl,
       onMessage,
-      onConnectionStatusChanged
+      onConnectionStatusChanged,
     );
 
     updateContext({ sendMessage, emitter, isActive: true });

@@ -11,7 +11,7 @@ export interface LeaderScheduleSlot {
   // isBlockConfirmed?: boolean;
   transactionCount?: number;
   instructionCount?: number;
-//   fees?: number;
+  //   fees?: number;
   rewards?: number;
   missed?: boolean;
   // solMoved?: number;

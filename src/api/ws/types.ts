@@ -280,18 +280,18 @@ export interface GatewayEventOrderMessage extends BaseGatewayEventMessage {
 }
 
 export const isOrderMessage = (
-  msg: BaseGatewayEventMessage
+  msg: BaseGatewayEventMessage,
 ): msg is GatewayEventOrderMessage =>
   msg.et === GatewayEventMessageType.ORDER_NEW ||
   msg.et === GatewayEventMessageType.ORDER_CANCEL;
 
 export const isSubmitOrder = (
-  msg: BaseGatewayEventMessage
+  msg: BaseGatewayEventMessage,
 ): msg is GatewayEventOrderMessage =>
   msg.et === GatewayEventMessageType.ORDER_NEW;
 
 export const isCancelOrder = (
-  msg: BaseGatewayEventMessage
+  msg: BaseGatewayEventMessage,
 ): msg is GatewayEventOrderMessage =>
   msg.et === GatewayEventMessageType.ORDER_CANCEL;
 
@@ -377,13 +377,13 @@ export interface GatewayEventOrderRejectMessage
 }
 
 export const isRejectMessage = (
-  msg: BaseGatewayEventMessage
+  msg: BaseGatewayEventMessage,
 ): msg is GatewayEventOrderRejectMessage =>
   msg.et === GatewayEventMessageType.ORDER_REJ_NEW ||
   msg.et === GatewayEventMessageType.ORDER_REJ_CNCL;
 
 export const isRejectSubmitOrderMessage = (
-  msg: BaseGatewayEventMessage
+  msg: BaseGatewayEventMessage,
 ): msg is GatewayEventOrderRejectMessage =>
   msg.et === GatewayEventMessageType.ORDER_REJ_NEW;
 
@@ -391,7 +391,7 @@ export const isPostOnlyRejectMessage = (msg: GatewayEventOrderRejectMessage) =>
   msg.ex.rr === RejectReason.Exch_PostOnly;
 
 export const isRejectCancelOrderMessage = (
-  msg: BaseGatewayEventMessage
+  msg: BaseGatewayEventMessage,
 ): msg is GatewayEventOrderRejectMessage =>
   msg.et === GatewayEventMessageType.ORDER_REJ_CNCL;
 
@@ -416,7 +416,7 @@ export interface GatewayEventTradeMessage extends BaseGatewayEventMessage {
 }
 
 export const isTradeMessage = (
-  msg: BaseGatewayEventMessage
+  msg: BaseGatewayEventMessage,
 ): msg is GatewayEventTradeMessage =>
   msg.et === GatewayEventMessageType.TRADE_EXEC;
 
@@ -434,7 +434,7 @@ export interface GatewayEventNewOrderAckMessage
 }
 
 export const isNewOrderAckMessage = (
-  msg: BaseGatewayEventMessage
+  msg: BaseGatewayEventMessage,
 ): msg is GatewayEventNewOrderAckMessage =>
   msg.et === GatewayEventMessageType.NEW_ORDER_ACK;
 
@@ -448,7 +448,7 @@ export interface GatewayEventCancelOrderAckMessage
 }
 
 export const isCancelOrderAckMessage = (
-  msg: BaseGatewayEventMessage
+  msg: BaseGatewayEventMessage,
 ): msg is GatewayEventCancelOrderAckMessage =>
   msg.et === GatewayEventMessageType.CANCEL_ORDER_ACK;
 
@@ -501,7 +501,7 @@ export type FeedbookMessage =
   | ClickIdMessage;
 
 export function isFeedbookMessage(
-  message: ServerMessage
+  message: ServerMessage,
 ): message is FeedbookMessage {
   return (
     message._t === ServerMessageType.BookLevels ||

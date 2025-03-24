@@ -2,7 +2,10 @@ import { DateTime } from "luxon";
 
 function log(level: "debug" | "error" | "warn" | "info") {
   return (category: string, ...message: unknown[]) => {
-    console[level](`(${DateTime.now().toISO({ includeOffset: false }) ?? ""}) [${category}]`, ...message);
+    console[level](
+      `(${DateTime.now().toISO({ includeOffset: false }) ?? ""}) [${category}]`,
+      ...message,
+    );
   };
 }
 

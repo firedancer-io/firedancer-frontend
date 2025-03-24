@@ -30,7 +30,7 @@ function getGetValue({
       case DisplayType.Pct: {
         let pct = Math.max(
           0,
-          Math.round((value / totalIncoming) * 100_00) / 100
+          Math.round((value / totalIncoming) * 100_00) / 100,
         );
         if (!pct && value) {
           pct = 0.01;
@@ -99,14 +99,14 @@ function getLinks(
   displayType: DisplayType,
   durationNanos?: number | null,
   totalTransactions?: number | null,
-  failedTransactions?: number | null
+  failedTransactions?: number | null,
 ) {
   const totalIncoming = sum(Object.values(waterfall.in));
   const getValue = getGetValue({ displayType, durationNanos, totalIncoming });
 
   const resolvShared = Math.min(
     waterfall.in.resolv_retained,
-    waterfall.out.resolv_retained
+    waterfall.out.resolv_retained,
   );
   const resolvRetainedIn = waterfall.in.resolv_retained - resolvShared;
   const resolvRetainedOut = waterfall.out.resolv_retained - resolvShared;
@@ -169,7 +169,7 @@ function getLinks(
       source: SlotNode.QUIC,
       target: SlotNode.QUICInvalid,
       value: getValue(
-        waterfall.out.tpu_quic_invalid + waterfall.out.tpu_udp_invalid
+        waterfall.out.tpu_quic_invalid + waterfall.out.tpu_udp_invalid,
       ),
     },
     {
@@ -251,7 +251,7 @@ function getLinks(
       source: SlotNode.Resolv,
       target: SlotNode.ResolvExpired,
       value: getValue(
-        waterfall.out.resolv_expired + waterfall.out.resolv_ancient
+        waterfall.out.resolv_expired + waterfall.out.resolv_ancient,
       ),
     },
     {
@@ -354,7 +354,7 @@ function SlotSankey({ slot }: { slot?: number }) {
       displayType,
       query.response?.publish.duration_nanos,
       query.response?.publish.transactions,
-      query.response?.publish.failed_transactions
+      query.response?.publish.failed_transactions,
     );
 
     const linkNodes = links.flatMap((l) => [l.source, l.target]);

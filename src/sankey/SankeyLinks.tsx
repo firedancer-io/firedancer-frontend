@@ -53,7 +53,7 @@ export const SankeyLinks = <N extends DefaultNode, L extends DefaultLink>({
   const getLinkPath = useMemo(
     () =>
       layout === "horizontal" ? sankeyLinkHorizontal() : sankeyLinkVertical(),
-    [layout]
+    [layout],
   );
 
   return (

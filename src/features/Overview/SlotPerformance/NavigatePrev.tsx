@@ -8,7 +8,6 @@ interface NavigatePrevProps {
 }
 
 export default function NavigatePrev({ nav, disabled }: NavigatePrevProps) {
-
   return (
     <>
       <Button

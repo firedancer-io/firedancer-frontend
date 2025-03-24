@@ -10,7 +10,7 @@ export function useSearchTypeSearchParam() {
     (searchType: SearchType) => {
       void navigate({ search: { searchType }, replace: true });
     },
-    [navigate]
+    [navigate],
   );
 
   return { searchType, setSearchType };
@@ -27,7 +27,7 @@ export function useSearchTextSearchParam() {
         replace: true,
       });
     },
-    [navigate]
+    [navigate],
   );
 
   return { searchText, setSearchText };

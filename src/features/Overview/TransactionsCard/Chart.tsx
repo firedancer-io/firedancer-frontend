@@ -49,15 +49,15 @@ export default function Chart() {
     return {
       votePath: getPath(
         points.map((p) => ({ x: p.x, y: p.voteY })),
-        height
+        height,
       ),
       failedPath: getPath(
         points.map((p) => ({ x: p.x, y: p.nonvoteFailedY })),
-        height
+        height,
       ),
       nonvotePath: getPath(
         points.map((p) => ({ x: p.x, y: p.nonvoteY })),
-        height
+        height,
       ),
       totalTpsY: isNaN(maxTotalY) ? undefined : maxTotalY,
     };

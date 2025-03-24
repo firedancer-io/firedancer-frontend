@@ -27,7 +27,7 @@ function getAllLeaderSlots(leaderSlots?: number[]) {
         { slot: slot + 1, order: 2 },
         { slot: slot + 2, order: 3 },
         { slot: slot + 3, order: 4 },
-      ]
+      ],
     );
   }, []);
 }
@@ -73,7 +73,7 @@ export default function SlotSelector() {
 
       return getAllLeaderSlots(slots);
     }, //, nextLeaderSlot),
-    [leaderStartSlots, nextEpochLeaderStartSlots]
+    [leaderStartSlots, nextEpochLeaderStartSlots],
   );
 
   const liveSlot = isCurrentlyLeader ? currentSlot : nextLeaderSlot;
@@ -130,7 +130,7 @@ export default function SlotSelector() {
     }
     settingSlotOverrideRef.current = setTimeout(
       () => (settingSlotOverrideRef.current = undefined),
-      250
+      250,
     );
   };
 
@@ -141,7 +141,7 @@ export default function SlotSelector() {
 
     if (slotOverride) {
       const slotDiffs = allLeaderSlots.map(({ slot }) =>
-        Math.abs(slot - slotOverride)
+        Math.abs(slot - slotOverride),
       );
       const minDiff = Math.min(...slotDiffs);
       const newIndex = getValidIndex({
@@ -161,7 +161,7 @@ export default function SlotSelector() {
 
   const viewableSlots = allLeaderSlots?.slice(
     index,
-    index + viewableSlotCount + overflowIndex
+    index + viewableSlotCount + overflowIndex,
   );
 
   const selected =

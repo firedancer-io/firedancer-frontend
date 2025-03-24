@@ -68,14 +68,14 @@ export const SankeyLinksItem = <N extends DefaultNode, L extends DefaultLink>({
       setCurrent(link);
       showTooltipFromEvent(createElement(tooltip, { link }), event, "left");
     },
-    [setCurrent, link, showTooltipFromEvent, tooltip]
+    [setCurrent, link, showTooltipFromEvent, tooltip],
   );
 
   const handleMouseMove = useCallback(
     (event: MouseEvent<SVGPathElement>) => {
       showTooltipFromEvent(createElement(tooltip, { link }), event, "left");
     },
-    [showTooltipFromEvent, link, tooltip]
+    [showTooltipFromEvent, link, tooltip],
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -87,7 +87,7 @@ export const SankeyLinksItem = <N extends DefaultNode, L extends DefaultLink>({
     (event: MouseEvent<SVGPathElement>) => {
       onClick?.(link, event);
     },
-    [onClick, link]
+    [onClick, link],
   );
   let linkColor;
   if (incomingSlotNodes.includes(link.source.id as SlotNode)) {

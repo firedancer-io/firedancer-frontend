@@ -5,7 +5,6 @@ import Card from "../../../components/Card";
 import styles from "./transactionsCard.module.css";
 import TransactionStats from "./TransactionStats";
 
-
 export default function TransactionsCard() {
   return (
     <Card style={{ flex: 1 }}>

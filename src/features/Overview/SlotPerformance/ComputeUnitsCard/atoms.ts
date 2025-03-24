@@ -10,7 +10,7 @@ export const triggerZoomAtom = (function () {
     (get) => get(triggerZoom) ?? (() => 0),
     (get, set, _triggerZoom: TriggerZoom) => {
       set(triggerZoom, () => _triggerZoom);
-    }
+    },
   );
 })();
 

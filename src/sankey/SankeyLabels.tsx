@@ -143,7 +143,7 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
         config: springConfig,
         immediate: !animate,
       };
-    })
+    }),
   );
 
   return (
@@ -152,7 +152,7 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
         const label = labels[index];
         const [labelFill, valueFill] = getLabelFill(
           label.label as SlotNode,
-          label.value
+          label.value,
         );
 
         const labelText = label.label.split(":")[0]?.trim();

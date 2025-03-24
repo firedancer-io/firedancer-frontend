@@ -10,9 +10,7 @@ export default function IncrementalSnapshotStats() {
   if (!startupProgress) return;
 
   const throughput = startupProgress.downloading_incremental_snapshot_throughput
-    ? `${byteSize(
-        startupProgress.downloading_incremental_snapshot_throughput
-      ).toString()}/s`
+    ? `${byteSize(startupProgress.downloading_incremental_snapshot_throughput).toString()}/s`
     : "-";
 
   return (

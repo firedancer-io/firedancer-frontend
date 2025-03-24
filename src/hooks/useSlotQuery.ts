@@ -25,21 +25,21 @@ const getSendQuery = memoize(
         });
       },
       5_000,
-      { trailing: false }
+      { trailing: false },
     );
   },
-  { maxSize: 250 }
+  { maxSize: 250 },
 );
 
 function useSlotQuery(
   slot: number | undefined,
   isDetailed: boolean,
-  skipQuery: boolean
+  skipQuery: boolean,
 ) {
   const wsSend = useWebSocketSend();
 
   const isFutureSlot = useAtomValue(
-    useMemo(() => getIsFutureSlotAtom(slot), [slot])
+    useMemo(() => getIsFutureSlotAtom(slot), [slot]),
   );
 
   const query = useCallback(() => {
@@ -75,7 +75,7 @@ export function useSlotQueryPublish(slot?: number) {
 
 export function useSlotQueryResponse(slot?: number) {
   const response = useAtomValue(
-    useMemo(() => getSlotResponseAtom(slot), [slot])
+    useMemo(() => getSlotResponseAtom(slot), [slot]),
   );
   const skipQuery = !!response?.compute_units;
 

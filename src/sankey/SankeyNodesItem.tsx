@@ -61,14 +61,14 @@ export const SankeyNodesItem = <N extends DefaultNode, L extends DefaultLink>({
       setCurrent(node);
       showTooltipFromEvent(createElement(tooltip, { node }), event, "left");
     },
-    [setCurrent, node, showTooltipFromEvent, tooltip]
+    [setCurrent, node, showTooltipFromEvent, tooltip],
   );
 
   const handleMouseMove = useCallback(
     (event: MouseEvent<SVGRectElement>) => {
       showTooltipFromEvent(createElement(tooltip, { node }), event, "left");
     },
-    [showTooltipFromEvent, node, tooltip]
+    [showTooltipFromEvent, node, tooltip],
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -80,7 +80,7 @@ export const SankeyNodesItem = <N extends DefaultNode, L extends DefaultLink>({
     (event: MouseEvent<SVGRectElement>) => {
       onClick?.(node, event);
     },
-    [onClick, node]
+    [onClick, node],
   );
 
   return (

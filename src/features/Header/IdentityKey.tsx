@@ -154,7 +154,7 @@ function Commission() {
       }
       return acc;
     },
-    { maxStake: 0, commission: undefined }
+    { maxStake: 0, commission: undefined },
   );
 
   return (

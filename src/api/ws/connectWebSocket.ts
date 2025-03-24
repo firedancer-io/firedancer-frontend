@@ -8,7 +8,7 @@ let reconnectTimer: ReturnType<typeof setTimeout>;
 export default function connectWebSocket(
   url: string | URL,
   onMessage: (message: unknown) => void,
-  onConnectionStatusChanged: (connectionStatus: ConnectionStatus) => void
+  onConnectionStatusChanged: (connectionStatus: ConnectionStatus) => void,
 ) {
   let ws: WebSocket;
   let isDisposing = false;
@@ -31,7 +31,7 @@ export default function connectWebSocket(
 
       logDebug(
         "WS",
-        `Disconnected API WebSocket, reconnecting in ${RECONNECT_DELAY}ms`
+        `Disconnected API WebSocket, reconnecting in ${RECONNECT_DELAY}ms`,
       );
       onConnectionStatusChanged({ socketState: SocketState.Disconnected });
 

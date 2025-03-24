@@ -7,7 +7,7 @@ import { Peer } from "../api/types";
 export default function usePeer(identity?: string): Peer | undefined {
   const atom = useMemo(
     () => focusAtom(peersAtom, (optic) => optic.prop(identity ?? "")),
-    [identity]
+    [identity],
   );
 
   return useAtomValue(atom);

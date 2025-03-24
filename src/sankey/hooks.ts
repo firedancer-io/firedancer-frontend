@@ -156,10 +156,10 @@ export const useSankey = <N extends DefaultNode, L extends DefaultLink>({
   labelTextColor: SankeyCommonProps<N, L>["labelTextColor"];
 }) => {
   const [currentNode, setCurrentNode] = useState<SankeyNodeDatum<N, L> | null>(
-    null
+    null,
   );
   const [currentLink, setCurrentLink] = useState<SankeyLinkDatum<N, L> | null>(
-    null
+    null,
   );
 
   const sortFunction = useMemo(() => {
@@ -229,7 +229,7 @@ export const useSankey = <N extends DefaultNode, L extends DefaultLink>({
       height,
       getColor,
       getLabel,
-    ]
+    ],
   );
 
   const legendData = useMemo(
@@ -239,7 +239,7 @@ export const useSankey = <N extends DefaultNode, L extends DefaultLink>({
         label: node.label,
         color: node.color,
       })),
-    [nodes]
+    [nodes],
   );
 
   return {

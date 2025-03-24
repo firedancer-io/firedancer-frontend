@@ -58,7 +58,7 @@ export const estimatedSlotDurationAtom = atom<
 export const estimatedTpsAtom = atom<EstimatedTps | undefined>(undefined);
 
 export const liveTxnWaterfallAtom = rafAtom<LiveTxnWaterfall | undefined>(
-  undefined
+  undefined,
 );
 
 export const liveTilePrimaryMetricAtom = atom<

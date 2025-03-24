@@ -12,7 +12,7 @@ export function useEventListener(
   eventType: string | readonly string[],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handler: (e: any) => void,
-  target: HTMLElement | EventTarget = window
+  target: HTMLElement | EventTarget = window,
 ): void {
   const savedHandler = useRef<EventListener>(handler);
 
@@ -34,12 +34,12 @@ export function useEventListener(
 
     const eventListener = (event: Event) => savedHandler.current?.(event);
     eventTypes.forEach((t) =>
-      target.addEventListener(t, eventListener, { passive: false })
+      target.addEventListener(t, eventListener, { passive: false }),
     );
 
     return () => {
       eventTypes.forEach((t) =>
-        target.removeEventListener(t, eventListener, false)
+        target.removeEventListener(t, eventListener, false),
       );
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

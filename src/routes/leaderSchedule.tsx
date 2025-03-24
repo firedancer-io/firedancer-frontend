@@ -18,7 +18,7 @@ const defaultValues = {
 
 const searchParamsSchema = z.object({
   searchType: fallback(SearchTypeSchema, SearchTypeEnum.text).default(
-    SearchTypeEnum.text
+    SearchTypeEnum.text,
   ),
   searchText: fallback(z.string(), "").default(""),
 });

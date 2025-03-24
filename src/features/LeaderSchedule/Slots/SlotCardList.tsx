@@ -43,7 +43,7 @@ export default function SlotCardList() {
 
   const [cardCount, setCardCount] = useReducer(
     cardCountReducer,
-    initSlotCardCount
+    initSlotCardCount,
   );
 
   const topSlot =
@@ -68,18 +68,18 @@ export default function SlotCardList() {
             slot = descSlots[i];
           } else {
             const firstPastSlotIndex = descSlots.findIndex(
-              (slot) => slot < currentLeaderSlot
+              (slot) => slot < currentLeaderSlot,
             );
             const initPastSlotGroups = 3;
             const indexOffset = Math.max(
               firstPastSlotIndex - initPastSlotGroups,
-              0
+              0,
             );
             slot = descSlots[i + indexOffset];
           }
         } else {
           const slotDiffs = descSlots.map((slot) =>
-            Math.abs(slot - slotOverride)
+            Math.abs(slot - slotOverride),
           );
           const minDiff = Math.min(...slotDiffs);
           const indexOffset = Math.max(slotDiffs.indexOf(minDiff) - 3, 0);

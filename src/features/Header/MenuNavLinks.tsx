@@ -13,7 +13,7 @@ export default function MenuNavLinks() {
 
   return (
     <DropDownNavLinks>
-      <Button className={styles.button} >
+      <Button className={styles.button}>
         <HamburgerMenuIcon />
       </Button>
     </DropDownNavLinks>

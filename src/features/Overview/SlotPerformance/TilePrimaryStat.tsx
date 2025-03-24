@@ -5,7 +5,7 @@ import { Text } from "@radix-ui/themes";
 import { TilePrimaryMetric } from "../../../api/types";
 import { selectedSlotAtom } from "./atoms";
 import byteSize from "byte-size";
-import {  useSlotQueryResponse } from "../../../hooks/useSlotQuery";
+import { useSlotQueryResponse } from "../../../hooks/useSlotQuery";
 
 interface TilePrimaryStatProps {
   type: keyof TilePrimaryMetric;

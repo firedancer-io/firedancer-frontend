@@ -194,7 +194,10 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
       const totalFees = formatNumberLamports(
         (publish.transaction_fee ?? 0) + (publish.priority_fee ?? 0),
         3,
-        { decimals: 3, trailingZeroes: true }
+        {
+          decimals: 3,
+          trailingZeroes: true,
+        },
       );
 
       const transactionFeeFull =

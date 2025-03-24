@@ -28,7 +28,7 @@ export default function TileSparkLineExpandedContainer({
 }: PropsWithChildren<TileSparkLineExpandedContainerProps>) {
   const canExpand = tileCountArr.length > 1;
   const [isTileSparkLineExpanded, setIsSparkLineExpanded] = useAtom(
-    isTileSparkLineExpandedAtom
+    isTileSparkLineExpandedAtom,
   );
 
   if (!canExpand) return <Flex gap="1">{children}</Flex>;
@@ -73,7 +73,7 @@ export default function TileSparkLineExpandedContainer({
                   ?.map((idlePerTile) =>
                     idlePerTile[i] !== undefined && idlePerTile[i] !== -1
                       ? 1 - idlePerTile[i]
-                      : undefined
+                      : undefined,
                   )
                   .filter(isDefined);
 

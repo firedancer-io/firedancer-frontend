@@ -8,7 +8,6 @@ import {
 import { getLeaderSlots } from "../../utils";
 import { slotsPerLeader } from "../../consts";
 
-
 export const searchLeaderSlotsAtom = atom<number[] | undefined>(undefined);
 
 export const setSearchLeaderSlotsAtom = atom(
@@ -51,8 +50,8 @@ export const setSearchLeaderSlotsAtom = atom(
     const searchPubkeys = leaderNames
       ?.filter(({ name, pubkey }) =>
         searchTextParts.some(
-          (s) => name?.includes(s) || pubkey.toLowerCase().includes(s)
-        )
+          (s) => name?.includes(s) || pubkey.toLowerCase().includes(s),
+        ),
       )
       .map(({ pubkey }) => pubkey);
 
@@ -69,7 +68,7 @@ export const setSearchLeaderSlotsAtom = atom(
       .sort();
 
     set(searchLeaderSlotsAtom, leaderSlots);
-  }
+  },
 );
 
 const setSearchOverrideAtom = atom(null, (get, set) => {
@@ -80,7 +79,7 @@ const setSearchOverrideAtom = atom(null, (get, set) => {
   const currentLeaderSlot = get(currentLeaderSlotAtom);
 
   const slotDiffs = leaderSlots.map((slot) =>
-    Math.abs(slot - (slotOverride ?? currentLeaderSlot ?? 0))
+    Math.abs(slot - (slotOverride ?? currentLeaderSlot ?? 0)),
   );
   const minDiff = Math.min(...slotDiffs);
   const minDiffIndex = Math.max(slotDiffs.indexOf(minDiff), 0);
@@ -99,7 +98,7 @@ export const setSlotOverrideScrollAtom = atom(
     if (searchLeaderSlots?.length) {
       if (slotOverride !== undefined) {
         const slotDiffs = searchLeaderSlots.map((slot) =>
-          Math.abs(slot - slotOverride)
+          Math.abs(slot - slotOverride),
         );
         const minDiff = Math.min(...slotDiffs);
         const currentSlotIndex = Math.max(slotDiffs.indexOf(minDiff), 0);
@@ -107,7 +106,7 @@ export const setSlotOverrideScrollAtom = atom(
         if (currentSlotIndex >= 0) {
           const slotIndex = Math.min(
             Math.max(currentSlotIndex + Math.trunc(slotOffset / 4), 0),
-            searchLeaderSlots.length - 1
+            searchLeaderSlots.length - 1,
           );
           set(slotOverrideAtom, searchLeaderSlots[slotIndex]);
         }
@@ -120,9 +119,9 @@ export const setSlotOverrideScrollAtom = atom(
       } else {
         set(
           slotOverrideAtom,
-          slotOffset + currentLeaderSlot + slotsPerLeader * 3
+          slotOffset + currentLeaderSlot + slotsPerLeader * 3,
         );
       }
     }
-  }
+  },
 );

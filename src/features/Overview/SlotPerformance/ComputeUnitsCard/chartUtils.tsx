@@ -2,7 +2,7 @@ import { Domain } from "./types";
 
 export function extendDomain(
   [dataMin, dataMax]: Domain,
-  extendPct = 5
+  extendPct = 5,
 ): Domain {
   const halfRange = ((dataMax - dataMin) * (1 + extendPct / 100)) / 2;
   const midpoint = dataMin + (dataMax - dataMin) / 2;
@@ -16,7 +16,7 @@ export function withinDomain([dataMin, dataMax]: Domain, ...values: number[]) {
 export function prettyIntervals(
   xMin: number,
   xMax: number,
-  intervals: number
+  intervals: number,
 ): number[] {
   if (intervals === 0 || !Number.isFinite(xMin) || !Number.isFinite(xMax))
     return [];

@@ -16,7 +16,11 @@ export interface NumberFormatOptions {
   trailingZeroes?: boolean;
 }
 
-export const numberFormat = ({ decimals = 4, significantDigits, trailingZeroes = true }: NumberFormatOptions = {}): Intl.NumberFormat =>
+export const numberFormat = ({
+  decimals = 4,
+  significantDigits,
+  trailingZeroes = true,
+}: NumberFormatOptions = {}): Intl.NumberFormat =>
   nfMemo(decimals, significantDigits, trailingZeroes);
 
 const nfMemo = memoize(
@@ -25,11 +29,12 @@ const nfMemo = memoize(
       minimumFractionDigits: !trailingZeroes ? 0 : decimals,
       maximumFractionDigits: decimals,
       // If significant digits is set, NumberFormat will ignore the decimal digits
-      minimumSignificantDigits: !trailingZeroes && significantDigits ? 1 : significantDigits,
+      minimumSignificantDigits:
+        !trailingZeroes && significantDigits ? 1 : significantDigits,
       maximumSignificantDigits: significantDigits,
     });
   },
-  { maxSize: 100 }
+  { maxSize: 100 },
 );
 
 export type FormatNumberOptions =
@@ -56,7 +61,10 @@ export function formatNumber(value: number, opts: FormatNumberOptions): string {
 
   let nf: Intl.NumberFormat;
   if ("decimals" in opts) {
-    const decimals = typeof opts.decimals === "function" ? opts.decimals(value) : opts.decimals;
+    const decimals =
+      typeof opts.decimals === "function"
+        ? opts.decimals(value)
+        : opts.decimals;
     nf = nfMemo(decimals, undefined, trailingZeroes);
   } else {
     const { significantDigits, exactIntegers } = opts;

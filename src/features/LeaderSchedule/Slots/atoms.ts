@@ -24,7 +24,7 @@ export const [
         set(scrollFuncsAtom, (draft) => {
           draft[slot] = scrollFunc;
         });
-      }
+      },
     ),
     atom(null, (get, set, slot: number) => {
       set(scrollFuncsAtom, (draft) => {

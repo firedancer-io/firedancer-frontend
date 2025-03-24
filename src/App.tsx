@@ -3,7 +3,7 @@ import { Theme } from "@radix-ui/themes";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import "./app.css";
 import { routeTree } from "./routeTree.gen";
-import { ConnectionProvider } from "./api/ws/ConnectionContext";
+import { ConnectionProvider } from "./api/ws/ConnectionProvider";
 import { useSetAtom } from "jotai";
 import { containerElAtom } from "./atoms";
 

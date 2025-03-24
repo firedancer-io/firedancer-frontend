@@ -46,9 +46,11 @@ export default function Search() {
     setSearchText(value);
   }, 1_000);
 
-  if (!debouncedSetSearch.isPending() && localValue !== searchText) {
-    setLocalValue(searchText);
-  }
+  useEffect(() => {
+    if (!debouncedSetSearch.isPending() && localValue !== searchText) {
+      setLocalValue(searchText);
+    }
+  }, [debouncedSetSearch, localValue, searchText]);
 
   const reset = () => {
     setSearchText("");

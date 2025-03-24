@@ -97,7 +97,7 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
       data.push({
         timestampNanos: Number(
           computeUnits.compute_unit_timestamps_nanos[i] -
-            computeUnits.start_timestamp_nanos
+            computeUnits.start_timestamp_nanos,
         ),
         computeUnits: prev.computeUnits + computeUnits.compute_units_deltas[i],
         activeBankCount: computeUnits.active_bank_count[i],
@@ -111,7 +111,7 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
 const getXTicks = memoize(function getXTicks(
   tsMinNanos: number,
   tsMaxNanos: number,
-  intervalCount: number
+  intervalCount: number,
 ) {
   return prettyIntervals(tsMinNanos, tsMaxNanos, intervalCount);
 });
@@ -119,7 +119,7 @@ const getXTicks = memoize(function getXTicks(
 function getDataDomain(
   data: ChartData[],
   maxComputeUnits: number,
-  zoomRange: ZoomRange | undefined
+  zoomRange: ZoomRange | undefined,
 ): Domain | undefined {
   if (!data.length) return;
 
@@ -182,7 +182,7 @@ function getTsByCu({
   maxComputeUnits: number;
 }) {
   return Math.round(
-    (computeUnits - maxComputeUnits) / bankCount / cusPerNs + tEnd
+    (computeUnits - maxComputeUnits) / bankCount / cusPerNs + tEnd,
   );
 }
 
@@ -204,14 +204,14 @@ function getSegments(
   computeUnits: ComputeUnits,
   bankTileCount: number,
   xDomain: Domain,
-  yDomain: Domain
+  yDomain: Domain,
 ) {
   const segments: Segment[][] = [];
   const tEnd =
     0.95 *
     Number(
       computeUnits.target_end_timestamp_nanos -
-        computeUnits.start_timestamp_nanos
+        computeUnits.start_timestamp_nanos,
     );
 
   const getCusAtTs = (ts: number, bankCount: number) => {
@@ -254,7 +254,7 @@ function getSegments(
 
 function getPolygonPoints(
   a: [Coordinate, Coordinate],
-  b: [Coordinate, Coordinate]
+  b: [Coordinate, Coordinate],
 ) {
   // Assuming lines never intersect
   if (a[0].x > b[0].x || a[1].x > b[1].x) {
@@ -319,7 +319,8 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
   const data = useMemo(() => getChartData(computeUnits), [computeUnits]);
 
   const slotDurationNanos = Number(
-    computeUnits.target_end_timestamp_nanos - computeUnits.start_timestamp_nanos
+    computeUnits.target_end_timestamp_nanos -
+      computeUnits.start_timestamp_nanos,
   );
   const dataStartTs = 0;
   const dataEndTs =
@@ -330,7 +331,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
   const visEndTs = zoomRange?.[1] ?? dataEndTs;
   const xDomain = useMemo(
     () => extendDomain([visStartTs, visEndTs], 1.5),
-    [visStartTs, visEndTs]
+    [visStartTs, visEndTs],
   );
 
   const [_chartWidth, _setChartWidth] = useState(0);
@@ -342,11 +343,11 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
   const chartWidth = Math.max(0, _chartWidth - 100);
   const xLabelCount = Math.max(
     minTickCount,
-    Math.trunc(chartWidth / tickLabelWidth)
+    Math.trunc(chartWidth / tickLabelWidth),
   );
   const xTicks = useMemo(
     () => getXTicks(xDomain[0], xDomain[1], xLabelCount),
-    [xDomain, xLabelCount]
+    [xDomain, xLabelCount],
   );
 
   const cuDomain = useMemo(
@@ -354,17 +355,17 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
       fitYToData
         ? getDataDomain(data, computeUnits.max_compute_units, zoomRange)
         : undefined,
-    [computeUnits.max_compute_units, data, fitYToData, zoomRange]
+    [computeUnits.max_compute_units, data, fitYToData, zoomRange],
   );
 
   const yDomain = useMemo<Domain>(
     () => cuDomain ?? [0, computeUnits.max_compute_units + 1_000_000],
-    [computeUnits.max_compute_units, cuDomain]
+    [computeUnits.max_compute_units, cuDomain],
   );
 
   const segments = useMemo(
     () => getSegments(computeUnits, bankTileCount, xDomain, yDomain),
-    [bankTileCount, computeUnits, xDomain, yDomain]
+    [bankTileCount, computeUnits, xDomain, yDomain],
   );
 
   const activeBankCountTicks = new Array(bankTileCount)
@@ -391,13 +392,13 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
         e.preventDefault();
       }
     },
-    containerElRef.current ?? undefined
+    containerElRef.current ?? undefined,
   );
 
   const updateZoom = (
     newStartTs: number,
     newEndTs: number,
-    isPanning = false
+    isPanning = false,
   ) => {
     // No data => no zoom
     if (dataStartTs === dataEndTs) {
@@ -414,7 +415,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
       // Ensure the zoom range does not go below a minimum
       newStartTs = Math.max(
         Math.trunc((newStartTs + newEndTs - minRangeNanos) / 2),
-        dataStartTs
+        dataStartTs,
       );
       newEndTs = newStartTs + minRangeNanos;
 
@@ -452,7 +453,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
   const updateDrag = useThrottledCallback(
     (dragEnd: number) =>
       setDragRange(([dragStart] = [dragEnd, dragEnd]) => [dragStart, dragEnd]),
-    50
+    50,
   );
 
   const updatePan = (panAmount: number) => {
@@ -480,7 +481,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
 
   const onMouseDown = (
     chartState?: CategoricalChartState,
-    e?: React.MouseEvent
+    e?: React.MouseEvent,
   ) => {
     if (chartState?.activeLabel && (e?.button === 0 || e?.button === 1)) {
       isMouseDownRef.current = true;
@@ -597,7 +598,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
 
         updateZoom(
           visStartTs + zoomAmt * hoverRelPos,
-          visEndTs - zoomAmt * (1 - hoverRelPos)
+          visEndTs - zoomAmt * (1 - hoverRelPos),
         );
       }
     }
@@ -614,7 +615,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
               ctrlKey: true,
               bubbles: true,
               detail: -1,
-            })
+            }),
           );
           return;
         case "out":
@@ -624,7 +625,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
               ctrlKey: true,
               bubbles: true,
               detail: -1,
-            })
+            }),
           );
           return;
         case "reset":
@@ -640,7 +641,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
     const hammer = new Hammer(containerElRef.current);
 
     hammer.add(
-      new Hammer.Pan({ event: "pan", direction: Hammer.DIRECTION_HORIZONTAL })
+      new Hammer.Pan({ event: "pan", direction: Hammer.DIRECTION_HORIZONTAL }),
     );
 
     hammer.on("panleft panright", (e) => {
@@ -653,7 +654,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
           shiftKey: true,
           bubbles: true,
           detail: -1,
-        })
+        }),
       );
     });
 
@@ -667,7 +668,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
           ctrlKey: true,
           bubbles: true,
           detail: -1,
-        })
+        }),
       );
     });
 
@@ -680,7 +681,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
           ctrlKey: true,
           bubbles: true,
           detail: -1,
-        })
+        }),
       );
     });
 
@@ -697,7 +698,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
     0.95 *
     Number(
       computeUnits.target_end_timestamp_nanos -
-        computeUnits.start_timestamp_nanos
+        computeUnits.start_timestamp_nanos,
     );
 
   const prevPolyPoints = useRef<[Coordinate, Coordinate][]>([]);
@@ -810,7 +811,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                         <Polygon
                           points={getPolygonPoints(
                             prevPolyPoints.current[i - 1] ?? leftAxisLinePoints,
-                            points
+                            points,
                           )}
                           fillOpacity={getSegmentColor(i).opacity}
                           fill={getSegmentColor(i).fill}
@@ -835,8 +836,8 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                           ts: xDomain[1] - xDomain[0] + xDomain[0],
                           tEnd,
                           maxComputeUnits: computeUnits.max_compute_units,
-                        })
-                      )
+                        }),
+                      ),
                     );
 
                     return (
@@ -871,7 +872,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                         prevPolyPoints.current[
                           prevPolyPoints.current.length - 1
                         ],
-                        rightAxisLinePoints
+                        rightAxisLinePoints,
                       )}
                       fillOpacity={
                         getSegmentColor(prevPolyPoints.current.length).opacity

@@ -20,7 +20,7 @@
   width: 5px;
   position: absolute;
   top: 0px;
-  opacity: .5;
+  opacity: 0.5;
   &:hover {
     filter: brightness(1.5);
   }
@@ -48,7 +48,7 @@
 
 .first-processed-slot {
   height: 100%;
-  background: #BDF3FF;
+  background: #bdf3ff;
   width: 3px;
   position: absolute;
   top: 0px;

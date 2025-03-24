@@ -15,6 +15,6 @@ export function rafAtom<T>(initialValue: T) {
         rafId = undefined;
         set(baseAtom, value);
       });
-    }
+    },
   );
 }

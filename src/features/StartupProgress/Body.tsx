@@ -64,7 +64,7 @@ const startupMinTime = 3_000;
 export default function Body() {
   const startupProgress = useAtomValue(startupProgressAtom);
   const [showStartupProgress, setShowStartupProgress] = useAtom(
-    showStartupProgressAtom
+    showStartupProgressAtom,
   );
   const timeoutRef = useRef<NodeJS.Timeout>();
   const peers = useAtomValue(peersAtom);
@@ -88,7 +88,7 @@ export default function Body() {
     } else {
       timeoutRef.current = setTimeout(
         () => setShowStartupProgress(startupProgress?.phase !== "running"),
-        startupMinTime
+        startupMinTime,
       );
     }
 
@@ -105,7 +105,7 @@ export default function Body() {
 
   const currentStepIndex = Math.max(
     0,
-    steps.findIndex(({ step }) => step === startupProgress?.phase)
+    steps.findIndex(({ step }) => step === startupProgress?.phase),
   );
 
   const [springs, api] = useSpring(() => ({

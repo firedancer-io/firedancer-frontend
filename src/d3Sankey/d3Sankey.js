@@ -297,7 +297,7 @@ export default function d3Sankey() {
       columns,
       (c) =>
         (y1 - y0 - (c.length - 1) * py) /
-        sum(c, (e) => Math.max(e.value, usePct ? 1 : minTransactionCount))
+        sum(c, (e) => Math.max(e.value, usePct ? 1 : minTransactionCount)),
       //  /
       // nodeHeightRatio
     );

@@ -57,7 +57,7 @@ function pctToValue(pct: number) {
 function valueToSlot(
   value?: number,
   epochStartSlot?: number,
-  epochEndSlot?: number
+  epochEndSlot?: number,
 ) {
   if (
     value === undefined ||
@@ -73,7 +73,7 @@ function valueToSlot(
 
 function epochProgressPctReducer(
   _: number,
-  params: { slot?: number; epochStartSlot?: number; epochEndSlot?: number }
+  params: { slot?: number; epochStartSlot?: number; epochEndSlot?: number },
 ): number {
   return slotToEpochPct(params);
 }
@@ -93,7 +93,7 @@ function getRefreshInterval(epoch: Epoch | undefined, pct: number) {
 
 function removeNearbyPct(
   pcts: { pct: number; slot: number }[],
-  pctBound: number
+  pctBound: number,
 ) {
   if (!pcts.length) return pcts;
 
@@ -109,7 +109,7 @@ function removeNearbyPct(
       acc.push(cur);
       return acc;
     },
-    [pcts[0]]
+    [pcts[0]],
   );
 }
 
@@ -133,7 +133,7 @@ function EpochSlider({ canChange }: EpochSliderProps) {
           slot: currentLeaderSlot,
           epochStartSlot: epoch?.start_slot,
           epochEndSlot: epoch?.end_slot,
-        })
+        }),
       ),
     ];
   });
@@ -148,7 +148,7 @@ function EpochSlider({ canChange }: EpochSliderProps) {
       epochStartSlot: epoch?.start_slot,
       epochEndSlot: epoch?.end_slot,
     },
-    slotToEpochPct
+    slotToEpochPct,
   );
 
   useInterval(
@@ -161,7 +161,7 @@ function EpochSlider({ canChange }: EpochSliderProps) {
         });
       });
     },
-    getRefreshInterval(epoch, epochProgressPct)
+    getRefreshInterval(epoch, epochProgressPct),
   );
 
   const leaderSlotPcts = useMemo(() => {
@@ -231,7 +231,7 @@ function EpochSlider({ canChange }: EpochSliderProps) {
             isChangingValueRef.current = true;
             setValue(newValue);
             setSlotOverride(
-              valueToSlot(newValue[0], epoch?.start_slot, epoch?.end_slot)
+              valueToSlot(newValue[0], epoch?.start_slot, epoch?.end_slot),
             );
           }
         }}
@@ -255,7 +255,12 @@ function EpochSlider({ canChange }: EpochSliderProps) {
         {skippedSlotPcts?.map(({ slot, pct }) => (
           <SkippedSlot key={slot} slot={slot} pct={pct} />
         ))}
-        {!!firstProcessedSlotPct && !!firstProcessedSlot && <FirstProcessedSlot slot={firstProcessedSlot} pct={firstProcessedSlotPct}/>}
+        {!!firstProcessedSlotPct && !!firstProcessedSlot && (
+          <FirstProcessedSlot
+            slot={firstProcessedSlot}
+            pct={firstProcessedSlotPct}
+          />
+        )}
         <Slider.Thumb
           className={styles.sliderThumb}
           style={{ cursor: canChange ? "grab" : "unset" }}
@@ -280,7 +285,7 @@ interface LeaderSlotProps {
 function LeaderSlot({ slot, pct, width }: LeaderSlotProps) {
   const setSlotOverride = useSetAtom(slotOverrideAtom);
   const isFutureSlot = useAtomValue(
-    useMemo(() => isFutureSlotAtom(slot), [slot])
+    useMemo(() => isFutureSlotAtom(slot), [slot]),
   );
   const onLeaderSlotClicked = (slot: number) => (e: React.PointerEvent) => {
     e.stopPropagation();

@@ -1,4 +1,3 @@
-/* eslint-disable */
 // From https://github.com/d3/d3-sankey/blob/master/src/index.js
 
 export { default as d3Sankey } from "./d3Sankey";

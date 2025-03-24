@@ -37,7 +37,7 @@ export default function TileCard({
 
   const tileCountArr = useMemo<unknown[]>(
     () => new Array(tileCount).fill(0),
-    [tileCount]
+    [tileCount],
   );
 
   const liveBusyPerTile = liveIdlePerTile
@@ -63,7 +63,7 @@ export default function TileCard({
   });
 
   const busy = (!selectedSlot ? liveBusyPerTile : aggQueryBusyPerTile)?.filter(
-    (b) => b !== undefined && b <= 1
+    (b) => b !== undefined && b <= 1,
   );
   const avgBusy = busy?.length ? mean(busy) : undefined;
 

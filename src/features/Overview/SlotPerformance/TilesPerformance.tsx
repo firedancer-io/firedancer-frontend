@@ -36,7 +36,7 @@ export default function TilesPerformance() {
 
       return grouped;
     },
-    {} as Record<TileType, number[]>
+    {} as Record<TileType, number[]>,
   );
 
   const query = useSlotQueryResponse(slot);
@@ -53,7 +53,7 @@ export default function TilesPerformance() {
           console.warn(
             "Length mismatch between tiles and time timers",
             timers.tile_timers,
-            tiles
+            tiles,
           );
         }
 
@@ -68,7 +68,7 @@ export default function TilesPerformance() {
         }
 
         for (const [tile, idlePerTile] of Object.entries(
-          idleTimersPerTileType
+          idleTimersPerTileType,
         )) {
           aggTimerPerTileType[tile] ??= [];
           aggTimerPerTileType[tile].push(idlePerTile);
@@ -76,11 +76,11 @@ export default function TilesPerformance() {
 
         return aggTimerPerTileType;
       },
-      {}
+      {},
     );
   }, [query.response?.tile_timers, showLive, tiles]);
 
-  const netType = tileCounts["net"] ? "net" : "sock" as const
+  const netType = tileCounts["net"] ? "net" : "sock";
 
   return (
     <div className={styles.container}>

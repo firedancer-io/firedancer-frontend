@@ -16,14 +16,14 @@ export default function useNavigateLeaderSlot() {
     if (leaderSlots === undefined) return [-1, -1];
 
     const nextLeaderSlotIndex = leaderSlots.findIndex(
-      (slot) => slot > (slotOverride ?? currentLeaderSlot ?? 0)
+      (slot) => slot > (slotOverride ?? currentLeaderSlot ?? 0),
     );
 
     let prevLeaderSlotIndex = nextLeaderSlotIndex - 1;
     if (
       prevLeaderSlotIndex ===
       leaderSlots.findIndex(
-        (slot) => slot === (slotOverride ?? currentLeaderSlot ?? 0)
+        (slot) => slot === (slotOverride ?? currentLeaderSlot ?? 0),
       )
     )
       prevLeaderSlotIndex--;
@@ -52,6 +52,6 @@ export default function useNavigateLeaderSlot() {
         }
       },
     }),
-    [leaderSlots, nextLeaderSlotIndex, prevLeaderSlotIndex, setSlotOverride]
+    [leaderSlots, nextLeaderSlotIndex, prevLeaderSlotIndex, setSlotOverride],
   );
 }

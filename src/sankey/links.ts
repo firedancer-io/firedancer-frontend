@@ -8,7 +8,7 @@ export const sankeyLinkHorizontal = <
   const lineGenerator = line().curve(curveMonotoneX);
 
   return (link: SankeyLinkDatum<N, L>, contract: number) => {
-    const thickness = Math.max(1, link.thickness - contract * 2) ;
+    const thickness = Math.max(1, link.thickness - contract * 2);
     const halfThickness = Math.max(1, thickness / 2);
     const linkLength = link.target.x0 - link.source.x1;
     const padLength = linkLength * 0.12;
