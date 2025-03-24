@@ -381,17 +381,17 @@ export const peerStatsAtom = atom((get) => {
     (stake, p) =>
       p.vote.reduce(
         (acc, v) => (v.delinquent ? acc : acc + v.activated_stake),
-        0,
+        0n,
       ) + stake,
-    0,
+    0n,
   );
   const delinquentStake = activePeers.reduce(
     (stake, p) =>
       p.vote.reduce(
         (acc, v) => (v.delinquent ? acc + v.activated_stake : acc),
-        0,
+        0n,
       ) + stake,
-    0,
+    0n,
   );
 
   return {
@@ -420,8 +420,13 @@ export const myStakePctAtom = atom((get) => {
   const stake = get(myStakeAmountAtom);
 
   if (stake === undefined || !peerStats) return;
+  if (!(peerStats.activeStake + peerStats.delinquentStake)) return;
 
-  return (stake / (peerStats.activeStake + peerStats.delinquentStake)) * 100;
+  return (
+    (Number(stake) /
+      Number(peerStats.activeStake + peerStats.delinquentStake)) *
+    100
+  );
 });
 
 export const allLeaderNamesAtom = atom((get) => {

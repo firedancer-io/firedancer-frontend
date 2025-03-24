@@ -182,7 +182,7 @@ function Commission() {
   const { peer } = useIdentityPeer();
 
   const maxCommission = peer?.vote.reduce<{
-    maxStake: number;
+    maxStake: bigint;
     commission?: number;
   }>(
     (acc, vote) => {
@@ -191,7 +191,7 @@ function Commission() {
       }
       return acc;
     },
-    { maxStake: 0, commission: undefined },
+    { maxStake: 0n, commission: undefined },
   );
 
   return (
@@ -212,7 +212,9 @@ function Uptime() {
   const getValue = () => {
     if (!uptime) return "-";
 
-    const uptimeDuration = Duration.fromMillis(uptime.uptimeNanos / 1_000_000);
+    const uptimeDuration = Duration.fromMillis(
+      Number(uptime.uptimeNanos) / 1_000_000,
+    );
     const diffDuration = slowDateTimeNow.diff(uptime.ts);
 
     const text = getTimeTillText(uptimeDuration.plus(diffDuration).rescale(), {
