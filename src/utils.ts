@@ -1,7 +1,6 @@
 import { DateTime, Duration } from "luxon";
 import { Epoch, Peer } from "./api/types";
 import { lamportsPerSol, slotsPerLeader } from "./consts";
-import { sum } from "lodash";
 
 export function getLeaderSlots(epoch: Epoch, pubkey: string) {
   return epoch.leader_slots.reduce<number[]>((leaderSlots, pubkeyIndex, i) => {
@@ -76,14 +75,17 @@ export const fixValue = (val: number) =>
   val >= 18446744073709552000 ? 0 : val;
 
 export function getStake(peer: Peer) {
-  return sum(peer.vote.map(({ activated_stake }) => activated_stake));
+  return peer.vote.reduce(
+    (total, { activated_stake }) => total + activated_stake,
+    0n,
+  );
 }
 
-export function getFmtStake(stake?: number) {
+export function getFmtStake(stake?: bigint) {
   if (stake === undefined) return;
 
   let value = "";
-  const solAmount = stake / lamportsPerSol;
+  const solAmount = Number(stake) / lamportsPerSol;
   if (solAmount < 1) {
     value = solAmount.toLocaleString();
   } else if (solAmount < 100) {

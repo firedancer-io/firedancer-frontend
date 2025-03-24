@@ -116,15 +116,17 @@ export function CardValidatorSummaryMobile({
 
 function getStakeMsg(
   peer?: Peer,
-  activeStake?: number,
-  delinquentStake?: number,
+  activeStake?: bigint,
+  delinquentStake?: bigint,
 ) {
   if (!peer) return;
 
   const stake = getStake(peer);
   const pct =
     activeStake !== undefined || delinquentStake !== undefined
-      ? (stake / ((activeStake ?? 0) + (delinquentStake ?? 0))) * 100
+      ? (Number(stake) /
+          Number((activeStake ?? 0n) + (delinquentStake ?? 0n))) *
+        100
       : undefined;
 
   return `${getFmtStake(stake)} ${
@@ -201,7 +203,7 @@ function TimeAgo({ slot, showTime }: CardValidatorSummaryProps) {
     if (!query.publish?.completed_time_nanos) return;
 
     return DateTime.fromMillis(
-      Math.trunc(query.publish?.completed_time_nanos / 1_000_000),
+      Math.trunc(Number(query.publish?.completed_time_nanos) / 1_000_000),
     );
   }, [query.publish]);
 

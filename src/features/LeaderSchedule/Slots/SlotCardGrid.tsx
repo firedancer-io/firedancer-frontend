@@ -184,7 +184,7 @@ function getRowValues(publish: SlotPublish): RowValues {
   const totalTxns = fixValue(publish.transactions ?? 0);
   const nonVoteTxns = totalTxns - voteTxns;
   const totalFees = formatNumberLamports(
-    (publish.transaction_fee ?? 0) + (publish.priority_fee ?? 0),
+    (publish.transaction_fee ?? 0n) + (publish.priority_fee ?? 0n),
     3,
     {
       decimals: 3,
@@ -194,20 +194,22 @@ function getRowValues(publish: SlotPublish): RowValues {
 
   const transactionFeeFull =
     publish.transaction_fee != null
-      ? (publish.transaction_fee / lamportsPerSol).toString()
+      ? (Number(publish.transaction_fee) / lamportsPerSol).toString()
       : "0";
 
   const priorityFeeFull =
     publish.priority_fee != null
-      ? (publish.priority_fee / lamportsPerSol).toString()
+      ? (Number(publish.priority_fee) / lamportsPerSol).toString()
       : "0";
 
-  const tips = formatNumberLamports(publish.tips ?? 0, 3, {
+  const tips = formatNumberLamports(publish.tips ?? 0n, 3, {
     decimals: 3,
     trailingZeroes: true,
   });
   const tipsFull =
-    publish.tips != null ? (publish.tips / lamportsPerSol).toString() : "0";
+    publish.tips != null
+      ? (Number(publish.tips) / lamportsPerSol).toString()
+      : "0";
 
   const durationText =
     publish.duration_nanos !== null

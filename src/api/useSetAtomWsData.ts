@@ -74,7 +74,7 @@ export function useSetAtomWsData() {
 
   const [uptime, setUptime] = useAtom(uptimeAtom);
   const uptimeMins =
-    uptime !== undefined ? uptime.uptimeNanos / minuteNanos : undefined;
+    uptime !== undefined ? Number(uptime.uptimeNanos) / minuteNanos : undefined;
 
   const setEstimatedSlotDuration = useSetAtom(estimatedSlotDurationAtom);
   const setDbEstimatedSlotDuration = useThrottledCallback(
