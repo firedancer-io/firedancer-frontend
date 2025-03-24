@@ -2,13 +2,13 @@ import { lamportsPerSol } from "../../../consts";
 import { formatNumber, FormatNumberOptions } from "../../../numUtils";
 
 export function formatNumberLamports(
-  value: number,
+  value: bigint,
   decimalCount: number = 3,
   formatOptions?: FormatNumberOptions,
 ) {
-  if (value === 0) return "0";
+  if (!value) return "0";
 
-  const solValue = value / lamportsPerSol;
+  const solValue = Number(value) / lamportsPerSol;
 
   if (solValue < 1) return solValue.toFixed(decimalCount);
 

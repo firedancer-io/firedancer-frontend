@@ -44,7 +44,7 @@ export const commitHashSchema = z.string();
 
 export const identityKeySchema = z.string();
 
-export const uptimeNanosSchema = z.number();
+export const uptimeNanosSchema = z.coerce.bigint();
 
 export const tileTypeSchema = z.enum([
   "sock",
@@ -71,9 +71,9 @@ export const tileSchema = z.object({
   kind_id: z.number(),
 });
 
-export const identityBalanceSchema = z.number();
+export const identityBalanceSchema = z.coerce.bigint();
 
-export const voteBalanceSchema = z.number();
+export const voteBalanceSchema = z.coerce.bigint();
 
 export const rootSlotSchema = z.number();
 
@@ -234,12 +234,12 @@ export const slotPublishSchema = z.object({
   transactions: z.number().nullable(),
   vote_transactions: z.number().nullable(),
   failed_transactions: z.number().nullable(),
-  priority_fee: z.number().nullable(),
-  transaction_fee: z.number().nullable(),
-  tips: z.number().nullable(),
+  priority_fee: z.coerce.bigint().nullable(),
+  transaction_fee: z.coerce.bigint().nullable(),
+  tips: z.coerce.bigint().nullable(),
   compute_units: z.number().nullable(),
   duration_nanos: z.number().nullable(),
-  completed_time_nanos: z.number().nullable(),
+  completed_time_nanos: z.coerce.bigint().nullable(),
 });
 
 export const tpsHistorySchema = z.array(
@@ -360,11 +360,13 @@ export const summarySchema = z.discriminatedUnion("key", [
 
 export const epochNewSchema = z.object({
   epoch: z.number(),
+  start_time_nanos: z.string().nullable(),
+  end_time_nanos: z.string().nullable(),
   start_slot: z.number(),
   end_slot: z.number(),
-  excluded_stake_lamports: z.number(),
+  excluded_stake_lamports: z.coerce.bigint(),
   staked_pubkeys: z.string().array(),
-  staked_lamports: z.number().array(),
+  staked_lamports: z.coerce.bigint().array(),
   leader_slots: z.number().array(),
 });
 
@@ -385,7 +387,7 @@ const peerUpdateGossipSchema = z.object({
 
 const peerUpdateVoteAccountSchema = z.object({
   vote_account: z.string(),
-  activated_stake: z.number(),
+  activated_stake: z.coerce.bigint(),
   last_vote: z.nullable(z.number()),
   root_slot: z.nullable(z.number()),
   epoch_credits: z.number(),
@@ -425,7 +427,7 @@ export const peersSchema = z.discriminatedUnion("key", [
 ]);
 
 const tsTileTimersSchema = z.object({
-  timestamp_nanos: z.number(),
+  timestamp_nanos: z.string(),
   tile_timers: z.number().array(),
 });
 

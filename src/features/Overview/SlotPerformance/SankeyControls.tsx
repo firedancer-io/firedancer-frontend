@@ -62,17 +62,21 @@ function SlotStats() {
 
     const transactionFeeFull =
       query.response.publish.transaction_fee != null
-        ? (query.response.publish.transaction_fee / lamportsPerSol).toFixed(9)
+        ? (
+            Number(query.response.publish.transaction_fee) / lamportsPerSol
+          ).toFixed(9)
         : "0";
 
     const priorityFeeFull =
       query.response.publish.priority_fee != null
-        ? (query.response.publish.priority_fee / lamportsPerSol).toFixed(9)
+        ? (
+            Number(query.response.publish.priority_fee) / lamportsPerSol
+          ).toFixed(9)
         : "0";
 
     const tips =
       query.response.publish.tips != null
-        ? (query.response.publish.tips / lamportsPerSol).toFixed(9)
+        ? (Number(query.response.publish.tips) / lamportsPerSol).toFixed(9)
         : "0";
 
     const computeUnits = fixValue(query.response.publish.compute_units ?? 0);
