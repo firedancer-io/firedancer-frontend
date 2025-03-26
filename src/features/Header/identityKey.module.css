@@ -4,6 +4,13 @@
   background: #1c2129;
   border: 1px solid rgba(250, 250, 250, 0.12);
 
+  &.pointer {
+    cursor: pointer;
+    &:hover {
+      filter: brightness(1.2);
+    }
+  }
+
   .label {
     color: #646464;
     font-size: 8px;

@@ -1,6 +1,6 @@
 import { Box, Flex, Text, TextProps } from "@radix-ui/themes";
 import { usePubKey } from "../../../hooks/usePubKey";
-import usePeer from "../../../hooks/usePeer";
+import { usePeer } from "../../../hooks/usePeer";
 import { DateTime } from "luxon";
 import { useMemo, useRef } from "react";
 import {

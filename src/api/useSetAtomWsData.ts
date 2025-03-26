@@ -18,6 +18,7 @@ import {
   versionAtom,
   voteDistanceAtom,
   voteStateAtom,
+  voteBalanceAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
@@ -69,6 +70,7 @@ export function useSetAtomWsData() {
   const setTiles = useSetAtom(tilesAtom);
 
   const setIdentityBalance = useSetAtom(identityBalanceAtom);
+  const setVoteBalance = useSetAtom(voteBalanceAtom);
 
   const [uptime, setUptime] = useAtom(uptimeAtom);
   const uptimeMins =
@@ -172,6 +174,10 @@ export function useSetAtomWsData() {
           }
           case "identity_key": {
             setIdentityKey(value);
+            break;
+          }
+          case "vote_balance": {
+            setVoteBalance(value);
             break;
           }
           case "uptime_nanos": {

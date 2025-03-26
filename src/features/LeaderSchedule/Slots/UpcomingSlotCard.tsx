@@ -9,7 +9,7 @@ import {
   currentSlotAtom,
   slotDurationAtom,
 } from "../../../atoms";
-import usePeer from "../../../hooks/usePeer";
+import { usePeer } from "../../../hooks/usePeer";
 import { identityKeyAtom } from "../../../api/atoms";
 import { useReducer } from "react";
 import { DateTime, Duration } from "luxon";

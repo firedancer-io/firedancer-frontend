@@ -1,8 +1,11 @@
 import { useAtomValue } from "jotai";
-import { identityKeyAtom, uptimeAtom } from "../../api/atoms";
+import {
+  identityBalanceAtom,
+  uptimeAtom,
+  voteBalanceAtom,
+} from "../../api/atoms";
 import { Text, Flex, Tooltip } from "@radix-ui/themes";
 import styles from "./identityKey.module.css";
-import usePeer from "../../hooks/usePeer";
 import PeerIcon from "../../components/PeerIcon";
 import { myStakePctAtom, myStakeAmountAtom } from "../../atoms";
 import { PropsWithChildren, useEffect } from "react";
@@ -10,17 +13,16 @@ import { Duration } from "luxon";
 import { getFmtStake, getTimeTillText, slowDateTimeNow } from "../../utils";
 import { formatNumber } from "../../numUtils";
 import { useInterval, useMedia, useUpdate } from "react-use";
-import Dropdown from "../../components/Dropdown";
 import clsx from "clsx";
+import { useIdentityPeer } from "../../hooks/useIdentityPeer";
+import PopoverDropdown from "../../components/PopoverDropdown";
 
 export default function IdentityKey() {
-  const identityKey = useAtomValue(identityKeyAtom);
-  const peer = usePeer(identityKey);
+  const { peer, identityKey } = useIdentityPeer();
 
-  const isXXNarrowScreen = useMedia("(min-width: 500px)");
+  const isXXNarrowScreen = useMedia("(min-width: 550px)");
   const isXNarrowScreen = useMedia("(min-width: 750px)");
   const isNarrowScreen = useMedia("(min-width: 900px)");
-  const isWideScreen = useMedia("(min-width: 1366px)");
 
   useEffect(() => {
     let title = "Firedancer";
@@ -33,20 +35,17 @@ export default function IdentityKey() {
     document.title = title;
   }, [identityKey, peer]);
 
-  const identityKeyLabel =
-    isWideScreen || !identityKey
-      ? identityKey
-      : `${identityKey.substring(0, 8)}...`;
-
   return (
-    <DropdownContainer showDropdown={!isNarrowScreen}>
-      <div className={clsx(styles.container, styles.horizontal)}>
+    <DropdownContainer showDropdown>
+      <div
+        className={clsx(styles.container, styles.horizontal, styles.pointer)}
+      >
         {isXXNarrowScreen && (
           <PeerIcon url={peer?.info?.icon_url} size={24} isYou />
         )}
         <Label
           label="Validator Name"
-          value={identityKeyLabel}
+          value={`${identityKey?.substring(0, 8)}...`}
           tooltip="The validators identity public key"
         />
         {isXNarrowScreen && (
@@ -59,6 +58,7 @@ export default function IdentityKey() {
           <>
             <Uptime />
             <Commission />
+            <IdentityBalance />
           </>
         )}
       </div>
@@ -79,15 +79,12 @@ function DropdownContainer({
   }
 
   return (
-    <Dropdown dropdownMenu={<DropdownMenu />} noPadding>
-      {children}
-    </Dropdown>
+    <PopoverDropdown content={<DropdownMenu />}>{children}</PopoverDropdown>
   );
 }
 
 function DropdownMenu() {
-  const identityKey = useAtomValue(identityKeyAtom);
-  const peer = usePeer(identityKey);
+  const { peer, identityKey } = useIdentityPeer();
 
   return (
     <div className={styles.container}>
@@ -103,7 +100,48 @@ function DropdownMenu() {
       <StakePct />
       <Uptime />
       <Commission />
+      <IdentityBalance />
+      <VotePubkey />
+      <VoteBalance />
     </div>
+  );
+}
+
+function VotePubkey() {
+  const { peer } = useIdentityPeer();
+
+  return (
+    <Label
+      label="Vote Pubkey"
+      value={peer?.vote[0]?.vote_account}
+      tooltip="The public key of vote account, encoded in base58"
+    />
+  );
+}
+
+function VoteBalance() {
+  const voteBalance = useAtomValue(voteBalanceAtom);
+
+  return (
+    <>
+      <Label
+        label="Vote Balance"
+        value={getFmtStake(voteBalance) ?? "-"}
+        tooltip="Account balance of this validators vote account. The balance is on the highest slot of the currently active fork of the validator."
+      />
+    </>
+  );
+}
+
+function IdentityBalance() {
+  const identityBalance = useAtomValue(identityBalanceAtom);
+
+  return (
+    <Label
+      label="Identity Balance"
+      value={getFmtStake(identityBalance) ?? "-"}
+      tooltip="Account balance of this validators identity account. The balance is on the highest slot of the currently active fork of the validator."
+    />
   );
 }
 
@@ -141,8 +179,7 @@ function StakeValue() {
 }
 
 function Commission() {
-  const identityKey = useAtomValue(identityKeyAtom);
-  const peer = usePeer(identityKey);
+  const { peer } = useIdentityPeer();
 
   const maxCommission = peer?.vote.reduce<{
     maxStake: number;
@@ -198,15 +235,16 @@ interface LabelProps {
 }
 function Label({ label, value, color, tooltip }: LabelProps) {
   if (!value) return null;
+  const textValue = (
+    <Text className={styles.value} style={{ color: color }}>
+      {value}
+    </Text>
+  );
 
   return (
     <Flex direction="column">
       <Text className={styles.label}>{label}</Text>
-      <Tooltip content={tooltip}>
-        <Text className={styles.value} style={{ color: color }}>
-          {value}
-        </Text>
-      </Tooltip>
+      {tooltip ? <Tooltip content={tooltip}>{textValue}</Tooltip> : textValue}
     </Flex>
   );
 }

@@ -73,6 +73,8 @@ export const tileSchema = z.object({
 
 export const identityBalanceSchema = z.number();
 
+export const voteBalanceSchema = z.number();
+
 export const rootSlotSchema = z.number();
 
 export const optimisticallyConfirmedSlotSchema = z.number();
@@ -292,6 +294,10 @@ export const summarySchema = z.discriminatedUnion("key", [
   }),
   summaryTopicSchema.extend({
     key: z.literal("identity_balance"),
+    value: identityBalanceSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("vote_balance"),
     value: identityBalanceSchema,
   }),
   summaryTopicSchema.extend({

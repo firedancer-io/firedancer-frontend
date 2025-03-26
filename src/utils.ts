@@ -86,6 +86,10 @@ export function getFmtStake(stake?: number) {
   const solAmount = stake / lamportsPerSol;
   if (solAmount < 1) {
     value = solAmount.toLocaleString();
+  } else if (solAmount < 100) {
+    value = solAmount.toLocaleString(undefined, {
+      maximumFractionDigits: 2,
+    });
   } else {
     value = solAmount.toLocaleString(undefined, {
       maximumFractionDigits: 0,

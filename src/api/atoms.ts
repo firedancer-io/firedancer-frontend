@@ -21,6 +21,7 @@ import {
   VoteState,
   VoteDistance,
   BlockEngineUpdate,
+  VoteBalance,
 } from "./types";
 import { DateTime } from "luxon";
 import { rafAtom } from "../atomUtils";
@@ -40,6 +41,8 @@ export const uptimeAtom = atom<
 export const tilesAtom = atom<Tile[] | undefined>(undefined);
 
 export const identityBalanceAtom = atom<IdentityBalance | undefined>(undefined);
+
+export const voteBalanceAtom = atom<VoteBalance | undefined>(undefined);
 
 export const rootSlotAtom = atom<RootSlot | undefined>(undefined);
 

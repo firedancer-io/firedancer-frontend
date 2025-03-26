@@ -37,6 +37,7 @@ import {
   voteDistanceSchema,
   voteStateSchema,
   computeUnitsSchema,
+  voteBalanceSchema,
 } from "./entities";
 
 export type Version = z.infer<typeof versionSchema>;
@@ -52,6 +53,8 @@ export type UptimeNanos = z.infer<typeof uptimeNanosSchema>;
 export type Tile = z.infer<typeof tileSchema>;
 
 export type IdentityBalance = z.infer<typeof identityBalanceSchema>;
+
+export type VoteBalance = z.infer<typeof voteBalanceSchema>;
 
 export type RootSlot = z.infer<typeof rootSlotSchema>;
 
