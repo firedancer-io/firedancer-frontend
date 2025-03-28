@@ -25,6 +25,7 @@ import styles from "./computeUnits.module.css";
 import memoize from "micro-memoize";
 import { useAtom, useSetAtom } from "jotai";
 import {
+  clickedTransactionAtom,
   fitYToDataAtom,
   isMaxZoomRangeAtom,
   triggerZoomAtom,
@@ -32,7 +33,7 @@ import {
 } from "./atoms";
 import Hammer from "hammerjs";
 import { useUnmount } from "react-use";
-import { Domain, ZoomRange } from "./types";
+import { Domain, TransactionMeta, ZoomRange } from "./types";
 import {
   extendDomain,
   notEqual,
@@ -50,6 +51,8 @@ interface ChartData {
   timestampNanos: number;
   computeUnits: number;
   activeBankCount: number;
+  income: number;
+  transactions: TransactionMeta[];
 }
 
 const minRangeNanos = 50_000;
@@ -70,6 +73,7 @@ const getSegmentColor = (index: number) => {
 };
 const cuAxisId = "computeUnits";
 const bankCountAxisId = "activeBankCount";
+const incomeAxisId = "income";
 const defaultCuTicks = [
   8_000_000, 16_000_000, 24_000_000, 32_000_000, 40_000_000, 48_000_000,
 ];
@@ -85,12 +89,72 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
       computeUnitsDelta: computeUnits.txn_compute_units_estimated[i],
       bank: computeUnits.txn_bank_idx[i],
       start: 1,
+      transaction: {
+        transactionIndex: i,
+        startTimestampNanos: Number(
+          computeUnits.txn_start_timestamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        endTimestampNanos: Number(
+          computeUnits.txn_stop_timestamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        endLoadTimestampNanos: Number(
+          computeUnits.txn_load_end_timstamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        endExecTimestampNanos: Number(
+          computeUnits.txn_exec_end_timstamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        computeUnitsEstimated: computeUnits.txn_compute_units_estimated[i],
+        computeUnitsRebated: computeUnits.txn_compute_units_rebated[i],
+        priorityFeeLamports: computeUnits.txn_priority_fee[i],
+        lamportsPerCu:
+          Number(computeUnits.txn_priority_fee[i]) /
+          computeUnits.txn_compute_units_requested[i],
+        tips: computeUnits.txn_tips[i],
+        errorCode: computeUnits.txn_error_code[i],
+        fromBundle: computeUnits.txn_from_bundle[i],
+        isVote: computeUnits.txn_is_simple_vote[i],
+        bankIndex: computeUnits.txn_bank_idx[i],
+      } as TransactionMeta,
     })),
     ...computeUnits.txn_stop_timestamps_nanos.map((timestamp, i) => ({
       timestampNanos: timestamp,
       computeUnitsDelta: -1 * computeUnits.txn_compute_units_rebated[i],
       bank: computeUnits.txn_bank_idx[i],
       start: -1,
+      transaction: {
+        transactionIndex: i,
+        startTimestampNanos: Number(
+          computeUnits.txn_start_timestamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        endTimestampNanos: Number(
+          computeUnits.txn_stop_timestamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        endLoadTimestampNanos: Number(
+          computeUnits.txn_load_end_timstamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        endExecTimestampNanos: Number(
+          computeUnits.txn_exec_end_timstamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        computeUnitsEstimated: computeUnits.txn_compute_units_estimated[i],
+        computeUnitsRebated: computeUnits.txn_compute_units_rebated[i],
+        priorityFeeLamports: computeUnits.txn_priority_fee[i],
+        lamportsPerCu:
+          Number(computeUnits.txn_priority_fee[i]) /
+          computeUnits.txn_compute_units_requested[i],
+        tips: computeUnits.txn_tips[i],
+        errorCode: computeUnits.txn_error_code[i],
+        fromBundle: computeUnits.txn_from_bundle[i],
+        isVote: computeUnits.txn_is_simple_vote[i],
+        bankIndex: computeUnits.txn_bank_idx[i],
+      } as TransactionMeta,
     })),
   ].sort((a, b) => Number(a.timestampNanos - b.timestampNanos));
 
@@ -109,6 +173,10 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
       if (i > 0 && events[i - 1].timestampNanos === event.timestampNanos) {
         prev.computeUnits += event.computeUnitsDelta;
         prev.activeBankCount = activeBankCount;
+        prev.transactions.push(event.transaction);
+        prev.income +=
+          Number(event.transaction.priorityFeeLamports) +
+          Number(event.transaction.tips);
       } else {
         chartData.push({
           timestampNanos: Number(
@@ -116,11 +184,24 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
           ),
           computeUnits: prev.computeUnits + event.computeUnitsDelta,
           activeBankCount,
+          income:
+            prev.income +
+            Number(event.transaction.priorityFeeLamports) +
+            Number(event.transaction.tips),
+          transactions: [event.transaction],
         });
       }
       return chartData;
     },
-    [{ timestampNanos: 0, computeUnits: 0, activeBankCount: 0 }],
+    [
+      {
+        timestampNanos: 0,
+        computeUnits: 0,
+        activeBankCount: 0,
+        income: 0,
+        transactions: [],
+      },
+    ],
   );
 }
 
@@ -308,6 +389,8 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
   const [fitYToData, setFitYToData] = useAtom(fitYToDataAtom);
   const [zoomRange, setZoomRange] = useAtom(zoomRangeAtom);
   const setIsMaxZoomRange = useSetAtom(isMaxZoomRangeAtom);
+  const setClickedTransaction = useSetAtom(clickedTransactionAtom);
+
   useUnmount(() => {
     setZoomRange(undefined);
     setIsMaxZoomRange(false);
@@ -754,6 +837,15 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
               onMouseDown={onMouseDown}
               onMouseMove={onMouseMove}
               onMouseUp={onMouseUp}
+              onClick={(data, index) => {
+                setClickedTransaction(
+                  (
+                    data.activePayload?.[0] as {
+                      payload: { transactions: TransactionMeta[] };
+                    }
+                  )?.payload?.transactions ?? [],
+                );
+              }}
               onDoubleClick={() => setZoomRange(undefined)}
             >
               <CartesianGrid stroke="#C6C6C6" opacity={0.1} />
@@ -920,6 +1012,16 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                 name="CUs"
                 isAnimationActive={false}
               />
+              <Line
+                yAxisId={incomeAxisId}
+                type="stepAfter"
+                dataKey="income"
+                stroke="#32ad53"
+                strokeWidth={1.3}
+                dot={false}
+                name="Income"
+                isAnimationActive={false}
+              />
               <XAxis
                 dataKey="timestampNanos"
                 scale="time"
@@ -940,7 +1042,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                 ticks={cuDomain ? undefined : defaultCuTicks}
                 allowDataOverflow={!!cuDomain}
                 minTickGap={0}
-                orientation="right"
+                orientation="left"
                 tickFormatter={(tick) => {
                   if (typeof tick !== "number") return "";
 
@@ -955,6 +1057,23 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                 ticks={activeBankCountTicks}
                 hide
                 name="active bank tiles"
+              />
+              <YAxis
+                yAxisId={incomeAxisId}
+                scale="linear"
+                type="number"
+                domain={[
+                  0,
+                  (dataMax: number) => Math.max(dataMax + 1, 10000000),
+                ]}
+                // ticks={cuDomain ? undefined : defaultCuTicks}
+                minTickGap={0}
+                orientation="right"
+                tickFormatter={(tick) => {
+                  if (typeof tick !== "number") return "";
+
+                  return `${tick / 1_000_000_000}SOL`;
+                }}
               />
 
               {isActiveDragging && (
