@@ -2,7 +2,7 @@ import { Box, Flex, Text, TextProps } from "@radix-ui/themes";
 import { usePubKey } from "../../../hooks/usePubKey";
 import { usePeer } from "../../../hooks/usePeer";
 import { DateTime } from "luxon";
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import {
   getStake,
   getFmtStake,
@@ -158,19 +158,22 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
     .filter(isDefined)
     .join(" - ");
 
-  const ref = useRef<HTMLDivElement>(null);
   if (!message) return null;
 
   const isFd = validator?.startsWith("Frankendancer");
   const isAgave = validator && !isFd;
-
-  const shouldWrap = (ref.current?.scrollWidth ?? 0) > 364;
+  const validatorText = validator || "Unknown";
+  const stakeText =
+    getStakeMsg(peer, peerStats?.activeStake, peerStats?.delinquentStake) ?? "";
+  const ipText = peer?.gossip?.sockets["tvu"]?.split(":")[0] || "Offline";
+  const textLength = (validatorText + stakeText + ipText).length;
+  const shouldWrap = textLength > 54;
   const textProps: TextProps = shouldWrap
     ? { style: { flexBasis: 0 } }
     : { wrap: "nowrap" };
 
   return (
-    <Flex gap="1" className={styles.secondaryText} ref={ref}>
+    <Flex gap="1" className={styles.secondaryText}>
       <Text
         className={clsx({
           [styles.fdText]: isFd,
@@ -178,14 +181,12 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
         })}
         {...textProps}
       >
-        {validator || "Unknown"}
+        {validatorText}
       </Text>
       <Text className={styles.divider}>&bull;</Text>
-      <Text {...textProps}>
-        {getStakeMsg(peer, peerStats?.activeStake, peerStats?.delinquentStake)}
-      </Text>
+      <Text {...textProps}>{stakeText}</Text>
       <Text className={styles.divider}>&bull;</Text>
-      <Text>{peer?.gossip?.sockets["tvu"]?.split(":")[0] || "Offline"}</Text>
+      <Text>{ipText}</Text>
     </Flex>
   );
 }

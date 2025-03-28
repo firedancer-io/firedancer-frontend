@@ -8,6 +8,7 @@ import {
 import { getLeaderSlots } from "../../utils";
 import { slotsPerLeader } from "../../consts";
 
+/** first slot of leader slot groups in asc order */
 export const searchLeaderSlotsAtom = atom<number[] | undefined>(undefined);
 
 export const setSearchLeaderSlotsAtom = atom(

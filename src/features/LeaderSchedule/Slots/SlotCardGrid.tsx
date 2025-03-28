@@ -178,72 +178,75 @@ interface SlotCardRowProps {
   active?: boolean;
 }
 
+function getRowValues(publish: SlotPublish): RowValues {
+  // TODO: fix backend
+  const voteTxns = fixValue(publish.vote_transactions ?? 0);
+  const totalTxns = fixValue(publish.transactions ?? 0);
+  const nonVoteTxns = totalTxns - voteTxns;
+  const totalFees = formatNumberLamports(
+    (publish.transaction_fee ?? 0) + (publish.priority_fee ?? 0),
+    3,
+    {
+      decimals: 3,
+      trailingZeroes: true,
+    },
+  );
+
+  const transactionFeeFull =
+    publish.transaction_fee != null
+      ? (publish.transaction_fee / lamportsPerSol).toString()
+      : "0";
+
+  const priorityFeeFull =
+    publish.priority_fee != null
+      ? (publish.priority_fee / lamportsPerSol).toString()
+      : "0";
+
+  const tips = formatNumberLamports(publish.tips ?? 0, 3, {
+    decimals: 3,
+    trailingZeroes: true,
+  });
+  const tipsFull =
+    publish.tips != null ? (publish.tips / lamportsPerSol).toString() : "0";
+
+  const durationText =
+    publish.duration_nanos !== null
+      ? `${Math.trunc(publish.duration_nanos / 1_000_000)} ms`
+      : "-";
+
+  const computeUnits = fixValue(publish?.compute_units ?? 0);
+  const computeUnitsPct =
+    publish.compute_units != null
+      ? (publish.compute_units / 48_000_000) * 100
+      : 0;
+
+  return {
+    voteTxns: voteTxns.toLocaleString(),
+    nonVoteTxns: nonVoteTxns.toLocaleString(),
+    totalFees,
+    transactionFeeFull,
+    priorityFeeFull,
+    tips,
+    tipsFull,
+    durationText,
+    computeUnits,
+    computeUnitsPct,
+  };
+}
+
 function SlotCardRow({ slot, active }: SlotCardRowProps) {
   const firstProcessedSlot = useAtomValue(firstProcessedSlotAtom);
   const currentSlot = useAtomValue(currentSlotAtom);
   const queryPublish = useSlotQueryPublish(slot);
 
-  const [values, setValues] = useState<RowValues | undefined>();
+  const [values, setValues] = useState<RowValues | undefined>(() => {
+    if (!queryPublish.publish) return;
+    return getRowValues(queryPublish.publish);
+  });
 
   useEffect(() => {
-    const getValues = (publish: SlotPublish): RowValues => {
-      // TODO: fix backend
-      const voteTxns = fixValue(publish.vote_transactions ?? 0);
-      const totalTxns = fixValue(publish.transactions ?? 0);
-      const nonVoteTxns = totalTxns - voteTxns;
-      const totalFees = formatNumberLamports(
-        (publish.transaction_fee ?? 0) + (publish.priority_fee ?? 0),
-        3,
-        {
-          decimals: 3,
-          trailingZeroes: true,
-        },
-      );
-
-      const transactionFeeFull =
-        publish.transaction_fee != null
-          ? (publish.transaction_fee / lamportsPerSol).toString()
-          : "0";
-
-      const priorityFeeFull =
-        publish.priority_fee != null
-          ? (publish.priority_fee / lamportsPerSol).toString()
-          : "0";
-
-      const tips = formatNumberLamports(publish.tips ?? 0, 3, {
-        decimals: 3,
-        trailingZeroes: true,
-      });
-      const tipsFull =
-        publish.tips != null ? (publish.tips / lamportsPerSol).toString() : "0";
-
-      const durationText =
-        publish.duration_nanos !== null
-          ? `${Math.trunc(publish.duration_nanos / 1_000_000)} ms`
-          : "-";
-
-      const computeUnits = fixValue(publish?.compute_units ?? 0);
-      const computeUnitsPct =
-        publish.compute_units != null
-          ? (publish.compute_units / 48_000_000) * 100
-          : 0;
-
-      return {
-        voteTxns: voteTxns.toLocaleString(),
-        nonVoteTxns: nonVoteTxns.toLocaleString(),
-        totalFees,
-        transactionFeeFull,
-        priorityFeeFull,
-        tips,
-        tipsFull,
-        durationText,
-        computeUnits,
-        computeUnitsPct,
-      };
-    };
-
     if (queryPublish.publish) {
-      setValues(getValues(queryPublish.publish));
+      setValues(getRowValues(queryPublish.publish));
     }
   }, [queryPublish.publish, slot]);
 

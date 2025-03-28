@@ -2,7 +2,6 @@ import { Flex, Text } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
 import { PropsWithChildren, useMemo, useReducer } from "react";
 import { slotsPerLeader } from "../../../consts";
-import { SlotType } from "./types";
 import UpcomingSlotCard from "./UpcomingSlotCard";
 import { PastSlotCard } from "./PastSlotCard";
 import CurrentSlotCard from "./CurrentSlotCard";
@@ -14,6 +13,8 @@ import {
 } from "../../../atoms";
 import { searchLeaderSlotsAtom } from "../atoms";
 import { useMedia } from "react-use";
+import PreloadCardList from "./PreloadCardList";
+import { getSlotCards } from "./slotCards";
 
 export const initUpcomingSlotCardCount = 3;
 const initSlotCardCount = 10;
@@ -27,12 +28,6 @@ function cardCountReducer(prev: number, action: "increase" | "decrease") {
     case "decrease":
       return Math.max(1, prev - decreaseSlotCardCount);
   }
-}
-
-function getSlotType(slot: number, currentLeaderSlot: number) {
-  if (slot < currentLeaderSlot) return SlotType.Past;
-  if (slot > currentLeaderSlot) return SlotType.Upcoming;
-  return SlotType.Now;
 }
 
 export default function SlotCardList() {
@@ -50,75 +45,25 @@ export default function SlotCardList() {
     slotOverride ??
     (currentLeaderSlot ?? 0) + initUpcomingSlotCardCount * slotsPerLeader;
 
-  const { upcoming, now, past } = useMemo(() => {
-    const upcoming: number[] = [];
-    const now: number[] = [];
-    const past: number[] = [];
-
-    if (currentLeaderSlot === undefined) return { upcoming, now, past };
-
-    for (let i = 0; i < cardCount; i++) {
-      let slot = 0;
-
-      if (searchLeaderSlots?.length) {
-        const descSlots = [...searchLeaderSlots].reverse();
-
-        if (slotOverride === undefined) {
-          if (descSlots.length <= cardCount) {
-            slot = descSlots[i];
-          } else {
-            const firstPastSlotIndex = descSlots.findIndex(
-              (slot) => slot < currentLeaderSlot,
-            );
-            const initPastSlotGroups = 3;
-            const indexOffset = Math.max(
-              firstPastSlotIndex - initPastSlotGroups,
-              0,
-            );
-            slot = descSlots[i + indexOffset];
-          }
-        } else {
-          const slotDiffs = descSlots.map((slot) =>
-            Math.abs(slot - slotOverride),
-          );
-          const minDiff = Math.min(...slotDiffs);
-          const indexOffset = Math.max(slotDiffs.indexOf(minDiff) - 3, 0);
-          slot = descSlots[i + indexOffset];
-        }
-
-        if (!slot) break;
-      } else {
-        slot = topSlot - i * slotsPerLeader;
-      }
-
-      if (epoch && (slot < epoch.start_slot || slot > epoch.end_slot)) {
-        continue;
-      }
-
-      const slotType = getSlotType(slot, currentLeaderSlot);
-
-      if (slotType === SlotType.Upcoming) {
-        upcoming.push(slot);
-      }
-
-      if (slotType === SlotType.Now) {
-        now.push(slot);
-      }
-
-      if (slotType === SlotType.Past) {
-        past.push(slot);
-      }
-    }
-
-    return { upcoming, now, past };
-  }, [
-    cardCount,
-    currentLeaderSlot,
-    epoch,
-    searchLeaderSlots,
-    slotOverride,
-    topSlot,
-  ]);
+  const { upcoming, now, past } = useMemo(
+    () =>
+      getSlotCards({
+        cardCount,
+        currentLeaderSlot,
+        epoch,
+        searchLeaderSlots,
+        slotOverride,
+        topSlot,
+      }),
+    [
+      cardCount,
+      currentLeaderSlot,
+      epoch,
+      searchLeaderSlots,
+      slotOverride,
+      topSlot,
+    ],
+  );
 
   if (currentLeaderSlot === undefined) return;
 
@@ -139,10 +84,13 @@ export default function SlotCardList() {
     );
   }
 
-  const lastCardSlot =
+  const topCardSlotLeader = upcoming[0] ?? now[0] ?? past[0] ?? -1;
+
+  const bottomCardSlotLeader =
     past[past.length - 1] ??
     now[now.length - 1] ??
-    upcoming[upcoming.length - 1];
+    upcoming[upcoming.length - 1] ??
+    -1;
 
   return (
     <>
@@ -153,13 +101,12 @@ export default function SlotCardList() {
               <CheckVisibilityCard
                 key={slot}
                 slot={slot}
-                lastCardSlot={lastCardSlot}
+                lastCardSlot={bottomCardSlotLeader}
                 setCardCount={setCardCount}
               >
                 <UpcomingSlotCard slot={slot} key={slot} />
               </CheckVisibilityCard>
             );
-            // }
           })}
         </SlotCardSection>
       )}
@@ -171,7 +118,7 @@ export default function SlotCardList() {
               <CheckVisibilityCard
                 key={slot}
                 slot={slot}
-                lastCardSlot={lastCardSlot}
+                lastCardSlot={bottomCardSlotLeader}
                 setCardCount={setCardCount}
               >
                 <CurrentSlotCard slot={slot} key={slot} />
@@ -189,7 +136,7 @@ export default function SlotCardList() {
               <CheckVisibilityCard
                 key={slot}
                 slot={slot}
-                lastCardSlot={lastCardSlot}
+                lastCardSlot={bottomCardSlotLeader}
                 setCardCount={setCardCount}
               >
                 <PastSlotCard slot={slot} />
@@ -198,6 +145,10 @@ export default function SlotCardList() {
           })}
         </SlotCardSection>
       )}
+      <PreloadCardList
+        topCardSlotLeader={topCardSlotLeader}
+        bottomCardSlotLeader={bottomCardSlotLeader}
+      />
     </>
   );
 }

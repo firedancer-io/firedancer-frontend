@@ -2,6 +2,10 @@ import { useState } from "react";
 import privateIcon from "../assets/private.svg";
 import privateYouIcon from "../assets/privateYou.svg";
 import { Tooltip } from "@radix-ui/themes";
+import { useAtom } from "jotai";
+import { getPeerIconHasErrorIcon } from "./peerIconAtom";
+import styles from "./peerIcon.module.css";
+import clsx from "clsx";
 
 interface PeerIconProps {
   url?: string | null;
@@ -16,7 +20,11 @@ export default function PeerIcon({
   hideFallback,
   isYou,
 }: PeerIconProps) {
-  const [hasError, setHasError] = useState(false);
+  const [globalHasError, setGlobalHasError] = useAtom(
+    getPeerIconHasErrorIcon(url),
+  );
+  const [hasError, setHasError] = useState(globalHasError);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   if (!url || hasError) {
     if (hideFallback) {
@@ -41,11 +49,26 @@ export default function PeerIcon({
     }
   }
 
+  const handleError = () => {
+    setGlobalHasError();
+    setHasError(true);
+  };
+
   return (
-    <img
-      src={url}
-      style={{ height: `${size}px`, width: `${size}px` }}
-      onError={() => setHasError(true)}
-    />
+    <>
+      <img
+        className={clsx({ [styles.hide]: !hasLoaded })}
+        style={{ height: `${size}px`, width: `${size}px` }}
+        onError={handleError}
+        onLoad={() => setHasLoaded(true)}
+        src={url}
+      />
+      <img
+        className={clsx({ [styles.hide]: hasLoaded })}
+        style={{ height: `${size}px`, width: `${size}px` }}
+        src={privateIcon}
+        alt="private"
+      />
+    </>
   );
 }
