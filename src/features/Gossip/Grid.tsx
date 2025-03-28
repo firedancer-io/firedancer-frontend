@@ -9,6 +9,7 @@ import {
   ColDef,
   GetRowIdParams,
   ModuleRegistry,
+  ValueFormatterParams,
 } from "@ag-grid-community/core";
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { CsvExportModule } from "@ag-grid-community/csv-export";
@@ -38,7 +39,7 @@ interface PeerRow {
   pubkey: string;
   name?: string | null;
   description?: string | null;
-  stake?: number | null;
+  stake?: bigint | null;
   delinquent?: boolean | null;
   lastVote?: number | null;
   rootSlot?: number | null;
@@ -48,14 +49,21 @@ const colDefs: ColDef<PeerRow>[] = [
   {
     field: "pubkey",
     initialWidth: 300,
-    cellStyle: (params) => {
+    cellStyle: (params: ValueFormatterParams<PeerRow, string>) => {
       return { color: params.data?.delinquent ? "#6D6F71" : "#B2BCC9" };
     },
     filter: true,
   },
   { field: "name", initialWidth: 300, filter: true },
   { field: "description", initialWidth: 500, filter: true },
-  { field: "stake", initialSort: "desc", initialWidth: 180, filter: true },
+  {
+    field: "stake",
+    initialSort: "desc",
+    initialWidth: 180,
+    filter: true,
+    valueFormatter: (params: ValueFormatterParams<PeerRow, bigint>) =>
+      params.value?.toString() ?? "",
+  },
   { field: "delinquent", initialWidth: 110, filter: true },
   { field: "lastVote", initialWidth: 110, filter: true },
   { field: "rootSlot", initialWidth: 110, filter: true },

@@ -7,8 +7,8 @@ import { formatNumberLamports } from "./formatAmt";
 import { sum } from "lodash";
 
 interface ChartProps {
-  activeStake: number;
-  delinquentStake: number;
+  activeStake: bigint;
+  delinquentStake: bigint;
 }
 export default function Chart({ activeStake, delinquentStake }: ChartProps) {
   const data = useMemo(() => {
@@ -16,14 +16,14 @@ export default function Chart({ activeStake, delinquentStake }: ChartProps) {
       {
         id: "non-delinquent",
         label: "Non-delinquent",
-        value: activeStake,
+        value: Number(activeStake),
         color: "#363A63",
         textColor: "#6F77C0",
       },
       {
         id: "delinquent",
         label: "Delinquent",
-        value: delinquentStake,
+        value: Number(delinquentStake),
         color: "#FF3C3C",
         textColor: "#FF3C3C",
       },
@@ -106,7 +106,7 @@ function Tooltip(
   }>,
 ) {
   const value = props.datum.value;
-  const fmtValue = formatNumberLamports(value);
+  const fmtValue = formatNumberLamports(BigInt(value));
 
   return (
     <div className={styles.tooltip}>

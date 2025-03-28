@@ -29,7 +29,7 @@ export default function DropDownNavLinks({ children }: PropsWithChildren) {
           </Button>
         )}
       </DropdownMenu.Trigger>
-      <DropdownMenu.Portal container={containerEl} >
+      <DropdownMenu.Portal container={containerEl}>
         <DropdownMenu.Content className={styles.content} sideOffset={5}>
           <DropdownMenu.Item className={styles.item}>
             <NavLink to="/" label="Overview" />
