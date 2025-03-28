@@ -25,6 +25,7 @@ import styles from "./computeUnits.module.css";
 import memoize from "micro-memoize";
 import { useAtom, useSetAtom } from "jotai";
 import {
+  clickedTransactionAtom,
   fitYToDataAtom,
   isMaxZoomRangeAtom,
   triggerZoomAtom,
@@ -32,7 +33,7 @@ import {
 } from "./atoms";
 import Hammer from "hammerjs";
 import { useUnmount } from "react-use";
-import { Domain, ZoomRange } from "./types";
+import { Domain, TransactionMeta, ZoomRange } from "./types";
 import {
   extendDomain,
   notEqual,
@@ -50,6 +51,9 @@ interface ChartData {
   timestampNanos: number;
   computeUnits: number;
   activeBankCount: number;
+  transactions: TransactionMeta[];
+  total_priority_fees_lamports: number;
+  total_tips_lamports: number;
 }
 
 const minRangeNanos = 50_000;
@@ -70,6 +74,7 @@ const getSegmentColor = (index: number) => {
 };
 const cuAxisId = "computeUnits";
 const bankCountAxisId = "activeBankCount";
+const incomeAxisId = "income";
 const defaultCuTicks = [
   8_000_000, 16_000_000, 24_000_000, 32_000_000, 40_000_000, 48_000_000,
 ];
@@ -82,15 +87,83 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
   const events = [
     ...computeUnits.txn_start_timestamps_nanos.map((timestamp, i) => ({
       timestampNanos: timestamp,
-      computeUnitsDelta: computeUnits.txn_compute_units_estimated[i],
+      computeUnitsDelta: computeUnits.txn_max_compute_units[i],
       bank: computeUnits.txn_bank_idx[i],
       start: 1,
+      transaction: {
+        transactionIndex: i,
+        startTimestampNanos: Number(
+          computeUnits.txn_start_timestamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        endTimestampNanos: Number(
+          computeUnits.txn_stop_timestamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        endLoadTimestampNanos: Number(
+          computeUnits.txn_load_end_timstamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        endExecTimestampNanos: Number(
+          computeUnits.txn_exec_end_timstamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        computeUnitsEstimated: computeUnits.txn_max_compute_units[i],
+        computeUnitsRebated: -(
+          computeUnits.txn_compute_units_consumed[i] -
+          computeUnits.txn_max_compute_units[i]
+        ),
+        priorityFeeLamports: computeUnits.txn_priority_fee[i],
+        lamportsPerCu:
+          Number(computeUnits.txn_priority_fee[i]) /
+          computeUnits.txn_compute_units_requested[i],
+        tips: computeUnits.txn_tips[i],
+        errorCode: computeUnits.txn_error_code[i],
+        fromBundle: computeUnits.txn_from_bundle[i],
+        isVote: computeUnits.txn_is_simple_vote[i],
+        bankIndex: computeUnits.txn_bank_idx[i],
+      } as TransactionMeta,
     })),
     ...computeUnits.txn_stop_timestamps_nanos.map((timestamp, i) => ({
       timestampNanos: timestamp,
-      computeUnitsDelta: -1 * computeUnits.txn_compute_units_rebated[i],
+      computeUnitsDelta:
+        computeUnits.txn_compute_units_consumed[i] -
+        computeUnits.txn_max_compute_units[i],
       bank: computeUnits.txn_bank_idx[i],
       start: -1,
+      transaction: {
+        transactionIndex: i,
+        startTimestampNanos: Number(
+          computeUnits.txn_start_timestamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        endTimestampNanos: Number(
+          computeUnits.txn_stop_timestamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        endLoadTimestampNanos: Number(
+          computeUnits.txn_load_end_timstamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        endExecTimestampNanos: Number(
+          computeUnits.txn_exec_end_timstamps_nanos[i] -
+            computeUnits.start_timestamp_nanos,
+        ),
+        computeUnitsEstimated: computeUnits.txn_max_compute_units[i],
+        computeUnitsRebated: -(
+          computeUnits.txn_compute_units_consumed[i] -
+          computeUnits.txn_max_compute_units[i]
+        ),
+        priorityFeeLamports: computeUnits.txn_priority_fee[i],
+        lamportsPerCu:
+          Number(computeUnits.txn_priority_fee[i]) /
+          computeUnits.txn_compute_units_requested[i],
+        tips: computeUnits.txn_tips[i],
+        errorCode: computeUnits.txn_error_code[i],
+        fromBundle: computeUnits.txn_from_bundle[i],
+        isVote: computeUnits.txn_is_simple_vote[i],
+        bankIndex: computeUnits.txn_bank_idx[i],
+      } as TransactionMeta,
     })),
   ].sort((a, b) => Number(a.timestampNanos - b.timestampNanos));
 
@@ -109,6 +182,15 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
       if (i > 0 && events[i - 1].timestampNanos === event.timestampNanos) {
         prev.computeUnits += event.computeUnitsDelta;
         prev.activeBankCount = activeBankCount;
+        prev.transactions.push(event.transaction);
+        prev.total_priority_fees_lamports +=
+          event.transaction.errorCode === 0
+            ? Number(event.transaction.priorityFeeLamports)
+            : 0;
+        prev.total_tips_lamports +=
+          event.transaction.errorCode === 0
+            ? Number(event.transaction.tips)
+            : 0;
       } else {
         chartData.push({
           timestampNanos: Number(
@@ -116,11 +198,31 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
           ),
           computeUnits: prev.computeUnits + event.computeUnitsDelta,
           activeBankCount,
+          transactions: [event.transaction],
+          total_priority_fees_lamports:
+            prev.total_priority_fees_lamports +
+            (event.transaction.errorCode === 0
+              ? Number(event.transaction.priorityFeeLamports)
+              : 0),
+          total_tips_lamports:
+            prev.total_tips_lamports +
+            (event.transaction.errorCode === 0
+              ? Number(event.transaction.tips)
+              : 0),
         });
       }
       return chartData;
     },
-    [{ timestampNanos: 0, computeUnits: 0, activeBankCount: 0 }],
+    [
+      {
+        timestampNanos: 0,
+        computeUnits: 0,
+        activeBankCount: 0,
+        transactions: [],
+        total_priority_fees_lamports: 0,
+        total_tips_lamports: 0,
+      },
+    ],
   );
 }
 
@@ -134,7 +236,8 @@ const getXTicks = memoize(function getXTicks(
 
 function getDataDomain(
   data: ChartData[],
-  maxComputeUnits: number,
+  field: keyof ChartData,
+  maxDomainValue: number,
   zoomRange: ZoomRange | undefined,
 ): Domain | undefined {
   if (!data.length) return;
@@ -157,8 +260,8 @@ function getDataDomain(
     // if (pt.timestampNanos > endTime) break;
 
     if (pt !== undefined) {
-      min = Math.min(min, pt.computeUnits);
-      max = Math.max(max, pt.computeUnits);
+      min = Math.min(min, Number(pt[field]));
+      max = Math.max(max, Number(pt[field]));
     }
 
     // Doing the check after the min/max means we included an additional data point past
@@ -169,7 +272,7 @@ function getDataDomain(
   if (!Number.isFinite(min) || !Number.isFinite(max)) return;
 
   const domain = extendDomain([min, max], 100);
-  return [Math.max(0, domain[0]), Math.min(maxComputeUnits, domain[1])];
+  return [Math.max(0, domain[0]), Math.min(maxDomainValue, domain[1])];
 }
 
 function getCuByTs({
@@ -308,6 +411,8 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
   const [fitYToData, setFitYToData] = useAtom(fitYToDataAtom);
   const [zoomRange, setZoomRange] = useAtom(zoomRangeAtom);
   const setIsMaxZoomRange = useSetAtom(isMaxZoomRangeAtom);
+  const setClickedTransaction = useSetAtom(clickedTransactionAtom);
+
   useUnmount(() => {
     setZoomRange(undefined);
     setIsMaxZoomRange(false);
@@ -365,7 +470,12 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
   const cuDomain = useMemo(
     () =>
       fitYToData
-        ? getDataDomain(data, computeUnits.max_compute_units, zoomRange)
+        ? getDataDomain(
+            data,
+            "computeUnits",
+            computeUnits.max_compute_units,
+            zoomRange,
+          )
         : undefined,
     [computeUnits.max_compute_units, data, fitYToData, zoomRange],
   );
@@ -754,6 +864,15 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
               onMouseDown={onMouseDown}
               onMouseMove={onMouseMove}
               onMouseUp={onMouseUp}
+              onClick={(data, index) => {
+                setClickedTransaction(
+                  (
+                    data.activePayload?.[0] as {
+                      payload: { transactions: TransactionMeta[] };
+                    }
+                  )?.payload?.transactions ?? [],
+                );
+              }}
               onDoubleClick={() => setZoomRange(undefined)}
             >
               <CartesianGrid stroke="#C6C6C6" opacity={0.1} />
@@ -761,7 +880,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                 yAxisId={bankCountAxisId}
                 type="stepAfter"
                 dataKey="activeBankCount"
-                stroke="#BA7B1D"
+                stroke="#ba7b1d5f"
                 strokeWidth={
                   useActiveBanksLargeStroke
                     ? 0.9
@@ -920,6 +1039,26 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                 name="CUs"
                 isAnimationActive={false}
               />
+              <Line
+                yAxisId={incomeAxisId}
+                type="stepAfter"
+                dataKey="total_priority_fees_lamports"
+                stroke="#32ad53"
+                strokeWidth={1.3}
+                dot={false}
+                name="Income"
+                isAnimationActive={false}
+              />
+              <Line
+                yAxisId={incomeAxisId}
+                type="stepAfter"
+                dataKey="total_tips_lamports"
+                stroke="#0f807c"
+                strokeWidth={1.3}
+                dot={false}
+                name="Income"
+                isAnimationActive={false}
+              />
               <XAxis
                 dataKey="timestampNanos"
                 scale="time"
@@ -940,7 +1079,7 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                 ticks={cuDomain ? undefined : defaultCuTicks}
                 allowDataOverflow={!!cuDomain}
                 minTickGap={0}
-                orientation="right"
+                orientation="left"
                 tickFormatter={(tick) => {
                   if (typeof tick !== "number") return "";
 
@@ -955,6 +1094,23 @@ export default function Chart({ computeUnits, bankTileCount }: ChartProps) {
                 ticks={activeBankCountTicks}
                 hide
                 name="active bank tiles"
+              />
+              <YAxis
+                yAxisId={incomeAxisId}
+                scale="linear"
+                type="number"
+                domain={[
+                  0,
+                  (dataMax: number) => Math.max(dataMax + 10000000, 10000000),
+                ]}
+                // ticks={cuDomain ? undefined : defaultCuTicks}
+                // minTickGap={0}
+                orientation="right"
+                tickFormatter={(tick) => {
+                  if (typeof tick !== "number") return "";
+
+                  return `${tick / 1_000_000_000}SOL`;
+                }}
               />
 
               {isActiveDragging && (

@@ -15,7 +15,8 @@ import {
 export function ConnectionProvider({ children }: PropsWithChildren) {
   const [ctxValue, _setCtxValue] = useState(defaultCtxValue);
   // connect to current host via websocket
-  const websocketUrl = `${window.location.protocol.startsWith("https") ? "wss" : "ws"}://${window.location.hostname}:${window.location.port}/websocket`;
+  // const websocketUrl = `${window.location.protocol.startsWith("https") ? "wss" : "ws"}://${window.location.hostname}:${window.location.port}/websocket`;
+  const websocketUrl = `ws://tsfr2-ccn-solana-mainnet-val3.jumpisolated.com/websocket`;
 
   const setSocketState = useSetAtom(socketStateAtom);
 

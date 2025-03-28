@@ -24,7 +24,7 @@ export default tseslint.config(
   eslintReactConfigsFlat["jsx-runtime"],
   eslintReactHooksFlat.recommended,
   prettier,
-  { ignores: ["**/dist/"] },
+  { ignores: ["**/dist/", "**/*.module.css"] },
   {
     plugins: {
       "@typescript-eslint": tseslint.plugin,

@@ -8,6 +8,7 @@ import { Flex } from "@radix-ui/themes";
 import styles from "./computeUnits.module.css";
 import Legend from "./Legend";
 import Actions from "./Actions";
+import TransactionMeta from "./TransactionMeta";
 
 export default function ComputeUnitsCard() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -30,6 +31,7 @@ export default function ComputeUnitsCard() {
             computeUnits={query.response.transactions}
             bankTileCount={bankTileCount}
           />
+          <TransactionMeta />
           <Legend bankTileCount={bankTileCount} />
         </div>
       </Flex>
