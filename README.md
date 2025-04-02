@@ -8,6 +8,11 @@
 - `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash`
 - `nvm install 22 && nvm use 22`
 
+# Running locally
+
+- Run `cp .env.example .env.local`
+- Run `npm run dev`
+
 ## Build
 
 - Run `npm ci`

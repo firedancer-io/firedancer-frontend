@@ -12,10 +12,16 @@ import {
   messageEventType,
 } from "./ConnectionContext";
 
+const VITE_WEBSOCKET_URL = (
+  import.meta.env.VITE_WEBSOCKET_URL as string
+).trim();
+
 export function ConnectionProvider({ children }: PropsWithChildren) {
   const [ctxValue, _setCtxValue] = useState(defaultCtxValue);
   // connect to current host via websocket
-  const websocketUrl = `${window.location.protocol.startsWith("https") ? "wss" : "ws"}://${window.location.hostname}:${window.location.port}/websocket`;
+  const websocketUrl = VITE_WEBSOCKET_URL
+    ? VITE_WEBSOCKET_URL
+    : `${window.location.protocol.startsWith("https") ? "wss" : "ws"}://${window.location.hostname}:${window.location.port}/websocket`;
 
   const setSocketState = useSetAtom(socketStateAtom);
 
