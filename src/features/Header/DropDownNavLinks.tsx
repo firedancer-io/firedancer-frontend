@@ -6,10 +6,11 @@ import { Button } from "@radix-ui/themes";
 import dropDownIcon from "../../assets/dropdown_arrow.svg";
 import { useAtomValue } from "jotai";
 import { containerElAtom } from "../../atoms";
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, useState } from "react";
 
 export default function DropDownNavLinks({ children }: PropsWithChildren) {
   const containerEl = useAtomValue(containerElAtom);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const location = useLocation();
   let route = "Overview";
@@ -20,7 +21,7 @@ export default function DropDownNavLinks({ children }: PropsWithChildren) {
   }
 
   return (
-    <DropdownMenu.Root>
+    <DropdownMenu.Root open={dropdownOpen} onOpenChange={setDropdownOpen}>
       <DropdownMenu.Trigger asChild>
         {children || (
           <Button className={styles.button}>
@@ -30,10 +31,18 @@ export default function DropDownNavLinks({ children }: PropsWithChildren) {
         )}
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal container={containerEl}>
-        <DropdownMenu.Content className={styles.content} sideOffset={5}>
+        <DropdownMenu.Content
+          className={styles.content}
+          sideOffset={5}
+          onClick={() => setDropdownOpen(false)}
+        >
           <DropdownMenu.Item className={styles.item}>
             <NavLink to="/" label="Overview" />
+          </DropdownMenu.Item>
+          <DropdownMenu.Item className={styles.item}>
             <NavLink to="/leaderSchedule" label="Leader Schedule" />
+          </DropdownMenu.Item>
+          <DropdownMenu.Item className={styles.item}>
             <NavLink to="/gossip" label="Gossip" />
           </DropdownMenu.Item>
         </DropdownMenu.Content>
