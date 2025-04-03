@@ -16,7 +16,7 @@ export default function ComputeUnitsCard() {
   const tileCount = useAtomValue(tileCountAtom);
   const bankTileCount = tileCount["bank"];
 
-  if (!slot || !query.response?.compute_units) return null;
+  if (!slot || !query.response?.transactions) return null;
 
   return (
     <Card style={{ marginTop: "8px" }}>
@@ -27,7 +27,7 @@ export default function ComputeUnitsCard() {
         </Flex>
         <div className={styles.chart}>
           <Chart
-            computeUnits={query.response.compute_units}
+            computeUnits={query.response.transactions}
             bankTileCount={bankTileCount}
           />
           <Legend bankTileCount={bankTileCount} />
