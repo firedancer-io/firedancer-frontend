@@ -36,7 +36,7 @@ import {
   versionSchema,
   voteDistanceSchema,
   voteStateSchema,
-  computeUnitsSchema,
+  slotTransactionsSchema,
   voteBalanceSchema,
 } from "./entities";
 
@@ -114,7 +114,7 @@ export interface Peer extends z.infer<typeof peerUpdateSchema> {
 
 export type PeerRemove = z.infer<typeof peerRemoveSchema>;
 
-export type ComputeUnits = z.infer<typeof computeUnitsSchema>;
+export type ComputeUnits = z.infer<typeof slotTransactionsSchema>;
 
 export type SlotPublish = z.infer<typeof slotPublishSchema>;
 
