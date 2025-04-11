@@ -11,6 +11,9 @@
   & * {
     touch-action: pan-x;
   }
+  scrollbar-width: thin;
+  scrollbar-color: #cbcbcb20 #cbcbcb01;
+  width: 100%;
 }
 
 .header-text {
