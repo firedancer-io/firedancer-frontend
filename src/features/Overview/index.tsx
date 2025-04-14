@@ -8,10 +8,37 @@ import ValidatorsCard from "./ValidatorsCard";
 import SlotStatusCard from "./StatusCard";
 import ComputeUnitsCard from "./SlotPerformance/ComputeUnitsCard";
 import { useSlotSearchParam } from "./useSearchParams";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { selectedSlotAtom } from "./SlotPerformance/atoms";
 
 export default function Overview() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const resizeCards = () => {
+      if (!ref.current) return;
+      const children = Array.from(ref.current.children) as HTMLElement[];
+      if (children.length === 0) return;
+
+      let isVerticallyStacked = true;
+      for (let i = 1; i < children.length; i++) {
+        if (children[i].offsetTop <= children[i - 1].offsetTop) {
+          isVerticallyStacked = false;
+          break;
+        }
+      }
+
+      if (isVerticallyStacked) {
+        ref.current.classList.add(styles.flexGrowChildren);
+      } else {
+        ref.current.classList.remove(styles.flexGrowChildren);
+      }
+    };
+    window.addEventListener("resize", resizeCards);
+    resizeCards();
+    return () => window.removeEventListener("resize", resizeCards);
+  }, []);
+
   return (
     <Flex
       direction="column"
@@ -20,7 +47,7 @@ export default function Overview() {
       align="stretch"
     >
       <Setup />
-      <div className={styles.cardContainer}>
+      <div ref={ref} className={styles.cardContainer}>
         <SlotStatusCard />
         <TransactionsCard />
         <ValidatorsCard />
