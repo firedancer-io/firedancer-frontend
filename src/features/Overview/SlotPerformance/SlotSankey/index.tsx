@@ -12,7 +12,7 @@ import { TxnWaterfall, TxnWaterfallOut } from "../../../../api/types";
 import { Flex, Spinner, Text } from "@radix-ui/themes";
 import { SlotNode, slotNodes } from "./consts";
 import { sum } from "lodash";
-import { useSlotQueryResponse } from "../../../../hooks/useSlotQuery";
+import { useSlotQueryResponseDetailed } from "../../../../hooks/useSlotQuery";
 
 function getGetValue({
   displayType,
@@ -342,7 +342,7 @@ function SlotSankey({ slot }: { slot?: number }) {
   const displayType = useAtomValue(sankeyDisplayTypeAtom);
   const liveWaterfall = useAtomValue(liveWaterfallAtom);
 
-  const query = useSlotQueryResponse(slot);
+  const query = useSlotQueryResponseDetailed(slot);
 
   const data = useMemo(() => {
     const waterfall = liveWaterfall ?? query.response?.waterfall;

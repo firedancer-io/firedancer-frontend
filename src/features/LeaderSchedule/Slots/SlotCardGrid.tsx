@@ -219,7 +219,8 @@ function getRowValues(publish: SlotPublish): RowValues {
   const computeUnits = fixValue(publish?.compute_units ?? 0);
   const computeUnitsPct =
     publish.compute_units != null
-      ? (publish.compute_units / 48_000_000) * 100
+      ? (publish.compute_units / (publish.max_compute_units ?? 48_000_000)) *
+        100
       : 0;
 
   return {

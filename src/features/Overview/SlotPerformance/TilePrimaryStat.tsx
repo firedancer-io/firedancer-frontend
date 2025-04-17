@@ -5,7 +5,7 @@ import { Text } from "@radix-ui/themes";
 import { TilePrimaryMetric } from "../../../api/types";
 import { selectedSlotAtom } from "./atoms";
 import byteSize from "byte-size";
-import { useSlotQueryResponse } from "../../../hooks/useSlotQuery";
+import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";
 
 interface TilePrimaryStatProps {
   type: keyof TilePrimaryMetric;
@@ -16,7 +16,7 @@ export default function TilePrimaryStat({ type, label }: TilePrimaryStatProps) {
   const slot = useAtomValue(selectedSlotAtom);
   const showLive = !slot;
   const primaryMetric = useAtomValue(liveTilePrimaryMetricAtom);
-  const query = useSlotQueryResponse(showLive ? undefined : slot);
+  const query = useSlotQueryResponseDetailed(showLive ? undefined : slot);
 
   const stat = showLive
     ? primaryMetric?.tile_primary_metric?.[type]

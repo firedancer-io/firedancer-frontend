@@ -51,6 +51,8 @@ interface ChartData {
   timestampNanos: number;
   computeUnits: number;
   activeBankCount: number;
+  priority_fees_lamports: number;
+  tips_lamports: number;
 }
 
 const minRangeNanos = 50_000;
@@ -60,9 +62,9 @@ const wheelScrollSpeed = 1 / 3_000;
 const smNanosThreshold = 5_000_000;
 const mdNanosThreshold = 50_000_000;
 const _segmentColors = [
+  { fill: "#1E9C50", opacity: 0 },
   { fill: "#1E9C50", opacity: 0.15 },
   { fill: "#AE5511", opacity: 0.15 },
-  { fill: "#CF321D", opacity: 0.15 },
   { fill: "#F40505", opacity: 0.15 },
   { fill: "#F40505", opacity: 0.2 },
 ];
@@ -71,9 +73,7 @@ const getSegmentColor = (index: number) => {
 };
 const cuAxisId = "computeUnits";
 const bankCountAxisId = "activeBankCount";
-const defaultCuTicks = [
-  8_000_000, 16_000_000, 24_000_000, 32_000_000, 40_000_000, 48_000_000,
-];
+const incomeAxisId = "income";
 
 const cusPerNs = 1 / 8;
 const tickLabelWidth = 110;
@@ -103,6 +103,18 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
           : -computeUnits.txn_max_compute_units[txn_idx] +
             computeUnits.txn_compute_units_consumed[txn_idx]
         : 0;
+      const priority_fee =
+        !event.start &&
+        computeUnits.txn_landed[txn_idx] &&
+        computeUnits.txn_error_code[txn_idx] === 0
+          ? Number(computeUnits.txn_priority_fee[txn_idx])
+          : 0;
+      const tip =
+        !event.start &&
+        computeUnits.txn_landed[txn_idx] &&
+        computeUnits.txn_error_code[txn_idx] === 0
+          ? Number(computeUnits.txn_tips[txn_idx])
+          : 0;
 
       const prev = chartData[chartData.length - 1];
       activeBanks[computeUnits.txn_bank_idx[txn_idx]] = event.start;
@@ -113,6 +125,8 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
       if (i > 0 && events[i - 1].timestampNanos === event.timestampNanos) {
         prev.computeUnits += cus_delta;
         prev.activeBankCount = activeBankCount;
+        prev.priority_fees_lamports += priority_fee;
+        prev.tips_lamports += tip;
       } else {
         chartData.push({
           timestampNanos: Number(
@@ -120,11 +134,21 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
           ),
           computeUnits: prev.computeUnits + cus_delta,
           activeBankCount,
+          priority_fees_lamports: prev.priority_fees_lamports + priority_fee,
+          tips_lamports: prev.tips_lamports + tip,
         });
       }
       return chartData;
     },
-    [{ timestampNanos: 0, computeUnits: 0, activeBankCount: 0 }],
+    [
+      {
+        timestampNanos: 0,
+        computeUnits: 0,
+        activeBankCount: 0,
+        priority_fees_lamports: 0,
+        tips_lamports: 0,
+      },
+    ],
   );
 }
 
@@ -136,9 +160,10 @@ const getXTicks = memoize(function getXTicks(
   return prettyIntervals(tsMinNanos, tsMaxNanos, intervalCount);
 });
 
-function getDataDomain(
+function getDataRangebyZoomWindow(
   data: ChartData[],
-  maxComputeUnits: number,
+  field: keyof ChartData,
+  maxRangeValue: number,
   zoomRange: ZoomRange | undefined,
 ): Domain | undefined {
   if (!data.length) return;
@@ -161,8 +186,8 @@ function getDataDomain(
     // if (pt.timestampNanos > endTime) break;
 
     if (pt !== undefined) {
-      min = Math.min(min, pt.computeUnits);
-      max = Math.max(max, pt.computeUnits);
+      min = Math.min(min, pt[field]);
+      max = Math.max(max, pt[field]);
     }
 
     // Doing the check after the min/max means we included an additional data point past
@@ -173,7 +198,22 @@ function getDataDomain(
   if (!Number.isFinite(min) || !Number.isFinite(max)) return;
 
   const domain = extendDomain([min, max], 100);
-  return [Math.max(0, domain[0]), Math.min(maxComputeUnits, domain[1])];
+  return [Math.max(0, domain[0]), Math.min(maxRangeValue, domain[1])];
+}
+
+function getDefaultYAxisTicks(
+  numTicks: number,
+  maxRangeValue: number,
+  approxBottomPadding: number,
+  interval: number,
+): Array<number> {
+  const step =
+    Math.ceil(
+      (maxRangeValue - approxBottomPadding) / (numTicks - 1) / interval,
+    ) * interval;
+  return Array.from({ length: numTicks }, (_, i) =>
+    Math.min(maxRangeValue - i * step, maxRangeValue),
+  );
 }
 
 function getCuByTs({
@@ -375,9 +415,31 @@ export default function Chart({
     [xDomain, xLabelCount],
   );
 
+  const defaultCuTicks = useMemo(
+    () => getDefaultYAxisTicks(6, maxComputeUnits, 8_000_000, 1_000_000),
+    [maxComputeUnits],
+  );
+
+  const maxIncomeValue = Math.max(
+    data.reduce((sum, d) => sum + d.tips_lamports, 0),
+    data.reduce((sum, d) => sum + d.priority_fees_lamports, 0),
+    12_000_000,
+  );
+  const defaultIncomeTicks = useMemo(
+    () => getDefaultYAxisTicks(6, maxIncomeValue, 2_000_000, 1_000_000),
+    [maxIncomeValue],
+  );
+
   const cuDomain = useMemo(
     () =>
-      fitYToData ? getDataDomain(data, maxComputeUnits, zoomRange) : undefined,
+      fitYToData
+        ? getDataRangebyZoomWindow(
+            data,
+            "computeUnits",
+            maxComputeUnits,
+            zoomRange,
+          )
+        : undefined,
     [maxComputeUnits, data, fitYToData, zoomRange],
   );
 
@@ -766,7 +828,7 @@ export default function Chart({
                 yAxisId={bankCountAxisId}
                 type="stepAfter"
                 dataKey="activeBankCount"
-                stroke="#BA7B1D"
+                stroke="rgba(117, 77, 18, 1)"
                 strokeWidth={
                   useActiveBanksLargeStroke
                     ? 0.9
@@ -919,10 +981,30 @@ export default function Chart({
                 yAxisId={cuAxisId}
                 type="stepAfter"
                 dataKey="computeUnits"
-                stroke="#1288F6"
+                stroke="rgba(105, 105, 255, 1)"
                 strokeWidth={1.3}
                 dot={false}
                 name="CUs"
+                isAnimationActive={false}
+              />
+              <Line
+                yAxisId={incomeAxisId}
+                type="stepAfter"
+                dataKey="priority_fees_lamports"
+                stroke="rgba(82, 227, 203, 1)"
+                strokeWidth={1.3}
+                dot={false}
+                name="Income"
+                isAnimationActive={false}
+              />
+              <Line
+                yAxisId={incomeAxisId}
+                type="stepAfter"
+                dataKey="tips_lamports"
+                stroke="rgba(84, 211, 94, 1)"
+                strokeWidth={1.3}
+                dot={false}
+                name="Income"
                 isAnimationActive={false}
               />
               <XAxis
@@ -945,7 +1027,7 @@ export default function Chart({
                 ticks={cuDomain ? undefined : defaultCuTicks}
                 allowDataOverflow={!!cuDomain}
                 minTickGap={0}
-                orientation="right"
+                orientation="left"
                 tickFormatter={(tick) => {
                   if (typeof tick !== "number") return "";
 
@@ -960,6 +1042,20 @@ export default function Chart({
                 ticks={activeBankCountTicks}
                 hide
                 name="active bank tiles"
+              />
+              <YAxis
+                yAxisId={incomeAxisId}
+                scale="linear"
+                type="number"
+                domain={["auto", "dataMax + 250000"]}
+                ticks={defaultIncomeTicks}
+                orientation="right"
+                tickFormatter={(tick) => {
+                  if (typeof tick !== "number") return "";
+                  return (
+                    (tick / 1_000_000_000).toFixed(3).padEnd(3, "0") + " ꜱᴏʟ"
+                  );
+                }}
               />
 
               {isActiveDragging && (

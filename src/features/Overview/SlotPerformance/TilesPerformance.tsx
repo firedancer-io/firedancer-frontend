@@ -10,7 +10,7 @@ import {
 import { useMemo } from "react";
 import { TileType } from "../../../api/types";
 import { tileTypeSchema } from "../../../api/entities";
-import { useSlotQueryResponse } from "../../../hooks/useSlotQuery";
+import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";
 
 export default function TilesPerformance() {
   const liveTileTimers = useAtomValue(liveTileTimerfallAtom);
@@ -39,7 +39,7 @@ export default function TilesPerformance() {
     {} as Record<TileType, number[]>,
   );
 
-  const query = useSlotQueryResponse(slot);
+  const query = useSlotQueryResponseDetailed(slot);
 
   const queryIdleData = useMemo(() => {
     if (!query.response?.tile_timers?.length || showLive || !tiles) return;
