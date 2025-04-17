@@ -15,15 +15,23 @@
   }
 
   .active-banks {
-    color: #ba7b1d;
+    color: rgba(117, 77, 18, 1);
   }
 
   .compute-units {
-    color: #1d77cb;
+    color: rgba(105, 105, 255, 1);
   }
 
   .elapsed-time {
     color: #6a6a6e;
+  }
+
+  .prio-fee {
+    color: rgba(82, 227, 203, 1);
+  }
+
+  .tips {
+    color: rgba(84, 211, 94, 1);
   }
 
   .label {
@@ -39,12 +47,12 @@
   max-height: 600px;
   position: relative;
   margin-left: -8px;
-  margin-right: -16px;
+  margin-right: -8px;
 
   .legend {
     position: absolute;
     top: 30px;
-    left: 20px;
+    left: 80px;
     display: flex;
     flex-direction: column;
     border-radius: 5px;

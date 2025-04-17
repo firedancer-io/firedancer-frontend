@@ -3,7 +3,7 @@ import { Text, Tooltip } from "@radix-ui/themes";
 import * as ToggleGroup from "@radix-ui/react-toggle-group";
 import { useAtom, useAtomValue } from "jotai";
 import { DisplayType, sankeyDisplayTypeAtom, selectedSlotAtom } from "./atoms";
-import { useSlotQueryResponse } from "../../../hooks/useSlotQuery";
+import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";
 import { fixValue } from "../../../utils";
 import { useMemo } from "react";
 import { lamportsPerSol } from "../../../consts";
@@ -52,7 +52,7 @@ export default function SankeyControls() {
 
 function SlotStats() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
-  const query = useSlotQueryResponse(selectedSlot);
+  const query = useSlotQueryResponseDetailed(selectedSlot);
 
   const values = useMemo(() => {
     if (!query.response?.publish) return;

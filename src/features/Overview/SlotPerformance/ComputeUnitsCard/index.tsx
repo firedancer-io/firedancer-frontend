@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { useSlotQueryResponse } from "../../../../hooks/useSlotQuery";
+import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { selectedSlotAtom, tileCountAtom } from "../atoms";
 import Card from "../../../../components/Card";
 import CardHeader from "../../../../components/CardHeader";
@@ -11,7 +11,7 @@ import Actions from "./Actions";
 
 export default function ComputeUnitsCard() {
   const slot = useAtomValue(selectedSlotAtom);
-  const query = useSlotQueryResponse(slot);
+  const query = useSlotQueryResponseTransactions(slot);
 
   const tileCount = useAtomValue(tileCountAtom);
   const bankTileCount = tileCount["bank"];
@@ -22,7 +22,7 @@ export default function ComputeUnitsCard() {
     <Card style={{ marginTop: "8px" }}>
       <Flex direction="column" height="100%" gap="2">
         <Flex gap="3">
-          <CardHeader text="CU Progression" />
+          <CardHeader text="Slot Progression" />
           <Actions />
         </Flex>
         <div className={styles.chart}>

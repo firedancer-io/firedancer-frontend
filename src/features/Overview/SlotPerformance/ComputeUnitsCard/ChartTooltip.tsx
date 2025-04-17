@@ -2,6 +2,7 @@ import { TooltipProps } from "recharts";
 import styles from "./computeUnits.module.css";
 import { Text } from "@radix-ui/themes";
 import clsx from "clsx";
+import { getFmtStake } from "../../../../utils";
 
 export default function ChartTooltip(props: TooltipProps<number, string>) {
   if (!props.active) return;
@@ -25,6 +26,14 @@ export default function ChartTooltip(props: TooltipProps<number, string>) {
       </Text>
       <Text className={styles.elapsedTime}>
         {(Number(props.label) / 1_000_000).toString()} ms
+      </Text>
+      <Text className={clsx(styles.tips, styles.label)}>Tips</Text>
+      <Text className={styles.tips}>
+        {getFmtStake(BigInt(props.payload?.[3]?.value || 0))}
+      </Text>
+      <Text className={clsx(styles.prioFee, styles.label)}>Prio Fee</Text>
+      <Text className={styles.prioFee}>
+        {getFmtStake(BigInt(props.payload?.[2]?.value || 0))}
       </Text>
     </div>
   );
