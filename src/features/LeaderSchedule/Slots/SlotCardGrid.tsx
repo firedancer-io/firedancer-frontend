@@ -17,7 +17,7 @@ import rootedIcon from "../../../assets/Rooted.svg";
 import skippedIcon from "../../../assets/Skipped.svg";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import { fixValue } from "../../../utils";
-import { useMedia, useRafLoop } from "react-use";
+import { useMedia, usePrevious, useRafLoop, useUnmount } from "react-use";
 import { lamportsPerSol } from "../../../consts";
 import { formatNumberLamports } from "../../Overview/ValidatorsCard/formatAmt";
 import {
@@ -254,11 +254,31 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
 
   const isFuture = slot > (currentSlot ?? Infinity);
   const isCurrent = slot === currentSlot;
+
+  const timeoutRef = useRef<NodeJS.Timeout>();
+  const [isRecentlyCurrent, setIsRecentlyCurrent] = useState(false);
+  const prevIsCurrent = usePrevious(isCurrent);
+
+  if (prevIsCurrent && !isCurrent && !isRecentlyCurrent) {
+    // If recently switched from current to not current,
+    // delay loading text to prevent flickering transitions
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      setIsRecentlyCurrent(false);
+    }, 50);
+    setIsRecentlyCurrent(true);
+  }
+
+  useUnmount(() => {
+    clearTimeout(timeoutRef.current);
+  });
+
   const isSnapshot = slot < (firstProcessedSlot ?? 0);
 
   const getText = (text?: string | number, suffix?: string) => {
     if (isFuture || isCurrent || isSnapshot) return "-";
-    if (!values && !queryPublish.hasWaitedForData) return "Loading...";
+    if (!values && !queryPublish.hasWaitedForData && !isRecentlyCurrent)
+      return "Loading...";
     if (!values) return "-";
 
     if (typeof text === "number") text = Math.round(text);
