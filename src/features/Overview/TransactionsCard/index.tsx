@@ -7,7 +7,7 @@ import TransactionStats from "./TransactionStats";
 
 export default function TransactionsCard() {
   return (
-    <Card style={{ flex: 1 }}>
+    <Card style={{ flex: 100 }}>
       <Flex direction="column" height="100%" gap="2">
         <CardHeader text="Transactions" />
         <Flex gap="4" flexGrow="1">

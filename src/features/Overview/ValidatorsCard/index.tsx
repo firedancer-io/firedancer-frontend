@@ -15,7 +15,7 @@ export default function ValidatorsCard() {
   const delinquentLabel = formatNumberLamports(peerStats.delinquentStake);
 
   return (
-    <Card>
+    <Card style={{ flexGrow: 1 }}>
       <Flex direction="column" height="100%" gap="2">
         <CardHeader text="Validators" />
         <Flex gap="2" flexGrow="1">
@@ -49,7 +49,7 @@ export default function ValidatorsCard() {
               />
             </div>
           </Flex>
-          <Box flexGrow="1" style={{ minWidth: "200px" }}>
+          <Box style={{ minWidth: "200px" }}>
             <Chart
               activeStake={peerStats.activeStake}
               delinquentStake={peerStats.delinquentStake}
