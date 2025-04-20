@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue } from "jotai";
 import { startupProgressAtom } from "../../api/atoms";
 import styles from "./body.module.css";
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { showStartupProgressAtom } from "./atoms";
 import fdLogo from "../../assets/firedancer.svg";
 import { Box, Flex } from "@radix-ui/themes";
@@ -59,14 +59,11 @@ const steps: {
   { step: "running" },
 ];
 
-const startupMinTime = 3_000;
-
 export default function Body() {
   const startupProgress = useAtomValue(startupProgressAtom);
   const [showStartupProgress, setShowStartupProgress] = useAtom(
     showStartupProgressAtom,
   );
-  const timeoutRef = useRef<NodeJS.Timeout>();
   const peers = useAtomValue(peersAtom);
   const hasPeers = !!Object.values(peers).length;
 
@@ -85,17 +82,7 @@ export default function Body() {
   useEffect(() => {
     if (hasPeers && startupProgress?.phase === "running") {
       setShowStartupProgress(false);
-    } else {
-      timeoutRef.current = setTimeout(
-        () => setShowStartupProgress(startupProgress?.phase !== "running"),
-        startupMinTime,
-      );
     }
-
-    return () => {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = undefined;
-    };
   }, [
     hasPeers,
     setShowStartupProgress,
