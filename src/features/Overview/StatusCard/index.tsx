@@ -10,8 +10,8 @@ import { voteDistanceAtom, voteStateAtom } from "../../../api/atoms";
 
 export default function SlotStatusCard() {
   return (
-    <Card>
-      <Flex direction="column" height="100%" gap="2">
+    <Card style={{ flexGrow: 1 }}>
+      <Flex direction="column" height="100%" gap="2" align="start">
         <CardHeader text="Status" />
         <div className={styles.statRow}>
           <CurrentSlotText />
