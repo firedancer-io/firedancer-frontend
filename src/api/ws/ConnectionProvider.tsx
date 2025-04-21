@@ -14,7 +14,7 @@ import {
 
 const VITE_WEBSOCKET_URL = (
   import.meta.env.VITE_WEBSOCKET_URL as string
-).trim();
+)?.trim();
 
 export function ConnectionProvider({ children }: PropsWithChildren) {
   const [ctxValue, _setCtxValue] = useState(defaultCtxValue);
