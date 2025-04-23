@@ -10,11 +10,12 @@
 
 # Running locally
 
-- Run `cp .env.example .env.local`
+- Run `cp .env.example .env.development`
 - Run `npm run dev`
 
 ## Build
 
+- Run `cp .env.example .env.production`
 - Run `npm ci`
 - Run `npm run build`
 - Serve static assets in `./dist` with preferred tool. Ex. `npx run serve`
