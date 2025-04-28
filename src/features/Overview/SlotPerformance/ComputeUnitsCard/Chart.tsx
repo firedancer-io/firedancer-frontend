@@ -75,7 +75,7 @@ const cuAxisId = "computeUnits";
 const bankCountAxisId = "activeBankCount";
 const incomeAxisId = "income";
 
-const cusPerNs = 1 / 8;
+const cusPerNs = 1 / 9;
 const tickLabelWidth = 110;
 const minTickCount = 3;
 
@@ -268,12 +268,10 @@ function getSegments(
   yDomain: Domain,
 ) {
   const segments: Segment[][] = [];
-  const tEnd =
-    0.95 *
-    Number(
-      computeUnits.target_end_timestamp_nanos -
-        computeUnits.start_timestamp_nanos,
-    );
+  const tEnd = Number(
+    computeUnits.target_end_timestamp_nanos -
+      computeUnits.start_timestamp_nanos,
+  );
 
   const getCusAtTs = (ts: number, bankCount: number) => {
     return getCuByTs({
@@ -452,12 +450,19 @@ export default function Chart({
     () =>
       getSegments(
         computeUnits,
-        maxComputeUnits,
+        maxComputeUnits + 0.05 * slotDurationNanos * cusPerNs,
         bankTileCount,
         xDomain,
         yDomain,
       ),
-    [bankTileCount, computeUnits, maxComputeUnits, xDomain, yDomain],
+    [
+      bankTileCount,
+      computeUnits,
+      maxComputeUnits,
+      slotDurationNanos,
+      xDomain,
+      yDomain,
+    ],
   );
 
   const activeBankCountTicks = new Array(bankTileCount)
