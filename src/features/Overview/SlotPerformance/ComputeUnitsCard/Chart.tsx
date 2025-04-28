@@ -104,9 +104,7 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
             computeUnits.txn_compute_units_consumed[txn_idx]
         : 0;
       const priority_fee =
-        !event.start &&
-        computeUnits.txn_landed[txn_idx] &&
-        computeUnits.txn_error_code[txn_idx] === 0
+        !event.start && computeUnits.txn_landed[txn_idx]
           ? Number(computeUnits.txn_priority_fee[txn_idx])
           : 0;
       const tip =
@@ -419,8 +417,8 @@ export default function Chart({
   );
 
   const maxIncomeValue = Math.max(
-    data.reduce((sum, d) => sum + d.tips_lamports, 0),
-    data.reduce((sum, d) => sum + d.priority_fees_lamports, 0),
+    data[data.length - 1].priority_fees_lamports,
+    data[data.length - 1].tips_lamports,
     12_000_000,
   );
   const defaultIncomeTicks = useMemo(
@@ -1054,12 +1052,11 @@ export default function Chart({
                 type="number"
                 domain={["auto", "dataMax + 250000"]}
                 ticks={defaultIncomeTicks}
+                unit=" ꜱᴏʟ"
                 orientation="right"
                 tickFormatter={(tick) => {
                   if (typeof tick !== "number") return "";
-                  return (
-                    (tick / 1_000_000_000).toFixed(3).padEnd(3, "0") + " ꜱᴏʟ"
-                  );
+                  return (tick / 1_000_000_000).toFixed(3).padEnd(3, "0");
                 }}
               />
 
