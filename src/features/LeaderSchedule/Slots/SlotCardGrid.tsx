@@ -78,7 +78,7 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
           Compute&nbsp;Units
         </Text>
         {new Array(4).fill(0).map((_, i) => {
-          const cardSlot = slot + i;
+          const cardSlot = slot + 3 - i;
           return (
             <SlotCardRow
               key={cardSlot}
@@ -106,7 +106,7 @@ function SlotColumn({ slot, currentSlot }: SlotCardGridProps) {
         {isWideScreen ? "Slot" : "\u00A0"}
       </Text>
       {new Array(4).fill(0).map((_, i) => {
-        const cardSlot = slot + i;
+        const cardSlot = slot + 3 - i;
         const isCurrent = cardSlot === currentSlot;
 
         return (
