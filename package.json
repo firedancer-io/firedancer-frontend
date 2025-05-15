@@ -54,6 +54,7 @@
     "react-virtualized-auto-sizer": "^1.0.24",
     "recharts": "^2.15.1",
     "simplify-js": "^1.2.4",
+    "uplot": "^1.6.32",
     "use-debounce": "^10.0.3",
     "zod": "^3.23.8"
   },

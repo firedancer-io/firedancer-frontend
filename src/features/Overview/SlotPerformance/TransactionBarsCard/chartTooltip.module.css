@@ -1,0 +1,24 @@
+:global(#uplot-tooltip) {
+  z-index: 1;
+  position: absolute;
+  background: var(--Colors-Gray-1, #111);
+  padding: 6px 8px;
+  border-radius: 8px;
+  max-height: none !important;
+  max-width: none !important;
+  pointer-events: none;
+
+  .state {
+    font-weight: 700;
+    color: var(--Colors-Neutral-Neutral-10, #777b84);
+  }
+
+  span {
+    user-select: none;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+    color: var(--color-override, #777b84);
+  }
+}

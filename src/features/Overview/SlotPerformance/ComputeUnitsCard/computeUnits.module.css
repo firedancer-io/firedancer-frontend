@@ -19,7 +19,7 @@
   }
 
   .compute-units {
-    color: rgba(105, 105, 255, 1);
+    color: #d19dff;
   }
 
   .elapsed-time {
@@ -27,11 +27,11 @@
   }
 
   .prio-fee {
-    color: rgba(82, 227, 203, 1);
+    color: #4ccce6;
   }
 
   .tips {
-    color: rgba(84, 211, 94, 1);
+    color: #1fd8a4;
   }
 
   .label {
