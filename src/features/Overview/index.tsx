@@ -10,6 +10,7 @@ import ComputeUnitsCard from "./SlotPerformance/ComputeUnitsCard";
 import { useSlotSearchParam } from "./useSearchParams";
 import { useEffect } from "react";
 import { selectedSlotAtom } from "./SlotPerformance/atoms";
+import TransactionBarsCard from "./SlotPerformance/TransactionBarsCard";
 
 export default function Overview() {
   return (
@@ -27,11 +28,12 @@ export default function Overview() {
       </div>
       <SlotPerformance />
       <ComputeUnitsCard />
+      <TransactionBarsCard />
     </Flex>
   );
 }
 
-function Setup() {
+export function Setup() {
   const { selectedSlot } = useSlotSearchParam();
   const setSelectedSlotAtom = useSetAtom(selectedSlotAtom);
   const setSlotOverride = useSetAtom(slotOverrideAtom);

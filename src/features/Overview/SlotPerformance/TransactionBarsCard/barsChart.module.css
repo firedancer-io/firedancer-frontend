@@ -1,0 +1,32 @@
+.chart {
+  /* background: green; */
+
+  :global(.uplot) :global(.legend) :global(.series):first-child,
+  :global(.uplot) :global(.legend) :global(.series) th::after,
+  :global(.uplot) :global(.legend) :global(.series) td {
+    display: none;
+  }
+
+  :global(.lib-toggles) {
+    margin-top: 20px;
+    text-align: center;
+  }
+
+  :global(.u-select) {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  :global(.hidden) {
+    color: silver;
+  }
+
+  :global(.u-cursor-pt) {
+    border-radius: 0;
+  }
+
+  :global(.uplot) {
+    margin-bottom: 20px;
+    padding: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  }
+}

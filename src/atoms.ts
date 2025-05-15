@@ -202,9 +202,9 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
 
 export const firstProcessedSlotAtom = atom((get) => {
   const startupProgress = get(startupProgressAtom);
-  if (!startupProgress?.downloading_incremental_snapshot_slot) return;
+  if (!startupProgress?.ledger_max_slot) return;
 
-  return startupProgress.downloading_incremental_snapshot_slot + 1;
+  return startupProgress.ledger_max_slot + 1;
 });
 
 const _currentSlotAtom = atom<number | undefined>(undefined);

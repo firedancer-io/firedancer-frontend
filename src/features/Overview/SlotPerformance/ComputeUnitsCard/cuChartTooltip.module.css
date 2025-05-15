@@ -1,0 +1,38 @@
+.tooltip {
+  display: grid;
+  grid: auto-flow / auto auto;
+  column-gap: 8px;
+
+  span {
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+    text-align: right;
+  }
+
+  .active-banks {
+    color: rgba(117, 77, 18, 1);
+  }
+
+  .compute-units {
+    color: #d19dff;
+  }
+
+  .elapsed-time {
+    color: #6a6a6e;
+  }
+
+  .fees {
+    color: #4ccce6;
+  }
+
+  .tips {
+    color: #1fd8a4;
+  }
+
+  .label {
+    font-weight: 600;
+    text-align: left;
+  }
+}

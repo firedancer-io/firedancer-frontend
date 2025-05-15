@@ -11,12 +11,19 @@
 // Import Routes
 
 import { Route as rootRoute } from "./routes/__root";
+import { Route as SlotDetailsImport } from "./routes/slotDetails";
 import { Route as LeaderScheduleImport } from "./routes/leaderSchedule";
 import { Route as GossipImport } from "./routes/gossip";
 import { Route as AboutImport } from "./routes/about";
 import { Route as IndexImport } from "./routes/index";
 
 // Create/Update Routes
+
+const SlotDetailsRoute = SlotDetailsImport.update({
+  id: "/slotDetails",
+  path: "/slotDetails",
+  getParentRoute: () => rootRoute,
+} as any);
 
 const LeaderScheduleRoute = LeaderScheduleImport.update({
   id: "/leaderSchedule",
@@ -74,6 +81,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof LeaderScheduleImport;
       parentRoute: typeof rootRoute;
     };
+    "/slotDetails": {
+      id: "/slotDetails";
+      path: "/slotDetails";
+      fullPath: "/slotDetails";
+      preLoaderRoute: typeof SlotDetailsImport;
+      parentRoute: typeof rootRoute;
+    };
   }
 }
 
@@ -84,6 +98,7 @@ export interface FileRoutesByFullPath {
   "/about": typeof AboutRoute;
   "/gossip": typeof GossipRoute;
   "/leaderSchedule": typeof LeaderScheduleRoute;
+  "/slotDetails": typeof SlotDetailsRoute;
 }
 
 export interface FileRoutesByTo {
@@ -91,6 +106,7 @@ export interface FileRoutesByTo {
   "/about": typeof AboutRoute;
   "/gossip": typeof GossipRoute;
   "/leaderSchedule": typeof LeaderScheduleRoute;
+  "/slotDetails": typeof SlotDetailsRoute;
 }
 
 export interface FileRoutesById {
@@ -99,14 +115,21 @@ export interface FileRoutesById {
   "/about": typeof AboutRoute;
   "/gossip": typeof GossipRoute;
   "/leaderSchedule": typeof LeaderScheduleRoute;
+  "/slotDetails": typeof SlotDetailsRoute;
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/about" | "/gossip" | "/leaderSchedule";
+  fullPaths: "/" | "/about" | "/gossip" | "/leaderSchedule" | "/slotDetails";
   fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/about" | "/gossip" | "/leaderSchedule";
-  id: "__root__" | "/" | "/about" | "/gossip" | "/leaderSchedule";
+  to: "/" | "/about" | "/gossip" | "/leaderSchedule" | "/slotDetails";
+  id:
+    | "__root__"
+    | "/"
+    | "/about"
+    | "/gossip"
+    | "/leaderSchedule"
+    | "/slotDetails";
   fileRoutesById: FileRoutesById;
 }
 
@@ -115,6 +138,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute;
   GossipRoute: typeof GossipRoute;
   LeaderScheduleRoute: typeof LeaderScheduleRoute;
+  SlotDetailsRoute: typeof SlotDetailsRoute;
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -122,6 +146,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   GossipRoute: GossipRoute,
   LeaderScheduleRoute: LeaderScheduleRoute,
+  SlotDetailsRoute: SlotDetailsRoute,
 };
 
 export const routeTree = rootRoute
@@ -137,7 +162,8 @@ export const routeTree = rootRoute
         "/",
         "/about",
         "/gossip",
-        "/leaderSchedule"
+        "/leaderSchedule",
+        "/slotDetails"
       ]
     },
     "/": {
@@ -151,6 +177,9 @@ export const routeTree = rootRoute
     },
     "/leaderSchedule": {
       "filePath": "leaderSchedule.tsx"
+    },
+    "/slotDetails": {
+      "filePath": "slotDetails.tsx"
     }
   }
 }

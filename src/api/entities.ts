@@ -217,17 +217,21 @@ export const slotTransactionsSchema = z.object({
   txn_mb_end_timestamps_nanos: z.coerce.bigint().array(),
   txn_compute_units_requested: z.number().array(),
   txn_compute_units_consumed: z.number().array(),
+  txn_transaction_fee: z.coerce.bigint().array(),
   txn_priority_fee: z.coerce.bigint().array(),
   txn_tips: z.coerce.bigint().array(),
   txn_error_code: z.number().array(),
   txn_from_bundle: z.boolean().array(),
   txn_is_simple_vote: z.boolean().array(),
   txn_bank_idx: z.number().array(),
+  txn_preload_end_timestamps_nanos: z.coerce.bigint().array(),
   txn_start_timestamps_nanos: z.coerce.bigint().array(),
   txn_load_end_timestamps_nanos: z.coerce.bigint().array(),
   txn_end_timestamps_nanos: z.coerce.bigint().array(),
+  txn_arrival_timestamps_nanos: z.coerce.bigint().array(),
   txn_microblock_id: z.number().array(),
   txn_landed: z.boolean().array(),
+  txn_signature: z.string().array(),
 });
 
 export const slotLevelSchema = z.enum([
@@ -478,7 +482,7 @@ export const blockEngineStatusSchema = z.enum([
 export const blockEngineUpdateSchema = z.object({
   name: z.string(),
   url: z.string(),
-  ip: z.string(),
+  ip: z.string().optional(),
   status: blockEngineStatusSchema,
 });
 
