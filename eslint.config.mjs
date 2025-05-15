@@ -35,7 +35,11 @@ export default tseslint.config(
       parser: tseslint.parser,
       parserOptions: {
         projectService: {
-          allowDefaultProject: ["*.mjs", "src/d3Sankey/*.js"],
+          allowDefaultProject: [
+            "*.mjs",
+            "src/d3Sankey/*.js",
+            "src/uplot/*.js",
+          ],
           defaultProject: "tsconfig.json",
         },
         tsconfigRootDir: import.meta.dirname,
@@ -106,5 +110,5 @@ export default tseslint.config(
       "@typescript-eslint/no-useless-constructor": "warn",
       "react/prop-types": "off",
     },
-  },
+  }
 );
