@@ -1,16 +1,17 @@
-button {
-  all: unset;
-}
-
 .toggle {
-  display: flex;
-  padding: 4px 10px;
-  align-items: center;
-  gap: 4px;
-  align-self: stretch;
+  all: unset;
+  background-color: #4a4a4a;
   border-radius: 4px;
-  background: var(--accent-3);
-  color: var(--accent-11);
+  color: #f0f0f0;
+  font-weight: 400;
+  height: 23px;
+  padding: 0 8px;
+  display: flex;
+  font-size: 12px;
+  line-height: 16px;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
   cursor: pointer;
 }
 
@@ -19,15 +20,55 @@ button {
 }
 
 .toggle[data-state="on"] {
-  background: var(--accent-5);
+  font-weight: 510;
+  filter: brightness(1.3);
 }
 
 .toggle[data-disabled] {
-  color: var(--gray-a8);
-  background-color: var(--gray-a3);
   cursor: not-allowed;
+  font-weight: 400;
+  background-color: #292929;
+  color: #9e9e9e;
 }
 
 .toggle:focus {
   box-shadow: 0 0 0 2px black;
+}
+
+.button {
+  all: unset;
+  background-color: #4a4a4a;
+  color: #f0f0f0;
+  font-weight: 510;
+  height: 23px;
+  padding: 0 8px;
+  display: flex;
+  font-size: 12px;
+  line-height: 16px;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  cursor: pointer;
+
+  &:first-child {
+    margin-left: 0;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+  }
+
+  &:last-child {
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+  }
+
+  &:hover {
+    background: rgba(62, 98, 189, 0.32);
+  }
+
+  &[data-disabled] {
+    cursor: not-allowed;
+    font-weight: 400;
+    background-color: #292929;
+    color: #9e9e9e;
+  }
 }

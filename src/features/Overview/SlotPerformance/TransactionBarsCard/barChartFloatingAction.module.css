@@ -1,0 +1,14 @@
+.container {
+  position: absolute;
+  z-index: 100;
+  right: 5px;
+  top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .label {
+    color: #60646c;
+    font-size: 12px;
+  }
+}

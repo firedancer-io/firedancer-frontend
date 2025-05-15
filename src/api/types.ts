@@ -114,7 +114,7 @@ export interface Peer extends z.infer<typeof peerUpdateSchema> {
 
 export type PeerRemove = z.infer<typeof peerRemoveSchema>;
 
-export type ComputeUnits = z.infer<typeof slotTransactionsSchema>;
+export type SlotTransactions = z.infer<typeof slotTransactionsSchema>;
 
 export type SlotPublish = z.infer<typeof slotPublishSchema>;
 

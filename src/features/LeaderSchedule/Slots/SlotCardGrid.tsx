@@ -26,6 +26,10 @@ import {
   scrollAllFuncsAtom,
 } from "./atoms";
 import clsx from "clsx";
+import { Link } from "@tanstack/react-router";
+import { identityKeyAtom } from "../../../api/atoms";
+import { usePubKey } from "../../../hooks/usePubKey";
+import { ExternalLinkIcon } from "@radix-ui/react-icons";
 
 interface SlotCardGridProps {
   slot: number;
@@ -133,6 +137,9 @@ function SlotText({
   isWideScreen,
 }: SlotTextProps & { isWideScreen: boolean }) {
   const queryPublish = useSlotQueryPublish(slot);
+  const pubkey = usePubKey(slot);
+  const myPubkey = useAtomValue(identityKeyAtom);
+  const isLeader = myPubkey === pubkey;
 
   return (
     <Flex
@@ -144,7 +151,16 @@ function SlotText({
       gap={isWideScreen ? "2" : "0"}
     >
       {isWideScreen ? (
-        <Text className={styles.slotText}>{slot}</Text>
+        <>
+          <Text>{slot}</Text>
+          {isLeader && (
+            <Link to="/slotDetails" search={{ slot }} target="_blank">
+              <Flex>
+                <ExternalLinkIcon />
+              </Flex>
+            </Link>
+          )}
+        </>
       ) : (
         <Text>&nbsp;</Text>
       )}
