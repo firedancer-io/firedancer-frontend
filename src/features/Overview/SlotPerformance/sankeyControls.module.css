@@ -13,14 +13,13 @@
     display: grid;
     grid: auto auto / auto auto;
     padding: 5px 5px 5px 7px;
-    /* align-items: center; */
     column-gap: 10px;
     row-gap: 4px;
     min-width: 203px;
     font-variant-numeric: tabular-nums;
 
-    border-radius: 5px;
-    background: #15252f;
+    border-radius: 8px;
+    background: rgba(17, 17, 17, 0.9);
 
     color: #c6c6c6;
     font-size: 12px;

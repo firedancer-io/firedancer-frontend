@@ -18,7 +18,7 @@ import skippedIcon from "../../../assets/Skipped.svg";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import { fixValue } from "../../../utils";
 import { useMedia, usePrevious, useRafLoop, useUnmount } from "react-use";
-import { lamportsPerSol } from "../../../consts";
+import { defaultMaxComputeUnits, lamportsPerSol } from "../../../consts";
 import { formatNumberLamports } from "../../Overview/ValidatorsCard/formatAmt";
 import {
   setScrollFuncsAtom,
@@ -26,6 +26,9 @@ import {
   scrollAllFuncsAtom,
 } from "./atoms";
 import clsx from "clsx";
+import { Link } from "@tanstack/react-router";
+import { identityKeyAtom } from "../../../api/atoms";
+import { usePubKey } from "../../../hooks/usePubKey";
 
 interface SlotCardGridProps {
   slot: number;
@@ -102,7 +105,7 @@ function SlotColumn({ slot, currentSlot }: SlotCardGridProps) {
 
   return (
     <Flex direction="column" gap="1px">
-      <Text className={styles.headerText}>
+      <Text className={clsx(styles.headerText, styles.slotHeaderText)}>
         {isWideScreen ? "Slot" : "\u00A0"}
       </Text>
       {new Array(4).fill(0).map((_, i) => {
@@ -122,6 +125,25 @@ function SlotColumn({ slot, currentSlot }: SlotCardGridProps) {
   );
 }
 
+interface LinkedSlotTextProps {
+  slot: number;
+  isLeader: boolean;
+}
+
+function LinkedSlotText({ slot, isLeader }: LinkedSlotTextProps) {
+  if (!isLeader) {
+    return <Text className={styles.slotText}>{slot}</Text>;
+  }
+
+  return (
+    <div className={styles.slotText}>
+      <Link to="/" search={{ slot }}>
+        <Text>{slot}</Text>
+      </Link>
+    </div>
+  );
+}
+
 interface SlotTextProps {
   slot: number;
   isCurrent: boolean;
@@ -133,6 +155,9 @@ function SlotText({
   isWideScreen,
 }: SlotTextProps & { isWideScreen: boolean }) {
   const queryPublish = useSlotQueryPublish(slot);
+  const pubkey = usePubKey(slot);
+  const myPubkey = useAtomValue(identityKeyAtom);
+  const isLeader = myPubkey === pubkey;
 
   return (
     <Flex
@@ -144,9 +169,9 @@ function SlotText({
       gap={isWideScreen ? "2" : "0"}
     >
       {isWideScreen ? (
-        <Text className={styles.slotText}>{slot}</Text>
+        <LinkedSlotText slot={slot} isLeader={isLeader} />
       ) : (
-        <Text>&nbsp;</Text>
+        <Text className={styles.slotText}>&nbsp;</Text>
       )}
       <StatusIcon slot={slot} isCurrent={isCurrent} />
       {queryPublish.publish?.skipped ? (
@@ -219,7 +244,8 @@ function getRowValues(publish: SlotPublish): RowValues {
   const computeUnits = fixValue(publish?.compute_units ?? 0);
   const computeUnitsPct =
     publish.compute_units != null
-      ? (publish.compute_units / (publish.max_compute_units ?? 48_000_000)) *
+      ? (publish.compute_units /
+          (publish.max_compute_units ?? defaultMaxComputeUnits)) *
         100
       : 0;
 

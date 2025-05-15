@@ -24,6 +24,9 @@
   &:hover {
     filter: brightness(1.5);
   }
+  &.before-start {
+    filter: brightness(0.5);
+  }
 }
 
 .skipped-slot {

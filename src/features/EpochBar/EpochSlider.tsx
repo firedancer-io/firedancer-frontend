@@ -23,6 +23,7 @@ import {
 } from "../../atoms";
 import { useInterval, useMeasure } from "react-use";
 import { Epoch } from "../../api/types";
+import clsx from "clsx";
 
 // 1 tick about 10 leaders or 40 slots
 const sliderMaxValue = 10_800;
@@ -283,6 +284,7 @@ interface LeaderSlotProps {
 }
 
 function LeaderSlot({ slot, pct, width }: LeaderSlotProps) {
+  const firstProcessedSlot = useAtomValue(firstProcessedSlotAtom);
   const setSlotOverride = useSetAtom(slotOverrideAtom);
   const isFutureSlot = useAtomValue(
     useMemo(() => isFutureSlotAtom(slot), [slot]),
@@ -293,9 +295,15 @@ function LeaderSlot({ slot, pct, width }: LeaderSlotProps) {
     setSlotOverride(slot);
   };
 
+  const slotBeforeFirstProcessedSlot = firstProcessedSlot
+    ? slot < firstProcessedSlot
+    : false;
+
   return (
     <Box
-      className={styles.leaderSlot}
+      className={clsx(styles.leaderSlot, {
+        [styles.beforeStart]: slotBeforeFirstProcessedSlot,
+      })}
       style={{
         left: `${pct * 100}%`,
         background: isFutureSlot ? "rgba(255, 255, 255, 0.20)" : undefined,

@@ -8,6 +8,7 @@ import { fixValue } from "../../../utils";
 import { useMemo } from "react";
 import { lamportsPerSol } from "../../../consts";
 import { formatNumber } from "../../../numUtils";
+import RowSeparator from "../../../components/RowSeparator";
 
 export default function SankeyControls() {
   const [value, setValue] = useAtom(sankeyDisplayTypeAtom);
@@ -120,17 +121,17 @@ function SlotStats() {
 
   return (
     <div className={styles.stats}>
-      <Text>Priority Fees</Text>
+      <Text color="cyan">Priority Fees</Text>
       <Tooltip
         content={
           values?.priorityFeeFull ? `${values?.priorityFeeFull} SOL` : null
         }
       >
-        <Text style={{ textAlign: "right" }}>
+        <Text align="right" color="cyan">
           {values?.priorityFee3Decimals ?? "-"}
         </Text>
       </Tooltip>
-      <Text>Transaction Fees</Text>
+      <Text color="indigo">Transaction Fees</Text>
       <Tooltip
         content={
           values?.transactionFeeFull
@@ -138,26 +139,28 @@ function SlotStats() {
             : null
         }
       >
-        <Text style={{ textAlign: "right" }}>
+        <Text align="right" color="indigo">
           {values?.transactionFee3Decimals ?? "-"}
         </Text>
       </Tooltip>
-      <Text>Tips</Text>
+      <Text color="jade">Tips</Text>
       <Tooltip content={values?.tips ? `${values?.tips} SOL` : null}>
-        <Text style={{ textAlign: "right" }}>
+        <Text align="right" color="jade">
           {values?.tips3Decimals ?? "-"}
         </Text>
       </Tooltip>
+      <div style={{ gridColumn: "span 2" }}>
+        <RowSeparator my="0" />
+      </div>
       <Text>Vote Transactions</Text>
-      <Text style={{ textAlign: "right" }}>
-        {values?.voteTxns?.toLocaleString() ?? "-"}
-      </Text>
+      <Text align="right">{values?.voteTxns?.toLocaleString() ?? "-"}</Text>
       <Text>Non-vote Transactions</Text>
-      <Text style={{ textAlign: "right" }}>
-        {values?.nonVoteTxns?.toLocaleString() ?? "-"}
-      </Text>
-      <Text>Compute Units</Text>
-      <Text style={{ textAlign: "right" }}>
+      <Text align="right">{values?.nonVoteTxns?.toLocaleString() ?? "-"}</Text>
+      <div style={{ gridColumn: "span 2" }}>
+        <RowSeparator my="0" />
+      </div>
+      <Text color="plum">Compute Units</Text>
+      <Text align="right" color="plum">
         {values?.computeUnits?.toLocaleString() ?? "-"}
       </Text>
     </div>

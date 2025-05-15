@@ -1,0 +1,36 @@
+.button {
+  all: unset;
+  background: #292929;
+  color: #9e9e9e;
+  font-weight: 510;
+  height: 23px;
+  padding: 0 8px;
+  display: flex;
+  font-size: 12px;
+  line-height: 16px;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  cursor: pointer;
+
+  &:first-child {
+    margin-left: 0;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+  }
+
+  &:last-child {
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+  }
+
+  &:not([data-disabled]):hover {
+    background: rgba(62, 98, 189, 0.32);
+  }
+
+  &[data-disabled] {
+    cursor: not-allowed;
+    font-weight: 400;
+    filter: brightness(0.7);
+  }
+}

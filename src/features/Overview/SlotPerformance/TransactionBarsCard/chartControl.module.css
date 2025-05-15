@@ -1,0 +1,14 @@
+.slider-label {
+  color: #9eb1ff;
+  /* The width of having 3 digits on both sides of the range (123ms-456ms) 
+  so wrapping and width doesn't change as range changes */
+  min-width: 106px;
+  .divider {
+    color: #777b84;
+    padding: 0 4px;
+  }
+}
+
+.disabled {
+  filter: brightness(0.4);
+}
