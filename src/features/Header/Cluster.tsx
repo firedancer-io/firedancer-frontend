@@ -84,7 +84,7 @@ function JitoIcon() {
 
   return (
     <Tooltip
-      content={`Currently ${blockEngine.status} ${blockEngine.status === "disconnected" ? "from" : "to"} ${blockEngine.name} - ${blockEngine.url}`}
+      content={`Currently ${blockEngine.status} ${blockEngine.status === "disconnected" ? "from" : "to"} ${blockEngine.name} - ${blockEngine.url} (${blockEngine.ip})`}
     >
       <svg
         width="16"

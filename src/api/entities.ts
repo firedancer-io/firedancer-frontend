@@ -478,6 +478,7 @@ export const blockEngineStatusSchema = z.enum([
 export const blockEngineUpdateSchema = z.object({
   name: z.string(),
   url: z.string(),
+  ip: z.string(),
   status: blockEngineStatusSchema,
 });
 
