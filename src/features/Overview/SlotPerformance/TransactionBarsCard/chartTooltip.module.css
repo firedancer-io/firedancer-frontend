@@ -1,0 +1,41 @@
+:global(#uplot-tooltip) {
+  z-index: 1;
+  position: absolute;
+  background: var(--Colors-Gray-1, #111);
+  padding: 6px 8px;
+  border-radius: 8px;
+  max-height: none !important;
+  max-width: none !important;
+  pointer-events: none;
+
+  .state {
+    font-weight: 700;
+    color: var(--Colors-Neutral-Neutral-10, #777b84);
+  }
+
+  span {
+    user-select: none;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+    color: var(--color-override, #777b84);
+  }
+
+  .duration-container {
+    flex: 1;
+    background: rgba(54, 58, 63, 0.5);
+    padding: 4px 0;
+    margin: 4px 0;
+    width: 0;
+  }
+
+  .unit {
+    font-family: "Roboto Mono", monospace;
+    margin-left: 2px;
+  }
+
+  .separator {
+    background: #333333;
+  }
+}
