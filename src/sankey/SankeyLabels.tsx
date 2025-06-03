@@ -173,6 +173,7 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
                 pointerEvents: "none",
                 whiteSpace: "pre-line",
                 fontSize: "14px",
+                fontFamily: "Inter Tight",
               }}
             >
               {getLabelParts(labelText).map((part, i) => {
