@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import connectWebSocket from "./connectWebSocket";
 import type { ConnectionStatus } from "./types";
 import { socketStateAtom } from "./atoms";
+import { ZstdInit } from "@oneidentity/zstd-js/decompress";
 import UpdateAtoms from "../UpdateAtoms";
 import type { ConnectionContextType } from "./ConnectionContext";
 import {
@@ -60,18 +61,27 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       setSocketState(connectionStatus.socketState);
     };
 
-    const [sendMessage, dispose] = connectWebSocket(
-      websocketUrl,
-      onMessage,
-      onConnectionStatusChanged,
-    );
+    const disposePromise = (async () => {
+      const zstd = await ZstdInit();
 
-    updateContext({ sendMessage, emitter, isActive: true });
+      const [sendMessage, dispose] = connectWebSocket(
+        websocketUrl,
+        onMessage,
+        onConnectionStatusChanged,
+        zstd,
+      );
+
+      updateContext({ sendMessage, emitter, isActive: true });
+
+      return dispose;
+    })();
 
     return () => {
-      emitter.removeAllListeners();
-      resetContext();
-      dispose();
+      void (async () => {
+        emitter.removeAllListeners();
+        resetContext();
+        (await disposePromise)();
+      })();
     };
   }, [resetContext, updateContext, setSocketState, websocketUrl]);
 
