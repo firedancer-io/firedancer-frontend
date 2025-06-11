@@ -215,7 +215,6 @@ export const slotTransactionsSchema = z.object({
   txn_mb_start_timestamps_nanos: z.coerce.bigint().array(),
   txn_mb_end_timestamps_nanos: z.coerce.bigint().array(),
   txn_compute_units_requested: z.number().array(),
-  txn_max_compute_units: z.number().array(),
   txn_compute_units_consumed: z.number().array(),
   txn_priority_fee: z.coerce.bigint().array(),
   txn_tips: z.coerce.bigint().array(),

@@ -99,8 +99,8 @@ function getChartData(computeUnits: ComputeUnits): ChartData[] {
       const txn_idx = event.txn_idx;
       const cus_delta = computeUnits.txn_landed[txn_idx]
         ? event.start
-          ? computeUnits.txn_max_compute_units[txn_idx]
-          : -computeUnits.txn_max_compute_units[txn_idx] +
+          ? computeUnits.txn_compute_units_requested[txn_idx]
+          : -computeUnits.txn_compute_units_requested[txn_idx] +
             computeUnits.txn_compute_units_consumed[txn_idx]
         : 0;
       const priority_fee =
