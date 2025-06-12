@@ -87,6 +87,7 @@ function getResolvOut(out: TxnWaterfallOut, resolvRetainedOut: number) {
 function getPackOut(out: TxnWaterfallOut) {
   return (
     out.pack_invalid +
+    out.pack_invalid_bundle +
     out.pack_expired +
     out.pack_leader_slow +
     out.pack_retained +
@@ -283,6 +284,11 @@ function getLinks(
       source: SlotNode.Pack,
       target: SlotNode.PackInvalid,
       value: getValue(waterfall.out.pack_invalid),
+    },
+    {
+      source: SlotNode.Pack,
+      target: SlotNode.PackInvalidBundle,
+      value: getValue(waterfall.out.pack_invalid_bundle),
     },
     {
       source: SlotNode.Pack,

@@ -120,6 +120,7 @@ export const txnWaterfallOutSchema = z.object({
   resolv_ancient: z.number(),
   resolv_retained: z.number(),
   pack_invalid: z.number(),
+  pack_invalid_bundle: z.number(),
   pack_retained: z.number(),
   pack_leader_slow: z.number(),
   pack_wait_full: z.number(),
