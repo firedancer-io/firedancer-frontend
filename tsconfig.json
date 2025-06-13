@@ -10,7 +10,7 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
-    "isolatedModules": true,
+    // "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
 
@@ -27,7 +27,7 @@
       }
     ]
   },
-  "include": ["src"],
+  "include": ["src", "src/uplot/placement.js"],
   "references": [{ "path": "./tsconfig.node.json" }],
 
   "types": ["unplugin-fonts/client"]

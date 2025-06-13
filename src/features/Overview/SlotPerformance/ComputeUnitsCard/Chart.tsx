@@ -1,6 +1,5 @@
 import AutoSizer from "react-virtualized-auto-sizer";
-import { ComputeUnits } from "../../../../api/types";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Line,
   XAxis,
@@ -40,9 +39,11 @@ import {
   withinDomain,
 } from "./chartUtils";
 import { AxisDomain, Coordinate } from "recharts/types/util/types";
+import { SlotTransactions } from "../../../../api/types";
+import { uplotActionAtom } from "../../../../uplotReact/atoms";
 
 interface ChartProps {
-  computeUnits: ComputeUnits;
+  computeUnits: SlotTransactions;
   maxComputeUnits: number;
   bankTileCount: number;
 }
@@ -79,7 +80,7 @@ const cusPerNs = 1 / 9;
 const tickLabelWidth = 110;
 const minTickCount = 3;
 
-function getChartData(computeUnits: ComputeUnits): ChartData[] {
+function getChartData(computeUnits: SlotTransactions): ChartData[] {
   const events = [
     ...computeUnits.txn_start_timestamps_nanos.map((timestamp, i) => ({
       timestampNanos: timestamp,
@@ -259,7 +260,7 @@ function getBankCount({
 }
 
 function getSegments(
-  computeUnits: ComputeUnits,
+  computeUnits: SlotTransactions,
   maxComputeUnits: number,
   bankTileCount: number,
   xDomain: Domain,
@@ -361,6 +362,23 @@ export default function Chart({
     setZoomRange(undefined);
     setIsMaxZoomRange(false);
   });
+
+  const uplotAction = useSetAtom(uplotActionAtom);
+  const setUplotZoomRange = useCallback(
+    (range?: ZoomRange) => {
+      uplotAction((u) => {
+        if (range && range[0] !== range[1] && range[1] !== undefined) {
+          u.setScale("x", {
+            min: range[0],
+            max: range[1] ?? range[0],
+          });
+        } else {
+          u.setScale("x", { min: u.data[0][0], max: u.data[0].at(-1) ?? 0 });
+        }
+      });
+    },
+    [uplotAction],
+  );
 
   useEffect(() => {
     if (zoomRange === undefined) {
@@ -535,8 +553,10 @@ export default function Chart({
     if (newStartTs !== visStartTs || newEndTs !== visEndTs) {
       if (newStartTs === dataStartTs && newEndTs === dataEndTs) {
         // Disable zoom when zooming out to full range
+        setUplotZoomRange(undefined);
         setZoomRange(undefined);
       } else {
+        setUplotZoomRange([newStartTs, newEndTs]);
         setZoomRange([newStartTs, newEndTs]);
         if (!isPanning) {
           setIsMaxZoomRange(false);
@@ -724,11 +744,12 @@ export default function Chart({
           );
           return;
         case "reset":
+          setUplotZoomRange(undefined);
           setZoomRange(undefined);
           return;
       }
     });
-  }, [setTriggerZoom, setZoomRange]);
+  }, [setTriggerZoom, setUplotZoomRange, setZoomRange]);
 
   useEffect(() => {
     if (!containerElRef.current) return;
@@ -824,7 +845,10 @@ export default function Chart({
               onMouseDown={onMouseDown}
               onMouseMove={onMouseMove}
               onMouseUp={onMouseUp}
-              onDoubleClick={() => setZoomRange(undefined)}
+              onDoubleClick={() => {
+                setZoomRange(undefined);
+                setUplotZoomRange(undefined);
+              }}
             >
               <CartesianGrid stroke="#C6C6C6" opacity={0.1} />
               <Line
@@ -984,7 +1008,7 @@ export default function Chart({
                 yAxisId={cuAxisId}
                 type="stepAfter"
                 dataKey="computeUnits"
-                stroke="rgba(105, 105, 255, 1)"
+                stroke="#d19dff"
                 strokeWidth={1.3}
                 dot={false}
                 name="CUs"
@@ -994,7 +1018,7 @@ export default function Chart({
                 yAxisId={incomeAxisId}
                 type="stepAfter"
                 dataKey="priority_fees_lamports"
-                stroke="rgba(82, 227, 203, 1)"
+                stroke="#4ccce6"
                 strokeWidth={1.3}
                 dot={false}
                 name="Income"
@@ -1004,7 +1028,7 @@ export default function Chart({
                 yAxisId={incomeAxisId}
                 type="stepAfter"
                 dataKey="tips_lamports"
-                stroke="rgba(84, 211, 94, 1)"
+                stroke="#1fd8a4"
                 strokeWidth={1.3}
                 dot={false}
                 name="Income"
