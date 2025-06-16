@@ -22,7 +22,7 @@ export default function Actions() {
   useUnmount(() => setFitYToData(false));
 
   return (
-    <Flex gap="3">
+    <Flex gap="3" align="center">
       <Toggle.Root
         className={styles.toggle}
         aria-label="Toggle fit to Y"
@@ -35,25 +35,25 @@ export default function Actions() {
       <Flex gap="1px">
         <IconButton
           variant="soft"
-          style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
           onClick={() => zoom("in")}
           disabled={isMaxZoomRange}
+          className={styles.button}
         >
           <ZoomInIcon width="18" height="18" />
         </IconButton>
         <IconButton
           variant="soft"
-          style={{ borderRadius: 0 }}
           onClick={() => zoom("out")}
           disabled={!canZoomOut}
+          className={styles.button}
         >
           <ZoomOutIcon width="18" height="18" />
         </IconButton>
         <Button
           variant="soft"
-          style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
           onClick={() => zoom("reset")}
           disabled={!canZoomOut}
+          className={styles.button}
         >
           Reset
         </Button>
