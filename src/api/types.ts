@@ -32,7 +32,7 @@ import {
   txnWaterfallInSchema,
   txnWaterfallOutSchema,
   txnWaterfallSchema,
-  uptimeNanosSchema,
+  startupTimeNanosSchema,
   versionSchema,
   voteDistanceSchema,
   voteStateSchema,
@@ -48,7 +48,7 @@ export type CommitHash = z.infer<typeof commitHashSchema>;
 
 export type IdentityKey = z.infer<typeof identityKeySchema>;
 
-export type UptimeNanos = z.infer<typeof uptimeNanosSchema>;
+export type StartupTimeNanos = z.infer<typeof startupTimeNanosSchema>;
 
 export type Tile = z.infer<typeof tileSchema>;
 
