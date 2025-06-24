@@ -44,7 +44,7 @@ export const commitHashSchema = z.string();
 
 export const identityKeySchema = z.string();
 
-export const uptimeNanosSchema = z.coerce.bigint();
+export const startupTimeNanosSchema = z.coerce.bigint();
 
 export const tileTypeSchema = z.enum([
   "sock",
@@ -247,9 +247,10 @@ export const slotPublishSchema = z.object({
   mine: z.boolean(),
   skipped: z.boolean(),
   level: slotLevelSchema,
-  transactions: z.number().nullable(),
-  vote_transactions: z.number().nullable(),
-  failed_transactions: z.number().nullable(),
+  success_nonvote_transaction_cnt: z.number().nullable(),
+  failed_nonvote_transaction_cnt: z.number().nullable(),
+  success_vote_transaction_cnt: z.number().nullable(),
+  failed_vote_transaction_cnt: z.number().nullable(),
   priority_fee: z.coerce.bigint().nullable(),
   transaction_fee: z.coerce.bigint().nullable(),
   tips: z.coerce.bigint().nullable(),
@@ -302,8 +303,8 @@ export const summarySchema = z.discriminatedUnion("key", [
     value: identityKeySchema,
   }),
   summaryTopicSchema.extend({
-    key: z.literal("uptime_nanos"),
-    value: uptimeNanosSchema,
+    key: z.literal("startup_time_nanos"),
+    value: startupTimeNanosSchema,
   }),
   summaryTopicSchema.extend({
     key: z.literal("tiles"),

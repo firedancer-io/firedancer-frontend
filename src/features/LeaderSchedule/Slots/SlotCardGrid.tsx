@@ -204,10 +204,14 @@ interface SlotCardRowProps {
 }
 
 function getRowValues(publish: SlotPublish): RowValues {
-  // TODO: fix backend
-  const voteTxns = fixValue(publish.vote_transactions ?? 0);
-  const totalTxns = fixValue(publish.transactions ?? 0);
-  const nonVoteTxns = totalTxns - voteTxns;
+  const voteTxnsSuccess = fixValue(publish.success_vote_transaction_cnt ?? 0);
+  const nonVoteTxnsSuccess = fixValue(
+    publish.success_nonvote_transaction_cnt ?? 0,
+  );
+  const voteTxnsFailure = fixValue(publish.failed_vote_transaction_cnt ?? 0);
+  const nonVoteTxnsFailure = fixValue(
+    publish.failed_nonvote_transaction_cnt ?? 0,
+  );
   const totalFees = formatNumberLamports(
     (publish.transaction_fee ?? 0n) + (publish.priority_fee ?? 0n),
     3,
@@ -250,8 +254,8 @@ function getRowValues(publish: SlotPublish): RowValues {
       : 0;
 
   return {
-    voteTxns: voteTxns.toLocaleString(),
-    nonVoteTxns: nonVoteTxns.toLocaleString(),
+    voteTxns: (voteTxnsSuccess + voteTxnsFailure).toLocaleString(),
+    nonVoteTxns: (nonVoteTxnsSuccess + nonVoteTxnsFailure).toLocaleString(),
     totalFees,
     transactionFeeFull,
     priorityFeeFull,

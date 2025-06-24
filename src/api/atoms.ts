@@ -11,7 +11,7 @@ import {
   EstimatedTps,
   EstimatedSlotDuration,
   IdentityBalance,
-  UptimeNanos,
+  StartupTimeNanos,
   LiveTxnWaterfall,
   StartupProgress,
   LiveTilePrimaryMetric,
@@ -23,7 +23,6 @@ import {
   BlockEngineUpdate,
   VoteBalance,
 } from "./types";
-import { DateTime } from "luxon";
 import { rafAtom } from "../atomUtils";
 
 export const versionAtom = atom<Version | undefined>(undefined);
@@ -34,8 +33,8 @@ export const commitHashAtom = atom<CommitHash | undefined>(undefined);
 
 export const identityKeyAtom = atom<IdentityKey | undefined>(undefined);
 
-export const uptimeAtom = atom<
-  { uptimeNanos: UptimeNanos; ts: DateTime } | undefined
+export const startupTimeAtom = atom<
+  { startupTimeNanos: StartupTimeNanos } | undefined
 >(undefined);
 
 export const tilesAtom = atom<Tile[] | undefined>(undefined);

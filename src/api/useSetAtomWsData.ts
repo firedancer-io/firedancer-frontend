@@ -14,7 +14,7 @@ import {
   tilesAtom,
   tileTimerAtom,
   tpsHistoryAtom,
-  uptimeAtom,
+  startupTimeAtom,
   versionAtom,
   voteDistanceAtom,
   voteStateAtom,
@@ -58,8 +58,7 @@ import {
   waterfallDebounceMs,
 } from "./consts";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
-
-const minuteNanos = 1_000_000 * 60 * 1_000;
+import { slowDateTimeNow } from "../utils";
 
 export function useSetAtomWsData() {
   const setVersion = useSetAtom(versionAtom);
@@ -72,9 +71,18 @@ export function useSetAtomWsData() {
   const setIdentityBalance = useSetAtom(identityBalanceAtom);
   const setVoteBalance = useSetAtom(voteBalanceAtom);
 
-  const [uptime, setUptime] = useAtom(uptimeAtom);
+  const [startupTime, setStartupTime] = useAtom(startupTimeAtom);
+
+  const uptimeDuration =
+    startupTime !== undefined
+      ? slowDateTimeNow.diff(
+          DateTime.fromMillis(
+            Math.floor(Number(startupTime.startupTimeNanos) / 1_000_000),
+          ),
+        )
+      : undefined;
   const uptimeMins =
-    uptime !== undefined ? Number(uptime.uptimeNanos) / minuteNanos : undefined;
+    uptimeDuration !== undefined ? uptimeDuration.get("minutes") : undefined;
 
   const setEstimatedSlotDuration = useSetAtom(estimatedSlotDurationAtom);
   const setDbEstimatedSlotDuration = useThrottledCallback(
@@ -180,8 +188,8 @@ export function useSetAtomWsData() {
             setVoteBalance(value);
             break;
           }
-          case "uptime_nanos": {
-            setUptime({ uptimeNanos: value, ts: DateTime.now() });
+          case "startup_time_nanos": {
+            setStartupTime({ startupTimeNanos: value });
             break;
           }
           case "tiles": {

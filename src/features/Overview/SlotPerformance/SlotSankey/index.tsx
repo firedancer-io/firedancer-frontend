@@ -99,8 +99,8 @@ function getLinks(
   waterfall: TxnWaterfall,
   displayType: DisplayType,
   durationNanos?: number | null,
-  totalTransactions?: number | null,
-  failedTransactions?: number | null,
+  totalTransactions?: number,
+  failedTransactions?: number,
 ) {
   const totalIncoming = sum(Object.values(waterfall.in));
   const getValue = getGetValue({ displayType, durationNanos, totalIncoming });
@@ -355,12 +355,25 @@ function SlotSankey({ slot }: { slot?: number }) {
 
     if (!waterfall) return;
 
+    const successfulTransactions =
+      query.response?.publish?.success_nonvote_transaction_cnt != null &&
+      query.response.publish.success_vote_transaction_cnt != null
+        ? query.response.publish.success_nonvote_transaction_cnt +
+          query.response.publish.success_vote_transaction_cnt
+        : waterfall.out.block_success;
+    const failedTransactions =
+      query.response?.publish.failed_nonvote_transaction_cnt != null &&
+      query.response.publish.failed_vote_transaction_cnt != null
+        ? query.response.publish.failed_nonvote_transaction_cnt +
+          query.response.publish.failed_vote_transaction_cnt
+        : waterfall.out.block_fail;
+
     const links = getLinks(
       waterfall,
       displayType,
       query.response?.publish.duration_nanos,
-      query.response?.publish.transactions,
-      query.response?.publish.failed_transactions,
+      successfulTransactions + failedTransactions,
+      failedTransactions,
     );
 
     const linkNodes = links.flatMap((l) => [l.source, l.target]);

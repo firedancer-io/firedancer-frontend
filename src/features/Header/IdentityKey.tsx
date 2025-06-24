@@ -1,7 +1,7 @@
 import { useAtomValue } from "jotai";
 import {
   identityBalanceAtom,
-  uptimeAtom,
+  startupTimeAtom,
   voteBalanceAtom,
 } from "../../api/atoms";
 import { Text, Flex, Tooltip } from "@radix-ui/themes";
@@ -9,7 +9,7 @@ import styles from "./identityKey.module.css";
 import PeerIcon from "../../components/PeerIcon";
 import { myStakePctAtom, myStakeAmountAtom } from "../../atoms";
 import { PropsWithChildren, useEffect } from "react";
-import { Duration } from "luxon";
+import { DateTime } from "luxon";
 import { getFmtStake, getTimeTillText, slowDateTimeNow } from "../../utils";
 import { formatNumber } from "../../numUtils";
 import { useInterval, useMedia, useUpdate } from "react-use";
@@ -56,7 +56,7 @@ export default function IdentityKey() {
         )}
         {isNarrowScreen && (
           <>
-            <Uptime />
+            <StartupTime />
             <Commission />
             <IdentityBalance />
           </>
@@ -98,7 +98,7 @@ function DropdownMenu() {
       </Flex>
       <StakeValue />
       <StakePct />
-      <Uptime />
+      <StartupTime />
       <Commission />
       <IdentityBalance />
       <VotePubkey />
@@ -206,18 +206,18 @@ function Commission() {
   );
 }
 
-function Uptime() {
-  const uptime = useAtomValue(uptimeAtom);
+function StartupTime() {
+  const startupTime = useAtomValue(startupTimeAtom);
 
   const getValue = () => {
-    if (!uptime) return "-";
-
-    const uptimeDuration = Duration.fromMillis(
-      Number(uptime.uptimeNanos) / 1_000_000,
+    if (!startupTime) return "-";
+    const uptimeDuration = slowDateTimeNow.diff(
+      DateTime.fromMillis(
+        Math.floor(Number(startupTime.startupTimeNanos) / 1_000_000),
+      ),
     );
-    const diffDuration = slowDateTimeNow.diff(uptime.ts);
 
-    const text = getTimeTillText(uptimeDuration.plus(diffDuration).rescale(), {
+    const text = getTimeTillText(uptimeDuration.rescale(), {
       showSeconds: false,
     });
     return text;

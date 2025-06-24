@@ -58,9 +58,18 @@ function SlotStats() {
   const values = useMemo(() => {
     if (!query.response?.publish) return;
 
-    const voteTxns = fixValue(query.response.publish.vote_transactions ?? 0);
-    const totalTxns = fixValue(query.response.publish.transactions ?? 0);
-    const nonVoteTxns = totalTxns - voteTxns;
+    const successfulVoteTxns = fixValue(
+      query.response.publish.success_vote_transaction_cnt ?? 0,
+    );
+    const successfulNonvoteTxns = fixValue(
+      query.response.publish.success_nonvote_transaction_cnt ?? 0,
+    );
+    const failedVoteTxns = fixValue(
+      query.response.publish.failed_vote_transaction_cnt ?? 0,
+    );
+    const failedNonvoteTxns = fixValue(
+      query.response.publish.failed_nonvote_transaction_cnt ?? 0,
+    );
 
     const transactionFee3Decimals = query.response.publish.transaction_fee
       ? formatNumber(
@@ -106,8 +115,10 @@ function SlotStats() {
 
     return {
       computeUnits,
-      voteTxns,
-      nonVoteTxns,
+      successfulVoteTxns,
+      successfulNonvoteTxns,
+      failedVoteTxns,
+      failedNonvoteTxns,
       transactionFeeFull,
       transactionFee3Decimals,
       priorityFeeFull,
@@ -153,9 +164,19 @@ function SlotStats() {
         <RowSeparator my="0" />
       </div>
       <Text>Vote Transactions</Text>
-      <Text align="right">{values?.voteTxns?.toLocaleString() ?? "-"}</Text>
+      <Text align="right">
+        {(values
+          ? values.failedVoteTxns + values.successfulVoteTxns
+          : undefined
+        )?.toLocaleString() ?? "-"}
+      </Text>
       <Text>Non-vote Transactions</Text>
-      <Text align="right">{values?.nonVoteTxns?.toLocaleString() ?? "-"}</Text>
+      <Text align="right">
+        {(values
+          ? values.failedNonvoteTxns + values.successfulNonvoteTxns
+          : undefined
+        )?.toLocaleString() ?? "-"}
+      </Text>
       <div style={{ gridColumn: "span 2" }}>
         <RowSeparator my="0" />
       </div>
