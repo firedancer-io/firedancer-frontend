@@ -16,13 +16,13 @@ export default function ToggleControl({
 }: ToggleControlProps) {
   return (
     <Flex align="center" gap="2">
-      <Text
-        as="label"
-        className={styles.label}
-        style={{ color: color ?? "#0BD8B6" }}
-      >
+      <Text as="label" className={styles.label} style={{ color }}>
         <Flex gap="2">
-          <Switch checked={checked} onCheckedChange={onCheckedChange} />
+          <Switch
+            checked={checked}
+            onCheckedChange={onCheckedChange}
+            size="1"
+          />
           {label}
         </Flex>
       </Text>
