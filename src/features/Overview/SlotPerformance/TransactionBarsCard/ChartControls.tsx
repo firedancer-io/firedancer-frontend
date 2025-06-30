@@ -20,10 +20,10 @@ import {
   selectedBankAtom,
   filterArrivalDataAtom,
 } from "./atoms";
-import { groupBy } from "lodash";
-import { useEffect, useMemo, useState } from "react";
+import { groupBy, max } from "lodash";
+import { CSSProperties, useEffect, useMemo, useState } from "react";
 import ToggleGroupControl from "./ToggleGroupControl";
-import { useUnmount } from "react-use";
+import { useMeasure, useUnmount } from "react-use";
 import { errorCodeMap, FilterEnum, TxnState } from "./consts";
 import ToggleControl from "./ToggleControl";
 import toggleControlStyles from "./toggleControl.module.css";
@@ -34,9 +34,7 @@ import {
   getMaxTsWithBuffer,
 } from "../../../../transactionUtils";
 import { xScaleKey } from "../ComputeUnitsCard/consts";
-import clsx from "clsx";
 import { tooltipTxnIdxAtom, tooltipTxnStateAtom } from "./chartTooltipAtoms";
-import { getDurationWithUnits } from "./chartUtils";
 
 interface ChartControlsProps {
   transactions: SlotTransactions;
@@ -64,7 +62,7 @@ export default function ChartControls({
   });
 
   return (
-    <Flex align="center" gap="3" wrap="wrap">
+    <Flex align="center" gap="2" wrap="wrap">
       <Separator orientation="vertical" size="2" />
       <ErrorControl transactions={transactions} maxTs={maxTs} />
       <Separator orientation="vertical" size="2" />
@@ -78,11 +76,11 @@ export default function ChartControls({
       <TipsControl transactions={transactions} />
       <IncomeControl transactions={transactions} />
       <Separator orientation="vertical" size="2" />
-      <Text className={toggleControlStyles.label} style={{ color: "#FFFFFF" }}>
-        CU
-      </Text>
-      <CuConsumedControl transactions={transactions} />
-      <CuRequestedControl transactions={transactions} />
+      <Flex gap="2">
+        <Text className={toggleControlStyles.label}>CU</Text>
+        <CuConsumedControl transactions={transactions} />
+        <CuRequestedControl transactions={transactions} />
+      </Flex>
       <Separator orientation="vertical" size="2" />
       <ArrivalControl transactions={transactions} />
     </Flex>
@@ -180,7 +178,7 @@ function HighlightErrorControl({
     >
       <Select.Trigger
         placeholder="Txn State"
-        style={{ height: "24px", width: "90px" }}
+        style={{ height: "22px", width: "90px" }}
       />
       <Select.Content>
         <Select.Group>
@@ -256,11 +254,11 @@ function SimpleControl({ transactions, maxTs }: ToggleGroupControlProps) {
   );
 }
 
-interface ToggleControlProps {
+interface WithTransactionsProps {
   transactions: SlotTransactions;
 }
 
-function FeeControl({ transactions }: ToggleControlProps) {
+function FeeControl({ transactions }: WithTransactionsProps) {
   const [isEnabled, setIsEnabled] = useState(false);
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const addMinFeeSeries = useSetAtom(addFeeSeriesAtom);
@@ -285,7 +283,7 @@ function FeeControl({ transactions }: ToggleControlProps) {
   );
 }
 
-function TipsControl({ transactions }: ToggleControlProps) {
+function TipsControl({ transactions }: WithTransactionsProps) {
   const [isEnabled, setIsEnabled] = useState(false);
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const addMinTipsSeries = useSetAtom(addMinTipsSeriesAtom);
@@ -310,7 +308,7 @@ function TipsControl({ transactions }: ToggleControlProps) {
   );
 }
 
-function CuConsumedControl({ transactions }: ToggleControlProps) {
+function CuConsumedControl({ transactions }: WithTransactionsProps) {
   const [isEnabled, setIsEnabled] = useState(false);
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const addMinCusSeries = useSetAtom(addMinCuSeriesAtom);
@@ -336,7 +334,7 @@ function CuConsumedControl({ transactions }: ToggleControlProps) {
   );
 }
 
-function CuRequestedControl({ transactions }: ToggleControlProps) {
+function CuRequestedControl({ transactions }: WithTransactionsProps) {
   const [isEnabled, setIsEnabled] = useState(false);
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const addCuRequestedSeries = useSetAtom(addCuRequestedSeriesAtom);
@@ -362,7 +360,7 @@ function CuRequestedControl({ transactions }: ToggleControlProps) {
   );
 }
 
-function IncomeControl({ transactions }: ToggleControlProps) {
+function IncomeControl({ transactions }: WithTransactionsProps) {
   const [isEnabled, setIsEnabled] = useState(false);
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const addMinCusSeries = useSetAtom(addIncomeCuSeriesAtom);
@@ -388,114 +386,207 @@ function IncomeControl({ transactions }: ToggleControlProps) {
   );
 }
 
-const minArrivalTs = -chartBufferMs;
-function getIsMinValue(value: number) {
-  return value === minArrivalTs;
+const bboxHeight = 12;
+const bucketCount = 100;
+
+function ArrivalSvgChart({
+  transactions,
+  sliderMin,
+  sliderMax,
+  beforeZeroMulti,
+  bboxWidth,
+}: WithTransactionsProps & {
+  sliderMin: number;
+  sliderMax: number;
+  beforeZeroMulti: number;
+  bboxWidth: number;
+}) {
+  const points = useMemo(() => {
+    if (sliderMin >= sliderMax) return;
+    if (!transactions.txn_arrival_timestamps_nanos.length) return;
+
+    const sliderRange = sliderMax - sliderMin;
+
+    function arrivalTsToSliderValue(arrivalTsNanos: number) {
+      if (arrivalTsNanos >= 0) {
+        return arrivalTsNanos;
+      } else {
+        return arrivalTsNanos / beforeZeroMulti;
+      }
+    }
+
+    const buckets = transactions.txn_arrival_timestamps_nanos.reduce(
+      (buckets, arrivalTs) => {
+        const sliderValue = arrivalTsToSliderValue(
+          Number(arrivalTs - transactions.start_timestamp_nanos),
+        );
+
+        const pct = (sliderValue - sliderMin) / sliderRange;
+        const bucket = Math.trunc(pct * bucketCount);
+        buckets[bucket] += 1;
+
+        return buckets;
+      },
+      new Array<number>(bucketCount).fill(0),
+    );
+
+    const maxBucketValue = max(buckets) ?? 1;
+
+    const points = buckets.reduce((points, bucket, i) => {
+      const x = bboxWidth * ((i + 1) / buckets.length);
+      const y = bboxHeight - bboxHeight * (bucket / maxBucketValue);
+      return points + `${x},${y} `;
+    }, "");
+
+    return `0,${bboxHeight}, ${points}`;
+  }, [
+    bboxWidth,
+    beforeZeroMulti,
+    sliderMax,
+    sliderMin,
+    transactions.start_timestamp_nanos,
+    transactions.txn_arrival_timestamps_nanos,
+  ]);
+
+  return (
+    <svg
+      height={`${bboxHeight}px`}
+      width="100%"
+      viewBox={`0 0 ${bboxWidth} ${bboxHeight}`}
+      xmlns="http://www.w3.org/2000/svg"
+      style={{
+        marginBottom: "-5px",
+        borderRadius: "4px",
+      }}
+    >
+      <polyline
+        points={points}
+        fill="rgba(186, 167, 255, 0.5)"
+        stroke="rgb(186, 167, 255)"
+        strokeWidth=".5"
+      />
+    </svg>
+  );
 }
 
-function ArrivalControl({ transactions }: ToggleControlProps) {
-  const [isEnabled, setIsEnabled] = useState(false);
-  const maxTs = useMemo(() => getMaxTsWithBuffer(transactions), [transactions]);
-  const [rangeValue, setRangeValue] = useState(() => [
-    minArrivalTs,
-    getMaxTsWithBuffer(transactions) - chartBufferMs,
-  ]);
+/** Ratio of how large the slider should be before slot start (<0ms) compared to after slot start (>0ms) */
+const beforeZeroMinToMaxRatio = 0.3;
+/** Percent range of when to snap slider to 0 */
+const snapToZeroRangePct = 0.025;
+
+function ArrivalControl({ transactions }: WithTransactionsProps) {
+  // Max value includes the chart buffer to have the entire chart range be represented
+  const sliderMaxValue = useMemo(
+    () => getMaxTsWithBuffer(transactions) - chartBufferMs,
+    [transactions],
+  );
+  const [rangeValue, setRangeValue] = useState(() => {
+    const maxTs = getMaxTsWithBuffer(transactions);
+    const minValue = -Math.ceil(maxTs * beforeZeroMinToMaxRatio);
+    // default max value does not include chart buffer since there should be no actual transactions arriving past maxTs without buffer
+    const maxValue = maxTs - chartBufferMs;
+    return [minValue, maxValue];
+  });
+
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterArrival = useSetAtom(filterArrivalDataAtom);
 
-  function getMinMax(range: number[]) {
+  const [sliderMeasureRef, { width }] = useMeasure<HTMLDivElement>();
+
+  function getTsToSliderValue(tsNanos: number) {
+    return tsNanos < 0 ? beforeZeroSliderMulti * tsNanos : tsNanos;
+  }
+
+  function getRangeMinMaxValues(range: number[]) {
     if (range.length < 2) return;
+
     return {
-      min: getIsMinValue(range[0]) ? undefined : range[0],
-      max: range[1],
+      min: getTsToSliderValue(range[0]),
+      max: getTsToSliderValue(range[1]),
     };
   }
 
-  const handleCheckedChange = (checked: boolean) => {
-    if (checked) {
-      uplotAction((u, bankIdx) =>
-        filterArrival(u, transactions, bankIdx, maxTs, getMinMax(rangeValue)),
-      );
-    } else {
-      uplotAction((u, bankIdx) =>
-        filterArrival(u, transactions, bankIdx, maxTs),
-      );
-    }
+  const zeroValueSliderPct = `${Math.ceil((beforeZeroMinToMaxRatio / (1 + beforeZeroMinToMaxRatio)) * 100)}%`;
 
-    setIsEnabled(checked);
-  };
-
-  const minValueLabel = useMemo(() => {
-    if (!transactions.txn_arrival_timestamps_nanos.length) return "";
+  const minValueNanos = useMemo(() => {
+    if (!transactions.txn_arrival_timestamps_nanos.length) return 0;
 
     const minArrival = transactions.txn_arrival_timestamps_nanos.reduce(
       (min, arrival) => {
         if (arrival < min) return arrival;
         return min;
       },
-      transactions.txn_arrival_timestamps_nanos[0],
+      transactions.start_timestamp_nanos,
     );
+    return Number(minArrival - transactions.start_timestamp_nanos);
+  }, [transactions]);
 
-    const withUnits = getDurationWithUnits(
-      minArrival - transactions.start_timestamp_nanos,
-    );
-    return `${withUnits.value.toLocaleString()} ${withUnits.unit}`;
-  }, [
-    transactions.start_timestamp_nanos,
-    transactions.txn_arrival_timestamps_nanos,
-  ]);
+  /** Scaled from ms value to slider value */
+  const scaledMinValue = Math.ceil(sliderMaxValue * beforeZeroMinToMaxRatio);
+  const snapToZeroRange = Math.ceil(sliderMaxValue * snapToZeroRangePct);
+  const beforeZeroSliderMulti = Math.abs(minValueNanos / scaledMinValue);
+  const sliderMinValue = -scaledMinValue;
 
-  const isMinValue = getIsMinValue(rangeValue[0]);
+  function getValueLabel(value: number) {
+    return `${Math.round(getTsToSliderValue(value) / 1_000_000).toLocaleString()} ms`;
+  }
+
+  const minValueLabel = getValueLabel(rangeValue[0]);
+  const maxValueLabel = getValueLabel(rangeValue[1]);
 
   return (
-    <>
-      <Flex align="center" gap="2">
-        <ToggleControl
-          label="Arrival"
-          checked={isEnabled}
-          onCheckedChange={handleCheckedChange}
-          color="#9EB1FF"
+    <Flex align="center" gap="2" flexGrow="1">
+      <Text className={styles.arrivalLabel}>Arrival</Text>
+      <div
+        className={styles.slider}
+        ref={sliderMeasureRef}
+        style={
+          {
+            "--slot-start-pct": zeroValueSliderPct,
+            marginTop: `-${bboxHeight + 6}px`,
+            "--min-value-label": `"${minValueLabel}"`,
+            "--max-value-label": `"${maxValueLabel}"`,
+          } as CSSProperties
+        }
+      >
+        <ArrivalSvgChart
+          transactions={transactions}
+          sliderMin={sliderMinValue}
+          sliderMax={sliderMaxValue}
+          beforeZeroMulti={beforeZeroSliderMulti}
+          bboxWidth={width}
         />
-        <div style={{ width: "180px" }}>
-          <Slider
-            value={rangeValue}
-            disabled={!isEnabled}
-            min={minArrivalTs}
-            max={maxTs}
-            onValueChange={(value) => {
-              setRangeValue(value);
-              uplotAction((u) => {
-                const changedValue =
-                  value[0] !== rangeValue[0] ? value[0] : value[1];
-                const left = u.valToPos(changedValue, xScaleKey);
-                u.setCursor({ left, top: 0 });
-              });
-              requestAnimationFrame(() => {
-                uplotAction((u, bankIdx) =>
-                  filterArrival(
-                    u,
-                    transactions,
-                    bankIdx,
-                    maxTs,
-                    getMinMax(value),
-                  ),
-                );
-              });
-            }}
-          />
-        </div>
-        <Text
-          className={clsx(styles.sliderLabel, {
-            [styles.disabled]: !isEnabled,
-          })}
-        >
-          {isMinValue
-            ? minValueLabel
-            : `${Math.trunc(rangeValue[0] / 1_000_000)} ms`}
-          <span className={styles.divider}>-</span>
-          {Math.trunc(rangeValue[1] / 1_000_000)} ms
-        </Text>
-      </Flex>
-    </>
+        <Slider
+          style={{ "--slider-track-size": "4px" } as CSSProperties}
+          value={rangeValue}
+          min={sliderMinValue}
+          max={sliderMaxValue}
+          onValueChange={(value) => {
+            const changedValueIdx = value[0] !== rangeValue[0] ? 0 : 1;
+            // Snaps the slider to 0 when dragged near
+            if (Math.abs(value[changedValueIdx]) < snapToZeroRange) {
+              value[changedValueIdx] = 0;
+            }
+            setRangeValue(value);
+
+            uplotAction((u) => {
+              const left = u.valToPos(value[changedValueIdx], xScaleKey);
+              u.setCursor({ left, top: 0 });
+            });
+            requestAnimationFrame(() => {
+              uplotAction((u, bankIdx) =>
+                filterArrival(
+                  u,
+                  transactions,
+                  bankIdx,
+                  sliderMaxValue,
+                  getRangeMinMaxValues(value),
+                ),
+              );
+            });
+          }}
+        />
+      </div>
+    </Flex>
   );
 }

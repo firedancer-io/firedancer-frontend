@@ -1,5 +1,6 @@
 :global(#txn-bars-tooltip) {
-  z-index: 1;
+  /* above the slider thumbs in the chart controls */
+  z-index: 3;
   position: absolute;
   background: var(--Colors-Gray-1, #111);
   padding: 6px 8px;
