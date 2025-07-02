@@ -23,7 +23,7 @@ import {
 import { groupBy, max } from "lodash";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import ToggleGroupControl from "./ToggleGroupControl";
-import { useMeasure, useUnmount } from "react-use";
+import { useMeasure, useMedia, useUnmount } from "react-use";
 import { errorCodeMap, FilterEnum, TxnState } from "./consts";
 import ToggleControl from "./ToggleControl";
 import toggleControlStyles from "./toggleControl.module.css";
@@ -41,10 +41,8 @@ interface ChartControlsProps {
   maxTs: number;
 }
 
-export default function ChartControls({
-  transactions,
-  maxTs,
-}: ChartControlsProps) {
+export default function ChartControls(props: ChartControlsProps) {
+  const { transactions, maxTs } = props;
   const setChartFilters = useSetAtom(chartFiltersAtom);
   const setBarCount = useSetAtom(barCountAtom);
   const setSelectedBank = useSetAtom(selectedBankAtom);
@@ -61,8 +59,12 @@ export default function ChartControls({
     setTxnState(TxnState.DEFAULT);
   });
 
+  if (useMedia("(max-width: 500px)")) {
+    return <MobileViewChartControls {...props} />;
+  }
+
   return (
-    <Flex align="center" gap="2" wrap="wrap">
+    <Flex gap="2" align="center" wrap="wrap">
       <Separator orientation="vertical" size="2" />
       <ErrorControl transactions={transactions} maxTs={maxTs} />
       <Separator orientation="vertical" size="2" />
@@ -72,16 +74,24 @@ export default function ChartControls({
       <Separator orientation="vertical" size="2" />
       <SimpleControl transactions={transactions} maxTs={maxTs} />
       <Separator orientation="vertical" size="2" />
-      <FeeControl transactions={transactions} />
-      <TipsControl transactions={transactions} />
-      <IncomeControl transactions={transactions} />
+      <ToggleSeriesControls transactions={transactions} />
       <Separator orientation="vertical" size="2" />
-      <Flex gap="2">
-        <Text className={toggleControlStyles.label}>CU</Text>
-        <CuConsumedControl transactions={transactions} />
-        <CuRequestedControl transactions={transactions} />
-      </Flex>
+      <CuControls transactions={transactions} />
       <Separator orientation="vertical" size="2" />
+      <ArrivalControl transactions={transactions} />
+    </Flex>
+  );
+}
+
+function MobileViewChartControls({ transactions, maxTs }: ChartControlsProps) {
+  return (
+    <Flex direction="column" gap="3">
+      <ErrorControl transactions={transactions} maxTs={maxTs} />
+      <BundleControl transactions={transactions} maxTs={maxTs} isMobileView />
+      <LandedControl transactions={transactions} maxTs={maxTs} isMobileView />
+      <SimpleControl transactions={transactions} maxTs={maxTs} isMobileView />
+      <ToggleSeriesControls transactions={transactions} />
+      <CuControls transactions={transactions} />
       <ArrivalControl transactions={transactions} />
     </Flex>
   );
@@ -90,6 +100,7 @@ export default function ChartControls({
 interface ToggleGroupControlProps {
   transactions: SlotTransactions;
   maxTs: number;
+  isMobileView?: boolean;
 }
 
 function ErrorControl({ transactions, maxTs }: ToggleGroupControlProps) {
@@ -98,7 +109,7 @@ function ErrorControl({ transactions, maxTs }: ToggleGroupControlProps) {
   const [value, setValue] = useState<"All" | "Success" | "Errors">("All");
 
   return (
-    <>
+    <Flex gap="2">
       <ToggleGroupControl
         options={["All", "Success", "Errors"]}
         optionColors={{ Success: "#30A46C", Errors: "#E5484D" }}
@@ -118,7 +129,7 @@ function ErrorControl({ transactions, maxTs }: ToggleGroupControlProps) {
         transactions={transactions}
         isDisabled={value === "Success"}
       />
-    </>
+    </Flex>
   );
 }
 
@@ -197,7 +208,11 @@ function HighlightErrorControl({
   );
 }
 
-function BundleControl({ transactions, maxTs }: ToggleGroupControlProps) {
+function BundleControl({
+  transactions,
+  maxTs,
+  isMobileView,
+}: ToggleGroupControlProps) {
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterBundle = useSetAtom(filterBundleDataAtom);
 
@@ -212,11 +227,16 @@ function BundleControl({ transactions, maxTs }: ToggleGroupControlProps) {
           filterBundle(u, transactions, bankIdx, maxTs, value),
         )
       }
+      hasMinTextWidth={isMobileView}
     />
   );
 }
 
-function LandedControl({ transactions, maxTs }: ToggleGroupControlProps) {
+function LandedControl({
+  transactions,
+  maxTs,
+  isMobileView,
+}: ToggleGroupControlProps) {
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterLanded = useSetAtom(filterLandedDataAtom);
 
@@ -231,11 +251,16 @@ function LandedControl({ transactions, maxTs }: ToggleGroupControlProps) {
           filterLanded(u, transactions, bankIdx, maxTs, value),
         )
       }
+      hasMinTextWidth={isMobileView}
     />
   );
 }
 
-function SimpleControl({ transactions, maxTs }: ToggleGroupControlProps) {
+function SimpleControl({
+  transactions,
+  maxTs,
+  isMobileView,
+}: ToggleGroupControlProps) {
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterSimple = useSetAtom(filterSimpleDataAtom);
 
@@ -250,12 +275,23 @@ function SimpleControl({ transactions, maxTs }: ToggleGroupControlProps) {
           filterSimple(u, transactions, bankIdx, maxTs, value),
         )
       }
+      hasMinTextWidth={isMobileView}
     />
   );
 }
 
 interface WithTransactionsProps {
   transactions: SlotTransactions;
+}
+
+function ToggleSeriesControls({ transactions }: WithTransactionsProps) {
+  return (
+    <Flex gap="2">
+      <FeeControl transactions={transactions} />
+      <TipsControl transactions={transactions} />
+      <IncomeControl transactions={transactions} />
+    </Flex>
+  );
 }
 
 function FeeControl({ transactions }: WithTransactionsProps) {
@@ -305,6 +341,16 @@ function TipsControl({ transactions }: WithTransactionsProps) {
       onCheckedChange={handleCheckedChange}
       color="#1FD8A4"
     />
+  );
+}
+
+function CuControls({ transactions }: WithTransactionsProps) {
+  return (
+    <Flex gap="2">
+      <Text className={toggleControlStyles.label}>CU</Text>
+      <CuConsumedControl transactions={transactions} />
+      <CuRequestedControl transactions={transactions} />
+    </Flex>
   );
 }
 
