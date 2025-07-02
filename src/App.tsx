@@ -20,7 +20,12 @@ export default function App() {
   const setContainerEl = useSetAtom(containerElAtom);
 
   return (
-    <Theme className="app" appearance="dark" ref={(el) => setContainerEl(el)}>
+    <Theme
+      className="app"
+      appearance="dark"
+      ref={(el) => setContainerEl(el)}
+      scaling="90%"
+    >
       <ConnectionProvider>
         <RouterProvider router={router} />
       </ConnectionProvider>

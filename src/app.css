@@ -6,6 +6,7 @@
   font-display: optional;
   --scaling: 0.875;
   --cursor-button: pointer;
+  --line-height: normal;
 
   /* custom tokens */
   --white-heading: #f7f8f8;

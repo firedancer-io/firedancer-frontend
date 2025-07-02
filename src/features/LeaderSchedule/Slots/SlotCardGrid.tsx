@@ -442,7 +442,13 @@ function LoadingIcon() {
   });
 
   return (
-    <div style={{ width: "14px" }}>
+    <div
+      style={{
+        width: "14px",
+        // To match the line-height of the grid text
+        lineHeight: "normal",
+      }}
+    >
       <CircularProgressbar
         value={progress}
         styles={buildStyles({ trailColor: "#666666", pathColor: "#0051DF" })}
