@@ -17,6 +17,7 @@ import { wheelZoomPlugin } from "../../../../uplotReact/wheelZoomPlugin";
 import { txnBarsUplotIdPrefix } from "./consts";
 import { syncXScalePlugin } from "../../../../uplotReact/syncXScalePlugin";
 import { leftAxisSizeAtom, rightAxisSizeAtom } from "../ComputeUnitsCard/atoms";
+import { touchPlugin } from "../../../../uplotReact/touchPlugin";
 
 /** Buffer of the canvas past the axes of the chart to prevent the first and last tick labels from being cut off */
 const xBuffer = 20;
@@ -131,6 +132,7 @@ export default function BarsChart({
         timeScaleDragPlugin(),
         wheelZoomPlugin({ factor: 0.75 }),
         syncXScalePlugin(),
+        touchPlugin(),
       ],
       hooks: {
         ready: [
