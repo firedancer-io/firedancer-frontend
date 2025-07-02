@@ -5,6 +5,8 @@ import { dataMatch, optionsUpdateState } from "./utils";
 import { useThrottledCallback } from "use-debounce";
 import { uplotChartsAtom } from "./uplotAtoms";
 import { useSetAtom } from "jotai";
+import clsx from "clsx";
+import styles from "./uplot.module.css";
 
 interface UplotReactProps {
   id: string;
@@ -146,5 +148,7 @@ export default function UplotReact({
     setDbSize();
   }
 
-  return target ? null : <div ref={targetRef} className={className}></div>;
+  return target ? null : (
+    <div ref={targetRef} className={clsx(styles.uplot, className)}></div>
+  );
 }

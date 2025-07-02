@@ -1,0 +1,7 @@
+.uplot {
+  /* For the touch plugin */
+  :global(.u-over) {
+    /* To allow for user vertical scroll (panning through banks in bank bars) */
+    touch-action: pan-y;
+  }
+}

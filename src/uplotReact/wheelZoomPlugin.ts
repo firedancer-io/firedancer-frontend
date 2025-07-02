@@ -1,5 +1,6 @@
 import uPlot from "uplot";
 import { xScaleKey } from "../features/Overview/SlotPerformance/ComputeUnitsCard/consts";
+import { clamp } from "./utils";
 
 export function wheelZoomPlugin(opts: { factor: number }): uPlot.Plugin {
   const factor = opts.factor || 0.75;
@@ -11,28 +12,6 @@ export function wheelZoomPlugin(opts: { factor: number }): uPlot.Plugin {
     yMax: number | undefined,
     xRange: number,
     yRange: number;
-
-  function clamp(
-    nRange: number,
-    nMin: number,
-    nMax: number,
-    fRange: number,
-    fMin: number,
-    fMax: number,
-  ) {
-    if (nRange > fRange) {
-      nMin = fMin;
-      nMax = fMax;
-    } else if (nMin < fMin) {
-      nMin = fMin;
-      nMax = fMin + nRange;
-    } else if (nMax > fMax) {
-      nMax = fMax;
-      nMin = fMax - nRange;
-    }
-
-    return [nMin, nMax];
-  }
 
   let resizeObserver: ResizeObserver | undefined;
 
