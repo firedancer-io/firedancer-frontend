@@ -1,5 +1,9 @@
 .group-label {
   margin-right: 8px;
+
+  &.min-text-width {
+    min-width: 50px;
+  }
 }
 
 .group {

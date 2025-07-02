@@ -27,6 +27,7 @@ import {
   getMaxTsWithBuffer,
 } from "../../../../transactionUtils";
 import { cuIsFullXRangePlugin } from "./cuIsFullXRangePlugin";
+import { touchPlugin } from "../../../../uplotReact/touchPlugin";
 
 function getChartData(transactions: SlotTransactions) {
   const events = [
@@ -363,6 +364,7 @@ export default function CuChart({
         cuTooltipPlugin(setTooltipData),
         syncXScalePlugin(),
         cuIsFullXRangePlugin(),
+        touchPlugin(),
       ],
     };
   }, [
