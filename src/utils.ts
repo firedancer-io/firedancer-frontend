@@ -111,3 +111,32 @@ export const hasModKey = ({
   metaKey,
 }: KeyboardEvent | React.MouseEvent | WheelEvent) =>
   shiftKey || ctrlKey || metaKey;
+
+export function copyToClipboard(copyValue: string) {
+  if (navigator.clipboard) {
+    void navigator.clipboard.writeText(copyValue);
+    return;
+  }
+
+  // Copy fallback for when not https or localhost
+  const copyEl = document.createElement("textarea");
+  copyEl.value = copyValue;
+
+  // Move el out of the viewport so it's not visible
+  copyEl.style.position = "absolute";
+  copyEl.style.left = "-999999px";
+
+  document.body.appendChild(copyEl);
+  copyEl.select();
+
+  try {
+    const successful = document.execCommand("copy");
+    if (!successful) {
+      console.error("Failed to copy text", copyValue);
+    }
+  } catch (error) {
+    console.error("Failed to copy text", copyValue, error);
+  } finally {
+    document.body.removeChild(copyEl);
+  }
+}
