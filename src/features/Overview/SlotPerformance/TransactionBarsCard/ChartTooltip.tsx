@@ -14,6 +14,7 @@ import { Cross2Icon, CopyIcon, CheckIcon } from "@radix-ui/react-icons";
 import { useDebouncedCallback } from "use-debounce";
 import RowSeparator from "../../../../components/RowSeparator";
 import { getDurationWithUnits } from "./chartUtils";
+import { copyToClipboard } from "../../../../utils";
 
 export default function ChartTooltip() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -188,7 +189,12 @@ function CuDisplay({ transactions, txnIdx }: CuDisplayProps) {
       />
       <IncomeDisplay transactions={transactions} txnIdx={txnIdx} />
       <Flex>
-        <svg height="8" fill="none" className={styles.cuBars}>
+        <svg
+          height="8"
+          fill="none"
+          className={styles.cuBars}
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <rect
             height="8"
             width={`${consumedPct}%`}
@@ -312,7 +318,11 @@ function StateDurationDisplay({
     <>
       <RowSeparator />
       <Flex>
-        <svg height="36" className={styles.durationContainer}>
+        <svg
+          height="36"
+          className={styles.durationContainer}
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <rect
             height="8"
             width={`${durationRatios.preLoading}%`}
@@ -448,12 +458,12 @@ function LabelValueDisplay({
     >
       <Flex gap="2" align="center">
         <Text>{label}</Text>
-        {copyValue && navigator.clipboard && (
+        {copyValue && (
           <Button
             variant="ghost"
             size="1"
             onClick={(e) => {
-              void navigator.clipboard.writeText(copyValue);
+              copyToClipboard(copyValue);
               setHasCopied(true);
               resetHasCopied();
               // Seems to be caught sometimes by the outside tooltip click handler?
