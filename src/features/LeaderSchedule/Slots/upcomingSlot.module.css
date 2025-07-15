@@ -3,9 +3,9 @@
   border-radius: 8px;
   border: 1px solid #1c1e2b;
   background: #101123;
+  color: #b2bcc9;
 
   .name-text {
-    color: #b2bcc9;
     width: 240px;
     overflow: hidden;
     white-space: nowrap;
@@ -13,7 +13,6 @@
   }
 
   .pubkey-text {
-    color: #b2bcc9;
     min-width: 390px;
     overflow: hidden;
     white-space: nowrap;
@@ -33,19 +32,9 @@
   &.one-away {
     border: 1px solid #295060;
     background: #142432;
-    /* opacity: 1.2 */
-  }
-
-  .next-leader {
-    color: #41b9d3;
-  }
-
-  .slot {
-    color: #72aff6;
   }
 
   .time-till {
-    color: #b2bcc9;
     min-width: 250px;
 
     &.narrow-screen {

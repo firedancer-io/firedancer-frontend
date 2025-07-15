@@ -91,7 +91,7 @@ function UpcomingSlotBody({
       </Flex>
       <Text className={styles.pubkeyText}>{pubkey}</Text>
       <Flex flexGrow="1" justify="center">
-        <Text className={styles.slot}>{slot}</Text>
+        <Text>{slot}</Text>
       </Flex>
       <TimeTillText slot={slot} />
     </Flex>
@@ -116,7 +116,7 @@ function MobileUpcomingSlotBody({
         </Text>
       </Flex>
       <Flex justify="between">
-        <Text className={styles.slot}>{slot}</Text>
+        <Text>{slot}</Text>
         <TimeTillText slot={slot} isNarrowScreen />
       </Flex>
     </Flex>
