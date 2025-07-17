@@ -58,8 +58,10 @@ function getChartData(transactions: SlotTransactions) {
           : -transactions.txn_compute_units_requested[txnIdx] +
             transactions.txn_compute_units_consumed[txnIdx]
         : 0;
-      const fees =
-        !event.isTxnStart && transactions.txn_landed[txnIdx]
+      const fees = // fees are only paid by landed transactions with a valid fee payer (errors 5, 6 result in an invalid fee payer)
+        !event.isTxnStart &&
+        transactions.txn_landed[txnIdx] &&
+        ![5, 6].includes(transactions.txn_error_code[txnIdx])
           ? Number(transactions.txn_priority_fee[txnIdx]) +
             Number(transactions.txn_transaction_fee[txnIdx])
           : 0;
