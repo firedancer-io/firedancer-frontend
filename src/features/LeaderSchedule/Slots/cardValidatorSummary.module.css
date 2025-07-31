@@ -1,5 +1,5 @@
 .my-slots {
-  color: #41b9d3;
+  color: var(--summary-my-slots-color);
   border-radius: 10px;
   background: rgba(250, 250, 250, 0.05);
   padding: 2px 5px;
@@ -49,11 +49,11 @@
 }
 
 .fd-text {
-  color: #008970;
+  color: var(--summary-fd-text-color);
 }
 
 .agave-text {
-  color: #a94dde;
+  color: var(--summary-agave-text-color);
 }
 
 .container-mobile {

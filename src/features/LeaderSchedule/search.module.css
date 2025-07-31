@@ -27,7 +27,7 @@
 }
 
 .label {
-  color: #717171;
+  color: var(--search-label-color);
 }
 
 .my-slots {
@@ -49,10 +49,10 @@
 
 .my-slots[data-state="on"] {
   background: rgba(62, 98, 189, 0.72);
-  color: #6aafff;
+  color: var(--my-slots-on-color);
 
   .label {
-    color: #b6adad;
+    color: var(--search-slots-on-label-color);
   }
 }
 
@@ -79,10 +79,10 @@
 
 .skipped-slots[data-state="on"] {
   background: rgba(189, 62, 62, 0.72);
-  color: #ff7072;
+  color: var(--skipped-slots-on-color);
 
   .label {
-    color: #b6adad;
+    color: var(--search-slots-on-label-color);
   }
 }
 
@@ -92,16 +92,16 @@
 
 .disabled {
   border: 1px rgba(178, 178, 178, 0.12);
-  background: rgba(114, 114, 114, 0.15);
-  color: #424242;
+  background: var(--search-disabled-background-color);
+  color: var(--search-disabled-text-color);
 
   &:hover {
-    background: rgba(114, 114, 114, 0.15);
+    background: var(--search-disabled-background-color);
   }
 }
 
 .skip-rate-label {
-  color: #646464;
+  color: var(--skip-rate-label-color);
   line-height: normal;
 }
 

@@ -26,7 +26,7 @@
     line-height: normal;
 
     .success-rate {
-      color: #7ce198;
+      color: var(--sankey-success-rate-color);
     }
   }
 
@@ -38,7 +38,7 @@
     }
 
     .toggle-group-item {
-      background: #292929;
+      background: var(--toggle-item-background-color);
       color: #747575;
       padding: 2px 4px;
       align-items: center;

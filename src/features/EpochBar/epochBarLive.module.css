@@ -8,7 +8,7 @@
 }
 
 .not-live {
-  color: #3cb4ff;
+  color: var(--epoch-not-live-color);
 }
 
 .reset {

@@ -4,6 +4,6 @@
 }
 
 .value {
-  color: #a7a7a7;
+  color: var(--startup-text-color);
   font-size: 12px;
 }

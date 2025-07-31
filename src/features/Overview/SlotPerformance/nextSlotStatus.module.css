@@ -8,11 +8,11 @@
   background: #303134;
 
   div {
-    background: #167b91;
+    background: var(--progress-background-color);
   }
 }
 
 .value {
-  color: #cacaca;
+  color: var(--next-slot-value-color);
   min-width: 50px;
 }

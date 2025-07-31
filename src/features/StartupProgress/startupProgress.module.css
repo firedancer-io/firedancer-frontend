@@ -1,15 +1,15 @@
 .progress {
   height: 9px;
   width: 120px;
-  background: #121213;
+  background: var(--startup-progress-background-color);
 
   div {
-    background: #1ce7c2;
+    background: var(--startup-progress-teal-color);
   }
 }
 
 .text {
-  color: #a7a7a7;
+  color: var(--startup-text-color);
   font-size: 8px;
   line-height: normal;
 }

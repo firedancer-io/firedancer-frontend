@@ -1,7 +1,7 @@
 .button {
   all: unset;
-  background: #292929;
-  color: #9e9e9e;
+  background: var(--toggle-item-background-color);
+  color: var(--toggle-item-text-color);
   font-weight: 510;
   height: 23px;
   padding: 0 8px;

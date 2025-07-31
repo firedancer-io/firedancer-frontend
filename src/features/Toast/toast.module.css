@@ -21,18 +21,18 @@
         115deg,
         var(--failure-color),
         var(--failure-color) 7px,
-        #ff7878 7px,
-        #ff7878 8px
+        var(--toast-disconnected-color) 7px,
+        var(--toast-disconnected-color) 8px
       );
     }
 
     &.connecting {
       background: repeating-linear-gradient(
         115deg,
-        #ff9d0a,
-        #ff9d0a 7px,
-        #ffc267 7px,
-        #ffc267 8px
+        var(--toast-connecting-start-color),
+        var(--toast-connecting-start-color) 7px,
+        var(--toast-connecting-end-color) 7px,
+        var(--toast-connecting-end-color) 8px
       );
     }
 
