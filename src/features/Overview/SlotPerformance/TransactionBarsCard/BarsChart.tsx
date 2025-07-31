@@ -18,6 +18,7 @@ import { txnBarsUplotIdPrefix } from "./consts";
 import { syncXScalePlugin } from "../../../../uplotReact/syncXScalePlugin";
 import { leftAxisSizeAtom, rightAxisSizeAtom } from "../ComputeUnitsCard/atoms";
 import { touchPlugin } from "../../../../uplotReact/touchPlugin";
+import { chartAxisColor } from "../../../../colors";
 
 /** Buffer of the canvas past the axes of the chart to prevent the first and last tick labels from being cut off */
 const xBuffer = 20;
@@ -93,7 +94,7 @@ export default function BarsChart({
       scales: { x: { time: false } },
       axes: [
         {
-          stroke: "#777b84",
+          stroke: chartAxisColor,
           values: (self, ticks) => {
             return isFirstOrLastChart
               ? ticks.map((rawValue) => safeDivide(rawValue, 1_000_000) + "ms")
@@ -105,11 +106,11 @@ export default function BarsChart({
           border: {
             show: true,
             width: 1 / devicePixelRatio,
-            stroke: "#777b84",
+            stroke: chartAxisColor,
           },
           ticks: {
             width: 1 / devicePixelRatio,
-            stroke: "#777b84",
+            stroke: chartAxisColor,
             size: 5,
           },
           side: isFirstChart ? 0 : 2,
@@ -118,7 +119,7 @@ export default function BarsChart({
           border: {
             show: true,
             width: 1 / devicePixelRatio,
-            stroke: "#777b84",
+            stroke: chartAxisColor,
           },
           stroke: "rgba(0,0,0,0)",
         },

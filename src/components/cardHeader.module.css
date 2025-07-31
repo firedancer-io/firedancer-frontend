@@ -1,5 +1,5 @@
 .text {
-  color: #b2bcc9;
+  color: var(--primary-text-color);
   font-size: 18px;
   font-weight: 500;
 }

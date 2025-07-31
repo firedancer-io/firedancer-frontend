@@ -3,6 +3,12 @@ import { useMemo, useRef } from "react";
 import { isDefined } from "../../../utils";
 import { useAtomValue } from "jotai";
 import { tpsDataAtom } from "./atoms";
+import {
+  regularTextColor,
+  transactionFailedPathColor,
+  transactionNonVotePathColor,
+  transactionVotePathColor,
+} from "../../../colors";
 
 const getPath = (points: { x: number; y: number }[], height: number) => {
   if (!points.length) return "";
@@ -81,13 +87,16 @@ export default function Chart() {
                   fillRule="evenodd"
                   clipRule="evenodd"
                   d={scaledPaths.nonvotePath}
-                  fill="#006851"
+                  fill={transactionNonVotePathColor}
                 />
-                <path d={scaledPaths.failedPath} fill="#743F4D" />
+                <path
+                  d={scaledPaths.failedPath}
+                  fill={transactionFailedPathColor}
+                />
                 <path
                   fillRule="evenodd"
                   clipRule="evenodd"
-                  fill="#19307C"
+                  fill={transactionVotePathColor}
                   d={scaledPaths.votePath}
                 />
 
@@ -104,7 +113,7 @@ export default function Chart() {
                     <text
                       x="0"
                       y={scaledPaths.totalTpsY - 3}
-                      fill="#8E909D"
+                      fill={regularTextColor}
                       fontSize="8"
                       fontFamily="Inter Tight"
                     >

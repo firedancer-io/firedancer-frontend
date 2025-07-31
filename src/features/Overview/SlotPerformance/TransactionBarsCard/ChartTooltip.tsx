@@ -15,6 +15,17 @@ import { useDebouncedCallback } from "use-debounce";
 import RowSeparator from "../../../../components/RowSeparator";
 import { getDurationWithUnits } from "./chartUtils";
 import { copyToClipboard } from "../../../../utils";
+import {
+  chartAxisColor,
+  computeUnitsColor,
+  errorToggleColor,
+  feesColor,
+  successToggleColor,
+  tipsColor,
+  requestedToggleControlColor,
+  incomePerCuToggleControlColor,
+  chartCopyIconColor,
+} from "../../../../colors";
 
 export default function ChartTooltip() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -64,7 +75,7 @@ export default function ChartTooltip() {
               {txnState}
             </Text>
             <Button variant="ghost" size="1" id="txn-bars-tooltip-close">
-              <Cross2Icon color="#777b84" />
+              <Cross2Icon color={chartAxisColor} />
             </Button>
           </Flex>
           <RowSeparator />
@@ -91,12 +102,12 @@ export default function ChartTooltip() {
             <LabelValueDisplay
               label="Fees"
               value={`${(transactions.txn_priority_fee[txnIdx] + transactions.txn_transaction_fee[txnIdx])?.toLocaleString()}`}
-              color="#4CCCE6"
+              color={feesColor}
             />
             <LabelValueDisplay
               label="Tips"
               value={`${transactions.txn_tips[txnIdx]?.toLocaleString()}`}
-              color="#1FD8A4"
+              color={tipsColor}
             />
             <RowSeparator />
             <CuDisplay transactions={transactions} txnIdx={txnIdx} />
@@ -156,7 +167,7 @@ function IncomeDisplay({ transactions, txnIdx }: IncomeDisplayProps) {
         transactions,
         txnIdx,
       )?.toLocaleString()}${rankText}`}
-      color="#9EB1FF"
+      color={incomePerCuToggleControlColor}
     />
   );
 }
@@ -180,12 +191,12 @@ function CuDisplay({ transactions, txnIdx }: CuDisplayProps) {
       <LabelValueDisplay
         label="CU Consumed"
         value={`${transactions.txn_compute_units_consumed[txnIdx]?.toLocaleString()}`}
-        color="#D19DFF"
+        color={computeUnitsColor}
       />
       <LabelValueDisplay
         label="CU Requested"
         value={`${transactions.txn_compute_units_requested[txnIdx]?.toLocaleString()}`}
-        color="#FF8DCC"
+        color={requestedToggleControlColor}
       />
       <IncomeDisplay transactions={transactions} txnIdx={txnIdx} />
       <Flex>
@@ -199,14 +210,14 @@ function CuDisplay({ transactions, txnIdx }: CuDisplayProps) {
             height="8"
             width={`${consumedPct}%`}
             opacity={0.6}
-            fill="#D19DFF"
+            fill={computeUnitsColor}
           />
           <rect
             height="8"
             width={`${100 - consumedPct}%`}
             x={`${consumedPct}%`}
             opacity={0.2}
-            fill="#FF8DCC"
+            fill={requestedToggleControlColor}
           />
         </svg>
       </Flex>
@@ -420,7 +431,7 @@ function SuccessErrorDisplay({
     <LabelValueDisplay
       label={isError ? "Error" : "Success"}
       value={isError ? `${errorCodeMap[errorCode]}` : "Yes"}
-      color={isError ? "#E5484D" : "#30A46C"}
+      color={isError ? errorToggleColor : successToggleColor}
     />
   );
 }
@@ -474,7 +485,7 @@ function LabelValueDisplay({
             {hasCopied ? (
               <CheckIcon color="green" height="14px" />
             ) : (
-              <CopyIcon color="#B4B4B4" height="14px" />
+              <CopyIcon color={chartCopyIconColor} height="14px" />
             )}
           </Button>
         )}

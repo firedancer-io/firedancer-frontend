@@ -1,8 +1,8 @@
 .grid {
   --ag-background-color: rgba(250, 250, 250, 0.05);
   --ag-header-background-color: rgba(250, 250, 250, 0.05);
-  --ag-foreground-color: #b2bcc9;
-  --ag-secondary-foreground-color: #b2bcc9;
-  --ag-header-foreground-color: #b2bcc9;
+  --ag-foreground-color: var(--primary-text-color);
+  --ag-secondary-foreground-color: var(--primary-text-color);
+  --ag-header-foreground-color: var(--primary-text-color);
   --ag-data-color: #858c95;
 }

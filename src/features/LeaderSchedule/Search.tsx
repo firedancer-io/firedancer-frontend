@@ -28,6 +28,7 @@ import {
   useSearchTextSearchParam,
   useSearchTypeSearchParam,
 } from "./useSearchParams";
+import { searchIconColor } from "../../colors";
 
 const isVisibleAtom = atom((get) => !!get(currentLeaderSlotAtom));
 
@@ -83,7 +84,7 @@ export default function Search() {
             <MagnifyingGlassIcon
               height="16"
               width="16"
-              style={{ color: "#AFB2C2" }}
+              style={{ color: searchIconColor }}
             />
           </TextField.Slot>
           {localValue && (
@@ -92,7 +93,7 @@ export default function Search() {
                 <Cross1Icon
                   height="14"
                   width="14"
-                  style={{ color: "#AFB2C2" }}
+                  style={{ color: searchIconColor }}
                   onClick={reset}
                 />
               </IconButton>

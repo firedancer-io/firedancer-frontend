@@ -6,6 +6,12 @@ import { useAtomValue } from "jotai";
 import { peerStatsAtom } from "../../../atoms";
 import { formatNumberLamports } from "./formatAmt";
 import styles from "./validatorsCard.module.css";
+import {
+  failureColor,
+  headerColor,
+  nonDelinquentColor,
+  totalValidatorsColor,
+} from "../../../colors";
 
 export default function ValidatorsCard() {
   const peerStats = useAtomValue(peerStatsAtom);
@@ -24,13 +30,13 @@ export default function ValidatorsCard() {
               <CardStat
                 label="Total Validators"
                 value={peerStats.validatorCount.toString()}
-                valueColor="#20788C"
+                valueColor={totalValidatorsColor}
                 large
               />
               <CardStat
                 label="Non-delinquent Stake"
                 value={activeLabel}
-                valueColor="#6F77C0"
+                valueColor={nonDelinquentColor}
                 appendValue="SOL"
                 large
               />
@@ -39,12 +45,12 @@ export default function ValidatorsCard() {
               <CardStat
                 label="RPC Nodes"
                 value={peerStats.rpcCount.toString()}
-                valueColor="#BDF3FF"
+                valueColor={headerColor}
               />
               <CardStat
                 label="Delinquent Stake"
                 value={delinquentLabel}
-                valueColor="#FF3C3C"
+                valueColor={failureColor}
                 appendValue="SOL"
               />
             </div>

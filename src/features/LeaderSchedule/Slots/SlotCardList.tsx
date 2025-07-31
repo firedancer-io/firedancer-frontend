@@ -15,6 +15,11 @@ import { searchLeaderSlotsAtom } from "../atoms";
 import { useMedia } from "react-use";
 import PreloadCardList from "./PreloadCardList";
 import { getSlotCards } from "./slotCards";
+import {
+  primaryTextColor,
+  slotCardSectionBackgroundColor,
+  slotCardSectionColor,
+} from "../../../colors";
 
 export const initUpcomingSlotCardCount = 3;
 const initSlotCardCount = 10;
@@ -73,7 +78,7 @@ export default function SlotCardList() {
         justify="center"
         align="center"
         style={{
-          color: "#B2BCC9",
+          color: primaryTextColor,
           fontSize: "24px",
           letterSpacing: "-0.96px",
           minHeight: "300px",
@@ -167,7 +172,7 @@ function SlotCardSection({
             style={{
               width: "1px",
               flex: 1,
-              background: "#676767",
+              background: slotCardSectionBackgroundColor,
               height: "10px",
             }}
           />
@@ -175,7 +180,7 @@ function SlotCardSection({
             style={{
               transform: "rotate(180deg)",
               writingMode: "vertical-rl",
-              color: "#8A8A8A",
+              color: slotCardSectionColor,
             }}
             size="2"
           >
@@ -185,7 +190,7 @@ function SlotCardSection({
             style={{
               width: "1px",
               flex: 1,
-              background: "#676767",
+              background: slotCardSectionBackgroundColor,
               height: "10px",
             }}
           />

@@ -6,12 +6,6 @@ import {
   SankeyCommonProps,
   SankeyNodeDatum,
 } from "./types";
-import {
-  droppedLabelColor,
-  successLabelColor,
-  baseLabelColor,
-  zeroLabelColor,
-} from "./consts";
 import { getDefaultStore } from "jotai";
 import {
   DisplayType,
@@ -25,6 +19,12 @@ import {
   droppedSlotNodes,
 } from "../features/Overview/SlotPerformance/SlotSankey/consts";
 import { useCustomMotionConfig } from "./useCustomMotionConfig";
+import {
+  failureColor,
+  successColor,
+  sankeyBaseLabelColor,
+  secondaryTextColor,
+} from "../colors";
 
 const store = getDefaultStore();
 
@@ -202,25 +202,25 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
 
 function getLabelFill(label: SlotNode, value: number) {
   if (!value) {
-    return [zeroLabelColor, zeroLabelColor];
+    return [secondaryTextColor, secondaryTextColor];
   }
 
   if (retainedSlotNodes.includes(label)) {
-    return [baseLabelColor, baseLabelColor];
+    return [sankeyBaseLabelColor, sankeyBaseLabelColor];
   }
   if (label === SlotNode.BlockSuccess) {
-    return [baseLabelColor, successLabelColor];
+    return [sankeyBaseLabelColor, successColor];
   }
 
   if (tileNodes.includes(label)) {
-    return [zeroLabelColor, zeroLabelColor];
+    return [secondaryTextColor, secondaryTextColor];
   }
 
   if (droppedSlotNodes.includes(label) || label === SlotNode.BlockFailure) {
-    return [baseLabelColor, droppedLabelColor];
+    return [sankeyBaseLabelColor, failureColor];
   }
 
-  return [baseLabelColor, baseLabelColor];
+  return [sankeyBaseLabelColor, sankeyBaseLabelColor];
 }
 
 function getLabelParts(labelText: string) {

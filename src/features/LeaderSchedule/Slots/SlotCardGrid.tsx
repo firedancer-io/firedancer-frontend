@@ -29,6 +29,10 @@ import clsx from "clsx";
 import { Link } from "@tanstack/react-router";
 import { identityKeyAtom } from "../../../api/atoms";
 import { usePubKey } from "../../../hooks/usePubKey";
+import {
+  circularProgressPathColor,
+  circularProgressTrailColor,
+} from "../../../colors";
 
 interface SlotCardGridProps {
   slot: number;
@@ -451,7 +455,10 @@ function LoadingIcon() {
     >
       <CircularProgressbar
         value={progress}
-        styles={buildStyles({ trailColor: "#666666", pathColor: "#0051DF" })}
+        styles={buildStyles({
+          trailColor: circularProgressTrailColor,
+          pathColor: circularProgressPathColor,
+        })}
         strokeWidth={25}
       />
     </div>

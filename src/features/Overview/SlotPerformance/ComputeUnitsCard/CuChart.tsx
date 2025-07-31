@@ -28,6 +28,13 @@ import {
 } from "../../../../transactionUtils";
 import { cuIsFullXRangePlugin } from "./cuIsFullXRangePlugin";
 import { touchPlugin } from "../../../../uplotReact/touchPlugin";
+import {
+  chartAxisColor,
+  chartGridColor,
+  computeUnitsColor,
+  feesColor,
+  tipsColor,
+} from "../../../../colors";
 
 function getChartData(transactions: SlotTransactions) {
   const events = [
@@ -207,16 +214,16 @@ export default function CuChart({
           border: {
             show: true,
             width: 1 / devicePixelRatio,
-            stroke: "#777b84",
+            stroke: chartAxisColor,
           },
-          stroke: "#777b84",
+          stroke: chartAxisColor,
           grid: {
             width: 1 / devicePixelRatio,
-            stroke: "#2c3235",
+            stroke: chartGridColor,
           },
           ticks: {
             width: 1 / devicePixelRatio,
-            stroke: "#777b84",
+            stroke: chartAxisColor,
             size: 5,
           },
           size: 30,
@@ -230,16 +237,16 @@ export default function CuChart({
           border: {
             show: true,
             width: 1 / devicePixelRatio,
-            stroke: "#777b84",
+            stroke: chartAxisColor,
           },
-          stroke: "#777b84",
+          stroke: chartAxisColor,
           grid: {
             width: 1 / devicePixelRatio,
-            stroke: "#2c3235",
+            stroke: chartGridColor,
           },
           ticks: {
             width: 1 / devicePixelRatio,
-            stroke: "#777b84",
+            stroke: chartAxisColor,
             size: 5,
           },
           values: (self, ticks) =>
@@ -275,15 +282,15 @@ export default function CuChart({
         },
         {
           scale: lamportsScaleKey,
-          stroke: "#777b84",
+          stroke: chartAxisColor,
           border: {
             show: true,
             width: 1 / devicePixelRatio,
-            stroke: "#777b84",
+            stroke: chartAxisColor,
           },
           ticks: {
             width: 1 / devicePixelRatio,
-            stroke: "#777b84",
+            stroke: chartAxisColor,
             size: 5,
           },
           values: (self, ticks) =>
@@ -331,7 +338,7 @@ export default function CuChart({
         },
         {
           label: "Compute Units",
-          stroke: "#d19dff",
+          stroke: computeUnitsColor,
           paths,
           points: { show: false },
           width: 2 / devicePixelRatio,
@@ -339,7 +346,7 @@ export default function CuChart({
         },
         {
           label: "Fees",
-          stroke: "#4ccce6",
+          stroke: feesColor,
           paths,
           points: { show: false },
           width: 2 / devicePixelRatio,
@@ -347,7 +354,7 @@ export default function CuChart({
         },
         {
           label: "Tips",
-          stroke: "#1fd8a4",
+          stroke: tipsColor,
           paths,
           points: { show: false },
           width: 2 / devicePixelRatio,

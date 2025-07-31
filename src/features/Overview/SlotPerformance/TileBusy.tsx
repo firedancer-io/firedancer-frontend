@@ -1,3 +1,4 @@
+import { tileBusyGreenColor, tileBusyRedColor } from "../../../colors";
 import styles from "./tileBusy.module.css";
 import { Flex, Text } from "@radix-ui/themes";
 
@@ -13,7 +14,7 @@ export default function TileBusy({ busy }: TileBusyProps) {
       <Text
         className={styles.busy}
         style={{
-          color: `color-mix(in srgb, #55BA83, #D94343 ${pct}%)`,
+          color: `color-mix(in srgb, ${tileBusyGreenColor}, ${tileBusyRedColor} ${pct}%)`,
         }}
       >
         {pct ?? "-"}%

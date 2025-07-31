@@ -6,6 +6,7 @@ import NavigatePrev from "./NavigatePrev";
 import EpochBounds from "./EpochBounds";
 import { useAtomValue } from "jotai";
 import { epochAtom } from "../../atoms";
+import { epochTextColor } from "../../colors";
 
 interface EpochBarProps {
   canMove?: boolean;
@@ -32,7 +33,7 @@ function EpochText() {
   const epoch = useAtomValue(epochAtom);
 
   return (
-    <Text style={{ color: "#FAFAFA" }} weight="medium">
+    <Text style={{ color: epochTextColor }} weight="medium">
       Epoch {!!epoch && epoch.epoch}
     </Text>
   );

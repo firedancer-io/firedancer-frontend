@@ -7,8 +7,8 @@ import {
   SankeyCommonProps,
   SankeyNodeDatum,
 } from "./types";
-import { startEndNodeColor } from "./consts";
 import { useCustomMotionConfig } from "./useCustomMotionConfig";
+import { sankeyStartEndNodeColor } from "../colors";
 
 interface SankeyNodesItemProps<N extends DefaultNode, L extends DefaultLink> {
   node: SankeyNodeDatum<N, L>;
@@ -94,7 +94,7 @@ export const SankeyNodesItem = <N extends DefaultNode, L extends DefaultLink>({
       fill={animatedProps.color}
       fillOpacity={animatedProps.opacity}
       strokeWidth={borderWidth}
-      stroke={startEndNodeColor}
+      stroke={sankeyStartEndNodeColor}
       strokeOpacity={opacity}
       onMouseEnter={isInteractive ? handleMouseEnter : undefined}
       onMouseMove={isInteractive ? handleMouseMove : undefined}

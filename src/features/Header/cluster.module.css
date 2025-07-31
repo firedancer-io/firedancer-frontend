@@ -18,6 +18,6 @@
   }
 
   .version {
-    color: #afb2c2;
+    color: var(--search-icon-color);
   }
 }

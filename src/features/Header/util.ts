@@ -1,21 +1,30 @@
 import { Cluster } from "../../api/types";
+import {
+  clusterDevelopmentColor,
+  clusterDevnetColor,
+  clusterMainnetBetaColor,
+  clusterPythnetColor,
+  clusterPythtestColor,
+  clusterTestnetColor,
+  clusterUnknownColor,
+} from "../../colors";
 
 export function getClusterColor(cluster?: Cluster) {
   switch (cluster) {
     case "mainnet-beta":
-      return "#1CE7C2";
+      return clusterMainnetBetaColor;
     case "testnet":
-      return "#E7B81C";
+      return clusterTestnetColor;
     case "development":
-      return "#1C96E7";
+      return clusterDevelopmentColor;
     case "devnet":
-      return "#E7601C";
+      return clusterDevnetColor;
     case "pythnet":
-      return "#9D1CE7";
+      return clusterPythnetColor;
     case "pythtest":
-      return "#E71C88";
+      return clusterPythtestColor;
     case "unknown":
     case undefined:
-      return "#898989";
+      return clusterUnknownColor;
   }
 }

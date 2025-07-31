@@ -1,3 +1,7 @@
+import {
+  sankeyLinkGradientEndColor,
+  sankeyLinkGradientMiddleColor,
+} from "../colors";
 import { SankeyCommonProps } from "./types";
 
 interface SankeyLinkGradientProps {
@@ -33,9 +37,9 @@ export const SankeyLinkGradient = ({ id, layout }: SankeyLinkGradientProps) => {
 
   return (
     <linearGradient id={id} spreadMethod="pad" {...gradientProps}>
-      <stop stopColor="#183A5A" />
-      <stop offset="0.24" stopColor="#10273D" />
-      <stop offset="1" stopColor="#183A5A" />
+      <stop stopColor={sankeyLinkGradientEndColor} />
+      <stop offset="0.24" stopColor={sankeyLinkGradientMiddleColor} />
+      <stop offset="1" stopColor={sankeyLinkGradientEndColor} />
     </linearGradient>
   );
 };

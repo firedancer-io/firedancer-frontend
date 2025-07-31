@@ -19,8 +19,8 @@
     &.disconnected {
       background: repeating-linear-gradient(
         115deg,
-        #ff3c3c,
-        #ff3c3c 7px,
+        var(--failure-color),
+        var(--failure-color) 7px,
         #ff7878 7px,
         #ff7878 8px
       );

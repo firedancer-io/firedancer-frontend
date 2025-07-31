@@ -8,7 +8,7 @@
 }
 
 .text {
-  color: #c567ea;
+  color: var(--next-color);
   font-size: 12px;
   line-height: normal;
 }
