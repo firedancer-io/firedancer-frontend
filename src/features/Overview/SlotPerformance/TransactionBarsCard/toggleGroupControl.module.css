@@ -15,8 +15,8 @@
 
 .item {
   all: unset;
-  background-color: #292929;
-  color: #9e9e9e;
+  background-color: var(--toggle-item-background-color);
+  color: var(--toggle-item-text-color);
   height: 22px;
   padding: 0 8px;
   display: flex;

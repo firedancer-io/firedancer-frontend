@@ -1,5 +1,5 @@
 .axis-text {
-  color: #919191;
+  color: var(--transaction-axis-text-color);
   font-size: 8px;
   line-height: normal;
 }

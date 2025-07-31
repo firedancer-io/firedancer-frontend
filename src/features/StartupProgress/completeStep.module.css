@@ -1,5 +1,5 @@
 .text {
-  color: #3ba158;
+  color: var(--startup-complete-step-color);
   font-weight: 500;
   line-height: normal;
 }

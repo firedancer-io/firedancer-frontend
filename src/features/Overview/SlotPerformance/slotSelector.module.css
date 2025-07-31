@@ -18,7 +18,7 @@
     gap: 2px;
 
     .order {
-      color: #cacaca;
+      color: var(--next-slot-value-color);
       font-size: 12px;
       line-height: normal;
     }

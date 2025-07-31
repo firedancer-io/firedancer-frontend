@@ -1,10 +1,10 @@
 .progress {
   max-height: 11px;
   min-width: 140px;
-  background: #24262b;
+  background: var(--dropdown-background-color);
 
   div {
-    background: #167b91;
+    background: var(--progress-background-color);
   }
 }
 

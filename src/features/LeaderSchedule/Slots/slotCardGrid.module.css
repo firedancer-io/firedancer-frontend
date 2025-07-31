@@ -18,7 +18,7 @@
 
 .header-text {
   font-size: 12px;
-  color: #cbcbcb;
+  color: var(--slot-card-header-text-color);
   padding: 0 6px;
 
   /* matching padding of slot-text */
@@ -34,19 +34,19 @@
   user-select: text;
   a:link {
     text-decoration: none;
-    color: #1190cf;
+    color: var(--slot-text-link-color);
   }
   a:visited {
     text-decoration: none;
-    color: #967dc8;
+    color: var(--slot-text-visited-link-color);
   }
   a:active {
     text-decoration: none;
-    color: #6cb1d3;
+    color: var(--slot-text-active-link-color);
   }
   a:hover {
     text-decoration: none;
-    color: #6cb1d3;
+    color: var(--slot-text-active-link-color);
   }
 }
 

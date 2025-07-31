@@ -19,19 +19,19 @@
   }
 
   .compute-units {
-    color: #d19dff;
+    color: var(--compute-units-color);
   }
 
   .elapsed-time {
-    color: #6a6a6e;
+    color: var(--elapsed-time-color);
   }
 
   .prio-fee {
-    color: #4ccce6;
+    color: var(--fees-color);
   }
 
   .tips {
-    color: #1fd8a4;
+    color: var(--tips-color);
   }
 
   .label {

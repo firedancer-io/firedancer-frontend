@@ -2,7 +2,7 @@
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.1);
   padding: 0 2px;
-  color: #f7f7f7;
+  color: var(--nav-button-text-color);
   gap: 0px;
   height: unset;
 
@@ -17,6 +17,6 @@
 
   .span {
     font-size: 12px;
-    color: #f7f7f7;
+    color: var(--nav-button-text-color);
   }
 }

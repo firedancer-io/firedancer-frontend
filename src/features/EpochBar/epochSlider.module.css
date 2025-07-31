@@ -9,7 +9,7 @@
 
 .epoch-progress {
   height: 100%;
-  background: #142d53;
+  background: var(--epoch-slider-progress-color);
   border-top-left-radius: 9999px;
   border-bottom-left-radius: 9999px;
 }
@@ -31,7 +31,7 @@
 
 .skipped-slot {
   height: 100%;
-  background: #ff5353;
+  background: var(--epoch-skipped-slot-color);
   width: 3px;
   position: absolute;
   top: 0px;
@@ -78,7 +78,7 @@
 }
 
 .slider-track {
-  background: #24262b;
+  background: var(--dropdown-background-color);
   position: relative;
   flex-grow: 1;
   border-radius: 9999px;

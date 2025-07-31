@@ -20,14 +20,14 @@
     min-width: 35px;
 
     .value {
-      color: #db8f38;
+      color: var(--tile-primary-stat-value-color);
       /* color: red; */
       font-size: 12px;
       text-align: center;
     }
 
     .pct {
-      color: #db8f38;
+      color: var(--tile-primary-stat-value-color);
       font-size: 8px;
     }
   }
