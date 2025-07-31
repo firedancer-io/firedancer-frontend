@@ -35,6 +35,15 @@ import {
 } from "../../../../transactionUtils";
 import { xScaleKey } from "../ComputeUnitsCard/consts";
 import { tooltipTxnIdxAtom, tooltipTxnStateAtom } from "./chartTooltipAtoms";
+import {
+  computeUnitsColor,
+  errorToggleColor,
+  feesColor,
+  successToggleColor,
+  tipsColor,
+  requestedToggleControlColor,
+  incomePerCuToggleControlColor,
+} from "../../../../colors";
 
 interface ChartControlsProps {
   transactions: SlotTransactions;
@@ -112,7 +121,7 @@ function ErrorControl({ transactions, maxTs }: ToggleGroupControlProps) {
     <Flex gap="2">
       <ToggleGroupControl
         options={["All", "Success", "Errors"]}
-        optionColors={{ Success: "#30A46C", Errors: "#E5484D" }}
+        optionColors={{ Success: successToggleColor, Errors: errorToggleColor }}
         defaultValue={value}
         onChange={(value) => {
           if (!value) return;
@@ -314,7 +323,7 @@ function FeeControl({ transactions }: WithTransactionsProps) {
       label="Fees"
       checked={isEnabled}
       onCheckedChange={handleCheckedChange}
-      color="#4CCCE6"
+      color={feesColor}
     />
   );
 }
@@ -339,7 +348,7 @@ function TipsControl({ transactions }: WithTransactionsProps) {
       label="Tips"
       checked={isEnabled}
       onCheckedChange={handleCheckedChange}
-      color="#1FD8A4"
+      color={tipsColor}
     />
   );
 }
@@ -375,7 +384,7 @@ function CuConsumedControl({ transactions }: WithTransactionsProps) {
       label="Consumed"
       checked={isEnabled}
       onCheckedChange={handleCheckedChange}
-      color="#D19DFF"
+      color={computeUnitsColor}
     />
   );
 }
@@ -401,7 +410,7 @@ function CuRequestedControl({ transactions }: WithTransactionsProps) {
       label="Requested"
       checked={isEnabled}
       onCheckedChange={handleCheckedChange}
-      color="#FF8DCC"
+      color={requestedToggleControlColor}
     />
   );
 }
@@ -427,7 +436,7 @@ function IncomeControl({ transactions }: WithTransactionsProps) {
       label="Income per CU"
       checked={isEnabled}
       onCheckedChange={handleCheckedChange}
-      color="#9EB1FF"
+      color={incomePerCuToggleControlColor}
     />
   );
 }

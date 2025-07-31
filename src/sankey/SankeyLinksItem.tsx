@@ -10,13 +10,6 @@ import {
   SankeyLinkDatum,
 } from "./types";
 import {
-  droppedLinkColor,
-  retainedLinkColor,
-  incomingLinkColor,
-  rejectedLinkColor,
-  successLinkColor,
-} from "./consts";
-import {
   incomingSlotNodes,
   SlotNode,
   retainedSlotNodes,
@@ -24,6 +17,13 @@ import {
 } from "../features/Overview/SlotPerformance/SlotSankey/consts";
 import { useShowNode } from "./useShowNode";
 import { useCustomMotionConfig } from "./useCustomMotionConfig";
+import {
+  failureColor,
+  sankeyDroppedLinkColor,
+  sankeyIncomingLinkColor,
+  sankeyRetainedLinkColor,
+  successColor,
+} from "../colors";
 
 interface SankeyLinksItemProps<N extends DefaultNode, L extends DefaultLink> {
   link: SankeyLinkDatum<N, L>;
@@ -91,18 +91,18 @@ export const SankeyLinksItem = <N extends DefaultNode, L extends DefaultLink>({
   );
   let linkColor;
   if (incomingSlotNodes.includes(link.source.id as SlotNode)) {
-    linkColor = incomingLinkColor;
+    linkColor = sankeyIncomingLinkColor;
   } else if (
     retainedSlotNodes.includes(link.source.id as SlotNode) ||
     retainedSlotNodes.includes(link.target.id as SlotNode)
   ) {
-    linkColor = retainedLinkColor;
+    linkColor = sankeyRetainedLinkColor;
   } else if (link.target.id === SlotNode.BlockSuccess) {
-    linkColor = successLinkColor;
+    linkColor = successColor;
   } else if (link.target.id === SlotNode.BlockFailure) {
-    linkColor = rejectedLinkColor;
+    linkColor = failureColor;
   } else if (droppedSlotNodes.includes(link.target.id as SlotNode)) {
-    linkColor = droppedLinkColor;
+    linkColor = sankeyDroppedLinkColor;
   }
 
   const showNode = useShowNode(link.target.id as SlotNode, link.value);

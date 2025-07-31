@@ -42,7 +42,7 @@
     &.live {
       background: #351d3f;
       &[data-state="checked"] {
-        border: 1px solid #c567ea;
+        border: 1px solid var(--next-color);
       }
     }
 
@@ -51,7 +51,7 @@
     }
 
     .live-icon {
-      color: #c567ea;
+      color: var(--next-color);
       font-size: 6px;
       line-height: normal;
       position: absolute;

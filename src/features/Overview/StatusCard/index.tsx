@@ -7,6 +7,14 @@ import styles from "./statusCard.module.css";
 import { currentSlotAtom } from "../../../atoms";
 import useNextSlot from "../../../hooks/useNextSlot";
 import { voteDistanceAtom, voteStateAtom } from "../../../api/atoms";
+import {
+  failureColor,
+  headerColor,
+  mySlotsColor,
+  nextColor,
+  regularTextColor,
+  successColor,
+} from "../../../colors";
 
 export default function SlotStatusCard() {
   return (
@@ -34,7 +42,7 @@ function CurrentSlotText() {
       <CardStat
         label="Slot"
         value={currentSlot?.toString() ?? ""}
-        valueColor="#BDF3FF"
+        valueColor={headerColor}
         large
       />
     </Box>
@@ -48,7 +56,7 @@ function UpcomingSlotText() {
     <CardStat
       label="Next leader slot"
       value={nextLeaderSlot?.toString() ?? "∞"}
-      valueColor="#C567EA"
+      valueColor={nextColor}
       valueStyle={
         nextLeaderSlot === undefined
           ? { fontSize: "32px", lineHeight: "16px" }
@@ -66,7 +74,7 @@ function NextSlotTimeText() {
       <CardStat
         label="Time until leader"
         value={nextSlotText}
-        valueColor="#BDF3FF"
+        valueColor={headerColor}
         large
       />
       <Progress
@@ -81,13 +89,13 @@ function NextSlotTimeText() {
 function VotingStatusText() {
   const voteState = useAtomValue(voteStateAtom);
 
-  let voteColor = "#8E909D";
+  let voteColor = regularTextColor;
   if (voteState === "voting") {
-    voteColor = "#67B873";
+    voteColor = successColor;
   } else if (voteState === "non-voting") {
-    voteColor = "#2A7EDF";
+    voteColor = mySlotsColor;
   } else if (voteState === "delinquent") {
-    voteColor = "#FF5152";
+    voteColor = failureColor;
   }
 
   return (

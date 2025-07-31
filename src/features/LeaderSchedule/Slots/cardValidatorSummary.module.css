@@ -6,7 +6,7 @@
 }
 
 .name {
-  color: #b2bcc9;
+  color: var(--primary-text-color);
   font-size: 24px;
   line-height: normal;
   width: 365px;
@@ -22,13 +22,13 @@
 
 .text {
   line-height: normal;
-  color: #b2bcc9;
+  color: var(--primary-text-color);
 }
 
 .primary-text {
   font-style: normal;
   line-height: normal;
-  color: #b2bcc9;
+  color: var(--primary-text-color);
   min-width: 70px;
   overflow: hidden;
   white-space: nowrap;
@@ -38,14 +38,14 @@
 .secondary-text {
   line-height: normal;
   font-size: 12px;
-  color: #67696a;
+  color: var(--secondary-text-color);
   > span {
     line-height: normal;
   }
 }
 
 .divider {
-  color: #b2bcc9;
+  color: var(--primary-text-color);
 }
 
 .fd-text {

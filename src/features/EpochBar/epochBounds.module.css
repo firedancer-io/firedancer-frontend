@@ -1,11 +1,11 @@
 .ts-label {
-  color: #8e909d;
+  color: var(--regular-text-color);
   font-size: 12px;
   line-height: normal;
 }
 
 .duration-label {
-  color: #bdf3ff;
+  color: var(--header-color);
   font-size: 12px;
   line-height: normal;
 }

@@ -1,3 +1,16 @@
+import {
+  transactionDefaultColor,
+  transactionExecuteColor,
+  transactionExecuteTextColor,
+  transactionLoadingColor,
+  transactionLoadingTextColor,
+  transactionPostExecuteColor,
+  transactionPostExecuteTextColor,
+  transactionPreloadingColor,
+  transactionPreloadingTextColor,
+  transactionValidateColor,
+} from "../../../../colors";
+
 export const enum TxnState {
   DEFAULT = "All",
   PRELOADING = "Pre-Loading",
@@ -8,21 +21,21 @@ export const enum TxnState {
 }
 
 export const stateColors = {
-  [TxnState.DEFAULT]: "rgba(0, 0, 0, .5)",
-  [TxnState.PRELOADING]: "rgba(125, 94, 84, .5)",
-  [TxnState.VALIDATE]: "#6C4E62",
-  [TxnState.LOADING]: "rgba(158, 108, 0, .5)",
-  [TxnState.EXECUTE]: "rgba(96, 100, 108, .5)",
-  [TxnState.POST_EXECUTE]: "rgba(17, 50, 100, .5)",
+  [TxnState.DEFAULT]: transactionDefaultColor,
+  [TxnState.PRELOADING]: transactionPreloadingColor,
+  [TxnState.VALIDATE]: transactionValidateColor,
+  [TxnState.LOADING]: transactionLoadingColor,
+  [TxnState.EXECUTE]: transactionExecuteColor,
+  [TxnState.POST_EXECUTE]: transactionPostExecuteColor,
 };
 
 export const stateTextColors = {
-  [TxnState.DEFAULT]: "rgba(0, 0, 0, .5)",
-  [TxnState.PRELOADING]: "#A18072",
-  [TxnState.VALIDATE]: "#6C4E62",
-  [TxnState.LOADING]: "#836A21",
-  [TxnState.EXECUTE]: "#B5B2BC",
-  [TxnState.POST_EXECUTE]: "#0090FF",
+  [TxnState.DEFAULT]: transactionDefaultColor,
+  [TxnState.PRELOADING]: transactionPreloadingTextColor,
+  [TxnState.VALIDATE]: transactionValidateColor,
+  [TxnState.LOADING]: transactionLoadingTextColor,
+  [TxnState.EXECUTE]: transactionExecuteTextColor,
+  [TxnState.POST_EXECUTE]: transactionPostExecuteTextColor,
 };
 
 export const enum FilterEnum {

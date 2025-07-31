@@ -3,7 +3,7 @@
   border-radius: 8px;
   border: 1px solid #1c1e2b;
   background: #101123;
-  color: #b2bcc9;
+  color: var(--primary-text-color);
 
   .name-text {
     width: 240px;

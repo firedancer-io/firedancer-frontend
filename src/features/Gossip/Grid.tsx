@@ -14,6 +14,7 @@ import {
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { CsvExportModule } from "@ag-grid-community/csv-export";
 import styles from "./grid.module.css";
+import { gossipDelinquentPubkeyColor, primaryTextColor } from "../../colors";
 
 ModuleRegistry.registerModules([ClientSideRowModelModule, CsvExportModule]);
 
@@ -50,7 +51,11 @@ const colDefs: ColDef<PeerRow>[] = [
     field: "pubkey",
     initialWidth: 300,
     cellStyle: (params: ValueFormatterParams<PeerRow, string>) => {
-      return { color: params.data?.delinquent ? "#6D6F71" : "#B2BCC9" };
+      return {
+        color: params.data?.delinquent
+          ? gossipDelinquentPubkeyColor
+          : primaryTextColor,
+      };
     },
     filter: true,
   },

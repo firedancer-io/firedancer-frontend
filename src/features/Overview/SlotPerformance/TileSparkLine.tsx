@@ -1,6 +1,11 @@
 import { useInterval, useMeasure } from "react-use";
 import { useMemo, useState } from "react";
 import { isDefined } from "../../../utils";
+import {
+  tileBusyGreenColor,
+  tileBusyRedColor,
+  tileSparklineBackgroundColor,
+} from "../../../colors";
 
 const dataCount = 160;
 
@@ -52,7 +57,7 @@ export default function TileSparkLine({ value, queryBusy }: TileParkLineProps) {
       width="100%"
       height="20px"
       fill="none"
-      style={{ background: "#232A38", padding: "2px 0" }}
+      style={{ background: tileSparklineBackgroundColor, padding: "2px 0" }}
     >
       <polyline
         points={points}
@@ -71,8 +76,8 @@ export default function TileSparkLine({ value, queryBusy }: TileParkLineProps) {
           y2="0"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#55BA83" />
-          <stop offset="1" stopColor="#D94343" />
+          <stop stopColor={tileBusyGreenColor} />
+          <stop offset="1" stopColor={tileBusyRedColor} />
         </linearGradient>
       </defs>
     </svg>

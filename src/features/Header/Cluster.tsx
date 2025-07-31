@@ -15,6 +15,7 @@ import { SocketState } from "../../api/ws/types";
 import { getClusterColor } from "./util";
 import { useMedia } from "react-use";
 import { BlockEngineUpdate } from "../../api/types";
+import { connectedColor, connectingColor, failureColor } from "../../colors";
 
 export default function Cluster() {
   const cluster = useAtomValue(clusterAtom);
@@ -68,11 +69,11 @@ export default function Cluster() {
 function getBlockEngineFill(blockEngineUpdate: BlockEngineUpdate) {
   switch (blockEngineUpdate.status) {
     case "connected":
-      return "#3CFF73";
+      return connectedColor;
     case "connecting":
-      return "#FFA73C";
+      return connectingColor;
     case "disconnected":
-      return "#FF3C3C";
+      return failureColor;
   }
 }
 

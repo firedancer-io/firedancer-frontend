@@ -6,6 +6,9 @@ import { routeTree } from "./routeTree.gen";
 import { ConnectionProvider } from "./api/ws/ConnectionProvider";
 import { useSetAtom } from "jotai";
 import { containerElAtom } from "./atoms";
+import { useCallback } from "react";
+import * as colors from "./colors";
+import { kebabCase } from "lodash";
 
 const router = createRouter({ routeTree });
 
@@ -19,11 +22,21 @@ declare module "@tanstack/react-router" {
 export default function App() {
   const setContainerEl = useSetAtom(containerElAtom);
 
+  const setRefAndColors = useCallback(
+    (el: HTMLDivElement) => {
+      setContainerEl(el);
+      Object.entries(colors).forEach(([name, value]) => {
+        el.style.setProperty(`--${kebabCase(name)}`, value);
+      });
+    },
+    [setContainerEl],
+  );
+
   return (
     <Theme
       className="app"
       appearance="dark"
-      ref={(el) => setContainerEl(el)}
+      ref={setRefAndColors}
       scaling="90%"
     >
       <ConnectionProvider>

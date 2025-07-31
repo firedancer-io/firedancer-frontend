@@ -16,7 +16,7 @@
 
 .leader-slot {
   height: 100%;
-  background: #2a7edf;
+  background: var(--my-slots-color);
   width: 5px;
   position: absolute;
   top: 0px;
@@ -51,7 +51,7 @@
 
 .first-processed-slot {
   height: 100%;
-  background: #bdf3ff;
+  background: var(--header-color);
   width: 3px;
   position: absolute;
   top: 0px;

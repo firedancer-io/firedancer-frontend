@@ -2,6 +2,12 @@ import { Flex } from "@radix-ui/themes";
 import CardStat from "../../../components/CardStat";
 import { useAtomValue } from "jotai";
 import { estimatedTpsAtom } from "../../../api/atoms";
+import {
+  failureColor,
+  headerColor,
+  successColor,
+  votesColor,
+} from "../../../colors";
 
 export default function TransactionStats() {
   const estimated = useAtomValue(estimatedTpsAtom);
@@ -15,7 +21,7 @@ export default function TransactionStats() {
             maximumFractionDigits: 2,
           }) ?? "-"
         }
-        valueColor="#BDF3FF"
+        valueColor={headerColor}
         large
       />
       <Flex gap="4" wrap="wrap">
@@ -27,7 +33,7 @@ export default function TransactionStats() {
               maximumFractionDigits: 2,
             }) ?? "-"
           }
-          valueColor="#67B873"
+          valueColor={successColor}
         />
         <CardStat
           label="Non-vote TPS Fail"
@@ -37,7 +43,7 @@ export default function TransactionStats() {
               maximumFractionDigits: 2,
             }) ?? "-"
           }
-          valueColor="#E55171"
+          valueColor={failureColor}
         />
         <CardStat
           label="Vote TPS"
@@ -47,7 +53,7 @@ export default function TransactionStats() {
               maximumFractionDigits: 2,
             }) ?? "-"
           }
-          valueColor="#557AE0"
+          valueColor={votesColor}
           style={{ minWidth: "90px" }}
         />
       </Flex>

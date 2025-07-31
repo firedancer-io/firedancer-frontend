@@ -5,6 +5,11 @@ import { ComputedDatum, Pie, PieTooltipProps } from "@nivo/pie";
 import { useMemo } from "react";
 import { formatNumberLamports } from "./formatAmt";
 import { sum } from "lodash";
+import {
+  failureColor,
+  nonDelinquentChartColor,
+  nonDelinquentColor,
+} from "../../../colors";
 
 interface ChartProps {
   activeStake: bigint;
@@ -17,15 +22,15 @@ export default function Chart({ activeStake, delinquentStake }: ChartProps) {
         id: "non-delinquent",
         label: "Non-delinquent",
         value: Number(activeStake),
-        color: "#363A63",
-        textColor: "#6F77C0",
+        color: nonDelinquentChartColor,
+        textColor: nonDelinquentColor,
       },
       {
         id: "delinquent",
         label: "Delinquent",
         value: Number(delinquentStake),
-        color: "#FF3C3C",
-        textColor: "#FF3C3C",
+        color: failureColor,
+        textColor: failureColor,
       },
     ];
   }, [activeStake, delinquentStake]);
