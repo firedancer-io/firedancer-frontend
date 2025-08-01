@@ -2,15 +2,10 @@ import styles from "./sankeyControls.module.css";
 import { Button, Flex, Text, Tooltip } from "@radix-ui/themes";
 import * as ToggleGroup from "@radix-ui/react-toggle-group";
 import { useAtom, useAtomValue } from "jotai";
-import {
-  DisplayType,
-  isSlotStatsExpandedAtom,
-  sankeyDisplayTypeAtom,
-  selectedSlotAtom,
-} from "./atoms";
+import { DisplayType, sankeyDisplayTypeAtom, selectedSlotAtom } from "./atoms";
 import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";
 import { fixValue } from "../../../utils";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { lamportsPerSol } from "../../../consts";
 import { formatNumber } from "../../../numUtils";
 import RowSeparator from "../../../components/RowSeparator";
@@ -58,26 +53,13 @@ export default function SankeyControls() {
 }
 
 function SlotStats() {
-  const [isExpanded, setIsExpanded] = useAtom(isSlotStatsExpandedAtom);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const selectedSlot = useAtomValue(selectedSlotAtom);
   const query = useSlotQueryResponseDetailed(selectedSlot);
 
   const values = useMemo(() => {
     if (!query.response?.publish) return;
-
-    const successfulVoteTxns = fixValue(
-      query.response.publish.success_vote_transaction_cnt ?? 0,
-    );
-    const successfulNonvoteTxns = fixValue(
-      query.response.publish.success_nonvote_transaction_cnt ?? 0,
-    );
-    const failedVoteTxns = fixValue(
-      query.response.publish.failed_vote_transaction_cnt ?? 0,
-    );
-    const failedNonvoteTxns = fixValue(
-      query.response.publish.failed_nonvote_transaction_cnt ?? 0,
-    );
 
     const transactionFee3Decimals = query.response.publish.transaction_fee
       ? formatNumber(
@@ -123,10 +105,6 @@ function SlotStats() {
 
     return {
       computeUnits,
-      successfulVoteTxns,
-      successfulNonvoteTxns,
-      failedVoteTxns,
-      failedNonvoteTxns,
       transactionFeeFull,
       transactionFee3Decimals,
       priorityFeeFull,
@@ -184,23 +162,6 @@ function SlotStats() {
               {values?.tips3Decimals ?? "-"}
             </Text>
           </Tooltip>
-          <div style={{ gridColumn: "span 2" }}>
-            <RowSeparator my="0" />
-          </div>
-          <Text>Vote Transactions</Text>
-          <Text align="right">
-            {(values
-              ? values.failedVoteTxns + values.successfulVoteTxns
-              : undefined
-            )?.toLocaleString() ?? "-"}
-          </Text>
-          <Text>Non-vote Transactions</Text>
-          <Text align="right">
-            {(values
-              ? values.failedNonvoteTxns + values.successfulNonvoteTxns
-              : undefined
-            )?.toLocaleString() ?? "-"}
-          </Text>
           <div style={{ gridColumn: "span 2" }}>
             <RowSeparator my="0" />
           </div>
