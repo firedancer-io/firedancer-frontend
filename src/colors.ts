@@ -7,6 +7,7 @@ export const votesColor = "#557AE0";
 export const primaryTextColor = "#B2BCC9";
 export const secondaryTextColor = "#67696A";
 export const regularTextColor = "#8E909D";
+export const iconButtonColor = "#B4B4B4";
 
 export const dropdownBackgroundColor = "#24262B";
 export const dropdownButtonTextColor = "#F7F8F8";
@@ -78,6 +79,8 @@ export const sankeyBaseLabelColor = "#C6C6C6";
 export const sankeyLinkGradientEndColor = "#183A5A";
 export const sankeyLinkGradientMiddleColor = "#10273D";
 export const sankeySuccessRateColor = "#7CE198";
+export const slotSelectorTextColor = "#A4A3A3";
+export const slotSelectorItemBackgroundColor = "#1B659933";
 
 // CU Chart
 export const chartAxisColor = "#777b84";
@@ -94,7 +97,6 @@ export const requestedToggleControlColor = "#FF8DCC";
 export const incomePerCuToggleControlColor = "#9EB1FF";
 export const toggleItemBackgroundColor = "#292929";
 export const toggleItemTextColor = "#9e9e9e";
-export const chartCopyIconColor = "#B4B4B4";
 
 // transaction states
 export const transactionDefaultColor = "rgba(0, 0, 0, .5)";

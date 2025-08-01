@@ -6,6 +6,10 @@
   position: relative;
   aspect-ratio: 4.5;
   min-height: 250px;
+
+  .slot-sankey-container {
+    height: 100%;
+  }
 }
 
 @container slot-performance (width < 600px) {
@@ -13,7 +17,7 @@
     aspect-ratio: 1 / 3;
     overflow-x: clip;
 
-    svg {
+    .slot-sankey-container svg {
       transform: rotate(90deg) translateY(-100%) translateX(15px);
       transform-origin: top left;
     }

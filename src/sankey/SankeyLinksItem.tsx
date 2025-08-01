@@ -14,6 +14,8 @@ import {
   SlotNode,
   retainedSlotNodes,
   droppedSlotNodes,
+  successfulSlotNodes,
+  failedSlotNodes,
 } from "../features/Overview/SlotPerformance/SlotSankey/consts";
 import { useShowNode } from "./useShowNode";
 import { useCustomMotionConfig } from "./useCustomMotionConfig";
@@ -23,6 +25,7 @@ import {
   sankeyIncomingLinkColor,
   sankeyRetainedLinkColor,
   successColor,
+  votesColor,
 } from "../colors";
 
 interface SankeyLinksItemProps<N extends DefaultNode, L extends DefaultLink> {
@@ -97,10 +100,12 @@ export const SankeyLinksItem = <N extends DefaultNode, L extends DefaultLink>({
     retainedSlotNodes.includes(link.target.id as SlotNode)
   ) {
     linkColor = sankeyRetainedLinkColor;
-  } else if (link.target.id === SlotNode.BlockSuccess) {
+  } else if (successfulSlotNodes.includes(link.target.id as SlotNode)) {
     linkColor = successColor;
-  } else if (link.target.id === SlotNode.BlockFailure) {
+  } else if (failedSlotNodes.includes(link.target.id as SlotNode)) {
     linkColor = failureColor;
+  } else if (link.target.id === SlotNode.Votes) {
+    linkColor = votesColor;
   } else if (droppedSlotNodes.includes(link.target.id as SlotNode)) {
     linkColor = sankeyDroppedLinkColor;
   }
