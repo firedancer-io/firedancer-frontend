@@ -19,6 +19,7 @@ import {
   voteDistanceAtom,
   voteStateAtom,
   voteBalanceAtom,
+  scheduleStrategyAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
@@ -70,6 +71,7 @@ export function useSetAtomWsData() {
 
   const setIdentityBalance = useSetAtom(identityBalanceAtom);
   const setVoteBalance = useSetAtom(voteBalanceAtom);
+  const setScheduleStrategy = useSetAtom(scheduleStrategyAtom);
 
   const [startupTime, setStartupTime] = useAtom(startupTimeAtom);
 
@@ -194,6 +196,10 @@ export function useSetAtomWsData() {
           }
           case "tiles": {
             setTiles(value);
+            break;
+          }
+          case "schedule_strategy": {
+            setScheduleStrategy(value);
             break;
           }
           case "identity_balance": {

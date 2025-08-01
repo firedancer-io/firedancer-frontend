@@ -38,6 +38,7 @@ import type {
   voteStateSchema,
   slotTransactionsSchema,
   voteBalanceSchema,
+  scheduleStrategySchema,
 } from "./entities";
 
 export type Version = z.infer<typeof versionSchema>;
@@ -51,6 +52,8 @@ export type IdentityKey = z.infer<typeof identityKeySchema>;
 export type StartupTimeNanos = z.infer<typeof startupTimeNanosSchema>;
 
 export type Tile = z.infer<typeof tileSchema>;
+
+export type ScheduleStrategy = z.infer<typeof scheduleStrategySchema>;
 
 export type IdentityBalance = z.infer<typeof identityBalanceSchema>;
 
