@@ -108,6 +108,8 @@ export const rateLiveWaterfallAtom = atom(
   },
 );
 
+export const isSlotStatsExpandedAtom = atom(true);
+
 export const isTileSparkLineExpandedAtom = atom(false);
 
 export const tileCountAtom = atom((get) => {

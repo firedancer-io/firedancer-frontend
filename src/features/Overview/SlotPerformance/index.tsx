@@ -1,4 +1,4 @@
-import { Flex } from "@radix-ui/themes";
+import { Box, Flex } from "@radix-ui/themes";
 import CardHeader from "../../../components/CardHeader";
 import SlotSankey from "./SlotSankey";
 import TilesPerformance from "./TilesPerformance";
@@ -34,7 +34,9 @@ function SankeyContainer() {
     <div className={styles.sankeyContainer}>
       <ResetLive />
       <SankeyControls />
-      <SlotSankey />
+      <Box className={styles.slotSankeyContainer}>
+        <SlotSankey />
+      </Box>
     </div>
   );
 }

@@ -437,7 +437,8 @@ function SlotSankey({ slot }: { slot?: number }) {
   return (
     <AutoSizer>
       {({ height, width }) => {
-        if (width < 600) {
+        const isRotated = width < 600;
+        if (isRotated) {
           const swap = height;
           height = width;
           width = swap;
@@ -449,7 +450,7 @@ function SlotSankey({ slot }: { slot?: number }) {
             data={data}
             margin={{
               top: 10,
-              right: liveWaterfall ? 100 : 130,
+              right: liveWaterfall ? 100 : isRotated ? 145 : 130,
               bottom: 35,
               left: 85,
             }}

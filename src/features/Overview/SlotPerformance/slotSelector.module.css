@@ -7,7 +7,7 @@
 
   .item {
     flex: 1;
-    background: #1b659933;
+    background: var(--slot-selector-item-background-color);
     border: 0px solid #900;
     border: solid 1px transparent;
     justify-content: "left";
@@ -24,7 +24,7 @@
     }
 
     .slot-text {
-      color: #a4a3a3;
+      color: var(--slot-selector-text-color);
       line-height: normal;
       flex: 1;
       text-align: center;

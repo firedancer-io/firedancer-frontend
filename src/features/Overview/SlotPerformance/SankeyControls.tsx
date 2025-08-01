@@ -1,14 +1,20 @@
 import styles from "./sankeyControls.module.css";
-import { Text, Tooltip } from "@radix-ui/themes";
+import { Button, Flex, Text, Tooltip } from "@radix-ui/themes";
 import * as ToggleGroup from "@radix-ui/react-toggle-group";
 import { useAtom, useAtomValue } from "jotai";
-import { DisplayType, sankeyDisplayTypeAtom, selectedSlotAtom } from "./atoms";
+import {
+  DisplayType,
+  isSlotStatsExpandedAtom,
+  sankeyDisplayTypeAtom,
+  selectedSlotAtom,
+} from "./atoms";
 import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";
 import { fixValue } from "../../../utils";
 import { useMemo } from "react";
 import { lamportsPerSol } from "../../../consts";
 import { formatNumber } from "../../../numUtils";
 import RowSeparator from "../../../components/RowSeparator";
+import { PlusIcon, MinusIcon } from "@radix-ui/react-icons";
 
 export default function SankeyControls() {
   const [value, setValue] = useAtom(sankeyDisplayTypeAtom);
@@ -52,6 +58,8 @@ export default function SankeyControls() {
 }
 
 function SlotStats() {
+  const [isExpanded, setIsExpanded] = useAtom(isSlotStatsExpandedAtom);
+
   const selectedSlot = useAtomValue(selectedSlotAtom);
   const query = useSlotQueryResponseDetailed(selectedSlot);
 
@@ -131,59 +139,77 @@ function SlotStats() {
   if (!selectedSlot) return;
 
   return (
-    <div className={styles.stats}>
-      <Text color="cyan">Priority Fees</Text>
-      <Tooltip
-        content={
-          values?.priorityFeeFull ? `${values?.priorityFeeFull} SOL` : null
-        }
+    <Flex direction="column" gap="1" className={styles.statsContainer}>
+      <Button
+        size="2"
+        variant="outline"
+        className={styles.slotStatsToggleButton}
+        onClick={() => setIsExpanded((prev) => !prev)}
       >
-        <Text align="right" color="cyan">
-          {values?.priorityFee3Decimals ?? "-"}
-        </Text>
-      </Tooltip>
-      <Text color="indigo">Transaction Fees</Text>
-      <Tooltip
-        content={
-          values?.transactionFeeFull
-            ? `${values?.transactionFeeFull} SOL`
-            : null
-        }
-      >
-        <Text align="right" color="indigo">
-          {values?.transactionFee3Decimals ?? "-"}
-        </Text>
-      </Tooltip>
-      <Text color="jade">Tips</Text>
-      <Tooltip content={values?.tips ? `${values?.tips} SOL` : null}>
-        <Text align="right" color="jade">
-          {values?.tips3Decimals ?? "-"}
-        </Text>
-      </Tooltip>
-      <div style={{ gridColumn: "span 2" }}>
-        <RowSeparator my="0" />
-      </div>
-      <Text>Vote Transactions</Text>
-      <Text align="right">
-        {(values
-          ? values.failedVoteTxns + values.successfulVoteTxns
-          : undefined
-        )?.toLocaleString() ?? "-"}
-      </Text>
-      <Text>Non-vote Transactions</Text>
-      <Text align="right">
-        {(values
-          ? values.failedNonvoteTxns + values.successfulNonvoteTxns
-          : undefined
-        )?.toLocaleString() ?? "-"}
-      </Text>
-      <div style={{ gridColumn: "span 2" }}>
-        <RowSeparator my="0" />
-      </div>
-      <Text color="plum">Compute Units</Text>
-      <Text align="right" color="plum">
-        {values?.computeUnits?.toLocaleString() ?? "-"}
-      </Text>
-    </div>
+        Metrics{" "}
+        {isExpanded ? (
+          <MinusIcon style={{ width: 10, height: 10 }} />
+        ) : (
+          <PlusIcon style={{ width: 10, height: 10 }} />
+        )}
+      </Button>
+
+      {isExpanded && (
+        <div className={styles.stats}>
+          <Text color="cyan">Priority Fees</Text>
+          <Tooltip
+            content={
+              values?.priorityFeeFull ? `${values?.priorityFeeFull} SOL` : null
+            }
+          >
+            <Text align="right" color="cyan">
+              {values?.priorityFee3Decimals ?? "-"}
+            </Text>
+          </Tooltip>
+          <Text color="indigo">Transaction Fees</Text>
+          <Tooltip
+            content={
+              values?.transactionFeeFull
+                ? `${values?.transactionFeeFull} SOL`
+                : null
+            }
+          >
+            <Text align="right" color="indigo">
+              {values?.transactionFee3Decimals ?? "-"}
+            </Text>
+          </Tooltip>
+          <Text color="jade">Tips</Text>
+          <Tooltip content={values?.tips ? `${values?.tips} SOL` : null}>
+            <Text align="right" color="jade">
+              {values?.tips3Decimals ?? "-"}
+            </Text>
+          </Tooltip>
+          <div style={{ gridColumn: "span 2" }}>
+            <RowSeparator my="0" />
+          </div>
+          <Text>Vote Transactions</Text>
+          <Text align="right">
+            {(values
+              ? values.failedVoteTxns + values.successfulVoteTxns
+              : undefined
+            )?.toLocaleString() ?? "-"}
+          </Text>
+          <Text>Non-vote Transactions</Text>
+          <Text align="right">
+            {(values
+              ? values.failedNonvoteTxns + values.successfulNonvoteTxns
+              : undefined
+            )?.toLocaleString() ?? "-"}
+          </Text>
+          <div style={{ gridColumn: "span 2" }}>
+            <RowSeparator my="0" />
+          </div>
+          <Text color="plum">Compute Units</Text>
+          <Text align="right" color="plum">
+            {values?.computeUnits?.toLocaleString() ?? "-"}
+          </Text>
+        </div>
+      )}
+    </Flex>
   );
 }
