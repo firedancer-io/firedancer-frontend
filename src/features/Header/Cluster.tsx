@@ -4,8 +4,9 @@ import {
   clusterAtom,
   versionAtom,
   commitHashAtom,
+  scheduleStrategyAtom,
 } from "../../api/atoms";
-import { Text, Tooltip } from "@radix-ui/themes";
+import { Box, Text, Tooltip } from "@radix-ui/themes";
 import styles from "./cluster.module.css";
 import connectedIcon from "../../assets/power.svg";
 import reconnectingIcon from "../../assets/power_off_orange.svg";
@@ -16,6 +17,7 @@ import { getClusterColor } from "./util";
 import { useMedia } from "react-use";
 import { BlockEngineUpdate } from "../../api/types";
 import { connectedColor, connectingColor, failureColor } from "../../colors";
+import { ScheduleStrategyEnum } from "../../api/entities";
 
 export default function Cluster() {
   const cluster = useAtomValue(clusterAtom);
@@ -62,6 +64,8 @@ export default function Cluster() {
       </Tooltip>
 
       <JitoIcon />
+
+      <StrategyIcon />
     </div>
   );
 }
@@ -127,4 +131,28 @@ function JitoIcon() {
       </svg>
     </Tooltip>
   );
+}
+
+function StrategyIcon() {
+  const scheduleStrategy = useAtomValue(scheduleStrategyAtom);
+
+  if (scheduleStrategy === ScheduleStrategyEnum.balanced) {
+    return (
+      <Tooltip content="Balanced">
+        <Box>⚖️</Box>
+      </Tooltip>
+    );
+  } else if (scheduleStrategy === ScheduleStrategyEnum.perf) {
+    return (
+      <Tooltip content="Performance">
+        <Box style={{ margin: "0 -2px" }}>⚡</Box>
+      </Tooltip>
+    );
+  } else if (scheduleStrategy === ScheduleStrategyEnum.revenue) {
+    return (
+      <Tooltip content="Revenue">
+        <Box>📊</Box>
+      </Tooltip>
+    );
+  }
 }

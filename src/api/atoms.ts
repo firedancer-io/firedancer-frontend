@@ -22,6 +22,7 @@ import {
   VoteDistance,
   BlockEngineUpdate,
   VoteBalance,
+  ScheduleStrategy,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 
@@ -38,6 +39,10 @@ export const startupTimeAtom = atom<
 >(undefined);
 
 export const tilesAtom = atom<Tile[] | undefined>(undefined);
+
+export const scheduleStrategyAtom = atom<ScheduleStrategy | undefined>(
+  undefined,
+);
 
 export const identityBalanceAtom = atom<IdentityBalance | undefined>(undefined);
 
