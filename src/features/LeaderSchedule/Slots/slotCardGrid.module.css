@@ -27,6 +27,22 @@
   }
 }
 
+.votes-header {
+  color: var(--votes-color);
+}
+.non-votes-header {
+  color: var(--success-color);
+}
+.fees-header {
+  color: var(--fees-color);
+}
+.tips-header {
+  color: var(--tips-color);
+}
+.compute-units-header {
+  color: var(--compute-units-color);
+}
+
 .slot-text {
   /* Slight padding to make it easier to text select the slot # */
   padding-left: 10px;

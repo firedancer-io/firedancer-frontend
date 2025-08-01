@@ -62,23 +62,38 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
           scrollAll(slot, e.currentTarget.scrollLeft);
         }}
       >
-        <Text className={styles.headerText} align="right">
+        <Text
+          className={clsx(styles.headerText, styles.votesHeader)}
+          align="right"
+        >
           Votes
         </Text>
-        <Text className={styles.headerText} align="right">
+        <Text
+          className={clsx(styles.headerText, styles.nonVotesHeader)}
+          align="right"
+        >
           Non-votes
         </Text>
-        <Text className={styles.headerText} align="right">
+        <Text
+          className={clsx(styles.headerText, styles.feesHeader)}
+          align="right"
+        >
           Fees
         </Text>
-        <Text className={styles.headerText} align="right">
+        <Text
+          className={clsx(styles.headerText, styles.tipsHeader)}
+          align="right"
+        >
           Tips
         </Text>
-        <Text className={styles.headerText} align="right">
+        <Text
+          className={clsx(styles.headerText, styles.durationHeader)}
+          align="right"
+        >
           Duration
         </Text>
         <Text
-          className={styles.headerText}
+          className={clsx(styles.headerText, styles.computeUnitsHeader)}
           align="right"
           style={{ gridColumnStart: "span 2" }}
         >
@@ -320,18 +335,16 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
     return `${text}${suffix ?? ""}`;
   };
 
+  const valueClassName = clsx(styles.rowText, {
+    [styles.active]: active,
+  });
+
   return (
     <>
-      <Text
-        className={`${styles.rowText} ${active ? styles.active : ""}`}
-        align="right"
-      >
+      <Text className={valueClassName} align="right">
         {getText(values?.voteTxns)}
       </Text>
-      <Text
-        className={`${styles.rowText} ${active ? styles.active : ""}`}
-        align="right"
-      >
+      <Text className={valueClassName} align="right">
         {getText(values?.nonVoteTxns)}
       </Text>
       <Tooltip
@@ -344,41 +357,24 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
           </Grid>
         }
       >
-        <Text
-          className={`${styles.rowText} ${active ? styles.active : ""}`}
-          align="right"
-        >
+        <Text className={valueClassName} align="right">
           {getText(values?.totalFees)}
         </Text>
       </Tooltip>
       <Tooltip content={`${values?.tipsFull} SOL`}>
-        <Text
-          className={`${styles.rowText} ${active ? styles.active : ""}`}
-          align="right"
-        >
+        <Text className={valueClassName} align="right">
           {getText(values?.tips)}
         </Text>
       </Tooltip>
-      <Text
-        className={`${styles.rowText} ${active ? styles.active : ""}`}
-        align="right"
-      >
+      <Text className={valueClassName} align="right">
         {getText(values?.durationText)}
       </Text>
       {values?.computeUnits !== undefined ? (
         <>
-          <Text
-            className={`${styles.rowText} ${active ? styles.active : ""}`}
-            align="right"
-            style={{ padding: 0 }}
-          >
+          <Text className={valueClassName} align="right" style={{ padding: 0 }}>
             {getText(values?.computeUnits.toLocaleString())}
           </Text>
-          <Text
-            className={`${styles.rowText} ${active ? styles.active : ""}`}
-            align="right"
-            style={{ padding: 0 }}
-          >
+          <Text className={valueClassName} align="right" style={{ padding: 0 }}>
             {values?.computeUnitsPct !== undefined
               ? `\u00A0(${getText(values?.computeUnitsPct)}%)`
               : null}
@@ -386,7 +382,7 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
         </>
       ) : (
         <Text
-          className={`${styles.rowText} ${active ? styles.active : ""}`}
+          className={valueClassName}
           style={{ gridColumnStart: "span 2" }}
           align="right"
         >
