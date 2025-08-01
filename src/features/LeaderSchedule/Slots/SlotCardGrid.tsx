@@ -62,23 +62,38 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
           scrollAll(slot, e.currentTarget.scrollLeft);
         }}
       >
-        <Text className={styles.headerText} align="right">
+        <Text
+          className={`${styles.headerText} ${styles.votesHeader}`}
+          align="right"
+        >
           Votes
         </Text>
-        <Text className={styles.headerText} align="right">
+        <Text
+          className={`${styles.headerText} ${styles.nonVotesHeader}`}
+          align="right"
+        >
           Non-votes
         </Text>
-        <Text className={styles.headerText} align="right">
+        <Text
+          className={`${styles.headerText} ${styles.feesHeader}`}
+          align="right"
+        >
           Fees
         </Text>
-        <Text className={styles.headerText} align="right">
+        <Text
+          className={`${styles.headerText} ${styles.tipsHeader}`}
+          align="right"
+        >
           Tips
         </Text>
-        <Text className={styles.headerText} align="right">
+        <Text
+          className={`${styles.headerText} ${styles.durationHeader}`}
+          align="right"
+        >
           Duration
         </Text>
         <Text
-          className={styles.headerText}
+          className={`${styles.headerText} ${styles.computeUnitsHeader}`}
           align="right"
           style={{ gridColumnStart: "span 2" }}
         >
