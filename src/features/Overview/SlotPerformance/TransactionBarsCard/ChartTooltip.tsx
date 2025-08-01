@@ -24,7 +24,7 @@ import {
   tipsColor,
   requestedToggleControlColor,
   incomePerCuToggleControlColor,
-  chartCopyIconColor,
+  iconButtonColor,
 } from "../../../../colors";
 
 export default function ChartTooltip() {
@@ -485,7 +485,7 @@ function LabelValueDisplay({
             {hasCopied ? (
               <CheckIcon color="green" height="14px" />
             ) : (
-              <CopyIcon color={chartCopyIconColor} height="14px" />
+              <CopyIcon color={iconButtonColor} height="14px" />
             )}
           </Button>
         )}

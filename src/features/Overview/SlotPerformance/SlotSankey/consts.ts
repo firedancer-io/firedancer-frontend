@@ -43,6 +43,10 @@ export const enum SlotNode {
 
   BlockSuccess = "Success",
   BlockFailure = "Failure",
+
+  Votes = "Votes",
+  NonVoteSuccess = "Non-vote Success",
+  NonVoteFailure = "Non-vote Failure",
 }
 
 export const startEndNodes: SlotNode[] = [SlotNode.SlotStart, SlotNode.SlotEnd];
@@ -91,6 +95,16 @@ export const retainedSlotNodes: SlotNode[] = [
   SlotNode.PackRetained,
   SlotNode.IncResolvRetained,
   SlotNode.ResolvRetained,
+];
+
+export const successfulSlotNodes: SlotNode[] = [
+  SlotNode.BlockSuccess,
+  SlotNode.NonVoteSuccess,
+];
+
+export const failedSlotNodes: SlotNode[] = [
+  SlotNode.BlockFailure,
+  SlotNode.NonVoteFailure,
 ];
 
 export const slotNodes = [
@@ -182,5 +196,14 @@ export const slotNodes = [
   },
   {
     id: SlotNode.BlockSuccess,
+  },
+  {
+    id: SlotNode.Votes,
+  },
+  {
+    id: SlotNode.NonVoteFailure,
+  },
+  {
+    id: SlotNode.NonVoteSuccess,
   },
 ];
