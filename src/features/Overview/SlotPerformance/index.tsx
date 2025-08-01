@@ -34,7 +34,9 @@ function SankeyContainer() {
     <div className={styles.sankeyContainer}>
       <ResetLive />
       <SankeyControls />
-      <SlotSankey />
+      <div className={styles.slotSankeyContainer}>
+        <SlotSankey />
+      </div>
     </div>
   );
 }

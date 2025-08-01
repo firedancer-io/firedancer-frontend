@@ -17,6 +17,8 @@ import {
   SlotNode,
   retainedSlotNodes,
   droppedSlotNodes,
+  successfulSlotNodes,
+  failedSlotNodes,
 } from "../features/Overview/SlotPerformance/SlotSankey/consts";
 import { useCustomMotionConfig } from "./useCustomMotionConfig";
 import {
@@ -24,6 +26,7 @@ import {
   successColor,
   sankeyBaseLabelColor,
   secondaryTextColor,
+  votesColor,
 } from "../colors";
 
 const store = getDefaultStore();
@@ -208,7 +211,7 @@ function getLabelFill(label: SlotNode, value: number) {
   if (retainedSlotNodes.includes(label)) {
     return [sankeyBaseLabelColor, sankeyBaseLabelColor];
   }
-  if (label === SlotNode.BlockSuccess) {
+  if (successfulSlotNodes.includes(label)) {
     return [sankeyBaseLabelColor, successColor];
   }
 
@@ -216,15 +219,19 @@ function getLabelFill(label: SlotNode, value: number) {
     return [secondaryTextColor, secondaryTextColor];
   }
 
-  if (droppedSlotNodes.includes(label) || label === SlotNode.BlockFailure) {
+  if (droppedSlotNodes.includes(label) || failedSlotNodes.includes(label)) {
     return [sankeyBaseLabelColor, failureColor];
+  }
+
+  if (label === SlotNode.Votes) {
+    return [sankeyBaseLabelColor, votesColor];
   }
 
   return [sankeyBaseLabelColor, sankeyBaseLabelColor];
 }
 
 function getLabelParts(labelText: string) {
-  if (labelText.length < 15 || !labelText.includes(" ")) return [labelText];
+  if (labelText.length < 17 || !labelText.includes(" ")) return [labelText];
 
   const midIndex = Math.trunc(labelText.length / 2);
   const firstIndex = labelText.lastIndexOf(" ", midIndex);

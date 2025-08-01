@@ -95,16 +95,10 @@ function getPackOut(out: TxnWaterfallOut) {
   );
 }
 
-function getLinks(
+function getSharedLinks(
   waterfall: TxnWaterfall,
-  displayType: DisplayType,
-  durationNanos?: number | null,
-  totalTransactions?: number,
-  failedTransactions?: number,
+  getValue: (value: number) => number,
 ) {
-  const totalIncoming = sum(Object.values(waterfall.in));
-  const getValue = getGetValue({ displayType, durationNanos, totalIncoming });
-
   const resolvShared = Math.min(
     waterfall.in.resolv_retained,
     waterfall.out.resolv_retained,
@@ -132,13 +126,6 @@ function getLinks(
     packCount -
     getPackOut(waterfall.out);
   const blockCount = bankCount - waterfall.out.bank_invalid;
-
-  const blockFailure = failedTransactions ?? waterfall.out.block_fail;
-
-  const blockSuccess =
-    totalTransactions != null
-      ? totalTransactions - blockFailure
-      : waterfall.out.block_success;
 
   return [
     {
@@ -325,15 +312,63 @@ function getLinks(
       target: SlotNode.SlotEnd,
       value: getValue(blockCount),
     },
+  ];
+}
+
+function getLiveLinks(waterfall: TxnWaterfall, displayType: DisplayType) {
+  const totalIncoming = sum(Object.values(waterfall.in));
+  const getValue = getGetValue({
+    displayType,
+    durationNanos: undefined,
+    totalIncoming,
+  });
+
+  return [
+    ...getSharedLinks(waterfall, getValue),
     {
       source: SlotNode.SlotEnd,
       target: SlotNode.BlockFailure,
-      value: getValue(blockFailure),
+      value: getValue(waterfall.out.block_fail),
     },
     {
       source: SlotNode.SlotEnd,
       target: SlotNode.BlockSuccess,
-      value: getValue(blockSuccess),
+      value: getValue(waterfall.out.block_success),
+    },
+  ];
+}
+
+function getHistoricalLinks(
+  waterfall: TxnWaterfall,
+  displayType: DisplayType,
+  durationNanos?: number | null,
+  successfulVoteTransactions?: number | null,
+  failedVoteTransactions?: number | null,
+  successfulNonVoteTransactions?: number | null,
+  failedNonVoteTransactions?: number | null,
+) {
+  const totalIncoming = sum(Object.values(waterfall.in));
+  const getValue = getGetValue({ displayType, durationNanos, totalIncoming });
+
+  const votes =
+    (successfulVoteTransactions ?? 0) + (failedVoteTransactions ?? 0);
+
+  return [
+    ...getSharedLinks(waterfall, getValue),
+    {
+      source: SlotNode.SlotEnd,
+      target: SlotNode.Votes,
+      value: getValue(votes),
+    },
+    {
+      source: SlotNode.SlotEnd,
+      target: SlotNode.NonVoteFailure,
+      value: getValue(failedNonVoteTransactions ?? 0),
+    },
+    {
+      source: SlotNode.SlotEnd,
+      target: SlotNode.NonVoteSuccess,
+      value: getValue(successfulNonVoteTransactions ?? 0),
     },
   ];
 }
@@ -352,37 +387,36 @@ function SlotSankey({ slot }: { slot?: number }) {
 
   const data = useMemo(() => {
     const waterfall = liveWaterfall ?? query.response?.waterfall;
-
     if (!waterfall) return;
 
-    const successfulTransactions =
-      query.response?.publish?.success_nonvote_transaction_cnt != null &&
-      query.response.publish.success_vote_transaction_cnt != null
-        ? query.response.publish.success_nonvote_transaction_cnt +
-          query.response.publish.success_vote_transaction_cnt
-        : waterfall.out.block_success;
-    const failedTransactions =
-      query.response?.publish.failed_nonvote_transaction_cnt != null &&
-      query.response.publish.failed_vote_transaction_cnt != null
-        ? query.response.publish.failed_nonvote_transaction_cnt +
-          query.response.publish.failed_vote_transaction_cnt
-        : waterfall.out.block_fail;
-
-    const links = getLinks(
-      waterfall,
-      displayType,
-      query.response?.publish.duration_nanos,
-      successfulTransactions + failedTransactions,
-      failedTransactions,
-    );
+    const links = liveWaterfall
+      ? getLiveLinks(waterfall, displayType)
+      : getHistoricalLinks(
+          waterfall,
+          displayType,
+          query.response?.publish.duration_nanos,
+          query.response?.publish.success_vote_transaction_cnt,
+          query.response?.publish.failed_vote_transaction_cnt,
+          query.response?.publish.success_nonvote_transaction_cnt,
+          query.response?.publish.failed_nonvote_transaction_cnt,
+        );
 
     const linkNodes = links.flatMap((l) => [l.source, l.target]);
 
     return {
       nodes: slotNodes.filter((n) => linkNodes.includes(n.id)),
-      links: links,
+      links,
     };
-  }, [displayType, liveWaterfall, query.response]);
+  }, [
+    displayType,
+    liveWaterfall,
+    query.response?.publish.duration_nanos,
+    query.response?.publish.failed_nonvote_transaction_cnt,
+    query.response?.publish.failed_vote_transaction_cnt,
+    query.response?.publish.success_nonvote_transaction_cnt,
+    query.response?.publish.success_vote_transaction_cnt,
+    query.response?.waterfall,
+  ]);
 
   if (!data || !data.links.length) {
     if (!query.hasWaitedForData) {
@@ -403,7 +437,8 @@ function SlotSankey({ slot }: { slot?: number }) {
   return (
     <AutoSizer>
       {({ height, width }) => {
-        if (width < 600) {
+        const isRotated = width < 600;
+        if (isRotated) {
           const swap = height;
           height = width;
           width = swap;
@@ -413,7 +448,12 @@ function SlotSankey({ slot }: { slot?: number }) {
             height={height}
             width={width}
             data={data}
-            margin={{ top: 10, right: 80, bottom: 35, left: 85 }}
+            margin={{
+              top: 10,
+              right: liveWaterfall ? 100 : isRotated ? 145 : 130,
+              bottom: 35,
+              left: 85,
+            }}
             align="center"
             isInteractive={false}
             nodeThickness={0}

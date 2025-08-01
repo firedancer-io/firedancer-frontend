@@ -1,6 +1,6 @@
 .container {
   position: absolute;
-  right: 8px;
+  right: 0px;
   top: 8px;
 
   display: flex;
@@ -9,24 +9,37 @@
   gap: 8px;
   z-index: 1;
 
-  .stats {
-    display: grid;
-    grid: auto auto / auto auto;
+  .stats-container {
     padding: 5px 5px 5px 7px;
-    column-gap: 10px;
-    row-gap: 4px;
-    min-width: 203px;
-    font-variant-numeric: tabular-nums;
-
     border-radius: 8px;
     background: rgba(17, 17, 17, 0.9);
 
-    color: var(--sankey-base-label-color);
-    font-size: 12px;
-    line-height: normal;
+    .slot-stats-toggle-button {
+      margin: -2px -4px;
+      align-self: flex-end;
+      display: flex;
+      padding: 0px 4px;
+      box-shadow: unset;
+      color: var(--icon-button-color);
+      gap: 4px;
+      height: 16px;
+    }
 
-    .success-rate {
-      color: var(--sankey-success-rate-color);
+    .stats {
+      display: grid;
+      grid: auto auto / auto auto;
+      column-gap: 10px;
+      row-gap: 4px;
+      min-width: 203px;
+      font-variant-numeric: tabular-nums;
+
+      color: var(--sankey-base-label-color);
+      font-size: 12px;
+      line-height: normal;
+
+      .success-rate {
+        color: var(--sankey-success-rate-color);
+      }
     }
   }
 
