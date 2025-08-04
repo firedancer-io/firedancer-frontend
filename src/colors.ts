@@ -89,6 +89,7 @@ export const computeUnitsColor = "#D19DFF";
 export const feesColor = "#4CCCE6";
 export const tipsColor = "#1FD8A4";
 export const elapsedTimeColor = "#6A6A6E";
+export const revenueStartLineColor = "#FFFFFF";
 
 // transaction bars
 export const successToggleColor = "#30A46C";
