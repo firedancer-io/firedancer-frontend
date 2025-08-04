@@ -5,9 +5,10 @@ import UplotReact from "../../../../uplotReact/UplotReact";
 import uPlot from "uplot";
 import { lamportsPerSol } from "../../../../consts";
 import styles from "./../TransactionBarsCard/barsChart.module.css";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { timeScaleDragPlugin } from "../TransactionBarsCard/scaleDragPlugin";
 import { cuRefAreaPlugin } from "./cuRefAreaPlugin";
+import { revenueStartLinePlugin } from "./revenueStartLinePlugin";
 import {
   bankScaleKey,
   computeUnitsScaleKey,
@@ -35,6 +36,8 @@ import {
   feesColor,
   tipsColor,
 } from "../../../../colors";
+import { scheduleStrategyAtom } from "../../../../api/atoms";
+import { ScheduleStrategyEnum } from "../../../../api/entities";
 
 function getChartData(transactions: SlotTransactions) {
   const events = [
@@ -146,6 +149,8 @@ export default function CuChart({
   bankTileCount,
   onCreate,
 }: CuChartProps) {
+  const scheduleStrategy = useAtomValue(scheduleStrategyAtom);
+
   const setTooltipData = useSetAtom(cuChartTooltipDataAtom);
   const setLeftAxisSize = useSetAtom(leftAxisSizeAtom);
   const setRightAxisSize = useSetAtom(rightAxisSizeAtom);
@@ -368,6 +373,9 @@ export default function CuChart({
           maxComputeUnitsRef,
           bankTileCountRef,
         }),
+        ...(scheduleStrategy === ScheduleStrategyEnum.revenue
+          ? [revenueStartLinePlugin()]
+          : []),
         timeScaleDragPlugin(),
         wheelZoomPlugin({ factor: 0.75 }),
         cuTooltipPlugin(setTooltipData),
@@ -377,13 +385,14 @@ export default function CuChart({
       ],
     };
   }, [
-    isFullCuRange,
     maxBankCount,
-    maxComputeUnits,
     maxLamports,
+    scheduleStrategy,
+    setTooltipData,
+    isFullCuRange,
+    maxComputeUnits,
     setLeftAxisSize,
     setRightAxisSize,
-    setTooltipData,
   ]);
 
   return (
