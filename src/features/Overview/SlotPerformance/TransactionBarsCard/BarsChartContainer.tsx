@@ -1,9 +1,9 @@
 import { useMemo, useRef } from "react";
-import uPlot from "uplot";
+import type uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedSlotAtom, tileCountAtom } from "../atoms";
-import { SlotTransactions } from "../../../../api/types";
+import type { SlotTransactions } from "../../../../api/types";
 import ChartControls from "./ChartControls";
 import { Flex } from "@radix-ui/themes";
 import BarsChart from "./BarsChart";

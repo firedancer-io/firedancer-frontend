@@ -1,7 +1,7 @@
 import { Flex, Text } from "@radix-ui/themes";
 import checkGreenIcon from "../../assets/check_green.svg";
 import styles from "./completeStep.module.css";
-import { CSSProperties } from "react";
+import type { CSSProperties } from "react";
 
 interface CompleteStepProps {
   label: string;

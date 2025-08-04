@@ -8,7 +8,7 @@ import {
   tileCountAtom,
 } from "./atoms";
 import { useMemo } from "react";
-import { TileType } from "../../../api/types";
+import type { TileType } from "../../../api/types";
 import { tileTypeSchema } from "../../../api/entities";
 import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";
 

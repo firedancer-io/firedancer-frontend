@@ -6,7 +6,7 @@ import cloneDeep from "lodash/cloneDeep";
 import { useTheme, usePropertyAccessor, useValueFormatter } from "@nivo/core";
 import { useOrdinalColorScale, useInheritedColor } from "@nivo/colors";
 import { sankeyAlignmentFromProp } from "./props";
-import {
+import type {
   DefaultLink,
   DefaultNode,
   SankeyAlignFunction,

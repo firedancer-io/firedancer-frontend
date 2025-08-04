@@ -1,4 +1,4 @@
-import uPlot from "uplot";
+import type uPlot from "uplot";
 import placement from "../uplot/placement";
 import { xScaleKey } from "../features/Overview/SlotPerformance/ComputeUnitsCard/consts";
 

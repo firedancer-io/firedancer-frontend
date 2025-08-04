@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import uPlot from "uplot";
+import type uPlot from "uplot";
 import { uplotActionAtom } from "../../../../uplotReact/uplotAtoms";
 import { txnBarsUplotIdPrefix } from "./consts";
 

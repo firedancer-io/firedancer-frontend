@@ -1,6 +1,6 @@
 import uPlot from "uplot";
-import { SlotTransactions } from "../../../../api/types";
-import { RefObject } from "react";
+import type { SlotTransactions } from "../../../../api/types";
+import type { RefObject } from "react";
 import { computeUnitsScaleKey, xScaleKey } from "./consts";
 import { round } from "lodash";
 

@@ -4,13 +4,13 @@ import "@ag-grid-community/styles/ag-theme-quartz.css";
 import { useAtomValue } from "jotai";
 import { peersAtom } from "../../atoms";
 import { useMemo } from "react";
-import { Peer } from "../../api/types";
-import {
+import type { Peer } from "../../api/types";
+import type {
   ColDef,
   GetRowIdParams,
-  ModuleRegistry,
   ValueFormatterParams,
 } from "@ag-grid-community/core";
+import { ModuleRegistry } from "@ag-grid-community/core";
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { CsvExportModule } from "@ag-grid-community/csv-export";
 import styles from "./grid.module.css";

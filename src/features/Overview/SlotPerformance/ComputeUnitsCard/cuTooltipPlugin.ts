@@ -1,6 +1,6 @@
-import uPlot from "uplot";
+import type uPlot from "uplot";
 import { baseTooltipPlugin } from "../../../../uplotReact/baseTooltipPlugin.js";
-import { CuChartTooltipData } from "./types.js";
+import type { CuChartTooltipData } from "./types.js";
 
 export function cuTooltipPlugin(
   setTooltipData: (data: CuChartTooltipData) => void,

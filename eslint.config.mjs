@@ -35,11 +35,7 @@ export default tseslint.config(
       parser: tseslint.parser,
       parserOptions: {
         projectService: {
-          allowDefaultProject: [
-            "*.mjs",
-            "src/d3Sankey/*.js",
-            "src/uplot/*.js",
-          ],
+          allowDefaultProject: ["*.mjs", "src/d3Sankey/*.js", "src/uplot/*.js"],
           defaultProject: "tsconfig.json",
         },
         tsconfigRootDir: import.meta.dirname,
@@ -61,6 +57,7 @@ export default tseslint.config(
       "react/jsx-curly-brace-presence": "warn",
       "react/jsx-uses-vars": "warn",
       "react/jsx-uses-react": "warn",
+      eqeqeq: ["error", "always", { null: "ignore" }],
 
       "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/restrict-template-expressions": [
@@ -109,6 +106,11 @@ export default tseslint.config(
       "no-useless-constructor": "off",
       "@typescript-eslint/no-useless-constructor": "warn",
       "react/prop-types": "off",
+
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        { prefer: "type-imports" },
+      ],
     },
   }
 );

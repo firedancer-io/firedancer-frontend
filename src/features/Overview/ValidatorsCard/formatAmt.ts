@@ -1,5 +1,6 @@
 import { lamportsPerSol } from "../../../consts";
-import { formatNumber, FormatNumberOptions } from "../../../numUtils";
+import type { FormatNumberOptions } from "../../../numUtils";
+import { formatNumber } from "../../../numUtils";
 
 export function formatNumberLamports(
   value: bigint,

@@ -1,12 +1,12 @@
 import styles from "./barsChart.module.css";
 import { useCallback, useMemo, useRef } from "react";
-import uPlot from "uplot";
+import type uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { txnBarsPlugin } from "./txnBarsPlugin";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import UplotReact from "../../../../uplotReact/UplotReact";
 import AutoSizer from "react-virtualized-auto-sizer";
-import { SlotTransactions } from "../../../../api/types";
+import type { SlotTransactions } from "../../../../api/types";
 import { tooltipTxnIdxAtom, tooltipTxnStateAtom } from "./chartTooltipAtoms";
 import { timeScaleDragPlugin } from "./scaleDragPlugin";
 import { getChartData } from "./chartUtils";

@@ -1,6 +1,7 @@
 import EventEmitter from "events";
 import { createContext } from "react";
-import { ConnectionStatus, SendMessage, SocketState } from "./types";
+import type { ConnectionStatus, SendMessage } from "./types";
+import { SocketState } from "./types";
 
 export const messageEventType = "m";
 

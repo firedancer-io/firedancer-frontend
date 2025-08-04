@@ -1,5 +1,5 @@
 import styles from "./card.module.css";
-import { CSSProperties, PropsWithChildren } from "react";
+import type { CSSProperties, PropsWithChildren } from "react";
 
 interface CardProps {
   hideChildren?: boolean;

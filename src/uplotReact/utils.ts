@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import uPlot from "uplot";
+import type uPlot from "uplot";
 
 type OptionsUpdateState = "keep" | "update" | "create";
 

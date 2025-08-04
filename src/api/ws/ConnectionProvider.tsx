@@ -1,13 +1,14 @@
 import EventEmitter from "events";
 import { useSetAtom } from "jotai";
-import { PropsWithChildren, useCallback, useEffect, useState } from "react";
+import type { PropsWithChildren } from "react";
+import { useCallback, useEffect, useState } from "react";
 import connectWebSocket from "./connectWebSocket";
-import { ConnectionStatus } from "./types";
+import type { ConnectionStatus } from "./types";
 import { socketStateAtom } from "./atoms";
 import UpdateAtoms from "../UpdateAtoms";
+import type { ConnectionContextType } from "./ConnectionContext";
 import {
   ConnectionContext,
-  ConnectionContextType,
   defaultCtxValue,
   messageEventType,
 } from "./ConnectionContext";

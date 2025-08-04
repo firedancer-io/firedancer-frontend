@@ -1,5 +1,5 @@
-import { SlotTransactions } from "../../../../api/types";
-import uPlot from "uplot";
+import type { SlotTransactions } from "../../../../api/types";
+import type uPlot from "uplot";
 import { chartBufferMs } from "../../../../transactionUtils";
 
 export function getSlotStateTs(transactions: SlotTransactions, txnIdx: number) {

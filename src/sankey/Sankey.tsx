@@ -1,6 +1,7 @@
 // From https://github.com/plouc/nivo/blob/master/packages/sankey/src/Sankey.tsx
 
-import { createElement, Fragment, ReactNode } from "react";
+import type { ReactNode } from "react";
+import { createElement, Fragment } from "react";
 import uniq from "lodash/uniq";
 import { SvgWrapper, useDimensions, Container } from "@nivo/core";
 import { BoxLegendSvg } from "@nivo/legends";
@@ -9,7 +10,7 @@ import { useSankey } from "./hooks";
 import { SankeyNodes } from "./SankeyNodes";
 import { SankeyLinks } from "./SankeyLinks";
 import { SankeyLabels } from "./SankeyLabels";
-import {
+import type {
   DefaultLink,
   DefaultNode,
   SankeyLayerId,

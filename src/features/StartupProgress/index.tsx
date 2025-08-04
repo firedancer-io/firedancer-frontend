@@ -1,5 +1,6 @@
 import { useAtomValue } from "jotai";
-import { PropsWithChildren, useEffect } from "react";
+import type { PropsWithChildren } from "react";
+import { useEffect } from "react";
 import { showStartupProgressAtom } from "./atoms";
 import Body from "./Body";
 import { animated, useSpring } from "@react-spring/web";

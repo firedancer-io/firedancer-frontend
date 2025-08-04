@@ -8,7 +8,7 @@ import { useMount } from "react-use";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWebSocketSend } from "../api/ws/utils";
 import memoize from "micro-memoize";
-import { SendMessage } from "../api/ws/types";
+import type { SendMessage } from "../api/ws/types";
 import { throttle } from "lodash";
 
 enum SlotQueryType {

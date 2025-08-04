@@ -1,5 +1,5 @@
-import { SankeyLayerId, SankeyNodeDatum, SankeyAlignType } from "./types";
-import { InheritedColorConfig } from "@nivo/colors";
+import type { SankeyLayerId, SankeyNodeDatum, SankeyAlignType } from "./types";
+import type { InheritedColorConfig } from "@nivo/colors";
 import { SankeyNodeTooltip } from "./SankeyNodeTooltip";
 import { SankeyLinkTooltip } from "./SankeyLinkTooltip";
 import {

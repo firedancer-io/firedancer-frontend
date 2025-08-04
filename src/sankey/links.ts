@@ -1,5 +1,5 @@
 import { line, curveMonotoneX, curveMonotoneY } from "d3-shape";
-import { DefaultLink, DefaultNode, SankeyLinkDatum } from "./types";
+import type { DefaultLink, DefaultNode, SankeyLinkDatum } from "./types";
 
 export const sankeyLinkHorizontal = <
   N extends DefaultNode,

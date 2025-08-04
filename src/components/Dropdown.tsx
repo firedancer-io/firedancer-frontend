@@ -1,6 +1,6 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import styles from "./dropdown.module.css";
-import { PropsWithChildren, ReactNode } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import { containerElAtom } from "../atoms";
 import { useAtomValue } from "jotai";
 import clsx from "clsx";

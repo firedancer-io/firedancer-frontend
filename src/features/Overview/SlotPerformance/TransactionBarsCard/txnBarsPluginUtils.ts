@@ -1,6 +1,6 @@
-import uPlot from "uplot";
-import { MutableRefObject } from "react";
-import { SlotTransactions } from "../../../../api/types";
+import type uPlot from "uplot";
+import type { MutableRefObject } from "react";
+import type { SlotTransactions } from "../../../../api/types";
 import { getDefaultStore } from "jotai";
 import { chartFiltersAtom } from "./atoms";
 import { TxnState } from "./consts";

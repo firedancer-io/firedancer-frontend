@@ -40,7 +40,7 @@ import {
   deleteSlotResponseBoundsAtom,
   skipRateAtom,
 } from "../atoms";
-import {
+import type {
   EstimatedSlotDuration,
   EstimatedTps,
   LiveTilePrimaryMetric,

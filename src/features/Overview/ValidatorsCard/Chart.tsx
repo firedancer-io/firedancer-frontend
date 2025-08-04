@@ -1,7 +1,8 @@
 import { Text } from "@radix-ui/themes";
 import AutoSizer from "react-virtualized-auto-sizer";
 import styles from "./chart.module.css";
-import { ComputedDatum, Pie, PieTooltipProps } from "@nivo/pie";
+import type { ComputedDatum, PieTooltipProps } from "@nivo/pie";
+import { Pie } from "@nivo/pie";
 import { useMemo } from "react";
 import { formatNumberLamports } from "./formatAmt";
 import { sum } from "lodash";

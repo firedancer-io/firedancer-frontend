@@ -10,7 +10,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import "react-circular-progressbar/dist/styles.css";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
-import { SlotPublish } from "../../../api/types";
+import type { SlotPublish } from "../../../api/types";
 import processedIcon from "../../../assets/checkOutline.svg";
 import optimisticalyConfirmedIcon from "../../../assets/checkFill.svg";
 import rootedIcon from "../../../assets/Rooted.svg";

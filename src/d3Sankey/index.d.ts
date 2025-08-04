@@ -8,7 +8,7 @@
 
 // Last module patch version validated against: 0.11
 
-import { Link } from "d3-shape";
+import type { Link } from "d3-shape";
 
 /**
  * A helper interface as an extension reference for user-provided properties of

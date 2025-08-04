@@ -14,7 +14,7 @@ import { socketStateAtom } from "../../api/ws/atoms";
 import { SocketState } from "../../api/ws/types";
 import { getClusterColor } from "./util";
 import { useMedia } from "react-use";
-import { BlockEngineUpdate } from "../../api/types";
+import type { BlockEngineUpdate } from "../../api/types";
 import { connectedColor, connectingColor, failureColor } from "../../colors";
 
 export default function Cluster() {

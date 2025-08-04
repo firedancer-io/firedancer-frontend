@@ -1,5 +1,6 @@
-import { DateTime, Duration } from "luxon";
-import { Epoch, Peer } from "./api/types";
+import type { Duration } from "luxon";
+import { DateTime } from "luxon";
+import type { Epoch, Peer } from "./api/types";
 import { lamportsPerSol, slotsPerLeader } from "./consts";
 
 export function getLeaderSlots(epoch: Epoch, pubkey: string) {

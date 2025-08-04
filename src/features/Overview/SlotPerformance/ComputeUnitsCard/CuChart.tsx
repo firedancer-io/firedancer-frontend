@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from "react";
-import { SlotTransactions } from "../../../../api/types";
+import type { SlotTransactions } from "../../../../api/types";
 import AutoSizer from "react-virtualized-auto-sizer";
 import UplotReact from "../../../../uplotReact/UplotReact";
 import uPlot from "uplot";
@@ -270,7 +270,7 @@ export default function CuChart({
               "",
             );
 
-            if (longestVal != "") {
+            if (longestVal !== "") {
               self.ctx.font = axis.font?.[0] ?? "Inter Tight";
               axisSize +=
                 self.ctx.measureText(longestVal).width / devicePixelRatio;
@@ -315,7 +315,7 @@ export default function CuChart({
               "",
             );
 
-            if (longestVal != "") {
+            if (longestVal !== "") {
               self.ctx.font = axis.font?.[0] ?? "Inter Tight";
               axisSize +=
                 self.ctx.measureText(longestVal).width / devicePixelRatio;

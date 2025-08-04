@@ -1,11 +1,12 @@
 import { useAtom, useAtomValue } from "jotai";
 import { startupProgressAtom } from "../../api/atoms";
 import styles from "./body.module.css";
-import { ReactNode, useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { showStartupProgressAtom } from "./atoms";
 import fdLogo from "../../assets/firedancer.svg";
 import { Box, Flex } from "@radix-ui/themes";
-import { StartupPhase } from "../../api/types";
+import type { StartupPhase } from "../../api/types";
 import { isDefined } from "../../utils";
 import IncompleteStep from "./IncompleteStep";
 import InprogressStep from "./InprogressStep";

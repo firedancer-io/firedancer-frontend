@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import uPlot from "uplot";
+import type uPlot from "uplot";
 
 export const uplotChartsAtom = atom({} as Record<string, uPlot>);
 

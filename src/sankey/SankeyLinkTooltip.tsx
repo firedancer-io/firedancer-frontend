@@ -1,5 +1,5 @@
 import { BasicTooltip, Chip } from "@nivo/tooltip";
-import { DefaultLink, DefaultNode, SankeyLinkDatum } from "./types";
+import type { DefaultLink, DefaultNode, SankeyLinkDatum } from "./types";
 
 const tooltipStyles = {
   container: {

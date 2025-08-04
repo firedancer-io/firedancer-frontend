@@ -1,5 +1,5 @@
 import { sankeyLinkHorizontal, sankeyLinkVertical } from "./links";
-import {
+import type {
   DefaultLink,
   DefaultNode,
   SankeyCommonProps,

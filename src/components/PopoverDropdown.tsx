@@ -1,6 +1,6 @@
 import { Popover } from "radix-ui";
 import styles from "./popoverDropdown.module.css";
-import { PropsWithChildren, ReactNode } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import { containerElAtom } from "../atoms";
 import { useAtomValue } from "jotai";
 import { Flex } from "@radix-ui/themes";

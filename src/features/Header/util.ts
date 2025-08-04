@@ -1,4 +1,4 @@
-import { Cluster } from "../../api/types";
+import type { Cluster } from "../../api/types";
 import {
   clusterDevelopmentColor,
   clusterDevnetColor,

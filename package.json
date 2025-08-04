@@ -9,7 +9,7 @@
     "build:dev": "tsc && vite build --mode development",
     "test": "vitest",
     "lint": "prettier --check . && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "lint:fix": "prettier --write .",
+    "lint:fix": "eslint --fix . && prettier --write .",
     "preview": "NODE_OPTIONS=--max-http-header-size=64000 vite preview",
     "prepare": "husky install"
   },

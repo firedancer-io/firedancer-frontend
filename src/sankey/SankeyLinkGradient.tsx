@@ -2,7 +2,7 @@ import {
   sankeyLinkGradientEndColor,
   sankeyLinkGradientMiddleColor,
 } from "../colors";
-import { SankeyCommonProps } from "./types";
+import type { SankeyCommonProps } from "./types";
 
 interface SankeyLinkGradientProps {
   id: string;

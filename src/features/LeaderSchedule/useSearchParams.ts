@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Route, SearchType, SearchTypeEnum } from "../../routes/leaderSchedule";
+import type { SearchType } from "../../routes/leaderSchedule";
+import { Route, SearchTypeEnum } from "../../routes/leaderSchedule";
 import { useCallback } from "react";
 
 export function useSearchTypeSearchParam() {

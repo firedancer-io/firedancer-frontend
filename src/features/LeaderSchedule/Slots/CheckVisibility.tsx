@@ -1,4 +1,4 @@
-import { PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
 import { InView } from "react-intersection-observer";
 
 interface CheckVisibilityCardProps {

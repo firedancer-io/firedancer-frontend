@@ -1,5 +1,5 @@
-import { AriaAttributes, MouseEvent, FunctionComponent } from "react";
-import {
+import type { AriaAttributes, MouseEvent, FunctionComponent } from "react";
+import type {
   Box,
   Theme,
   CssMixBlendMode,
@@ -8,9 +8,12 @@ import {
   PropertyAccessor,
   ValueFormat,
 } from "@nivo/core";
-import { InheritedColorConfig, OrdinalColorScaleConfig } from "@nivo/colors";
-import { LegendProps } from "@nivo/legends";
-import { SankeyNodeMinimal } from "../d3Sankey";
+import type {
+  InheritedColorConfig,
+  OrdinalColorScaleConfig,
+} from "@nivo/colors";
+import type { LegendProps } from "@nivo/legends";
+import type { SankeyNodeMinimal } from "../d3Sankey";
 
 export interface SankeyRawNode {
   id: string;

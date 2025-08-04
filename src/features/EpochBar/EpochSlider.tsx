@@ -1,6 +1,7 @@
 import * as Slider from "@radix-ui/react-slider";
 import styles from "./epochSlider.module.css";
-import React, {
+import type React from "react";
+import {
   memo,
   startTransition,
   useEffect,
@@ -22,7 +23,7 @@ import {
   firstProcessedSlotAtom,
 } from "../../atoms";
 import { useInterval, useMeasure } from "react-use";
-import { Epoch } from "../../api/types";
+import type { Epoch } from "../../api/types";
 import clsx from "clsx";
 
 // 1 tick about 10 leaders or 40 slots

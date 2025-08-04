@@ -1,4 +1,4 @@
-import {
+import type {
   DefaultLink,
   DefaultNode,
   SankeyCommonProps,

@@ -1,6 +1,6 @@
 import { Flex, Text } from "@radix-ui/themes";
 import styles from "./cardStat.module.css";
-import { CSSProperties, PropsWithChildren } from "react";
+import type { CSSProperties, PropsWithChildren } from "react";
 
 interface CardStatProps {
   label: string;

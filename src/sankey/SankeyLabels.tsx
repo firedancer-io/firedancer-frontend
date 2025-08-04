@@ -1,6 +1,6 @@
 import { useSprings, animated } from "@react-spring/web";
 import { useTheme } from "@nivo/core";
-import {
+import type {
   DefaultLink,
   DefaultNode,
   SankeyCommonProps,

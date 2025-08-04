@@ -1,7 +1,7 @@
-import uPlot from "uplot";
-import { SlotTransactions } from "../../../../api/types.js";
-import { MutableRefObject } from "react";
-import { TxnState } from "./consts.js";
+import type uPlot from "uplot";
+import type { SlotTransactions } from "../../../../api/types.js";
+import type { MutableRefObject } from "react";
+import type { TxnState } from "./consts.js";
 import { getTxnState } from "./txnBarsPluginUtils.js";
 import { baseTooltipPlugin } from "../../../../uplotReact/baseTooltipPlugin.js";
 

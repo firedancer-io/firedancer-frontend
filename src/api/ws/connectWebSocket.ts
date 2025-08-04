@@ -1,4 +1,5 @@
-import { ClientMessage, ConnectionStatus, SocketState } from "./types";
+import type { ClientMessage, ConnectionStatus } from "./types";
+import { SocketState } from "./types";
 import { logDebug, logWarning } from "../../logger";
 
 const RECONNECT_DELAY = 3_000;

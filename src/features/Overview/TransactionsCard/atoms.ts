@@ -1,4 +1,4 @@
-import { EstimatedTps } from "../../../api/types";
+import type { EstimatedTps } from "../../../api/types";
 import { atomWithImmer } from "jotai-immer";
 import { maxTransactionChartPoints } from "./consts";
 

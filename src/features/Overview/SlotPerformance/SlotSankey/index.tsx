@@ -8,7 +8,7 @@ import {
   sankeyDisplayTypeAtom,
   selectedSlotAtom,
 } from "../atoms";
-import { TxnWaterfall, TxnWaterfallOut } from "../../../../api/types";
+import type { TxnWaterfall, TxnWaterfallOut } from "../../../../api/types";
 import { Flex, Spinner, Text } from "@radix-ui/themes";
 import { SlotNode, slotNodes } from "./consts";
 import { sum } from "lodash";

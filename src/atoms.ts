@@ -7,7 +7,7 @@ import {
   skippedSlotsAtom,
   startupProgressAtom,
 } from "./api/atoms";
-import {
+import type {
   Epoch,
   Peer,
   PeerRemove,
@@ -212,7 +212,7 @@ export const currentSlotAtom = atom(
   (get) => get(_currentSlotAtom),
   (get, set, slot: number) => {
     const nextLeaderSlot = get(nextLeaderSlotAtom);
-    if (nextLeaderSlot == undefined || slot >= nextLeaderSlot) {
+    if (nextLeaderSlot === undefined || slot >= nextLeaderSlot) {
       set(nextLeaderSlotAtom, slot);
     }
 

@@ -1,5 +1,5 @@
 import { getDefaultStore } from "jotai";
-import uPlot from "uplot";
+import type uPlot from "uplot";
 import { isFullXRangeAtom } from "./atoms";
 
 const store = getDefaultStore();

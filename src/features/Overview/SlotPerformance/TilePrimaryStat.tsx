@@ -2,7 +2,7 @@ import styles from "./tilePrimaryStat.module.css";
 import { useAtomValue } from "jotai";
 import { liveTilePrimaryMetricAtom } from "../../../api/atoms";
 import { Text } from "@radix-ui/themes";
-import { TilePrimaryMetric } from "../../../api/types";
+import type { TilePrimaryMetric } from "../../../api/types";
 import { selectedSlotAtom } from "./atoms";
 import byteSize from "byte-size";
 import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";

@@ -1,4 +1,5 @@
-import { PropsWithChildren, useState } from "react";
+import type { PropsWithChildren } from "react";
+import { useState } from "react";
 import { Button } from "@radix-ui/themes";
 import { CaretDownIcon, CaretUpIcon } from "@radix-ui/react-icons";
 import PopoverDropdown from "./PopoverDropdown";

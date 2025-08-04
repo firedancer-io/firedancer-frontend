@@ -3,7 +3,7 @@ import Card from "../../../components/Card";
 import styles from "./tileCard.module.css";
 import TileSparkLine from "./TileSparkLine";
 import { mean } from "lodash";
-import { TilePrimaryMetric } from "../../../api/types";
+import type { TilePrimaryMetric } from "../../../api/types";
 import { useAtomValue } from "jotai";
 import TilePrimaryStat from "./TilePrimaryStat";
 import TileBusy from "./TileBusy";
@@ -11,7 +11,8 @@ import { selectedSlotAtom } from "./atoms";
 import TileSparkLineExpandedContainer from "./TileSparkLineExpandedContainer";
 import { useMeasure } from "react-use";
 import { isDefined } from "../../../utils";
-import React, { useMemo } from "react";
+import type React from "react";
+import { useMemo } from "react";
 
 interface TileCardProps {
   header: string;

@@ -1,10 +1,10 @@
-import { AlignedData, RectH } from "uplot";
+import type { AlignedData, RectH } from "uplot";
 import { distr, SPACE_BETWEEN } from "./distr";
 import uPlot from "uplot";
 import { ceil, round } from "lodash";
 import { pointWithin, Quadtree } from "./quadTree";
-import { MutableRefObject } from "react";
-import { SlotTransactions } from "../../../../api/types";
+import type { MutableRefObject } from "react";
+import type { SlotTransactions } from "../../../../api/types";
 import { getDefaultStore } from "jotai";
 import { logRatio } from "../../../../mathUtils";
 import { barCountAtom } from "./atoms";
@@ -206,11 +206,11 @@ export function txnBarsPlugin(
 
   const gapFactor = 1 - size[0];
 
-  let font = "";
+  // let font = "";
   let maxWidth = 0;
 
   function recalcDppxVars() {
-    font = round(14 * uPlot.pxRatio) + "px Arial";
+    // font = round(14 * uPlot.pxRatio) + "px Arial";
     maxWidth = (size[1] ?? Infinity) * uPlot.pxRatio;
   }
 
@@ -363,12 +363,7 @@ export function txnBarsPlugin(
     });
   }
 
-  function drawPaths(
-    u: import("uplot"),
-    sidx: number,
-    idx0: number,
-    idx1: number,
-  ) {
+  function drawPaths(u: uPlot, sidx: number, idx0: number, idx1: number) {
     if (pauseDrawing) return;
 
     // setMaxFees();
@@ -415,7 +410,7 @@ export function txnBarsPlugin(
               y0 -= stateSeriesHgt;
             }
             // draw spans
-            if (mode == 1) {
+            if (mode === 1) {
               for (let ix = 0; ix < dataY.length; ix++) {
                 if (dataY[ix] != null) {
                   const lft = round(valToPosX(dataX[ix], scaleX, xDim, xOff));
@@ -427,7 +422,7 @@ export function txnBarsPlugin(
 
                   // to now (not to end of chart)
                   const rgt =
-                    nextIx == dataY.length
+                    nextIx === dataY.length
                       ? xOff + xDim + strokeWidth
                       : round(valToPosX(dataX[nextIx], scaleX, xDim, xOff));
 
@@ -471,7 +466,8 @@ export function txnBarsPlugin(
               const barWid = round(
                 Math.min(maxWidth, colWid - gapWid) - strokeWidth,
               );
-              const xShift = align == 1 ? 0 : align == -1 ? barWid : barWid / 2;
+              const xShift =
+                align === 1 ? 0 : align === -1 ? barWid : barWid / 2;
 
               for (let ix = idx0; ix <= idx1; ix++) {
                 if (dataY[ix] != null) {
@@ -507,61 +503,6 @@ export function txnBarsPlugin(
     );
 
     return null;
-  }
-
-  // TODO: remove
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function drawPoints(
-    u: import("uplot"),
-    sidx: number,
-    i0: number,
-    i1: number,
-  ) {
-    u.ctx.save();
-    u.ctx.rect(u.bbox.left, u.bbox.top, u.bbox.width, u.bbox.height);
-    u.ctx.clip();
-
-    u.ctx.font = font;
-    u.ctx.fillStyle = "black";
-    u.ctx.textAlign = mode == 1 ? "left" : "center";
-    u.ctx.textBaseline = "middle";
-
-    uPlot.orient(
-      u,
-      sidx,
-      (
-        series,
-        dataX,
-        dataY,
-        scaleX,
-        scaleY,
-        valToPosX,
-        valToPosY,
-        xOff,
-        yOff,
-        xDim,
-        yDim,
-        moveTo,
-        lineTo,
-        rect,
-      ) => {
-        const strokeWidth = round((series.width || 0) * uPlot.pxRatio);
-        const textOffset = mode == 1 ? strokeWidth + 2 : 0;
-
-        const y = round(yOff + yMids[sidx - 1]);
-
-        for (let ix = 0; ix < dataY.length; ix++) {
-          if (dataY[ix] != null) {
-            const x = valToPosX(dataX[ix], scaleX, xDim, xOff) + textOffset;
-            u.ctx.fillText(`${dataY[ix]}`, x, y);
-          }
-        }
-      },
-    );
-
-    u.ctx.restore();
-
-    return false;
   }
 
   let qt: {
@@ -627,7 +568,7 @@ export function txnBarsPlugin(
         });
       },
       setCursor: (u: uPlot) => {
-        if (mode == 1) {
+        if (mode === 1) {
           const val = u.posToVal(u.cursor.left ?? 0, xScaleKey);
           if (legendTimeValueEl)
             legendTimeValueEl.textContent = u.scales.x.time
@@ -701,7 +642,7 @@ export function txnBarsPlugin(
         scales: {
           x: {
             range(u: { data: number[][] }, min: number, max: number) {
-              if (mode == 2) {
+              if (mode === 2) {
                 const colWid = u.data[0][1] - u.data[0][0];
                 const scalePad = colWid / 2;
 
@@ -725,7 +666,7 @@ export function txnBarsPlugin(
       if (opts.axes)
         uPlot.assign(opts.axes[0], {
           splits:
-            mode == 2
+            mode === 2
               ? (
                   u: { data: number[][] },
                   axisIdx: number,
@@ -749,7 +690,7 @@ export function txnBarsPlugin(
                 }
               : null,
           grid: {
-            show: mode != 2,
+            show: mode !== 2,
           },
         });
 
@@ -785,9 +726,6 @@ export function txnBarsPlugin(
         if (i > 0) {
           uPlot.assign(s, {
             paths: drawPaths,
-            // points: {
-            //   show: drawPoints,
-            // },
           });
         }
       });

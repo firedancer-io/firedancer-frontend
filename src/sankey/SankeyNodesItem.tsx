@@ -1,7 +1,8 @@
-import { createElement, useCallback, MouseEvent } from "react";
+import type { MouseEvent } from "react";
+import { createElement, useCallback } from "react";
 import { useSpring, animated } from "@react-spring/web";
 import { useTooltip } from "@nivo/tooltip";
-import {
+import type {
   DefaultLink,
   DefaultNode,
   SankeyCommonProps,

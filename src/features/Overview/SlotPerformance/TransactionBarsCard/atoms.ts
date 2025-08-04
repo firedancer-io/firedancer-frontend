@@ -1,6 +1,7 @@
 import { atom } from "jotai";
-import uPlot, { AlignedData } from "uplot";
-import { SlotTransactions } from "../../../../api/types";
+import type { AlignedData } from "uplot";
+import type uPlot from "uplot";
+import type { SlotTransactions } from "../../../../api/types";
 import { setBarCount } from "./txnBarsPlugin";
 import { getChartData } from "./chartUtils";
 import { FilterEnum } from "./consts";

@@ -1,10 +1,11 @@
 import { useAtomValue } from "jotai";
 import styles from "./chartTooltip.module.css";
 import { tooltipTxnIdxAtom, tooltipTxnStateAtom } from "./chartTooltipAtoms";
-import { SlotTransactions } from "../../../../api/types";
+import type { SlotTransactions } from "../../../../api/types";
 import { Button, Flex, Text } from "@radix-ui/themes";
 import { errorCodeMap, stateTextColors, TxnState } from "./consts";
-import { CSSProperties, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
+import { useMemo, useState } from "react";
 import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { selectedSlotAtom } from "../atoms";
 import { chartFiltersAtom } from "./atoms";

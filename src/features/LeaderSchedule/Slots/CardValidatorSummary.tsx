@@ -1,4 +1,5 @@
-import { Box, Flex, Text, TextProps } from "@radix-ui/themes";
+import type { TextProps } from "@radix-ui/themes";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { usePubKey } from "../../../hooks/usePubKey";
 import { usePeer } from "../../../hooks/usePeer";
 import { DateTime } from "luxon";
@@ -15,7 +16,7 @@ import PeerIcon from "../../../components/PeerIcon";
 import { identityKeyAtom } from "../../../api/atoms";
 import styles from "./cardValidatorSummary.module.css";
 import { useHarmonicIntervalFn, useMedia, useUpdate } from "react-use";
-import { Peer } from "../../../api/types";
+import type { Peer } from "../../../api/types";
 import { peerStatsAtom } from "../../../atoms";
 import { formatNumber } from "../../../numUtils";
 import clsx from "clsx";

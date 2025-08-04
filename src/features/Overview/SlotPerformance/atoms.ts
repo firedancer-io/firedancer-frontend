@@ -4,7 +4,7 @@ import {
   tilesAtom,
   tileTimerAtom,
 } from "../../../api/atoms";
-import { TxnWaterfall } from "../../../api/types";
+import type { TxnWaterfall } from "../../../api/types";
 import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
 import { countBy } from "lodash";

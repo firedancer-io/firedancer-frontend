@@ -1,5 +1,5 @@
 import { max } from "lodash";
-import { SlotTransactions } from "./api/types";
+import type { SlotTransactions } from "./api/types";
 
 export const chartBufferMs = 2_000_000;
 

@@ -6,7 +6,8 @@ import { Button } from "@radix-ui/themes";
 import dropDownIcon from "../../assets/dropdown_arrow.svg";
 import { useAtomValue } from "jotai";
 import { containerElAtom } from "../../atoms";
-import { PropsWithChildren, useState } from "react";
+import type { PropsWithChildren } from "react";
+import { useState } from "react";
 
 export default function DropDownNavLinks({ children }: PropsWithChildren) {
   const containerEl = useAtomValue(containerElAtom);

@@ -1,4 +1,4 @@
-import uPlot from "uplot";
+import type uPlot from "uplot";
 import { xScaleKey } from "../features/Overview/SlotPerformance/ComputeUnitsCard/consts";
 import { uplotActionAtom } from "./uplotAtoms";
 import { getDefaultStore } from "jotai";

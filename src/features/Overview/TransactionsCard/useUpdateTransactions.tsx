@@ -2,7 +2,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { estimatedTpsAtom, tpsHistoryAtom } from "../../../api/atoms";
 import { useEffect, useRef } from "react";
 import { tpsDataAtom } from "./atoms";
-import { EstimatedTps } from "../../../api/types";
+import type { EstimatedTps } from "../../../api/types";
 import { maxTransactionChartPoints } from "./consts";
 
 export default function useUpdateTransactions() {

@@ -1,5 +1,5 @@
-import { PropsWithChildren } from "react";
-import { SlotNode } from "../features/Overview/SlotPerformance/SlotSankey/consts";
+import type { PropsWithChildren } from "react";
+import type { SlotNode } from "../features/Overview/SlotPerformance/SlotSankey/consts";
 import { useShowNode } from "./useShowNode";
 
 export default function ShowNode({

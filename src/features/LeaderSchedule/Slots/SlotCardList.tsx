@@ -1,6 +1,7 @@
 import { Flex, Text } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
-import { PropsWithChildren, useMemo, useReducer } from "react";
+import type { PropsWithChildren } from "react";
+import { useMemo, useReducer } from "react";
 import { slotsPerLeader } from "../../../consts";
 import UpcomingSlotCard from "./UpcomingSlotCard";
 import { PastSlotCard } from "./PastSlotCard";

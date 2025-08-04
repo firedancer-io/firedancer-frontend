@@ -1,5 +1,5 @@
 import { Button, Flex, Popover } from "@radix-ui/themes";
-import { PropsWithChildren, ReactNode } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import styles from "./tileSparkLineExpandedContainer.module.css";
 import { useAtom } from "jotai";
 import { isTileSparkLineExpandedAtom } from "./atoms";

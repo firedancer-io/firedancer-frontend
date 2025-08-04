@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import {
+import type {
   Version,
   Cluster,
   CommitHash,

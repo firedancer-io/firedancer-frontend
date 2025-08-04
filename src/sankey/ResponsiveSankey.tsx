@@ -1,7 +1,7 @@
 // From https://github.com/plouc/nivo/blob/master/packages/sankey/src/ResponsiveSankey.tsx
 
 import { ResponsiveWrapper } from "@nivo/core";
-import { DefaultLink, DefaultNode, SankeySvgProps } from "./types";
+import type { DefaultLink, DefaultNode, SankeySvgProps } from "./types";
 import { Sankey } from "./Sankey";
 
 export const ResponsiveSankey = <

@@ -1,6 +1,6 @@
 // derived from https://github.com/leeoniya/uPlot/blob/master/demos/zoom-touch.html
 
-import uPlot from "uplot";
+import type uPlot from "uplot";
 import { xScaleKey } from "../features/Overview/SlotPerformance/ComputeUnitsCard/consts";
 import { clamp } from "./utils";
 
@@ -17,7 +17,7 @@ function storePos(event: TouchEvent, pos: Position, rect: DOMRect) {
   const t0x = t0.clientX - rect.left;
   const t0y = t0.clientY - rect.top;
 
-  if (event.touches.length == 1) {
+  if (event.touches.length === 1) {
     pos.x = t0x;
     pos.y = t0y;
     pos.d = pos.dx = pos.dy = 1;

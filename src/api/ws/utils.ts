@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef } from "react";
-import { ConnectionStatus, SendMessage } from "./types";
+import type { ConnectionStatus, SendMessage } from "./types";
 import { ConnectionContext, messageEventType } from "./ConnectionContext";
 
 /**

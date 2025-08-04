@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { CuChartTooltipData } from "./types";
+import type { CuChartTooltipData } from "./types";
 
 export const cuChartTooltipDataAtom = atom<CuChartTooltipData>();
 

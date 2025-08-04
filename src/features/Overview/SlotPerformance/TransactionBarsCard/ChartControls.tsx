@@ -1,6 +1,6 @@
 import { Flex, Select, Separator, Slider, Text } from "@radix-ui/themes";
 import { focusedErrorCode, highlightErrorCode } from "./txnBarsPlugin";
-import { SlotTransactions } from "../../../../api/types";
+import type { SlotTransactions } from "../../../../api/types";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   addCuRequestedSeriesAtom,
@@ -21,7 +21,8 @@ import {
   filterArrivalDataAtom,
 } from "./atoms";
 import { groupBy, max } from "lodash";
-import { CSSProperties, useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ToggleGroupControl from "./ToggleGroupControl";
 import { useMeasure, useMedia, useUnmount } from "react-use";
 import { errorCodeMap, FilterEnum, TxnState } from "./consts";

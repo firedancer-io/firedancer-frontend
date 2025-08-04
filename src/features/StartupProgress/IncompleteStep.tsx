@@ -1,6 +1,6 @@
 import { Flex, Text } from "@radix-ui/themes";
 import styles from "./incompleteStep.module.css";
-import { CSSProperties } from "react";
+import type { CSSProperties } from "react";
 
 interface IncompleteStepProps {
   label: string;

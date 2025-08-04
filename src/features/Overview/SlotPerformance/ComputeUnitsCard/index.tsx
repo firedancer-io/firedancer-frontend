@@ -8,7 +8,7 @@ import styles from "./computeUnits.module.css";
 import CuChart from "./CuChart";
 import CuChartTooltip from "./CuChartTooltip";
 import CuChartActions from "./CuChartActions";
-import uPlot from "uplot";
+import type uPlot from "uplot";
 import { useCallback, useRef } from "react";
 import { defaultMaxComputeUnits } from "../../../../consts";
 

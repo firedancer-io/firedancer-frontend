@@ -1,4 +1,4 @@
-import { Epoch } from "../../../api/types";
+import type { Epoch } from "../../../api/types";
 import { slotsPerLeader } from "../../../consts";
 import { SlotType } from "./types";
 
