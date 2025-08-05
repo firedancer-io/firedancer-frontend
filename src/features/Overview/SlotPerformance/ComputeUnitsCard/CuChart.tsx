@@ -364,12 +364,12 @@ export default function CuChart({
       ],
       legend: { show: false },
       plugins: [
+        startLinePlugin(),
         cuRefAreaPlugin({
           slotTransactionsRef,
           maxComputeUnitsRef,
           bankTileCountRef,
         }),
-        startLinePlugin(),
         timeScaleDragPlugin(),
         wheelZoomPlugin({ factor: 0.75 }),
         cuTooltipPlugin(setTooltipData),

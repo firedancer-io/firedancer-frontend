@@ -1,7 +1,7 @@
 import uPlot from "uplot";
 
 import { xScaleKey } from "./consts";
-import { revenueStartLineColor } from "../../../../colors";
+import { startLineColor } from "../../../../colors";
 import { getDefaultStore } from "jotai";
 import { ScheduleStrategyEnum } from "../../../../api/entities";
 import { scheduleStrategyAtom } from "../../../../api/atoms";
@@ -50,7 +50,7 @@ export function startLinePlugin(): uPlot.Plugin {
 
           ctx.beginPath();
 
-          ctx.strokeStyle = revenueStartLineColor;
+          ctx.strokeStyle = startLineColor;
           ctx.lineWidth = 5 / uPlot.pxRatio;
           ctx.setLineDash([5, 5]);
 
