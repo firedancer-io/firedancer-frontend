@@ -11,6 +11,7 @@ import CuChartActions from "./CuChartActions";
 import type uPlot from "uplot";
 import { useCallback, useRef } from "react";
 import { defaultMaxComputeUnits } from "../../../../consts";
+import CuChartInfoIcon from "./CuChartInfoIcon";
 
 export default function ComputeUnitsCard() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -53,6 +54,7 @@ export default function ComputeUnitsCard() {
         </Flex>
       </Card>
       <CuChartTooltip />
+      <CuChartInfoIcon />
     </>
   );
 }
