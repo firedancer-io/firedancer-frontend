@@ -26,8 +26,8 @@ import { useEffect, useMemo, useState } from "react";
 import ToggleGroupControl from "./ToggleGroupControl";
 import { useMeasure, useMedia, useUnmount } from "react-use";
 import { errorCodeMap, FilterEnum, TxnState } from "./consts";
-import ToggleControl from "./ToggleControl";
-import toggleControlStyles from "./toggleControl.module.css";
+import ToggleControl from "../../../../components/ToggleControl";
+import toggleControlStyles from "../../../../components/toggleControl.module.css";
 import styles from "./chartControl.module.css";
 import { txnBarsUplotActionAtom } from "./uplotAtoms";
 import {

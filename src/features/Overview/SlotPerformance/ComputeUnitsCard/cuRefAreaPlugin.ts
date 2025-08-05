@@ -3,6 +3,10 @@ import type { SlotTransactions } from "../../../../api/types";
 import type { RefObject } from "react";
 import { computeUnitsScaleKey, xScaleKey } from "./consts";
 import { round } from "lodash";
+import { getDefaultStore } from "jotai";
+import { showChartBackgroundAtom } from "./atoms";
+
+const store = getDefaultStore();
 
 interface Point {
   x: number;
@@ -296,6 +300,8 @@ export function cuRefAreaPlugin({
       },
       drawSeries: [
         (u, sid) => {
+          if (!store.get(showChartBackgroundAtom)) return;
+
           // to draw the ref area above bank lines, but below other series
           if (u.series[sid].label !== "Active Bank") return;
 
