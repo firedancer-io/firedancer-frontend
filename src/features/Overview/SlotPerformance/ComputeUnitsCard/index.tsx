@@ -12,6 +12,7 @@ import type uPlot from "uplot";
 import { useCallback, useRef } from "react";
 import { defaultMaxComputeUnits } from "../../../../consts";
 import CuChartInfoIcon from "./CuChartInfoIcon";
+import CuChartBackgroundToggle from "./CuChartRefAreaToggle";
 
 export default function ComputeUnitsCard() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -39,6 +40,7 @@ export default function ComputeUnitsCard() {
           <Flex gap="3">
             <CardHeader text="Slot Progression" />
             <CuChartActions onUplot={onUplot} />
+            <CuChartBackgroundToggle onUplot={onUplot} />
           </Flex>
           <div className={styles.chart}>
             <CuChart

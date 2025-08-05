@@ -7,3 +7,4 @@ export const leftAxisSizeAtom = atom(0);
 export const rightAxisSizeAtom = atom(0);
 
 export const isFullXRangeAtom = atom(true);
+export const showChartBackgroundAtom = atom(true);

@@ -7,6 +7,7 @@ import { ScheduleStrategyEnum } from "../../../../api/entities";
 import { scheduleStrategyAtom } from "../../../../api/atoms";
 import { iconSize, infoIconId } from "./CuChartInfoIcon";
 import placement from "../../../../uplot/placement";
+import { showChartBackgroundAtom } from "./atoms";
 
 const store = getDefaultStore();
 
@@ -32,6 +33,8 @@ export function startLinePlugin(): uPlot.Plugin {
           if (u.series[sid].label !== "Active Bank") return;
 
           iconEl.style.display = "none";
+
+          if (!store.get(showChartBackgroundAtom)) return;
 
           const xScale = u.scales[xScaleKey];
           const x = Math.round(u.valToPos(lineNs, xScaleKey, true));
