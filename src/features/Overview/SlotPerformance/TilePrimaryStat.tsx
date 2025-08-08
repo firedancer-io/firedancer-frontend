@@ -50,6 +50,13 @@ function getFormatted(type: keyof TilePrimaryMetric, value?: number) {
     return `${bits} ${unit}/s`;
   }
 
+  if (
+    type === "bundle_rx_delay_millis_p90" ||
+    type === "bundle_rtt_smoothed_millis"
+  ) {
+    return `${Math.max(1, Math.round(value))} ms`;
+  }
+
   if (type === "verify" || type === "dedup" || type === "pack") {
     if (value < 0.01 && value > 0) {
       const pct = value * 100;

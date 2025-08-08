@@ -101,6 +101,23 @@ export default function TilesPerformance() {
         statLabel="Conns"
         metricType="quic"
       />
+      {"bundle" in tileCounts && (
+        <TileCard
+          header="bundle"
+          tileCount={tileCounts["bundle"]}
+          liveIdlePerTile={groupedLiveIdlePerTile?.["bundle"]}
+          queryIdlePerTile={showLive ? undefined : queryIdleData?.["bundle"]}
+          {...(showLive
+            ? {
+                statLabel: "RTT",
+                metricType: "bundle_rtt_smoothed_millis",
+              }
+            : {
+                statLabel: "Lat p90",
+                metricType: "bundle_rx_delay_millis_p90",
+              })}
+        />
+      )}
       <TileCard
         header="verify"
         tileCount={tileCounts["verify"]}
