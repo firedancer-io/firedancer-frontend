@@ -5,9 +5,8 @@ import { startLineColor } from "../../../../colors";
 import { getDefaultStore } from "jotai";
 import { ScheduleStrategyEnum } from "../../../../api/entities";
 import { scheduleStrategyAtom } from "../../../../api/atoms";
-import { iconSize, infoIconId } from "./CuChartInfoIcon";
+import { iconSize, startLineIconId } from "./CuChartStartLineIcon";
 import placement from "../../../../uplot/placement";
-import { showChartBackgroundAtom } from "./atoms";
 
 const store = getDefaultStore();
 
@@ -17,12 +16,10 @@ let iconEl: HTMLElement;
 
 export function startLinePlugin(): uPlot.Plugin {
   const scheduleStrategy = store.get(scheduleStrategyAtom);
-  if (scheduleStrategy !== ScheduleStrategyEnum.revenue) return { hooks: {} };
-
   return {
     hooks: {
       init: (u) => {
-        const el = document.getElementById(infoIconId);
+        const el = document.getElementById(startLineIconId);
         if (!el) return;
 
         iconEl = el;
@@ -34,7 +31,9 @@ export function startLinePlugin(): uPlot.Plugin {
 
           iconEl.style.display = "none";
 
-          if (!store.get(showChartBackgroundAtom)) return;
+          if (scheduleStrategy !== ScheduleStrategyEnum.revenue) {
+            return;
+          }
 
           const xScale = u.scales[xScaleKey];
           const x = Math.round(u.valToPos(lineNs, xScaleKey, true));
