@@ -18,6 +18,7 @@ import { useMedia } from "react-use";
 import type { BlockEngineUpdate } from "../../api/types";
 import { connectedColor, connectingColor, failureColor } from "../../colors";
 import { ScheduleStrategyEnum } from "../../api/entities";
+import { scheduleStrategyIcons } from "../../strategyIcons";
 
 export default function Cluster() {
   const cluster = useAtomValue(clusterAtom);
@@ -135,23 +136,25 @@ function JitoIcon() {
 
 function StrategyIcon() {
   const scheduleStrategy = useAtomValue(scheduleStrategyAtom);
+  if (!scheduleStrategy) return;
 
+  const icon = scheduleStrategyIcons[scheduleStrategy];
   if (scheduleStrategy === ScheduleStrategyEnum.balanced) {
     return (
       <Tooltip content="Transaction scheduler strategy: balanced">
-        <div>⚖️</div>
+        <div>{icon}</div>
       </Tooltip>
     );
   } else if (scheduleStrategy === ScheduleStrategyEnum.perf) {
     return (
       <Tooltip content="Transaction scheduler strategy: performance">
-        <div style={{ margin: "0 -2px" }}>⚡</div>
+        <div style={{ margin: "0 -2px" }}>{icon}</div>
       </Tooltip>
     );
   } else if (scheduleStrategy === ScheduleStrategyEnum.revenue) {
     return (
       <Tooltip content="Transaction scheduler strategy: revenue">
-        <div>📊</div>
+        <div>{icon}</div>
       </Tooltip>
     );
   }

@@ -4,7 +4,7 @@ import type { RefObject } from "react";
 import { computeUnitsScaleKey, xScaleKey } from "./consts";
 import { round } from "lodash";
 import { getDefaultStore } from "jotai";
-import { showChartBackgroundAtom } from "./atoms";
+import { showChartProjectionsAtom } from "./atoms";
 
 const store = getDefaultStore();
 
@@ -25,10 +25,10 @@ interface BankColor {
 const bankCuColors: BankColor[] = [
   { color: "42 126 223" }, // reference line for max cu
   { color: "30 156 80" },
-  { color: "30 156 80", opacity: 0.15 },
-  { color: "174 85 17", opacity: 0.15 },
-  { color: "244 5 5", opacity: 0.15 },
-  { color: "244 5 5", opacity: 0.2 },
+  { color: "30 156 80", opacity: 0.05 },
+  { color: "174 85 17", opacity: 0.05 },
+  { color: "244 5 5", opacity: 0.05 },
+  { color: "244 5 5", opacity: 0.1 },
 ];
 
 const getBankCuColor = (index: number) => {
@@ -300,7 +300,7 @@ export function cuRefAreaPlugin({
       },
       drawSeries: [
         (u, sid) => {
-          if (!store.get(showChartBackgroundAtom)) return;
+          if (!store.get(showChartProjectionsAtom)) return;
 
           // to draw the ref area above bank lines, but below other series
           if (u.series[sid].label !== "Active Bank") return;
