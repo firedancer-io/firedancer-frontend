@@ -9,12 +9,19 @@ export const secondaryTextColor = "#67696A";
 export const regularTextColor = "#8E909D";
 export const iconButtonColor = "#B4B4B4";
 
+export const containerBorderColor = "rgba(250, 250, 250, 0.12)";
+export const containerBackgroundColor = "rgba(250, 250, 250, 0.05)";
 export const dropdownBackgroundColor = "#24262B";
 export const dropdownButtonTextColor = "#F7F8F8";
 export const popoverBackgroundColor = "#1C2129";
 export const rowSeparatorBackgroundColor = "#333333";
 
 export const navButtonTextColor = "#F7F7F7";
+export const navButtonInactiveTextColor = "#949494";
+
+// slot navigation
+export const slotNavFilterBackgroundColor = "#00205F";
+export const slotNavBackgroundColor = "#010102";
 
 // startup
 export const startupTextColor = "#A7A7A7";
@@ -96,6 +103,7 @@ export const elapsedTimeColor = "#6A6A6E";
 export const startLineColor = secondaryTextColor;
 
 // transaction bars
+export const chartGridStrokeColor = "rgba(250, 250, 250, 0.05)";
 export const successToggleColor = "#30A46C";
 export const errorToggleColor = "#E5484D";
 export const requestedToggleControlColor = "#FF8DCC";
@@ -139,8 +147,51 @@ export const slotTextLinkColor = "#1190CF";
 export const slotTextActiveLinkColor = "#6CB1D3";
 export const slotTextVisitedLinkColor = "#967DC8";
 
-export const circularProgressTrailColor = "#666666";
-export const circularProgressPathColor = "#0051DF";
-
 // gossip
 export const gossipDelinquentPubkeyColor = "#6D6F71";
+
+// slot status
+export const slotStatusRed = "#871616";
+export const slotStatusGreen = "#1d863b";
+export const slotStatusBlue = "#1d6286";
+export const slotStatusTeal = "#1CE7C2";
+export const slotStatusDullTeal = "#076B59";
+export const slotStatusGray = "#313131";
+
+export const circularProgressTrailColor = "#666666";
+export const circularProgressPathColor = slotStatusBlue;
+
+// slot details
+export const slotDetailsMySlotsColor = "#0080e6";
+export const slotDetailsQuickSearchTextPrimaryColor = "#cecece";
+export const slotDetailsQuickSearchTextSecondaryColor = "#646464";
+export const slotDetailsEarliestSlotColor = "#00A2C7";
+export const slotDetailsMostRecentSlotColor = "#1D863B";
+export const slotDetailsLastSkippedSlotColor = "#EB6262";
+export const slotDetailsBackgroundColor = "#15181e";
+export const slotDetailsColor = "#9aabc3";
+export const slotDetailsSkippedBackgroundColor = "#250f0f";
+export const slotDetailsSelectedBackgroundColor = "#283551";
+export const slotDetailsSkippedSelectedBackgroundColor = "#3b0c0c";
+export const slotDetailsSelectedColor = "#e3efff";
+export const slotDetailsDisabledSlotBorderColor = "#484D53B2";
+
+// slots list
+export const slotsListSlotBackgroundColor = "#070A13";
+export const slotsListMySlotBackgroundColor = "#070B14 ";
+export const slotsListMySlotsBorderColor = "rgba(42, 126, 223, 0.5)";
+export const slotsListNotProcessedMySlotsBorderColor =
+  "rgba(125, 125, 125, 0.50)";
+export const slotsListMySlotsSelectedBorderColor = "#2A7EDF";
+export const slotsListBackgroundColor = "#070a13";
+export const slotsListFutureSlotBackgroundColor = "#0D0D0D";
+export const slotsListSkippedBackgroundColor = "#250f0f";
+export const slotsListSelectedBackgroundColor = "#002163";
+export const slotsListSkippedSelectedBackgroundColor = "#3b0c0c";
+export const slotsListPastSlotNumberColor = "#848484";
+export const slotsListPastSlotColor = "#A0A0A0";
+export const slotsListSlotColor = "#ccc";
+export const slotsListFutureSlotColor = "#878787";
+export const slotsListCurrentSlotBoxShadowColor = "rgba(191, 135, 253, 0.13)";
+export const slotsListCurrentSlotNumberBackgroundColor = "#283551";
+export const slotsListNextLeaderProgressBarColor = "#37a4bc";
