@@ -84,7 +84,12 @@ function useSlotQuery(
     sendQuery();
   }, [query_type, isFutureSlot, slot, skipQuery, wsSend]);
 
-  useEffect(query, [query]);
+  useEffect(() => {
+    const queryTimeout = setTimeout(() => query(), 250);
+    return () => {
+      clearTimeout(queryTimeout);
+    };
+  }, [query]);
 
   const [waitingForData, setWaitingForData] = useState(true);
   useMount(() => {

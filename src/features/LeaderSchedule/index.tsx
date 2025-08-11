@@ -22,9 +22,9 @@ export function LeaderSchedule() {
     <Flex
       direction="column"
       gap="4"
+      width="100%"
       maxHeight="calc(100vh - var(--header-height))"
       onMouseDown={handleMouseDown}
-      style={{ padding: "4px 12px" }}
     >
       <Slots />
     </Flex>
