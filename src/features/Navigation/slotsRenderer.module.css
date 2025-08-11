@@ -142,13 +142,13 @@
     background-origin: border-box;
   }
 
-  &:has(.next-slot-group):hover,
-  &:has(.previous-slot-group):hover {
+  &:has(.next-slot-group.your-slot-group):hover,
+  &:has(.previous-slot-group.your-slot-group):hover {
     background: rgba(42, 126, 223, 0.8);
   }
 
-  &:has(.next-slot-group):active,
-  &:has(.previous-slot-group):active {
+  &:has(.next-slot-group.your-slot-group):active,
+  &:has(.previous-slot-group.your-slot-group):active {
     background: #379bf3;
   }
 }
