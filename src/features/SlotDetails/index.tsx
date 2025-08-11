@@ -17,19 +17,29 @@ import { useSlotInfo } from "../../hooks/useSlotInfo";
 import styles from "./slotDetails.module.css";
 import PeerIcon from "../../components/PeerIcon";
 import { SlotClient } from "../../components/SlotClient";
-import { epochAtom } from "../../atoms";
+import {
+  epochAtom,
+  firstProcessedSlotAtom,
+  leaderSlotsAtom,
+} from "../../atoms";
 import { slotsPerLeader } from "../../consts";
 import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
 import { getLeaderSlots, getSlotGroupLeader } from "../../utils";
 import { StatusIcon } from "../../components/StatusIcon";
 import clsx from "clsx";
+import { failureColor } from "../../colors";
+
+import skippedIcon from "../../assets/Skipped.svg";
+import green_flag from "../../assets/flag.svg";
+import { skippedSlotsAtom } from "../../api/atoms";
 
 export default function SlotDetails() {
+  const selectedSlotFromAtom = useAtomValue(selectedSlotAtom);
+
   return (
-    <Flex direction="column" gap="2" flexGrow="1" flexShrink="1">
+    <Flex direction="column" gap="2" flexGrow="1" flexShrink="1" height="100%">
       <Setup />
-      <SlotSearch />
-      <SlotContent />
+      {selectedSlotFromAtom === undefined ? <SlotSearch /> : <SlotContent />}
     </Flex>
   );
 }
@@ -52,10 +62,22 @@ function Setup() {
 }
 
 function InvalidSlotState() {
+  const { selectedSlot } = useSlotSearchParam();
+  const epoch = useAtomValue(epochAtom);
+
+  const [render, setRender] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setRender(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!render) return;
   return (
-    <Text>
-      Selected slot is outside of the current epoch. Please click on a slot in
-      the vertical navigation or enter a valid slot above.
+    <Text color="red" size="3" style={{ color: failureColor }}>
+      Slot {selectedSlot} is outside this epoch. Try again with a different ID
+      between {epoch?.start_slot} - {epoch?.end_slot}.
     </Text>
   );
 }
@@ -64,7 +86,6 @@ function SlotSearch() {
   const { selectedSlot, setSelectedSlot } = useSlotSearchParam();
   const [searchSlot, setSearchSlot] = useState<string>("");
   const epoch = useAtomValue(epochAtom);
-  const selectedSlotFromAtom = useAtomValue(selectedSlotAtom);
 
   const submitSearch = useCallback(() => {
     if (searchSlot === "") setSelectedSlot(undefined);
@@ -85,14 +106,24 @@ function SlotSearch() {
   }, [selectedSlot]);
 
   return (
-    <>
+    <Flex
+      direction="column"
+      gap="4"
+      flexGrow="1"
+      flexShrink="1"
+      height="100%"
+      justify="center"
+      p="4"
+      className={styles.search}
+    >
       <TextField.Root
-        placeholder={`Slot ID e.g. ${epoch?.start_slot ?? 123456789}`}
+        placeholder={`Slot ID e.g. ${epoch?.start_slot ?? 0}`}
         type="number"
         step="1"
         value={searchSlot}
         onKeyDown={handleKeyDown}
         onChange={(e) => setSearchSlot(e.target.value)}
+        size="3"
       >
         <TextField.Slot side="right">
           <IconButton variant="ghost" color="gray" onClick={submitSearch}>
@@ -100,8 +131,83 @@ function SlotSearch() {
           </IconButton>
         </TextField.Slot>
       </TextField.Root>
-      {selectedSlot && !selectedSlotFromAtom && <InvalidSlotState />}
-    </>
+      {selectedSlot && <InvalidSlotState />}
+      <QuickSearch />
+    </Flex>
+  );
+}
+
+function QuickSearch() {
+  return (
+    <Flex direction="column" gap="4" justify="center" align="center" p="4">
+      <Flex className={styles.quickSearchRow}>
+        <FirstProcessedLeaderSlotSearch />
+        <LastSkippedSlotSearch />
+      </Flex>
+    </Flex>
+  );
+}
+
+function FirstProcessedLeaderSlotSearch() {
+  const { setSelectedSlot } = useSlotSearchParam();
+  const firstProcessedSlot = useAtomValue(firstProcessedSlotAtom);
+  const leaderSlots = useAtomValue(leaderSlotsAtom);
+
+  const firstProcessedLeaderSlot = useMemo(() => {
+    if (firstProcessedSlot === undefined || !leaderSlots?.length) return;
+    return leaderSlots.find((s) => s >= firstProcessedSlot);
+  }, [firstProcessedSlot, leaderSlots]);
+
+  return (
+    <QuickSearchCard
+      label="First Processed Leader Slot"
+      icon={green_flag}
+      color="#1D863B"
+      disabled={firstProcessedLeaderSlot === undefined}
+      onClick={() => setSelectedSlot(firstProcessedLeaderSlot)}
+    />
+  );
+}
+
+function LastSkippedSlotSearch() {
+  const { setSelectedSlot } = useSlotSearchParam();
+  const skippedSlots = useAtomValue(skippedSlotsAtom);
+
+  return (
+    <QuickSearchCard
+      label="Last Skipped Slot"
+      icon={skippedIcon}
+      color="#EB6262"
+      disabled={!skippedSlots || skippedSlots?.length === 0}
+      onClick={() =>
+        skippedSlots && setSelectedSlot(skippedSlots[skippedSlots?.length - 1])
+      }
+    />
+  );
+}
+
+function QuickSearchCard({
+  label,
+  icon,
+  color,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  icon: string;
+  color: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Flex
+      className={clsx(styles.quickSearch, !disabled && styles.clickable)}
+      style={{ color }}
+      onClick={onClick}
+    >
+      <img width="32px" height="32px" src={icon} />
+      <Text align="left">{label}</Text>
+    </Flex>
   );
 }
 
@@ -224,11 +330,11 @@ function SlotContent() {
   const slotGroupLeader = getSlotGroupLeader(slot);
 
   return (
-    <>
+    <Flex direction="column" gap="2" flexGrow="1" flexShrink="1">
       <SlotHeader slot={slotGroupLeader} />
       <SlotPerformance />
       <ComputeUnitsCard />
       <TransactionBarsCard />
-    </>
+    </Flex>
   );
 }
