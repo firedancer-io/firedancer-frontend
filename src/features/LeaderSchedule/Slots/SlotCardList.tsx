@@ -2,7 +2,7 @@ import { Flex, Text } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
 import type { PropsWithChildren } from "react";
 import { useMemo, useReducer } from "react";
-import { slotsPerLeader } from "../../../consts";
+import { scheduleUpcomingSlotsCount, slotsPerLeader } from "../../../consts";
 import UpcomingSlotCard from "./UpcomingSlotCard";
 import { PastSlotCard } from "./PastSlotCard";
 import CurrentSlotCard from "./CurrentSlotCard";
@@ -22,7 +22,6 @@ import {
   slotCardSectionColor,
 } from "../../../colors";
 
-export const initUpcomingSlotCardCount = 3;
 const initSlotCardCount = 10;
 const increaseSlotCardCount = 2;
 const decreaseSlotCardCount = 1;
@@ -49,7 +48,7 @@ export default function SlotCardList() {
 
   const topSlot =
     slotOverride ??
-    (currentLeaderSlot ?? 0) + initUpcomingSlotCardCount * slotsPerLeader;
+    (currentLeaderSlot ?? 0) + scheduleUpcomingSlotsCount * slotsPerLeader;
 
   const { upcoming, now, past } = useMemo(
     () =>
