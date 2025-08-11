@@ -1,7 +1,7 @@
 import { Box, Flex, Progress, Text } from "@radix-ui/themes";
 import styles from "./startupProgress.module.css";
 import { Duration } from "luxon";
-import { getTimeTillText } from "../../utils";
+import { getDurationText } from "../../utils";
 import byteSize from "byte-size";
 
 interface SnapshotProgressProps {
@@ -46,7 +46,7 @@ export default function SnapshotProgress({
           <Text className={styles.text}>{getFormattedSize()}</Text>
           <Box flexGrow="1" />
           <Text className={styles.text}>
-            ~{getTimeTillText(remainingDuration)}
+            ~{getDurationText(remainingDuration)}
           </Text>
         </Flex>
       </Flex>

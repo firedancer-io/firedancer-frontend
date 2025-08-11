@@ -1,27 +1,19 @@
 import type { TextProps } from "@radix-ui/themes";
 import { Box, Flex, Text } from "@radix-ui/themes";
-import { usePubKey } from "../../../hooks/usePubKey";
-import { usePeer } from "../../../hooks/usePeer";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
-import {
-  getStake,
-  getFmtStake,
-  getTimeTillText,
-  isDefined,
-  slowDateTimeNow,
-} from "../../../utils";
+import { getStake, getFmtStake, isDefined } from "../../../utils";
 import { useAtomValue } from "jotai";
 import PeerIcon from "../../../components/PeerIcon";
-import { identityKeyAtom } from "../../../api/atoms";
 import styles from "./cardValidatorSummary.module.css";
-import { useHarmonicIntervalFn, useMedia, useUpdate } from "react-use";
+import { useMedia } from "react-use";
 import type { Peer } from "../../../api/types";
 import { peerStatsAtom } from "../../../atoms";
 import { formatNumber } from "../../../numUtils";
 import clsx from "clsx";
 import ArrowDropdown from "../../../components/ArrowDropdown";
-import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
+import { useSlotInfo } from "../../../hooks/useSlotInfo";
+import { useTimeAgo } from "../../../hooks/useTimeAgo";
 
 interface CardValidatorSummaryProps {
   slot: number;
@@ -32,13 +24,7 @@ export default function CardValidatorSummary({
   slot,
   showTime,
 }: CardValidatorSummaryProps) {
-  const pubkey = usePubKey(slot);
-  const myPubkey = useAtomValue(identityKeyAtom);
-  const peer = usePeer(pubkey ?? "");
-
-  const isLeader = myPubkey === pubkey;
-
-  const name = peer?.info?.name ?? (isLeader ? "You" : "Private");
+  const { pubkey, peer, isLeader, name } = useSlotInfo(slot);
 
   return (
     <Flex gap="1">
@@ -52,7 +38,7 @@ export default function CardValidatorSummary({
         <Text className={styles.name}>{name}</Text>
         <Text className={styles.primaryText}>{pubkey}</Text>
         <ValidatorInfo peer={peer} />
-        <TimeAgo slot={slot} showTime={showTime} />
+        {showTime && <TimeAgo slot={slot} />}
       </Flex>
     </Flex>
   );
@@ -62,21 +48,12 @@ export function CardValidatorSummaryMobile({
   slot,
   showTime,
 }: CardValidatorSummaryProps) {
-  const pubkey = usePubKey(slot);
-  const myPubkey = useAtomValue(identityKeyAtom);
-  const peer = usePeer(pubkey ?? "");
-
-  const isLeader = myPubkey === pubkey;
+  const { pubkey, peer, isLeader, name: slotName } = useSlotInfo(slot);
   const isWideScreen = useMedia("(min-width: 700px)");
-
-  let name = peer?.info?.name ?? (isLeader ? "You" : "");
-  if (!name) {
-    if (isWideScreen) {
-      name = "Private";
-    } else {
-      name = pubkey ? `${pubkey.substring(0, 8)}...` : "Private";
-    }
-  }
+  const name = useMemo(() => {
+    if (slotName !== "Private" || isWideScreen) return slotName;
+    return pubkey ? `${pubkey.substring(0, 8)}...` : "Private";
+  }, [slotName, isWideScreen, pubkey]);
 
   return (
     <Flex direction="column" className={styles.containerMobile} gap="1">
@@ -98,7 +75,7 @@ export function CardValidatorSummaryMobile({
               <Flex gap="1" direction="column">
                 <Text className={styles.secondaryText}>{pubkey}</Text>
                 <ValidatorInfo peer={peer} />
-                <TimeAgo slot={slot} showTime={showTime} />
+                {showTime && <TimeAgo slot={slot} />}
               </Flex>
             </ArrowDropdown>
           </>
@@ -108,7 +85,7 @@ export function CardValidatorSummaryMobile({
         <Flex gap="1">
           <ValidatorInfo peer={peer} />
           <Box flexGrow="1" />
-          <TimeAgo slot={slot} showTime={showTime} />
+          {showTime && <TimeAgo slot={slot} />}
         </Flex>
       )}
     </Flex>
@@ -194,33 +171,13 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
   );
 }
 
-function TimeAgo({ slot, showTime }: CardValidatorSummaryProps) {
-  const query = useSlotQueryPublish(slot);
-  const update = useUpdate();
-
-  useHarmonicIntervalFn(update, 1_000);
-
-  const slotDateTime = useMemo(() => {
-    if (!query.publish?.completed_time_nanos) return;
-
-    return DateTime.fromMillis(
-      Math.trunc(Number(query.publish?.completed_time_nanos) / 1_000_000),
-    );
-  }, [query.publish]);
-
-  const getDiffDuration = () => {
-    if (!showTime || !slotDateTime) return;
-    return slowDateTimeNow.diff(slotDateTime).rescale();
-  };
-
-  if (!showTime) return;
-
-  const diffDuration = getDiffDuration();
+function TimeAgo({ slot }: CardValidatorSummaryProps) {
+  const { slotDateTime, timeAgoText } = useTimeAgo(slot);
 
   return (
     <Text className={styles.secondaryText}>
       {slotDateTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}
-      {diffDuration && ` (${getTimeTillText(diffDuration)} ago)`}
+      {timeAgoText && ` (${timeAgoText})`}
     </Text>
   );
 }

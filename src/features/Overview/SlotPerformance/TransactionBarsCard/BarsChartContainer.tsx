@@ -53,7 +53,7 @@ export default function BarsChartContainer() {
   if (!query.response?.transactions) return null;
 
   return (
-    <Flex direction="column" height="100%" key={slot}>
+    <Flex direction="column" key={slot}>
       <Flex gap="2" pb="2">
         <CardHeader text="Banks" />
         <ChartControls

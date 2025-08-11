@@ -1,0 +1,27 @@
+.status-indicator {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.status-indicator-live {
+  color: var(--green-live);
+}
+
+.status-indicator-not-live {
+  color: #3cb4ff;
+}
+
+.status-reset {
+  background-color: transparent;
+  color: #3cb4ff;
+  width: unset;
+  height: unset;
+  padding: 0;
+}
+
+.dot-icon {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--green-live);
+}

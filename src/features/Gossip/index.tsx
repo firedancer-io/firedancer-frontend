@@ -3,12 +3,7 @@ import Grid from "./Grid";
 
 export default function Gossip() {
   return (
-    <Flex
-      direction="column"
-      gap="4"
-      style={{ padding: "4px 12px" }}
-      height="calc(100vh - var(--header-height))"
-    >
+    <Flex direction="column" gap="4" flexGrow="1" flexShrink="1" height="100%">
       <Grid />
     </Flex>
   );

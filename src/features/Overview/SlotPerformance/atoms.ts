@@ -4,13 +4,115 @@ import {
   tilesAtom,
   tileTimerAtom,
 } from "../../../api/atoms";
-import type { TxnWaterfall } from "../../../api/types";
+import type { Epoch, TxnWaterfall } from "../../../api/types";
 import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
 import { countBy } from "lodash";
+import {
+  currentSlotAtom,
+  earliestProcessedSlotLeaderAtom,
+  epochAtom,
+  leaderSlotsAtom,
+  slotOverrideAtom,
+} from "../../../atoms";
+import { getSlotGroupLeader } from "../../../utils";
 
-// Note: do not user setter directly as it's derived from search params
-export const selectedSlotAtom = atom<number>();
+export enum SelectedSlotValidityState {
+  Valid = "valid",
+  NotReady = "invalid",
+  OutsideEpoch = "outside-epoch",
+  BeforeFirstProcessed = "before-first-processed",
+  Future = "future",
+  NotYou = "not-you",
+}
+
+function getSlotState(
+  slot?: number,
+  epoch?: Epoch,
+  leaderSlots?: number[],
+  earliestProcessedSlotLeader?: number,
+  currentSlot?: number,
+) {
+  if (slot === undefined) return SelectedSlotValidityState.Valid;
+  if (
+    !epoch ||
+    !leaderSlots ||
+    earliestProcessedSlotLeader === undefined ||
+    currentSlot === undefined
+  )
+    return SelectedSlotValidityState.NotReady;
+  if (slot < epoch.start_slot || epoch.end_slot < slot)
+    return SelectedSlotValidityState.OutsideEpoch;
+  if (!leaderSlots.includes(getSlotGroupLeader(slot)))
+    return SelectedSlotValidityState.NotYou;
+  if (slot < earliestProcessedSlotLeader)
+    return SelectedSlotValidityState.BeforeFirstProcessed;
+  if (slot >= currentSlot) return SelectedSlotValidityState.Future;
+  return SelectedSlotValidityState.Valid;
+}
+
+export const baseSelectedSlotAtom = (function () {
+  const _baseSelectedSlotAtom = atom<number>();
+  const _isInitializedAtom = atom(false);
+
+  return atom(
+    (get) => {
+      const epoch = get(epochAtom);
+      const slot = get(_baseSelectedSlotAtom);
+      const leaderSlots = get(leaderSlotsAtom);
+      const earliestProcessedSlotLeader = get(earliestProcessedSlotLeaderAtom);
+      const currentSlot = get(currentSlotAtom);
+      const state = getSlotState(
+        slot,
+        epoch,
+        leaderSlots,
+        earliestProcessedSlotLeader,
+        currentSlot,
+      );
+      return {
+        slot,
+        state,
+        isValid: state === SelectedSlotValidityState.Valid,
+        isInitialized: get(_isInitializedAtom),
+      };
+    },
+    (get, set, slot?: number, epoch?: Epoch) => {
+      const leaderSlots = get(leaderSlotsAtom);
+      const earliestProcessedSlotLeader = get(earliestProcessedSlotLeaderAtom);
+      const currentSlot = get(currentSlotAtom);
+      if (
+        !epoch ||
+        !leaderSlots ||
+        earliestProcessedSlotLeader === undefined ||
+        currentSlot === undefined
+      ) {
+        set(_baseSelectedSlotAtom, undefined);
+        return;
+      }
+
+      set(_baseSelectedSlotAtom, slot);
+      set(_isInitializedAtom, true);
+      const isValid =
+        getSlotState(
+          slot,
+          epoch,
+          leaderSlots,
+          earliestProcessedSlotLeader,
+          currentSlot,
+        ) === SelectedSlotValidityState.Valid;
+
+      if (isValid && slot !== undefined) {
+        // Scroll to selected slot if new selection is defined
+        set(slotOverrideAtom, slot);
+      }
+    },
+  );
+})();
+
+export const selectedSlotAtom = atom<number | undefined>((get) => {
+  const { slot, isValid } = get(baseSelectedSlotAtom);
+  return isValid ? slot : undefined;
+});
 
 export enum DisplayType {
   Count = "Count",
