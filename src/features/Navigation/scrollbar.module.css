@@ -1,0 +1,11 @@
+.icon {
+  position: absolute;
+  line-height: 0;
+  &:hover {
+    filter: brightness(1.5);
+  }
+}
+
+&.icon:hover {
+  filter: brightness(1.5);
+}

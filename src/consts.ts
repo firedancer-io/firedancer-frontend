@@ -1,4 +1,6 @@
 export const slotsPerLeader = 4;
+export const slotsListPinnedSlotOffset = 5;
+export const scheduleUpcomingSlotsCount = 3;
 
 export const solDecimals = 4;
 
@@ -56,3 +58,24 @@ export const txnErrorCodeMap: Record<string, string> = {
 };
 
 export const nonBreakingSpace = "\u00A0";
+
+export const clusterIndicatorHeight = 5;
+
+export const headerHeight = 48;
+export const headerSpacing = 13;
+export const navToggleHeight = 21;
+export const largeNavToggleHeight = 28;
+export const slotsNavSpacing = 5;
+
+export const logoWidth = 21;
+export const logoRightSpacing = 8;
+export const epochThumbPadding = logoRightSpacing;
+
+export const slotsListWidth = 122;
+export const slotNavWithoutListWidth = logoWidth + logoRightSpacing;
+export const slotNavWidth =
+  slotNavWithoutListWidth + slotsListWidth + slotsNavSpacing;
+
+export const narrowNavMedia = "(max-width: 768px)";
+
+export const maxZIndex = 110;
