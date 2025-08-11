@@ -1,0 +1,15 @@
+.status-indicator-live {
+  color: var(--green-live);
+}
+
+.status-indicator-not-live {
+  color: #3cb4ff;
+}
+
+.status-reset {
+  background-color: transparent;
+  color: #3cb4ff;
+  width: unset;
+  height: unset;
+  padding: 0;
+}

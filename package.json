@@ -23,6 +23,7 @@
     "@ag-grid-community/csv-export": "^32.2.0",
     "@ag-grid-community/react": "^32.2.0",
     "@ag-grid-community/styles": "^32.2.0",
+    "@floating-ui/react": "^0.27.15",
     "@fontsource/inter-tight": "^5.2.5",
     "@fontsource/roboto-mono": "^5.1.0",
     "@nivo/core": "^0.88.0",
@@ -53,6 +54,7 @@
     "react-intersection-observer": "^9.13.1",
     "react-use": "^17.5.1",
     "react-virtualized-auto-sizer": "^1.0.24",
+    "react-virtuoso": "^4.13.0",
     "uplot": "^1.6.32",
     "use-debounce": "^10.0.3",
     "zod": "^3.23.8"

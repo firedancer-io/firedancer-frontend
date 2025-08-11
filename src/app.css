@@ -13,10 +13,10 @@
   --green-live: #3cff73;
 
   --header-row-height: 34px;
-  /* headder height + epoch bar height + 10 padding top/bottom */
-  --header-height: 121px;
+  --header-height: 55px;
 
   font-variant-numeric: tabular-nums;
+  overflow: hidden;
 }
 
 .rt-TooltipContent {

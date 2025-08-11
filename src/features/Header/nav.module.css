@@ -1,0 +1,164 @@
+.nav-toggle-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-toggle-item {
+  display: flex;
+  width: 112px;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  padding: 3px 8px;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  border-width: 1px;
+  border-style: solid;
+
+  &[data-status="active"] {
+    font-weight: 600;
+  }
+
+  &.start-item {
+    border-radius: 4px 0px 0px 4px;
+  }
+
+  &.end-item {
+    border-radius: 0px 4px 4px 0px;
+  }
+
+  &.overview {
+    background-color: rgba(197, 103, 234, 0.1);
+    color: #9254ac;
+    border-color: rgba(197, 103, 234, 0.25);
+  }
+
+  &.overview[data-status="active"] {
+    background-color: rgba(197, 103, 234, 0.2);
+    color: #d0b4dc;
+  }
+
+  &.schedule {
+    background-color: rgba(53, 134, 209, 0.1);
+    color: #3974aa;
+    border-color: rgba(53, 134, 209, 0.25);
+  }
+
+  &.schedule[data-status="active"] {
+    background-color: rgba(53, 134, 209, 0.2);
+    color: #a4c8e6;
+  }
+
+  &.gossip {
+    background-color: rgba(158, 84, 35, 0.1);
+    color: #7a5740;
+    border-color: rgba(158, 84, 35, 0.25);
+  }
+
+  &.gossip[data-status="active"] {
+    background-color: rgba(158, 84, 35, 0.2);
+    color: #d6b7a2;
+  }
+
+  &.slotDetails {
+    background-color: rgba(35, 158, 78, 0.1);
+    color: #239e4e;
+    border-color: rgba(35, 158, 78, 0.25);
+  }
+
+  &.slotDetails[data-status="active"] {
+    background-color: rgba(35, 158, 78, 0.2);
+    color: #9fd6b2;
+  }
+}
+
+.nav-dropdown-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #1c2129;
+  border: 1px solid rgba(250, 250, 250, 0.08);
+}
+
+.nav-dropdown-trigger {
+  width: 140px;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  padding: 3px 8px;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  background-color: transparent;
+  border-width: 1px;
+  border-style: solid;
+
+  &.overview {
+    background-color: rgba(197, 103, 234, 0.2);
+    color: #d0b4dc;
+    border-color: rgba(197, 103, 234, 0.25);
+  }
+
+  &.schedule {
+    background-color: rgba(53, 134, 209, 0.2);
+    color: #a4c8e6;
+    border-color: rgba(53, 134, 209, 0.25);
+  }
+
+  &.gossip {
+    background-color: rgba(158, 84, 35, 0.2);
+    color: #d6b7a2;
+    border-color: rgba(158, 84, 35, 0.25);
+  }
+
+  &.slotDetails {
+    background-color: rgba(35, 158, 78, 0.2);
+    color: #239e4e;
+    border-color: rgba(35, 158, 78, 0.25);
+  }
+}
+
+.nav-dropdown-item {
+  display: flex;
+  font-size: 14px;
+  font-weight: 400;
+  padding: 3px 8px;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  align-self: stretch;
+  color: #f7f8f8;
+
+  &[data-status="active"] {
+    border-width: 1px;
+    border-style: solid;
+  }
+
+  &.overview[data-status="active"] {
+    background-color: rgba(197, 103, 234, 0.2);
+    color: #d0b4dc;
+    border-color: rgba(197, 103, 234, 0.25);
+  }
+
+  &.schedule[data-status="active"] {
+    background-color: rgba(53, 134, 209, 0.2);
+    color: #a4c8e6;
+    border-color: rgba(53, 134, 209, 0.25);
+  }
+
+  &.gossip[data-status="active"] {
+    background: rgba(158, 84, 35, 0.2);
+    color: #d6b7a2;
+    border-color: rgba(158, 84, 35, 0.25);
+  }
+
+  &.slotDetails[data-status="active"] {
+    background-color: rgba(35, 158, 78, 0.2);
+    color: #239e4e;
+    border-color: rgba(35, 158, 78, 0.25);
+  }
+}
