@@ -1,0 +1,124 @@
+.search {
+  text-align: center;
+}
+
+.error-text {
+  color: var(--failure-color);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.quick-search-row {
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-search {
+  width: 164px;
+  padding: 15px;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--container-border-color);
+  background: var(--container-background-color);
+
+  &:not(.clickable) {
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+}
+
+.slot-name {
+  font-size: 18px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slot-navigation-container {
+  box-shadow: 0 4px 4px 0 var(--color-background);
+}
+
+.slot-navigation {
+  padding: 3px;
+  align-items: center;
+  gap: 3px;
+  border-radius: 5px;
+  border: 1px solid var(--slot-details-my-slots-color);
+  border-top-width: 3px;
+
+  & .link {
+    text-decoration: none;
+    flex: 1;
+  }
+
+  & .slot-status {
+    padding: 3px 10px;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex: 1 0 0;
+    font-size: 12px;
+    font-weight: 400;
+    border-radius: 3px;
+    background: var(--slot-details-background-color);
+    color: var(--slot-details-color);
+
+    &.selected-slot {
+      font-weight: 600;
+      background: var(--slot-details-selected-background-color);
+      color: var(--slot-details-selected-color);
+    }
+
+    &.skipped-slot {
+      background: var(--slot-details-skipped-background-color);
+    }
+
+    &.skipped-slot.selected-slot {
+      background: var(--slot-details-skipped-selected-background-color);
+    }
+  }
+
+  &.previous-navigation,
+  &.next-navigation {
+    width: 125px;
+
+    &.disabled {
+      border: 1px solid var(--slot-details-disabled-slot-border-color);
+    }
+
+    & a {
+      height: 100%;
+    }
+
+    & .slot-status {
+      height: 100%;
+      font-size: 14px;
+      font-weight: 600;
+    }
+  }
+
+  &.previous-navigation {
+    justify-content: end;
+    mask-image: linear-gradient(to right, transparent 0%, black 100%);
+  }
+
+  &.next-navigation {
+    justify-content: start;
+    mask-image: linear-gradient(to left, transparent 0%, black 100%);
+  }
+}
+
+.header {
+  display: flex;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--container-border-color);
+  background: var(--container-background-color);
+}
