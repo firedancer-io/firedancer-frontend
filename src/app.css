@@ -1,4 +1,4 @@
-.app {
+#app {
   /* radix tokens */
   --color-background: #070b14;
   --default-font-family: "Inter Tight", sans-serif;
@@ -11,10 +11,6 @@
   /* custom tokens */
   --white-heading: #f7f8f8;
   --green-live: #3cff73;
-
-  --header-row-height: 34px;
-  /* headder height + epoch bar height + 10 padding top/bottom */
-  --header-height: 121px;
 
   font-variant-numeric: tabular-nums;
 }
@@ -36,4 +32,24 @@
 
 .rt-Separator {
   background: #65677a;
+}
+
+.sticky {
+  position: sticky;
+  background: var(--color-background);
+}
+
+.app-width-container {
+  max-width: 1920px;
+  margin: 0 auto;
+}
+
+.blur {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.54);
+  backdrop-filter: blur(2px);
 }
