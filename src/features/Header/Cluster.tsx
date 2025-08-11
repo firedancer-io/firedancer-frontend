@@ -6,26 +6,27 @@ import {
   commitHashAtom,
   scheduleStrategyAtom,
 } from "../../api/atoms";
-import { Text, Tooltip } from "@radix-ui/themes";
+import { Text, Tooltip, Flex } from "@radix-ui/themes";
 import styles from "./cluster.module.css";
 import connectedIcon from "../../assets/power.svg";
 import reconnectingIcon from "../../assets/power_off_orange.svg";
 import disconnectedIcon from "../../assets/power_off_red.svg";
 import { socketStateAtom } from "../../api/ws/atoms";
 import { SocketState } from "../../api/ws/types";
-import { getClusterColor } from "./util";
-import { useMedia } from "react-use";
 import type { BlockEngineUpdate } from "../../api/types";
 import { connectedColor, connectingColor, failureColor } from "../../colors";
 import { ScheduleStrategyEnum } from "../../api/entities";
 import { scheduleStrategyIcons } from "../../strategyIcons";
+import { clusterIndicatorHeight, slotsListWidth } from "../../consts";
+import { getClusterColor } from "../../utils";
 
-export default function Cluster() {
+const offset = 2;
+
+export function Cluster() {
   const cluster = useAtomValue(clusterAtom);
   const version = useAtomValue(versionAtom);
   const commitHash = useAtomValue(commitHashAtom);
   const socketState = useAtomValue(socketStateAtom);
-  const isWideScreen = useMedia("(min-width: 600px)");
 
   if (!cluster && !version) return null;
 
@@ -42,32 +43,54 @@ export default function Cluster() {
   }
 
   return (
-    <div className={styles.cluster}>
-      <Tooltip content="Cluster the validator is joined to">
-        <Text
-          className={styles.clusterName}
-          style={{ background: getClusterColor(cluster) }}
-        >
-          {clusterText}
-        </Text>
-      </Tooltip>
-      {isWideScreen && (
+    <Flex
+      width={`${slotsListWidth + offset}px`}
+      className={styles.clusterContainer}
+      ml={`-${offset}px`}
+      p={`${offset}px 5px ${offset}px ${offset}px`}
+    >
+      <Flex
+        className={styles.cluster}
+        direction="column"
+        align="center"
+        style={{ background: getClusterColor(cluster) }}
+      >
+        <Tooltip content="Cluster the validator is joined to">
+          <Text className={styles.clusterName}>{clusterText}</Text>
+        </Tooltip>
+
         <Tooltip
           content={`Current validator software version. Commit Hash: ${commitHash || "unknown"}`}
         >
-          <Text className={styles.version}>v{version}</Text>
+          <Text>v{version}</Text>
         </Tooltip>
-      )}
+      </Flex>
+
       <Tooltip
         content={`GUI is currently ${socketState} ${socketState === SocketState.Disconnected ? "from" : "to"} the validator`}
       >
-        <img src={icon} alt="ws status" />
+        <img src={icon} className={styles.wsStatusIcon} alt="ws status" />
       </Tooltip>
 
       <JitoIcon />
 
       <StrategyIcon />
-    </div>
+    </Flex>
+  );
+}
+
+export function CluserIndicator() {
+  const cluster = useAtomValue(clusterAtom);
+  const color = getClusterColor(cluster);
+
+  return (
+    <div
+      style={{
+        background: color,
+        height: clusterIndicatorHeight,
+        width: "100%",
+      }}
+    />
   );
 }
 
@@ -93,8 +116,8 @@ function JitoIcon() {
       content={`Currently ${blockEngine.status} ${blockEngine.status === "disconnected" ? "from" : "to"} ${blockEngine.name} - ${blockEngine.url} (${blockEngine.ip})`}
     >
       <svg
-        width="16"
-        height="16"
+        width="10"
+        height="10"
         viewBox="0 0 48 48"
         xmlns="http://www.w3.org/2000/svg"
       >
@@ -135,6 +158,7 @@ function JitoIcon() {
 }
 
 function StrategyIcon() {
+  const fontSize = "12px";
   const scheduleStrategy = useAtomValue(scheduleStrategyAtom);
   if (!scheduleStrategy) return;
 
@@ -142,19 +166,19 @@ function StrategyIcon() {
   if (scheduleStrategy === ScheduleStrategyEnum.balanced) {
     return (
       <Tooltip content="Transaction scheduler strategy: balanced">
-        <div>{icon}</div>
+        <div style={{ fontSize }}>{icon}</div>
       </Tooltip>
     );
   } else if (scheduleStrategy === ScheduleStrategyEnum.perf) {
     return (
       <Tooltip content="Transaction scheduler strategy: performance">
-        <div style={{ margin: "0 -2px" }}>{icon}</div>
+        <div style={{ margin: "0 -1px", fontSize }}>{icon}</div>
       </Tooltip>
     );
   } else if (scheduleStrategy === ScheduleStrategyEnum.revenue) {
     return (
       <Tooltip content="Transaction scheduler strategy: revenue">
-        <div>{icon}</div>
+        <div style={{ fontSize }}>{icon}</div>
       </Tooltip>
     );
   }
