@@ -5,11 +5,13 @@ import ValidatorsCard from "./ValidatorsCard";
 import SlotStatusCard from "./StatusCard";
 import ComputeUnitsCard from "./SlotPerformance/ComputeUnitsCard";
 import TransactionBarsCard from "./SlotPerformance/TransactionBarsCard";
+import EpochCard from "./EpochCard";
 
 export default function Overview() {
   return (
     <Flex direction="column" gap="4" flexGrow="1" flexShrink="1">
       <Flex gap="16px" align="stretch" wrap="wrap">
+        <EpochCard />
         <SlotStatusCard />
         <TransactionsCard />
         <ValidatorsCard />
