@@ -35,6 +35,7 @@ export default function App() {
   return (
     <Theme
       className="app"
+      id="app"
       appearance="dark"
       ref={setRefAndColors}
       scaling="90%"
