@@ -1,6 +1,5 @@
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { slotsPerLeader } from "../../../consts";
-import { usePubKey } from "../../../hooks/usePubKey";
 import styles from "./upcomingSlot.module.css";
 import sharedStyles from "./slots.module.css";
 import { useAtomValue } from "jotai";
@@ -9,14 +8,13 @@ import {
   currentSlotAtom,
   slotDurationAtom,
 } from "../../../atoms";
-import { usePeer } from "../../../hooks/usePeer";
-import { identityKeyAtom } from "../../../api/atoms";
 import { useReducer } from "react";
 import { DateTime, Duration } from "luxon";
 import { getTimeTillText, slowDateTimeNow } from "../../../utils";
 import PeerIcon from "../../../components/PeerIcon";
 import { useHarmonicIntervalFn, useMedia } from "react-use";
 import clsx from "clsx";
+import { useSlotInfo } from "../../../hooks/useSlotInfo";
 
 interface UpcomingSlotCardProps {
   slot: number;
@@ -24,11 +22,8 @@ interface UpcomingSlotCardProps {
 
 export default function UpcomingSlotCard({ slot }: UpcomingSlotCardProps) {
   const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
-  const myPubkey = useAtomValue(identityKeyAtom);
-  const pubkey = usePubKey(slot);
-  const peer = usePeer(pubkey ?? "");
+  const { pubkey, peer, isLeader, name } = useSlotInfo(slot);
 
-  const isLeader = myPubkey === pubkey;
   const isOneAway =
     currentLeaderSlot !== undefined &&
     slot === currentLeaderSlot + slotsPerLeader;
@@ -37,7 +32,6 @@ export default function UpcomingSlotCard({ slot }: UpcomingSlotCardProps) {
     slot === currentLeaderSlot + slotsPerLeader * 2;
 
   const isWideScreen = useMedia("(min-width: 1200px)");
-  const name = peer?.info?.name ?? (isLeader ? "You" : "Private");
 
   return (
     <div

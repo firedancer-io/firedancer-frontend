@@ -16,11 +16,12 @@ import type {
   SlotResponse,
 } from "./api/types";
 import { merge } from "lodash";
-import { getLeaderSlots, getStake } from "./utils";
+import { getLeaderSlots, getSlotGroupLeader, getStake } from "./utils";
 import { searchLeaderSlotsAtom } from "./features/LeaderSchedule/atoms";
 import { selectedSlotAtom } from "./features/Overview/SlotPerformance/atoms";
 
 export const containerElAtom = atom<HTMLDivElement | null>();
+export const slotsListElAtom = atom<HTMLDivElement | null>();
 
 const _epochsAtom = atomWithImmer<Epoch[]>([]);
 export const epochAtom = atom(
@@ -55,28 +56,68 @@ export const nextEpochAtom = atom((get) => {
   return nextEpoch;
 });
 
-/** The first slot of the group of 4 slots for override slot leader */
-const _slotOverrideAtom = atom<number | undefined>(undefined);
-export const slotOverrideAtom = atom(
-  (get) => get(_slotOverrideAtom),
-  (get, set, param?: number | ((prev?: number) => number | undefined)) => {
-    const epoch = get(epochAtom);
-    if (!epoch) return;
+export const [slotOverrideAtom, setSlotScrollListFnAtom, autoScrollAtom] =
+  (function getSlotOverrideAtom() {
+    const _slotOverrideAtom = atom<number>();
+    const _scrollSlotListFn = atom<{ fn?: (slot: number | undefined) => void }>(
+      {},
+    );
 
-    const newValue =
-      typeof param === "function" ? param(get(_slotOverrideAtom)) : param;
-    let startOverrideSlot = newValue ? newValue - (newValue % 4) : newValue;
+    let rafId: number | undefined = undefined;
 
-    if (startOverrideSlot !== undefined) {
-      startOverrideSlot = Math.min(
-        epoch.end_slot,
-        Math.max(startOverrideSlot, epoch.start_slot),
-      );
-    }
+    return [
+      atom(
+        (get) => get(_slotOverrideAtom),
+        (
+          get,
+          set,
+          slot: number | undefined,
+          skipScrollList: boolean = false,
+          scrollIndexOffset: number = 1,
+        ) => {
+          const epoch = get(epochAtom);
+          if (!epoch) return;
 
-    set(_slotOverrideAtom, startOverrideSlot);
-  },
-);
+          let startOverrideSlot = slot ? getSlotGroupLeader(slot) : slot;
+          let scrollSlot = startOverrideSlot;
+
+          if (startOverrideSlot !== undefined) {
+            startOverrideSlot = Math.min(
+              epoch.end_slot,
+              Math.max(startOverrideSlot, epoch.start_slot),
+            );
+            scrollSlot = Math.min(
+              epoch.end_slot,
+              Math.max(
+                startOverrideSlot + (scrollIndexOffset ?? 0) * slotsPerLeader,
+                epoch.start_slot,
+              ),
+            );
+          }
+
+          set(_slotOverrideAtom, startOverrideSlot);
+          if (!skipScrollList) {
+            const { fn } = get(_scrollSlotListFn);
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+              fn?.(scrollSlot);
+            });
+          }
+        },
+      ),
+      atom(
+        null,
+        (
+          _,
+          set,
+          scrollFn: ((slot: number | undefined) => void) | undefined,
+        ) => {
+          set(_scrollSlotListFn, { fn: scrollFn });
+        },
+      ),
+      atom((get) => get(_slotOverrideAtom) === undefined),
+    ];
+  })();
 
 const slotStatusAtom = atomWithImmer<Record<number, SlotLevel>>({});
 
@@ -181,7 +222,7 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
       for (const cachedSlot of cachedSlots) {
         const numberVal = Number(cachedSlot);
         if (searchSlots?.length) {
-          const slotGroupStart = numberVal - (numberVal % slotsPerLeader);
+          const slotGroupStart = getSlotGroupLeader(numberVal);
           if (searchSlots.includes(slotGroupStart)) {
             continue;
           }
@@ -240,23 +281,6 @@ export const nextEpochLeaderSlotsAtom = atom((get) => {
   return getLeaderSlots(epoch, pubkey);
 });
 
-// let _skippedSlots: number[] | undefined = undefined;
-// /** In order array of your skipped leader slots */
-// export const skippedSlotsAtom = atom((get) => {
-//   if (_skippedSlots) return _skippedSlots;
-
-//   const leaderSlots = get(leaderSlotsAtom);
-//   const currentSlot = get(currentLeaderSlotAtom);
-//   const skippedSlots = leaderSlots?.filter(
-//     (s) => Math.random() > 0.96 && s < (currentSlot ?? 0)
-//   );
-
-//   if (skippedSlots?.length ?? 0 > 1) {
-//     _skippedSlots = skippedSlots;
-//   }
-//   return _skippedSlots;
-// });
-
 export const nextLeaderSlotIndexAtom = atom<number | undefined>(undefined);
 /** Next slot you are leader. Once a leader slot is reached, the next starting leader group of 4 is calculated before your current group of 4 finishes */
 export const nextLeaderSlotAtom = atom(
@@ -313,17 +337,17 @@ export const isCurrentlyLeaderAtom = atom((get) => {
   return false;
 });
 
-/** The first slot of the group of 4 slots for current leader */
+/** The first slot of the group of slots for current leader */
 export const currentLeaderSlotAtom = atom((get) => {
   const currentSlot = get(currentSlotAtom);
   if (currentSlot == null) return;
 
-  return currentSlot - (currentSlot % 4);
+  return getSlotGroupLeader(currentSlot);
 });
 
 export const peersAtom = atomWithImmer<Record<string, Peer>>({});
 
-export const addPeersAtom = atom(null, (get, set, peers?: Peer[]) => {
+export const addPeersAtom = atom(null, (_, set, peers?: Peer[]) => {
   if (!peers?.length) return;
 
   set(peersAtom, (draft) => {
@@ -333,7 +357,7 @@ export const addPeersAtom = atom(null, (get, set, peers?: Peer[]) => {
   });
 });
 
-export const updatePeersAtom = atom(null, (get, set, peers?: Peer[]) => {
+export const updatePeersAtom = atom(null, (_, set, peers?: Peer[]) => {
   if (!peers?.length) return;
 
   set(peersAtom, (draft) => {
@@ -344,7 +368,7 @@ export const updatePeersAtom = atom(null, (get, set, peers?: Peer[]) => {
 });
 
 const removePeerDelay = 60_000 * 5;
-export const removePeersAtom = atom(null, (get, set, peers?: PeerRemove[]) => {
+export const removePeersAtom = atom(null, (_, set, peers?: PeerRemove[]) => {
   if (!peers?.length) return;
 
   set(peersAtom, (draft) => {
@@ -459,6 +483,58 @@ export const getSlotStateAtom = (slot?: number) =>
     return "past";
   });
 
+export const getIsCurrentLeaderAtom = (slot?: number) =>
+  atom((get) => {
+    if (slot === undefined) return false;
+    const currentLeaderSlot = get(currentLeaderSlotAtom);
+    if (currentLeaderSlot === undefined) return false;
+
+    return (
+      currentLeaderSlot <= slot && slot < currentLeaderSlot + slotsPerLeader
+    );
+  });
+
+export const getIsPreviousLeaderAtom = (slot?: number) =>
+  atom((get) => {
+    if (slot === undefined) return false;
+    const currentLeaderSlot = get(currentLeaderSlotAtom);
+    if (currentLeaderSlot === undefined) return false;
+
+    return (
+      currentLeaderSlot - slotsPerLeader <= slot && slot < currentLeaderSlot
+    );
+  });
+
+export const getIsNextLeaderAtom = (slot?: number) =>
+  atom((get) => {
+    if (slot === undefined) return false;
+    const currentLeaderSlot = get(currentLeaderSlotAtom);
+    if (currentLeaderSlot === undefined) return false;
+
+    return (
+      currentLeaderSlot + slotsPerLeader <= slot &&
+      slot < currentLeaderSlot + 2 * slotsPerLeader
+    );
+  });
+
+export const getIsFutureLeaderAtom = (slot?: number) =>
+  atom((get) => {
+    if (slot === undefined) return false;
+    const currentLeaderSlot = get(currentLeaderSlotAtom);
+    if (currentLeaderSlot === undefined) return false;
+
+    return currentLeaderSlot + slotsPerLeader <= slot;
+  });
+
+export const getIsPastLeaderAtom = (slot?: number) =>
+  atom((get) => {
+    if (slot === undefined) return false;
+    const currentLeaderSlot = get(currentLeaderSlotAtom);
+    if (currentLeaderSlot === undefined) return false;
+
+    return slot < currentLeaderSlot;
+  });
+
 export const getIsFutureSlotAtom = (slot?: number) =>
   atom((get) => {
     if (slot === undefined) return true;
@@ -506,3 +582,19 @@ export const skipRateAtom = atom(
     });
   },
 );
+
+export type Status = "Live" | "Past" | "Current" | "Future";
+export const statusAtom = atom<Status | null>((get) => {
+  const currentSlot = get(currentSlotAtom);
+  if (currentSlot === undefined) return null;
+
+  const slotOverride = get(slotOverrideAtom);
+  if (slotOverride === undefined) return "Live";
+
+  if (getSlotGroupLeader(slotOverride) === getSlotGroupLeader(currentSlot))
+    return "Current";
+
+  if (slotOverride > currentSlot) return "Future";
+
+  return "Past";
+});

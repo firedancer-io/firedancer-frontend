@@ -1,0 +1,47 @@
+.slot-name {
+  font-size: 18px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slot-status {
+  padding: 5px 10px;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 5px;
+  border: 1px solid #3d414c;
+  background: #232a38;
+  color: #9aabc3;
+  cursor: pointer;
+
+  &.skipped-slot {
+    border-color: rgba(255, 71, 71, 0.38);
+    background-color: #361818;
+    color: #9aabc3;
+  }
+
+  &.skipped-slot.selected-slot {
+    border-color: rgba(255, 71, 71, 0.65);
+    background-color: #3b0c0c;
+    color: #9aabc3;
+  }
+
+  &.selected-slot {
+    border-color: #7f8fb9;
+    background-color: #283551;
+    color: #e3efff;
+  }
+}
+
+.slot-navigation {
+  padding: 0 5px;
+  align-self: stretch;
+  border-radius: 5px;
+  border: 1px solid #3d414c;
+  background: #232a38;
+}

@@ -1,0 +1,266 @@
+.slot-group-container {
+  padding: 0 0 4px 0;
+  box-sizing: border-box;
+  background: var(--color-background);
+}
+
+.slot-group {
+  height: 100%;
+  background: #071017;
+  border: 1px solid rgba(113, 124, 152, 0.5);
+  border-radius: 5px;
+  padding: 2px 4px;
+  align-items: center;
+  box-sizing: border-box;
+
+  &.past-slot-group {
+    height: 42px;
+    border-color: rgba(113, 124, 152, 0.5);
+    background: #071017;
+
+    &.your-slot-group:hover {
+      border-color: rgba(42, 126, 223, 0.8);
+    }
+
+    &.your-slot-group:active {
+      border-color: #379bf3;
+    }
+
+    &.selected-slot-group {
+      border-color: #717c98;
+      background: #1a2641;
+
+      &.your-slot-group:hover {
+        border-color: #2a7edf;
+      }
+
+      &.your-slot-group:active {
+        border-color: #379bf3;
+      }
+    }
+  }
+
+  &.current-slot-group {
+    height: 78px;
+    border-radius: 5px;
+    border-color: rgba(28, 231, 194, 0.4);
+    background: #021411;
+    mix-blend-mode: exclusion;
+    box-shadow:
+      0 0 8px 0 rgba(28, 231, 194, 0.5) inset,
+      0 0 5px 0 rgba(28, 231, 194, 0.5);
+
+    .slot-header {
+      height: 23px;
+    }
+
+    .slot-group-name {
+      font-size: 18px;
+      color: #f2f2f2;
+    }
+
+    &.your-slot-group:hover {
+      border-color: rgba(28, 231, 194, 0.82);
+      box-shadow:
+        0 0 16px 0 rgba(28, 231, 194, 0.5) inset,
+        0 0 30px 0 rgba(28, 231, 194, 0.5);
+    }
+  }
+
+  &.future-slot-group {
+    height: 22px;
+    background: #111;
+    border-color: rgba(67, 67, 67, 0.5);
+
+    &.selected-slot-group {
+      border-color: #717c98;
+      background: #212121;
+    }
+
+    &:not(.next-slot-group) .slot-content {
+      filter: grayscale(100%) brightness(50%);
+    }
+
+    &.selected-slot-group {
+      border-color: rgba(67, 67, 67, 0.5);
+      background: #212121;
+    }
+  }
+
+  &.skipped-slot-group {
+    border-color: rgba(212, 73, 73, 0.5);
+    background: #1f0404;
+
+    &.your-slot-group:hover {
+      border-color: rgba(42, 126, 223, 0.8);
+    }
+
+    &.your-slot-group:active {
+      border-color: #379bf3;
+    }
+
+    &.selected-slot-group {
+      border-color: rgba(212, 73, 73, 0.5);
+      background: #370808;
+
+      &.your-slot-group:hover {
+        border-color: #2a7edf;
+      }
+    }
+  }
+}
+
+.slot-border {
+  height: 100%;
+
+  .previous-slot-group,
+  .next-slot-group {
+    border-width: 0px;
+  }
+
+  &:has(.previous-slot-group) {
+    border-radius: 5px;
+    border: 1px solid transparent;
+    background: linear-gradient(
+      0deg,
+      rgba(113, 124, 152, 0.5) 0%,
+      rgba(28, 231, 194, 0.4) 100%
+    );
+    box-sizing: border-box;
+    background-origin: border-box;
+  }
+
+  &:has(.next-slot-group) {
+    border-radius: 5px;
+    border: 1px solid transparent;
+    background: linear-gradient(
+      0deg,
+      rgba(28, 231, 194, 0.4) 50%,
+      rgba(113, 124, 152, 0.5) 95%
+    );
+    box-sizing: border-box;
+    background-origin: border-box;
+  }
+
+  &:has(.next-slot-group):hover,
+  &:has(.previous-slot-group):hover {
+    background: rgba(42, 126, 223, 0.8);
+  }
+
+  &:has(.next-slot-group):active,
+  &:has(.previous-slot-group):active {
+    background: #379bf3;
+  }
+}
+
+.slot-header {
+  width: 100%;
+  font-size: 12px;
+  min-height: 18px;
+  height: 18px;
+  font-weight: 400;
+  color: #ccc;
+  overflow: hidden;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+}
+
+.slot-group-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slot-row {
+  background-color: rgba(27, 101, 153, 0.4);
+  border-radius: 5px;
+  justify-content: center;
+  padding: 4px;
+  align-items: center;
+  font-size: 14px;
+  color: #a4a3a3;
+}
+
+.slot-item-content {
+  font-size: 10px;
+  font-weight: 400;
+  align-items: center;
+  color: #8e909d;
+}
+
+.slot-item-loading {
+  display: flex;
+  flex-direction: row;
+  background-color: rgba(27, 101, 153, 0.2);
+  gap: 4px;
+  border-radius: 2px;
+  justify-content: center;
+  text-align: center;
+  align-items: center;
+  font-size: 14px;
+  height: 140px;
+}
+
+.scrollbar-canvas {
+  background-color: aqua;
+}
+
+.expanded-slot-status {
+  border: 1px solid transparent;
+  border-radius: 2px;
+  align-items: flex-end;
+}
+
+.expanded-slot-status .current-slot-status-progress {
+  width: 100%;
+  height: 0;
+  animation: fillProgress var(--slot-duration) ease-in-out forwards;
+  background-color: #0051df;
+}
+
+.compact-slot-status {
+  width: 4px;
+  height: 7px;
+  border-radius: 2px;
+}
+
+@keyframes fillProgress {
+  from {
+    height: 0;
+  }
+  to {
+    height: 100%;
+  }
+}
+
+.scroll-placeholder-item {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(113, 124, 152, 0.3);
+}
+
+.scroll-placeholder-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 246, 246, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  from {
+    left: -100%;
+  }
+  to {
+    left: 100%;
+  }
+}

@@ -37,7 +37,6 @@ import {
   setSlotStatusAtom,
   updatePeersAtom,
   epochAtom,
-  deleteSlotStatusBoundsAtom,
   deleteSlotResponseBoundsAtom,
   skipRateAtom,
 } from "../atoms";
@@ -312,11 +311,9 @@ export function useSetAtomWsData() {
     }
   });
 
-  const deleteSlotStatusBounds = useSetAtom(deleteSlotStatusBoundsAtom);
   const deleteSlotResponseBounds = useSetAtom(deleteSlotResponseBoundsAtom);
 
   useInterval(() => {
-    deleteSlotStatusBounds();
     deleteSlotResponseBounds();
 
     if (epoch) {

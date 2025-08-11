@@ -1,7 +1,5 @@
 import type { TextProps } from "@radix-ui/themes";
 import { Box, Flex, Text } from "@radix-ui/themes";
-import { usePubKey } from "../../../hooks/usePubKey";
-import { usePeer } from "../../../hooks/usePeer";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
 import {
@@ -13,7 +11,6 @@ import {
 } from "../../../utils";
 import { useAtomValue } from "jotai";
 import PeerIcon from "../../../components/PeerIcon";
-import { identityKeyAtom } from "../../../api/atoms";
 import styles from "./cardValidatorSummary.module.css";
 import { useHarmonicIntervalFn, useMedia, useUpdate } from "react-use";
 import type { Peer } from "../../../api/types";
@@ -22,6 +19,7 @@ import { formatNumber } from "../../../numUtils";
 import clsx from "clsx";
 import ArrowDropdown from "../../../components/ArrowDropdown";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
+import { useSlotInfo } from "../../../hooks/useSlotInfo";
 
 interface CardValidatorSummaryProps {
   slot: number;
@@ -32,13 +30,7 @@ export default function CardValidatorSummary({
   slot,
   showTime,
 }: CardValidatorSummaryProps) {
-  const pubkey = usePubKey(slot);
-  const myPubkey = useAtomValue(identityKeyAtom);
-  const peer = usePeer(pubkey ?? "");
-
-  const isLeader = myPubkey === pubkey;
-
-  const name = peer?.info?.name ?? (isLeader ? "You" : "Private");
+  const { pubkey, peer, isLeader, name } = useSlotInfo(slot);
 
   return (
     <Flex gap="1">
@@ -62,21 +54,12 @@ export function CardValidatorSummaryMobile({
   slot,
   showTime,
 }: CardValidatorSummaryProps) {
-  const pubkey = usePubKey(slot);
-  const myPubkey = useAtomValue(identityKeyAtom);
-  const peer = usePeer(pubkey ?? "");
-
-  const isLeader = myPubkey === pubkey;
+  const { pubkey, peer, isLeader, name: slotName } = useSlotInfo(slot);
   const isWideScreen = useMedia("(min-width: 700px)");
-
-  let name = peer?.info?.name ?? (isLeader ? "You" : "");
-  if (!name) {
-    if (isWideScreen) {
-      name = "Private";
-    } else {
-      name = pubkey ? `${pubkey.substring(0, 8)}...` : "Private";
-    }
-  }
+  const name = useMemo(() => {
+    if (slotName !== "Private" || isWideScreen) return slotName;
+    return pubkey ? `${pubkey.substring(0, 8)}...` : "Private";
+  }, [slotName, isWideScreen, pubkey]);
 
   return (
     <Flex direction="column" className={styles.containerMobile} gap="1">

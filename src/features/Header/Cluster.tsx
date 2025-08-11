@@ -13,14 +13,27 @@ import reconnectingIcon from "../../assets/power_off_orange.svg";
 import disconnectedIcon from "../../assets/power_off_red.svg";
 import { socketStateAtom } from "../../api/ws/atoms";
 import { SocketState } from "../../api/ws/types";
-import { getClusterColor } from "./util";
 import { useMedia } from "react-use";
-import type { BlockEngineUpdate } from "../../api/types";
-import { connectedColor, connectingColor, failureColor } from "../../colors";
+import type {
+  BlockEngineUpdate,
+  Cluster as ClusterType,
+} from "../../api/types";
+import {
+  clusterDevelopmentColor,
+  clusterDevnetColor,
+  clusterMainnetBetaColor,
+  clusterPythnetColor,
+  clusterPythtestColor,
+  clusterTestnetColor,
+  clusterUnknownColor,
+  connectedColor,
+  connectingColor,
+  failureColor,
+} from "../../colors";
 import { ScheduleStrategyEnum } from "../../api/entities";
 import { scheduleStrategyIcons } from "../../strategyIcons";
 
-export default function Cluster() {
+export function Cluster() {
   const cluster = useAtomValue(clusterAtom);
   const version = useAtomValue(versionAtom);
   const commitHash = useAtomValue(commitHashAtom);
@@ -69,6 +82,33 @@ export default function Cluster() {
       <StrategyIcon />
     </div>
   );
+}
+
+export function CluserIndicator() {
+  const cluster = useAtomValue(clusterAtom);
+  const color = getClusterColor(cluster);
+
+  return <div className={styles.indicator} style={{ background: color }} />;
+}
+
+function getClusterColor(cluster?: ClusterType) {
+  switch (cluster) {
+    case "mainnet-beta":
+      return clusterMainnetBetaColor;
+    case "testnet":
+      return clusterTestnetColor;
+    case "development":
+      return clusterDevelopmentColor;
+    case "devnet":
+      return clusterDevnetColor;
+    case "pythnet":
+      return clusterPythnetColor;
+    case "pythtest":
+      return clusterPythtestColor;
+    case "unknown":
+    case undefined:
+      return clusterUnknownColor;
+  }
 }
 
 function getBlockEngineFill(blockEngineUpdate: BlockEngineUpdate) {
