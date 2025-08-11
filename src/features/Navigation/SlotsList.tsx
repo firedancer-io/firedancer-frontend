@@ -61,10 +61,10 @@ export default function SlotsList({
   const initialTopMostItemIndex = useMemo(() => {
     if (selectedSlot !== undefined) {
       const slotIndex = getIndexForSlot(selectedSlot);
-      return slotIndex;
+      return slotIndex > 0 ? slotIndex - 1 : slotIndex;
     } else if (slotOverride !== undefined) {
       const slotIndex = getIndexForSlot(slotOverride);
-      return slotIndex;
+      return slotIndex > 0 ? slotIndex - 1 : slotIndex;
     } else if (currentLeaderSlot !== undefined) {
       const slotIndex = getIndexForSlot(currentLeaderSlot);
       const visibleStartIndex = slotIndex - slotsListFutureSlotsCount;
