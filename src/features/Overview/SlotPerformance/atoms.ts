@@ -10,19 +10,17 @@ import { produce } from "immer";
 import { countBy } from "lodash";
 import { epochAtom } from "../../../atoms";
 
-// Note: do not user setter directly as it's derived from search params
-const _selectedSlotAtom = atom<number | undefined>(undefined);
-export const selectedSlotAtom = atom(
-  (get) => get(_selectedSlotAtom),
-  (get, set, slot: number | undefined) => {
-    const epoch = get(epochAtom);
-    const isSelectedSlotValid = Boolean(
-      epoch && slot && epoch.start_slot <= slot && slot <= epoch.end_slot,
-    );
-    if (isSelectedSlotValid) set(_selectedSlotAtom, slot);
-    else set(_selectedSlotAtom, undefined);
-  },
-);
+export const selectedSlotQueryParamAtom = atom<number>();
+export const isSelectedSlotQueryParamValidAtom = atom<boolean>((get) => {
+  const epoch = get(epochAtom);
+  const slot = get(selectedSlotQueryParamAtom);
+  if (slot === undefined) return true;
+  return Boolean(epoch && epoch.start_slot <= slot && slot <= epoch.end_slot);
+});
+export const selectedSlotAtom = atom<number | undefined>((get) => {
+  const isValid = get(isSelectedSlotQueryParamValidAtom);
+  return isValid ? get(selectedSlotQueryParamAtom) : undefined;
+});
 
 export enum DisplayType {
   Count = "Count",

@@ -4,7 +4,11 @@ import ComputeUnitsCard from "../Overview/SlotPerformance/ComputeUnitsCard";
 import TransactionBarsCard from "../Overview/SlotPerformance/TransactionBarsCard";
 import { useSlotSearchParam } from "./useSearchParams";
 import { useAtomValue, useSetAtom } from "jotai";
-import { selectedSlotAtom } from "../Overview/SlotPerformance/atoms";
+import {
+  isSelectedSlotQueryParamValidAtom,
+  selectedSlotAtom,
+  selectedSlotQueryParamAtom,
+} from "../Overview/SlotPerformance/atoms";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useUnmount } from "react-use";
 import {
@@ -34,12 +38,12 @@ import green_flag from "../../assets/flag.svg";
 import { skippedSlotsAtom } from "../../api/atoms";
 
 export default function SlotDetails() {
-  const selectedSlotFromAtom = useAtomValue(selectedSlotAtom);
+  const selectedSlot = useAtomValue(selectedSlotAtom);
 
   return (
     <Flex direction="column" gap="2" flexGrow="1" flexShrink="1" height="100%">
       <Setup />
-      {selectedSlotFromAtom === undefined ? <SlotSearch /> : <SlotContent />}
+      {selectedSlot === undefined ? <SlotSearch /> : <SlotContent />}
     </Flex>
   );
 }
@@ -47,37 +51,31 @@ export default function SlotDetails() {
 function Setup() {
   const { selectedSlot } = useSlotSearchParam();
   const epoch = useAtomValue(epochAtom);
-  const setSelectedSlotAtom = useSetAtom(selectedSlotAtom);
+  const setSelectedSlotQueryParamAtom = useSetAtom(selectedSlotQueryParamAtom);
 
   // To sync atom to search param
   useEffect(() => {
-    setSelectedSlotAtom(selectedSlot);
-  }, [epoch, selectedSlot, setSelectedSlotAtom]);
-
+    setSelectedSlotQueryParamAtom(selectedSlot);
+  }, [epoch, selectedSlot, setSelectedSlotQueryParamAtom]);
   useUnmount(() => {
-    setSelectedSlotAtom(undefined);
+    setSelectedSlotQueryParamAtom(undefined);
   });
 
   return null;
 }
 
-function InvalidSlotState() {
-  const { selectedSlot } = useSlotSearchParam();
+function Errors() {
+  const selectedSlotQueryParam = useAtomValue(selectedSlotQueryParamAtom);
+  const isSelectedSlotQueryParamValid = useAtomValue(
+    isSelectedSlotQueryParamValidAtom,
+  );
   const epoch = useAtomValue(epochAtom);
 
-  const [render, setRender] = useState(false);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setRender(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (!render) return;
+  if (isSelectedSlotQueryParamValid) return;
   return (
     <Text color="red" size="3" style={{ color: failureColor }}>
-      Slot {selectedSlot} is outside this epoch. Try again with a different ID
-      between {epoch?.start_slot} - {epoch?.end_slot}.
+      Slot {selectedSlotQueryParam} is outside this epoch. Try again with a
+      different ID between {epoch?.start_slot} - {epoch?.end_slot}.
     </Text>
   );
 }
@@ -131,7 +129,7 @@ function SlotSearch() {
           </IconButton>
         </TextField.Slot>
       </TextField.Root>
-      {selectedSlot && <InvalidSlotState />}
+      <Errors />
       <QuickSearch />
     </Flex>
   );

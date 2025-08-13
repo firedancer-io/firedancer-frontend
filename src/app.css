@@ -1,4 +1,4 @@
-.app {
+#app {
   /* radix tokens */
   --color-background: #070b14;
   --default-font-family: "Inter Tight", sans-serif;
@@ -16,7 +16,6 @@
   --header-height: 55px;
 
   font-variant-numeric: tabular-nums;
-  overflow: hidden;
 }
 
 .rt-TooltipContent {

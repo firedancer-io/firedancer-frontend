@@ -1,7 +1,9 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import {
+  autoScrollAtom,
   currentLeaderSlotAtom,
   epochAtom,
+  setSlotScrollListFnAtom,
   slotOverrideAtom,
 } from "../../atoms";
 import { Box } from "@radix-ui/themes";
@@ -16,22 +18,39 @@ import { Virtuoso } from "react-virtuoso";
 import { selectedSlotAtom } from "../Overview/SlotPerformance/atoms";
 import ResetLive from "./ResetLive";
 
+const computeItemKey = (slot: number) => slot;
+
 export default function SlotsList({
-  listRef,
   width,
   height,
 }: {
-  listRef: React.RefObject<VirtuosoHandle>;
   width: number;
   height: number;
 }) {
   const listContainerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<VirtuosoHandle>(null);
   const visibleStartIndexRef = useRef<number | null>(null);
 
   const epoch = useAtomValue(epochAtom);
   const selectedSlot = useAtomValue(selectedSlotAtom);
   const slotOverride = useAtomValue(slotOverrideAtom);
   const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
+
+  const setSlotScrollListFn = useSetAtom(setSlotScrollListFnAtom);
+  useEffect(() => {
+    setSlotScrollListFn((slot: number | undefined) => {
+      if (!epoch || !listRef.current || !slot) return;
+      const slotIndex = Math.trunc((epoch.end_slot - slot) / slotsPerLeader);
+      listRef.current.scrollToIndex({
+        index: slotIndex,
+        align: "start",
+      });
+    });
+
+    return () => {
+      setSlotScrollListFn(undefined);
+    };
+  }, [epoch, setSlotScrollListFn]);
 
   const numSlotsInEpoch = useMemo(
     () => (epoch ? epoch.end_slot - epoch.start_slot + 1 : 0),
@@ -80,6 +99,7 @@ export default function SlotsList({
       (visibleStartIndexRef.current = startIndex),
     [visibleStartIndexRef],
   );
+
   useEffect(() => {
     if (!listContainerRef.current) return;
     const container = listContainerRef.current;
@@ -112,6 +132,7 @@ export default function SlotsList({
 
   return (
     <Box ref={listContainerRef} width={`${width}px`} height={`${height}px`}>
+      <HandleSlotOverride listRef={listRef} />
       <SlotsPlaceholder width={width} height={height} />
       <ResetLive />
       <Virtuoso
@@ -122,7 +143,8 @@ export default function SlotsList({
         data={slotGroupsDescending}
         totalCount={slotGroupsDescending.length}
         initialTopMostItemIndex={initialTopMostItemIndex}
-        overscan={2}
+        increaseViewportBy={{ top: 10, bottom: 10 }}
+        computeItemKey={computeItemKey}
         itemContent={(_, data) => <SlotsRenderer leaderSlotForGroup={data} />}
         rangeChanged={rangeChanged}
         components={{ ScrollSeekPlaceholder }}
@@ -134,6 +156,45 @@ export default function SlotsList({
       />
     </Box>
   );
+}
+
+function HandleSlotOverride({
+  listRef,
+}: {
+  listRef: React.RefObject<VirtuosoHandle>;
+}) {
+  const epoch = useAtomValue(epochAtom);
+  const autoScroll = useAtomValue(autoScrollAtom);
+  const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
+  const selectedSlot = useAtomValue(selectedSlotAtom);
+  const setSlotOverride = useSetAtom(slotOverrideAtom);
+
+  // Auto scroll enabled (live scrolling)
+  useEffect(() => {
+    if (
+      !autoScroll ||
+      !epoch ||
+      currentLeaderSlot === undefined ||
+      !listRef.current
+    )
+      return;
+    const slotIndex = Math.trunc(
+      (epoch.end_slot - currentLeaderSlot) / slotsPerLeader,
+    );
+    const visibleStartIndex = slotIndex - slotsListFutureSlotsCount;
+    listRef.current.scrollToIndex({
+      index: visibleStartIndex > 0 ? visibleStartIndex : 0,
+      align: "start",
+    });
+  }, [autoScroll, currentLeaderSlot, epoch, listRef]);
+
+  // Scroll to selected slot (disable auto scrolling)
+  useEffect(() => {
+    if (selectedSlot === undefined) return;
+    setSlotOverride(selectedSlot);
+  }, [selectedSlot, setSlotOverride]);
+
+  return null;
 }
 
 // Render nothing when scrolling quickly to improve performance
