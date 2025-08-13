@@ -11,7 +11,7 @@ import { myStakePctAtom, myStakeAmountAtom } from "../../atoms";
 import type { PropsWithChildren } from "react";
 import { useEffect } from "react";
 import { DateTime } from "luxon";
-import { getFmtStake, getTimeTillText, slowDateTimeNow } from "../../utils";
+import { getFmtStake, getDurationText, slowDateTimeNow } from "../../utils";
 import { formatNumber } from "../../numUtils";
 import { useInterval, useMedia, useUpdate } from "react-use";
 import clsx from "clsx";
@@ -219,8 +219,9 @@ function StartupTime() {
       ),
     );
 
-    const text = getTimeTillText(uptimeDuration.rescale(), {
+    const text = getDurationText(uptimeDuration.rescale(), {
       showSeconds: false,
+      showOnlyLargestUnit: false,
     });
     return text;
   };
