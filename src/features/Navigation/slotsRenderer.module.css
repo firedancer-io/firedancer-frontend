@@ -108,6 +108,11 @@
       }
     }
   }
+
+  &.your-slot-group {
+    border-top-width: 3px;
+    border-color: #2a7edf !important;
+  }
 }
 
 .slot-border {
