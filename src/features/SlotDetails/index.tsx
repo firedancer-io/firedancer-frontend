@@ -22,9 +22,9 @@ import styles from "./slotDetails.module.css";
 import PeerIcon from "../../components/PeerIcon";
 import { SlotClient } from "../../components/SlotClient";
 import {
+  earliestProcessedSlotLeaderAtom,
   epochAtom,
-  firstProcessedSlotAtom,
-  leaderSlotsAtom,
+  mostRecentSlotLeaderAtom,
 } from "../../atoms";
 import { slotsPerLeader } from "../../consts";
 import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
@@ -35,7 +35,10 @@ import { failureColor } from "../../colors";
 
 import skippedIcon from "../../assets/Skipped.svg";
 import green_flag from "../../assets/flag.svg";
+import checkFill from "../../assets/checkFill.svg";
+
 import { skippedSlotsAtom } from "../../api/atoms";
+import { useTimeAgo } from "../../hooks/useTimeAgo";
 
 export default function SlotDetails() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
@@ -139,47 +142,57 @@ function QuickSearch() {
   return (
     <Flex direction="column" gap="4" justify="center" align="center" p="4">
       <Flex className={styles.quickSearchRow}>
-        <FirstProcessedLeaderSlotSearch />
+        <EarliestProcessedSlotSearch />
+        <MostRecentSlotSearch />
         <LastSkippedSlotSearch />
       </Flex>
     </Flex>
   );
 }
 
-function FirstProcessedLeaderSlotSearch() {
-  const { setSelectedSlot } = useSlotSearchParam();
-  const firstProcessedSlot = useAtomValue(firstProcessedSlotAtom);
-  const leaderSlots = useAtomValue(leaderSlotsAtom);
+function EarliestProcessedSlotSearch() {
+  const earliestProcessedSlotLeader = useAtomValue(
+    earliestProcessedSlotLeaderAtom,
+  );
+  return (
+    <QuickSearchCard
+      label="Earliest Slot"
+      icon={green_flag}
+      color="#1D863B"
+      disabled={earliestProcessedSlotLeader === undefined}
+      slot={earliestProcessedSlotLeader}
+    />
+  );
+}
 
-  const firstProcessedLeaderSlot = useMemo(() => {
-    if (firstProcessedSlot === undefined || !leaderSlots?.length) return;
-    return leaderSlots.find((s) => s >= firstProcessedSlot);
-  }, [firstProcessedSlot, leaderSlots]);
+function MostRecentSlotSearch() {
+  const mostRecentSlotLeader = useAtomValue(mostRecentSlotLeaderAtom);
 
   return (
     <QuickSearchCard
-      label="First Processed Leader Slot"
-      icon={green_flag}
+      label="Most Recent Slot"
+      icon={checkFill}
       color="#1D863B"
-      disabled={firstProcessedLeaderSlot === undefined}
-      onClick={() => setSelectedSlot(firstProcessedLeaderSlot)}
+      disabled={mostRecentSlotLeader === undefined}
+      slot={mostRecentSlotLeader}
     />
   );
 }
 
 function LastSkippedSlotSearch() {
-  const { setSelectedSlot } = useSlotSearchParam();
   const skippedSlots = useAtomValue(skippedSlotsAtom);
+  const slot = useMemo(
+    () => (skippedSlots ? skippedSlots[skippedSlots?.length - 1] : undefined),
+    [skippedSlots],
+  );
 
   return (
     <QuickSearchCard
       label="Last Skipped Slot"
       icon={skippedIcon}
       color="#EB6262"
+      slot={slot}
       disabled={!skippedSlots || skippedSlots?.length === 0}
-      onClick={() =>
-        skippedSlots && setSelectedSlot(skippedSlots[skippedSlots?.length - 1])
-      }
     />
   );
 }
@@ -188,24 +201,48 @@ function QuickSearchCard({
   label,
   icon,
   color,
+  slot,
   disabled = false,
-  onClick,
 }: {
   label: string;
   icon: string;
   color: string;
+  slot?: number;
   disabled?: boolean;
-  onClick: () => void;
 }) {
+  const { setSelectedSlot } = useSlotSearchParam();
+
   return (
     <Flex
       className={clsx(styles.quickSearch, !disabled && styles.clickable)}
       style={{ color }}
-      onClick={onClick}
+      onClick={() => setSelectedSlot(slot)}
+      aria-disabled={disabled}
     >
       <img width="32px" height="32px" src={icon} />
-      <Text align="left">{label}</Text>
+      <Text size="4" align="left">
+        {label}
+      </Text>
+      <Flex width="100%" justify="between">
+        <Text size="1" style={{ color: "#cecece" }}>
+          {slot}
+        </Text>
+        {slot && <TimeAgo slot={slot} />}
+      </Flex>
     </Flex>
+  );
+}
+
+function TimeAgo({ slot }: { slot: number }) {
+  const { timeAgoText } = useTimeAgo(slot, {
+    showOnlyLargestUnit: true,
+    showSeconds: true,
+  });
+
+  return (
+    <Text size="1" style={{ color: "#646464" }}>
+      {timeAgoText}
+    </Text>
   );
 }
 

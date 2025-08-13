@@ -254,6 +254,30 @@ export const firstProcessedSlotAtom = atom((get) => {
   return startupProgress.ledger_max_slot + 1;
 });
 
+export const earliestProcessedSlotLeaderAtom = atom((get) => {
+  const firstProcessedSlot = get(firstProcessedSlotAtom);
+  const leaderSlots = get(leaderSlotsAtom);
+
+  if (firstProcessedSlot === undefined || !leaderSlots?.length) return;
+  return leaderSlots.find((s) => s >= firstProcessedSlot);
+});
+
+export const mostRecentSlotLeaderAtom = atom((get) => {
+  const earliestProcessedSlotLeader = get(earliestProcessedSlotLeaderAtom);
+  const leaderSlots = get(leaderSlotsAtom);
+  const currentLeaderSlot = get(currentLeaderSlotAtom);
+
+  if (
+    earliestProcessedSlotLeader === undefined ||
+    currentLeaderSlot === undefined ||
+    !leaderSlots?.length
+  )
+    return;
+  return leaderSlots.findLast(
+    (s) => earliestProcessedSlotLeader <= s && s <= currentLeaderSlot,
+  );
+});
+
 const _currentSlotAtom = atom<number | undefined>(undefined);
 export const currentSlotAtom = atom(
   (get) => get(_currentSlotAtom),
