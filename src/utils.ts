@@ -16,9 +16,12 @@ export function getSlotGroupLeader(slot: number) {
   return slot - (slot % slotsPerLeader);
 }
 
-export function getTimeTillText(
+export function getDurationText(
   duration?: Duration,
-  options: { showSeconds: boolean } = { showSeconds: true },
+  options: { showSeconds: boolean; showOnlyLargestUnit: boolean } = {
+    showSeconds: true,
+    showOnlyLargestUnit: false,
+  },
 ) {
   if (!duration) return "Never";
 
@@ -27,38 +30,52 @@ export function getTimeTillText(
   let text = "";
 
   if (duration.years) {
+    const durationText = `${duration.years}y`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.years}y`;
+    text += durationText;
   }
 
   if (duration.months) {
+    const durationText = `${duration.months}m`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.months}m`;
+    text += durationText;
   }
 
   if (duration.weeks) {
+    const durationText = `${duration.weeks}w`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.weeks}w`;
+    text += durationText;
   }
 
   if (duration.days) {
+    const durationText = `${duration.days}d`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.days}d`;
+    text += durationText;
   }
 
   if (duration.hours) {
+    const durationText = `${duration.hours}h`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.hours}h`;
+    text += durationText;
   }
 
   if (duration.minutes) {
+    const durationText = `${duration.minutes}m`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.minutes}m`;
+    text += durationText;
   }
 
   if (duration.seconds && options.showSeconds) {
+    const durationText = `${duration.seconds}s`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.seconds}s`;
+    text += durationText;
   }
 
   if (!text) {
