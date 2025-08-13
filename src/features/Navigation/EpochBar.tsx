@@ -146,7 +146,7 @@ function EpochSlider() {
         clearTimeout(timeoutId);
       };
     }
-  });
+  }, [tooltipOpen]);
   const updateSlot = useCallback(
     (slot: number | undefined) => {
       setSlotOverride(slot);
