@@ -161,14 +161,17 @@ export const deleteSlotStatusBoundsAtom = atom(null, (get, set) => {
       const cachedStatusSlots = Object.keys(draft);
       for (const cachedStatusSlot of cachedStatusSlots) {
         const numberVal = Number(cachedStatusSlot);
-        if (searchSlots?.length) {
-          const slotGroupStart = numberVal - (numberVal % slotsPerLeader);
-          if (searchSlots.includes(slotGroupStart)) {
-            continue;
-          }
+        const slotGroupStart = getSlotGroupLeader(numberVal);
+        if (searchSlots?.length && searchSlots.includes(slotGroupStart)) {
+          continue;
         }
 
-        if (numberVal === selectedSlot) continue;
+        if (
+          selectedSlot !== undefined &&
+          slotGroupStart === getSlotGroupLeader(selectedSlot)
+        ) {
+          continue;
+        }
 
         if (
           !isNaN(numberVal) &&
@@ -221,14 +224,17 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
       const cachedSlots = Object.keys(draft);
       for (const cachedSlot of cachedSlots) {
         const numberVal = Number(cachedSlot);
-        if (searchSlots?.length) {
-          const slotGroupStart = getSlotGroupLeader(numberVal);
-          if (searchSlots.includes(slotGroupStart)) {
-            continue;
-          }
+        const slotGroupStart = getSlotGroupLeader(numberVal);
+        if (searchSlots?.length && searchSlots.includes(slotGroupStart)) {
+          continue;
         }
 
-        if (numberVal === selectedSlot) continue;
+        if (
+          selectedSlot !== undefined &&
+          slotGroupStart === getSlotGroupLeader(selectedSlot)
+        ) {
+          continue;
+        }
 
         if (
           !isNaN(numberVal) &&
