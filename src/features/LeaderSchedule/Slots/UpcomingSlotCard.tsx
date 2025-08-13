@@ -10,7 +10,7 @@ import {
 } from "../../../atoms";
 import { useReducer } from "react";
 import { DateTime, Duration } from "luxon";
-import { getTimeTillText, slowDateTimeNow } from "../../../utils";
+import { getDurationText, slowDateTimeNow } from "../../../utils";
 import PeerIcon from "../../../components/PeerIcon";
 import { useHarmonicIntervalFn, useMedia } from "react-use";
 import clsx from "clsx";
@@ -134,7 +134,7 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
 
   const [timeTillText, setTimeTillText] = useReducer(
     timeTillTextReducer,
-    getTimeTillText(timeTill),
+    getDurationText(timeTill),
   );
 
   useHarmonicIntervalFn(() => {
@@ -158,7 +158,7 @@ function dtTextReducer(_: string, timeTill: Duration | undefined) {
 }
 
 function timeTillTextReducer(_: string, timeTill: Duration | undefined) {
-  return getTimeTillText(timeTill);
+  return getDurationText(timeTill);
 }
 
 function getDtText(timeTill?: Duration) {

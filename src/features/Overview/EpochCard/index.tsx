@@ -7,7 +7,7 @@ import styles from "./epochCard.module.css";
 import { currentSlotAtom, epochAtom, slotDurationAtom } from "../../../atoms";
 import { headerColor } from "../../../colors";
 import { useMemo } from "react";
-import { getTimeTillText } from "../../../utils";
+import { getDurationText } from "../../../utils";
 import { Duration } from "luxon";
 
 export default function EpochCard() {
@@ -53,7 +53,7 @@ function NextEpochTimeText() {
     const endDiffMs = (epoch.end_slot - slot) * slotDuration;
 
     const durationLeft = Duration.fromMillis(endDiffMs).rescale();
-    return getTimeTillText(durationLeft);
+    return getDurationText(durationLeft);
   }, [epoch, slot, slotDuration]);
 
   const progressSinceLastEpoch = useMemo(() => {

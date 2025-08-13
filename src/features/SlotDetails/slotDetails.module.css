@@ -2,6 +2,10 @@
   text-align: center;
 }
 
+.clickable {
+  cursor: pointer;
+}
+
 .quick-search-row {
   gap: 8px;
 }
@@ -10,15 +14,16 @@
   width: 164px;
   padding: 15px;
   flex-direction: column;
-  align-items: flex-start;
   gap: 10px;
   border-radius: 8px;
   border: 1px solid rgba(250, 250, 250, 0.12);
   background: rgba(250, 250, 250, 0.05);
-}
 
-.clickable {
-  cursor: pointer;
+  &:not(.clickable) {
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.6;
+  }
 }
 
 .slot-name {
