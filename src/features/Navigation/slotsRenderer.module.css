@@ -18,25 +18,9 @@
     border-color: rgba(113, 124, 152, 0.5);
     background: #071017;
 
-    &.your-slot-group:hover {
-      border-color: rgba(42, 126, 223, 0.8);
-    }
-
-    &.your-slot-group:active {
-      border-color: #379bf3;
-    }
-
     &.selected-slot-group {
       border-color: #717c98;
       background: #1a2641;
-
-      &.your-slot-group:hover {
-        border-color: #2a7edf;
-      }
-
-      &.your-slot-group:active {
-        border-color: #379bf3;
-      }
     }
   }
 
@@ -68,7 +52,7 @@
   }
 
   &.future-slot-group {
-    height: 22px;
+    height: 24px;
     background: #111;
     border-color: rgba(67, 67, 67, 0.5);
 
@@ -91,27 +75,20 @@
     border-color: rgba(212, 73, 73, 0.5);
     background: #1f0404;
 
-    &.your-slot-group:hover {
-      border-color: rgba(42, 126, 223, 0.8);
-    }
-
-    &.your-slot-group:active {
-      border-color: #379bf3;
-    }
-
     &.selected-slot-group {
       border-color: rgba(212, 73, 73, 0.5);
       background: #370808;
-
-      &.your-slot-group:hover {
-        border-color: #2a7edf;
-      }
     }
   }
 
   &.your-slot-group {
     border-top-width: 3px;
     border-color: #2a7edf !important;
+
+    &:hover,
+    &:active {
+      border-color: #379bf3 !important;
+    }
   }
 }
 
@@ -147,14 +124,15 @@
     background-origin: border-box;
   }
 
-  &:has(.next-slot-group.your-slot-group):hover,
-  &:has(.previous-slot-group.your-slot-group):hover {
-    background: rgba(42, 126, 223, 0.8);
-  }
+  &:has(.next-slot-group.your-slot-group),
+  &:has(.previous-slot-group.your-slot-group) {
+    border-top-width: 3px;
+    background: #2a7edf;
 
-  &:has(.next-slot-group.your-slot-group):active,
-  &:has(.previous-slot-group.your-slot-group):active {
-    background: #379bf3;
+    &:hover,
+    &:active {
+      background: #379bf3;
+    }
   }
 }
 
