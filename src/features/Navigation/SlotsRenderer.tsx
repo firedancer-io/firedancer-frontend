@@ -113,11 +113,12 @@ const MSlotsRenderer = function SlotsRenderer({
               </Flex>
               {isCurrentLeader && <CurrentSlot />}
             </Flex>
-            {isCurrentLeader ? (
-              <ExpandedSlotGroupStatus slot={leaderSlotForGroup} />
-            ) : (
-              <CompactSlotGroupStatusRenderer slot={leaderSlotForGroup} />
-            )}
+            {!isFutureLeader &&
+              (isCurrentLeader ? (
+                <ExpandedSlotGroupStatus slot={leaderSlotForGroup} />
+              ) : (
+                <CompactSlotGroupStatusRenderer slot={leaderSlotForGroup} />
+              ))}
           </Flex>
         </Link>
       </div>
