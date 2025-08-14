@@ -27,6 +27,7 @@ import {
   offset,
   useFloating,
 } from "@floating-ui/react";
+import { isScrollingAtom } from "./atoms";
 
 export default function EpochBar() {
   return (
@@ -132,6 +133,7 @@ function EpochSlider() {
   const setSlotOverride = useSetAtom(slotOverrideAtom);
   const [value, setValue] = useState([0]);
   const isSliderChangingValueRef = useRef(false);
+  const setIsScrolling = useSetAtom(isScrollingAtom);
 
   const [measureRef, { height }] = useMeasure<HTMLFormElement>();
   const slotHeight = Math.trunc(height / 175);
@@ -183,10 +185,12 @@ function EpochSlider() {
           isSliderChangingValueRef.current = true;
           setValue(newValue);
           throttledHandleValueChange(newValue);
+          setIsScrolling(true);
         }}
         onValueCommit={() => {
           isSliderChangingValueRef.current = false;
           throttledHandleValueChange.flush();
+          setIsScrolling(false);
         }}
         max={sliderMaxValue}
       >

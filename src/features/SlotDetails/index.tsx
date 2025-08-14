@@ -20,7 +20,6 @@ import {
 import { useSlotInfo } from "../../hooks/useSlotInfo";
 import styles from "./slotDetails.module.css";
 import PeerIcon from "../../components/PeerIcon";
-import { SlotClient } from "../../components/SlotClient";
 import {
   earliestProcessedSlotLeaderAtom,
   epochAtom,
@@ -39,6 +38,7 @@ import checkFill from "../../assets/checkFill.svg";
 
 import { skippedSlotsAtom } from "../../api/atoms";
 import { useTimeAgo } from "../../hooks/useTimeAgo";
+import SlotClient from "../../components/SlotClient";
 
 export default function SlotDetails() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
@@ -304,7 +304,7 @@ function SlotHeader({ slot }: { slot: number }) {
             url={peer?.info?.icon_url}
             size={22}
             isYou={isLeader}
-            style={{ borderRadius: "5px" }}
+            isRounded
           />
           <IconButton
             variant="ghost"

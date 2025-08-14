@@ -1,8 +1,9 @@
 import { useSlotInfo } from "../hooks/useSlotInfo";
 import AnzaLogo from "../assets/anza_logo.svg";
 import FrankendancerLogo from "../assets/frankendancer_logo.svg";
+import { memo } from "react";
 
-export function SlotClient({
+export default memo(function SlotClient({
   slot,
   size = "11px",
 }: {
@@ -21,4 +22,4 @@ export function SlotClient({
   ) : (
     <img src={AnzaLogo} alt="Anza Logo" width={size} height={size} />
   );
-}
+});

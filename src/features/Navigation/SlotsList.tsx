@@ -8,11 +8,11 @@ import {
 } from "../../atoms";
 import { Box } from "@radix-ui/themes";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import styles from "./slotsList.module.css";
 import { slotsListFutureSlotsCount, slotsPerLeader } from "../../consts";
 import { throttle } from "lodash";
-import { SlotsRenderer, SlotsPlaceholder } from "./SlotsRenderer";
+import SlotsRenderer, { SlotsPlaceholder } from "./SlotsRenderer";
 import type { VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
 import { selectedSlotAtom } from "../Overview/SlotPerformance/atoms";
@@ -143,11 +143,11 @@ export default function SlotsList({
         data={slotGroupsDescending}
         totalCount={slotGroupsDescending.length}
         initialTopMostItemIndex={initialTopMostItemIndex}
-        increaseViewportBy={{ top: 10, bottom: 10 }}
+        increaseViewportBy={{ top: 600, bottom: 600 }}
         computeItemKey={computeItemKey}
         itemContent={(_, data) => <SlotsRenderer leaderSlotForGroup={data} />}
         rangeChanged={rangeChanged}
-        components={{ ScrollSeekPlaceholder }}
+        components={{ ScrollSeekPlaceholder: MScrollSeekPlaceHolder }}
         scrollSeekConfiguration={{
           enter: (velocity) => Math.abs(velocity) > 1500,
           exit: (velocity) => Math.abs(velocity) < 500,
@@ -184,6 +184,7 @@ function HandleSlotOverride({
     const visibleStartIndex = slotIndex - slotsListFutureSlotsCount;
     listRef.current.scrollToIndex({
       index: visibleStartIndex > 0 ? visibleStartIndex : 0,
+      behavior: "auto",
       align: "start",
     });
   }, [autoScroll, currentLeaderSlot, epoch, listRef]);
@@ -198,6 +199,6 @@ function HandleSlotOverride({
 }
 
 // Render nothing when scrolling quickly to improve performance
-function ScrollSeekPlaceholder() {
+const MScrollSeekPlaceHolder = memo(function ScrollSeekPlaceholder() {
   return null;
-}
+});
