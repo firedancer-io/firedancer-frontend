@@ -47,7 +47,7 @@ const getStatusAtom = atom((get) => {
   };
 });
 
-const MSlotsRenderer = function SlotsRenderer({
+const MSlotsRenderer = memo(function SlotsRenderer({
   leaderSlotForGroup,
 }: {
   leaderSlotForGroup: number;
@@ -124,7 +124,7 @@ const MSlotsRenderer = function SlotsRenderer({
       </div>
     </div>
   );
-};
+});
 
 export function SlotsPlaceholder({
   width,
