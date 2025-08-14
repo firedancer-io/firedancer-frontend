@@ -193,6 +193,9 @@ function EpochSlider() {
           setIsScrolling(false);
         }}
         max={sliderMaxValue}
+        onPointerUp={() => {
+          setIsScrolling(false);
+        }}
       >
         <Slider.Track className={styles.sliderTrack}>
           <MSliderEpochProgress
