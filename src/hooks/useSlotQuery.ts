@@ -1,11 +1,11 @@
 import { useAtomValue } from "jotai";
 import {
   getIsFutureSlotAtom,
-  getSlotPublishAtom,
-  getSlotResponseAtom,
+  slotPublishAtomFamily,
+  slotResponseAtomFamily,
 } from "../atoms";
 import { useMount } from "react-use";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useWebSocketSend } from "../api/ws/utils";
 import memoize from "micro-memoize";
 import type { SendMessage } from "../api/ws/types";
@@ -71,9 +71,7 @@ function useSlotQuery(
 ) {
   const wsSend = useWebSocketSend();
 
-  const isFutureSlot = useAtomValue(
-    useMemo(() => getIsFutureSlotAtom(slot), [slot]),
-  );
+  const isFutureSlot = useAtomValue(getIsFutureSlotAtom(slot));
 
   const query = useCallback(() => {
     if (!slot) return;
@@ -102,7 +100,7 @@ function useSlotQuery(
 }
 
 export function useSlotQueryPublish(slot?: number) {
-  const publish = useAtomValue(useMemo(() => getSlotPublishAtom(slot), [slot]));
+  const publish = useAtomValue(slotPublishAtomFamily(slot));
 
   const skipQuery = !!publish;
 
@@ -116,9 +114,8 @@ export function useSlotQueryPublish(slot?: number) {
 }
 
 export function useSlotQueryResponseDetailed(slot?: number) {
-  const response = useAtomValue(
-    useMemo(() => getSlotResponseAtom(slot), [slot]),
-  );
+  const response = useAtomValue(slotResponseAtomFamily(slot));
+
   const skipQuery =
     !!response?.waterfall &&
     !!response?.tile_timers &&
@@ -134,9 +131,8 @@ export function useSlotQueryResponseDetailed(slot?: number) {
 }
 
 export function useSlotQueryResponseTransactions(slot?: number) {
-  const response = useAtomValue(
-    useMemo(() => getSlotResponseAtom(slot), [slot]),
-  );
+  const response = useAtomValue(slotResponseAtomFamily(slot));
+
   const skipQuery = !!response?.transactions;
 
   const { hasWaitedForData } = useSlotQuery(

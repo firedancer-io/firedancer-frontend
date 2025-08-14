@@ -1,3 +1,12 @@
 .hide {
   display: none;
 }
+
+.rounded {
+  border-radius: 6px;
+}
+
+.icon {
+  height: var(--height);
+  width: var(--width);
+}
