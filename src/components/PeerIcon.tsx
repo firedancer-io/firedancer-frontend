@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import { useState } from "react";
 import privateIcon from "../assets/private.svg";
 import privateYouIcon from "../assets/privateYou.svg";
-import { Box, Tooltip } from "@radix-ui/themes";
+import { Tooltip } from "@radix-ui/themes";
 import { useAtom } from "jotai";
 import { getPeerIconHasErrorIcon } from "./peerIconAtom";
 import styles from "./peerIcon.module.css";
@@ -13,7 +13,7 @@ interface PeerIconProps {
   isYou?: boolean;
   size: number;
   hideFallback?: boolean;
-  style?: CSSProperties;
+  isRounded?: boolean;
 }
 
 export default function PeerIcon({
@@ -21,7 +21,7 @@ export default function PeerIcon({
   size,
   hideFallback,
   isYou,
-  style,
+  isRounded,
 }: PeerIconProps) {
   const [globalHasError, setGlobalHasError] = useAtom(
     getPeerIconHasErrorIcon(url),
@@ -29,23 +29,31 @@ export default function PeerIcon({
   const [hasError, setHasError] = useState(globalHasError);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const iconStyles: CSSProperties = {
-    ...(style ?? {}),
-    height: `${size}px`,
-    width: `${size}px`,
-  };
+  const iconStyles = {
+    "--height": `${size}px`,
+    "--width": `${size}px`,
+  } as CSSProperties;
+
+  const className = clsx(styles.icon, { [styles.isRounded]: isRounded });
 
   if (!url || hasError) {
     if (hideFallback) {
-      return <Box style={iconStyles} />;
+      return <div className={className} style={iconStyles} />;
     } else if (isYou) {
       return (
         <Tooltip content="Your current validator">
-          <img src={privateYouIcon} style={iconStyles} />
+          <img src={privateYouIcon} className={className} style={iconStyles} />
         </Tooltip>
       );
     } else {
-      return <img src={privateIcon} alt="private" style={iconStyles} />;
+      return (
+        <img
+          src={privateIcon}
+          alt="private"
+          className={className}
+          style={iconStyles}
+        />
+      );
     }
   }
 
@@ -57,14 +65,14 @@ export default function PeerIcon({
   return (
     <>
       <img
-        className={clsx({ [styles.hide]: !hasLoaded })}
+        className={clsx({ [styles.hide]: !hasLoaded }, className)}
         style={iconStyles}
         onError={handleError}
         onLoad={() => setHasLoaded(true)}
         src={url}
       />
       <img
-        className={clsx({ [styles.hide]: hasLoaded })}
+        className={clsx({ [styles.hide]: hasLoaded }, className)}
         style={iconStyles}
         src={privateIcon}
         alt="private"

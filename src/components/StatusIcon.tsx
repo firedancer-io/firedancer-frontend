@@ -22,7 +22,7 @@ export function StatusIcon({
   isCurrent: boolean;
   iconSize?: string;
 }) {
-  const status = useAtomValue(useMemo(() => getSlotStatus(slot), [slot]));
+  const status = useAtomValue(getSlotStatus(slot));
   const iconStyle = useMemo(
     () => ({
       width: iconSize,
