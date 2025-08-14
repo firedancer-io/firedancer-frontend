@@ -27,6 +27,7 @@
 
 .rt-TooltipText {
   color: var(--regular-text-color);
+  user-select: auto;
 }
 
 .rt-TooltipArrow {
