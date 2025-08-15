@@ -8,6 +8,7 @@ import { epochBarWidth, slotsListWidth } from "../../consts";
 import { StatusIndicator } from "./Status";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { useCurrentRoute } from "../../hooks/useCurrentRoute";
+import NavFilterToggles from "./NavFilterToggles";
 
 export default function Navigation() {
   const currentRoute = useCurrentRoute();
@@ -29,12 +30,18 @@ export default function Navigation() {
         <StatusIndicator />
         <Scrollbar />
       </Flex>
-      <Flex width="100%" height="100%" pb="2">
-        {currentRoute !== "Schedule" && (
-          <AutoSizer>
-            {({ height, width }) => <SlotsList width={width} height={height} />}
-          </AutoSizer>
-        )}
+
+      <Flex direction="column" flexGrow="1">
+        <NavFilterToggles />
+        <Flex width="100%" height="100%" pb="2">
+          {currentRoute !== "Schedule" && (
+            <AutoSizer>
+              {({ height, width }) => (
+                <SlotsList width={width} height={height} />
+              )}
+            </AutoSizer>
+          )}
+        </Flex>
       </Flex>
     </Flex>
   );
