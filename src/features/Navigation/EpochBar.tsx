@@ -170,7 +170,6 @@ function EpochSlider() {
     handleValueChange,
     100,
     {
-      leading: true,
       trailing: true,
     },
   );
