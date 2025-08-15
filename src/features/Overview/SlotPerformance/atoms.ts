@@ -8,9 +8,19 @@ import type { TxnWaterfall } from "../../../api/types";
 import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
 import { countBy } from "lodash";
+import { epochAtom } from "../../../atoms";
 
-// Note: do not user setter directly as it's derived from search params
-export const selectedSlotAtom = atom<number>();
+export const selectedSlotQueryParamAtom = atom<number>();
+export const isSelectedSlotQueryParamValidAtom = atom<boolean>((get) => {
+  const epoch = get(epochAtom);
+  const slot = get(selectedSlotQueryParamAtom);
+  if (slot === undefined) return true;
+  return Boolean(epoch && epoch.start_slot <= slot && slot <= epoch.end_slot);
+});
+export const selectedSlotAtom = atom<number | undefined>((get) => {
+  const isValid = get(isSelectedSlotQueryParamValidAtom);
+  return isValid ? get(selectedSlotQueryParamAtom) : undefined;
+});
 
 export enum DisplayType {
   Count = "Count",

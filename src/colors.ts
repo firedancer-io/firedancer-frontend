@@ -138,3 +138,10 @@ export const circularProgressPathColor = "#0051DF";
 
 // gossip
 export const gossipDelinquentPubkeyColor = "#6D6F71";
+
+// slot status
+export const slotStatusRed = "#871616";
+export const slotStatusGreen = "#1d863b";
+export const slotStatusBlue = "#1d6286";
+export const slotStatusTeal = "#1ce7c2";
+export const slotStatusNone = "transparent";

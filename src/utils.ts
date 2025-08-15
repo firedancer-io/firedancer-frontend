@@ -1,7 +1,8 @@
 import type { Duration } from "luxon";
 import { DateTime } from "luxon";
-import type { Epoch, Peer } from "./api/types";
+import type { Epoch, Peer, SlotLevel } from "./api/types";
 import { lamportsPerSol, slotsPerLeader } from "./consts";
+import { slotStatusGreen, slotStatusNone, slotStatusTeal } from "./colors";
 
 export function getLeaderSlots(epoch: Epoch, pubkey: string) {
   return epoch.leader_slots.reduce<number[]>((leaderSlots, pubkeyIndex, i) => {
@@ -11,9 +12,16 @@ export function getLeaderSlots(epoch: Epoch, pubkey: string) {
   }, []);
 }
 
-export function getTimeTillText(
+export function getSlotGroupLeader(slot: number) {
+  return slot - (slot % slotsPerLeader);
+}
+
+export function getDurationText(
   duration?: Duration,
-  options: { showSeconds: boolean } = { showSeconds: true },
+  options: { showSeconds: boolean; showOnlyLargestUnit: boolean } = {
+    showSeconds: true,
+    showOnlyLargestUnit: false,
+  },
 ) {
   if (!duration) return "Never";
 
@@ -22,38 +30,52 @@ export function getTimeTillText(
   let text = "";
 
   if (duration.years) {
+    const durationText = `${duration.years}y`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.years}y`;
+    text += durationText;
   }
 
   if (duration.months) {
+    const durationText = `${duration.months}m`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.months}m`;
+    text += durationText;
   }
 
   if (duration.weeks) {
+    const durationText = `${duration.weeks}w`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.weeks}w`;
+    text += durationText;
   }
 
   if (duration.days) {
+    const durationText = `${duration.days}d`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.days}d`;
+    text += durationText;
   }
 
   if (duration.hours) {
+    const durationText = `${duration.hours}h`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.hours}h`;
+    text += durationText;
   }
 
   if (duration.minutes) {
+    const durationText = `${duration.minutes}m`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.minutes}m`;
+    text += durationText;
   }
 
   if (duration.seconds && options.showSeconds) {
+    const durationText = `${duration.seconds}s`;
+    if (options.showOnlyLargestUnit) return durationText;
     if (text) text += " ";
-    text += `${duration.seconds}s`;
+    text += durationText;
   }
 
   if (!text) {
@@ -139,5 +161,18 @@ export function copyToClipboard(copyValue: string) {
     console.error("Failed to copy text", copyValue, error);
   } finally {
     document.body.removeChild(copyEl);
+  }
+}
+
+export function slotLevelToColor(slotLevel: SlotLevel) {
+  switch (slotLevel) {
+    case "completed":
+    case "optimistically_confirmed":
+      return slotStatusGreen;
+    case "finalized":
+    case "rooted":
+      return slotStatusTeal;
+    case "incomplete":
+      return slotStatusNone;
   }
 }

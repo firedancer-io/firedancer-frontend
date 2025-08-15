@@ -5,21 +5,17 @@ import SlotCardGrid from "./SlotCardGrid";
 import CardValidatorSummary, {
   CardValidatorSummaryMobile,
 } from "./CardValidatorSummary";
-import { identityKeyAtom } from "../../../api/atoms";
-import { useAtomValue } from "jotai";
-import { usePubKey } from "../../../hooks/usePubKey";
 import { useMedia } from "react-use";
 import clsx from "clsx";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
+import { useSlotInfo } from "../../../hooks/useSlotInfo";
 
 interface PastSlotCardProps {
   slot: number;
 }
 
 export function PastSlotCard({ slot }: PastSlotCardProps) {
-  const myPubkey = useAtomValue(identityKeyAtom);
-  const pubkey = usePubKey(slot);
-  const isLeader = myPubkey === pubkey;
+  const { isLeader } = useSlotInfo(slot);
 
   const query = useSlotQueryPublish(slot);
   const query1 = useSlotQueryPublish(slot + 1);
