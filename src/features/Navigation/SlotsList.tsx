@@ -144,6 +144,9 @@ export default function SlotsList({
         totalCount={slotGroupsDescending.length}
         initialTopMostItemIndex={initialTopMostItemIndex}
         increaseViewportBy={{ top: 600, bottom: 600 }}
+        // height of past slots that the user is most likely to scroll through
+        defaultItemHeight={42}
+        skipAnimationFrameInResizeObserver
         computeItemKey={computeItemKey}
         itemContent={(_, data) => <SlotsRenderer leaderSlotForGroup={data} />}
         rangeChanged={rangeChanged}
