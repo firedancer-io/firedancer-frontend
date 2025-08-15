@@ -1,6 +1,5 @@
 .slider {
-  max-width: 190px;
-  min-width: 80px;
+  width: 190px;
   flex-grow: 1;
   position: relative;
 
