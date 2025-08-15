@@ -16,6 +16,9 @@ export const rowSeparatorBackgroundColor = "#333333";
 
 export const navButtonTextColor = "#F7F7F7";
 
+// slot navigation
+export const slotNavFilterBackgroundColor = "#283551";
+
 // startup
 export const startupTextColor = "#A7A7A7";
 export const startupProgressBackgroundColor = "#121213";

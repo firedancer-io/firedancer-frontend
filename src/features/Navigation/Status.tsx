@@ -59,7 +59,7 @@ export function StatusIndicator() {
   return (
     <Flex
       width="35px"
-      justify="between"
+      justify="center"
       align="center"
       className={clsx(
         status === "Live"
