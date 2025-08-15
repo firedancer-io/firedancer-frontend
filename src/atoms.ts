@@ -61,9 +61,9 @@ export const nextEpochAtom = atom((get) => {
 export const [slotOverrideAtom, setSlotScrollListFnAtom, autoScrollAtom] =
   (function getSlotOverrideAtom() {
     const _slotOverrideAtom = atom<number>();
-    const _scrollSlotListFn = atom<{ fn?: (slot: number | undefined) => void }>(
-      {},
-    );
+    const _scrollSlotListFn = atom<{
+      fn?: (slotOverride: number | undefined) => void;
+    }>({});
 
     let rafId: number | undefined = undefined;
 
@@ -75,25 +75,16 @@ export const [slotOverrideAtom, setSlotScrollListFnAtom, autoScrollAtom] =
           set,
           slot: number | undefined,
           skipScrollList: boolean = false,
-          scrollIndexOffset: number = 1,
         ) => {
           const epoch = get(epochAtom);
           if (!epoch) return;
 
           let startOverrideSlot = slot ? getSlotGroupLeader(slot) : slot;
-          let scrollSlot = startOverrideSlot;
 
           if (startOverrideSlot !== undefined) {
             startOverrideSlot = Math.min(
               epoch.end_slot,
               Math.max(startOverrideSlot, epoch.start_slot),
-            );
-            scrollSlot = Math.min(
-              epoch.end_slot,
-              Math.max(
-                startOverrideSlot + (scrollIndexOffset ?? 0) * slotsPerLeader,
-                epoch.start_slot,
-              ),
             );
           }
 
@@ -102,7 +93,7 @@ export const [slotOverrideAtom, setSlotScrollListFnAtom, autoScrollAtom] =
             const { fn } = get(_scrollSlotListFn);
             if (rafId) cancelAnimationFrame(rafId);
             rafId = requestAnimationFrame(() => {
-              fn?.(scrollSlot);
+              fn?.(startOverrideSlot);
             });
           }
         },
@@ -112,7 +103,7 @@ export const [slotOverrideAtom, setSlotScrollListFnAtom, autoScrollAtom] =
         (
           _,
           set,
-          scrollFn: ((slot: number | undefined) => void) | undefined,
+          scrollFn: ((slotOverride: number | undefined) => void) | undefined,
         ) => {
           set(_scrollSlotListFn, { fn: scrollFn });
         },
@@ -132,6 +123,20 @@ export const getSlotStatus = memoize(
     ),
   { maxSize: 1_000 },
 );
+
+export enum SlotNavFilter {
+  AllSlots = "All Slots",
+  MySlots = "My Slots",
+}
+export const slotNavFilterAtom = (function getSlotNavFilterAtom() {
+  const _slotNavFilterAtom = atom<SlotNavFilter>();
+  return atom(
+    (get) => get(_slotNavFilterAtom) ?? SlotNavFilter.AllSlots,
+    (_, set, filter: SlotNavFilter | undefined) => {
+      set(_slotNavFilterAtom, filter);
+    },
+  );
+})();
 
 export const setSlotStatusAtom = atom(
   null,
@@ -157,6 +162,8 @@ export const deleteSlotStatusBoundsAtom = atom(null, (get, set) => {
 
   const currentSlot = get(currentSlotAtom);
   const searchSlots = get(searchLeaderSlotsAtom);
+  const leaderSlots = get(leaderSlotsAtom);
+  const navFilter = get(slotNavFilterAtom);
   const slot = slotOverride ?? currentSlot;
 
   if (slot !== undefined) {
@@ -167,6 +174,7 @@ export const deleteSlotStatusBoundsAtom = atom(null, (get, set) => {
       for (const cachedStatusSlot of cachedStatusSlots) {
         const numberVal = Number(cachedStatusSlot);
         const slotGroupStart = getSlotGroupLeader(numberVal);
+
         if (searchSlots?.length && searchSlots.includes(slotGroupStart)) {
           continue;
         }
@@ -174,6 +182,13 @@ export const deleteSlotStatusBoundsAtom = atom(null, (get, set) => {
         if (
           selectedSlot !== undefined &&
           slotGroupStart === getSlotGroupLeader(selectedSlot)
+        ) {
+          continue;
+        }
+
+        if (
+          navFilter === SlotNavFilter.MySlots &&
+          leaderSlots?.includes(slotGroupStart)
         ) {
           continue;
         }
@@ -223,6 +238,8 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
   const currentSlot = get(currentSlotAtom);
   const searchSlots = get(searchLeaderSlotsAtom);
   const slot = slotOverride ?? currentSlot;
+  const navFilter = get(slotNavFilterAtom);
+  const leaderSlots = get(leaderSlotsAtom);
 
   if (slot !== undefined) {
     set(slotResponseAtom, (draft) => {
@@ -239,6 +256,13 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
         if (
           selectedSlot !== undefined &&
           slotGroupStart === getSlotGroupLeader(selectedSlot)
+        ) {
+          continue;
+        }
+
+        if (
+          navFilter === SlotNavFilter.MySlots &&
+          leaderSlots?.includes(slotGroupStart)
         ) {
           continue;
         }
