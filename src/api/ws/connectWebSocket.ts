@@ -1,6 +1,7 @@
 import type { ClientMessage, ConnectionStatus } from "./types";
 import { SocketState } from "./types";
 import { logDebug, logWarning } from "../../logger";
+import type { ZstdDec } from "@oneidentity/zstd-js/decompress";
 
 const RECONNECT_DELAY = 3_000;
 
@@ -10,6 +11,7 @@ export default function connectWebSocket(
   url: string | URL,
   onMessage: (message: unknown) => void,
   onConnectionStatusChanged: (connectionStatus: ConnectionStatus) => void,
+  zstd: ZstdDec,
 ) {
   let ws: WebSocket;
   let isDisposing = false;
@@ -17,7 +19,7 @@ export default function connectWebSocket(
   function connect() {
     logDebug("WS", `Connecting to API WebSocket ${url.toString()}`);
     onConnectionStatusChanged({ socketState: SocketState.Connecting });
-    ws = new WebSocket(url);
+    ws = new WebSocket(url, ["compress-zstd"]);
     ws.binaryType = "arraybuffer";
 
     ws.onopen = function onopen() {
@@ -40,14 +42,22 @@ export default function connectWebSocket(
       reconnectTimer = setTimeout(connect, RECONNECT_DELAY);
     };
 
-    ws.onmessage = function onmessage(ev: MessageEvent<string>) {
-      if (this !== ws || isDisposing) return;
+    const decoder = new TextDecoder();
+    ws.onmessage = function onmessage(ev: MessageEvent<unknown>) {
+      if (this !== ws || isDisposing || !zstd) return;
       try {
-        const json = JSON.parse(ev.data) as unknown;
+        const message = ev.data;
+        let json = undefined;
+        if (typeof message === "string") {
+          json = JSON.parse(message) as unknown;
+        } else if (message instanceof ArrayBuffer) {
+          json = JSON.parse(
+            decoder.decode(zstd.ZstdStream.decompress(new Uint8Array(message))),
+          ) as unknown;
+        }
         onMessage(json);
       } catch (e) {
         console.error(e);
-        console.error(ev.data);
       }
     };
   }
