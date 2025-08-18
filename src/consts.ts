@@ -1,6 +1,5 @@
 export const slotsPerLeader = 4;
-export const slotsListPinnedSlotOffset = 1;
-export const slotsListFutureSlotsOffset = 5;
+export const slotsListPinnedSlotOffset = 5;
 export const scheduleUpcomingSlotsCount = 3;
 
 export const lamportsPerSol = 1_000_000_000;

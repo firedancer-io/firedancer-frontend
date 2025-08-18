@@ -8,6 +8,9 @@ import {
   epochAtom,
   firstProcessedSlotAtom,
   leaderSlotsAtom,
+  mostRecentSlotLeaderAtom,
+  SlotNavFilter,
+  slotNavFilterAtom,
   slotOverrideAtom,
 } from "../../atoms";
 import { skippedSlotsAtom } from "../../api/atoms";
@@ -198,6 +201,7 @@ function EpochSlider() {
       >
         <Slider.Track className={styles.sliderTrack}>
           <MSliderEpochProgress
+            key={epoch?.epoch}
             isSliderChangingValueRef={isSliderChangingValueRef}
             setSliderValue={setValue}
           />
@@ -219,8 +223,10 @@ function SliderEpochProgress({
   setSliderValue: React.Dispatch<React.SetStateAction<number[]>>;
 }) {
   const epoch = useAtomValue(epochAtom);
+  const mostRecentSlotLeader = useAtomValue(mostRecentSlotLeaderAtom);
   const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
   const slotOverride = useAtomValue(slotOverrideAtom);
+  const navFilter = useAtomValue(slotNavFilterAtom);
 
   const [epochProgressPct, updateEpochProgressPct] = useReducer(
     epochProgressPctReducer,
@@ -257,7 +263,13 @@ function SliderEpochProgress({
           epochStartSlot: epoch?.start_slot,
           epochEndSlot: epoch?.end_slot,
         })
-      : epochProgressPct;
+      : navFilter === SlotNavFilter.MySlots
+        ? slotToEpochPct({
+            slot: mostRecentSlotLeader,
+            epochStartSlot: epoch?.start_slot,
+            epochEndSlot: epoch?.end_slot,
+          })
+        : epochProgressPct;
     const value = pctToValue(pct);
 
     setSliderValue((prev) => {
@@ -270,6 +282,8 @@ function SliderEpochProgress({
     isSliderChangingValueRef,
     setSliderValue,
     slotOverride,
+    navFilter,
+    mostRecentSlotLeader,
   ]);
 
   return (
