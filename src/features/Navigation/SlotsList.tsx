@@ -10,19 +10,16 @@ import {
   slotOverrideAtom,
 } from "../../atoms";
 import { Box } from "@radix-ui/themes";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./slotsList.module.css";
-import {
-  slotsListFutureSlotsOffset,
-  slotsListPinnedSlotOffset,
-  slotsPerLeader,
-} from "../../consts";
-import { throttle } from "lodash";
+import { slotsListPinnedSlotOffset, slotsPerLeader } from "../../consts";
+import { clamp, throttle } from "lodash";
 import SlotsRenderer, { SlotsPlaceholder } from "./SlotsRenderer";
 import type { ScrollSeekConfiguration, VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
 import { selectedSlotAtom } from "../Overview/SlotPerformance/atoms";
 import ResetLive from "./ResetLive";
+import { useDebouncedCallback } from "use-debounce";
 
 const computeItemKey = (slot: number) => slot;
 
@@ -59,7 +56,6 @@ function InnerSlotsList({
   const visibleStartIndexRef = useRef<number | null>(null);
 
   const selectedSlot = useAtomValue(selectedSlotAtom);
-  const slotOverride = useAtomValue(slotOverrideAtom);
   const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
 
   const setSlotOverride = useSetAtom(slotOverrideAtom);
@@ -88,19 +84,18 @@ function InnerSlotsList({
 
   // Determine initial scroll position
   const initialTopMostItemIndex = useMemo(() => {
+    let slotIndex = -1;
+
     if (selectedSlot !== undefined) {
-      const slotIndex = getIndexForSlot(selectedSlot);
-      return slotIndex > 0 ? slotIndex - slotsListPinnedSlotOffset : slotIndex;
-    } else if (slotOverride !== undefined) {
-      const slotIndex = getIndexForSlot(slotOverride);
-      return slotIndex > 0 ? slotIndex - slotsListPinnedSlotOffset : slotIndex;
+      slotIndex = getIndexForSlot(selectedSlot);
     } else if (currentLeaderSlot !== undefined) {
-      const slotIndex = getIndexForSlot(currentLeaderSlot);
-      const visibleStartIndex = slotIndex - slotsListFutureSlotsOffset;
-      return visibleStartIndex > 0 ? visibleStartIndex : 0;
+      slotIndex = getIndexForSlot(currentLeaderSlot);
     }
-    return -1;
-  }, [selectedSlot, slotOverride, currentLeaderSlot, getIndexForSlot]);
+
+    if (slotIndex === -1) return -1;
+
+    return clamp(slotIndex - slotsListPinnedSlotOffset, 0, slotsCount - 1);
+  }, [selectedSlot, currentLeaderSlot, slotsCount, getIndexForSlot]);
 
   const { rangeChanged, scrollSeekConfiguration } = useMemo(() => {
     const rangeChangedFn = ({ startIndex }: { startIndex: number }) =>
@@ -122,11 +117,14 @@ function InnerSlotsList({
     const handleSlotOverride = throttle(
       () => {
         if (visibleStartIndexRef.current === null) return;
-        const slot = getSlotAtIndex(visibleStartIndexRef.current);
-        setSlotOverride(
-          slot ? slot + slotsListFutureSlotsOffset : undefined,
-          true,
+
+        const slotIndex = Math.min(
+          visibleStartIndexRef.current + slotsListPinnedSlotOffset,
+          slotsCount - 1,
         );
+
+        const slot = getSlotAtIndex(slotIndex);
+        setSlotOverride(slot, true);
       },
       50,
       { leading: true, trailing: true },
@@ -143,7 +141,7 @@ function InnerSlotsList({
       container.removeEventListener("wheel", handleScroll);
       container.removeEventListener("touchmove", handleScroll);
     };
-  }, [getSlotAtIndex, setSlotOverride, visibleStartIndexRef]);
+  }, [getSlotAtIndex, setSlotOverride, slotsCount, visibleStartIndexRef]);
 
   // Auto scroll enabled (live scrolling)
   useEffect(() => {
@@ -156,7 +154,7 @@ function InnerSlotsList({
       return;
 
     const slotIndex = getIndexForSlot(currentLeaderSlot);
-    const visibleStartIndex = slotIndex - slotsListFutureSlotsOffset;
+    const visibleStartIndex = slotIndex - slotsListPinnedSlotOffset;
 
     listRef.current.scrollToIndex({
       index: visibleStartIndex > 0 ? visibleStartIndex : 0,
@@ -170,9 +168,12 @@ function InnerSlotsList({
     setSlotOverride(selectedSlot);
   }, [selectedSlot, setSlotOverride]);
 
+  const debouncedHeight = useDebouncedHeight(height);
+
   const increaseViewportBy = useMemo(() => {
-    return { top: height, bottom: height };
-  }, [height]);
+    // top must be 0, to prevent rangeChange startIndex offset
+    return { top: 0, bottom: debouncedHeight };
+  }, [debouncedHeight]);
 
   return (
     <Box ref={listContainerRef} width={`${width}px`} height={`${height}px`}>
@@ -272,4 +273,18 @@ function MySlotsList({ width, height }: SlotsListProps) {
       getIndexForSlot={getClosestIndexForSlot}
     />
   );
+}
+
+function useDebouncedHeight(height: number) {
+  const [debouncedHeight, setDebouncedHeight] = useState(height);
+
+  const updateDebouncedHeight = useDebouncedCallback((h: number) => {
+    setDebouncedHeight((prev) => (Math.abs(h - prev) >= 100 ? h : prev));
+  }, 80);
+
+  useMemo(() => {
+    updateDebouncedHeight(height);
+  }, [height, updateDebouncedHeight]);
+
+  return debouncedHeight;
 }
