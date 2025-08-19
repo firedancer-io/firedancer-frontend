@@ -52,12 +52,13 @@ export default function SlotDetails() {
 
 function Setup() {
   const { selectedSlot } = useSlotSearchParam();
+  const epoch = useAtomValue(epochAtom);
   const setBaseSelectedSlot = useSetAtom(baseSelectedSlotAtom);
 
   // To sync atom to search param
   useEffect(() => {
-    setBaseSelectedSlot(selectedSlot);
-  }, [selectedSlot, setBaseSelectedSlot]);
+    setBaseSelectedSlot(selectedSlot, epoch);
+  }, [selectedSlot, setBaseSelectedSlot, epoch]);
 
   useUnmount(() => {
     setBaseSelectedSlot(undefined);
