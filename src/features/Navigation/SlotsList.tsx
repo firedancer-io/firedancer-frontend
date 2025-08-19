@@ -162,12 +162,6 @@ function InnerSlotsList({
     });
   }, [autoScroll, currentLeaderSlot, getIndexForSlot, listRef, slotsCount]);
 
-  // Scroll to selected slot (disable auto scrolling)
-  useEffect(() => {
-    if (selectedSlot === undefined) return;
-    setSlotOverride(selectedSlot);
-  }, [selectedSlot, setSlotOverride]);
-
   const debouncedHeight = useDebouncedHeight(height);
 
   const increaseViewportBy = useMemo(() => {
