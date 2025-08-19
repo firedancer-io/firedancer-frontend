@@ -15,7 +15,7 @@ import type {
   SlotLevel,
   SlotResponse,
 } from "./api/types";
-import { merge } from "lodash";
+import { clamp, merge } from "lodash";
 import { getLeaderSlots, getSlotGroupLeader, getStake } from "./utils";
 import { searchLeaderSlotsAtom } from "./features/LeaderSchedule/atoms";
 import { selectedSlotAtom } from "./features/Overview/SlotPerformance/atoms";
@@ -58,54 +58,27 @@ export const nextEpochAtom = atom((get) => {
   return nextEpoch;
 });
 
-export const [slotOverrideAtom, setSlotScrollListFnAtom, autoScrollAtom] =
+export const [slotOverrideAtom, autoScrollAtom] =
   (function getSlotOverrideAtom() {
     const _slotOverrideAtom = atom<number>();
-    const _scrollSlotListFn = atom<{
-      fn?: (slotOverride: number | undefined) => void;
-    }>({});
-
-    let rafId: number | undefined = undefined;
 
     return [
       atom(
         (get) => get(_slotOverrideAtom),
-        (
-          get,
-          set,
-          slot: number | undefined,
-          skipScrollList: boolean = false,
-        ) => {
+        (get, set, slot: number | undefined) => {
           const epoch = get(epochAtom);
           if (!epoch) return;
 
-          let startOverrideSlot = slot ? getSlotGroupLeader(slot) : slot;
+          const clampedSlot =
+            slot === undefined
+              ? undefined
+              : clamp(
+                  getSlotGroupLeader(slot),
+                  epoch.start_slot,
+                  epoch.end_slot,
+                );
 
-          if (startOverrideSlot !== undefined) {
-            startOverrideSlot = Math.min(
-              epoch.end_slot,
-              Math.max(startOverrideSlot, epoch.start_slot),
-            );
-          }
-
-          set(_slotOverrideAtom, startOverrideSlot);
-          if (!skipScrollList) {
-            const { fn } = get(_scrollSlotListFn);
-            if (rafId) cancelAnimationFrame(rafId);
-            rafId = requestAnimationFrame(() => {
-              fn?.(startOverrideSlot);
-            });
-          }
-        },
-      ),
-      atom(
-        null,
-        (
-          _,
-          set,
-          scrollFn: ((slotOverride: number | undefined) => void) | undefined,
-        ) => {
-          set(_scrollSlotListFn, { fn: scrollFn });
+          set(_slotOverrideAtom, clampedSlot);
         },
       ),
       atom((get) => get(_slotOverrideAtom) === undefined),
