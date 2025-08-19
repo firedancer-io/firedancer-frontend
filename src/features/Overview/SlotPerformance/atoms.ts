@@ -8,18 +8,41 @@ import type { TxnWaterfall } from "../../../api/types";
 import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
 import { countBy } from "lodash";
-import { epochAtom } from "../../../atoms";
+import { epochAtom, slotOverrideAtom } from "../../../atoms";
 
-export const selectedSlotQueryParamAtom = atom<number>();
-export const isSelectedSlotQueryParamValidAtom = atom<boolean>((get) => {
-  const epoch = get(epochAtom);
-  const slot = get(selectedSlotQueryParamAtom);
-  if (slot === undefined) return true;
-  return Boolean(epoch && epoch.start_slot <= slot && slot <= epoch.end_slot);
-});
+export const baseSelectedSlotAtom = (function () {
+  const _baseSelectedSlotAtom = atom<{
+    slot: number | undefined;
+    isValid: boolean;
+  }>({
+    slot: undefined,
+    isValid: true,
+  });
+
+  return atom(
+    (get) => get(_baseSelectedSlotAtom),
+    (get, set, slot: number | undefined) => {
+      const epoch = get(epochAtom);
+      const isValid =
+        slot === undefined ||
+        Boolean(epoch && epoch.start_slot <= slot && slot <= epoch.end_slot);
+
+      set(_baseSelectedSlotAtom, {
+        slot,
+        isValid,
+      });
+
+      if (isValid && slot !== undefined) {
+        // Scroll to selected slot if new selection is defined
+        set(slotOverrideAtom, slot);
+      }
+    },
+  );
+})();
+
 export const selectedSlotAtom = atom<number | undefined>((get) => {
-  const isValid = get(isSelectedSlotQueryParamValidAtom);
-  return isValid ? get(selectedSlotQueryParamAtom) : undefined;
+  const { slot, isValid } = get(baseSelectedSlotAtom);
+  return isValid ? slot : undefined;
 });
 
 export enum DisplayType {
