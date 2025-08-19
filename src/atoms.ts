@@ -132,8 +132,12 @@ export const slotNavFilterAtom = (function getSlotNavFilterAtom() {
   const _slotNavFilterAtom = atom<SlotNavFilter>();
   return atom(
     (get) => get(_slotNavFilterAtom) ?? SlotNavFilter.AllSlots,
-    (_, set, filter: SlotNavFilter | undefined) => {
+    (get, set, filter: SlotNavFilter | undefined) => {
       set(_slotNavFilterAtom, filter);
+
+      // Reset scroll to selected slot or RT
+      const selectedSlot = get(selectedSlotAtom);
+      set(slotOverrideAtom, selectedSlot ?? undefined);
     },
   );
 })();

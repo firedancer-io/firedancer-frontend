@@ -2,26 +2,20 @@ import { Flex, Text } from "@radix-ui/themes";
 import { ToggleGroup } from "radix-ui";
 import { useCallback } from "react";
 
-import { useAtom, useSetAtom } from "jotai";
-import {
-  SlotNavFilter,
-  slotNavFilterAtom,
-  slotOverrideAtom,
-} from "../../atoms";
+import { useAtom } from "jotai";
+import { SlotNavFilter, slotNavFilterAtom } from "../../atoms";
 import styles from "./navigation.module.css";
 
 export default function NavFilterToggles() {
   const [navFilter, setNavFilter] = useAtom(slotNavFilterAtom);
-  const setSlotOverride = useSetAtom(slotOverrideAtom);
 
   const onValueChange = useCallback(
     (value: SlotNavFilter) => {
       if (!value) return;
 
-      setSlotOverride(undefined);
       setNavFilter(value);
     },
-    [setNavFilter, setSlotOverride],
+    [setNavFilter],
   );
 
   return (
