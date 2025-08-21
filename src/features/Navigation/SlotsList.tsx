@@ -1,4 +1,4 @@
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   autoScrollAtom,
   currentLeaderSlotAtom,
@@ -10,26 +10,20 @@ import {
 } from "../../atoms";
 import { Box } from "@radix-ui/themes";
 import type { RefObject } from "react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import styles from "./slotsList.module.css";
 import { slotsListPinnedSlotOffset, slotsPerLeader } from "../../consts";
-import { clamp, throttle } from "lodash";
+import { throttle } from "lodash";
 import SlotsRenderer, { SlotsPlaceholder } from "./SlotsRenderer";
 import type { ScrollSeekConfiguration, VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
-import {
-  baseSelectedSlotAtom,
-  selectedSlotAtom,
-} from "../Overview/SlotPerformance/atoms";
+import { baseSelectedSlotAtom } from "../Overview/SlotPerformance/atoms";
 import ResetLive from "./ResetLive";
 import type { DebouncedState } from "use-debounce";
 import { useDebouncedCallback } from "use-debounce";
 import { useCurrentRoute } from "../../hooks/useCurrentRoute";
 
 const computeItemKey = (slot: number) => slot;
-const store = getDefaultStore();
-
-const debounceWait = 50;
 
 interface SlotsListProps {
   width: number;
@@ -75,11 +69,7 @@ function InnerSlotsList({
   const setSlotOverride = useSetAtom(slotOverrideAtom);
   const slotsCount = slotGroupsDescending.length;
 
-  const [initialTopMostItemIndex] = useState(
-    getInitialTopMostIndex(getIndexForSlot, slotsCount),
-  );
-
-  const debouncedScroll = useDebouncedCallback(() => {}, debounceWait);
+  const debouncedScroll = useDebouncedCallback(() => {}, 100);
 
   const { rangeChanged, scrollSeekConfiguration } = useMemo(() => {
     const rangeChangedFn = ({ startIndex }: { startIndex: number }) => {
@@ -113,7 +103,7 @@ function InnerSlotsList({
         const slot = getSlotAtIndex(slotIndex);
         setSlotOverride(slot);
       },
-      debounceWait,
+      50,
       { leading: true, trailing: true },
     );
 
@@ -136,19 +126,11 @@ function InnerSlotsList({
     visibleStartIndexRef,
   ]);
 
-  const debouncedHeight = useDebouncedHeight(height);
-  const increaseViewportBy = useMemo(() => {
-    // top must be 0, to prevent rangeChange startIndex offset
-    return { top: 0, bottom: debouncedHeight };
-  }, [debouncedHeight]);
-
   return (
     <Box ref={listContainerRef} width={`${width}px`} height={`${height}px`}>
       <RTAutoScroll listRef={listRef} getIndexForSlot={getIndexForSlot} />
       <SlotOverrideScroll
         listRef={listRef}
-        visibleStartIndexRef={visibleStartIndexRef}
-        slotsCount={slotsCount}
         getIndexForSlot={getIndexForSlot}
         debouncedScroll={debouncedScroll}
       />
@@ -161,8 +143,6 @@ function InnerSlotsList({
         height={height}
         data={slotGroupsDescending}
         totalCount={slotsCount}
-        initialTopMostItemIndex={initialTopMostItemIndex}
-        increaseViewportBy={increaseViewportBy}
         // height of past slots that the user is most likely to scroll through
         defaultItemHeight={42}
         skipAnimationFrameInResizeObserver
@@ -174,35 +154,6 @@ function InnerSlotsList({
       />
     </Box>
   );
-}
-
-function getInitialTopMostIndex(
-  getIndexForSlot: (slot: number) => number,
-  slotsCount: number,
-) {
-  const selectedSlot = store.get(selectedSlotAtom);
-  const currentLeaderSlot = store.get(currentLeaderSlotAtom);
-
-  const initalSlot = selectedSlot ?? currentLeaderSlot;
-  const slotIndex = initalSlot === undefined ? -1 : getIndexForSlot(initalSlot);
-
-  if (slotIndex === -1) return -1;
-
-  return clamp(slotIndex - slotsListPinnedSlotOffset, 0, slotsCount - 1);
-}
-
-function useDebouncedHeight(height: number) {
-  const [debouncedHeight, setDebouncedHeight] = useState(height);
-
-  const updateDebouncedHeight = useDebouncedCallback((h: number) => {
-    setDebouncedHeight((prev) => (Math.abs(h - prev) >= 100 ? h : prev));
-  }, 80);
-
-  useMemo(() => {
-    updateDebouncedHeight(height);
-  }, [height, updateDebouncedHeight]);
-
-  return debouncedHeight;
 }
 
 // Render nothing when scrolling quickly to improve performance
@@ -237,18 +188,15 @@ function RTAutoScroll({ listRef, getIndexForSlot }: RTAutoScrollProps) {
 
 interface SlotOverrideScrollProps {
   listRef: RefObject<VirtuosoHandle>;
-  visibleStartIndexRef: RefObject<number | null>;
-  slotsCount: number;
   getIndexForSlot: (slot: number) => number;
   debouncedScroll: DebouncedState<() => void>;
 }
 function SlotOverrideScroll({
   listRef,
-  visibleStartIndexRef,
-  slotsCount,
   getIndexForSlot,
   debouncedScroll,
 }: SlotOverrideScrollProps) {
+  const rafIdRef = useRef<number | null>(null);
   const slotOverride = useAtomValue(slotOverrideAtom);
 
   useEffect(() => {
@@ -260,20 +208,25 @@ function SlotOverrideScroll({
       getIndexForSlot(slotOverride) - slotsListPinnedSlotOffset,
     );
 
-    if (targetIndex === visibleStartIndexRef.current) return;
+    const prevRafId = rafIdRef.current;
+    rafIdRef.current = requestAnimationFrame(() => {
+      if (prevRafId !== null) {
+        cancelAnimationFrame(prevRafId);
+      }
 
-    listRef.current.scrollToIndex({
-      index: targetIndex,
-      align: "start",
+      listRef.current?.scrollToIndex({
+        index: targetIndex,
+        align: "start",
+      });
     });
-  }, [
-    getIndexForSlot,
-    slotOverride,
-    slotsCount,
-    debouncedScroll,
-    listRef,
-    visibleStartIndexRef,
-  ]);
+
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+    };
+  }, [getIndexForSlot, slotOverride, listRef, debouncedScroll]);
 
   return null;
 }
@@ -335,6 +288,8 @@ function MySlotsList({ width, height }: SlotsListProps) {
     },
     [slotGroupsDescending],
   );
+
+  if (!leaderSlots) return null;
 
   return (
     <InnerSlotsList
