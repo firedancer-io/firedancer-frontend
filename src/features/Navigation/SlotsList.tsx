@@ -25,6 +25,9 @@ import { useCurrentRoute } from "../../hooks/useCurrentRoute";
 
 const computeItemKey = (slot: number) => slot;
 
+// Add one future slot to prevent current leader transition from flickering
+const increaseViewportBy = { top: 24, bottom: 0 };
+
 interface SlotsListProps {
   width: number;
   height: number;
@@ -73,7 +76,8 @@ function InnerSlotsList({
 
   const { rangeChanged, scrollSeekConfiguration } = useMemo(() => {
     const rangeChangedFn = ({ startIndex }: { startIndex: number }) => {
-      visibleStartIndexRef.current = startIndex;
+      // account for increaseViewportBy
+      visibleStartIndexRef.current = startIndex + 1;
     };
 
     const config: ScrollSeekConfiguration = {
@@ -143,6 +147,7 @@ function InnerSlotsList({
         height={height}
         data={slotGroupsDescending}
         totalCount={slotsCount}
+        increaseViewportBy={increaseViewportBy}
         // height of past slots that the user is most likely to scroll through
         defaultItemHeight={42}
         skipAnimationFrameInResizeObserver
