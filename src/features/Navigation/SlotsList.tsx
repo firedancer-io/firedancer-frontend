@@ -22,6 +22,7 @@ import ResetLive from "./ResetLive";
 import type { DebouncedState } from "use-debounce";
 import { useDebouncedCallback } from "use-debounce";
 import { useCurrentRoute } from "../../hooks/useCurrentRoute";
+import { getSlotGroupLeader } from "../../utils";
 
 const computeItemKey = (slot: number) => slot;
 
@@ -274,12 +275,22 @@ function AllSlotsList({ width, height }: SlotsListProps) {
 }
 
 function MySlotsList({ width, height }: SlotsListProps) {
-  const leaderSlots = useAtomValue(leaderSlotsAtom);
+  const mySlots = useAtomValue(leaderSlotsAtom);
 
   const slotGroupsDescending = useMemo(
-    () => leaderSlots?.toReversed() ?? [],
-    [leaderSlots],
+    () => mySlots?.toReversed() ?? [],
+    [mySlots],
   );
+
+  const slotToIndexMapping = useMemo(() => {
+    return slotGroupsDescending.reduce<{ [slot: number]: number }>(
+      (acc, slot, index) => {
+        acc[slot] = index;
+        return acc;
+      },
+      {},
+    );
+  }, [slotGroupsDescending]);
 
   const getSlotAtIndex = useCallback(
     (index: number) => slotGroupsDescending[index],
@@ -289,12 +300,15 @@ function MySlotsList({ width, height }: SlotsListProps) {
   // Get the slot index, or if unavailable, the closest past index
   const getClosestIndexForSlot = useCallback(
     (slot: number) => {
-      return slotGroupsDescending.findIndex((s) => s <= slot);
+      return (
+        slotToIndexMapping[getSlotGroupLeader(slot)] ??
+        slotGroupsDescending.findIndex((s) => s <= slot)
+      );
     },
-    [slotGroupsDescending],
+    [slotGroupsDescending, slotToIndexMapping],
   );
 
-  if (!leaderSlots) return null;
+  if (!mySlots) return null;
 
   return (
     <InnerSlotsList
