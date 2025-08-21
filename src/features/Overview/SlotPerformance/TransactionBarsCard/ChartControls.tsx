@@ -45,6 +45,7 @@ import {
   requestedToggleControlColor,
   incomePerCuToggleControlColor,
 } from "../../../../colors";
+import { useThrottledCallback } from "use-debounce";
 
 interface ChartControlsProps {
   transactions: SlotTransactions;
@@ -494,7 +495,7 @@ function ArrivalSvgChart({
       return points + `${x},${y} `;
     }, "");
 
-    return `0,${bboxHeight}, ${points}`;
+    return `0,${bboxHeight}, ${points}, ${bboxWidth},${bboxHeight}`;
   }, [
     bboxWidth,
     beforeZeroMulti,
@@ -590,8 +591,26 @@ function ArrivalControl({ transactions }: WithTransactionsProps) {
   const minValueLabel = getValueLabel(rangeValue[0]);
   const maxValueLabel = getValueLabel(rangeValue[1]);
 
+  const filterChart = useThrottledCallback(
+    (value: number[]) => {
+      requestAnimationFrame(() =>
+        uplotAction((u, bankIdx) =>
+          filterArrival(
+            u,
+            transactions,
+            bankIdx,
+            sliderMaxValue,
+            getRangeMinMaxValues(value),
+          ),
+        ),
+      );
+    },
+    100,
+    { leading: false, trailing: true },
+  );
+
   return (
-    <Flex align="center" gap="2" flexGrow="1">
+    <Flex align="center" gap="2">
       <Text className={styles.arrivalLabel}>Arrival</Text>
       <div
         className={styles.slider}
@@ -629,17 +648,8 @@ function ArrivalControl({ transactions }: WithTransactionsProps) {
               const left = u.valToPos(value[changedValueIdx], xScaleKey);
               u.setCursor({ left, top: 0 });
             });
-            requestAnimationFrame(() => {
-              uplotAction((u, bankIdx) =>
-                filterArrival(
-                  u,
-                  transactions,
-                  bankIdx,
-                  sliderMaxValue,
-                  getRangeMinMaxValues(value),
-                ),
-              );
-            });
+
+            filterChart(value);
           }}
         />
       </div>
