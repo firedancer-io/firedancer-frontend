@@ -4,13 +4,55 @@ import {
   tilesAtom,
   tileTimerAtom,
 } from "../../../api/atoms";
-import type { TxnWaterfall } from "../../../api/types";
+import type { Epoch, TxnWaterfall } from "../../../api/types";
 import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
 import { countBy } from "lodash";
+import { epochAtom, slotOverrideAtom } from "../../../atoms";
 
-// Note: do not user setter directly as it's derived from search params
-export const selectedSlotAtom = atom<number>();
+function isSlotValid(slot?: number, epoch?: Epoch) {
+  return (
+    slot === undefined ||
+    Boolean(epoch && epoch.start_slot <= slot && slot <= epoch.end_slot)
+  );
+}
+
+export const baseSelectedSlotAtom = (function () {
+  const _baseSelectedSlotAtom = atom<number>();
+  const _isInitializedAtom = atom(false);
+
+  return atom(
+    (get) => {
+      const epoch = get(epochAtom);
+      const slot = get(_baseSelectedSlotAtom);
+      return {
+        slot,
+        isValid: isSlotValid(slot, epoch),
+        isInitialized: get(_isInitializedAtom),
+      };
+    },
+    (_, set, slot?: number, epoch?: Epoch) => {
+      if (!epoch) {
+        set(_baseSelectedSlotAtom, undefined);
+        return;
+      }
+
+      set(_baseSelectedSlotAtom, slot);
+      set(_isInitializedAtom, true);
+      const isValid = isSlotValid(slot, epoch);
+
+      if (isValid && slot !== undefined) {
+        // Scroll to selected slot if new selection is defined
+        set(slotOverrideAtom, slot);
+      }
+    },
+  );
+})();
+
+export const selectedSlotAtom = atom<number | undefined>((get) => {
+  const { slot, isValid } = get(baseSelectedSlotAtom);
+  return isValid ? slot : undefined;
+});
 
 export enum DisplayType {
   Count = "Count",

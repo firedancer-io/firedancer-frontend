@@ -1,7 +1,9 @@
 .container {
-  padding: 4px 8px;
+  margin: 4px 4px 0 4px;
+  padding: 4px;
   border-radius: 8px;
   background: var(--popover-background-color);
+  max-width: 100vw;
   border: 1px solid rgba(250, 250, 250, 0.12);
 
   &.pointer {
@@ -25,7 +27,10 @@
 
 .horizontal {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: space-between;
+  align-items: flex-end;
   gap: 8px;
+  flex-shrink: 0;
+  border-width: 0px;
+  background-color: var(--color-background);
 }

@@ -1,25 +1,24 @@
-@import "@radix-ui/colors/black-alpha.css";
-@import "@radix-ui/colors/violet.css";
-
 .container {
-  /* width: "100%";    */
   position: relative;
-  flex-grow: 1;
+  height: 100%;
 }
 
 .epoch-progress {
-  height: 100%;
-  background: var(--epoch-slider-progress-color);
-  border-top-left-radius: 9999px;
-  border-bottom-left-radius: 9999px;
+  width: 100%;
+  background: #142d53;
+  position: absolute;
+  bottom: 0;
+}
+
+.clickable {
+  cursor: pointer;
 }
 
 .leader-slot {
-  height: 100%;
-  background: var(--my-slots-color);
-  width: 5px;
+  width: 100%;
+  background: #2a7edf;
+  height: 5px;
   position: absolute;
-  top: 0px;
   opacity: 0.5;
   &:hover {
     filter: brightness(1.5);
@@ -30,72 +29,70 @@
 }
 
 .skipped-slot {
-  height: 100%;
-  background: var(--epoch-skipped-slot-color);
-  width: 3px;
+  width: 100%;
+  background: #ff5353;
+  height: 3px;
   position: absolute;
-  top: 0px;
   &:hover {
     filter: brightness(1.5);
   }
 }
 
 .skipped-slot-icon {
-  width: 12px;
+  height: 10px;
   position: absolute;
-  top: -15px;
+  right: -12px;
   &:hover {
     filter: brightness(1.5);
   }
 }
 
 .first-processed-slot {
-  height: 100%;
-  background: var(--header-color);
-  width: 3px;
+  width: 100%;
+  background: #bdf3ff;
+  height: 3px;
   position: absolute;
-  top: 0px;
+  right: 0px;
   &:hover {
     filter: brightness(1.5);
   }
 }
 
 .first-processed-slot-icon {
-  width: 12px;
+  height: 10px;
   position: absolute;
-  top: -15px;
+  right: -12px;
   &:hover {
     filter: brightness(1.5);
   }
 }
 
 .slider-root {
-  position: relative;
   display: flex;
   align-items: center;
   user-select: none;
   touch-action: none;
+  height: 100%;
 }
 
 .slider-track {
-  background: var(--dropdown-background-color);
-  position: relative;
-  flex-grow: 1;
-  border-radius: 9999px;
-  height: 10px;
-  /* To round leader slots markers at beginning/end of epoch slider */
-  overflow: hidden;
+  background: #24262b;
+  height: 100%;
+  width: 16px;
 }
 
 .slider-thumb {
   display: block;
-  width: 10px;
-  height: 20px;
+  position: relative;
+  left: -3px;
+  height: 5px;
+  width: 20px;
   box-shadow: 0 2px 8px var(--black-a7);
   background: var(--gray-7);
   border: 1px solid var(--gray-12);
   border-radius: 2px;
   opacity: 0.5;
+  cursor: grab;
 }
 
 .slider-thumb:hover {
@@ -104,4 +101,18 @@
 .slider-thumb:focus {
   outline: none;
   box-shadow: 0 0 0 2px var(--gray-a8);
+}
+
+.hide {
+  opacity: 0;
+  display: none;
+  transition:
+    opacity 0.5s ease-out 1s,
+    display 0s 1.5s;
+  transition-behavior: allow-discrete;
+}
+
+.show {
+  opacity: 1;
+  display: block;
 }

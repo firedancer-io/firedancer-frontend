@@ -1,9 +1,10 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { lazy } from "react";
-import Header from "../features/Header";
-import { Container } from "@radix-ui/themes";
+import { Flex } from "@radix-ui/themes";
 import StartupProgress from "../features/StartupProgress";
 import Toast from "../features/Toast";
+import Navigation from "../features/Navigation";
+import Header from "../features/Header";
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -19,16 +20,40 @@ const TanStackRouterDevtools =
         })),
       );
 
-export const Route = createRootRoute({
-  component: () => (
+export const Route = createRootRoute({ component: Root });
+
+function Root() {
+  return (
     <>
       <Toast />
       <StartupProgress>
-        <Container maxWidth="1920px">
+        <Flex
+          direction="column"
+          maxWidth="1920px"
+          maxHeight="100vh"
+          height="100vh"
+          m="auto"
+          pl="2"
+          justify="center"
+          gap="2"
+          overflow="hidden"
+        >
           <Header />
-          <Outlet />
-        </Container>
+          <Flex width="100%" height="100%" gap="2" overflow="hidden">
+            <Navigation />
+            <Flex
+              overflow="auto"
+              flexGrow="1"
+              flexShrink="1"
+              align="start"
+              pr="2"
+              pb="2"
+            >
+              <Outlet />
+            </Flex>
+          </Flex>
+        </Flex>
       </StartupProgress>
     </>
-  ),
-});
+  );
+}

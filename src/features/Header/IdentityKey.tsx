@@ -11,7 +11,7 @@ import { myStakePctAtom, myStakeAmountAtom } from "../../atoms";
 import type { PropsWithChildren } from "react";
 import { useEffect } from "react";
 import { DateTime } from "luxon";
-import { getFmtStake, getTimeTillText, slowDateTimeNow } from "../../utils";
+import { getFmtStake, getDurationText, slowDateTimeNow } from "../../utils";
 import { formatNumber } from "../../numUtils";
 import { useInterval, useMedia, useUpdate } from "react-use";
 import clsx from "clsx";
@@ -21,9 +21,9 @@ import PopoverDropdown from "../../components/PopoverDropdown";
 export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
 
-  const isXXNarrowScreen = useMedia("(min-width: 550px)");
-  const isXNarrowScreen = useMedia("(min-width: 750px)");
-  const isNarrowScreen = useMedia("(min-width: 900px)");
+  const isXXNarrowScreen = useMedia("(min-width: 400px)");
+  const isXNarrowScreen = useMedia("(min-width: 600px)");
+  const isNarrowScreen = useMedia("(min-width: 1100px)");
 
   useEffect(() => {
     let title = "Firedancer";
@@ -41,14 +41,15 @@ export default function IdentityKey() {
       <div
         className={clsx(styles.container, styles.horizontal, styles.pointer)}
       >
+        <PeerIcon url={peer?.info?.icon_url} size={20} isYou />
+
         {isXXNarrowScreen && (
-          <PeerIcon url={peer?.info?.icon_url} size={24} isYou />
+          <Label
+            label="Validator Name"
+            value={`${identityKey?.substring(0, 8)}...`}
+            tooltip="The validators identity public key"
+          />
         )}
-        <Label
-          label="Validator Name"
-          value={`${identityKey?.substring(0, 8)}...`}
-          tooltip="The validators identity public key"
-        />
         {isXNarrowScreen && (
           <>
             <StakeValue />
@@ -88,7 +89,7 @@ function DropdownMenu() {
   const { peer, identityKey } = useIdentityPeer();
 
   return (
-    <div className={styles.container}>
+    <Flex gap="2" wrap="wrap" className={styles.container}>
       <Flex gap="2">
         <PeerIcon url={peer?.info?.icon_url} size={24} isYou />
         <Label
@@ -104,7 +105,7 @@ function DropdownMenu() {
       <IdentityBalance />
       <VotePubkey />
       <VoteBalance />
-    </div>
+    </Flex>
   );
 }
 
@@ -218,8 +219,9 @@ function StartupTime() {
       ),
     );
 
-    const text = getTimeTillText(uptimeDuration.rescale(), {
+    const text = getDurationText(uptimeDuration.rescale(), {
       showSeconds: false,
+      showOnlyLargestUnit: false,
     });
     return text;
   };

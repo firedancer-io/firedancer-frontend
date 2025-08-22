@@ -1,47 +1,33 @@
-import { Box, Flex } from "@radix-ui/themes";
+import { Flex } from "@radix-ui/themes";
 import IdentityKey from "./IdentityKey";
-import Cluster from "./Cluster";
-import styles from "./header.module.css";
-import { useEffect } from "react";
-import useNavigateLeaderSlot from "../../hooks/useNavigateLeaderSlot";
 import Logo from "./Logo";
-import EpochBar from "../EpochBar";
-import CluserIndicator from "./ClusterIndicator";
-import NavLinks from "./NavLinks";
-import MenuNavLinks from "./MenuNavLinks";
+import { DropdownNav, NavHandler, ToggleNav } from "./Nav";
+import { useMedia } from "react-use";
+import { CluserIndicator, Cluster } from "./Cluster";
+import { epochBarWidth, slotsListWidth } from "../../consts";
 
 export default function Header() {
-  // TODO move somehere it won't trigger re-renders
-  const nav = useNavigateLeaderSlot();
-  useEffect(() => {
-    const navigate = (e: KeyboardEvent) => {
-      if (e.code === "ArrowLeft") {
-        nav.navPrevLeaderSlot();
-      } else if (e.code === "ArrowRight") {
-        nav.navNextLeaderSlot();
-      }
-    };
-
-    document.addEventListener("keydown", navigate);
-
-    return () => document.removeEventListener("keydown", navigate);
-  }, [nav]);
+  const showDropdownNav = useMedia("(max-width: 900px)");
 
   return (
-    <Box className={styles.headerContainer}>
-      <Flex className={styles.headerInner} direction="column">
-        <CluserIndicator />
-        <Flex className={styles.headerRow} justify="between" align="center">
-          <MenuNavLinks />
-          <Flex gap="2" align="start">
-            <Logo />
-            <Cluster />
-          </Flex>
-          <NavLinks />
+    <Flex direction="column" style={{ marginTop: "5px" }}>
+      <CluserIndicator />
+      <Flex gap="2" align="end">
+        <Flex
+          gap="2"
+          align="end"
+          minWidth={`${epochBarWidth + slotsListWidth}px`}
+        >
+          <Logo />
+          <Cluster />
+        </Flex>
+        <Flex align="end" justify="between" flexGrow="1" flexShrink="1">
+          <NavHandler />
+          {showDropdownNav ? <DropdownNav /> : <ToggleNav />}
+
           <IdentityKey />
         </Flex>
-        <EpochBar />
       </Flex>
-    </Box>
+    </Flex>
   );
 }

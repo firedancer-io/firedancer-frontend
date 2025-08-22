@@ -9,7 +9,7 @@ import {
   slotDurationAtom,
   nextEpochLeaderSlotAtom,
 } from "../atoms";
-import { getTimeTillText } from "../utils";
+import { getDurationText } from "../utils";
 import { useInterval } from "react-use";
 
 export default function useNextSlot() {
@@ -74,7 +74,7 @@ export default function useNextSlot() {
 
   return {
     progressSinceLastLeader: isLeader ? 100 : (progressSinceLastLeader ?? 0),
-    nextSlotText: isLeader ? "Now" : getTimeTillText(nextSlotDuration),
+    nextSlotText: isLeader ? "Now" : getDurationText(nextSlotDuration),
     nextLeaderSlot: isLeader ? currentSlot : nextLeaderSlot,
   };
 }
