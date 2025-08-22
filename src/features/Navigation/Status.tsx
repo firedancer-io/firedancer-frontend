@@ -2,7 +2,6 @@ import { useAtomValue } from "jotai";
 import type { Status } from "../../atoms";
 import { statusAtom } from "../../atoms";
 import { useMemo } from "react";
-import { DotFilledIcon } from "@radix-ui/react-icons";
 import historyIcon from "../../assets/history.svg";
 import futureIcon from "../../assets/future.svg";
 import { Flex, Text, Tooltip } from "@radix-ui/themes";
@@ -43,9 +42,13 @@ export function StatusIndicator() {
     return (
       <Tooltip content={status} disableHoverableContent>
         {status === "Live" ? (
-          <DotFilledIcon />
+          <div className={styles.dotIcon} />
         ) : (
           <img
+            style={{
+              marginLeft: "-1px",
+            }}
+            width="6px"
             src={status === "Past" ? historyIcon : futureIcon}
             alt={status}
           />
@@ -58,10 +61,10 @@ export function StatusIndicator() {
 
   return (
     <Flex
-      width="35px"
       justify="center"
       align="center"
       className={clsx(
+        styles.statusIndicator,
         status === "Live"
           ? styles.statusIndicatorLive
           : styles.statusIndicatorNotLive,

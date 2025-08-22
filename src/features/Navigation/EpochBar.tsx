@@ -1,4 +1,4 @@
-import { Box, Text } from "@radix-ui/themes";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import type { RefObject } from "react";
 import { memo, useCallback, useEffect } from "react";
 import type { Epoch } from "../../api/types";
@@ -17,7 +17,6 @@ import { skippedSlotsAtom } from "../../api/atoms";
 import type React from "react";
 import { startTransition, useMemo, useReducer, useRef, useState } from "react";
 import { Slider } from "radix-ui";
-import { Flex } from "@radix-ui/themes";
 import warning from "../../assets/warning_16dp_FF5353_FILL1_wght400_GRAD0_opsz20.svg";
 import green_flag from "../../assets/flag.svg";
 import styles from "./epochBar.module.css";
@@ -31,14 +30,6 @@ import {
   useFloating,
 } from "@floating-ui/react";
 import { isScrollingAtom } from "./atoms";
-
-export default function EpochBar() {
-  return (
-    <Flex height="100%" width="100%" justify="center">
-      <MEpochSlider />
-    </Flex>
-  );
-}
 
 // 1 tick about 10 leaders or 40 slots
 const sliderMaxValue = 10_800;
@@ -129,7 +120,7 @@ function removeNearbyPct(
   );
 }
 
-const MEpochSlider = memo(EpochSlider);
+export default memo(EpochSlider);
 
 function EpochSlider() {
   const epoch = useAtomValue(epochAtom);
@@ -138,7 +129,7 @@ function EpochSlider() {
   const isSliderChangingValueRef = useRef(false);
   const setIsScrolling = useSetAtom(isScrollingAtom);
 
-  const [measureRef, { height }] = useMeasure<HTMLFormElement>();
+  const [measureRef, { height }] = useMeasure<HTMLDivElement>();
   const slotHeight = Math.trunc(height / 175);
 
   const [tooltipOpen, setTooltipOpen] = useState(false);
@@ -178,10 +169,20 @@ function EpochSlider() {
   );
 
   return (
-    <form className={styles.container} ref={measureRef}>
+    <Flex
+      direction="column"
+      width="100%"
+      flexGrow="1"
+      align="center"
+      ref={measureRef}
+    >
       <Slider.Root
         orientation="vertical"
         className={styles.sliderRoot}
+        style={{
+          // handle last slot of epoch, placed 100% from bottom
+          marginTop: `${slotHeight}px`,
+        }}
         value={value}
         onValueChange={(newValue) => {
           isSliderChangingValueRef.current = true;
@@ -211,7 +212,7 @@ function EpochSlider() {
         </Slider.Track>
         <SliderThumbTooltip isOpen={tooltipOpen} />
       </Slider.Root>
-    </form>
+    </Flex>
   );
 }
 
