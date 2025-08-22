@@ -4,7 +4,7 @@ import Logo from "./Logo";
 import { DropdownNav, NavHandler, ToggleNav } from "./Nav";
 import { useMedia } from "react-use";
 import { CluserIndicator, Cluster } from "./Cluster";
-import { epochBarWidth, slotsListWidth } from "../../consts";
+import { logoRightSpacing, logoWidth, slotsListWidth } from "../../consts";
 
 export default function Header() {
   const showDropdownNav = useMedia("(max-width: 900px)");
@@ -15,8 +15,9 @@ export default function Header() {
       <Flex gap="2" align="end">
         <Flex
           gap="2"
-          align="end"
-          minWidth={`${epochBarWidth + slotsListWidth}px`}
+          minWidth={`${logoWidth + logoRightSpacing + slotsListWidth}px`}
+          align="center"
+          height="28px"
         >
           <Logo />
           <Cluster />
