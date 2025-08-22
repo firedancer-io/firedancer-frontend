@@ -6,14 +6,13 @@ import {
   commitHashAtom,
   scheduleStrategyAtom,
 } from "../../api/atoms";
-import { Text, Tooltip } from "@radix-ui/themes";
+import { Text, Tooltip, Flex } from "@radix-ui/themes";
 import styles from "./cluster.module.css";
 import connectedIcon from "../../assets/power.svg";
 import reconnectingIcon from "../../assets/power_off_orange.svg";
 import disconnectedIcon from "../../assets/power_off_red.svg";
 import { socketStateAtom } from "../../api/ws/atoms";
 import { SocketState } from "../../api/ws/types";
-import { useMedia } from "react-use";
 import type {
   BlockEngineUpdate,
   Cluster as ClusterType,
@@ -38,7 +37,6 @@ export function Cluster() {
   const version = useAtomValue(versionAtom);
   const commitHash = useAtomValue(commitHashAtom);
   const socketState = useAtomValue(socketStateAtom);
-  const isWideScreen = useMedia("(min-width: 600px)");
 
   if (!cluster && !version) return null;
 
@@ -55,22 +53,29 @@ export function Cluster() {
   }
 
   return (
-    <div className={styles.cluster}>
-      <Tooltip content="Cluster the validator is joined to">
-        <Text
-          className={styles.clusterName}
-          style={{ background: getClusterColor(cluster) }}
-        >
-          {clusterText}
-        </Text>
-      </Tooltip>
-      {isWideScreen && (
+    <Flex
+      className={styles.clusterContainer}
+      justify="between"
+      align="center"
+      flexGrow="1"
+    >
+      <Flex
+        className={styles.cluster}
+        direction="column"
+        align="center"
+        style={{ background: getClusterColor(cluster) }}
+      >
+        <Tooltip content="Cluster the validator is joined to">
+          <Text className={styles.clusterName}>{clusterText}</Text>
+        </Tooltip>
+
         <Tooltip
           content={`Current validator software version. Commit Hash: ${commitHash || "unknown"}`}
         >
-          <Text className={styles.version}>v{version}</Text>
+          <Text>v{version}</Text>
         </Tooltip>
-      )}
+      </Flex>
+
       <Tooltip
         content={`GUI is currently ${socketState} ${socketState === SocketState.Disconnected ? "from" : "to"} the validator`}
       >
@@ -80,7 +85,7 @@ export function Cluster() {
       <JitoIcon />
 
       <StrategyIcon />
-    </div>
+    </Flex>
   );
 }
 
