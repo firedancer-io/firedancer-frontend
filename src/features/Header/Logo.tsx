@@ -1,12 +1,13 @@
 import { Reset } from "@radix-ui/themes";
 import { Link } from "@tanstack/react-router";
 import fdLogo from "../../assets/firedancer_logo.svg";
+import { logoWidth } from "../../consts";
 
 export default function Logo() {
   return (
     <Reset>
       <Link to="/" style={{ lineHeight: 0 }}>
-        <img src={fdLogo} alt="fd" />
+        <img src={fdLogo} alt="fd" width={logoWidth} />
       </Link>
     </Reset>
   );

@@ -39,7 +39,7 @@ function Root() {
           overflow="hidden"
         >
           <Header />
-          <Flex width="100%" height="100%" gap="2" overflow="hidden">
+          <Flex width="100%" flexGrow="1" gap="2" overflow="hidden">
             <Navigation />
             <Flex
               overflow="auto"

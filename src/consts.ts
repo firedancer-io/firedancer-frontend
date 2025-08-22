@@ -8,5 +8,6 @@ export const lamportsPerSol = 1_000_000_000;
  * this default should only be used as a fallback  */
 export const defaultMaxComputeUnits = 50_000_000;
 
-export const epochBarWidth = 35;
-export const slotsListWidth = 130;
+export const logoWidth = 20;
+export const logoRightSpacing = 8;
+export const slotsListWidth = 120;
