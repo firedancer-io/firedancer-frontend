@@ -3,12 +3,20 @@ import { useMemo } from "react";
 
 import SlotsList from "./SlotsList";
 
-import { logoRightSpacing, logoWidth, slotsListWidth } from "../../consts";
+import {
+  clusterIndicatorHeight,
+  headerHeight,
+  logoRightSpacing,
+  logoWidth,
+  slotsListWidth,
+} from "../../consts";
 import { StatusIndicator } from "./Status";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { useCurrentRoute } from "../../hooks/useCurrentRoute";
 import NavFilterToggles from "./NavFilterToggles";
-import EpochBar from "./EpochBar";
+import EpochSlider from "./EpochSlider";
+
+const top = clusterIndicatorHeight + headerHeight;
 
 export default function Navigation() {
   const currentRoute = useCurrentRoute();
@@ -20,16 +28,19 @@ export default function Navigation() {
 
   return (
     <Flex
-      width={width}
-      height="100%"
-      gap="2"
-      pb="2"
-      flexShrink="0"
       flexGrow="0"
+      flexShrink="0"
+      width={width}
+      gap="2"
+      className="sticky"
+      top={`${top}px`}
+      height={`calc(100vh - ${top}px)`}
+      pt="1"
+      pb="2"
     >
       <Flex direction="column" width={`${logoWidth}px`}>
         <StatusIndicator />
-        <EpochBar />
+        <EpochSlider />
       </Flex>
 
       {currentRoute !== "Schedule" && (
