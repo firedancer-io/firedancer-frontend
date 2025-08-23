@@ -31,6 +31,7 @@ import {
 } from "../../colors";
 import { ScheduleStrategyEnum } from "../../api/entities";
 import { scheduleStrategyIcons } from "../../strategyIcons";
+import { clusterIndicatorHeight } from "../../consts";
 
 export function Cluster() {
   const cluster = useAtomValue(clusterAtom);
@@ -79,7 +80,7 @@ export function Cluster() {
       <Tooltip
         content={`GUI is currently ${socketState} ${socketState === SocketState.Disconnected ? "from" : "to"} the validator`}
       >
-        <img src={icon} alt="ws status" />
+        <img src={icon} height="14" width="14" alt="ws status" />
       </Tooltip>
 
       <JitoIcon />
@@ -93,7 +94,15 @@ export function CluserIndicator() {
   const cluster = useAtomValue(clusterAtom);
   const color = getClusterColor(cluster);
 
-  return <div className={styles.indicator} style={{ background: color }} />;
+  return (
+    <div
+      style={{
+        background: color,
+        height: clusterIndicatorHeight,
+        width: "100%",
+      }}
+    />
+  );
 }
 
 function getClusterColor(cluster?: ClusterType) {
@@ -138,8 +147,8 @@ function JitoIcon() {
       content={`Currently ${blockEngine.status} ${blockEngine.status === "disconnected" ? "from" : "to"} ${blockEngine.name} - ${blockEngine.url} (${blockEngine.ip})`}
     >
       <svg
-        width="16"
-        height="16"
+        width="14"
+        height="14"
         viewBox="0 0 48 48"
         xmlns="http://www.w3.org/2000/svg"
       >
@@ -180,6 +189,7 @@ function JitoIcon() {
 }
 
 function StrategyIcon() {
+  const fontSize = "14px";
   const scheduleStrategy = useAtomValue(scheduleStrategyAtom);
   if (!scheduleStrategy) return;
 
@@ -187,19 +197,19 @@ function StrategyIcon() {
   if (scheduleStrategy === ScheduleStrategyEnum.balanced) {
     return (
       <Tooltip content="Transaction scheduler strategy: balanced">
-        <div>{icon}</div>
+        <div style={{ fontSize }}>{icon}</div>
       </Tooltip>
     );
   } else if (scheduleStrategy === ScheduleStrategyEnum.perf) {
     return (
       <Tooltip content="Transaction scheduler strategy: performance">
-        <div style={{ margin: "0 -2px" }}>{icon}</div>
+        <div style={{ marginRight: "-3px", fontSize }}>{icon}</div>
       </Tooltip>
     );
   } else if (scheduleStrategy === ScheduleStrategyEnum.revenue) {
     return (
       <Tooltip content="Transaction scheduler strategy: revenue">
-        <div>{icon}</div>
+        <div style={{ fontSize }}>{icon}</div>
       </Tooltip>
     );
   }

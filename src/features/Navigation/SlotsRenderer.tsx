@@ -137,7 +137,7 @@ export function SlotsPlaceholder({
 
   return (
     <Box
-      position="fixed"
+      position="absolute"
       width={`${width - 1}px`}
       height={`${height}px`}
       overflow="hidden"
