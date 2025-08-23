@@ -1,10 +1,11 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { lazy } from "react";
-import { Flex } from "@radix-ui/themes";
+import { Box, Flex } from "@radix-ui/themes";
 import StartupProgress from "../features/StartupProgress";
 import Toast from "../features/Toast";
 import Navigation from "../features/Navigation";
 import Header from "../features/Header";
+
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -27,32 +28,21 @@ function Root() {
     <>
       <Toast />
       <StartupProgress>
-        <Flex
-          direction="column"
-          maxWidth="1920px"
-          maxHeight="100vh"
-          height="100vh"
-          m="auto"
-          pl="2"
-          justify="center"
-          gap="2"
-          overflow="hidden"
+        <div
+          style={{
+            position: "relative",
+          }}
         >
           <Header />
-          <Flex width="100%" flexGrow="1" gap="2" overflow="hidden">
+
+          <Flex className="app-width-container" gap="2" px="2">
             <Navigation />
-            <Flex
-              overflow="auto"
-              flexGrow="1"
-              flexShrink="1"
-              align="start"
-              pr="2"
-              pb="2"
-            >
+
+            <Box flexGrow="1" flexShrink="1" overflowX="hidden" pt="1" pb="2">
               <Outlet />
-            </Flex>
+            </Box>
           </Flex>
-        </Flex>
+        </div>
       </StartupProgress>
     </>
   );

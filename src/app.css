@@ -13,7 +13,6 @@
   --green-live: #3cff73;
 
   --header-row-height: 34px;
-  --header-height: 55px;
 
   font-variant-numeric: tabular-nums;
 }
@@ -35,4 +34,15 @@
 
 .rt-Separator {
   background: #65677a;
+}
+
+.sticky {
+  position: sticky;
+  z-index: 3;
+  background: var(--color-background);
+}
+
+.app-width-container {
+  max-width: 1920px;
+  margin: 0 auto;
 }

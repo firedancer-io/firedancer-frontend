@@ -132,7 +132,12 @@ function InnerSlotsList({
   ]);
 
   return (
-    <Box ref={listContainerRef} width={`${width}px`} height={`${height}px`}>
+    <Box
+      ref={listContainerRef}
+      position="relative"
+      width={`${width}px`}
+      height={`${height}px`}
+    >
       <RTAutoScroll listRef={listRef} getIndexForSlot={getIndexForSlot} />
       <SlotOverrideScroll
         listRef={listRef}
