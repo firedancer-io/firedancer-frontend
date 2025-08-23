@@ -19,7 +19,7 @@ import { startTransition, useMemo, useReducer, useRef, useState } from "react";
 import { Slider } from "radix-ui";
 import warning from "../../assets/warning_16dp_FF5353_FILL1_wght400_GRAD0_opsz20.svg";
 import green_flag from "../../assets/flag.svg";
-import styles from "./epochBar.module.css";
+import styles from "./epochSlider.module.css";
 import { useInterval, useMeasure } from "react-use";
 import clsx from "clsx";
 import { useThrottledCallback } from "use-debounce";

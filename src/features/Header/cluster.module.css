@@ -1,5 +1,5 @@
 .cluster-container {
-  padding: 2px 5px 2px 2px;
+  padding: 2px;
   align-items: center;
 
   border-radius: 5px;
@@ -19,12 +19,4 @@
     font-weight: 700;
     margin-bottom: -3px;
   }
-}
-
-.indicator {
-  height: 5px;
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
 }
