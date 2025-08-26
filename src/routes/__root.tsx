@@ -29,8 +29,11 @@ function Root() {
       <Toast />
       <StartupProgress>
         <div
+          id="scroll-container"
           style={{
             position: "relative",
+            height: "100vh",
+            overflowY: "auto",
           }}
         >
           <Header />
@@ -38,7 +41,7 @@ function Root() {
           <Flex className="app-width-container" gap="2" px="2">
             <Navigation />
 
-            <Box flexGrow="1" flexShrink="1" overflowX="hidden" pt="1" pb="2">
+            <Box flexGrow="1" minWidth="0" pt="1" pb="2">
               <Outlet />
             </Box>
           </Flex>
