@@ -52,11 +52,11 @@ export default function ComputeUnitsCard() {
               bankTileCount={bankTileCount}
               onCreate={handleCreate}
             />
+            <CuChartInfoIcon />
           </div>
         </Flex>
       </Card>
       <CuChartTooltip />
-      <CuChartInfoIcon />
     </>
   );
 }

@@ -63,15 +63,12 @@ export function startLinePlugin(): uPlot.Plugin {
           if (iconEl) {
             const infoIconX = Math.round(u.valToPos(lineNs, xScaleKey, false));
 
-            const bbox = u.over.getBoundingClientRect();
             const anchor = {
-              left: infoIconX + bbox.left - iconSize / 2,
-              top: bbox.top - 18,
+              left: infoIconX + u.over.offsetLeft - iconSize / 2,
+              top: u.over.offsetTop - iconSize,
             };
 
-            placement(iconEl, anchor, "center", "bottom", {
-              bound: document.body,
-            });
+            placement(iconEl, anchor, "center", "bottom");
 
             iconEl.style.display = "block";
           }
