@@ -28,7 +28,6 @@ export default function Navigation() {
 
   return (
     <Flex
-      flexGrow="0"
       flexShrink="0"
       width={width}
       gap="2"

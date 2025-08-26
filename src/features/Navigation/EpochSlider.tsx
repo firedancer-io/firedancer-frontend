@@ -197,6 +197,7 @@ function EpochSlider() {
         }}
         max={sliderMaxValue}
         onPointerUp={() => {
+          isSliderChangingValueRef.current = false;
           setIsScrolling(false);
         }}
       >
