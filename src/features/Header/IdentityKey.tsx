@@ -89,7 +89,11 @@ function DropdownMenu() {
   const { peer, identityKey } = useIdentityPeer();
 
   return (
-    <Flex gap="2" wrap="wrap" className={styles.container}>
+    <Flex
+      gap="2"
+      wrap="wrap"
+      className={clsx(styles.container, styles.dropdownMenu)}
+    >
       <Flex gap="2">
         <PeerIcon url={peer?.info?.icon_url} size={24} isYou />
         <Label
