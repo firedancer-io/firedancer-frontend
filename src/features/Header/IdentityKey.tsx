@@ -17,6 +17,7 @@ import { useInterval, useMedia, useUpdate } from "react-use";
 import clsx from "clsx";
 import { useIdentityPeer } from "../../hooks/useIdentityPeer";
 import PopoverDropdown from "../../components/PopoverDropdown";
+import { maxZIndex } from "../../consts";
 
 export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
@@ -90,9 +91,11 @@ function DropdownMenu() {
 
   return (
     <Flex
-      gap="2"
+      direction="column"
       wrap="wrap"
+      gap="2"
       className={clsx(styles.container, styles.dropdownMenu)}
+      style={{ zIndex: maxZIndex }}
     >
       <Flex gap="2">
         <PeerIcon url={peer?.info?.icon_url} size={24} isYou />

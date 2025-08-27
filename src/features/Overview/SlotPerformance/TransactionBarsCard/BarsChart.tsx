@@ -102,7 +102,7 @@ export default function BarsChart({
           },
           size: isFirstOrLastChart ? 40 : 0,
           space: 100,
-          grid: { stroke: "rgba(250, 250, 250, 0.05)" },
+          grid: { stroke: "var(--container-background-color)" },
           border: {
             show: true,
             width: 1 / devicePixelRatio,

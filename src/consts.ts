@@ -22,4 +22,4 @@ export const slotNavWidth = logoWidth + logoRightSpacing + slotsListWidth;
 
 export const narrowNavMedia = "(max-width: 768px)";
 
-export const maxZIndex = 6;
+export const maxZIndex = 110;

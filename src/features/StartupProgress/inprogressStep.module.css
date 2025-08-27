@@ -1,8 +1,8 @@
 .container {
   padding: 8px 14px;
   border-radius: 12px;
-  border: 1px solid rgba(250, 250, 250, 0.12);
-  background: rgba(250, 250, 250, 0.05);
+  border: 1px solid var(--container-border-color);
+  background: var(--container-background-color);
   display: grid;
   grid: auto-flow / auto 1fr;
   column-gap: 10px;
