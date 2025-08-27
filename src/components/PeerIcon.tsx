@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { useState } from "react";
 import privateIcon from "../assets/private.svg";
 import privateYouIcon from "../assets/privateYou.svg";
@@ -29,12 +28,9 @@ export default function PeerIcon({
   const [hasError, setHasError] = useState(globalHasError);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const iconStyles = {
-    "--height": `${size}px`,
-    "--width": `${size}px`,
-  } as CSSProperties;
+  const iconStyles = { width: `${size}px`, height: `${size}px` };
 
-  const className = clsx(styles.icon, { [styles.isRounded]: isRounded });
+  const className = clsx({ [styles.isRounded]: isRounded });
 
   if (!url || hasError) {
     if (hideFallback) {

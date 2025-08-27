@@ -31,7 +31,6 @@ export default function NavCollapseToggle({
       }}
     >
       <ReadMore
-        preserveAspectRatio="true"
         className={clsx({
           [styles.mirror]: !isNavCollapsed,
         })}

@@ -2,12 +2,15 @@ import { slotsPerLeader } from "../consts";
 import { atom, useAtomValue } from "jotai";
 import { slotPublishAtomFamily } from "../atoms";
 import memoize from "micro-memoize";
+import { getSlotGroupLeader } from "../utils";
 
 const leaderGroupSkippedAtom = memoize(
   (slot: number) =>
     atom((get) => {
+      const slotGroupLeader = getSlotGroupLeader(slot);
       for (let i = 0; i < slotsPerLeader; i++) {
-        if (get(slotPublishAtomFamily(slot))?.skipped) return true;
+        if (get(slotPublishAtomFamily(slotGroupLeader + i))?.skipped)
+          return true;
       }
       return false;
     }),

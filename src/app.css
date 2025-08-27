@@ -9,10 +9,9 @@
   --line-height: normal;
 
   /* custom tokens */
+  --nav-background: #010102;
   --white-heading: #f7f8f8;
   --green-live: #3cff73;
-
-  --header-row-height: 34px;
 
   font-variant-numeric: tabular-nums;
 }
@@ -38,7 +37,6 @@
 
 .sticky {
   position: sticky;
-  z-index: 3;
   background: var(--color-background);
 }
 

@@ -540,29 +540,6 @@ export const getIsCurrentLeaderAtom = (slot?: number) =>
     );
   });
 
-export const getIsPreviousLeaderAtom = (slot?: number) =>
-  atom((get) => {
-    if (slot === undefined) return false;
-    const currentLeaderSlot = get(currentLeaderSlotAtom);
-    if (currentLeaderSlot === undefined) return false;
-
-    return (
-      currentLeaderSlot - slotsPerLeader <= slot && slot < currentLeaderSlot
-    );
-  });
-
-export const getIsNextLeaderAtom = (slot?: number) =>
-  atom((get) => {
-    if (slot === undefined) return false;
-    const currentLeaderSlot = get(currentLeaderSlotAtom);
-    if (currentLeaderSlot === undefined) return false;
-
-    return (
-      currentLeaderSlot + slotsPerLeader <= slot &&
-      slot < currentLeaderSlot + 2 * slotsPerLeader
-    );
-  });
-
 export const getIsFutureLeaderAtom = (slot?: number) =>
   atom((get) => {
     if (slot === undefined) return false;

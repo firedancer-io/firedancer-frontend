@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import "react-circular-progressbar/dist/styles.css";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import type { SlotPublish } from "../../../api/types";
-import skippedIcon from "../../../assets/Skipped.svg";
 import { fixValue } from "../../../utils";
 import { useMedia, usePrevious, useUnmount } from "react-use";
 import { defaultMaxComputeUnits, lamportsPerSol } from "../../../consts";
@@ -20,7 +19,11 @@ import clsx from "clsx";
 import { Link } from "@tanstack/react-router";
 import { identityKeyAtom } from "../../../api/atoms";
 import { usePubKey } from "../../../hooks/usePubKey";
-import { StatusIcon } from "../../../components/StatusIcon";
+import {
+  PlaceholderIcon,
+  SkippedIcon,
+  StatusIcon,
+} from "../../../components/StatusIcon";
 
 interface SlotCardGridProps {
   slot: number;
@@ -180,13 +183,11 @@ function SlotText({
       ) : (
         <Text className={styles.slotText}>&nbsp;</Text>
       )}
-      <StatusIcon slot={slot} isCurrent={isCurrent} />
+      <StatusIcon slot={slot} isCurrent={isCurrent} size="small" />
       {queryPublish.publish?.skipped ? (
-        <Tooltip content="Slot was skipped">
-          <img src={skippedIcon} alt="skipped" className={styles.icon} />
-        </Tooltip>
+        <SkippedIcon size="small" />
       ) : (
-        <div className={styles.icon} />
+        <PlaceholderIcon size="small" />
       )}
     </Flex>
   );

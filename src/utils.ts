@@ -1,8 +1,7 @@
 import type { Duration } from "luxon";
 import { DateTime } from "luxon";
-import type { Epoch, Peer, SlotLevel } from "./api/types";
+import type { Epoch, Peer } from "./api/types";
 import { lamportsPerSol, slotsPerLeader } from "./consts";
-import { slotStatusGreen, slotStatusNone, slotStatusTeal } from "./colors";
 
 export function getLeaderSlots(epoch: Epoch, pubkey: string) {
   return epoch.leader_slots.reduce<number[]>((leaderSlots, pubkeyIndex, i) => {
@@ -161,18 +160,5 @@ export function copyToClipboard(copyValue: string) {
     console.error("Failed to copy text", copyValue, error);
   } finally {
     document.body.removeChild(copyEl);
-  }
-}
-
-export function slotLevelToColor(slotLevel: SlotLevel) {
-  switch (slotLevel) {
-    case "completed":
-    case "optimistically_confirmed":
-      return slotStatusGreen;
-    case "finalized":
-    case "rooted":
-      return slotStatusTeal;
-    case "incomplete":
-      return slotStatusNone;
   }
 }

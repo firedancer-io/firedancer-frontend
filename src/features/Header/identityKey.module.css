@@ -1,11 +1,10 @@
 .container {
-  border-radius: 8px;
+  border-radius: 5px;
   background: var(--popover-background-color);
   max-width: 100vw;
-  border: 1px solid rgba(250, 250, 250, 0.12);
+  border: 1px solid var(--container-border-color);
 
   &.dropdown-menu {
-    margin: 4px 4px 0;
     padding: 4px;
   }
 
