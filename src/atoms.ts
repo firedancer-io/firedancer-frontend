@@ -25,6 +25,8 @@ import memoize from "micro-memoize";
 export const containerElAtom = atom<HTMLDivElement | null>();
 export const slotsListElAtom = atom<HTMLDivElement | null>();
 
+export const isNavCollapsedAtom = atom(false);
+
 const _epochsAtom = atomWithImmer<Epoch[]>([]);
 export const epochAtom = atom(
   (get) => {

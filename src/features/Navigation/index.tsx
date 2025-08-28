@@ -8,6 +8,10 @@ import {
   headerHeight,
   logoRightSpacing,
   logoWidth,
+  narrowNavMedia,
+  slotsNavSpacing,
+  navToggleHeight,
+  maxZIndex,
   slotsListWidth,
 } from "../../consts";
 import { StatusIndicator } from "./Status";
@@ -15,45 +19,92 @@ import AutoSizer from "react-virtualized-auto-sizer";
 import { useCurrentRoute } from "../../hooks/useCurrentRoute";
 import NavFilterToggles from "./NavFilterToggles";
 import EpochSlider from "./EpochSlider";
+import { isNavCollapsedAtom } from "../../atoms";
+import { useAtomValue } from "jotai";
+import clsx from "clsx";
+import styles from "./navigation.module.css";
+import NavCollapseToggle from "./NavCollapseToggle";
+import { useMedia } from "react-use";
 
 const top = clusterIndicatorHeight + headerHeight;
+// padding to make sure epoch thumb is visible,
+// as it is positioned slightly outside of the container
+const epochThumbPadding = 8;
 
+/**
+ * On narrow screens, container width is 0
+ * On collapse, content width shrinks to 0
+ */
 export default function Navigation() {
+  const isNavCollapsed = useAtomValue(isNavCollapsedAtom);
+  const isNarrow = useMedia(narrowNavMedia);
+
   const currentRoute = useCurrentRoute();
-  const width = useMemo(
-    () =>
-      `${currentRoute === "Schedule" ? logoWidth + logoRightSpacing : logoWidth + logoRightSpacing + slotsListWidth}px`,
-    [currentRoute],
-  );
+  const width = useMemo(() => {
+    const noListWidth = logoWidth + logoRightSpacing;
+    return currentRoute === "Schedule"
+      ? noListWidth
+      : noListWidth + slotsListWidth + slotsNavSpacing;
+  }, [currentRoute]);
 
   return (
-    <Flex
-      flexShrink="0"
-      width={width}
-      gap="2"
-      className="sticky"
-      top={`${top}px`}
-      height={`calc(100vh - ${top}px)`}
-      pt="1"
-      pb="2"
+    <div
+      style={{
+        position: "relative",
+        // resizes outlet content immediately
+        width: isNarrow || isNavCollapsed ? "0" : `${width}px`,
+      }}
     >
-      <Flex direction="column" width={`${logoWidth}px`}>
-        <StatusIndicator />
-        <EpochSlider />
-      </Flex>
+      <Flex
+        // width transitions
+        width={isNavCollapsed ? "0" : `${width + epochThumbPadding}px`}
+        overflow="hidden"
+        className={clsx("sticky", styles.slotNavContainer)}
+        style={{
+          zIndex: maxZIndex - 1,
+        }}
+        top={`${top}px`}
+        height={`calc(100vh - ${top}px)`}
+        ml={`${-epochThumbPadding}px`}
+        pl={`${epochThumbPadding}px`}
+        pb="2"
+      >
+        <Flex
+          flexShrink="0"
+          direction="column"
+          width={`${logoWidth}px`}
+          // space for floating button on non-narrow screens
+          pt={isNarrow ? "0" : `${navToggleHeight + slotsNavSpacing}px`}
+        >
+          {isNarrow && (
+            <div style={{ marginBottom: `${slotsNavSpacing}px` }}>
+              <NavCollapseToggle />
+            </div>
+          )}
 
-      {currentRoute !== "Schedule" && (
-        <Flex direction="column" flexGrow="1" gap="5px">
-          <NavFilterToggles />
-          <Flex flexGrow="1">
-            <AutoSizer>
-              {({ height, width }) => (
-                <SlotsList width={width} height={height} />
-              )}
-            </AutoSizer>
-          </Flex>
+          <StatusIndicator />
+          <EpochSlider />
         </Flex>
-      )}
-    </Flex>
+
+        {currentRoute !== "Schedule" && (
+          <Flex
+            ml={`${logoRightSpacing}px`}
+            direction="column"
+            width={`${slotsListWidth}px`}
+            flexShrink="0"
+            gap={`${slotsNavSpacing}px`}
+          >
+            <NavFilterToggles />
+            <Flex flexGrow="1">
+              <AutoSizer>
+                {({ height, width }) => (
+                  <SlotsList width={width} height={height} />
+                )}
+              </AutoSizer>
+            </Flex>
+          </Flex>
+        )}
+      </Flex>
+    </div>
   );
 }

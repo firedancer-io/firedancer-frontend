@@ -1,6 +1,6 @@
 .epoch-progress {
   width: 100%;
-  background: #142d53;
+  background: var(--epoch-slider-progress-color);
   position: absolute;
   bottom: 0;
 }
@@ -88,6 +88,11 @@
   border: 1px solid #a4a4a4;
   border-radius: 2px;
   cursor: grab;
+
+  &.collapsed {
+    border-left-width: 0;
+    transition: border-width 0s linear 0.2s;
+  }
 }
 
 .slider-thumb:hover {

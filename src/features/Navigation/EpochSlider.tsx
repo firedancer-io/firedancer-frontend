@@ -7,6 +7,7 @@ import {
   currentLeaderSlotAtom,
   epochAtom,
   firstProcessedSlotAtom,
+  isNavCollapsedAtom,
   leaderSlotsAtom,
   mostRecentSlotLeaderAtom,
   SlotNavFilter,
@@ -298,6 +299,7 @@ function SliderEpochProgress({
 const MSliderEpochProgress = memo(SliderEpochProgress);
 
 function SliderThumbTooltip({ isOpen }: { isOpen: boolean }) {
+  const isNavCollapsed = useAtomValue(isNavCollapsedAtom);
   const { refs, elements, floatingStyles, update } = useFloating({
     placement: "right",
     middleware: [offset(5)],
@@ -317,7 +319,12 @@ function SliderThumbTooltip({ isOpen }: { isOpen: boolean }) {
 
   return (
     <>
-      <Slider.Thumb ref={refs.setReference} className={styles.sliderThumb} />
+      <Slider.Thumb
+        ref={refs.setReference}
+        className={clsx(styles.sliderThumb, {
+          [styles.collapsed]: isNavCollapsed,
+        })}
+      />
       <FloatingPortal id="app">
         <div
           ref={refs.setFloating}

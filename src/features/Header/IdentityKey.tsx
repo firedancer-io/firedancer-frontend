@@ -21,7 +21,7 @@ import PopoverDropdown from "../../components/PopoverDropdown";
 export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
 
-  const isXXNarrowScreen = useMedia("(min-width: 400px)");
+  const isXXNarrowScreen = useMedia("(min-width: 466px)");
   const isXNarrowScreen = useMedia("(min-width: 600px)");
   const isNarrowScreen = useMedia("(min-width: 1100px)");
 
@@ -89,7 +89,11 @@ function DropdownMenu() {
   const { peer, identityKey } = useIdentityPeer();
 
   return (
-    <Flex gap="2" wrap="wrap" className={styles.container}>
+    <Flex
+      gap="2"
+      wrap="wrap"
+      className={clsx(styles.container, styles.dropdownMenu)}
+    >
       <Flex gap="2">
         <PeerIcon url={peer?.info?.icon_url} size={24} isYou />
         <Label
