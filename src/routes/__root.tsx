@@ -7,7 +7,7 @@ import Navigation from "../features/Navigation";
 import Header from "../features/Header";
 import { useMedia } from "react-use";
 import { isNavCollapsedAtom } from "../atoms";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom } from "jotai";
 import { narrowNavMedia } from "../consts";
 import NavBlur from "../features/Navigation/NavBlur";
 
@@ -49,26 +49,18 @@ function Root() {
           </Flex>
         </div>
       </StartupProgress>
-      <NarrowNavToggle />
     </>
   );
 }
 
-function NarrowNavToggle() {
+function OutletContainer() {
   const isNarrow = useMedia(narrowNavMedia);
-  const setIsNavCollapsed = useSetAtom(isNavCollapsedAtom);
+  const [isNavCollapsed, setIsNavCollapsed] = useAtom(isNavCollapsedAtom);
 
   useEffect(() => {
     // automatically open / close on narrow switch
     setIsNavCollapsed(isNarrow);
   }, [isNarrow, setIsNavCollapsed]);
-
-  return null;
-}
-
-function OutletContainer() {
-  const isNarrow = useMedia(narrowNavMedia);
-  const isNavCollapsed = useAtomValue(isNavCollapsedAtom);
 
   return (
     <Box

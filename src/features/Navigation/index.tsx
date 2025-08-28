@@ -50,10 +50,12 @@ export default function Navigation() {
     <div
       style={{
         position: "relative",
-        width: isNarrow ? "0" : "auto",
+        // resizes outlet content immediately
+        width: isNarrow || isNavCollapsed ? "0" : width,
       }}
     >
       <Flex
+        // width transitions
         width={isNavCollapsed ? "0" : width}
         overflow="hidden"
         className={clsx("sticky", styles.slotNavContainer)}

@@ -41,12 +41,7 @@ export default function Header() {
       <CluserIndicator />
 
       <Box px="2" className="app-width-container">
-        <Flex
-          height={`${headerHeight}px`}
-          align="center"
-          ref={measureRef}
-          overflowX="hidden"
-        >
+        <Flex height={`${headerHeight}px`} align="center" ref={measureRef}>
           <Flex
             height="100%"
             align="center"

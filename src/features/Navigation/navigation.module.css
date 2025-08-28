@@ -53,6 +53,7 @@
 }
 
 .slot-nav-container {
+  will-change: width;
   transition: width 0.3s;
   box-sizing: border-box;
 }
