@@ -1,7 +1,7 @@
 import { Box, Flex } from "@radix-ui/themes";
 import IdentityKey from "./IdentityKey";
 import { DropdownNav, NavHandler, ToggleNav } from "./Nav";
-import { useMeasure, useMedia } from "react-use";
+import { useMedia } from "react-use";
 import {
   headerHeight,
   logoRightSpacing,
@@ -17,16 +17,12 @@ import NavBlur from "../Navigation/NavBlur";
 
 export default function Header() {
   const showDropdownNav = useMedia("(max-width: 900px)");
+  const isXNarrow = useMedia("(max-width: 401px)");
   const isNarrow = useMedia("(max-width: 768px)");
   const isNavCollapsed = useAtomValue(isNavCollapsedAtom);
-  const gapDivideBy = 5;
-  const contentWidth = 331;
-  const widthWithRegularSpacing = 373;
 
-  const [measureRef, { width }] = useMeasure<HTMLDivElement>();
-
-  const useExtraNarrowGap = isNavCollapsed && width < widthWithRegularSpacing;
-  const extraNarrowGap = `${(width - contentWidth) / gapDivideBy}px`;
+  const useExtraNarrowGap = isNavCollapsed && isXNarrow;
+  const extraNarrowGap = "3px";
   const regularGap = 13;
 
   return (
@@ -41,7 +37,7 @@ export default function Header() {
       <CluserIndicator />
 
       <Box px="2" className="app-width-container">
-        <Flex height={`${headerHeight}px`} align="center" ref={measureRef}>
+        <Flex height={`${headerHeight}px`} align="center">
           <Flex
             height="100%"
             align="center"
