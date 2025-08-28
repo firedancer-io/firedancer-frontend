@@ -5,6 +5,7 @@ import { useCallback } from "react";
 import { useAtom } from "jotai";
 import { SlotNavFilter, slotNavFilterAtom } from "../../atoms";
 import styles from "./navigation.module.css";
+import { navToggleHeight } from "../../consts";
 
 export default function NavFilterToggles() {
   const [navFilter, setNavFilter] = useAtom(slotNavFilterAtom);
@@ -19,7 +20,7 @@ export default function NavFilterToggles() {
   );
 
   return (
-    <Flex width="100%">
+    <Flex height={`${navToggleHeight}px`} width="100%">
       <ToggleGroup.Root
         type="single"
         value={navFilter}

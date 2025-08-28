@@ -31,7 +31,7 @@ import {
 } from "../../colors";
 import { ScheduleStrategyEnum } from "../../api/entities";
 import { scheduleStrategyIcons } from "../../strategyIcons";
-import { clusterIndicatorHeight } from "../../consts";
+import { clusterIndicatorHeight, slotsListWidth } from "../../consts";
 
 export function Cluster() {
   const cluster = useAtomValue(clusterAtom);
@@ -55,6 +55,7 @@ export function Cluster() {
 
   return (
     <Flex
+      width={`${slotsListWidth}px`}
       className={styles.clusterContainer}
       justify="between"
       align="center"

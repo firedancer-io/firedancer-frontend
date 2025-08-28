@@ -1,10 +1,13 @@
 .container {
-  margin: 4px 4px 0 4px;
-  padding: 4px;
   border-radius: 8px;
   background: var(--popover-background-color);
   max-width: 100vw;
   border: 1px solid rgba(250, 250, 250, 0.12);
+
+  &.dropdown-menu {
+    margin: 4px 4px 0;
+    padding: 4px;
+  }
 
   &.pointer {
     cursor: pointer;
