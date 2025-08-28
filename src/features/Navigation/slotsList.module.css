@@ -1,3 +1,6 @@
 .slots-list {
   scrollbar-width: none;
+  &.hidden {
+    visibility: hidden;
+  }
 }

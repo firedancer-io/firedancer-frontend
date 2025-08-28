@@ -10,7 +10,7 @@ import {
 } from "../../atoms";
 import { Box } from "@radix-ui/themes";
 import type { RefObject } from "react";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./slotsList.module.css";
 import { slotsListPinnedSlotOffset, slotsPerLeader } from "../../consts";
 import { throttle } from "lodash";
@@ -23,6 +23,7 @@ import type { DebouncedState } from "use-debounce";
 import { useDebouncedCallback } from "use-debounce";
 import { useCurrentRoute } from "../../hooks/useCurrentRoute";
 import { getSlotGroupLeader } from "../../utils";
+import clsx from "clsx";
 
 const computeItemKey = (slot: number) => slot;
 
@@ -69,6 +70,17 @@ function InnerSlotsList({
   const listContainerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<VirtuosoHandle>(null);
   const visibleStartIndexRef = useRef<number | null>(null);
+
+  const [hideList, setHideList] = useState(true);
+
+  useEffect(() => {
+    // initially hide list to
+    const timeout = setTimeout(() => {
+      setHideList(false);
+    }, 100);
+
+    return () => clearTimeout(timeout);
+  }, []);
 
   const setSlotOverride = useSetAtom(slotOverrideAtom);
   const slotsCount = slotGroupsDescending.length;
@@ -148,7 +160,7 @@ function InnerSlotsList({
       <ResetLive />
       <Virtuoso
         ref={listRef}
-        className={styles.slotsList}
+        className={clsx(styles.slotsList, { [styles.hidden]: hideList })}
         width={width}
         height={height}
         data={slotGroupsDescending}
