@@ -9,7 +9,7 @@ import {
   logoRightSpacing,
   logoWidth,
   narrowNavMedia,
-  navToggleBottomSpacing,
+  slotsNavSpacing,
   navToggleHeight,
   maxZIndex,
   slotsListWidth,
@@ -41,9 +41,10 @@ export default function Navigation() {
 
   const currentRoute = useCurrentRoute();
   const width = useMemo(() => {
-    const noListWidth =
-      logoWidth + logoRightSpacing + epochThumbPadding + navToggleBottomSpacing;
-    return `${currentRoute === "Schedule" ? noListWidth : noListWidth + slotsListWidth}px`;
+    const noListWidth = logoWidth + logoRightSpacing;
+    return currentRoute === "Schedule"
+      ? noListWidth
+      : noListWidth + slotsListWidth + slotsNavSpacing;
   }, [currentRoute]);
 
   return (
@@ -51,12 +52,12 @@ export default function Navigation() {
       style={{
         position: "relative",
         // resizes outlet content immediately
-        width: isNarrow || isNavCollapsed ? "0" : width,
+        width: isNarrow || isNavCollapsed ? "0" : `${width}px`,
       }}
     >
       <Flex
         // width transitions
-        width={isNavCollapsed ? "0" : width}
+        width={isNavCollapsed ? "0" : `${width + epochThumbPadding}px`}
         overflow="hidden"
         className={clsx("sticky", styles.slotNavContainer)}
         style={{
@@ -73,10 +74,10 @@ export default function Navigation() {
           direction="column"
           width={`${logoWidth}px`}
           // space for floating button on non-narrow screens
-          pt={isNarrow ? "0" : `${navToggleHeight + navToggleBottomSpacing}px`}
+          pt={isNarrow ? "0" : `${navToggleHeight + slotsNavSpacing}px`}
         >
           {isNarrow && (
-            <div style={{ marginBottom: `${navToggleBottomSpacing}px` }}>
+            <div style={{ marginBottom: `${slotsNavSpacing}px` }}>
               <NavCollapseToggle />
             </div>
           )}
@@ -91,7 +92,7 @@ export default function Navigation() {
             direction="column"
             width={`${slotsListWidth}px`}
             flexShrink="0"
-            gap={`${navToggleBottomSpacing}px`}
+            gap={`${slotsNavSpacing}px`}
           >
             <NavFilterToggles />
             <Flex flexGrow="1">

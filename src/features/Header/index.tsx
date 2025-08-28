@@ -4,9 +4,10 @@ import { DropdownNav, NavHandler, ToggleNav } from "./Nav";
 import { useMedia } from "react-use";
 import {
   headerHeight,
+  headerSpacing,
   logoRightSpacing,
   maxZIndex,
-  navToggleBottomSpacing,
+  slotsNavSpacing,
 } from "../../consts";
 import Logo from "./Logo";
 import { CluserIndicator, Cluster } from "./Cluster";
@@ -23,7 +24,6 @@ export default function Header() {
 
   const useExtraNarrowGap = isNavCollapsed && isXNarrow;
   const extraNarrowGap = "3px";
-  const regularGap = 13;
 
   return (
     <div
@@ -42,9 +42,8 @@ export default function Header() {
             height="100%"
             align="center"
             gapX={useExtraNarrowGap ? extraNarrowGap : `${logoRightSpacing}px`}
-            pr={
-              useExtraNarrowGap ? extraNarrowGap : `${navToggleBottomSpacing}px`
-            }
+            // slots nav background color boundary
+            pr={useExtraNarrowGap ? extraNarrowGap : `${slotsNavSpacing}px`}
           >
             {isNarrow && isNavCollapsed && (
               <div style={{ width: isNavCollapsed ? undefined : "0" }}>
@@ -57,7 +56,7 @@ export default function Header() {
 
           <Flex
             position="relative"
-            gapX={useExtraNarrowGap ? extraNarrowGap : `${regularGap}px`}
+            gapX={useExtraNarrowGap ? extraNarrowGap : `${headerSpacing}px`}
             height="100%"
             flexGrow="1"
             align="center"
@@ -65,7 +64,8 @@ export default function Header() {
             pl={
               useExtraNarrowGap
                 ? extraNarrowGap
-                : `${regularGap - navToggleBottomSpacing}px`
+                : // blur color boundary
+                  `${headerSpacing - slotsNavSpacing}px`
             }
           >
             <NavHandler />

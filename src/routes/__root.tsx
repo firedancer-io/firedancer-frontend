@@ -8,7 +8,7 @@ import Header from "../features/Header";
 import { useMedia } from "react-use";
 import { isNavCollapsedAtom } from "../atoms";
 import { useAtom } from "jotai";
-import { narrowNavMedia } from "../consts";
+import { headerSpacing, narrowNavMedia, slotsNavSpacing } from "../consts";
 import NavBlur from "../features/Navigation/NavBlur";
 
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
@@ -68,7 +68,11 @@ function OutletContainer() {
       flexGrow="1"
       minWidth="0"
       pb="2"
-      ml={isNarrow || isNavCollapsed ? "0px" : "2"}
+      pl={
+        isNarrow || isNavCollapsed
+          ? "0px"
+          : `${headerSpacing - slotsNavSpacing}px`
+      }
     >
       <Outlet />
       {isNarrow && !isNavCollapsed && <NavBlur />}

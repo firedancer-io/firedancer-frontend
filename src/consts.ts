@@ -10,9 +10,10 @@ export const defaultMaxComputeUnits = 50_000_000;
 
 export const clusterIndicatorHeight = 5;
 export const headerHeight = 35;
+export const headerSpacing = 13;
 export const navToggleHeight = 21;
 export const largeNavToggleHeight = 28;
-export const navToggleBottomSpacing = 5;
+export const slotsNavSpacing = 5;
 
 export const logoWidth = 21;
 export const logoRightSpacing = 8;
