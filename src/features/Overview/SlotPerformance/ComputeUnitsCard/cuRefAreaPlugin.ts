@@ -300,8 +300,6 @@ export function cuRefAreaPlugin({
       },
       drawSeries: [
         (u, sid) => {
-          if (!store.get(showChartProjectionsAtom)) return;
-
           // to draw the ref area above bank lines, but below other series
           if (u.series[sid].label !== "Active Bank") return;
 
@@ -319,6 +317,8 @@ export function cuRefAreaPlugin({
 
           ctx.save();
 
+          const onlyMaxCu = !store.get(showChartProjectionsAtom);
+
           const slotDurationNanos = Number(
             slotTransactions.target_end_timestamp_nanos -
               slotTransactions.start_timestamp_nanos,
@@ -327,13 +327,15 @@ export function cuRefAreaPlugin({
             maxComputeUnits + 0.05 * slotDurationNanos * cusPerNs,
           );
 
-          const refLines = getRefLinesWithinScales(
-            u.scales[xScaleKey],
-            u.scales[computeUnitsScaleKey],
-            slotTransactions,
-            refLineMaxComputeUnits,
-            bankTileCount,
-          );
+          const refLines = onlyMaxCu
+            ? []
+            : getRefLinesWithinScales(
+                u.scales[xScaleKey],
+                u.scales[computeUnitsScaleKey],
+                slotTransactions,
+                refLineMaxComputeUnits,
+                bankTileCount,
+              );
 
           // Adding a max CU line unrelated to bank count
           refLines.unshift({
@@ -353,6 +355,7 @@ export function cuRefAreaPlugin({
 
           const prevXY = { x: -100, y: 30 };
 
+          // draw lines and labels
           for (let i = 0; i < refLines.length; i++) {
             const { line, bankCount } = refLines[i];
             const x0 = Math.round(u.valToPos(line[0].x, xScaleKey, true));
@@ -466,7 +469,7 @@ export function cuRefAreaPlugin({
             }
           }
           // Drawing the entire area of the current bank count if no ref lines to seperate them
-          else {
+          else if (!onlyMaxCu) {
             const midComputeUnits =
               u.scales[computeUnitsScaleKey].max ??
               0 - (u.scales[computeUnitsScaleKey].min ?? 0);
