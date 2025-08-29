@@ -1,5 +1,3 @@
-import uPlot from "uplot";
-
 import { xScaleKey } from "./consts";
 import { startLineColor } from "../../../../colors";
 import { getDefaultStore } from "jotai";
@@ -53,7 +51,7 @@ export function startLinePlugin(): uPlot.Plugin {
           ctx.beginPath();
 
           ctx.strokeStyle = startLineColor;
-          ctx.lineWidth = 5 / uPlot.pxRatio;
+          ctx.lineWidth = 3;
           ctx.setLineDash([5, 5]);
 
           ctx.moveTo(x, u.bbox.top);
