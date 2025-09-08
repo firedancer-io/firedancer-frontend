@@ -3,6 +3,7 @@ export const failureColor = "#E5484D"; // radix red.9
 export const nextColor = "#C567EA";
 export const mySlotsColor = "#2A7EDF";
 export const votesColor = "#557AE0";
+export const appTeal = "#1CE7C2";
 
 export const primaryTextColor = "#B2BCC9";
 export const secondaryTextColor = "#67696A";
@@ -17,13 +18,56 @@ export const rowSeparatorBackgroundColor = "#333333";
 export const navButtonTextColor = "#F7F7F7";
 
 // startup
+export const startupBackgroundColor = "#03030C";
 export const startupTextColor = "#A7A7A7";
 export const startupProgressBackgroundColor = "#121213";
-export const startupProgressTealColor = "#1CE7C2";
+export const startupProgressTealColor = appTeal;
 export const startupCompleteStepColor = "#3BA158";
 
+// boot progress
+export const bootProgressGossipBackgroundColor = "#030312";
+export const bootProgressFullSnapshotBackgroundColor = "#020C12";
+export const bootProgressIncrSnapshotBackgroundColor = "#120212";
+export const bootProgressCatchupBackgroundColor = "#120212";
+
+export const bootProgressGossipBarsColor = "#252D2C";
+export const bootProgressGossipFilledBarColor = "#175E51";
+export const bootProgressGossipMidBarColor = "#2D2B25";
+export const bootProgressGossipMidFilledBarColor = "#6A510C";
+export const bootProgressGossipMidThresholdBarColor = "#E6B11E";
+export const bootProgressGossipHighBarColor = "#2D2525";
+export const bootProgressGossipHighFilledBarColor = "#5E1717";
+export const bootProgressGossipHighThresholdBarColor = "#CE3636";
+
+export const bootProgressPrimaryTextColor = "#A2A2A2";
+export const bootProgressSecondaryTextColor = "#454545";
+export const bootProgressSnapshotPctColor = "#C8B3B3";
+
+export const progressBarIncompleteGossipColor = "#171765ff";
+export const progressBarInProgressGossipBackground = `linear-gradient(270deg, #1414B8 -1.75%, #090952 101.75%)`;
+export const progressBarInProgressGossipBorder = "#8F8FED";
+export const progressBarCompleteGossipColor = "#0E0E8E";
+
+export const progressBarIncompleteFullSnapshotColor = "#0C171D";
+export const progressBarInProgressFullSnapshotBackground = `linear-gradient(270deg, #1481B8 0%, #093952 100%)`;
+export const progressBarInProgressFullSnapshotBorder = "#47B4EB";
+export const progressBarCompleteFullSnapshotColor = "#0F3F57";
+
+export const progressBarIncompleteIncSnapshotColor = "#150915";
+export const progressBarInProgressIncSnapshotBackground = `linear-gradient(270deg, #8B0E8B 0%, #250425 112.5%)`;
+export const progressBarInProgressIncSnapshotBorder = "#C06AC0";
+export const progressBarCompleteIncSnapshotColor = "#570F57";
+
+export const progressBarIncompleteCatchupColor = "#091515";
+export const progressBarInProgressCatchupBackground = `linear-gradient(270deg, ${appTeal} 0%, #0C6B5A 100%)`;
+export const progressBarInProgressCatchupBorder = "#2EC9C9";
+export const progressBarCompleteCatchupColor = "#0C6B5A";
+
+export const snapshotAreaChartDark = "rgba(16, 129, 108, 0.53)";
+export const snapshotAreaChartGridLineColor = "#ffffff1a";
+
 // cluster colors
-export const clusterMainnetBetaColor = "#1CE7C2";
+export const clusterMainnetBetaColor = appTeal;
 export const clusterTestnetColor = "#E7B81C";
 export const clusterDevelopmentColor = "#1C96E7";
 export const clusterDevnetColor = "#E7601C";
@@ -56,6 +100,7 @@ export const transactionAxisTextColor = "#919191";
 export const tileBusyGreenColor = "#55BA83";
 export const tileBusyRedColor = "#D94343";
 export const tileSparklineBackgroundColor = "#232A38";
+export const tileSparklineRangeTextColor = "#676767";
 export const tileBackgroundRedColor = "#E13131";
 export const tileBackgroundBlueColor = "#5F6FA9";
 export const tileSubHeaderColor = "#A2A2A2";

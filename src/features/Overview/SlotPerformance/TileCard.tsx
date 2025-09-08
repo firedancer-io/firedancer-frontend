@@ -2,7 +2,6 @@ import { Box, Flex, Text } from "@radix-ui/themes";
 import Card from "../../../components/Card";
 import styles from "./tileCard.module.css";
 import TileSparkLine from "./TileSparkLine";
-import { mean } from "lodash";
 import type { TilePrimaryMetric } from "../../../api/types";
 import { useAtomValue } from "jotai";
 import TilePrimaryStat from "./TilePrimaryStat";
@@ -10,9 +9,8 @@ import TileBusy from "./TileBusy";
 import { selectedSlotAtom } from "./atoms";
 import TileSparkLineExpandedContainer from "./TileSparkLineExpandedContainer";
 import { useMeasure } from "react-use";
-import { isDefined } from "../../../utils";
 import type React from "react";
-import { useMemo } from "react";
+import { useTileSparkline } from "./useTileSparkline";
 
 interface TileCardProps {
   header: string;
@@ -34,39 +32,17 @@ export default function TileCard({
   metricType,
 }: TileCardProps) {
   const [ref, { width }] = useMeasure<HTMLDivElement>();
+
   const selectedSlot = useAtomValue(selectedSlotAtom);
+  const isLive = selectedSlot === undefined;
 
-  const tileCountArr = useMemo<unknown[]>(
-    () => new Array(tileCount).fill(0),
-    [tileCount],
-  );
-
-  const liveBusyPerTile = liveIdlePerTile
-    ?.filter((idle) => idle !== -1)
-    .map((idle) => 1 - idle);
-
-  const aggQueryBusyPerTs = queryIdlePerTile
-    ?.map((idlePerTile) => {
-      const filtered = idlePerTile.filter((idle) => idle !== -1);
-      if (!filtered.length) return;
-      return 1 - mean(filtered);
-    })
-    .filter(isDefined);
-
-  const aggQueryBusyPerTile = tileCountArr.map((_, i) => {
-    const queryIdle = queryIdlePerTile
-      ?.map((idlePerTile) => 1 - idlePerTile[i])
-      .filter((b) => b !== undefined && b <= 1);
-
-    if (!queryIdle?.length) return;
-
-    return mean(queryIdle);
-  });
-
-  const busy = (!selectedSlot ? liveBusyPerTile : aggQueryBusyPerTile)?.filter(
-    (b) => b !== undefined && b <= 1,
-  );
-  const avgBusy = busy?.length ? mean(busy) : undefined;
+  const { avgBusy, aggQueryBusyPerTs, tileCountArr, liveBusyPerTile, busy } =
+    useTileSparkline({
+      isLive,
+      tileCount,
+      liveIdlePerTile,
+      queryIdlePerTile,
+    });
 
   return (
     <Flex ref={ref}>

@@ -35,6 +35,7 @@ export const clientAtom = atom(() => {
 });
 
 export const containerElAtom = atom<HTMLDivElement | null>();
+export const bootProgressContainerElAtom = atom<HTMLDivElement | null>();
 
 const _epochsAtom = atomWithImmer<Epoch[]>([]);
 export const epochAtom = atom(

@@ -4,10 +4,11 @@ import {
   tilesAtom,
   tileTimerAtom,
 } from "../../../api/atoms";
-import type { TxnWaterfall } from "../../../api/types";
+import type { TileType, TxnWaterfall } from "../../../api/types";
 import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
 import { countBy } from "lodash";
+import { tileTypeSchema } from "../../../api/entities";
 
 // Note: do not user setter directly as it's derived from search params
 export const selectedSlotAtom = atom<number>();
@@ -25,6 +26,46 @@ export const liveTileTimerfallAtom = atom((get) => {
   if (selectedSlot) return;
 
   return get(tileTimerAtom);
+});
+
+export const snapshotTimerIndicesAtom = atom(
+  (get): [TileType, number[]][] | undefined => {
+    const tiles = get(tilesAtom);
+    const tileTypes: TileType[] = ["snaprd", "snapdc", "snapin"];
+
+    if (!tiles) return;
+
+    const grouped = tiles.reduce((acc, tile, i) => {
+      const parsedTileKind = tileTypeSchema.safeParse(tile.kind);
+      if (parsedTileKind.error || !tileTypes.includes(parsedTileKind.data)) {
+        return acc;
+      }
+
+      const indices = acc.get(parsedTileKind.data) ?? [];
+      indices.push(i);
+      acc.set(parsedTileKind.data, indices);
+      return acc;
+    }, new Map<TileType, number[]>());
+
+    return Array.from(grouped.entries()).map<[TileType, number[]]>(
+      ([type, indices]) => [type, indices],
+    );
+  },
+);
+
+export const liveSnapshotTimersAtom = atom((get) => {
+  const timers = get(tileTimerAtom);
+  const snapshotTimerIndices = get(snapshotTimerIndicesAtom);
+
+  if (!timers || !snapshotTimerIndices) return;
+
+  return snapshotTimerIndices.reduce(
+    (acc, [tileType, indices]) => {
+      acc[tileType] = indices.map((i) => timers[i]);
+      return acc;
+    },
+    {} as Partial<Record<TileType, number[]>>,
+  );
 });
 
 export const liveWaterfallAtom = atom((get) => {

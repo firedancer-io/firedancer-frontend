@@ -1,5 +1,4 @@
-import type { Duration } from "luxon";
-import { DateTime } from "luxon";
+import { DateTime, Duration } from "luxon";
 import type { Epoch, Peer } from "./api/types";
 import { lamportsPerSol, slotsPerLeader } from "./consts";
 
@@ -61,6 +60,11 @@ export function getTimeTillText(
   }
 
   return text;
+}
+
+export function formatDuration(seconds: number) {
+  const duration = Duration.fromObject({ seconds }).rescale();
+  return getTimeTillText(duration);
 }
 
 export let slowDateTimeNow = DateTime.now();
