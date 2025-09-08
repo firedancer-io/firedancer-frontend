@@ -41,6 +41,8 @@ export const slotsListElAtom = atom<HTMLDivElement | null>();
 
 export const _isNavCollapsedAtom = atom(false);
 
+export const bootProgressContainerElAtom = atom<HTMLDivElement | null>();
+
 const _epochsAtom = atomWithImmer<Epoch[]>([]);
 export const epochAtom = atom(
   (get) => {
