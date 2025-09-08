@@ -9,6 +9,8 @@ import { headerSpacing, slotsNavSpacing } from "../consts";
 import NavBlur from "../features/Navigation/NavBlur";
 import { useCurrentRoute } from "../hooks/useCurrentRoute";
 import { useSlotsNavigation } from "../hooks/useSlotsNavigation";
+import { useAtomValue } from "jotai";
+import { isStartupProgressVisibleAtom } from "../features/StartupProgress/atoms";
 
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
@@ -28,6 +30,7 @@ const TanStackRouterDevtools =
 export const Route = createRootRoute({ component: Root });
 
 function Root() {
+  const isStartupProgressVisible = useAtomValue(isStartupProgressVisibleAtom);
   return (
     <>
       <Toast />
@@ -37,7 +40,9 @@ function Root() {
           style={{
             position: "relative",
             height: "100dvh",
-            overflowY: "auto",
+            // remove scrollbar for startup screen
+            maxHeight: isStartupProgressVisible ? "100vh" : "unset",
+            overflowY: isStartupProgressVisible ? "hidden" : "auto",
             willChange: "scroll-position",
             contain: "paint",
             // create new stacking context so whatever portals to containerEl will be above content
