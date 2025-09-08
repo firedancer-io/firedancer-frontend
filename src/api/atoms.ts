@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import type {
+  Client,
   Version,
   Cluster,
   CommitHash,
@@ -23,8 +24,12 @@ import type {
   BlockEngineUpdate,
   VoteBalance,
   ScheduleStrategy,
+  BootProgress,
+  GossipNetworkStats,
 } from "./types";
 import { rafAtom } from "../atomUtils";
+
+export const clientAtom = atom<Client | undefined>(undefined);
 
 export const versionAtom = atom<Version | undefined>(undefined);
 
@@ -74,7 +79,12 @@ export const liveTilePrimaryMetricAtom = atom<
 
 export const tileTimerAtom = atom<number[] | undefined>(undefined);
 
+export const bootProgressAtom = atom<BootProgress | undefined>(undefined);
 export const startupProgressAtom = atom<StartupProgress | undefined>(undefined);
+
+export const gossipNetworkStatsAtom = atom<GossipNetworkStats | undefined>(
+  undefined,
+);
 
 export const tpsHistoryAtom = atom<TpsHistory | undefined>(undefined);
 

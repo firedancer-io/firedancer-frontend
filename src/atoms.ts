@@ -21,6 +21,7 @@ import { searchLeaderSlotsAtom } from "./features/LeaderSchedule/atoms";
 import { selectedSlotAtom } from "./features/Overview/SlotPerformance/atoms";
 
 export const containerElAtom = atom<HTMLDivElement | null>();
+export const bootProgressContainerElAtom = atom<HTMLDivElement | null>();
 
 const _epochsAtom = atomWithImmer<Epoch[]>([]);
 export const epochAtom = atom(

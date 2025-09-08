@@ -1,0 +1,7 @@
+.range-label {
+  position: absolute;
+  right: 2px;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--tile-sparkline-range-text-color);
+}

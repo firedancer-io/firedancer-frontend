@@ -20,10 +20,14 @@ import {
   voteStateAtom,
   voteBalanceAtom,
   scheduleStrategyAtom,
+  clientAtom,
+  bootProgressAtom,
+  gossipNetworkStatsAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
   epochSchema,
+  gossipSchema,
   peersSchema,
   slotSchema,
   summarySchema,
@@ -62,6 +66,7 @@ import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atom
 import { slowDateTimeNow } from "../utils";
 
 export function useSetAtomWsData() {
+  const setClient = useSetAtom(clientAtom);
   const setVersion = useSetAtom(versionAtom);
   const setCluster = useSetAtom(clusterAtom);
   const setCommitHash = useSetAtom(commitHashAtom);
@@ -120,6 +125,7 @@ export function useSetAtomWsData() {
     setTileTimer(value);
   }, tileTimerDebounceMs);
 
+  const setBootProgress = useSetAtom(bootProgressAtom);
   const setStartupProgress = useSetAtom(startupProgressAtom);
 
   const setTpsHistory = useSetAtom(tpsHistoryAtom);
@@ -134,6 +140,8 @@ export function useSetAtomWsData() {
   const [epoch, setEpoch] = useAtom(epochAtom);
 
   const setSlotStatus = useSetAtom(setSlotStatusAtom);
+
+  const setGossipNetworkStats = useSetAtom(gossipNetworkStatsAtom);
 
   const addPeers = useSetAtom(addPeersAtom);
   const updatePeers = useSetAtom(updatePeersAtom);
@@ -170,6 +178,10 @@ export function useSetAtomWsData() {
       if (topic === "summary") {
         const { key, value } = summarySchema.parse(msg);
         switch (key) {
+          case "client": {
+            setClient(value);
+            break;
+          }
           case "version": {
             setVersion(value);
             break;
@@ -226,6 +238,10 @@ export function useSetAtomWsData() {
             setDbTileTimer(value);
             break;
           }
+          case "boot_progress": {
+            setBootProgress(value);
+            break;
+          }
           case "startup_progress": {
             setStartupProgress(value);
             break;
@@ -259,6 +275,14 @@ export function useSetAtomWsData() {
           case "new":
             setEpoch(value);
             break;
+        }
+      } else if (topic === "gossip") {
+        const { key, value } = gossipSchema.parse(msg);
+        switch (key) {
+          case "network_stats": {
+            setGossipNetworkStats(value);
+            break;
+          }
         }
       } else if (topic === "peers") {
         const { value } = peersSchema.parse(msg);
