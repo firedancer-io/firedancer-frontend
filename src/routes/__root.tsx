@@ -4,6 +4,9 @@ import Header from "../features/Header";
 import { Container } from "@radix-ui/themes";
 import StartupProgress from "../features/StartupProgress";
 import Toast from "../features/Toast";
+import { useAtomValue } from "jotai";
+import { isStartupProgressVisibleAtom } from "../features/StartupProgress/atoms";
+import { appMaxWidth } from "../consts";
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -20,15 +23,25 @@ const TanStackRouterDevtools =
       );
 
 export const Route = createRootRoute({
-  component: () => (
+  component: () => <RootContainer />,
+});
+
+function RootContainer() {
+  const isStartupProgressVisible = useAtomValue(isStartupProgressVisibleAtom);
+  return (
     <>
       <Toast />
       <StartupProgress>
-        <Container maxWidth="1920px">
+        <Container
+          maxWidth={appMaxWidth}
+          // remove scrollbar for startup screen
+          maxHeight={isStartupProgressVisible ? "100vh" : "unset"}
+          overflowY={isStartupProgressVisible ? "hidden" : "auto"}
+        >
           <Header />
           <Outlet />
         </Container>
       </StartupProgress>
     </>
-  ),
-});
+  );
+}

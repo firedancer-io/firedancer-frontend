@@ -1,0 +1,35 @@
+.logo-container {
+  --logo-transition-time: 1.5s;
+  z-index: 20;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--startup-background-color);
+  background-image:
+    url("../../../assets/boot_progress_background.svg"),
+    radial-gradient(
+      160.38% 98.82% at 50% 50%,
+      rgba(28, 231, 194, 0.16) 0%,
+      rgba(28, 231, 194, 0.01) 41.16%,
+      rgba(28, 231, 194, 0) 100%
+    );
+
+  background-position: center;
+  background-repeat: repeat;
+
+  transition: opacity var(--logo-transition-time) linear;
+
+  img {
+    height: 76px;
+  }
+
+  &.hidden {
+    opacity: 0;
+    pointer-events: none;
+    user-select: none;
+  }
+}
