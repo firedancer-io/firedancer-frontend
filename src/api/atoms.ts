@@ -24,6 +24,8 @@ import type {
   VoteBalance,
   ScheduleStrategy,
   SlotRankings,
+  BootProgress,
+  GossipNetworkStats,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 
@@ -75,7 +77,12 @@ export const liveTilePrimaryMetricAtom = atom<
 
 export const tileTimerAtom = atom<number[] | undefined>(undefined);
 
+export const bootProgressAtom = atom<BootProgress | undefined>(undefined);
 export const startupProgressAtom = atom<StartupProgress | undefined>(undefined);
+
+export const gossipNetworkStatsAtom = atom<GossipNetworkStats | undefined>(
+  undefined,
+);
 
 export const tpsHistoryAtom = atom<TpsHistory | undefined>(undefined);
 

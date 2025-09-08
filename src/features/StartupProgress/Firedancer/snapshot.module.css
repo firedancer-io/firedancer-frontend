@@ -1,0 +1,90 @@
+.secondary-color {
+  color: var(--boot-progress-secondary-text-color);
+}
+
+.card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--boot-progress-primary-text-color);
+}
+
+.sparkline-card {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.sparkline-container {
+  position: relative;
+  flex-shrink: 0;
+  padding: "10px 0";
+
+  background-image:
+    linear-gradient(
+      to right,
+      var(--snapshot-area-chart-grid-line-color) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      var(--snapshot-area-chart-grid-line-color) 1px,
+      transparent 1px
+    );
+}
+
+.card-header {
+  font-size: 28px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.loading-card {
+  flex-grow: 1;
+  flex-shrink: 1;
+  padding: 20px;
+}
+
+.snapshot-pct-text {
+  color: var(--boot-progress-snapshot-pct-color);
+  font-size: 28px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.snapshot-loading-row {
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+
+  > * {
+    width: 33%;
+  }
+
+  .center-align {
+    text-align: center;
+  }
+
+  .right-align {
+    text-align: right;
+  }
+}
+
+.snapshot-tile-title {
+  color: var(--boot-progress-primary-text-color);
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.snapshot-tile-busy {
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}

@@ -8,7 +8,6 @@ import fdLogo from "../../assets/firedancer.svg";
 import frLogo from "../../assets/frankendancer.svg";
 import { Box, Flex } from "@radix-ui/themes";
 import type { StartupPhase } from "../../api/types";
-import { isDefined } from "../../utils";
 import IncompleteStep from "./IncompleteStep";
 import InprogressStep from "./InprogressStep";
 import CompleteStep from "./CompleteStep";
@@ -165,7 +164,7 @@ export default function Body() {
 function getLabel(step: string) {
   return step
     .split("_")
-    .filter(isDefined)
+    .filter((v) => v !== undefined)
     .map((split, i) => {
       if (split === "for") return split;
       if (split === "rpc") return "RPC";

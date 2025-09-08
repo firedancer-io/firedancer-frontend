@@ -80,3 +80,5 @@ export const slotNavWidth =
 export const narrowNavMedia = "(max-width: 768px)";
 
 export const maxZIndex = 110;
+
+export const appMaxWidth = "1920px";
