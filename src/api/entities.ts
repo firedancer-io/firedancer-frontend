@@ -11,6 +11,10 @@ const epochTopicSchema = z.object({
   topic: z.literal("epoch"),
 });
 
+const gossipTopicSchema = z.object({
+  topic: z.literal("gossip"),
+});
+
 const peersTopicSchema = z.object({
   topic: z.literal("peers"),
 });
@@ -26,6 +30,7 @@ const blockEngineTopicSchema = z.object({
 export const topicSchema = z.discriminatedUnion("topic", [
   summaryTopicSchema,
   epochTopicSchema,
+  gossipTopicSchema,
   peersTopicSchema,
   slotTopicSchema,
   blockEngineTopicSchema,
@@ -71,6 +76,9 @@ export const tileTypeSchema = z.enum([
   "plugin",
   "gui",
   "cswtch",
+  "snaprd",
+  "snapdc",
+  "snapin",
 ]);
 
 export const tileSchema = z.object({
@@ -198,8 +206,8 @@ export const startupProgressSchema = z.object({
   downloading_full_snapshot_elapsed_secs: z.number().nullable(),
   downloading_full_snapshot_remaining_secs: z.number().nullable(),
   downloading_full_snapshot_throughput: z.number().nullable(),
-  downloading_full_snapshot_total_bytes: z.number().nullable(),
-  downloading_full_snapshot_current_bytes: z.number().nullable(),
+  downloading_full_snapshot_total_bytes: z.coerce.number().nullable(),
+  downloading_full_snapshot_current_bytes: z.coerce.number().nullable(),
 
   // downloading incremental snapshot
   downloading_incremental_snapshot_slot: z.number().nullable(),
@@ -207,8 +215,8 @@ export const startupProgressSchema = z.object({
   downloading_incremental_snapshot_elapsed_secs: z.number().nullable(),
   downloading_incremental_snapshot_remaining_secs: z.number().nullable(),
   downloading_incremental_snapshot_throughput: z.number().nullable(),
-  downloading_incremental_snapshot_total_bytes: z.number().nullable(),
-  downloading_incremental_snapshot_current_bytes: z.number().nullable(),
+  downloading_incremental_snapshot_total_bytes: z.coerce.number().nullable(),
+  downloading_incremental_snapshot_current_bytes: z.coerce.number().nullable(),
 
   // processing ledger
   ledger_slot: z.number().nullable(),
@@ -217,6 +225,148 @@ export const startupProgressSchema = z.object({
   // waiting for supermajority
   waiting_for_supermajority_slot: z.number().nullable(),
   waiting_for_supermajority_stake_percent: z.number().nullable(),
+});
+
+export const bootPhaseSchema = z.enum([
+  "joining_gossip",
+  "loading_full_snapshot",
+  "loading_incr_snapshot",
+  "catching_up",
+  "running",
+]);
+
+export const BootPhaseEnum = bootPhaseSchema.enum;
+
+export const bootProgressSchema = z.object({
+  phase: bootPhaseSchema,
+  total_elapsed: z.number(),
+
+  // joining_gossip
+  joining_gossip_elapsed: z.number().nullable(),
+
+  // loading_full_snapshot
+  loading_full_snapshot_reset_cnt: z.number().nullable().optional(),
+  loading_full_snapshot_slot: z.number().nullable().optional(),
+  loading_full_snapshot_peer: z.string().nullable().optional(),
+  loading_full_snapshot_peer_identity: z.string().nullable().optional(),
+  loading_full_snapshot_total_bytes: z.coerce.number().nullable().optional(),
+  loading_full_snapshot_elapsed: z.number().nullable().optional(),
+  loading_full_snapshot_read_bytes: z.coerce.number().nullable().optional(),
+  loading_full_snapshot_read_throughput: z.number().nullable().optional(),
+  loading_full_snapshot_current_bytes: z.coerce.number().nullable().optional(),
+  loading_full_snapshot_read_remaining: z.number().nullable().optional(),
+  loading_full_snapshot_read_elapsed: z.number().nullable().optional(),
+  loading_full_snapshot_read_path: z.string().nullable().optional(),
+  loading_full_snapshot_decompress_bytes: z.number().nullable().optional(),
+  loading_full_snapshot_decompress_elapsed: z.number().nullable().optional(),
+  loading_full_snapshot_decompress_throughput: z.number().nullable().optional(),
+  loading_full_snapshot_decompress_compressed_bytes: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_full_snapshot_decompress_decompressed_bytes: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_full_snapshot_decompress_remaining: z.number().nullable().optional(),
+  loading_full_snapshot_insert_bytes: z.coerce.number().nullable().optional(),
+  loading_full_snapshot_insert_throughput: z.number().nullable().optional(),
+  loading_full_snapshot_insert_remaining: z.number().nullable().optional(),
+  loading_full_snapshot_insert_path: z.string().nullable().optional(),
+  loading_full_snapshot_insert_elapsed: z.number().nullable().optional(),
+  loading_full_snapshot_insert_accounts_throughput: z
+    .number()
+    .nullable()
+    .optional(),
+  loading_full_snapshot_insert_accounts_current: z
+    .number()
+    .nullable()
+    .optional(),
+
+  // loading_incremental_snapshot
+  loading_incremental_snapshot_reset_cnt: z.number().nullable().optional(),
+  loading_incremental_snapshot_peer_identity: z.string().nullable().optional(),
+  loading_incremental_snapshot_slot: z.number().nullable().optional(),
+  loading_incremental_snapshot_peer: z.string().nullable().optional(),
+  loading_incremental_snapshot_total_bytes: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_elapsed: z.number().nullable().optional(),
+  loading_incremental_snapshot_read_bytes: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_read_elapsed: z.number().nullable().optional(),
+  loading_incremental_snapshot_read_throughput: z
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_read_remaining: z.number().nullable().optional(),
+  loading_incremental_snapshot_read_path: z.string().nullable().optional(),
+  loading_incremental_snapshot_current_bytes: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_decompress_bytes: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+
+  loading_incremental_snapshot_decompress_elapsed: z
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_decompress_throughput: z
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_decompress_compressed_bytes: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_decompress_decompressed_bytes: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_decompress_remaining: z
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_insert_bytes: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_insert_elapsed: z.number().nullable().optional(),
+  loading_incremental_snapshot_insert_throughput: z
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_insert_remaining: z
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_insert_path: z.string().nullable().optional(),
+  loading_incremental_snapshot_insert_accounts_throughput: z
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_insert_accounts_current: z
+    .number()
+    .nullable()
+    .optional(),
+
+  // catching_up
+  catching_up_elapsed: z.number().nullable().optional(),
+  catching_up_min_turbine_slot: z.number().nullable().optional(),
+  catching_up_max_turbine_slot: z.number().nullable().optional(),
+  catching_up_min_repair_slot: z.number().nullable().optional(),
+  catching_up_max_repair_slot: z.number().nullable().optional(),
+  catching_up_max_replay_slot: z.number().nullable().optional(),
+  catching_up_first_turbine_slot: z.number().nullable().optional(),
+  catching_up_latest_turbine_slot: z.number().nullable().optional(),
+  catching_up_latest_repair_slot: z.number().nullable().optional(),
+  catching_up_latest_replay_slot: z.number().nullable().optional(),
 });
 
 export const slotTransactionsSchema = z.object({
@@ -374,6 +524,10 @@ export const summarySchema = z.discriminatedUnion("key", [
     value: startupProgressSchema,
   }),
   summaryTopicSchema.extend({
+    key: z.literal("boot_progress"),
+    value: bootProgressSchema,
+  }),
+  summaryTopicSchema.extend({
     key: z.literal("tps_history"),
     value: tpsHistorySchema,
   }),
@@ -407,6 +561,43 @@ export const epochSchema = z.discriminatedUnion("key", [
   epochTopicSchema.extend({
     key: z.literal("new"),
     value: epochNewSchema,
+  }),
+]);
+
+const gossipNetworkHealthSchema = z.object({
+  rx_push_pct: z.number().optional(),
+  duplicate_pct: z.number().optional(),
+  bad_pct: z.number().optional(),
+  pull_already_known_pct: z.number().optional(),
+  total_stake: z.coerce.bigint(),
+  total_peers: z.coerce.bigint(),
+  connected_stake: z.coerce.bigint(),
+  connected_peers: z.number(),
+});
+
+const gossipNetworkTrafficSchema = z.object({
+  total_throughput: z.number().optional(),
+  peer_names: z.string().array(),
+  peer_throughputs: z.number().array().optional(),
+});
+
+const gossipStorageUtilSchema = z.object({
+  total_bytes: z.coerce.number(),
+  peer_names: z.string().array(),
+  peer_bytes: z.number().array(),
+});
+
+export const gossipNetworkStatsSchema = z.object({
+  health: gossipNetworkHealthSchema,
+  ingress: gossipNetworkTrafficSchema,
+  egress: gossipNetworkTrafficSchema,
+  storage: gossipStorageUtilSchema,
+});
+
+export const gossipSchema = z.discriminatedUnion("key", [
+  gossipTopicSchema.extend({
+    key: z.literal("network_stats"),
+    value: gossipNetworkStatsSchema,
   }),
 ]);
 
