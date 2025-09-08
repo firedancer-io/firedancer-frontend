@@ -20,10 +20,13 @@ import {
   voteStateAtom,
   voteBalanceAtom,
   scheduleStrategyAtom,
+  bootProgressAtom,
+  gossipNetworkStatsAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
   epochSchema,
+  gossipSchema,
   peersSchema,
   slotSchema,
   summarySchema,
@@ -120,6 +123,7 @@ export function useSetAtomWsData() {
     setTileTimer(value);
   }, tileTimerDebounceMs);
 
+  const setBootProgress = useSetAtom(bootProgressAtom);
   const setStartupProgress = useSetAtom(startupProgressAtom);
 
   const setTpsHistory = useSetAtom(tpsHistoryAtom);
@@ -134,6 +138,8 @@ export function useSetAtomWsData() {
   const [epoch, setEpoch] = useAtom(epochAtom);
 
   const setSlotStatus = useSetAtom(setSlotStatusAtom);
+
+  const setGossipNetworkStats = useSetAtom(gossipNetworkStatsAtom);
 
   const addPeers = useSetAtom(addPeersAtom);
   const updatePeers = useSetAtom(updatePeersAtom);
@@ -226,6 +232,10 @@ export function useSetAtomWsData() {
             setDbTileTimer(value);
             break;
           }
+          case "boot_progress": {
+            setBootProgress(value);
+            break;
+          }
           case "startup_progress": {
             setStartupProgress(value);
             break;
@@ -259,6 +269,14 @@ export function useSetAtomWsData() {
           case "new":
             setEpoch(value);
             break;
+        }
+      } else if (topic === "gossip") {
+        const { key, value } = gossipSchema.parse(msg);
+        switch (key) {
+          case "network_stats": {
+            setGossipNetworkStats(value);
+            break;
+          }
         }
       } else if (topic === "peers") {
         const { value } = peersSchema.parse(msg);

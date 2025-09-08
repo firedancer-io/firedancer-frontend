@@ -40,6 +40,9 @@ import type {
   slotTransactionsSchema,
   voteBalanceSchema,
   scheduleStrategySchema,
+  bootPhaseSchema,
+  bootProgressSchema,
+  gossipNetworkStatsSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -98,9 +101,13 @@ export type TileType = z.infer<typeof tileTypeSchema>;
 
 export type TileTimer = z.infer<typeof tileTimerSchema>;
 
+export type BootProgress = z.infer<typeof bootProgressSchema>;
+
 export type StartupProgress = z.infer<typeof startupProgressSchema>;
 
 export type StartupPhase = z.infer<typeof startupPhaseSchema>;
+
+export type BootPhase = z.infer<typeof bootPhaseSchema>;
 
 export type TpsHistory = z.infer<typeof tpsHistorySchema>;
 
@@ -113,6 +120,8 @@ export type SkipRate = z.infer<typeof skipRateSchema>;
 export type Epoch = z.infer<typeof epochNewSchema>;
 
 export type SlotLevel = z.infer<typeof slotLevelSchema>;
+
+export type GossipNetworkStats = z.infer<typeof gossipNetworkStatsSchema>;
 
 export interface Peer extends z.infer<typeof peerUpdateSchema> {
   removed?: boolean;
