@@ -97,6 +97,7 @@ export const elapsedTimeColor = "#6A6A6E";
 export const startLineColor = secondaryTextColor;
 
 // transaction bars
+export const chartGridStrokeColor = "rgba(250, 250, 250, 0.05)";
 export const successToggleColor = "#30A46C";
 export const errorToggleColor = "#E5484D";
 export const requestedToggleControlColor = "#FF8DCC";
