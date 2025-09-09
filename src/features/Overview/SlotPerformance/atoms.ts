@@ -9,10 +9,10 @@ import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
 import { countBy } from "lodash";
 import {
+  currentSlotAtom,
   earliestProcessedSlotLeaderAtom,
   epochAtom,
   leaderSlotsAtom,
-  mostRecentSlotLeaderAtom,
   slotOverrideAtom,
 } from "../../../atoms";
 import { getSlotGroupLeader } from "../../../utils";
@@ -31,14 +31,14 @@ function getSlotState(
   epoch?: Epoch,
   leaderSlots?: number[],
   earliestProcessedSlotLeader?: number,
-  mostRecentSlotLeader?: number,
+  currentSlot?: number,
 ) {
   if (slot === undefined) return SelectedSlotValidityState.Valid;
   if (
     !epoch ||
     !leaderSlots ||
     earliestProcessedSlotLeader === undefined ||
-    mostRecentSlotLeader === undefined
+    currentSlot === undefined
   )
     return SelectedSlotValidityState.NotReady;
   if (slot < epoch.start_slot || epoch.end_slot < slot)
@@ -47,7 +47,7 @@ function getSlotState(
     return SelectedSlotValidityState.NotYou;
   if (slot < earliestProcessedSlotLeader)
     return SelectedSlotValidityState.BeforeFirstProcessed;
-  if (slot > mostRecentSlotLeader) return SelectedSlotValidityState.Future;
+  if (slot > currentSlot) return SelectedSlotValidityState.Future;
   return SelectedSlotValidityState.Valid;
 }
 
@@ -61,13 +61,13 @@ export const baseSelectedSlotAtom = (function () {
       const slot = get(_baseSelectedSlotAtom);
       const leaderSlots = get(leaderSlotsAtom);
       const earliestProcessedSlotLeader = get(earliestProcessedSlotLeaderAtom);
-      const mostRecentSlotLeader = get(mostRecentSlotLeaderAtom);
+      const currentSlot = get(currentSlotAtom);
       const state = getSlotState(
         slot,
         epoch,
         leaderSlots,
         earliestProcessedSlotLeader,
-        mostRecentSlotLeader,
+        currentSlot,
       );
       return {
         slot,
@@ -79,12 +79,12 @@ export const baseSelectedSlotAtom = (function () {
     (get, set, slot?: number, epoch?: Epoch) => {
       const leaderSlots = get(leaderSlotsAtom);
       const earliestProcessedSlotLeader = get(earliestProcessedSlotLeaderAtom);
-      const mostRecentSlotLeader = get(mostRecentSlotLeaderAtom);
+      const currentSlot = get(currentSlotAtom);
       if (
         !epoch ||
         !leaderSlots ||
         earliestProcessedSlotLeader === undefined ||
-        mostRecentSlotLeader === undefined
+        currentSlot === undefined
       ) {
         set(_baseSelectedSlotAtom, undefined);
         return;
@@ -98,7 +98,7 @@ export const baseSelectedSlotAtom = (function () {
           epoch,
           leaderSlots,
           earliestProcessedSlotLeader,
-          mostRecentSlotLeader,
+          currentSlot,
         ) === SelectedSlotValidityState.Valid;
 
       if (isValid && slot !== undefined) {
