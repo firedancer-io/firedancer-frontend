@@ -1,7 +1,7 @@
 .slot-group-container {
   padding: 0 4px 4px 0;
   box-sizing: border-box;
-  background: var(--nav-background);
+  background: var(--slot-nav-background-color);
 
   .link {
     text-decoration: none;

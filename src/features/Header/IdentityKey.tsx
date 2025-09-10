@@ -22,8 +22,8 @@ import { maxZIndex } from "../../consts";
 export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
 
-  const isXXNarrowScreen = useMedia("(min-width: 466px)");
-  const isXNarrowScreen = useMedia("(min-width: 600px)");
+  const isXXNarrowScreen = useMedia("(min-width: 473px)");
+  const isXNarrowScreen = useMedia("(min-width: 608px)");
   const isNarrowScreen = useMedia("(min-width: 1100px)");
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export default function IdentityKey() {
       <div
         className={clsx(styles.container, styles.horizontal, styles.pointer)}
       >
-        <PeerIcon url={peer?.info?.icon_url} size={20} isYou />
+        <PeerIcon url={peer?.info?.icon_url} size={28} isYou />
 
         {isXXNarrowScreen && (
           <Label

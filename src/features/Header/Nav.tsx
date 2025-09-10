@@ -1,139 +1,147 @@
-import { DropdownMenu, ToggleGroup } from "radix-ui";
+import { DropdownMenu } from "radix-ui";
 import styles from "./nav.module.css";
-import { Button, Reset, Text } from "@radix-ui/themes";
-import {
-  BarChartIcon,
-  CalendarIcon,
-  SpeakerLoudIcon,
-  ChevronDownIcon,
-} from "@radix-ui/react-icons";
+import type { ButtonProps } from "@radix-ui/themes";
+import { Button, Flex } from "@radix-ui/themes";
+import SsidChartIcon from "@material-design-icons/svg/filled/ssid_chart.svg?react";
+import AssessmentIcon from "@material-design-icons/svg/filled/assessment.svg?react";
+import CalendarMonthIcon from "@material-design-icons/svg/filled/calendar_month.svg?react";
+import CampaignIcon from "@material-design-icons/svg/filled/campaign.svg?react";
+import KeyboardArrowDownIcon from "@material-design-icons/svg/filled/keyboard_arrow_down.svg?react";
 import { Link } from "@tanstack/react-router";
 import clsx from "clsx";
+import type { FC, SVGProps } from "react";
 import { forwardRef, useEffect, useMemo } from "react";
 import { containerElAtom } from "../../atoms";
 import { useAtomValue } from "jotai";
 import type { RouteLabel } from "../../hooks/useCurrentRoute";
 import { RouteLabelToPath, useCurrentRoute } from "../../hooks/useCurrentRoute";
 import useNavigateLeaderSlot from "../../hooks/useNavigateLeaderSlot";
+import { slotsNavSpacing } from "../../consts";
+import { clusterAtom } from "../../api/atoms";
+import { getClusterColor } from "../../utils";
+import { navButtonTextColor } from "../../colors";
 
 interface NavLinkProps {
   label: RouteLabel;
   className?: string;
 }
 
-const RouteLabelToIcon: Record<RouteLabel, React.ReactNode> = {
-  Overview: <BarChartIcon />,
-  Schedule: <CalendarIcon />,
-  Gossip: <SpeakerLoudIcon />,
-  "Slot Details": <BarChartIcon />,
+const RouteLabelToIcon: Record<RouteLabel, FC<SVGProps<SVGSVGElement>>> = {
+  Overview: SsidChartIcon,
+  Schedule: CalendarMonthIcon,
+  Gossip: CampaignIcon,
+  "Slot Details": AssessmentIcon,
 };
 
-const NavLink = forwardRef<HTMLAnchorElement, NavLinkProps>(
-  ({ label, className }, _) => {
-    const icon = RouteLabelToIcon[label];
+interface NavLinkProps extends ButtonProps {
+  label: RouteLabel;
+  isActive: boolean;
+  isLink: boolean;
+  showDropdownIcon?: boolean;
+}
+
+const NavButton = forwardRef<HTMLButtonElement, NavLinkProps>(
+  (
+    { label, isActive, showDropdownIcon = false, isLink, ...props },
+    forwardedRef,
+  ) => {
+    const cluster = useAtomValue(clusterAtom);
+    const activeColor = getClusterColor(cluster);
+
+    const Icon = RouteLabelToIcon[label];
     const path = RouteLabelToPath[label];
+
+    const content = useMemo(() => {
+      const iconFill = isActive ? activeColor : navButtonTextColor;
+
+      return (
+        <>
+          <Icon className={styles.icon} fill={iconFill} />
+          {label}
+          {showDropdownIcon && (
+            <KeyboardArrowDownIcon
+              className={styles.dropdownIcon}
+              fill={iconFill}
+            />
+          )}
+        </>
+      );
+    }, [Icon, activeColor, isActive, label, showDropdownIcon]);
+
     return (
-      <Reset>
-        <Link to={path} className={className}>
-          {icon}
-          <Text>{label}</Text>
-        </Link>
-      </Reset>
+      <Button
+        ref={forwardedRef}
+        {...props}
+        size="2"
+        variant="soft"
+        color="gray"
+        className={clsx(styles.navLink, { [styles.active]: isActive })}
+        style={{
+          color: isActive ? activeColor : undefined,
+        }}
+        asChild={isLink}
+      >
+        {isLink ? <Link to={path}>{content}</Link> : content}
+      </Button>
     );
   },
 );
-NavLink.displayName = "NavLink";
 
-export function ToggleNav() {
+NavButton.displayName = "NavButton";
+
+export function NavLinks() {
+  const currentRoute = useCurrentRoute();
+
   return (
-    <ToggleGroup.Root
-      type="single"
-      className={styles.navToggleGroup}
-      aria-label="Navigation"
-    >
-      <ToggleGroup.Item value="/" asChild>
-        <NavLink
-          label="Overview"
-          className={clsx(
-            styles.navToggleItem,
-            styles.startItem,
-            styles.overview,
-          )}
-        />
-      </ToggleGroup.Item>
-      <ToggleGroup.Item value="/slotDetails" asChild>
-        <NavLink
-          label="Slot Details"
-          className={clsx(styles.navToggleItem, styles.slotDetails)}
-        />
-      </ToggleGroup.Item>
-      <ToggleGroup.Item value="/leaderSchedule" asChild>
-        <NavLink
-          label="Schedule"
-          className={clsx(styles.navToggleItem, styles.schedule)}
-        />
-      </ToggleGroup.Item>
-      <ToggleGroup.Item value="/gossip" asChild>
-        <NavLink
-          label="Gossip"
-          className={clsx(styles.navToggleItem, styles.gossip, styles.endItem)}
-        />
-      </ToggleGroup.Item>
-    </ToggleGroup.Root>
+    <Flex gap={`${slotsNavSpacing}px`}>
+      {Object.keys(RouteLabelToPath).map((label) => {
+        const routeLabel = label as RouteLabel;
+        return (
+          <NavButton
+            key={routeLabel}
+            label={routeLabel}
+            isActive={currentRoute === routeLabel}
+            isLink
+          />
+        );
+      })}
+    </Flex>
   );
 }
 
 export function DropdownNav() {
   const containerEl = useAtomValue(containerElAtom);
-
   const currentRoute = useCurrentRoute();
-  const currentIcon = useMemo(() => {
-    return RouteLabelToIcon[currentRoute];
-  }, [currentRoute]);
 
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <Button
-          className={clsx(
-            styles.navDropdownTrigger,
-            currentRoute === "Overview" && styles.overview,
-            currentRoute === "Slot Details" && styles.slotDetails,
-            currentRoute === "Schedule" && styles.schedule,
-            currentRoute === "Gossip" && styles.gossip,
-          )}
-        >
-          {currentIcon}
-          {currentRoute}
-          <ChevronDownIcon />
-        </Button>
+        <NavButton
+          key={currentRoute}
+          label={currentRoute}
+          isActive
+          showDropdownIcon
+          isLink={false}
+        />
       </DropdownMenu.Trigger>
+
       <DropdownMenu.Portal container={containerEl}>
         <DropdownMenu.Content className={styles.navDropdownContent}>
-          <DropdownMenu.Item asChild>
-            <NavLink
-              label="Overview"
-              className={clsx(styles.navDropdownItem, styles.overview)}
-            />
-          </DropdownMenu.Item>
-          <DropdownMenu.Item asChild>
-            <NavLink
-              label="Slot Details"
-              className={clsx(styles.navDropdownItem, styles.slotDetails)}
-            />
-          </DropdownMenu.Item>
-          <DropdownMenu.Item asChild>
-            <NavLink
-              label="Schedule"
-              className={clsx(styles.navDropdownItem, styles.schedule)}
-            />
-          </DropdownMenu.Item>
-          <DropdownMenu.Item asChild>
-            <NavLink
-              label="Gossip"
-              className={clsx(styles.navDropdownItem, styles.gossip)}
-            />
-          </DropdownMenu.Item>
+          {Object.keys(RouteLabelToPath).map((label) => {
+            const routeLabel = label as RouteLabel;
+            if (routeLabel === currentRoute) return;
+
+            return (
+              <DropdownMenu.Item key={routeLabel} asChild>
+                <NavButton
+                  key={routeLabel}
+                  label={routeLabel}
+                  isActive={false}
+                  isLink={true}
+                />
+              </DropdownMenu.Item>
+            );
+          })}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>

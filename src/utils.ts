@@ -1,7 +1,16 @@
 import type { Duration } from "luxon";
 import { DateTime } from "luxon";
-import type { Epoch, Peer } from "./api/types";
+import type { Cluster, Epoch, Peer } from "./api/types";
 import { lamportsPerSol, slotsPerLeader } from "./consts";
+import {
+  clusterMainnetBetaColor,
+  clusterTestnetColor,
+  clusterDevelopmentColor,
+  clusterDevnetColor,
+  clusterPythnetColor,
+  clusterPythtestColor,
+  clusterUnknownColor,
+} from "./colors";
 
 export function getLeaderSlots(epoch: Epoch, pubkey: string) {
   return epoch.leader_slots.reduce<number[]>((leaderSlots, pubkeyIndex, i) => {
@@ -160,5 +169,25 @@ export function copyToClipboard(copyValue: string) {
     console.error("Failed to copy text", copyValue, error);
   } finally {
     document.body.removeChild(copyEl);
+  }
+}
+
+export function getClusterColor(cluster?: Cluster) {
+  switch (cluster) {
+    case "mainnet-beta":
+      return clusterMainnetBetaColor;
+    case "testnet":
+      return clusterTestnetColor;
+    case "development":
+      return clusterDevelopmentColor;
+    case "devnet":
+      return clusterDevnetColor;
+    case "pythnet":
+      return clusterPythnetColor;
+    case "pythtest":
+      return clusterPythtestColor;
+    case "unknown":
+    case undefined:
+      return clusterUnknownColor;
   }
 }
