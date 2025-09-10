@@ -5,7 +5,6 @@ import TilesPerformance from "./TilesPerformance";
 import Card from "../../../components/Card";
 import SankeyControls from "./SankeyControls";
 import styles from "./SlotSankey/slotSankey.module.css";
-import LiveSankeyIndicator from "./LiveSankeyIndicator";
 
 export default function SlotPerformance() {
   return (
@@ -17,7 +16,6 @@ export default function SlotPerformance() {
       >
         <Flex gap="3">
           <CardHeader text="TPU Waterfall" />
-          <LiveSankeyIndicator />
         </Flex>
         <SankeyContainer />
         <TilesPerformance />
