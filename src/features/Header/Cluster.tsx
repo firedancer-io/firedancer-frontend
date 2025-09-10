@@ -20,6 +20,8 @@ import { scheduleStrategyIcons } from "../../strategyIcons";
 import { clusterIndicatorHeight, slotsListWidth } from "../../consts";
 import { getClusterColor } from "../../utils";
 
+const offset = 2;
+
 export function Cluster() {
   const cluster = useAtomValue(clusterAtom);
   const version = useAtomValue(versionAtom);
@@ -42,11 +44,10 @@ export function Cluster() {
 
   return (
     <Flex
-      width={`${slotsListWidth}px`}
+      width={`${slotsListWidth + offset}px`}
       className={styles.clusterContainer}
-      justify="between"
-      align="center"
-      flexGrow="1"
+      ml={`-${offset}px`}
+      p={`${offset}px 5px ${offset}px ${offset}px`}
     >
       <Flex
         className={styles.cluster}
@@ -68,7 +69,7 @@ export function Cluster() {
       <Tooltip
         content={`GUI is currently ${socketState} ${socketState === SocketState.Disconnected ? "from" : "to"} the validator`}
       >
-        <img src={icon} height="14" width="14" alt="ws status" />
+        <img src={icon} className={styles.wsStatusIcon} alt="ws status" />
       </Tooltip>
 
       <JitoIcon />
@@ -115,8 +116,8 @@ function JitoIcon() {
       content={`Currently ${blockEngine.status} ${blockEngine.status === "disconnected" ? "from" : "to"} ${blockEngine.name} - ${blockEngine.url} (${blockEngine.ip})`}
     >
       <svg
-        width="14"
-        height="14"
+        width="10"
+        height="10"
         viewBox="0 0 48 48"
         xmlns="http://www.w3.org/2000/svg"
       >
@@ -157,7 +158,7 @@ function JitoIcon() {
 }
 
 function StrategyIcon() {
-  const fontSize = "14px";
+  const fontSize = "12px";
   const scheduleStrategy = useAtomValue(scheduleStrategyAtom);
   if (!scheduleStrategy) return;
 
@@ -171,7 +172,7 @@ function StrategyIcon() {
   } else if (scheduleStrategy === ScheduleStrategyEnum.perf) {
     return (
       <Tooltip content="Transaction scheduler strategy: performance">
-        <div style={{ marginRight: "-3px", fontSize }}>{icon}</div>
+        <div style={{ margin: "0 -1px", fontSize }}>{icon}</div>
       </Tooltip>
     );
   } else if (scheduleStrategy === ScheduleStrategyEnum.revenue) {

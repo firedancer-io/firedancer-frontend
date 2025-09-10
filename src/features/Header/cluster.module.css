@@ -1,7 +1,8 @@
 .cluster-container {
   height: 28px;
-  padding: 2px;
+  justify-content: space-between;
   align-items: center;
+  flex-grow: 1;
 
   border-radius: 5px;
   background: rgba(250, 250, 250, 0.1);
@@ -19,5 +20,12 @@
     font-size: 12px;
     font-weight: 700;
     margin-bottom: -3px;
+  }
+
+  .ws-status-icon {
+    height: 12px;
+    width: 12px;
+    margin: 0 -2px;
+    user-select: none;
   }
 }
