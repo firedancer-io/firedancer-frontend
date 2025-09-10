@@ -16,7 +16,7 @@ import { useAtomValue } from "jotai";
 import type { RouteLabel } from "../../hooks/useCurrentRoute";
 import { RouteLabelToPath, useCurrentRoute } from "../../hooks/useCurrentRoute";
 import useNavigateLeaderSlot from "../../hooks/useNavigateLeaderSlot";
-import { slotsNavSpacing } from "../../consts";
+import { maxZIndex, slotsNavSpacing } from "../../consts";
 import { clusterAtom } from "../../api/atoms";
 import { getClusterColor } from "../../utils";
 import { navButtonTextColor } from "../../colors";
@@ -126,7 +126,12 @@ export function DropdownNav() {
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Portal container={containerEl}>
-        <DropdownMenu.Content className={styles.navDropdownContent}>
+        <DropdownMenu.Content
+          side="bottom"
+          sideOffset={5}
+          className={styles.navDropdownContent}
+          style={{ zIndex: maxZIndex }}
+        >
           {Object.keys(RouteLabelToPath).map((label) => {
             const routeLabel = label as RouteLabel;
             if (routeLabel === currentRoute) return;
