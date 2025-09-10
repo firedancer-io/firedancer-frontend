@@ -4,11 +4,11 @@ import { DropdownNav, NavHandler, NavLinks } from "./Nav";
 import { useMedia } from "react-use";
 import {
   epochThumbPadding,
-  headerBottomSpacing,
   headerHeight,
   headerSpacing,
   logoRightSpacing,
   maxZIndex,
+  slotNavWithoutListWidth,
   slotsNavSpacing,
 } from "../../consts";
 import Logo from "./Logo";
@@ -18,12 +18,27 @@ import { isNavCollapsedAtom } from "../../atoms";
 import { useAtomValue } from "jotai";
 import NavBlur from "../Navigation/NavBlur";
 import { slotNavBackgroundColor } from "../../colors";
+import { useCurrentRoute } from "../../hooks/useCurrentRoute";
+import { useMemo } from "react";
 
 export default function Header() {
   const showDropdownNav = useMedia("(max-width: 900px)");
   const isXNarrow = useMedia("(max-width: 401px)");
   const isNarrow = useMedia("(max-width: 768px)");
   const isNavCollapsed = useAtomValue(isNavCollapsedAtom);
+
+  const currentRoute = useCurrentRoute();
+  const isSchedule = currentRoute === "Schedule";
+
+  const leftBackground = useMemo(() => {
+    if (isNavCollapsed) return undefined;
+    if (isSchedule) {
+      // only color the epoch bar portion
+      const width = `${slotNavWithoutListWidth + epochThumbPadding}px`;
+      return `linear-gradient(to right, ${slotNavBackgroundColor} 0px ${width}, transparent ${width} 100%)`;
+    }
+    return slotNavBackgroundColor;
+  }, [isNavCollapsed, isSchedule]);
 
   const useExtraNarrowGap = isNavCollapsed && isXNarrow;
   const extraNarrowGap = "3px";
@@ -47,13 +62,11 @@ export default function Header() {
             gapX={useExtraNarrowGap ? extraNarrowGap : `${logoRightSpacing}px`}
             // slots nav background color boundary
             pr={useExtraNarrowGap ? extraNarrowGap : `${slotsNavSpacing}px`}
-            pb={`${headerBottomSpacing}`}
             style={{
-              marginLeft: -slotsNavSpacing,
-              backgroundColor: isNavCollapsed
-                ? undefined
-                : slotNavBackgroundColor,
+              background: leftBackground,
             }}
+            // align with epoch bar thumb overflow padding
+            ml={`${-epochThumbPadding}px`}
             pl={`${epochThumbPadding}px`}
           >
             {isNarrow && isNavCollapsed && (
@@ -78,7 +91,6 @@ export default function Header() {
                 : // blur color boundary
                   `${headerSpacing - slotsNavSpacing}px`
             }
-            pb={`${headerBottomSpacing}`}
           >
             <NavHandler />
             {showDropdownNav ? <DropdownNav /> : <NavLinks />}

@@ -14,6 +14,8 @@ import {
   maxZIndex,
   slotsListWidth,
   epochThumbPadding,
+  slotNavWidth,
+  slotNavWithoutListWidth,
 } from "../../consts";
 import { StatusIndicator } from "./Status";
 import AutoSizer from "react-virtualized-auto-sizer";
@@ -43,10 +45,7 @@ export default function Navigation() {
 
   const currentRoute = useCurrentRoute();
   const width = useMemo(() => {
-    const noListWidth = logoWidth + logoRightSpacing;
-    return currentRoute === "Schedule"
-      ? noListWidth
-      : noListWidth + slotsListWidth + slotsNavSpacing;
+    return currentRoute === "Schedule" ? slotNavWithoutListWidth : slotNavWidth;
   }, [currentRoute]);
 
   return (
