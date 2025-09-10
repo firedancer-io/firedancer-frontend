@@ -31,6 +31,7 @@ export default function NavFilterToggles() {
         <ToggleGroup.Item
           value={SlotNavFilter.AllSlots}
           aria-label="All Slots toggle"
+          tabIndex={0}
         >
           <Text>All Slots</Text>
         </ToggleGroup.Item>
@@ -38,6 +39,7 @@ export default function NavFilterToggles() {
         <ToggleGroup.Item
           value={SlotNavFilter.MySlots}
           aria-label="My Slots toggle"
+          tabIndex={0}
         >
           <Text>My Slots</Text>
         </ToggleGroup.Item>

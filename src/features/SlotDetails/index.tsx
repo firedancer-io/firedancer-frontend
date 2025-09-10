@@ -9,6 +9,7 @@ import {
   baseSelectedSlotAtom,
   SelectedSlotValidityState,
 } from "../Overview/SlotPerformance/atoms";
+import type { FC, SVGProps } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useUnmount } from "react-use";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
@@ -226,7 +227,7 @@ function QuickSearchCard({
   slot,
   disabled = false,
 }: {
-  Icon: React.FunctionComponent<React.SVGProps<SVGSVGElement>>;
+  Icon: FC<SVGProps<SVGSVGElement>>;
   label: string;
   color: string;
   slot?: number;

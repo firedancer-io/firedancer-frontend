@@ -16,10 +16,11 @@ export const dropdownButtonTextColor = "#F7F8F8";
 export const popoverBackgroundColor = "#1C2129";
 export const rowSeparatorBackgroundColor = "#333333";
 
-export const navButtonTextColor = "#F7F7F7";
+export const navButtonTextColor = "#949494";
 
 // slot navigation
 export const slotNavFilterBackgroundColor = "#00205F";
+export const slotNavBackgroundColor = "#010102";
 
 // startup
 export const startupTextColor = "#A7A7A7";

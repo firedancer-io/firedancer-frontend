@@ -9,11 +9,14 @@ export const lamportsPerSol = 1_000_000_000;
 export const defaultMaxComputeUnits = 50_000_000;
 
 export const clusterIndicatorHeight = 5;
-export const headerHeight = 35;
+
+export const headerHeight = 48;
+export const headerBottomSpacing = 17;
 export const headerSpacing = 13;
 export const navToggleHeight = 21;
 export const largeNavToggleHeight = 28;
 export const slotsNavSpacing = 5;
+export const epochThumbPadding = slotsNavSpacing;
 
 export const logoWidth = 21;
 export const logoRightSpacing = 8;

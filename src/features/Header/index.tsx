@@ -1,8 +1,10 @@
 import { Box, Flex } from "@radix-ui/themes";
 import IdentityKey from "./IdentityKey";
-import { DropdownNav, NavHandler, ToggleNav } from "./Nav";
+import { DropdownNav, NavHandler, NavLinks } from "./Nav";
 import { useMedia } from "react-use";
 import {
+  epochThumbPadding,
+  headerBottomSpacing,
   headerHeight,
   headerSpacing,
   logoRightSpacing,
@@ -15,6 +17,7 @@ import NavCollapseToggle from "../Navigation/NavCollapseToggle";
 import { isNavCollapsedAtom } from "../../atoms";
 import { useAtomValue } from "jotai";
 import NavBlur from "../Navigation/NavBlur";
+import { slotNavBackgroundColor } from "../../colors";
 
 export default function Header() {
   const showDropdownNav = useMedia("(max-width: 900px)");
@@ -44,6 +47,14 @@ export default function Header() {
             gapX={useExtraNarrowGap ? extraNarrowGap : `${logoRightSpacing}px`}
             // slots nav background color boundary
             pr={useExtraNarrowGap ? extraNarrowGap : `${slotsNavSpacing}px`}
+            pb={`${headerBottomSpacing}`}
+            style={{
+              marginLeft: -slotsNavSpacing,
+              backgroundColor: isNavCollapsed
+                ? undefined
+                : slotNavBackgroundColor,
+            }}
+            pl={`${epochThumbPadding}px`}
           >
             {isNarrow && isNavCollapsed && (
               <div style={{ width: isNavCollapsed ? undefined : "0" }}>
@@ -67,9 +78,10 @@ export default function Header() {
                 : // blur color boundary
                   `${headerSpacing - slotsNavSpacing}px`
             }
+            pb={`${headerBottomSpacing}`}
           >
             <NavHandler />
-            {showDropdownNav ? <DropdownNav /> : <ToggleNav />}
+            {showDropdownNav ? <DropdownNav /> : <NavLinks />}
 
             <IdentityKey />
 

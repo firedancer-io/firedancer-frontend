@@ -13,6 +13,7 @@ import {
   navToggleHeight,
   maxZIndex,
   slotsListWidth,
+  epochThumbPadding,
 } from "../../consts";
 import { StatusIndicator } from "./Status";
 import AutoSizer from "react-virtualized-auto-sizer";
@@ -27,9 +28,6 @@ import NavCollapseToggle from "./NavCollapseToggle";
 import { useMedia } from "react-use";
 
 const top = clusterIndicatorHeight + headerHeight;
-// padding to make sure epoch thumb is visible,
-// as it is positioned slightly outside of the container
-const epochThumbPadding = 8;
 
 /**
  * On narrow screens, container width is 0
@@ -38,6 +36,10 @@ const epochThumbPadding = 8;
 export default function Navigation() {
   const isNavCollapsed = useAtomValue(isNavCollapsedAtom);
   const isNarrow = useMedia(narrowNavMedia);
+
+  // padding to make sure epoch thumb is visible,
+  // as it is positioned slightly outside of the container
+  const thumbPadding = isNavCollapsed ? 0 : epochThumbPadding;
 
   const currentRoute = useCurrentRoute();
   const width = useMemo(() => {
@@ -57,7 +59,7 @@ export default function Navigation() {
     >
       <Flex
         // width transitions
-        width={isNavCollapsed ? "0" : `${width + epochThumbPadding}px`}
+        width={isNavCollapsed ? "0" : `${width + thumbPadding}px`}
         overflow="hidden"
         className={clsx("sticky", styles.slotNavContainer)}
         style={{
@@ -65,8 +67,8 @@ export default function Navigation() {
         }}
         top={`${top}px`}
         height={`calc(100vh - ${top}px)`}
-        ml={`${-epochThumbPadding}px`}
-        pl={`${epochThumbPadding}px`}
+        ml={`${-thumbPadding}px`}
+        pl={`${thumbPadding}px`}
         pb="2"
       >
         <Flex

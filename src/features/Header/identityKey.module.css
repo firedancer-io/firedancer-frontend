@@ -17,12 +17,12 @@
 
   .label {
     color: var(--skip-rate-label-color);
-    font-size: 8px;
+    font-size: 10px;
   }
 
   .value {
     color: var(--dropdown-button-text-color);
-    font-size: 10px;
+    font-size: 12px;
     font-style: normal;
   }
 }
@@ -30,9 +30,13 @@
 .horizontal {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
   flex-shrink: 0;
   border-width: 0px;
   background-color: var(--color-background);
+
+  .value {
+    font-weight: 600;
+  }
 }
