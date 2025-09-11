@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type {
+  clientSchema,
   identityBalanceSchema,
   blockEngineStatusSchema,
   blockEngineUpdateSchema,
@@ -40,6 +41,8 @@ import type {
   voteBalanceSchema,
   scheduleStrategySchema,
 } from "./entities";
+
+export type Client = z.infer<typeof clientSchema>;
 
 export type Version = z.infer<typeof versionSchema>;
 

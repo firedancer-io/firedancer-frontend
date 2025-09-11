@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const clientSchema = z.enum(["Frankendancer", "Firedancer"]);
+export const ClientEnum = clientSchema.enum;
+
 const summaryTopicSchema = z.object({
   topic: z.literal("summary"),
 });

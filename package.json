@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "NODE_OPTIONS=--max-http-header-size=64000 vite",
     "build": "tsc && vite build",
+    "build:fr": "tsc && VITE_VALIDATOR_CLIENT=Frankendancer vite build",
+    "build:fd": "tsc && VITE_VALIDATOR_CLIENT=Firedancer vite build",
     "build:dev": "tsc && vite build --mode development",
     "test": "vitest",
     "lint": "prettier --check . && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
