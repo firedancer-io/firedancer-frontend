@@ -26,7 +26,7 @@ export default function IdentityKey() {
   const isNarrowScreen = useMedia("(min-width: 900px)");
 
   useEffect(() => {
-    let title = "Firedancer";
+    let title = document.title;
     if (peer?.info?.name) {
       title += ` | ${peer.info.name}`;
     } else if (identityKey) {

@@ -19,6 +19,20 @@ import { merge } from "lodash";
 import { getLeaderSlots, getStake } from "./utils";
 import { searchLeaderSlotsAtom } from "./features/LeaderSchedule/atoms";
 import { selectedSlotAtom } from "./features/Overview/SlotPerformance/atoms";
+import { ClientEnum, clientSchema } from "./api/entities";
+
+export const clientAtom = atom(() => {
+  const parsedClient = clientSchema.safeParse(
+    (import.meta.env.VITE_VALIDATOR_CLIENT as string)?.trim(),
+  );
+
+  if (parsedClient.error) {
+    // default
+    return ClientEnum.Frankendancer;
+  }
+
+  return parsedClient.data;
+});
 
 export const containerElAtom = atom<HTMLDivElement | null>();
 

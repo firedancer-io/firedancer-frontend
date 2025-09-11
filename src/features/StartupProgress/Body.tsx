@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { showStartupProgressAtom } from "./atoms";
 import fdLogo from "../../assets/firedancer.svg";
+import frLogo from "../../assets/frankendancer.svg";
 import { Box, Flex } from "@radix-ui/themes";
 import type { StartupPhase } from "../../api/types";
 import { isDefined } from "../../utils";
@@ -13,7 +14,7 @@ import InprogressStep from "./InprogressStep";
 import CompleteStep from "./CompleteStep";
 import LoadingLedgerProgress from "./LedgerProgress";
 import FullSnapshotProgress from "./FullSnapshotProgress";
-import { peersAtom } from "../../atoms";
+import { clientAtom, peersAtom } from "../../atoms";
 import IncrementalSnapshotProgress from "./IncrementalSnapshotProgress";
 import { animated, useSpring } from "@react-spring/web";
 import FullSnapshotStats from "./FullSnapshotStats";
@@ -22,6 +23,7 @@ import {
   SupermajorityStakeStats,
 } from "./SupermajorityStakeProgress";
 import IncrementalSnapshotStats from "./IncrementalSnapshotStats";
+import { ClientEnum } from "../../api/entities";
 
 const steps: {
   step: StartupPhase;
@@ -61,6 +63,7 @@ const steps: {
 ];
 
 export default function Body() {
+  const client = useAtomValue(clientAtom);
   const startupProgress = useAtomValue(startupProgressAtom);
   const [showStartupProgress, setShowStartupProgress] = useAtom(
     showStartupProgressAtom,
@@ -122,7 +125,7 @@ export default function Body() {
       <Flex direction="column" gap="4" className={styles.innerContainer}>
         <Box flexGrow="1" />
         <img
-          src={fdLogo}
+          src={client === ClientEnum.Firedancer ? fdLogo : frLogo}
           alt="fd"
           height="50px"
           style={{ marginBottom: "28px" }}
