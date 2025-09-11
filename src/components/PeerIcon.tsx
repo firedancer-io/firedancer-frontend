@@ -12,6 +12,7 @@ interface PeerIconProps {
   isYou?: boolean;
   size: number;
   hideFallback?: boolean;
+  isRounded?: boolean;
 }
 
 export default function PeerIcon({
@@ -19,6 +20,7 @@ export default function PeerIcon({
   size,
   hideFallback,
   isYou,
+  isRounded,
 }: PeerIconProps) {
   const [globalHasError, setGlobalHasError] = useAtom(
     getPeerIconHasErrorIcon(url),
@@ -26,16 +28,17 @@ export default function PeerIcon({
   const [hasError, setHasError] = useState(globalHasError);
   const [hasLoaded, setHasLoaded] = useState(false);
 
+  const iconStyles = { width: `${size}px`, height: `${size}px` };
+
+  const className = clsx({ [styles.isRounded]: isRounded });
+
   if (!url || hasError) {
     if (hideFallback) {
-      return;
+      return <div className={className} style={iconStyles} />;
     } else if (isYou) {
       return (
         <Tooltip content="Your current validator">
-          <img
-            src={privateYouIcon}
-            style={{ height: `${size}px`, width: `${size}px` }}
-          />
+          <img src={privateYouIcon} className={className} style={iconStyles} />
         </Tooltip>
       );
     } else {
@@ -43,7 +46,8 @@ export default function PeerIcon({
         <img
           src={privateIcon}
           alt="private"
-          style={{ height: `${size}px`, width: `${size}px` }}
+          className={className}
+          style={iconStyles}
         />
       );
     }
@@ -57,15 +61,15 @@ export default function PeerIcon({
   return (
     <>
       <img
-        className={clsx({ [styles.hide]: !hasLoaded })}
-        style={{ height: `${size}px`, width: `${size}px` }}
+        className={clsx({ [styles.hide]: !hasLoaded }, className)}
+        style={iconStyles}
         onError={handleError}
         onLoad={() => setHasLoaded(true)}
         src={url}
       />
       <img
-        className={clsx({ [styles.hide]: hasLoaded })}
-        style={{ height: `${size}px`, width: `${size}px` }}
+        className={clsx({ [styles.hide]: hasLoaded }, className)}
+        style={iconStyles}
         src={privateIcon}
         alt="private"
       />

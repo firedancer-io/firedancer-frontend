@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import checker from "vite-plugin-checker";
 import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
 import license from "rollup-plugin-license";
+import svgr from "vite-plugin-svgr";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -34,6 +35,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    svgr(),
     TanStackRouterVite(),
 
     checker({

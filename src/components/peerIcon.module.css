@@ -1,3 +1,7 @@
 .hide {
   display: none;
 }
+
+.is-rounded {
+  border-radius: 6px;
+}
