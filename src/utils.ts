@@ -24,73 +24,61 @@ export function getSlotGroupLeader(slot: number) {
   return slot - (slot % slotsPerLeader);
 }
 
+const descendingUnits = [
+  { unit: "years", suffix: "y" },
+  { unit: "months", suffix: "m" },
+  { unit: "weeks", suffix: "w" },
+  { unit: "days", suffix: "d" },
+  { unit: "hours", suffix: "h" },
+  { unit: "minutes", suffix: "m" },
+  { unit: "seconds", suffix: "s" },
+] as const;
+
+export interface DurationOptions {
+  showOnlyTwoSignificantUnits?: boolean;
+  omitSeconds?: boolean;
+}
+
+function getUnitText(value: number, suffix: string, showZeros: boolean) {
+  if (value === 0 && !showZeros) return;
+  return `${value}${suffix}`;
+}
+
+function getUnitTexts(duration: Duration, options?: DurationOptions) {
+  if (options?.showOnlyTwoSignificantUnits) {
+    const firstUnitIndex = descendingUnits.findIndex(({ unit }) => {
+      return !!duration[unit];
+    });
+    return descendingUnits
+      .slice(firstUnitIndex, firstUnitIndex + 2)
+      .map(({ unit, suffix }) => {
+        const value = duration[unit];
+        return getUnitText(value, suffix, true);
+      });
+  }
+
+  return descendingUnits
+    .map(({ unit, suffix }) => {
+      if (options?.omitSeconds && unit === "seconds") return;
+
+      const value = duration[unit];
+      if (!value) return;
+
+      return getUnitText(value, suffix, false);
+    })
+    .filter((v) => !!v);
+}
+
 export function getDurationText(
   duration?: Duration,
-  options: { showSeconds: boolean; showOnlyLargestUnit: boolean } = {
-    showSeconds: true,
-    showOnlyLargestUnit: false,
-  },
+  options?: DurationOptions,
 ) {
   if (!duration) return "Never";
 
-  if (duration.toMillis() < 0) return "0s";
+  if (duration.toMillis() < 1000) return "0s";
 
-  let text = "";
-
-  if (duration.years) {
-    const durationText = `${duration.years}y`;
-    if (options.showOnlyLargestUnit) return durationText;
-    if (text) text += " ";
-    text += durationText;
-  }
-
-  if (duration.months) {
-    const durationText = `${duration.months}m`;
-    if (options.showOnlyLargestUnit) return durationText;
-    if (text) text += " ";
-    text += durationText;
-  }
-
-  if (duration.weeks) {
-    const durationText = `${duration.weeks}w`;
-    if (options.showOnlyLargestUnit) return durationText;
-    if (text) text += " ";
-    text += durationText;
-  }
-
-  if (duration.days) {
-    const durationText = `${duration.days}d`;
-    if (options.showOnlyLargestUnit) return durationText;
-    if (text) text += " ";
-    text += durationText;
-  }
-
-  if (duration.hours) {
-    const durationText = `${duration.hours}h`;
-    if (options.showOnlyLargestUnit) return durationText;
-    if (text) text += " ";
-    text += durationText;
-  }
-
-  if (duration.minutes) {
-    const durationText = `${duration.minutes}m`;
-    if (options.showOnlyLargestUnit) return durationText;
-    if (text) text += " ";
-    text += durationText;
-  }
-
-  if (duration.seconds && options.showSeconds) {
-    const durationText = `${duration.seconds}s`;
-    if (options.showOnlyLargestUnit) return durationText;
-    if (text) text += " ";
-    text += durationText;
-  }
-
-  if (!text) {
-    text = "0s";
-  }
-
-  return text;
+  const texts = getUnitTexts(duration, options);
+  return texts.join(" ") || "0s";
 }
 
 export let slowDateTimeNow = DateTime.now();

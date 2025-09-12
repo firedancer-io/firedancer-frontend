@@ -9,7 +9,7 @@
     height: 21px;
     border: none;
     padding: 3px 5px;
-    color: var(--nav-button-text-color);
+    color: var(--nav-button-inactive-text-color);
     background-color: rgba(255, 255, 255, 0.1);
     &:first-child {
       border-top-left-radius: 5px;
@@ -23,6 +23,11 @@
 
     &[data-state="on"] {
       background-color: var(--slot-nav-filter-background-color);
+      color: var(--nav-button-text-color);
+    }
+
+    &:hover {
+      filter: brightness(1.2);
     }
 
     span {
@@ -38,6 +43,10 @@
 .toggle-button {
   border-radius: 5px;
   background-color: var(--epoch-slider-progress-color);
+
+  &:hover {
+    filter: brightness(1.2);
+  }
 
   &.floating {
     box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.75);

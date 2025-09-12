@@ -16,7 +16,8 @@ export const dropdownButtonTextColor = "#F7F8F8";
 export const popoverBackgroundColor = "#1C2129";
 export const rowSeparatorBackgroundColor = "#333333";
 
-export const navButtonTextColor = "#949494";
+export const navButtonTextColor = "#F7F7F7";
+export const navButtonInactiveTextColor = "#949494";
 
 // slot navigation
 export const slotNavFilterBackgroundColor = "#00205F";
@@ -148,7 +149,7 @@ export const slotStatusRed = "#871616";
 export const slotStatusGreen = "#1d863b";
 export const slotStatusBlue = "#1d6286";
 export const slotStatusTeal = "#1CE7C2";
-export const slotStatusDullTeal = "#1B4C43";
+export const slotStatusDullTeal = "#076B59";
 export const slotStatusGray = "#313131";
 
 export const circularProgressTrailColor = "#666666";
@@ -170,19 +171,22 @@ export const slotDetailsSelectedColor = "#e3efff";
 export const slotDetailsDisabledSlotBorderColor = "#484D53B2";
 
 // slots list
+export const slotsListSlotBackgroundColor = "#070A13";
+export const slotsListMySlotBackgroundColor = "#070B14 ";
 export const slotsListCurrentSlotBorderColor = "#047690";
-export const slotsListMySlotsBorderColor = "#0080e6";
+export const slotsListMySlotsBorderColor = "rgba(42, 126, 223, 0.5)";
 export const slotsListNotProcessedMySlotsBorderColor =
   "rgba(125, 125, 125, 0.50)";
-export const slotsListMySlotsHoveredBorderColor = "#379bf3";
+export const slotsListMySlotsSelectedBorderColor = "#2A7EDF";
 export const slotsListBackgroundColor = "#070a13";
 export const slotsListFutureSlotBackgroundColor = "#0D0D0D";
 export const slotsListSkippedBackgroundColor = "#250f0f";
 export const slotsListSelectedBackgroundColor = "#002163";
 export const slotsListSkippedSelectedBackgroundColor = "#3b0c0c";
-export const slotsListPastSlotColor = "#a0a0a0";
-export const slotsListPastSlotNumberColor = "#6B6B6B";
-export const slotsListCurrentSlotColor = "#ccc";
+export const slotsListPastSlotNumberColor = "#848484";
+export const slotsListPastSlotColor = "#A0A0A0";
+export const slotsListSlotColor = "#ccc";
 export const slotsListFutureSlotColor = "#878787";
 export const slotsListCurrentSlotBoxShadowColor = "rgba(191, 135, 253, 0.13)";
 export const slotsListCurrentSlotNumberBackgroundColor = "#283551";
+export const slotsListNextLeaderProgressBarColor = "#37a4bc";
