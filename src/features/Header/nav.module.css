@@ -1,7 +1,7 @@
 .nav-link {
   font-size: 14px;
   font-weight: 400;
-  color: var(--nav-button-text-color);
+  color: var(--nav-button-inactive-text-color);
   border-radius: 5px;
   background-color: transparent;
 

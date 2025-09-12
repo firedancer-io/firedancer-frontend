@@ -2,12 +2,10 @@ import { useHarmonicIntervalFn, useUpdate } from "react-use";
 import { useSlotQueryPublish } from "./useSlotQuery";
 import { useEffect, useState } from "react";
 import { DateTime } from "luxon";
+import type { DurationOptions } from "../utils";
 import { getDurationText, slowDateTimeNow } from "../utils";
 
-export function useTimeAgo(
-  slot: number,
-  options?: { showSeconds: boolean; showOnlyLargestUnit: boolean },
-) {
+export function useTimeAgo(slot: number, options?: DurationOptions) {
   const query = useSlotQueryPublish(slot);
   const update = useUpdate();
 

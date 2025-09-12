@@ -227,8 +227,7 @@ function StartupTime() {
     );
 
     const text = getDurationText(uptimeDuration.rescale(), {
-      showSeconds: false,
-      showOnlyLargestUnit: false,
+      omitSeconds: true,
     });
     return text;
   };

@@ -47,7 +47,7 @@ function getSlotState(
     return SelectedSlotValidityState.NotYou;
   if (slot < earliestProcessedSlotLeader)
     return SelectedSlotValidityState.BeforeFirstProcessed;
-  if (slot > currentSlot) return SelectedSlotValidityState.Future;
+  if (slot >= currentSlot) return SelectedSlotValidityState.Future;
   return SelectedSlotValidityState.Valid;
 }
 

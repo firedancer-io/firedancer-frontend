@@ -261,8 +261,7 @@ function QuickSearchCard({
 
 function TimeAgo({ slot }: { slot: number }) {
   const { timeAgoText } = useTimeAgo(slot, {
-    showOnlyLargestUnit: true,
-    showSeconds: true,
+    showOnlyTwoSignificantUnits: true,
   });
 
   return (

@@ -3,9 +3,10 @@ import {
   currentLeaderSlotAtom,
   currentSlotAtom,
   earliestProcessedSlotLeaderAtom,
+  nextLeaderSlotAtom,
   slotDurationAtom,
 } from "../../atoms";
-import { Box, Flex, Text } from "@radix-ui/themes";
+import { Box, Flex, Progress, Text } from "@radix-ui/themes";
 import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
 import type React from "react";
 import { memo, useMemo } from "react";
@@ -20,7 +21,6 @@ import { selectedSlotAtom } from "../Overview/SlotPerformance/atoms";
 import {
   slotStatusBlue,
   slotStatusDullTeal,
-  slotStatusGray,
   slotStatusGreen,
   slotStatusRed,
   slotStatusTeal,
@@ -28,9 +28,11 @@ import {
 import SlotClient from "../../components/SlotClient";
 import { useIsLeaderGroupSkipped } from "../../hooks/useIsLeaderGroupSkipped";
 import { isScrollingAtom } from "./atoms";
+import useNextSlot from "../../hooks/useNextSlot";
 
 export default function SlotsRenderer(props: { leaderSlotForGroup: number }) {
   const isScrolling = useAtomValue(isScrollingAtom);
+
   if (isScrolling) return <div className={styles.placeholder} />;
 
   return <MSlotsRenderer {...props}></MSlotsRenderer>;
@@ -45,14 +47,19 @@ const getStatusAtom = atom((get) => {
   )
     return;
 
+  const nextLeaderSlot = get(nextLeaderSlotAtom);
+
   return function getStatus(slot: number) {
     return {
-      isCurrentLeader:
+      isCurrentSlotGroup:
         currentLeaderSlot <= slot && slot < currentLeaderSlot + slotsPerLeader,
-      isFutureLeader: currentLeaderSlot + slotsPerLeader <= slot,
-      isPastLeader: slot < currentLeaderSlot,
-      isProcessedLeader:
+      isFutureSlotGroup: currentLeaderSlot + slotsPerLeader <= slot,
+      isProcessedSlotGroup:
         earliestProcessedSlotLeader <= slot && slot <= currentLeaderSlot,
+      isYourNextLeaderGroup:
+        nextLeaderSlot &&
+        nextLeaderSlot <= slot &&
+        slot < nextLeaderSlot + slotsPerLeader,
     };
   };
 });
@@ -62,99 +69,161 @@ const MSlotsRenderer = memo(function SlotsRenderer({
 }: {
   leaderSlotForGroup: number;
 }) {
-  const selectedSlot = useAtomValue(selectedSlotAtom);
-  const { isLeader: isYou } = useSlotInfo(leaderSlotForGroup);
-  const hasSkipped = useIsLeaderGroupSkipped(leaderSlotForGroup);
   const getStatus = useAtomValue(getStatusAtom);
   const status = getStatus?.(leaderSlotForGroup);
-  if (!status) return;
+  if (!status) return <div className={styles.placeholder} />;
 
-  const isSelectedLeader =
-    selectedSlot !== undefined &&
-    getSlotGroupLeader(selectedSlot) === leaderSlotForGroup;
-
-  const { isFutureLeader, isCurrentLeader, isPastLeader, isProcessedLeader } =
+  const { isFutureSlotGroup, isCurrentSlotGroup, isYourNextLeaderGroup } =
     status;
 
   return (
     <div className={styles.slotGroupContainer}>
-      <Link
-        to="/slotDetails"
-        search={{ slot: leaderSlotForGroup }}
-        className={styles.link}
-        disabled={!isYou || !isProcessedLeader}
-      >
-        <Flex
-          className={clsx(styles.slotGroup, {
-            [styles.futureSlotGroup]: isFutureLeader,
-            [styles.currentSlotGroup]: isCurrentLeader,
-            [styles.pastSlotGroup]: isPastLeader,
-            [styles.selectedSlotGroup]: isSelectedLeader,
-            [styles.skippedSlotGroup]: hasSkipped,
-            [styles.yourSlotGroup]: isYou,
-            [styles.processedSlotGroup]: isProcessedLeader,
-          })}
-        >
-          {isFutureLeader && <FutureSlotContent slot={leaderSlotForGroup} />}
-          {isCurrentLeader && <CurrentSlotContent slot={leaderSlotForGroup} />}
-          {isPastLeader && <PastSlotContent slot={leaderSlotForGroup} />}
-        </Flex>
-      </Link>
+      {isCurrentSlotGroup ? (
+        <CurrentLeaderSlotGroup firstSlot={leaderSlotForGroup} />
+      ) : isYourNextLeaderGroup ? (
+        <YourNextLeaderSlotGroup firstSlot={leaderSlotForGroup} />
+      ) : isFutureSlotGroup ? (
+        <FutureSlotGroup firstSlot={leaderSlotForGroup} />
+      ) : (
+        <PastSlotGroup firstSlot={leaderSlotForGroup} />
+      )}
     </div>
   );
 });
 
-function CurrentSlotContent({ slot }: { slot: number }) {
-  const currentSlot = useAtomValue(currentSlotAtom);
+function YourNextLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
+  const { progressSinceLastLeader, nextSlotText } = useNextSlot({
+    showNowIfCurrent: false,
+    durationOptions: {
+      showOnlyTwoSignificantUnits: true,
+    },
+  });
 
   return (
-    <>
-      <Flex className={styles.slotContent}>
-        <SlotGroupHeader slot={slot} iconSize={22} />
-        <Text className={styles.slotNumber}>{currentSlot}</Text>
-      </Flex>
-      <Flex direction="column" gap="3px">
-        {Array.from({ length: slotsPerLeader }).map((_, slotIdx) => {
-          const slotNumber = slot + (slotsPerLeader - 1) - slotIdx;
-          return <ExpandedSlotStatus key={slotIdx} slot={slotNumber} />;
-        })}
-      </Flex>
-    </>
-  );
-}
+    <Flex
+      direction="column"
+      className={clsx(styles.slotGroup, styles.future, styles.you)}
+    >
+      <Flex justify="between">
+        <SlotIconName slot={firstSlot} />
 
-function PastSlotContent({ slot }: { slot: number }) {
-  return (
-    <>
-      <Flex className={styles.slotContent}>
-        <SlotGroupHeader slot={slot} iconSize={16} />
-        <Flex className={styles.slotItemContent}>
-          <SlotClient slot={slot} size="small" />
-          <Text className={styles.slotNumber}>{slot}</Text>
+        <Flex gap="3px">
+          <Text className={styles.slotName}>{nextSlotText}</Text>
+          <SlotStatuses firstSlot={firstSlot} />
         </Flex>
       </Flex>
-      <Flex direction="column" gap="2px" justify="center">
-        {Array.from({ length: slotsPerLeader }).map((_, slotIdx) => {
-          const slotNumber = slot + (slotsPerLeader - 1) - slotIdx;
-          return <CompactSlotStatus key={slotIdx} slot={slotNumber} />;
-        })}
-      </Flex>
-    </>
+
+      <Progress
+        value={progressSinceLastLeader}
+        size="1"
+        className={styles.progressBar}
+      />
+    </Flex>
   );
 }
 
-function FutureSlotContent({ slot }: { slot: number }) {
+interface SlotGroupProps {
+  firstSlot: number;
+}
+
+function FutureSlotGroup({ firstSlot }: SlotGroupProps) {
+  const { isLeader: isYou } = useSlotInfo(firstSlot);
   return (
-    <>
-      <Flex className={styles.slotContent}>
-        <SlotGroupHeader slot={slot} iconSize={16} />
+    <Flex
+      justify="between"
+      className={clsx(styles.slotGroup, styles.future, { [styles.you]: isYou })}
+    >
+      <SlotIconName slot={firstSlot} />
+      <SlotStatuses firstSlot={firstSlot} />
+    </Flex>
+  );
+}
+
+function CurrentLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
+  const { isLeader: isYou } = useSlotInfo(firstSlot);
+  const hasSkipped = useIsLeaderGroupSkipped(firstSlot);
+  const currentSlot = useAtomValue(currentSlotAtom);
+  return (
+    <Flex
+      justify="between"
+      className={clsx(styles.slotGroup, styles.current, {
+        [styles.you]: isYou,
+        [styles.skipped]: hasSkipped,
+      })}
+    >
+      <Flex direction="column" className={styles.leftColumn}>
+        <SlotIconName slot={firstSlot} iconSize={22} />
+        <Text className={styles.currentSlotNumber}>{currentSlot}</Text>
       </Flex>
-      <Flex direction="column" gap="2px" justify="center">
-        {Array.from({ length: slotsPerLeader }).map((_, slotIdx) => {
-          return <SlotStatus key={slotIdx} backgroundColor={slotStatusGray} />;
-        })}
+
+      <SlotStatuses firstSlot={firstSlot} isCurrentSlot />
+    </Flex>
+  );
+}
+
+function PastSlotGroup({ firstSlot }: SlotGroupProps) {
+  const { isLeader: isYou } = useSlotInfo(firstSlot);
+  const getStatus = useAtomValue(getStatusAtom);
+  const status = getStatus?.(firstSlot);
+  const hasSkipped = useIsLeaderGroupSkipped(firstSlot);
+
+  if (!status) return;
+  const { isProcessedSlotGroup } = status;
+
+  return isYou && isProcessedSlotGroup ? (
+    <YourProcessedSlotGroup firstSlot={firstSlot} />
+  ) : (
+    <Flex
+      className={clsx(styles.slotGroup, styles.past, {
+        [styles.you]: isYou,
+        [styles.skipped]: hasSkipped,
+      })}
+    >
+      <SlotContent firstSlot={firstSlot} />
+      <SlotStatuses firstSlot={firstSlot} isPastSlot />
+    </Flex>
+  );
+}
+
+function YourProcessedSlotGroup({ firstSlot }: { firstSlot: number }) {
+  const selectedSlot = useAtomValue(selectedSlotAtom);
+  const hasSkipped = useIsLeaderGroupSkipped(firstSlot);
+
+  const isSelected =
+    selectedSlot !== undefined &&
+    getSlotGroupLeader(selectedSlot) === firstSlot;
+
+  return (
+    <Flex
+      className={clsx(
+        styles.slotGroup,
+        styles.past,
+        styles.you,
+        styles.processed,
+        {
+          [styles.selected]: isSelected,
+          [styles.skipped]: hasSkipped,
+        },
+      )}
+      asChild
+    >
+      <Link to="/slotDetails" search={{ slot: firstSlot }}>
+        <SlotContent firstSlot={firstSlot} />
+        <SlotStatuses firstSlot={firstSlot} isPastSlot />
+      </Link>
+    </Flex>
+  );
+}
+
+function SlotContent({ firstSlot }: SlotGroupProps) {
+  return (
+    <Flex className={styles.leftColumn} direction="column">
+      <SlotIconName slot={firstSlot} />
+      <Flex className={styles.slotItemContent}>
+        <SlotClient slot={firstSlot} size="small" />
+        <Text>{firstSlot}</Text>
       </Flex>
-    </>
+    </Flex>
   );
 }
 
@@ -189,7 +258,7 @@ export const MScrollPlaceholderItem = memo(function ScrollPlaceholderItem() {
   );
 });
 
-function SlotGroupHeader({
+function SlotIconName({
   slot,
   iconSize = 15,
 }: {
@@ -198,14 +267,46 @@ function SlotGroupHeader({
 }) {
   const { peer, isLeader, name } = useSlotInfo(slot);
   return (
-    <Flex className={styles.slotHeader}>
-      <PeerIcon
-        url={peer?.info?.icon_url}
-        size={iconSize}
-        isYou={isLeader}
-        isRounded
-      />
-      <Text className={styles.slotGroupName}>{name}</Text>
+    <Flex gap="4px">
+      <PeerIcon url={peer?.info?.icon_url} size={iconSize} isYou={isLeader} />
+      <Text className={clsx(styles.slotName, styles.ellipsis)}>{name}</Text>
+    </Flex>
+  );
+}
+
+interface SlotStatusesProps {
+  firstSlot: number;
+  isCurrentSlot?: boolean;
+  isPastSlot?: boolean;
+}
+
+function SlotStatuses({
+  firstSlot,
+  isCurrentSlot = false,
+  isPastSlot = false,
+}: SlotStatusesProps) {
+  return (
+    <Flex
+      className={clsx(styles.slotStatuses, {
+        [styles.tall]: isCurrentSlot,
+        [styles.short]: !isCurrentSlot && !isPastSlot,
+      })}
+      direction="column"
+      justify="between"
+    >
+      {Array.from({ length: slotsPerLeader }).map((_, slotIdx) => {
+        const slot = firstSlot + (slotsPerLeader - 1) - slotIdx;
+
+        if (isCurrentSlot) {
+          return <CurrentSlotStatus key={slotIdx} slot={slot} />;
+        }
+
+        if (isPastSlot) {
+          return <PastSlotStatus key={slotIdx} slot={slot} />;
+        }
+
+        return <SlotStatus key={slotIdx} />;
+      })}
     </Flex>
   );
 }
@@ -236,7 +337,7 @@ function SlotStatus({
   );
 }
 
-function ExpandedSlotStatus({ slot }: { slot: number }) {
+function CurrentSlotStatus({ slot }: { slot: number }) {
   const currentSlot = useAtomValue(currentSlotAtom);
   const queryPublish = useSlotQueryPublish(slot);
   const slotDuration = useAtomValue(slotDurationAtom);
@@ -244,7 +345,7 @@ function ExpandedSlotStatus({ slot }: { slot: number }) {
   const isCurrent = useMemo(() => slot === currentSlot, [slot, currentSlot]);
   const colorStyle = useMemo(() => {
     if (isCurrent) return { borderColor: slotStatusBlue };
-    if (!queryPublish.publish) return { backgroundColor: slotStatusGray };
+    if (!queryPublish.publish) return {};
     if (queryPublish.publish.skipped) return { backgroundColor: slotStatusRed };
     switch (queryPublish.publish.level) {
       case "incomplete":
@@ -268,15 +369,15 @@ function ExpandedSlotStatus({ slot }: { slot: number }) {
   );
 }
 
-function CompactSlotStatus({ slot }: { slot: number }) {
+function PastSlotStatus({ slot }: { slot: number }) {
   const queryPublish = useSlotQueryPublish(slot);
   const selectedSlot = useAtomValue(selectedSlotAtom);
   const backgroundColor = useMemo(() => {
-    if (!queryPublish.publish) return slotStatusGray;
+    if (!queryPublish.publish) return;
     if (queryPublish.publish.skipped) return slotStatusRed;
     switch (queryPublish.publish.level) {
       case "incomplete":
-        return slotStatusGray;
+        return;
       case "completed":
         return slotStatusGreen;
       case "optimistically_confirmed":

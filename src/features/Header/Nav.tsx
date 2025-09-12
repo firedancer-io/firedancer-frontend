@@ -19,7 +19,7 @@ import useNavigateLeaderSlot from "../../hooks/useNavigateLeaderSlot";
 import { maxZIndex, slotsNavSpacing } from "../../consts";
 import { clusterAtom } from "../../api/atoms";
 import { getClusterColor } from "../../utils";
-import { navButtonTextColor } from "../../colors";
+import { navButtonInactiveTextColor } from "../../colors";
 
 interface NavLinkProps {
   label: RouteLabel;
@@ -52,7 +52,7 @@ const NavButton = forwardRef<HTMLButtonElement, NavLinkProps>(
     const path = RouteLabelToPath[label];
 
     const content = useMemo(() => {
-      const iconFill = isActive ? activeColor : navButtonTextColor;
+      const iconFill = isActive ? activeColor : navButtonInactiveTextColor;
 
       return (
         <>

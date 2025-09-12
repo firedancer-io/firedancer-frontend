@@ -260,7 +260,7 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
 
 export const firstProcessedSlotAtom = atom((get) => {
   const startupProgress = get(startupProgressAtom);
-  if (!startupProgress?.ledger_max_slot) return;
+  if (startupProgress?.ledger_max_slot == null) return;
 
   return startupProgress.ledger_max_slot + 1;
 });
@@ -338,7 +338,7 @@ export const nextLeaderSlotAtom = atom(
     set(nextLeaderSlotIndexAtom, (prevIndex) => {
       let i = prevIndex ?? 0;
       if ((leaderSlots[i - 1] ?? 0) > currentSlot) i = 0;
-      while (i < leaderSlots.length && leaderSlots[i] < currentSlot) {
+      while (i < leaderSlots.length && leaderSlots[i] <= currentSlot) {
         i++;
       }
       if (i >= leaderSlots.length) return undefined;
