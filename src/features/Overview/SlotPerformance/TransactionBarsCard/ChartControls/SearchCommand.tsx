@@ -31,6 +31,7 @@ import {
   findIpMatch,
 } from "./searchCommandUtils";
 import { focusedBorderColor } from "../../../../../colors";
+import { txnBarsControlsStickyTop } from "../BarsChartContainer";
 
 /** Multiplier to determine the desired scale zoom range for the txn (ex. scale range of 30x txn duration length) */
 const desiredScaleRangeMultiplierMax = 30;
@@ -284,11 +285,11 @@ export default function SearchCommand({
           if (
             headerRect &&
             // Check if header is stickied
-            !headerRect.top &&
+            headerRect.top - txnBarsControlsStickyTop <= 0 &&
             // Check if the element is hidden behind the sticky header
             canvasRect.top < headerRect.bottom
           ) {
-            window.scrollBy({
+            document.getElementById("scroll-container")?.scrollBy({
               top: -headerRect.bottom - canvasRect.top,
             });
           }

@@ -42,6 +42,7 @@
 }
 
 .slot-navigation-container {
+  height: var(--slot-nav-height);
   box-shadow: 0 4px 4px 0 var(--color-background);
 }
 
