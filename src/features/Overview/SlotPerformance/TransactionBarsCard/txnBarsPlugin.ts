@@ -30,9 +30,22 @@ const laneDistr = SPACE_BETWEEN;
 
 let stateSeriesHgt = 0;
 
+const outOfFocusBrightness = 0.5;
+const focusBrightness = 1.3;
+
 export let focusedErrorCode: number;
 export function highlightErrorCode(errorCode: number) {
   focusedErrorCode = errorCode;
+}
+
+export let focusedTpu = "";
+export function highlightTpu(tpu: string) {
+  focusedTpu = tpu;
+}
+
+let focusedTxnIdx: number | undefined;
+export function highlightTxnIdx(txnIdx: number | undefined) {
+  focusedTxnIdx = txnIdx;
 }
 
 let barCount = 0;
@@ -51,7 +64,7 @@ export function txnBarsPlugin(
   let maxTips = 0n;
   let maxCuConsumed = 0;
   let maxCuRequested = 0;
-  let cuIncomeRankingRatios: Record<number, number> = {};
+  let cuIncomeRankingRatios: Map<number, number> = new Map();
 
   function setMaxFees() {
     maxFees = getMaxFees(transactionsRef);
@@ -78,18 +91,24 @@ export function txnBarsPlugin(
       seriesIdx: number,
       dataIdx: number,
       value: number,
-    ) => {
-      if (!transactionsRef.current) return "";
+    ): { fill: string; brightness?: number } => {
+      if (!transactionsRef.current) return { fill: "" };
 
-      if (isTimeSeries(seriesIdx)) return "";
+      if (isTimeSeries(seriesIdx)) return { fill: "" };
       if (isTxnIdxSeries(seriesIdx)) {
-        return stateColors[
-          getChartTxnState(data, dataIdx, transactionsRef.current, value)
-        ];
+        return {
+          fill: stateColors[
+            getChartTxnState(data, dataIdx, transactionsRef.current, value)
+          ],
+          brightness:
+            focusedTxnIdx === data[txnIdxSidx][dataIdx]
+              ? focusBrightness
+              : undefined,
+        };
       }
 
       if (isMicroblockSeries(seriesIdx)) {
-        return "";
+        return { fill: "" };
       }
 
       if (value === FilterEnum.FEES) {
@@ -97,54 +116,54 @@ export function txnBarsPlugin(
         const fees =
           transactionsRef.current.txn_priority_fee[txnIdx] +
           transactionsRef.current.txn_transaction_fee[txnIdx];
-        if (!fees) return "";
+        if (!fees) return { fill: "" };
 
         const ratio = bigIntRatio(fees, maxFees, 4);
         const ratioScaled = Math.max(Math.min(0.8, ratio * 4), 0.3);
-        return `rgba(76, 204, 230, ${ratioScaled})`;
+        return { fill: `rgba(76, 204, 230, ${ratioScaled})` };
       }
 
       if (value === FilterEnum.TIPS) {
         const txnIdx = data[txnIdxSidx][dataIdx] ?? -1;
         const tips = transactionsRef.current?.txn_tips[txnIdx];
-        if (!tips) return "";
+        if (!tips) return { fill: "" };
 
         const ratio = bigIntRatio(tips, maxTips, 4);
         const ratioScaled = Math.max(Math.min(0.8, ratio * 4), 0.3);
-        return `rgba(31, 216, 164, ${ratioScaled})`;
+        return { fill: `rgba(31, 216, 164, ${ratioScaled})` };
       }
 
       if (value === FilterEnum.CUS_REQUESTED) {
         const txnIdx = data[txnIdxSidx][dataIdx] ?? -1;
         const cuRequested =
           transactionsRef.current?.txn_compute_units_requested[txnIdx];
-        if (!cuRequested) return "";
+        if (!cuRequested) return { fill: "" };
 
         const ratio = cuRequested / maxCuRequested;
         const ratioScaled = Math.max(Math.min(0.85, ratio), 0.2);
-        return `rgba(255, 141, 204, ${ratioScaled})`;
+        return { fill: `rgba(255, 141, 204, ${ratioScaled})` };
       }
 
       if (value === FilterEnum.CUS_CONSUMED) {
         const txnIdx = data[txnIdxSidx][dataIdx] ?? -1;
         const cuConsumed =
           transactionsRef.current?.txn_compute_units_consumed[txnIdx];
-        if (!cuConsumed) return "";
+        if (!cuConsumed) return { fill: "" };
 
         const ratio = cuConsumed / maxCuConsumed;
         const ratioScaled = Math.max(Math.min(0.85, ratio), 0.2);
-        return `rgba(209, 157, 255, ${ratioScaled})`;
+        return { fill: `rgba(209, 157, 255, ${ratioScaled})` };
       }
 
       if (value === FilterEnum.INCOME_CUS) {
         const txnIdx = data[txnIdxSidx][dataIdx] ?? -1;
-        const ratio = cuIncomeRankingRatios[txnIdx] ?? 0;
+        const ratio = cuIncomeRankingRatios.get(txnIdx) ?? 0;
         const ratioScaled = Math.max(Math.min(0.8, ratio), 0.3);
 
-        return `rgba(158, 177, 255, ${ratioScaled})`;
+        return { fill: `rgba(158, 177, 255, ${ratioScaled})` };
       }
 
-      return "";
+      return { fill: "" };
     },
     stroke: (
       data: AlignedData,
@@ -162,12 +181,28 @@ export function txnBarsPlugin(
         const txnIdx = data[txnIdxSidx][dataIdx] ?? -1;
         const errorCode = transactionsRef.current?.txn_error_code[txnIdx];
         if (focusedErrorCode) {
-          if (errorCode === focusedErrorCode) {
+          if (
+            errorCode === focusedErrorCode &&
+            (!focusedTpu ||
+              transactionsRef.current?.txn_source_tpu[txnIdx] === focusedTpu)
+          ) {
             return "rgba(162,5,8, .8)";
           }
 
           return errorCode ? "rgba(162,5,8, .1)" : "rgba(19,173,79, .1)";
         }
+
+        if (focusedTpu) {
+          if (
+            transactionsRef.current?.txn_source_tpu[txnIdx] === focusedTpu &&
+            (!focusedErrorCode || errorCode === focusedErrorCode)
+          ) {
+            return errorCode ? "rgba(162,5,8, .8)" : "rgba(19,173,79, .8)";
+          }
+
+          return errorCode ? "rgba(162,5,8, .1)" : "rgba(19,173,79, .1)";
+        }
+
         return errorCode ? "rgba(162,5,8, .5)" : "rgba(19,173,79, .5)";
       }
 
@@ -216,16 +251,33 @@ export function txnBarsPlugin(
 
   recalcDppxVars();
 
-  const fillPaths = new Map<string, Path2D>();
+  const fillPaths = new Map<
+    string,
+    { fill: string; path: Path2D; brightness?: number }
+  >();
   const strokePaths = new Map<string, Path2D>();
 
   function drawBoxes(ctx: CanvasRenderingContext2D) {
-    fillPaths.forEach((fillPath, fillStyle) => {
-      if (fillStyle) {
-        ctx.fillStyle = fillStyle;
-        ctx.fill(fillPath);
+    let prevBrightness: number | undefined;
+    const isFocusMode = focusedTxnIdx !== undefined;
+    if (isFocusMode) {
+      ctx.filter = `brightness(${outOfFocusBrightness})`;
+    }
+
+    fillPaths.forEach(({ path, brightness, fill }) => {
+      if (fill) {
+        if (isFocusMode) {
+          // Ok to change canvas context on the fly as expecations are that there will only be a couple distinct fitler styles
+          if (brightness !== prevBrightness) {
+            ctx.filter = `brightness(${brightness ?? outOfFocusBrightness})`;
+            prevBrightness = brightness;
+          }
+        }
+        ctx.fillStyle = fill;
+        ctx.fill(path);
       }
     });
+    ctx.filter = "";
 
     strokePaths.forEach((strokePath, strokeStyle) => {
       if (strokeStyle) {
@@ -257,7 +309,7 @@ export function txnBarsPlugin(
 
     const sidx = iy + 1;
     const fillStyle = fill(data, sidx, ix, value);
-    let fillPath = fillPaths.get(fillStyle);
+    let fillPath = fillPaths.get(fillStyle.fill + fillStyle.brightness);
     const txnIdx = data[txnIdxSidx][ix];
 
     // txn series should always be populated if we want to draw an additional series at that ts
@@ -322,7 +374,7 @@ export function txnBarsPlugin(
       }
 
       if (value === FilterEnum.INCOME_CUS) {
-        let ratio = cuIncomeRankingRatios[txnIdx] ?? 0;
+        let ratio = cuIncomeRankingRatios.get(txnIdx) ?? 0;
         if (ratio > 0.9) ratio = 0.95;
         if (ratio < 0.1) ratio = 0.1;
         const ratioHgt = hgt * ratio;
@@ -332,8 +384,17 @@ export function txnBarsPlugin(
       }
     }
 
-    if (fillPath == null) fillPaths.set(fillStyle, (fillPath = new Path2D()));
-    rect(fillPath, lft, top, wid, hgt);
+    if (fillPath == null) {
+      fillPaths.set(
+        fillStyle.fill + fillStyle.brightness,
+        (fillPath = {
+          path: new Path2D(),
+          fill: fillStyle.fill,
+          brightness: fillStyle.brightness,
+        }),
+      );
+    }
+    rect(fillPath.path, lft, top, wid, hgt);
 
     if (strokeWidth) {
       const strokeStyle = stroke(data, sidx, ix, value);
@@ -365,12 +426,6 @@ export function txnBarsPlugin(
 
   function drawPaths(u: uPlot, sidx: number, idx0: number, idx1: number) {
     if (pauseDrawing) return;
-
-    // setMaxFees();
-    // setMaxTips();
-    // setMaxCuConsumed();
-    // setMaxCuRequested();
-    // setCuIncomeRankingRatios();
 
     uPlot.orient(
       u,
@@ -726,6 +781,9 @@ export function txnBarsPlugin(
         if (i > 0) {
           uPlot.assign(s, {
             paths: drawPaths,
+            points: {
+              show: false,
+            },
           });
         }
       });

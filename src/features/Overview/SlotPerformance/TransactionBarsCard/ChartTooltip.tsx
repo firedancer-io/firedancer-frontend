@@ -3,12 +3,11 @@ import styles from "./chartTooltip.module.css";
 import { tooltipTxnIdxAtom, tooltipTxnStateAtom } from "./chartTooltipAtoms";
 import type { SlotTransactions } from "../../../../api/types";
 import { Button, Flex, Text } from "@radix-ui/themes";
-import { errorCodeMap, stateTextColors, TxnState } from "./consts";
+import { stateTextColors, TxnState } from "./consts";
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { selectedSlotAtom } from "../atoms";
-import { chartFiltersAtom } from "./atoms";
 import UplotTooltip from "../../../../uplotReact/UplotTooltip";
 import { calcTxnIncome, getCuIncomeRankings } from "./txnBarsPluginUtils";
 import { Cross2Icon, CopyIcon, CheckIcon } from "@radix-ui/react-icons";
@@ -27,6 +26,8 @@ import {
   incomePerCuToggleControlColor,
   iconButtonColor,
 } from "../../../../colors";
+import { txnErrorCodeMap } from "../../../../consts";
+import { peersAtom } from "../../../../atoms";
 
 export default function ChartTooltip() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -47,15 +48,6 @@ export default function ChartTooltip() {
       if (transactions.txn_microblock_id[i] !== mbId) continue;
       bundleTxnIdx.push(i);
     }
-
-    bundleTxnIdx.sort((a, b) => {
-      const diff =
-        transactions.txn_preload_end_timestamps_nanos[a] -
-        transactions.txn_preload_end_timestamps_nanos[b];
-      if (diff > 0) return 1;
-      if (diff < 0) return -1;
-      return 0;
-    });
 
     return {
       totalCount: bundleTxnIdx.length,
@@ -126,6 +118,7 @@ export default function ChartTooltip() {
               label="Age since slot start"
               value={`${(Number(transactions.txn_arrival_timestamps_nanos[txnIdx] - transactions.start_timestamp_nanos) / 1_000_000).toLocaleString()}ms`}
             />
+            <IpDisplay transactions={transactions} txnIdx={txnIdx} />
             <StateDurationDisplay
               transactions={transactions}
               txnIdx={txnIdx}
@@ -144,21 +137,57 @@ export default function ChartTooltip() {
   );
 }
 
-interface IncomeDisplayProps {
+interface DisplayProps {
   transactions: SlotTransactions;
   txnIdx: number;
 }
 
-function IncomeDisplay({ transactions, txnIdx }: IncomeDisplayProps) {
-  const filters = useAtomValue(chartFiltersAtom);
+function IpDisplay({ transactions, txnIdx }: DisplayProps) {
+  // TODO: don't pull all peers
+  const peers = useAtomValue(peersAtom);
+  const peersList = useMemo(() => Object.values(peers), [peers]);
+  const displayIp = transactions.txn_source_ipv4[txnIdx];
+  const validatorDisplay = useMemo(() => {
+    const peer = peersList.find((peer) => {
+      if (!peer.gossip) return false;
+      const ips = Object.values(peer.gossip.sockets);
+      return ips.some((peerIp) => peerIp.split(":")[0] === displayIp);
+    });
 
+    if (!peer) return;
+
+    if (peer.info?.name) {
+      if (peer.info.name.length > 20) {
+        return `${peer.info.name.substring(0, 20)}...`;
+      } else {
+        return peer.info.name;
+      }
+    }
+
+    return `${peer.identity_pubkey.substring(0, 8)}...`;
+  }, [displayIp, peersList]);
+
+  return (
+    <>
+      <LabelValueDisplay
+        label="IPv4 (tpu)"
+        value={`${displayIp} (${transactions.txn_source_tpu[txnIdx]})`}
+      />
+      {validatorDisplay && (
+        <LabelValueDisplay label="Validator" value={validatorDisplay} />
+      )}
+    </>
+  );
+}
+
+function IncomeDisplay({ transactions, txnIdx }: DisplayProps) {
   const { rankings, totalRanks } = useMemo(
-    () => getCuIncomeRankings(transactions, Object.values(filters)),
-    [filters, transactions],
+    () => getCuIncomeRankings(transactions),
+    [transactions],
   );
 
-  const rankText = rankings[txnIdx]
-    ? ` (${rankings[txnIdx]} of ${totalRanks})`
+  const rankText = rankings.has(txnIdx)
+    ? ` (${rankings.get(txnIdx)} of ${totalRanks})`
     : "";
 
   return (
@@ -173,12 +202,7 @@ function IncomeDisplay({ transactions, txnIdx }: IncomeDisplayProps) {
   );
 }
 
-interface CuDisplayProps {
-  transactions: SlotTransactions;
-  txnIdx: number;
-}
-
-function CuDisplay({ transactions, txnIdx }: CuDisplayProps) {
+function CuDisplay({ transactions, txnIdx }: DisplayProps) {
   const consumedPct = transactions.txn_compute_units_requested[txnIdx]
     ? Math.trunc(
         (transactions.txn_compute_units_consumed[txnIdx] /
@@ -291,11 +315,20 @@ function StateDurationDisplay({
     if (!durations) return;
 
     const total = Number(durations.total);
-    const preLoading = (Number(durations.preLoading) / total) * 100;
-    const validating = (Number(durations.validating) / total) * 100;
-    const loading = (Number(durations.loading) / total) * 100;
-    const execute = (Number(durations.execute) / total) * 100;
-    const postExecute = (Number(durations.postExecute) / total) * 100;
+    const preLoading = Math.max(
+      0,
+      (Number(durations.preLoading) / total) * 100,
+    );
+    const validating = Math.max(
+      0,
+      (Number(durations.validating) / total) * 100,
+    );
+    const loading = Math.max(0, (Number(durations.loading) / total) * 100);
+    const execute = Math.max(0, (Number(durations.execute) / total) * 100);
+    const postExecute = Math.max(
+      0,
+      (Number(durations.postExecute) / total) * 100,
+    );
 
     return { preLoading, validating, loading, execute, postExecute };
   }, [durations]);
@@ -431,7 +464,7 @@ function SuccessErrorDisplay({
   return (
     <LabelValueDisplay
       label={isError ? "Error" : "Success"}
-      value={isError ? `${errorCodeMap[errorCode]}` : "Yes"}
+      value={isError ? `${txnErrorCodeMap[errorCode]}` : "Yes"}
       color={isError ? errorToggleColor : successToggleColor}
     />
   );
