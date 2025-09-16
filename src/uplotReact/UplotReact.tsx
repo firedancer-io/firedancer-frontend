@@ -149,6 +149,10 @@ export default function UplotReact({
   }
 
   return target ? null : (
-    <div ref={targetRef} className={clsx(styles.uplot, className)}></div>
+    <div
+      id={id}
+      ref={targetRef}
+      className={clsx(styles.uplot, className)}
+    ></div>
   );
 }

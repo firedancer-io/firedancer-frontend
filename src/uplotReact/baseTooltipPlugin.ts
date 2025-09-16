@@ -152,7 +152,7 @@ export function baseTooltipPlugin({
 
         if (left === undefined || top === undefined || idx == null) return;
         const xVal = u.posToVal(left ?? 0, xScaleKey);
-        const anchor = { left: left + bLeft + 5, top: top + bTop + 5 };
+        const anchor = { left: left + bLeft + 5, top: top + bTop };
 
         const showTooltip = showOnCursor(u, xVal, idx);
         if (showTooltip) {

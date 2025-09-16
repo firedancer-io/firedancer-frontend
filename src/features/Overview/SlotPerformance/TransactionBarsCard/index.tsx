@@ -12,7 +12,7 @@ export default function TransactionsBarsCard() {
 
   return (
     <>
-      <Card>
+      <Card id="txn-bars-card">
         <BarsChartContainer />
       </Card>
       <ChartTooltip />

@@ -25,6 +25,7 @@ import {
   clusterIndicatorHeight,
   headerHeight,
   maxZIndex,
+  slotNavHeight,
   slotsPerLeader,
 } from "../../consts";
 import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
@@ -324,7 +325,11 @@ function SlotNavigation({ slot }: { slot: number }) {
       gap="3"
       className={clsx("sticky", styles.slotNavigationContainer)}
       pb="1"
-      style={{ top: navigationTop, zIndex: maxZIndex - 3 }}
+      style={{
+        top: navigationTop,
+        zIndex: maxZIndex - 3,
+        height: slotNavHeight,
+      }}
     >
       <Flex
         className={clsx(
