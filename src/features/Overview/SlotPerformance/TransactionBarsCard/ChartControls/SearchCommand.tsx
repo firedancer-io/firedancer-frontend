@@ -282,7 +282,7 @@ export default function SearchCommand({
             ?.getBoundingClientRect();
           // Check if the element is hidden behind the sticky header
           if (headerRect && canvasRect.top < headerRect.bottom) {
-            window.scrollBy({
+            document.getElementById("scroll-container")?.scrollBy({
               top: -headerRect.bottom - canvasRect.top,
             });
           }
