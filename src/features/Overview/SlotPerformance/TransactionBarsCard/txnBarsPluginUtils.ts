@@ -1,11 +1,8 @@
 import type uPlot from "uplot";
 import type { MutableRefObject } from "react";
 import type { SlotTransactions } from "../../../../api/types";
-import { getDefaultStore } from "jotai";
-import { chartFiltersAtom } from "./atoms";
 import { TxnState } from "./consts";
-
-const store = getDefaultStore();
+import { getTxnIncome } from "../../../../utils";
 
 export function getTxnState(
   ts: number,
@@ -142,22 +139,13 @@ export const getMaxCuRequested = getMax(
 export function calcTxnIncome(transactions: SlotTransactions, txnIdx: number) {
   if (!transactions.txn_landed[txnIdx]) return 0;
 
-  const feesAndTips = Number(
-    transactions.txn_priority_fee[txnIdx] +
-      transactions.txn_transaction_fee[txnIdx] +
-      transactions.txn_tips[txnIdx],
-  );
-
   const cus = transactions.txn_compute_units_consumed[txnIdx];
   if (!cus) return 0;
 
-  return feesAndTips / cus;
+  return Number(getTxnIncome(transactions, txnIdx)) / cus;
 }
 
-export function getCuIncomeRankings(
-  transactions: SlotTransactions,
-  filters: ((transactions: SlotTransactions, txnIdx: number) => boolean)[],
-) {
+export function getCuIncomeRankings(transactions: SlotTransactions) {
   const incomeToTxnIds = transactions.txn_priority_fee.reduce<
     Record<string, number[]>
   >((incomeToTxnIds, _, txnIdx) => {
@@ -179,16 +167,16 @@ export function getCuIncomeRankings(
   );
 
   return {
-    rankings: sortedIncome.reduce<Record<string, number>>(
-      (txnIdRank, income, rank) => {
-        const txnIds = incomeToTxnIds[income];
-        for (const txnId of txnIds) {
+    rankings: sortedIncome.reduce<Map<number, number>>(
+      (txnIdxRank, income, rank) => {
+        const txnIdxs = incomeToTxnIds[income];
+        for (const txnIdx of txnIdxs) {
           // Rank starts at 1 instead of 0
-          txnIdRank[txnId] = rank + 1;
+          txnIdxRank.set(txnIdx, rank + 1);
         }
-        return txnIdRank;
+        return txnIdxRank;
       },
-      {},
+      new Map(),
     ),
     totalRanks: sortedIncome.length,
   };
@@ -196,20 +184,13 @@ export function getCuIncomeRankings(
 
 export function getCuIncomeRankingRatios(
   transactionsRef: MutableRefObject<SlotTransactions | null | undefined>,
-) {
-  if (!transactionsRef.current) return {};
+): Map<number, number> {
+  if (!transactionsRef.current) return new Map();
 
-  const filterFunctions = Object.values(store.get(chartFiltersAtom));
-  const { rankings, totalRanks } = getCuIncomeRankings(
-    transactionsRef.current,
-    filterFunctions,
-  );
+  const { rankings, totalRanks } = getCuIncomeRankings(transactionsRef.current);
 
-  const keys = Object.keys(rankings);
-
-  for (const key of keys) {
-    rankings[key] = (totalRanks - rankings[key] + 1) / totalRanks;
+  for (const [txnIdx, rank] of rankings) {
+    rankings.set(txnIdx, (totalRanks - rank + 1) / totalRanks);
   }
-
   return rankings;
 }

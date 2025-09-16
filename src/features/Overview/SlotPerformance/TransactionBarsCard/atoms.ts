@@ -5,6 +5,8 @@ import type { SlotTransactions } from "../../../../api/types";
 import { setBarCount } from "./txnBarsPlugin";
 import { getChartData } from "./chartUtils";
 import { FilterEnum } from "./consts";
+import { getTxnIncome } from "../../../../utils";
+import { txnBarsUplotActionAtom } from "./uplotAtoms";
 
 const landedKey = "landed";
 function landedFilter(transactions: SlotTransactions, txnIdx: number) {
@@ -17,9 +19,53 @@ export const baseChartDataAtom = atom<uPlot.AlignedData[]>([]);
 export const defaultChartFilters = {};
 // export const defaultChartFilters = { [landedKey]: landedFilter };
 
-export const chartFiltersAtom = atom<
-  Record<string, (transactions: SlotTransactions, txnIdx: number) => boolean>
->({ ...defaultChartFilters });
+export const [chartFiltersAtom, filteredTxnIdxAtom] =
+  (function getChartFiltersAtom() {
+    const baseAtom = atom<
+      Record<
+        string,
+        (transactions: SlotTransactions, txnIdx: number) => boolean
+      >
+    >({ ...defaultChartFilters });
+
+    const filteredTxnIdxAtom = atom<Set<number>>();
+
+    return [
+      atom(
+        (get) => get(baseAtom),
+        (
+          get,
+          set,
+          filters: Record<
+            string,
+            (transactions: SlotTransactions, txnIdx: number) => boolean
+          >,
+        ) => {
+          set(baseAtom, filters);
+
+          if (Object.keys(filters).length) {
+            const filteredTxnIds = new Set<number>();
+
+            set(txnBarsUplotActionAtom, (u) => {
+              if (!u.data[1]?.length) return;
+
+              for (let i = 0; i < u.data[1].length; i++) {
+                const txnId = u.data[1][i];
+                if (txnId != null) {
+                  filteredTxnIds.add(txnId);
+                }
+              }
+            });
+
+            set(filteredTxnIdxAtom, filteredTxnIds);
+          } else {
+            set(filteredTxnIdxAtom, undefined);
+          }
+        },
+      ),
+      atom((get) => get(filteredTxnIdxAtom)),
+    ];
+  })();
 
 function getNewDataSeries({
   baseChartData,
@@ -264,11 +310,7 @@ export const addIncomeCuSeriesAtom = addSeriesAtom(
   (transactions, idx) => {
     return (
       transactions.txn_compute_units_consumed[idx] > 0 &&
-      Number(
-        transactions.txn_priority_fee[idx] +
-          transactions.txn_transaction_fee[idx] +
-          transactions.txn_tips[idx],
-      ) /
+      Number(getTxnIncome(transactions, idx)) /
         transactions.txn_compute_units_consumed[idx] >
         0
     );

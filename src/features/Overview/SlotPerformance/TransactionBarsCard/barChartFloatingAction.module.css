@@ -1,6 +1,6 @@
 .container {
   position: absolute;
-  z-index: 100;
+  z-index: 3;
   right: 5px;
   top: 5px;
   display: flex;

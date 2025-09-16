@@ -9,12 +9,11 @@ import AutoSizer from "react-virtualized-auto-sizer";
 import type { SlotTransactions } from "../../../../api/types";
 import { tooltipTxnIdxAtom, tooltipTxnStateAtom } from "./chartTooltipAtoms";
 import { timeScaleDragPlugin } from "./scaleDragPlugin";
-import { getChartData } from "./chartUtils";
+import { getChartData, getUplotId } from "./chartUtils";
 import { addPrevSeries, barCountAtom, chartFiltersAtom } from "./atoms";
 import { safeDivide } from "../../../../mathUtils";
 import { txnBarsTooltipPlugin } from "./txnBarsTooltipPlugin";
 import { wheelZoomPlugin } from "../../../../uplotReact/wheelZoomPlugin";
-import { txnBarsUplotIdPrefix } from "./consts";
 import { syncXScalePlugin } from "../../../../uplotReact/syncXScalePlugin";
 import { leftAxisSizeAtom, rightAxisSizeAtom } from "../ComputeUnitsCard/atoms";
 import { touchPlugin } from "../../../../uplotReact/touchPlugin";
@@ -22,10 +21,6 @@ import { chartAxisColor } from "../../../../colors";
 
 /** Buffer of the canvas past the axes of the chart to prevent the first and last tick labels from being cut off */
 const xBuffer = 20;
-
-function getUplotId(bankIdx: number) {
-  return `${txnBarsUplotIdPrefix}${bankIdx}`;
-}
 
 interface BarsChartProps {
   bankIdx: number;
@@ -80,8 +75,6 @@ export default function BarsChart({
     },
     [bankIdx, maxTs, transactions],
   );
-
-  const chartId = getUplotId(bankIdx);
 
   const options = useMemo<uPlot.Options | undefined>(() => {
     if (!chartData?.length) return;
@@ -181,7 +174,7 @@ export default function BarsChart({
           return (
             <>
               <UplotReact
-                id={chartId}
+                id={getUplotId(bankIdx)}
                 options={options}
                 data={chartData}
                 onCreate={handleCreate}

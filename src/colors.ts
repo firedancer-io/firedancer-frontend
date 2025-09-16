@@ -40,6 +40,10 @@ export const toastDisconnectedColor = "#FF7878";
 export const toastConnectingStartColor = "#FF9D0A";
 export const toastConnectingEndColor = "#FFC267";
 
+// cards
+// background of 1 card overlayed on default app background
+export const cardBackgroundColor = "#141720";
+
 // overview cards
 export const headerColor = "#BDF3FF";
 export const nonDelinquentColor = "#6F77C0";
@@ -98,6 +102,8 @@ export const requestedToggleControlColor = "#FF8DCC";
 export const incomePerCuToggleControlColor = "#9EB1FF";
 export const toggleItemBackgroundColor = "#292929";
 export const toggleItemTextColor = "#9e9e9e";
+export const focusedBorderColor = "#1d6fba";
+export const fadedText = "#84858a";
 
 // transaction states
 export const transactionDefaultColor = "rgba(0, 0, 0, .5)";

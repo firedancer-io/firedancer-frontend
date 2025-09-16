@@ -1,6 +1,6 @@
 import type { Duration } from "luxon";
 import { DateTime } from "luxon";
-import type { Epoch, Peer } from "./api/types";
+import type { Epoch, Peer, SlotTransactions } from "./api/types";
 import { lamportsPerSol, slotsPerLeader } from "./consts";
 
 export function getLeaderSlots(epoch: Epoch, pubkey: string) {
@@ -140,4 +140,41 @@ export function copyToClipboard(copyValue: string) {
   } finally {
     document.body.removeChild(copyEl);
   }
+}
+
+export function isElementFullyInView(el: HTMLElement) {
+  const rect = el.getBoundingClientRect();
+  return (
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.bottom <=
+      (window.innerHeight || document.documentElement.clientHeight) &&
+    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+  );
+}
+
+export function getPaidTxnFees(transactions: SlotTransactions, txnIdx: number) {
+  // fees are only paid by landed transactions with a valid fee payer (errors 5, 6 result in an invalid fee payer)
+  return transactions.txn_landed[txnIdx] &&
+    ![5, 6].includes(transactions.txn_error_code[txnIdx])
+    ? transactions.txn_priority_fee[txnIdx] +
+        transactions.txn_transaction_fee[txnIdx]
+    : 0n;
+}
+
+export function getPaidTxnTips(transactions: SlotTransactions, txnIdx: number) {
+  return transactions.txn_landed[txnIdx] &&
+    transactions.txn_error_code[txnIdx] === 0
+    ? transactions.txn_tips[txnIdx]
+    : 0n;
+}
+
+export function getTxnIncome(transactions: SlotTransactions, txnIdx: number) {
+  return (
+    getPaidTxnFees(transactions, txnIdx) + getPaidTxnTips(transactions, txnIdx)
+  );
+}
+
+export function removePortFromIp(ip: string) {
+  return ip.split(":")[0];
 }
