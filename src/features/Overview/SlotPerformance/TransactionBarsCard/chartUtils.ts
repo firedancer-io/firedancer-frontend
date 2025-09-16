@@ -1,6 +1,11 @@
 import type { SlotTransactions } from "../../../../api/types";
 import type uPlot from "uplot";
 import { chartBufferMs } from "../../../../transactionUtils";
+import { txnBarsUplotIdPrefix } from "./consts";
+
+export function getUplotId(bankIdx: number) {
+  return `${txnBarsUplotIdPrefix}${bankIdx}`;
+}
 
 export function getSlotStateTs(transactions: SlotTransactions, txnIdx: number) {
   if (txnIdx < 0) return;
@@ -113,8 +118,11 @@ export function getChartData(
   return res as uPlot.AlignedData;
 }
 
-export function getDurationWithUnits(value: bigint) {
+export function getDurationWithUnits(value: bigint, allowNegatives = true) {
   let formatted = Number(value);
+  if (!allowNegatives) {
+    formatted = Math.abs(formatted);
+  }
 
   if (Math.abs(formatted) < 1_000) {
     return { value: Math.round(formatted), unit: "ns" };

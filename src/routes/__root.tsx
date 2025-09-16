@@ -41,6 +41,8 @@ function Root() {
             overflowY: "auto",
             willChange: "scroll-position",
             contain: "paint",
+            // create new stacking context so whatever portals to cointainerEl will be above content
+            isolation: "isolate",
           }}
         >
           <Header />
