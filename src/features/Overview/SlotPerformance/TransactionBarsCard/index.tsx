@@ -1,9 +1,9 @@
 import BarsChartContainer from "./BarsChartContainer";
-import { Card } from "@radix-ui/themes";
 import ChartTooltip from "./ChartTooltip";
 import { useAtomValue } from "jotai";
 import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { selectedSlotAtom } from "../atoms";
+import Card from "../../../../components/Card";
 
 export default function TransactionsBarsCard() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -12,15 +12,7 @@ export default function TransactionsBarsCard() {
 
   return (
     <>
-      <Card
-        style={{
-          marginTop: "8px",
-          // contain paint and position relative messes with chart tooltip
-          // contain: "inherit",
-          // position: "inherit",
-        }}
-        id="txn-bars-card"
-      >
+      <Card id="txn-bars-card">
         <BarsChartContainer />
       </Card>
       <ChartTooltip />

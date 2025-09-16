@@ -1,6 +1,4 @@
 .chart {
-  /* background: green; */
-
   :global(.uplot) :global(.legend) :global(.series):first-child,
   :global(.uplot) :global(.legend) :global(.series) th::after,
   :global(.uplot) :global(.legend) :global(.series) td {

@@ -1,18 +1,17 @@
 import styles from "./card.module.css";
-import type { CSSProperties, PropsWithChildren } from "react";
+import type { PropsWithChildren, HTMLAttributes } from "react";
 
 interface CardProps {
   hideChildren?: boolean;
-  style?: CSSProperties;
 }
 
 export default function Card({
   children,
   hideChildren,
-  style,
-}: PropsWithChildren<CardProps>) {
+  ...props
+}: PropsWithChildren<CardProps & HTMLAttributes<HTMLDivElement>>) {
   return (
-    <div className={styles.card} style={style}>
+    <div className={styles.card} {...props}>
       {!hideChildren && children}
     </div>
   );

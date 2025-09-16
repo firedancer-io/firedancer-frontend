@@ -36,6 +36,7 @@ import {
   feesColor,
   tipsColor,
 } from "../../../../colors";
+import { getPaidTxnFees, getPaidTxnTips } from "../../../../utils";
 
 function getChartData(transactions: SlotTransactions) {
   const events = [
@@ -66,19 +67,12 @@ function getChartData(transactions: SlotTransactions) {
           : -transactions.txn_compute_units_requested[txnIdx] +
             transactions.txn_compute_units_consumed[txnIdx]
         : 0;
-      const fees = // fees are only paid by landed transactions with a valid fee payer (errors 5, 6 result in an invalid fee payer)
-        !event.isTxnStart &&
-        transactions.txn_landed[txnIdx] &&
-        ![5, 6].includes(transactions.txn_error_code[txnIdx])
-          ? Number(transactions.txn_priority_fee[txnIdx]) +
-            Number(transactions.txn_transaction_fee[txnIdx])
-          : 0;
-      const tip =
-        !event.isTxnStart &&
-        transactions.txn_landed[txnIdx] &&
-        transactions.txn_error_code[txnIdx] === 0
-          ? Number(transactions.txn_tips[txnIdx])
-          : 0;
+      const fees = event.isTxnStart
+        ? 0
+        : Number(getPaidTxnFees(transactions, txnIdx));
+      const tip = event.isTxnStart
+        ? 0
+        : Number(getPaidTxnTips(transactions, txnIdx));
 
       isBankActive[transactions.txn_bank_idx[txnIdx]] = event.isTxnStart;
       const curBankCount = isBankActive.filter((isActive) => isActive).length;

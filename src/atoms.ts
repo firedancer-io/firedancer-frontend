@@ -337,6 +337,8 @@ export const currentLeaderSlotAtom = atom((get) => {
 
 export const peersAtom = atomWithImmer<Record<string, Peer>>({});
 
+export const peersListAtom = atom((get) => Object.values(get(peersAtom)));
+
 export const addPeersAtom = atom(null, (get, set, peers?: Peer[]) => {
   if (!peers?.length) return;
 

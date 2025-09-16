@@ -3,10 +3,10 @@
   z-index: 3;
   position: absolute;
   background: var(--Colors-Gray-1, #111);
-  padding: 6px 8px;
   border-radius: 8px;
   max-height: none !important;
   max-width: none !important;
+  margin: 6px 8px;
 
   .state {
     font-weight: 700;

@@ -13,6 +13,7 @@ import { getChartData } from "./chartUtils";
 import BarChartFloatingAction from "./BarChartFloatingAction";
 import CardHeader from "../../../../components/CardHeader";
 import { getMaxTsWithBuffer } from "../../../../transactionUtils";
+import { cardBackgroundColor } from "../../../../colors";
 
 export default function BarsChartContainer() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -54,7 +55,20 @@ export default function BarsChartContainer() {
 
   return (
     <Flex direction="column" height="100%" key={slot}>
-      <Flex gap="2" pb="2">
+      <Flex
+        id="transaction-bars-controls"
+        gap="2"
+        position="sticky"
+        top="0px"
+        style={{
+          // For solid background when sticky scrolling matching the card's background
+          background: cardBackgroundColor,
+          // To draw above txn bars and tooltip
+          zIndex: 4,
+          paddingBottom: "16px",
+          marginBottom: "-8px",
+        }}
+      >
         <CardHeader text="Banks" />
         <ChartControls
           transactions={query.response.transactions}

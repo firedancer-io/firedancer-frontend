@@ -10,6 +10,7 @@ import {
   getTimeTillText,
   isDefined,
   slowDateTimeNow,
+  removePortFromIp,
 } from "../../../utils";
 import { useAtomValue } from "jotai";
 import PeerIcon from "../../../components/PeerIcon";
@@ -156,7 +157,7 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
       ? `${peer.gossip.version[0] === "0" ? "Frankendancer" : "Agave"} v${peer.gossip.version}`
       : undefined,
     getStakeMsg(peer, peerStats?.activeStake, peerStats?.delinquentStake),
-    peer?.gossip?.sockets["tvu"]?.split(":")[0],
+    removePortFromIp(peer?.gossip?.sockets["tvu"] ?? ""),
   ]
     .filter(isDefined)
     .join(" - ");
@@ -168,7 +169,8 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
   const validatorText = validator || "Unknown";
   const stakeText =
     getStakeMsg(peer, peerStats?.activeStake, peerStats?.delinquentStake) ?? "";
-  const ipText = peer?.gossip?.sockets["tvu"]?.split(":")[0] || "Offline";
+  const ipText =
+    removePortFromIp(peer?.gossip?.sockets["tvu"] ?? "") || "Offline";
   const textLength = (validatorText + stakeText + ipText).length;
   const shouldWrap = textLength > 54;
   const textProps: TextProps = shouldWrap
