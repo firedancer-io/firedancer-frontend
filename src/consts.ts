@@ -60,6 +60,7 @@ export const txnErrorCodeMap: Record<string, string> = {
 export const nonBreakingSpace = "\u00A0";
 
 export const clusterIndicatorHeight = 5;
+export const slotNavHeight = 36.5;
 
 export const headerHeight = 48;
 export const headerSpacing = 13;
