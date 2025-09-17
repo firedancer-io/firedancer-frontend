@@ -191,3 +191,9 @@ export function getClusterColor(cluster?: Cluster) {
       return clusterUnknownColor;
   }
 }
+
+export function getLastThreeDigitsWithEllipses(num: number) {
+  const str = num.toString();
+  if (str.length <= 3) return str;
+  return "..." + str.slice(-3);
+}

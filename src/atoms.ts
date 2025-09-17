@@ -160,7 +160,7 @@ export const deleteSlotStatusBoundsAtom = atom(null, (get, set) => {
 
         if (
           selectedSlot !== undefined &&
-          slotGroupStart === getSlotGroupLeader(selectedSlot)
+          leaderSlots?.includes(slotGroupStart)
         ) {
           continue;
         }
