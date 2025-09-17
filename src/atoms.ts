@@ -147,12 +147,24 @@ export const setSlotStatusAtom = atom(
   },
 );
 
+const selectedSlotNearbyOffset = 2;
+const selectedSlotNearbyYouLeadersAtom = atom<number[] | undefined>((get) => {
+  const leaderSlots = get(leaderSlotsAtom);
+  const selectedSlot = get(selectedSlotAtom);
+  if (leaderSlots === undefined || selectedSlot === undefined) return undefined;
+  const index = leaderSlots.indexOf(getSlotGroupLeader(selectedSlot));
+  if (index === -1) return undefined;
+  return leaderSlots.slice(
+    Math.max(index - selectedSlotNearbyOffset, 0),
+    index + selectedSlotNearbyOffset,
+  );
+});
+
 const slotCacheBounds = 1_000;
 
 export const deleteSlotStatusBoundsAtom = atom(null, (get, set) => {
   const slotOverride = get(slotOverrideAtom);
-  const selectedSlot = get(selectedSlotAtom);
-
+  const selectedSlotNearbyLeaders = get(selectedSlotNearbyYouLeadersAtom);
   const currentSlot = get(currentSlotAtom);
   const searchSlots = get(searchLeaderSlotsAtom);
   const leaderSlots = get(leaderSlotsAtom);
@@ -168,14 +180,11 @@ export const deleteSlotStatusBoundsAtom = atom(null, (get, set) => {
         const numberVal = Number(cachedStatusSlot);
         const slotGroupStart = getSlotGroupLeader(numberVal);
 
-        if (searchSlots?.length && searchSlots.includes(slotGroupStart)) {
+        if (searchSlots?.includes(slotGroupStart)) {
           continue;
         }
 
-        if (
-          selectedSlot !== undefined &&
-          slotGroupStart === getSlotGroupLeader(selectedSlot)
-        ) {
+        if (selectedSlotNearbyLeaders?.includes(slotGroupStart)) {
           continue;
         }
 

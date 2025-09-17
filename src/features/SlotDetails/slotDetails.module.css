@@ -46,29 +46,35 @@
 }
 
 .slot-navigation {
-  padding: 3px;
-  align-items: center;
-  gap: 3px;
+  flex: 4;
+  padding: 2px;
   border-radius: 5px;
   border: 1px solid var(--slot-details-my-slots-color);
   border-top-width: 3px;
+  min-width: 0;
 
-  & .link {
+  .slot-status {
     text-decoration: none;
+    display: flex;
     flex: 1;
-  }
-
-  & .slot-status {
-    padding: 3px 10px;
     justify-content: center;
     align-items: center;
+    padding: 3px 10px;
     gap: 10px;
-    flex: 1 0 0;
     font-size: 12px;
     font-weight: 400;
     border-radius: 3px;
     background: var(--slot-details-background-color);
     color: var(--slot-details-color);
+    min-width: 0;
+
+    .slot-status-text {
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      direction: rtl;
+      cursor: default;
+    }
 
     &.selected-slot {
       font-weight: 600;
@@ -87,30 +93,23 @@
 
   &.previous-navigation,
   &.next-navigation {
-    width: 125px;
+    flex: 1;
 
     &.disabled {
       border: 1px solid var(--slot-details-disabled-slot-border-color);
     }
 
-    & a {
-      height: 100%;
-    }
-
-    & .slot-status {
-      height: 100%;
+    .slot-status {
       font-size: 14px;
       font-weight: 600;
     }
   }
 
   &.previous-navigation {
-    justify-content: end;
     mask-image: linear-gradient(to right, transparent 0%, black 100%);
   }
 
   &.next-navigation {
-    justify-content: start;
     mask-image: linear-gradient(to left, transparent 0%, black 100%);
   }
 }
