@@ -134,15 +134,13 @@ export function DropdownNav() {
         >
           {Object.keys(RouteLabelToPath).map((label) => {
             const routeLabel = label as RouteLabel;
-            if (routeLabel === currentRoute) return;
-
             return (
               <DropdownMenu.Item key={routeLabel} asChild>
                 <NavButton
                   key={routeLabel}
                   label={routeLabel}
-                  isActive={false}
-                  isLink={true}
+                  isActive={routeLabel === currentRoute}
+                  isLink
                 />
               </DropdownMenu.Item>
             );
