@@ -11,8 +11,8 @@ export default function Overview() {
       <Flex gap="16px" align="stretch" wrap="wrap">
         <EpochCard />
         <SlotStatusCard />
-        <TransactionsCard />
         <ValidatorsCard />
+        <TransactionsCard />
       </Flex>
       <SlotPerformance />
     </Flex>
