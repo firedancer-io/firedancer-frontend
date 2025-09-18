@@ -267,7 +267,7 @@ function SlotIconName({
 }) {
   const { peer, isLeader, name } = useSlotInfo(slot);
   return (
-    <Flex gap="4px">
+    <Flex gap="4px" minWidth="0">
       <PeerIcon url={peer?.info?.icon_url} size={iconSize} isYou={isLeader} />
       <Text className={clsx(styles.slotName, styles.ellipsis)}>{name}</Text>
     </Flex>

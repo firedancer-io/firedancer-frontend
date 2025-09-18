@@ -34,7 +34,8 @@
 
 .current {
   padding: 2px;
-  border: 1px solid var(--slots-list-current-slot-border-color);
+  border: 1px solid var(--container-border-color);
+  background-color: var(--container-background-color);
   color: var(--slots-list-slot-color);
   box-shadow: 0 0 16px 0 var(--slots-list-current-slot-box-shadow-color) inset;
 

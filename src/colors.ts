@@ -173,7 +173,6 @@ export const slotDetailsDisabledSlotBorderColor = "#484D53B2";
 // slots list
 export const slotsListSlotBackgroundColor = "#070A13";
 export const slotsListMySlotBackgroundColor = "#070B14 ";
-export const slotsListCurrentSlotBorderColor = "#047690";
 export const slotsListMySlotsBorderColor = "rgba(42, 126, 223, 0.5)";
 export const slotsListNotProcessedMySlotsBorderColor =
   "rgba(125, 125, 125, 0.50)";
