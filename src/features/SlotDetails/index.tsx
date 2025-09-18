@@ -11,7 +11,7 @@ import {
 } from "../Overview/SlotPerformance/atoms";
 import type { FC, SVGProps } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useUnmount } from "react-use";
+import { useMedia, useUnmount } from "react-use";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import { useSlotInfo } from "../../hooks/useSlotInfo";
 import styles from "./slotDetails.module.css";
@@ -28,7 +28,11 @@ import {
   slotsPerLeader,
 } from "../../consts";
 import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
-import { getLeaderSlots, getSlotGroupLeader } from "../../utils";
+import {
+  getLastThreeDigitsWithEllipses,
+  getLeaderSlots,
+  getSlotGroupLeader,
+} from "../../utils";
 import { SkippedIcon, StatusIcon } from "../../components/StatusIcon";
 import clsx from "clsx";
 import {
@@ -326,54 +330,57 @@ function SlotNavigation({ slot }: { slot: number }) {
       pb="1"
       style={{ top: navigationTop, zIndex: maxZIndex - 3 }}
     >
-      <Flex
-        className={clsx(
-          styles.slotNavigation,
-          styles.previousNavigation,
-          isPreviousDisabled && styles.disabled,
-        )}
-      >
-        {previousSlotGroupLastSlot && (
+      <PreviousNextNavigation
+        slot={previousSlotGroupLastSlot}
+        isDisabled={isPreviousDisabled}
+        isPrevious={true}
+      />
+      <SelectedSlotGroup firstSlot={slot} />
+      <PreviousNextNavigation
+        slot={nextSlotGroupLeader}
+        isDisabled={isNextDisabled}
+        isPrevious={false}
+      />
+    </Flex>
+  );
+}
+
+function SelectedSlotGroup({ firstSlot }: { firstSlot: number }) {
+  return (
+    <Flex gap="1" flexGrow="1" flexShrink="1" className={styles.slotNavigation}>
+      {Array.from({ length: slotsPerLeader }).map((_, slotIdx) => {
+        const slotNumber = firstSlot + slotIdx;
+        return (
           <SlotStatus
-            slot={previousSlotGroupLastSlot}
-            searchSlot={previousSlotGroupLastSlot}
-            disabled={isPreviousDisabled}
+            key={slotNumber}
+            slot={slotNumber}
+            searchSlot={slotNumber}
           />
-        )}
-      </Flex>
-      <Flex
-        gap="1"
-        flexGrow="1"
-        flexShrink="1"
-        wrap="wrap"
-        className={styles.slotNavigation}
-      >
-        {Array.from({ length: slotsPerLeader }).map((_, slotIdx) => {
-          const slotNumber = slot + slotIdx;
-          return (
-            <SlotStatus
-              key={slotNumber}
-              slot={slotNumber}
-              searchSlot={slotNumber}
-            />
-          );
-        })}
-      </Flex>
-      <Flex
-        className={clsx(
-          styles.slotNavigation,
-          styles.nextNavigation,
-          isNextDisabled && styles.disabled,
-        )}
-      >
-        {nextSlotGroupLeader && (
-          <SlotStatus
-            slot={nextSlotGroupLeader}
-            searchSlot={nextSlotGroupLeader}
-            disabled={isNextDisabled}
-          />
-        )}
-      </Flex>
+        );
+      })}
+    </Flex>
+  );
+}
+function PreviousNextNavigation({
+  slot,
+  isDisabled,
+  isPrevious,
+}: {
+  slot?: number;
+  isDisabled?: boolean;
+  isPrevious: boolean;
+}) {
+  return (
+    <Flex
+      className={clsx(styles.slotNavigation, {
+        [styles.previousNavigation]: isPrevious,
+        [styles.nextNavigation]: !isPrevious,
+        [styles.disabled]: isDisabled,
+      })}
+    >
+      {slot && (
+        <SlotStatus slot={slot} searchSlot={slot} disabled={isDisabled} />
+      )}
     </Flex>
   );
 }
@@ -407,10 +414,11 @@ function SlotStatus({
   searchSlot: number;
   disabled?: boolean;
 }) {
+  const includeIcon = !useMedia("(max-width: 920px)");
+  const truncateText = useMedia("(max-width: 600px)");
   const selectedSlot = useAtomValue(selectedSlotAtom);
   const queryPublish = useSlotQueryPublish(slot);
   const isSelected = useMemo(() => slot === selectedSlot, [slot, selectedSlot]);
-
   const isSkipped = useMemo(
     () => queryPublish.publish?.skipped,
     [queryPublish.publish?.skipped],
@@ -426,21 +434,24 @@ function SlotStatus({
       <Flex
         align="center"
         justify="center"
-        className={clsx(
-          styles.slotStatus,
-          isSelected && styles.selectedSlot,
-          isSkipped && styles.skippedSlot,
-        )}
+        className={clsx(styles.slotStatus, {
+          [styles.selectedSlot]: isSelected,
+          [styles.skippedSlot]: isSkipped,
+        })}
       >
         {slot !== undefined && (
           <Text style={disabled ? { cursor: "default" } : undefined}>
-            {slot}
+            {truncateText ? getLastThreeDigitsWithEllipses(slot) : slot}
           </Text>
         )}
-        {queryPublish.publish?.skipped ? (
-          <SkippedIcon size="large" />
-        ) : (
-          <StatusIcon isCurrent={false} slot={slot} size="large" />
+        {includeIcon && (
+          <>
+            {isSkipped ? (
+              <SkippedIcon size="large" />
+            ) : (
+              <StatusIcon isCurrent={false} slot={slot} size="large" />
+            )}
+          </>
         )}
       </Flex>
     </Link>

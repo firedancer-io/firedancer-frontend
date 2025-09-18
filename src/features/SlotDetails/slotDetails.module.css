@@ -53,12 +53,12 @@
   border: 1px solid var(--slot-details-my-slots-color);
   border-top-width: 3px;
 
-  & .link {
+  .link {
     text-decoration: none;
     flex: 1;
   }
 
-  & .slot-status {
+  .slot-status {
     padding: 3px 10px;
     justify-content: center;
     align-items: center;
@@ -87,17 +87,15 @@
 
   &.previous-navigation,
   &.next-navigation {
-    width: 125px;
-
     &.disabled {
       border: 1px solid var(--slot-details-disabled-slot-border-color);
     }
 
-    & a {
+    a {
       height: 100%;
     }
 
-    & .slot-status {
+    .slot-status {
       height: 100%;
       font-size: 14px;
       font-weight: 600;
