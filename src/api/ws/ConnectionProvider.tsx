@@ -52,6 +52,9 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
       return;
     }
 
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const emitter = new EventEmitter().setMaxListeners(1e3);
 
     const onMessage = (message: unknown) =>
@@ -63,6 +66,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
 
     const disposePromise = (async () => {
       const zstd = await ZstdInit();
+      if (signal.aborted) return Promise.resolve(() => 0);
 
       const [sendMessage, dispose] = connectWebSocket(
         websocketUrl,
@@ -77,6 +81,7 @@ export function ConnectionProvider({ children }: PropsWithChildren) {
     })();
 
     return () => {
+      abortController.abort();
       void (async () => {
         emitter.removeAllListeners();
         resetContext();
