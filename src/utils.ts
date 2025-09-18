@@ -1,6 +1,6 @@
 import type { Duration } from "luxon";
 import { DateTime } from "luxon";
-import type { Cluster, Epoch, Peer } from "./api/types";
+import type { Cluster, Epoch, Peer, SlotTransactions } from "./api/types";
 import { lamportsPerSol, slotsPerLeader } from "./consts";
 import {
   clusterMainnetBetaColor,
@@ -178,4 +178,24 @@ export function getClusterColor(cluster?: Cluster) {
     case undefined:
       return clusterUnknownColor;
   }
+}
+
+export function isElementFullyInView(el: HTMLElement) {
+  const rect = el.getBoundingClientRect();
+  return (
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.bottom <=
+      (window.innerHeight || document.documentElement.clientHeight) &&
+    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+  );
+}
+
+export function getIncome(transactions: SlotTransactions, txnIdx: number) {
+  const feesAndTips =
+    transactions.txn_priority_fee[txnIdx] +
+    transactions.txn_transaction_fee[txnIdx] +
+    transactions.txn_tips[txnIdx];
+
+  return Number(feesAndTips);
 }

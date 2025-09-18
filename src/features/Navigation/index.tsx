@@ -51,7 +51,6 @@ export default function Navigation() {
   return (
     <div
       style={{
-        position: "relative",
         // resizes outlet content immediately
         width: isNarrow || isNavCollapsed ? "0" : `${width}px`,
       }}

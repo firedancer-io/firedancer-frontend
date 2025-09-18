@@ -18,6 +18,8 @@
     "strict": true,
     "noFallthroughCasesInSwitch": true,
 
+    "verbatimModuleSyntax": true,
+
     "plugins": [
       {
         "name": "typescript-plugin-css-modules",

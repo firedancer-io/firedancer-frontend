@@ -13,6 +13,8 @@
   --green-live: #3cff73;
 
   font-variant-numeric: tabular-nums;
+
+  overflow: hidden;
 }
 
 .rt-TooltipContent {
