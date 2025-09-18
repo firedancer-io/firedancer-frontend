@@ -25,6 +25,7 @@ export default function IdentityKey() {
   const isXXNarrowScreen = useMedia("(min-width: 473px)");
   const isXNarrowScreen = useMedia("(min-width: 608px)");
   const isNarrowScreen = useMedia("(min-width: 1100px)");
+  const truncateKey = useMedia("(max-width: 1330px)");
 
   useEffect(() => {
     let title = document.title;
@@ -47,7 +48,9 @@ export default function IdentityKey() {
         {isXXNarrowScreen && (
           <Label
             label="Validator Name"
-            value={`${identityKey?.substring(0, 8)}...`}
+            value={
+              truncateKey ? `${identityKey?.substring(0, 8)}...` : identityKey
+            }
             tooltip="The validators identity public key"
           />
         )}
