@@ -31,6 +31,7 @@ import {
   useFloating,
 } from "@floating-ui/react";
 import { isScrollingAtom } from "./atoms";
+import { useEventListener } from "../../hooks/useEventListener";
 
 // 1 tick about 10 leaders or 40 slots
 const sliderMaxValue = 10_800;
@@ -155,7 +156,7 @@ function EpochSlider() {
   const handleValueChange = useCallback(
     (newValue: number[]) => {
       const slot = valueToSlot(newValue[0], epoch?.start_slot, epoch?.end_slot);
-      if (slot) {
+      if (slot !== undefined) {
         updateSlot(slot);
       }
     },
@@ -168,6 +169,11 @@ function EpochSlider() {
       trailing: true,
     },
   );
+
+  useEventListener("pointerup", () => {
+    isSliderChangingValueRef.current = false;
+    setIsScrolling(false);
+  });
 
   return (
     <Flex
@@ -197,10 +203,6 @@ function EpochSlider() {
           setIsScrolling(false);
         }}
         max={sliderMaxValue}
-        onPointerUp={() => {
-          isSliderChangingValueRef.current = false;
-          setIsScrolling(false);
-        }}
       >
         <Slider.Track className={styles.sliderTrack}>
           <MSliderEpochProgress
