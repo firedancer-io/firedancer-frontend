@@ -11,7 +11,7 @@ import { myStakePctAtom, myStakeAmountAtom } from "../../atoms";
 import type { PropsWithChildren } from "react";
 import { useEffect } from "react";
 import { DateTime } from "luxon";
-import { getFmtStake, getDurationText, slowDateTimeNow } from "../../utils";
+import { slowDateTimeNow, getSolString, getDurationValues } from "../../utils";
 import { formatNumber } from "../../numUtils";
 import { useInterval, useMedia, useUpdate } from "react-use";
 import clsx from "clsx";
@@ -48,11 +48,10 @@ export default function IdentityKey() {
         {isXXNarrowScreen && (
           <Label
             label="Validator Name"
-            value={
-              truncateKey ? `${identityKey?.substring(0, 8)}...` : identityKey
-            }
             tooltip="The validators identity public key"
-          />
+          >
+            {truncateKey ? `${identityKey?.substring(0, 8)}...` : identityKey}
+          </Label>
         )}
         {isXNarrowScreen && (
           <>
@@ -104,9 +103,10 @@ function DropdownMenu() {
         <PeerIcon url={peer?.info?.icon_url} size={24} isYou />
         <Label
           label="Validator Name"
-          value={identityKey}
           tooltip="The validators identity public key"
-        />
+        >
+          {identityKey}
+        </Label>
       </Flex>
       <StakeValue />
       <StakePct />
@@ -125,68 +125,75 @@ function VotePubkey() {
   return (
     <Label
       label="Vote Pubkey"
-      value={peer?.vote[0]?.vote_account}
       tooltip="The public key of vote account, encoded in base58"
-    />
+    >
+      {peer?.vote[0]?.vote_account}
+    </Label>
   );
 }
 
 function VoteBalance() {
   const voteBalance = useAtomValue(voteBalanceAtom);
+  const solString = getSolString(voteBalance);
 
   return (
     <>
       <Label
         label="Vote Balance"
-        value={getFmtStake(voteBalance) ?? "-"}
         tooltip="Account balance of this validators vote account. The balance is on the highest slot of the currently active fork of the validator."
-      />
+      >
+        <ValueWithSuffix value={solString} suffix="SOL" />
+      </Label>
     </>
   );
 }
 
 function IdentityBalance() {
   const identityBalance = useAtomValue(identityBalanceAtom);
+  const solString = getSolString(identityBalance);
 
   return (
     <Label
       label="Identity Balance"
-      value={getFmtStake(identityBalance) ?? "-"}
       tooltip="Account balance of this validators identity account. The balance is on the highest slot of the currently active fork of the validator."
-    />
+    >
+      <ValueWithSuffix value={solString} suffix="SOL" />
+    </Label>
   );
 }
 
 function StakePct() {
   const stakePct = useAtomValue(myStakePctAtom);
-  let value = "-";
 
-  if (stakePct !== undefined) {
-    value = formatNumber(stakePct, {
-      significantDigits: 4,
-      trailingZeroes: false,
-    });
-    value += "%";
-  }
+  const value =
+    stakePct === undefined
+      ? undefined
+      : formatNumber(stakePct, {
+          significantDigits: 4,
+          trailingZeroes: false,
+        });
 
   return (
     <Label
       label="Stake %"
-      value={value}
       tooltip="What percentage of total stake is delegated to this validator"
-    />
+    >
+      <ValueWithSuffix value={value} suffix="%" />
+    </Label>
   );
 }
 
 function StakeValue() {
   const stake = useAtomValue(myStakeAmountAtom);
+  const solString = getSolString(stake);
 
   return (
     <Label
       label="Stake Amount"
-      value={getFmtStake(stake) ?? "-"}
       tooltip="Amount of total stake that is delegated to this validator"
-    />
+    >
+      <ValueWithSuffix value={solString} suffix="SOL" />
+    </Label>
   );
 }
 
@@ -207,58 +214,82 @@ function Commission() {
   );
 
   return (
-    <Label
-      label="Commission"
-      value={
-        maxCommission?.commission !== undefined
-          ? maxCommission.commission.toLocaleString() + "%"
-          : "-"
-      }
-    />
+    <Label label="Commission">
+      <ValueWithSuffix
+        value={maxCommission?.commission?.toLocaleString()}
+        suffix="%"
+      />
+    </Label>
   );
 }
 
 function StartupTime() {
   const startupTime = useAtomValue(startupTimeAtom);
 
-  const getValue = () => {
-    if (!startupTime) return "-";
+  const getValues = () => {
+    if (!startupTime) return;
     const uptimeDuration = slowDateTimeNow.diff(
       DateTime.fromMillis(
         Math.floor(Number(startupTime.startupTimeNanos) / 1_000_000),
       ),
     );
 
-    const text = getDurationText(uptimeDuration.rescale(), {
+    return getDurationValues(uptimeDuration.rescale(), {
       omitSeconds: true,
     });
-    return text;
   };
+
+  const values = getValues();
 
   const update = useUpdate();
   useInterval(update, 60_000);
 
-  return <Label label="Uptime" value={getValue()} />;
+  return (
+    <Label label="Uptime">
+      {values?.map(([value, suffix], i) => (
+        <>
+          {i !== 0 && "\xa0"}
+          <ValueWithSuffix key={i} value={value} suffix={suffix} excludeSpace />
+        </>
+      ))}
+    </Label>
+  );
 }
 
 interface LabelProps {
   label: string;
-  value?: string | null;
-  color?: string;
   tooltip?: string;
 }
-function Label({ label, value, color, tooltip }: LabelProps) {
-  if (!value) return null;
-  const textValue = (
-    <Text className={styles.value} style={{ color: color }}>
-      {value}
-    </Text>
-  );
+function Label({ label, tooltip, children }: PropsWithChildren<LabelProps>) {
+  if (!children) return null;
+  const content = <div className={styles.value}>{children}</div>;
 
   return (
     <Flex direction="column">
       <Text className={styles.label}>{label}</Text>
-      {tooltip ? <Tooltip content={tooltip}>{textValue}</Tooltip> : textValue}
+      {tooltip ? <Tooltip content={tooltip}>{content}</Tooltip> : content}
     </Flex>
+  );
+}
+
+function ValueWithSuffix({
+  value,
+  suffix,
+  valueColor,
+  excludeSpace,
+}: {
+  value?: string | number;
+  suffix: string;
+  valueColor?: string;
+  excludeSpace?: boolean;
+}) {
+  return (
+    <>
+      <span style={{ color: valueColor }}>
+        {value}
+        {!excludeSpace && "\xa0"}
+      </span>
+      <span className={styles.valueSuffix}>{suffix}</span>
+    </>
   );
 }
