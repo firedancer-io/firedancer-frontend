@@ -35,7 +35,7 @@ export default function ComputeUnitsCard() {
 
   return (
     <>
-      <Card style={{ marginTop: "8px" }}>
+      <Card>
         <Flex direction="column" height="100%" gap="2">
           <Flex gap="3">
             <CardHeader text="Slot Progression" />
@@ -52,11 +52,11 @@ export default function ComputeUnitsCard() {
               bankTileCount={bankTileCount}
               onCreate={handleCreate}
             />
+            <CuChartInfoIcon />
           </div>
         </Flex>
       </Card>
       <CuChartTooltip />
-      <CuChartInfoIcon />
     </>
   );
 }

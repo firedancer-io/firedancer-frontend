@@ -7,10 +7,9 @@ import CardValidatorSummary, {
   CardValidatorSummaryMobile,
 } from "./CardValidatorSummary";
 import { currentSlotAtom } from "../../../atoms";
-import { identityKeyAtom } from "../../../api/atoms";
-import { usePubKey } from "../../../hooks/usePubKey";
 import { useMedia } from "react-use";
 import clsx from "clsx";
+import { useSlotInfo } from "../../../hooks/useSlotInfo";
 
 interface CurrentSlotCardProps {
   slot: number;
@@ -18,10 +17,7 @@ interface CurrentSlotCardProps {
 
 export default function CurrentSlotCard({ slot }: CurrentSlotCardProps) {
   const currentSlot = useAtomValue(currentSlotAtom);
-  const myPubkey = useAtomValue(identityKeyAtom);
-  const pubkey = usePubKey(slot);
-  const isLeader = myPubkey === pubkey;
-
+  const { isLeader } = useSlotInfo(slot);
   const isWideScreen = useMedia("(min-width: 900px)");
 
   return (

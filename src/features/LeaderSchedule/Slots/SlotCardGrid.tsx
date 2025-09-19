@@ -1,23 +1,13 @@
 import { Flex, Grid, Text, Tooltip } from "@radix-ui/themes";
 import styles from "./slotCardGrid.module.css";
 import { useAtomValue, useSetAtom } from "jotai";
-import {
-  currentSlotAtom,
-  firstProcessedSlotAtom,
-  getSlotStatus,
-  slotDurationAtom,
-} from "../../../atoms";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { currentSlotAtom, firstProcessedSlotAtom } from "../../../atoms";
+import { useEffect, useRef, useState } from "react";
 import "react-circular-progressbar/dist/styles.css";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import type { SlotPublish } from "../../../api/types";
-import processedIcon from "../../../assets/checkOutline.svg";
-import optimisticalyConfirmedIcon from "../../../assets/checkFill.svg";
-import rootedIcon from "../../../assets/Rooted.svg";
-import skippedIcon from "../../../assets/Skipped.svg";
-import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import { fixValue } from "../../../utils";
-import { useMedia, usePrevious, useRafLoop, useUnmount } from "react-use";
+import { useMedia, usePrevious, useUnmount } from "react-use";
 import { defaultMaxComputeUnits, lamportsPerSol } from "../../../consts";
 import { formatNumberLamports } from "../../Overview/ValidatorsCard/formatAmt";
 import {
@@ -30,9 +20,10 @@ import { Link } from "@tanstack/react-router";
 import { identityKeyAtom } from "../../../api/atoms";
 import { usePubKey } from "../../../hooks/usePubKey";
 import {
-  circularProgressPathColor,
-  circularProgressTrailColor,
-} from "../../../colors";
+  PlaceholderIcon,
+  SkippedIcon,
+  StatusIcon,
+} from "../../../components/StatusIcon";
 
 interface SlotCardGridProps {
   slot: number;
@@ -156,7 +147,7 @@ function LinkedSlotText({ slot, isLeader }: LinkedSlotTextProps) {
 
   return (
     <div className={styles.slotText}>
-      <Link to="/" search={{ slot }}>
+      <Link to="/slotDetails" search={{ slot }}>
         <Text>{slot}</Text>
       </Link>
     </div>
@@ -192,13 +183,11 @@ function SlotText({
       ) : (
         <Text className={styles.slotText}>&nbsp;</Text>
       )}
-      <StatusIcon slot={slot} isCurrent={isCurrent} />
+      <StatusIcon slot={slot} isCurrent={isCurrent} size="small" />
       {queryPublish.publish?.skipped ? (
-        <Tooltip content="Slot was skipped">
-          <img src={skippedIcon} alt="skipped" className={styles.icon} />
-        </Tooltip>
+        <SkippedIcon size="small" />
       ) : (
-        <div className={styles.icon} />
+        <PlaceholderIcon size="small" />
       )}
     </Flex>
   );
@@ -390,73 +379,5 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
         </Text>
       )}
     </>
-  );
-}
-
-function StatusIcon({ slot, isCurrent }: { slot: number; isCurrent: boolean }) {
-  const status = useAtomValue(useMemo(() => getSlotStatus(slot), [slot]));
-
-  if (isCurrent) return <LoadingIcon />;
-
-  if (status === "incomplete") return <div className={styles.icon} />;
-
-  if (status === "optimistically_confirmed") {
-    return (
-      <Tooltip content="Slot was optimistically confirmed">
-        <img
-          src={optimisticalyConfirmedIcon}
-          alt="optimistically_confirmed"
-          className={styles.icon}
-        />
-      </Tooltip>
-    );
-  }
-
-  if (status === "rooted" || status === "finalized") {
-    return (
-      <Tooltip content="Slot was rooted">
-        <img src={rootedIcon} alt="rooted" className={styles.icon} />
-      </Tooltip>
-    );
-  }
-
-  return (
-    <Tooltip content="Slot was processed">
-      <img src={processedIcon} alt="processed" className={styles.icon} />
-    </Tooltip>
-  );
-}
-
-function LoadingIcon() {
-  const startRef = useRef(performance.now());
-  const slotDuration = useAtomValue(slotDurationAtom);
-  const [progress, setProgress] = useState(0);
-
-  useRafLoop(() => {
-    if (progress >= 100) return;
-
-    const endTime = performance.now();
-    const diff = endTime - startRef.current;
-    const newProgress = Math.max((diff / slotDuration) * 100, 100);
-    setProgress(newProgress);
-  });
-
-  return (
-    <div
-      style={{
-        width: "14px",
-        // To match the line-height of the grid text
-        lineHeight: "normal",
-      }}
-    >
-      <CircularProgressbar
-        value={progress}
-        styles={buildStyles({
-          trailColor: circularProgressTrailColor,
-          pathColor: circularProgressPathColor,
-        })}
-        strokeWidth={25}
-      />
-    </div>
   );
 }
