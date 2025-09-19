@@ -8,6 +8,7 @@ export const primaryTextColor = "#B2BCC9";
 export const secondaryTextColor = "#67696A";
 export const regularTextColor = "#8E909D";
 export const iconButtonColor = "#B4B4B4";
+export const headerLabelTextColor = "#949494";
 
 export const containerBorderColor = "rgba(250, 250, 250, 0.12)";
 export const containerBackgroundColor = "rgba(250, 250, 250, 0.05)";
@@ -17,7 +18,7 @@ export const popoverBackgroundColor = "#1C2129";
 export const rowSeparatorBackgroundColor = "#333333";
 
 export const navButtonTextColor = "#F7F7F7";
-export const navButtonInactiveTextColor = "#949494";
+export const navButtonInactiveTextColor = headerLabelTextColor;
 
 // slot navigation
 export const slotNavFilterBackgroundColor = "#00205F";

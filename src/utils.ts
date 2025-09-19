@@ -39,46 +39,51 @@ export interface DurationOptions {
   omitSeconds?: boolean;
 }
 
-function getUnitText(value: number, suffix: string, showZeros: boolean) {
-  if (value === 0 && !showZeros) return;
-  return `${value}${suffix}`;
-}
-
-function getUnitTexts(duration: Duration, options?: DurationOptions) {
+function getUnitValues(
+  duration: Duration,
+  options?: DurationOptions,
+): [number, string][] {
   if (options?.showOnlyTwoSignificantUnits) {
-    const firstUnitIndex = descendingUnits.findIndex(({ unit }) => {
-      return !!duration[unit];
-    });
+    const firstUnitIndex = descendingUnits.findIndex(
+      ({ unit }) => !!duration[unit],
+    );
     return descendingUnits
       .slice(firstUnitIndex, firstUnitIndex + 2)
-      .map(({ unit, suffix }) => {
-        const value = duration[unit];
-        return getUnitText(value, suffix, true);
-      });
+      .map(({ unit, suffix }) => [duration[unit], suffix]);
   }
 
   return descendingUnits
-    .map(({ unit, suffix }) => {
-      if (options?.omitSeconds && unit === "seconds") return;
+    .filter(({ unit }) => {
+      if (options?.omitSeconds && unit === "seconds") return false;
 
-      const value = duration[unit];
-      if (!value) return;
-
-      return getUnitText(value, suffix, false);
+      // drop zero values
+      return !!duration[unit];
     })
-    .filter((v) => !!v);
+    .map(({ unit, suffix }) => [duration[unit], suffix]);
+}
+
+export function getDurationValues(
+  duration?: Duration,
+  options?: DurationOptions,
+): [number, string][] | undefined {
+  if (!duration) return;
+
+  if (duration.toMillis() < 1000) return [[0, "s"]];
+
+  const units = getUnitValues(duration, options);
+  return units.length ? units : [[0, "s"]];
 }
 
 export function getDurationText(
   duration?: Duration,
   options?: DurationOptions,
 ) {
-  if (!duration) return "Never";
+  const values = getDurationValues(duration, options);
+  if (!values) return "Never";
 
-  if (duration.toMillis() < 1000) return "0s";
-
-  const texts = getUnitTexts(duration, options);
-  return texts.join(" ") || "0s";
+  return values.reduce((acc, valSuffix) => {
+    return `${acc} ${valSuffix.join("")}`;
+  }, "");
 }
 
 export let slowDateTimeNow = DateTime.now();
@@ -100,24 +105,30 @@ export function getStake(peer: Peer) {
   );
 }
 
-export function getFmtStake(stake?: bigint) {
-  if (stake === undefined) return;
+export function getSolString(lamportAmount?: bigint) {
+  if (lamportAmount === undefined) return;
 
-  let value = "";
-  const solAmount = Number(stake) / lamportsPerSol;
+  const solAmount = Number(lamportAmount) / lamportsPerSol;
   if (solAmount < 1) {
-    value = solAmount.toLocaleString();
-  } else if (solAmount < 100) {
-    value = solAmount.toLocaleString(undefined, {
+    return solAmount.toLocaleString();
+  }
+
+  if (solAmount < 100) {
+    return solAmount.toLocaleString(undefined, {
       maximumFractionDigits: 2,
-    });
-  } else {
-    value = solAmount.toLocaleString(undefined, {
-      maximumFractionDigits: 0,
     });
   }
 
-  return `${value}\xa0SOL`;
+  return solAmount.toLocaleString(undefined, {
+    maximumFractionDigits: 0,
+  });
+}
+
+export function getFmtStake(stake?: bigint) {
+  const solString = getSolString(stake);
+  if (solString === undefined) return;
+
+  return `${solString}\xa0SOL`;
 }
 
 /** Dumb workaround for Array.isArray type checking with eslint for readonly arrays */
