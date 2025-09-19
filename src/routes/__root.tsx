@@ -37,8 +37,10 @@ function Root() {
           id="scroll-container"
           style={{
             position: "relative",
-            height: "100vh",
+            height: "100dvh",
             overflowY: "auto",
+            willChange: "scroll-position",
+            contain: "paint",
           }}
         >
           <Header />
