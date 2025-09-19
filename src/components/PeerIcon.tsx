@@ -12,12 +12,14 @@ interface PeerIconProps {
   isYou?: boolean;
   size: number;
   hideFallback?: boolean;
+  hideTooltip?: boolean;
 }
 
 export default function PeerIcon({
   url,
   size,
   hideFallback,
+  hideTooltip = false,
   isYou,
 }: PeerIconProps) {
   const [globalHasError, setGlobalHasError] = useAtom(
@@ -31,15 +33,16 @@ export default function PeerIcon({
   if (!url || hasError) {
     if (hideFallback) {
       return <div style={iconStyles} />;
-    } else if (isYou) {
-      return (
-        <Tooltip content="Your current validator">
-          <img src={privateYouIcon} style={iconStyles} />
-        </Tooltip>
-      );
-    } else {
-      return <img src={privateIcon} alt="private" style={iconStyles} />;
     }
+
+    if (isYou) {
+      const img = <img src={privateYouIcon} style={iconStyles} />;
+
+      if (hideTooltip) return img;
+      return <Tooltip content="Your current validator">{img}</Tooltip>;
+    }
+
+    return <img src={privateIcon} alt="private" style={iconStyles} />;
   }
 
   const handleError = () => {
