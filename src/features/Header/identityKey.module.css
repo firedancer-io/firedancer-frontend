@@ -16,7 +16,7 @@
   }
 
   .label {
-    color: var(--skip-rate-label-color);
+    color: var(--header-label-text-color);
     font-size: 10px;
   }
 
@@ -24,6 +24,10 @@
     color: var(--dropdown-button-text-color);
     font-size: 12px;
     font-style: normal;
+    line-height: normal;
+    .value-suffix {
+      color: var(--header-label-text-color);
+    }
   }
 }
 
