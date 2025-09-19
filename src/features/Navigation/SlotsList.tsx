@@ -223,7 +223,11 @@ function SlotOverrideScroll({
   const slotOverride = useAtomValue(slotOverrideAtom);
 
   useEffect(() => {
-    if (!slotOverride || !listRef.current || debouncedScroll.isPending())
+    if (
+      slotOverride === undefined ||
+      !listRef.current ||
+      debouncedScroll.isPending()
+    )
       return;
 
     const targetIndex = Math.max(
@@ -317,6 +321,11 @@ function MySlotsList({ width, height }: SlotsListProps) {
   // Get the slot index, or if unavailable, the closest past index
   const getClosestIndexForSlot = useCallback(
     (slot: number) => {
+      if (!slotGroupsDescending.length) return 0;
+      if (slot >= slotGroupsDescending[0]) return 0;
+      if (slot <= slotGroupsDescending[slotGroupsDescending.length - 1])
+        return slotGroupsDescending.length - 1;
+
       return (
         slotToIndexMapping[getSlotGroupLeader(slot)] ??
         slotGroupsDescending.findIndex((s) => s <= slot)
