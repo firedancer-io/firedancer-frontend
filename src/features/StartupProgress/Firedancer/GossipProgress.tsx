@@ -2,15 +2,27 @@ import { Card, Flex, Text } from "@radix-ui/themes";
 
 import styles from "./gossip.module.css";
 import { Bars } from "./Bars";
+import { useAtomValue } from "jotai";
+import { gossipNetworkStatsAtom } from "../../../api/atoms";
 
 export function GossipProgress() {
-  // TODO: use atom
+  const networkStats = useAtomValue(gossipNetworkStatsAtom);
+  if (!networkStats) return null;
+
+  const { health } = networkStats;
+
   return (
     <Flex gapX="162px">
       <Flex direction="column" gap="20px">
         <Flex justify="between" gap="20px" align="stretch">
-          <GossipCard title="Staked Peers" value={0} />
-          <GossipCard title="Unstaked Peers" value={0} />
+          <GossipCard
+            title="Staked Peers"
+            value={health.connected_staked_peers ?? null}
+          />
+          <GossipCard
+            title="Unstaked Peers"
+            value={health.connected_unstaked_peers ?? null}
+          />
           <GossipCard title="Snapshot Peers" value={0} />
         </Flex>
 
@@ -24,13 +36,13 @@ export function GossipProgress() {
 
 interface GossipCardProps {
   title: string;
-  value: number;
+  value: number | null;
 }
 function GossipCard({ title, value }: GossipCardProps) {
   return (
     <Card className={styles.card}>
       <Text>{title}</Text>
-      <Text className={styles.value}>{value}</Text>
+      <Text className={styles.value}>{value ?? "--"}</Text>
     </Card>
   );
 }
