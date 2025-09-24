@@ -79,12 +79,12 @@ function UpcomingSlotBody({
 }: UpcomingSlotBodyProps) {
   return (
     <Flex gap="2">
-      <Flex gap="2" minWidth="300px" align="center">
+      <Flex gap="2" minWidth="300px" align="center" flexGrow="1">
         <PeerIcon url={iconUrl} size={24} isYou={isLeader} />
         <Text className={styles.nameText}>{name}</Text>
       </Flex>
       <Text className={styles.pubkeyText}>{pubkey}</Text>
-      <Flex flexGrow="1" justify="center">
+      <Flex justify="center" minWidth="190px">
         <Text>{slot}</Text>
       </Flex>
       <TimeTillText slot={slot} />
@@ -103,7 +103,7 @@ function MobileUpcomingSlotBody({
     <Flex direction="column">
       <Flex gap="2" align="center">
         <PeerIcon url={iconUrl} size={16} isYou={isLeader} />
-        <Text className={styles.nameText}>{name}</Text>
+        <Text className={clsx(styles.nameText, styles.narrow)}>{name}</Text>
         <Box flexGrow="1" />
         <Text className={clsx(styles.pubkeyText, styles.narrowScreen)}>
           {pubkey}
