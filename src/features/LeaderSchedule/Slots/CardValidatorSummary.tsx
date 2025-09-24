@@ -2,7 +2,12 @@ import type { TextProps } from "@radix-ui/themes";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
-import { getStake, getFmtStake, isDefined, removePortFromIp } from "../../../utils";
+import {
+  getStake,
+  getFmtStake,
+  isDefined,
+  removePortFromIp,
+} from "../../../utils";
 import { useAtomValue } from "jotai";
 import PeerIcon from "../../../components/PeerIcon";
 import styles from "./cardValidatorSummary.module.css";
@@ -27,12 +32,13 @@ export default function CardValidatorSummary({
   const { pubkey, peer, isLeader, name } = useSlotInfo(slot);
 
   return (
-    <Flex gap="1">
+    <Flex gap="1" className={styles.summaryContainer}>
       <PeerIcon url={peer?.info?.icon_url} size={40} isYou={isLeader} />
       <Flex
         direction="column"
         gap="1"
         align="start"
+        minWidth="0"
         style={{ marginLeft: "6px" }}
       >
         <Text className={styles.name}>{name}</Text>

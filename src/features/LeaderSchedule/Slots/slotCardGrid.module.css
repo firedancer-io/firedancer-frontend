@@ -3,7 +3,7 @@
   grid:
     auto-flow / minMax(80px, auto) minMax(80px, auto) minMax(70px, auto)
     minMax(70px, auto)
-    minMax(75px, auto) minMax(100px, auto) minMax(49px, auto);
+    minMax(75px, auto) minMax(149px, auto);
   row-gap: 1px;
   overflow-x: auto;
   min-width: 80px;
@@ -41,6 +41,11 @@
 }
 .compute-units-header {
   color: var(--compute-units-color);
+}
+
+.compute-units-pct {
+  width: 50px;
+  display: inline-block;
 }
 
 .slot-text {
