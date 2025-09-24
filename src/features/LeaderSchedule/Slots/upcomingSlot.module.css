@@ -6,19 +6,20 @@
   color: var(--primary-text-color);
 
   .name-text {
-    width: 240px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
   }
 
   .pubkey-text {
+    flex-grow: 1;
     min-width: 390px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
 
     &.narrow-screen {
+      flex-grow: 0;
       min-width: inherit;
     }
   }

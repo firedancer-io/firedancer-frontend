@@ -32,12 +32,13 @@ export default function CardValidatorSummary({
   const { pubkey, peer, isLeader, name } = useSlotInfo(slot);
 
   return (
-    <Flex gap="1">
+    <Flex gap="1" className={styles.summaryContainer}>
       <PeerIcon url={peer?.info?.icon_url} size={40} isYou={isLeader} />
       <Flex
         direction="column"
         gap="1"
         align="start"
+        minWidth="0"
         style={{ marginLeft: "6px" }}
       >
         <Text className={styles.name}>{name}</Text>

@@ -11,6 +11,7 @@ import { useMedia, usePrevious, useUnmount } from "react-use";
 import {
   defaultMaxComputeUnits,
   lamportsPerSol,
+  nonBreakingSpace,
   solDecimals,
 } from "../../../consts";
 import { formatNumberLamports } from "../../Overview/ValidatorsCard/formatAmt";
@@ -48,7 +49,7 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
   }, [deleteScroll, setScroll, slot]);
 
   return (
-    <Flex minWidth="0">
+    <Flex minWidth="0" flexGrow="1">
       <SlotColumn slot={slot} currentSlot={currentSlot} />
       <div
         className={styles.grid}
@@ -90,7 +91,6 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
         <Text
           className={clsx(styles.headerText, styles.computeUnitsHeader)}
           align="right"
-          style={{ gridColumnStart: "span 2" }}
         >
           Compute&nbsp;Units
         </Text>
@@ -363,22 +363,18 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
         {getText(values?.durationText)}
       </Text>
       {values?.computeUnits !== undefined ? (
-        <>
-          <Text className={valueClassName} align="right" style={{ padding: 0 }}>
+        <Text className={valueClassName} align="right" style={{ padding: 0 }}>
+          <>
             {getText(values?.computeUnits.toLocaleString())}
-          </Text>
-          <Text className={valueClassName} align="right" style={{ padding: 0 }}>
-            {values?.computeUnitsPct !== undefined
-              ? `\u00A0(${getText(values?.computeUnitsPct)}%)`
-              : null}
-          </Text>
-        </>
+            <span className={styles.computeUnitsPct}>
+              {values?.computeUnitsPct !== undefined
+                ? `${nonBreakingSpace}(${getText(values?.computeUnitsPct)}%)`
+                : null}
+            </span>
+          </>
+        </Text>
       ) : (
-        <Text
-          className={valueClassName}
-          style={{ gridColumnStart: "span 2" }}
-          align="right"
-        >
+        <Text className={valueClassName} align="right">
           {getText()}
         </Text>
       )}
