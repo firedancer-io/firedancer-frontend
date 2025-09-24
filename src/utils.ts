@@ -282,3 +282,28 @@ export function getClusterColor(cluster?: Cluster) {
       return clusterUnknownColor;
   }
 }
+
+export function formatBytesAsBits(bytes: number): {
+  value: number;
+  unit: string;
+} {
+  const bits = bytes * 8;
+  if (bits < 1_000) return { value: bits, unit: "bit" };
+  if (bits < 1_000_000)
+    return { value: getRoundedBitsValue(bits / 1_000), unit: "Kbit" };
+  if (bits < 1_000_000_000) {
+    return { value: getRoundedBitsValue(bits / 1_000_000), unit: "Mbit" };
+  }
+
+  return { value: getRoundedBitsValue(bits / 1_000_000_000), unit: "Gbit" };
+}
+
+/**
+ * Round to 1 decimal place if value is <= 10, otherwise round to nearest integer
+ */
+function getRoundedBitsValue(value: number) {
+  if (value >= 9.5) return Math.round(value);
+
+  // 1 decimal place
+  return Math.round(value * 10) / 10;
+}
