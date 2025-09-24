@@ -31,7 +31,7 @@ export default function UpcomingSlotCard({ slot }: UpcomingSlotCardProps) {
     currentLeaderSlot !== undefined &&
     slot === currentLeaderSlot + slotsPerLeader * 2;
 
-  const isWideScreen = useMedia("(min-width: 1200px)");
+  const isWideScreen = useMedia("(min-width: 1250px)");
 
   return (
     <div
@@ -78,13 +78,13 @@ function UpcomingSlotBody({
   slot,
 }: UpcomingSlotBodyProps) {
   return (
-    <Flex gap="2">
-      <Flex gap="2" minWidth="300px" align="center">
+    <Flex gap="2" align="center">
+      <Flex gap="2" minWidth="300px" width="505px" align="center" pr="20px">
         <PeerIcon url={iconUrl} size={24} isYou={isLeader} />
         <Text className={styles.nameText}>{name}</Text>
       </Flex>
       <Text className={styles.pubkeyText}>{pubkey}</Text>
-      <Flex flexGrow="1" justify="center">
+      <Flex justify="center" minWidth="190px">
         <Text>{slot}</Text>
       </Flex>
       <TimeTillText slot={slot} />

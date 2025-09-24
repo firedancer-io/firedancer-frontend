@@ -10,6 +10,7 @@ import { isNavCollapsedAtom } from "../atoms";
 import { useAtom } from "jotai";
 import { headerSpacing, narrowNavMedia, slotsNavSpacing } from "../consts";
 import NavBlur from "../features/Navigation/NavBlur";
+import { useCurrentRoute } from "../hooks/useCurrentRoute";
 
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
@@ -60,6 +61,7 @@ function Root() {
 function OutletContainer() {
   const isNarrow = useMedia(narrowNavMedia);
   const [isNavCollapsed, setIsNavCollapsed] = useAtom(isNavCollapsedAtom);
+  const isSchedule = useCurrentRoute() === "Schedule";
 
   useEffect(() => {
     // automatically open / close on narrow switch
@@ -73,7 +75,7 @@ function OutletContainer() {
       minWidth="0"
       pb="2"
       pl={
-        isNarrow || isNavCollapsed
+        isNarrow || isNavCollapsed || isSchedule
           ? "0px"
           : `${headerSpacing - slotsNavSpacing}px`
       }
