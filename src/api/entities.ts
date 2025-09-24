@@ -496,49 +496,46 @@ export const epochSchema = z.discriminatedUnion("key", [
   }),
 ]);
 
-const gossipNetworkHealthSchema = z.object({
-  push_rx_pct: z.number().nullable().optional(),
-  pull_response_rx_pct: z.number().nullable().optional(),
-  push_rx_dup_pct: z.number().nullable().optional(),
-  pull_response_rx_dup_pct: z.number().nullable().optional(),
-  push_rx_msg_bad_pct: z.number().nullable().optional(),
-  push_rx_entry_bad_pct: z.number().nullable().optional(),
-  pull_response_rx_msg_bad_pct: z.number().nullable().optional(),
-  pull_response_rx_entry_bad_pct: z.number().nullable().optional(),
-  pull_already_known_pct: z.number().nullable().optional(),
-  total_stake: z.coerce.bigint().nullable().optional(),
-  total_staked_peers: z.number().nullable().optional(),
-  total_unstaked_peers: z.number().nullable().optional(),
-  connected_stake: z.coerce.bigint().nullable().optional(),
-  connected_staked_peers: z.number().nullable().optional(),
-  connected_unstaked_peers: z.number().nullable().optional(),
+export const gossipNetworkHealthSchema = z.object({
+  num_push_messages_rx_success: z.number(),
+  num_push_messages_rx_failure: z.number(),
+  num_push_entries_rx_success: z.number(),
+  num_push_entries_rx_failure: z.number(),
+  num_push_entries_rx_duplicate: z.number(),
+  num_pull_response_messages_rx_success: z.number(),
+  num_pull_response_messages_rx_failure: z.number(),
+  num_pull_response_entries_rx_success: z.number(),
+  num_pull_response_entries_rx_failure: z.number(),
+  num_pull_response_entries_rx_duplicate: z.number(),
+
+  total_peers: z.number(),
+  total_stake: z.coerce.bigint(),
+  connected_stake: z.coerce.bigint(),
+  connected_staked_peers: z.number(),
+  connected_unstaked_peers: z.number(),
 });
 
-const gossipNetworkTrafficSchema = z.object({
-  total_throughput: z.number().nullable().optional(),
-  peer_names: z.string().array().nullable().optional(),
-  peer_identities: z.string().array().nullable().optional(),
-  peer_throughput: z.number().array().nullable().optional(),
+export const gossipNetworkTrafficSchema = z.object({
+  total_throughput: z.number(),
+  peer_names: z.string().array(),
+  peer_identities: z.string().array(),
+  peer_throughput: z.number().array(),
 });
 
 const gossipStorageStatsSchema = z.object({
-  capacity: z.number().nullable().optional(),
-  expired_total: z.number().nullable().optional(),
-  evicted_total: z.number().nullable().optional(),
-  count: z.number().array().nullable().optional(),
-  bps_tx: z.number().array().nullable().optional(),
-  eps_tx: z.number().array().nullable().optional(),
+  capacity: z.number(),
+  expired_count: z.number(),
+  evicted_count: z.number(),
+  count: z.number().array(),
+  count_tx: z.number().array(),
+  bytes_tx: z.number().array(),
 });
 
 const gossipMessageStatsSchema = z.object({
-  bytes_rx_total: z.number().array().nullable().optional(),
-  count_rx_total: z.number().array().nullable().optional(),
-  bytes_tx_total: z.number().array().nullable().optional(),
-  count_tx_total: z.number().array().nullable().optional(),
-  bps_rx: z.number().array().nullable().optional(),
-  mps_rx: z.number().array().nullable().optional(),
-  bps_tx: z.number().array().nullable().optional(),
-  mps_tx: z.number().array().nullable().optional(),
+  num_bytes_rx: z.number().array(),
+  num_bytes_tx: z.number().array(),
+  num_messages_rx: z.number().array(),
+  num_messages_tx: z.number().array(),
 });
 
 export const gossipNetworkStatsSchema = z.object({
