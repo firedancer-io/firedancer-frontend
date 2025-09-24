@@ -5,7 +5,7 @@ import byteSize from "byte-size";
 import clsx from "clsx";
 import { Bars } from "./Bars";
 
-const MAX_THROUGHPUT = 300000000;
+const MAX_THROUGHPUT = 300_000_000;
 
 interface SnapshotLoadingCardProps {
   title: string;
