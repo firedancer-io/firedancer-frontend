@@ -88,7 +88,7 @@ export default function Slots() {
       overflow="hidden"
       flexShrink="1"
       onWheel={handleWheel}
-      maxWidth="1200px"
+      maxWidth="100%"
       className={styles.scroll}
       ref={ref}
     >
