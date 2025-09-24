@@ -81,9 +81,7 @@ export function getDurationText(
   const values = getDurationValues(duration, options);
   if (!values) return "Never";
 
-  return values.reduce((acc, valSuffix) => {
-    return `${acc} ${valSuffix.join("")}`;
-  }, "");
+  return values.map(([val, suffix]) => `${val}${suffix}`).join(" ");
 }
 
 export let slowDateTimeNow = DateTime.now();
