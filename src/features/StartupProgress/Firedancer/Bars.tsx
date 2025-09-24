@@ -1,5 +1,3 @@
-import { Flex, Text } from "@radix-ui/themes";
-
 import styles from "./bars.module.css";
 import clsx from "clsx";
 import { useMeasure } from "react-use";
@@ -26,36 +24,34 @@ export function Bars({ title, value, max }: BarsProps) {
   const usedWidth = barCount * (barWidth + barGap);
 
   return (
-    <Flex direction="column" gap="10px" className={styles.barsContainer}>
-      {title && <Text className={styles.title}>{title}</Text>}
-      <svg
-        ref={ref}
-        preserveAspectRatio="none"
-        width="100%"
-        viewBox={`0 0 ${usedWidth} ${viewBoxHeight}`}
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {Array.from({ length: barCount }, (_, i) => {
-          const isHigh = i >= barCount * 0.95;
-          const isMid = !isHigh && i >= barCount * 0.85;
+    <svg
+      className={styles.bars}
+      ref={ref}
+      preserveAspectRatio="none"
+      width="100%"
+      viewBox={`0 0 ${usedWidth} ${viewBoxHeight}`}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {Array.from({ length: barCount }, (_, i) => {
+        const isHigh = i >= barCount * 0.95;
+        const isMid = !isHigh && i >= barCount * 0.85;
 
-          return (
-            <rect
-              key={i}
-              x={i * (usedWidth / barCount)}
-              width={barWidth}
-              height={viewBoxHeight}
-              ry={barWidth * 2}
-              className={clsx({
-                [styles.threshold]: i === currentIndex,
-                [styles.filled]: i < currentIndex,
-                [styles.high]: isHigh,
-                [styles.mid]: isMid,
-              })}
-            />
-          );
-        })}
-      </svg>
-    </Flex>
+        return (
+          <rect
+            key={i}
+            x={i * (usedWidth / barCount)}
+            width={barWidth}
+            height={viewBoxHeight}
+            ry={barWidth * 2}
+            className={clsx({
+              [styles.threshold]: i === currentIndex,
+              [styles.filled]: i < currentIndex,
+              [styles.high]: isHigh,
+              [styles.mid]: isMid,
+            })}
+          />
+        );
+      })}
+    </svg>
   );
 }
