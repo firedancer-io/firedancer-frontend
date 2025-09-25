@@ -241,6 +241,8 @@ export const slotTransactionsSchema = z.object({
   txn_microblock_id: z.number().array(),
   txn_landed: z.boolean().array(),
   txn_signature: z.string().array(),
+  txn_source_ipv4: z.string().array(),
+  txn_source_tpu: z.string().array(),
 });
 
 export const slotLevelSchema = z.enum([

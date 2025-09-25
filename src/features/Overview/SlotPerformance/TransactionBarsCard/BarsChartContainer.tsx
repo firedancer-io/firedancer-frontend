@@ -13,6 +13,14 @@ import { getChartData } from "./chartUtils";
 import BarChartFloatingAction from "./BarChartFloatingAction";
 import CardHeader from "../../../../components/CardHeader";
 import { getMaxTsWithBuffer } from "../../../../transactionUtils";
+import {
+  clusterIndicatorHeight,
+  headerHeight,
+  slotNavHeight,
+} from "../../../../consts";
+
+const navigationTop = clusterIndicatorHeight + headerHeight;
+const stickyTop = navigationTop + slotNavHeight;
 
 export default function BarsChartContainer() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -53,8 +61,21 @@ export default function BarsChartContainer() {
   if (!query.response?.transactions) return null;
 
   return (
-    <Flex direction="column" key={slot}>
-      <Flex gap="2" pb="2">
+    <Flex direction="column" height="100%" key={slot}>
+      <Flex
+        id="transaction-bars-controls"
+        gap="2"
+        position="sticky"
+        top={`${stickyTop}px`}
+        style={{
+          // Match card background
+          background: "#141720",
+          // To draw above txn bars and tooltip
+          zIndex: 4,
+          paddingBottom: "16px",
+          marginBottom: "-8px",
+        }}
+      >
         <CardHeader text="Banks" />
         <ChartControls
           transactions={query.response.transactions}

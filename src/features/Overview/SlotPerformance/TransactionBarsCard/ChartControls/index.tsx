@@ -1,6 +1,19 @@
-import { Flex, Select, Separator, Slider, Text } from "@radix-ui/themes";
-import { focusedErrorCode, highlightErrorCode } from "./txnBarsPlugin";
-import type { SlotTransactions } from "../../../../api/types";
+import {
+  Flex,
+  IconButton,
+  Select,
+  Separator,
+  Slider,
+  Text,
+} from "@radix-ui/themes";
+import { CaretDownIcon, CaretUpIcon } from "@radix-ui/react-icons";
+import {
+  focusedErrorCode,
+  focusedTpu,
+  highlightErrorCode,
+  highlightTpu,
+} from "../txnBarsPlugin";
+import type { SlotTransactions } from "../../../../../api/types";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   addCuRequestedSeriesAtom,
@@ -19,32 +32,36 @@ import {
   barCountAtom,
   selectedBankAtom,
   filterArrivalDataAtom,
-} from "./atoms";
+  filteredTxnIdxAtom,
+} from "../atoms";
 import { groupBy, max } from "lodash";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import ToggleGroupControl from "./ToggleGroupControl";
 import { useMeasure, useMedia, useUnmount } from "react-use";
-import { errorCodeMap, FilterEnum, TxnState } from "./consts";
-import ToggleControl from "../../../../components/ToggleControl";
-import toggleControlStyles from "../../../../components/toggleControl.module.css";
+import { FilterEnum, TxnState } from "../consts";
+import ToggleControl from "./ToggleControl";
+import toggleControlStyles from "./toggleControl.module.css";
 import styles from "./chartControl.module.css";
-import { txnBarsUplotActionAtom } from "./uplotAtoms";
+import { txnBarsUplotActionAtom } from "../uplotAtoms";
 import {
   chartBufferMs,
   getMaxTsWithBuffer,
-} from "../../../../transactionUtils";
-import { xScaleKey } from "../ComputeUnitsCard/consts";
-import { tooltipTxnIdxAtom, tooltipTxnStateAtom } from "./chartTooltipAtoms";
+} from "../../../../../transactionUtils";
+import { xScaleKey } from "../../ComputeUnitsCard/consts";
+import { tooltipTxnIdxAtom, tooltipTxnStateAtom } from "../chartTooltipAtoms";
+import SearchCommand from "./SearchCommand";
 import {
-  computeUnitsColor,
+  successToggleColor,
   errorToggleColor,
   feesColor,
-  successToggleColor,
   tipsColor,
+  computeUnitsColor,
   requestedToggleControlColor,
   incomePerCuToggleControlColor,
-} from "../../../../colors";
+} from "../../../../../colors";
+import { uplotActionAtom } from "../../../../../uplotReact/uplotAtoms";
+import { txnErrorCodeMap } from "../../../../../consts";
 import { useThrottledCallback } from "use-debounce";
 
 interface ChartControlsProps {
@@ -53,6 +70,24 @@ interface ChartControlsProps {
 }
 
 export default function ChartControls(props: ChartControlsProps) {
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  return (
+    <>
+      <div className={styles.minimizeButton}>
+        <IconButton
+          variant="ghost"
+          onClick={() => setIsMinimized((prev) => !prev)}
+        >
+          {isMinimized ? <CaretDownIcon /> : <CaretUpIcon />}
+        </IconButton>
+      </div>
+      {!isMinimized && <ChartControlsContent {...props} />}
+    </>
+  );
+}
+
+function ChartControlsContent(props: ChartControlsProps) {
   const { transactions, maxTs } = props;
   const setChartFilters = useSetAtom(chartFiltersAtom);
   const setBarCount = useSetAtom(barCountAtom);
@@ -90,6 +125,10 @@ export default function ChartControls(props: ChartControlsProps) {
       <CuControls transactions={transactions} />
       <Separator orientation="vertical" size="2" />
       <ArrivalControl transactions={transactions} />
+      <Separator orientation="vertical" size="2" />
+      <TpuControl transactions={transactions} maxTs={maxTs} />
+      <Separator orientation="vertical" size="2" />
+      <SearchCommand transactions={transactions} />
     </Flex>
   );
 }
@@ -103,7 +142,11 @@ function MobileViewChartControls({ transactions, maxTs }: ChartControlsProps) {
       <SimpleControl transactions={transactions} maxTs={maxTs} isMobileView />
       <ToggleSeriesControls transactions={transactions} />
       <CuControls transactions={transactions} />
-      <ArrivalControl transactions={transactions} />
+      <div style={{ marginBottom: "8px" }}>
+        <ArrivalControl transactions={transactions} />
+      </div>
+      <TpuControl transactions={transactions} maxTs={maxTs} />
+      <SearchCommand transactions={transactions} size="sm" />
     </Flex>
   );
 }
@@ -153,31 +196,20 @@ function HighlightErrorControl({
   transactions,
   isDisabled,
 }: HighlightErrorControlProps) {
-  const chartFilters = useAtomValue(chartFiltersAtom);
-  const uplotAction = useSetAtom(txnBarsUplotActionAtom);
+  const uplotAction = useSetAtom(uplotActionAtom);
+  const filteredTxnIdx = useAtomValue(filteredTxnIdxAtom);
   const [value, setValue] = useState("0");
 
   const errorCodeCount = useMemo(() => {
-    if (Object.keys(chartFilters).length) {
-      const filteredTxnIds = new Set<number>();
-      uplotAction((u) => {
-        if (!u.data[1]?.length) return;
-
-        for (let i = 0; i < u.data[1].length; i++) {
-          const txnId = u.data[1][i];
-          if (txnId != null) {
-            filteredTxnIds.add(txnId);
-          }
-        }
-      });
+    if (filteredTxnIdx?.size) {
       const filteredErrorCodes = transactions.txn_error_code.filter((_, i) =>
-        filteredTxnIds.has(i),
+        filteredTxnIdx.has(i),
       );
       return groupBy(filteredErrorCodes);
     }
 
     return groupBy(transactions.txn_error_code);
-  }, [chartFilters, transactions, uplotAction]);
+  }, [filteredTxnIdx, transactions.txn_error_code]);
 
   useEffect(() => {
     if (!errorCodeCount[focusedErrorCode]) {
@@ -209,13 +241,71 @@ function HighlightErrorControl({
             if (err === "0") return null;
             return (
               <Select.Item key={err} value={`${err}`}>
-                {errorCodeMap[err]} ({errorCodeCount[err].length})
+                {txnErrorCodeMap[err]} ({errorCodeCount[err].length})
               </Select.Item>
             );
           })}
         </Select.Group>
       </Select.Content>
     </Select.Root>
+  );
+}
+
+const noneValue = "none";
+
+function TpuControl({ transactions, maxTs }: ToggleGroupControlProps) {
+  const uplotAction = useSetAtom(uplotActionAtom);
+  const filteredTxnIdx = useAtomValue(filteredTxnIdxAtom);
+  const [value, setValue] = useState(noneValue);
+
+  const tpuCount = useMemo(() => {
+    if (filteredTxnIdx?.size) {
+      const filteredTpu = transactions.txn_source_tpu.filter((_, i) =>
+        filteredTxnIdx.has(i),
+      );
+      return groupBy(filteredTpu);
+    }
+
+    return groupBy(transactions.txn_source_tpu);
+  }, [filteredTxnIdx, transactions.txn_source_tpu]);
+
+  useEffect(() => {
+    if (!tpuCount[focusedTpu]) {
+      setValue("");
+      highlightTpu("");
+    }
+  }, [tpuCount]);
+
+  return (
+    <Flex gap="2" align="center">
+      <Text className={toggleControlStyles.label}>TPU</Text>
+      <Select.Root
+        onValueChange={(value) => {
+          setValue(value);
+          highlightTpu(value === noneValue ? "" : value);
+          uplotAction((u) => u.redraw());
+        }}
+        size="1"
+        value={value}
+      >
+        <Select.Trigger
+          placeholder="TPU"
+          style={{ height: "22px", width: "90px" }}
+        />
+        <Select.Content>
+          <Select.Group>
+            <Select.Item value={noneValue}>None</Select.Item>
+            {Object.keys(tpuCount).map((tpu) => {
+              return (
+                <Select.Item key={tpu} value={tpu}>
+                  {tpu} ({tpuCount[tpu].length})
+                </Select.Item>
+              );
+            })}
+          </Select.Group>
+        </Select.Content>
+      </Select.Root>
+    </Flex>
   );
 }
 
