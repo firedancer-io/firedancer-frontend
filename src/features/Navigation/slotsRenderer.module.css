@@ -53,14 +53,6 @@
   }
 }
 
-.current-slot-number {
-  background-color: var(--slots-list-current-slot-number-background-color);
-  border-radius: 5px;
-  font-size: 12px;
-  padding: 3px 5px;
-  text-align: center;
-}
-
 .past {
   padding: 3px;
   color: var(--slots-list-past-slot-color);
