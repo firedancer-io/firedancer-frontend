@@ -79,11 +79,3 @@
     mask-image: linear-gradient(to left, transparent 0%, black 100%);
   }
 }
-
-.header {
-  display: flex;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid var(--container-border-color);
-  background: var(--container-background-color);
-}

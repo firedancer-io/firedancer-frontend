@@ -12,7 +12,6 @@ import { useEffect, useMemo } from "react";
 import { useMedia, useUnmount } from "react-use";
 import { useSlotInfo } from "../../hooks/useSlotInfo";
 import styles from "./slotDetails.module.css";
-import PeerIcon from "../../components/PeerIcon";
 import {
   firstProcessedLeaderAtom,
   epochAtom,
@@ -28,8 +27,8 @@ import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
 import { getLeaderSlots, getSlotGroupLeader } from "../../utils";
 import { SkippedIcon, StatusIcon } from "../../components/StatusIcon";
 import clsx from "clsx";
-import SlotClient from "../../components/SlotClient";
 import { Link } from "@tanstack/react-router";
+import DetailedSlotStats from "./DetailedSlotStats";
 import { SlotSearch } from "./SlotSearch";
 
 export default function SlotDetails() {
@@ -174,26 +173,6 @@ function PreviousNextNavigation({
   );
 }
 
-function SlotHeader({ slot }: { slot: number }) {
-  const { peer, isLeader, name } = useSlotInfo(slot);
-
-  return (
-    <Flex
-      gap="3"
-      wrap="wrap"
-      className={styles.header}
-      align="center"
-      justify="start"
-    >
-      <PeerIcon url={peer?.info?.icon_url} size={22} isYou={isLeader} />
-      <Text className={styles.slotName}>{name}</Text>
-      <Flex gap="1">
-        <SlotClient slot={slot} size="large" />
-      </Flex>
-    </Flex>
-  );
-}
-
 function SlotStatus({
   slot,
   searchSlot,
@@ -241,7 +220,7 @@ function SlotContent() {
   return (
     <Flex direction="column" gap="2" flexGrow="1">
       <SlotNavigation slot={slotGroupLeader} />
-      <SlotHeader slot={slotGroupLeader} />
+      <DetailedSlotStats />
       <SlotPerformance />
       <ComputeUnitsCard />
       <TransactionBarsCard />

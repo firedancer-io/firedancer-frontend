@@ -118,7 +118,10 @@ export function getChartData(
   return res as uPlot.AlignedData;
 }
 
-export function getDurationWithUnits(value: bigint, allowNegatives = true) {
+export function getDurationWithUnits(
+  value: bigint | number,
+  allowNegatives = true,
+) {
   let formatted = Number(value);
   if (!allowNegatives) {
     formatted = Math.abs(formatted);
