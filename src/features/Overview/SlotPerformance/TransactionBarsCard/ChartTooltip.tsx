@@ -164,7 +164,7 @@ function IpDisplay({ transactions, txnIdx }: DisplayProps) {
     }
 
     return `${peer.identity_pubkey.substring(0, 8)}...`;
-  }, [displayIp, peersList]);
+  }, [displayIp, peersList]); 
 
   return (
     <>

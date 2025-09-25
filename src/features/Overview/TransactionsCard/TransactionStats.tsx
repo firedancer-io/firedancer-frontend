@@ -5,7 +5,7 @@ import { estimatedTpsAtom } from "../../../api/atoms";
 import {
   failureColor,
   headerColor,
-  successColor,
+  nonVoteColor,
   votesColor,
 } from "../../../colors";
 
@@ -33,7 +33,7 @@ export default function TransactionStats() {
               maximumFractionDigits: 2,
             }) ?? "-"
           }
-          valueColor={successColor}
+          valueColor={nonVoteColor}
         />
         <CardStat
           label="Non-vote TPS Fail"
