@@ -1,0 +1,311 @@
+import { selectedSlotAtom } from "../../../../Overview/SlotPerformance/atoms";
+import { useAtomValue } from "jotai";
+import { useSlotQueryResponseDetailed } from "../../../../../hooks/useSlotQuery";
+import { useMemo, useState } from "react";
+import type uPlot from "uplot";
+import AutoSizer from "react-virtualized-auto-sizer";
+import UplotReact from "../../../../../uplotReact/UplotReact";
+import {
+  chartAxisColor,
+  nonVoteColor,
+  slotStatusRed,
+  tipsColor,
+  votesColor,
+} from "../../../../../colors";
+import { timeScaleDragPlugin } from "../../../../Overview/SlotPerformance/TransactionBarsCard/scaleDragPlugin";
+import { wheelZoomPlugin } from "../../../../../uplotReact/wheelZoomPlugin";
+import { touchPlugin } from "../../../../../uplotReact/touchPlugin";
+import { packBufferTooltipPlugin } from "./packBufferTooltipPlugin";
+import PackBufferChartTooltip from "./PackBufferChartTooltip";
+import { Text } from "@radix-ui/themes";
+
+export default function PackBufferChart() {
+  const slot = useAtomValue(selectedSlotAtom);
+  const response = useSlotQueryResponseDetailed(slot).response;
+  const [tooltipDataIdx, setTooltipDataIdx] = useState<number>();
+  const schedulerCounts = response?.scheduler_counts;
+
+  //** */
+  const chartData = useMemo<uPlot.AlignedData | undefined>(() => {
+    const startTimeNanos = response?.transactions?.start_timestamp_nanos;
+    if (!schedulerCounts || !startTimeNanos) return;
+
+    const data: [number[], number[], number[], number[], number[]] = [
+      [],
+      [],
+      [],
+      [],
+      [],
+    ];
+    for (let i = 0; i < Math.min(schedulerCounts.length); i++) {
+      data[0].push(Number(schedulerCounts[i].timestamp_nanos - startTimeNanos));
+      data[1].push(schedulerCounts[i].regular);
+      data[2].push(schedulerCounts[i].votes);
+      data[3].push(schedulerCounts[i].conflicting);
+      data[4].push(schedulerCounts[i].bundles);
+    }
+    return data;
+  }, [response?.transactions?.start_timestamp_nanos, schedulerCounts]);
+
+  const options = useMemo<uPlot.Options>(() => {
+    return {
+      width: 0,
+      height: 0,
+      // class: styles.chart,
+      drawOrder: ["axes", "series"] as uPlot.DrawOrderKey[],
+      cursor: {
+        // sync: {
+        //   key: xScaleKey,
+        // },
+        // points: { show: false },
+      },
+      scales: {
+        xx: {
+          time: false,
+        },
+        txns: {
+          // range: (u, initMin, initMax) => {
+          //   if (isFullCuRange(initMin, initMax)) {
+          //     return [0, maxComputeUnits + 1_000_000];
+          //   }
+          //   const buffer = Math.max(initMax - initMin, 50_000);
+          //   return [
+          //     Math.max(initMin - buffer, 0),
+          //     Math.min(initMax + buffer, maxComputeUnits + 1_000_000),
+          //   ];
+          // },
+        },
+        // votes: {
+        //   // range: [0, maxBankCount + 1],
+        // },
+        // conflicting: {
+        //   // range: [0, maxLamports * 1.1],
+        // },
+        // bundle: {},
+      },
+      axes: [
+        {
+          scale: "xx",
+          border: {
+            show: true,
+            width: 1 / devicePixelRatio,
+            // stroke: chartAxisColor,
+          },
+          stroke: chartAxisColor,
+          grid: {
+            width: 1 / devicePixelRatio,
+            // stroke: chartGridColor,
+          },
+          ticks: {
+            width: 1 / devicePixelRatio,
+            stroke: chartAxisColor,
+            size: 5,
+          },
+          size: 30,
+          values: (self, ticks) => {
+            return ticks.map((rawValue) => rawValue / 1_000_000 + "ms");
+          },
+          space: 100,
+        },
+        {
+          scale: "txns",
+          border: {
+            show: true,
+            width: 1 / devicePixelRatio,
+            stroke: chartAxisColor,
+          },
+          stroke: chartAxisColor,
+          grid: {
+            width: 1 / devicePixelRatio,
+            // stroke: chartGridColor,
+          },
+          ticks: {
+            width: 1 / devicePixelRatio,
+            stroke: chartAxisColor,
+            size: 5,
+          },
+          // values: (self, ticks) =>
+          //   ticks.map((rawValue) => rawValue / 1_000_000 + "M"),
+          space: 50,
+          size(self, values, axisIdx, cycleNum) {
+            const axis = self.axes[axisIdx];
+            // bail out, force convergence
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+            if (cycleNum > 1) return (axis as any)._size;
+            let axisSize = axis.ticks?.size ?? 0 + (axis.gap ?? 0);
+            // adding tick gap
+            axisSize += 5;
+            // find longest value
+            const longestVal = (values ?? []).reduce(
+              (acc, val) => (val.length > acc.length ? val : acc),
+              "",
+            );
+            if (longestVal !== "") {
+              self.ctx.font = axis.font?.[0] ?? "Inter Tight";
+              axisSize +=
+                self.ctx.measureText(longestVal).width / devicePixelRatio;
+            }
+            const px = Math.ceil(axisSize);
+            // setLeftAxisSize(px);
+            return px;
+          },
+        },
+        // {
+        //   scale: lamportsScaleKey,
+        //   stroke: chartAxisColor,
+        //   border: {
+        //     show: true,
+        //     width: 1 / devicePixelRatio,
+        //     stroke: chartAxisColor,
+        //   },
+        //   ticks: {
+        //     width: 1 / devicePixelRatio,
+        //     stroke: chartAxisColor,
+        //     size: 5,
+        //   },
+        //   values: (self, ticks) =>
+        //     ticks.map((rawValue) => rawValue / lamportsPerSol + " SOL"),
+        //   side: 1,
+        //   space: 50,
+        //   size(self, values, axisIdx, cycleNum) {
+        //     const axis = self.axes[axisIdx];
+
+        //     // bail out, force convergence
+        //     // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+        //     if (cycleNum > 1) return (axis as any)._size;
+
+        //     let axisSize = axis.ticks?.size ?? 0 + (axis.gap ?? 0);
+
+        //     // adding tick gap
+        //     axisSize += 5;
+
+        //     // find longest value
+        //     const longestVal = (values ?? []).reduce(
+        //       (acc, val) => (val.length > acc.length ? val : acc),
+        //       "",
+        //     );
+
+        //     if (longestVal !== "") {
+        //       self.ctx.font = axis.font?.[0] ?? "Inter Tight";
+        //       axisSize +=
+        //         self.ctx.measureText(longestVal).width / devicePixelRatio;
+        //     }
+        //     const px = Math.ceil(axisSize);
+        //     setRightAxisSize(px);
+        //     return px;
+        //   },
+        // },
+      ],
+      series: [
+        { scale: "xx" },
+        {
+          label: "Regular",
+          stroke: nonVoteColor,
+          // paths,
+          points: { show: false },
+          width: 2 / devicePixelRatio,
+          scale: "txns",
+        },
+        {
+          label: "Votes",
+          stroke: votesColor,
+          // paths,
+          points: { show: false },
+          width: 2 / devicePixelRatio,
+          scale: "txns",
+        },
+        {
+          label: "Conflicting",
+          stroke: slotStatusRed,
+          // paths,
+          points: { show: false },
+          width: 2 / devicePixelRatio,
+          scale: "txns",
+        },
+        {
+          label: "Bundles",
+          stroke: tipsColor,
+          // paths,
+          points: { show: false },
+          width: 2 / devicePixelRatio,
+          scale: "txns",
+        },
+      ],
+      legend: { show: false },
+      plugins: [
+        // startLinePlugin(),
+        // cuRefAreaPlugin({
+        //   slotTransactionsRef,
+        //   maxComputeUnitsRef,
+        //   bankTileCountRef,
+        // }),
+        timeScaleDragPlugin(),
+        wheelZoomPlugin({ factor: 0.75 }),
+        packBufferTooltipPlugin(setTooltipDataIdx),
+        // syncXScalePlugin(),
+        // cuIsFullXRangePlugin(),
+        touchPlugin(),
+      ],
+    };
+  }, []);
+
+  if (!chartData) return;
+
+  // console.log(chartData);
+
+  const tooltipData =
+    tooltipDataIdx !== undefined
+      ? schedulerCounts?.[tooltipDataIdx]
+      : undefined;
+
+  return (
+    <>
+      <Text style={{ color: "var(--gray-12)" }}>Pack Txns</Text>
+      <div style={{ height: "100%", minHeight: "200px" }}>
+        <AutoSizer>
+          {({ height, width }) => {
+            options.width = width;
+            options.height = height;
+            return (
+              <>
+                <UplotReact
+                  id={"packBufferChart"}
+                  options={options}
+                  data={chartData}
+                  // onCreate={onCreate}
+                />
+              </>
+            );
+          }}
+        </AutoSizer>
+      </div>
+      <PackBufferChartTooltip data={tooltipData} />
+    </>
+  );
+
+  // return (
+  //   <Flex direction="column">
+  //     <Text style={{ color: "var(--gray-12)" }}>
+  //       Pack Txn Buffer Utilization
+  //     </Text>
+  //     <svg
+  //       // width="278"
+  //       // height="157"
+  //       viewBox="0 0 278 157"
+  //       fill="none"
+  //       xmlns="http://www.w3.org/2000/svg"
+  //     >
+  //       <path
+  //         d="M0.434814 155.967C0.817207 155.782 4.88261 155.333 7.25968 154.126C10.3201 152.572 13.7168 144.443 14.6565 142.145C15.4668 140.165 16.0976 138.205 16.7346 137.256C17.7478 135.747 19.5689 135.335 22.9701 131.269C27.2134 126.197 29.5921 121.184 30.3206 119.746C31.3208 117.771 32.2838 115.794 33.7541 110.95C34.9406 107.042 36.8407 100.043 37.9432 95.9747C39.9065 88.7301 41.8692 86.6893 44.203 83.5917C46.4286 80.6378 48.087 79.143 51.9235 76.2777C52.9786 75.4896 53.986 75.0143 54.765 75.2836C57.7738 76.3237 58.4996 81.0866 60.0332 84.6663C61.2953 87.6123 62.3053 91.2809 65.0202 94.7608C65.815 95.7795 66.3626 96.2804 67.0232 96.1687C68.1708 95.9747 68.8462 94.2339 69.4654 94.2345C70.7352 94.2358 71.5682 94.9519 72.0686 95.3156C75.3952 97.7326 78.8752 85.4057 79.6265 84.8553C80.2252 84.4166 82.9038 89.2423 86.7681 95.5C88.8433 98.8604 90.8075 101.953 92.8374 106.079C93.6622 107.755 94.1783 108.437 96.864 107.492C99.5497 106.547 104.417 103.917 107.153 102.781C109.889 101.646 110.346 102.086 110.743 102.579C112.557 104.833 114.644 106.501 119.408 113.279C124.7 120.808 127.663 126.135 128.246 126.056C128.945 125.962 129.92 127.653 131.161 128.717C133.958 131.114 137.858 119.716 138.983 118.503C140.345 117.034 141.921 117.653 144.163 116.146C152.435 110.585 150.936 102.609 151.915 102.176C154.128 101.197 156.046 104.863 157.798 104.062C160.581 102.79 162.326 99.6801 164.992 97.4296C168.318 94.622 171.199 90.6036 173.159 87.6615C176.813 82.1763 177.741 75.1241 179.001 72.3952C180.559 69.0233 185.663 71.7895 189.526 69.695C191.454 68.65 194.919 68.3661 198.815 68.2948C200.54 68.2633 202.856 66.8878 207.186 63.2208C212.382 58.8203 215.604 53.2318 217.151 49.8089C220.744 41.8608 220.894 31.6012 222.124 29.9744C225.064 26.0857 231.945 30.3517 232.762 29.2686C236.587 24.1985 239.503 17.5999 241.12 15.4497C243.273 12.5879 247.132 11.5877 253.588 10.823C258.185 9.0849 260.94 5.97042 264.859 3.6065C267.434 3.03532 272.159 2.34723 277.435 0.966797"
+  //         stroke="#23AFD0"
+  //         strokeWidth="2"
+  //       />
+  //       <path
+  //         d="M0.907471 85C2.57141 81.4081 6.21137 77.4244 10.7967 74.0089C13.225 72.2 14.3701 72.0064 14.9581 72.1564C16.3772 72.5186 18.0311 73.5412 19.891 74.9613C20.4696 75.4032 21.5612 76.2545 24.9875 76.9486C27.3438 77.4259 31.119 76.9822 33.075 77.6403C35.8628 78.5782 35.2182 81.5805 35.4392 82.0457C35.9281 83.0749 38.6701 82.8663 40.3171 83.3146C42.4899 83.9061 43.8229 83.6334 45.8203 82.6421C47.0963 82.0088 48.1539 81.1201 50.4555 78.8189C52.6395 76.6351 56.0208 74.6132 58.6858 73.9563C59.0503 73.8664 59.3563 74.4355 59.6719 74.5546C61.0743 75.084 64.8374 71.1407 69.5531 70.8725C71.5622 70.7582 73.0635 70.5125 74.2198 69.4853C75.8693 68.0201 77.3317 64.8319 79.2968 60.0279C80.4588 57.1874 81.5576 53.376 82.2545 51.031C82.9514 48.686 83.1115 47.8836 83.5028 44.932C83.8941 41.9805 84.5119 36.9042 84.8581 33.0016C85.4316 26.5368 85.4296 23.2582 85.8274 22.0263C86.2676 20.6629 87.5594 19.2954 88.4235 17.7911C88.9676 16.844 90.7072 14.221 93.3465 10.4807C95.6431 7.2261 97.1177 4.34422 98.2728 2.56384C98.7564 1.81837 99.4256 1.27698 100.066 1.03041C100.382 0.908754 100.76 1.10584 103.118 2.48013C105.476 3.85441 109.823 6.4796 113.254 9.49268C116.686 12.5058 119.07 15.8272 120.788 18.542C123.696 23.1384 124.753 25.4123 125.475 25.8236C126.732 26.5399 127.94 28.2229 129.971 31.2455C133.58 36.6154 135.734 40.4802 136.688 40.802C138.452 41.3965 141.6 40.3962 145.363 40.4277C149.151 40.4594 152.56 42.3844 154.951 44.5962C156.473 46.0038 156.341 49.5561 156.433 53.7062C156.494 56.4065 156.357 57.6973 156.578 58.2364C157.375 60.1797 162.05 60.7458 164.425 63.077C165.128 63.7674 167.889 66.3446 172.694 68.9044C177.235 71.3233 180.048 64.896 180.568 65.6687C180.957 66.2471 181.303 66.6973 181.991 67.061C185.052 68.6801 190.332 68.7125 193.297 68.6434C195.839 68.5841 200.491 66.6625 206.224 66.3336C208.73 66.1899 213.324 65.9456 216.237 65.4517C220.373 64.7506 222.073 63.0818 223.315 62.545C224.144 62.1866 226.259 63.2596 229.907 64.952C233.896 66.8031 236.824 67.5514 238.66 68.2088C241.754 69.3163 244.547 69.6056 246.339 69.6944C247.379 69.746 248.677 69.9607 252.394 69.9571C256.111 69.9536 262.204 69.7635 265.54 69.738C270.63 69.6991 273.968 70.5067 275.619 70.315C275.98 70.2571 276.421 70.2345 276.818 70.2458C277.216 70.2571 277.556 70.3031 277.907 70.3504"
+  //         stroke="#E5484D"
+  //         strokeWidth="2"
+  //       />
+  //     </svg>
+  //   </Flex>
+  // );
+}

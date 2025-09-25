@@ -645,11 +645,20 @@ const tsTileTimersSchema = z.object({
   tile_timers: z.number().array(),
 });
 
+export const schedulerCountsSchema = z.object({
+  timestamp_nanos: z.coerce.bigint(),
+  regular: z.number(),
+  votes: z.number(),
+  conflicting: z.number(),
+  bundles: z.number(),
+});
+
 export const slotResponseSchema = z.object({
   publish: slotPublishSchema,
   waterfall: txnWaterfallSchema.nullable().optional(),
   tile_primary_metric: tilePrimaryMetricSchema.nullable().optional(),
   tile_timers: tsTileTimersSchema.array().nullable().optional(),
+  scheduler_counts: schedulerCountsSchema.array().nullable().optional(),
   transactions: slotTransactionsSchema.nullable().optional(),
 });
 
