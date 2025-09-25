@@ -13,7 +13,7 @@ import {
   mySlotsColor,
   nextColor,
   regularTextColor,
-  successColor,
+  nonVoteColor,
 } from "../../../colors";
 
 export default function SlotStatusCard() {
@@ -95,7 +95,7 @@ function VotingStatusText() {
 
   let voteColor = regularTextColor;
   if (voteState === "voting") {
-    voteColor = successColor;
+    voteColor = nonVoteColor;
   } else if (voteState === "non-voting") {
     voteColor = mySlotsColor;
   } else if (voteState === "delinquent") {

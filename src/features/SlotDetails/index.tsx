@@ -13,7 +13,7 @@ import { useUnmount } from "react-use";
 import { epochAtom } from "../../atoms";
 import { SlotSearch } from "./SlotSearch";
 import SlotNavigation from "./SlotNavigation";
-import SlotDetailsHeader from "./SlotDetailsHeader";
+import DetailedSlotStats from "./DetailedSlotStats";
 
 export default function SlotDetails() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
@@ -50,7 +50,7 @@ function SlotContent() {
   return (
     <Flex direction="column" gap="2" flexGrow="1">
       <SlotNavigation />
-      <SlotDetailsHeader />
+      <DetailedSlotStats />
       <SlotPerformance />
       <ComputeUnitsCard />
       <TransactionBarsCard />

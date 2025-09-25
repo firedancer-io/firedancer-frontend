@@ -20,6 +20,7 @@ interface TileCardProps {
   liveIdlePerTile?: number[];
   queryIdlePerTile?: number[][];
   metricType?: keyof TilePrimaryMetric;
+  includeBg?: boolean;
 }
 
 export default function TileCard({
@@ -30,6 +31,7 @@ export default function TileCard({
   liveIdlePerTile,
   queryIdlePerTile,
   metricType,
+  includeBg = true,
 }: TileCardProps) {
   const [ref, { width }] = useMeasure<HTMLDivElement>();
 
@@ -46,7 +48,7 @@ export default function TileCard({
 
   return (
     <Flex ref={ref}>
-      <Card>
+      <Card includeBg={includeBg}>
         <Flex direction="column" justify="between" height="100%" gap="1">
           <TileHeader
             header={header}
@@ -55,7 +57,11 @@ export default function TileCard({
             metricType={metricType}
           />
           <Box flexGrow="1" />
-          <TileSparkLine value={avgBusy} queryBusy={aggQueryBusyPerTs} />
+          <TileSparkLine
+            value={avgBusy}
+            queryBusy={aggQueryBusyPerTs}
+            includeBg={includeBg}
+          />
           <TileSparkLineExpandedContainer
             tileCountArr={tileCountArr}
             liveBusyPerTile={liveBusyPerTile}
