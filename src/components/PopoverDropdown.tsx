@@ -4,6 +4,7 @@ import type { PropsWithChildren, ReactNode } from "react";
 import { containerElAtom } from "../atoms";
 import { useAtomValue } from "jotai";
 import { Flex } from "@radix-ui/themes";
+import { maxZIndex } from "../consts";
 
 interface PopoverDropdownProps {
   content: ReactNode;
@@ -28,6 +29,9 @@ export default function PopoverDropdown({
       <Popover.Portal container={containerEl}>
         <Popover.Content
           className={styles.popoverContent}
+          style={{
+            zIndex: maxZIndex,
+          }}
           sideOffset={5}
           tabIndex={undefined}
         >
