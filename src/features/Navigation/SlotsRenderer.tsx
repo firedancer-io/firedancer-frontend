@@ -153,7 +153,10 @@ function CurrentLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
     >
       <Flex direction="column" className={styles.leftColumn}>
         <SlotIconName slot={firstSlot} iconSize={22} />
-        <Text className={styles.currentSlotNumber}>{currentSlot}</Text>
+        <Flex gap="1" align="center">
+          <SlotClient slot={firstSlot} size="small" />
+          <Text size="2">{currentSlot}</Text>
+        </Flex>
       </Flex>
 
       <SlotStatuses firstSlot={firstSlot} isCurrentSlot />
