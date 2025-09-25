@@ -230,6 +230,9 @@ export const setSlotResponseAtom = atom(
       response.tile_primary_metric ??= draft[slot]?.tile_primary_metric;
       response.tile_timers ??= draft[slot]?.tile_timers;
       response.waterfall ??= draft[slot]?.waterfall;
+      response.scheduler_counts ??= draft[slot]?.scheduler_counts;
+      response.limits ??= draft[slot]?.limits;
+      response.scheduler_stats ??= draft[slot]?.scheduler_stats;
 
       draft[slot] = response;
     });

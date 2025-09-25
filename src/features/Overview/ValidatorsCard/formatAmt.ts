@@ -3,7 +3,7 @@ import type { FormatNumberOptions } from "../../../numUtils";
 import { formatNumber } from "../../../numUtils";
 
 export function formatNumberLamports(
-  value: bigint,
+  value: bigint | number,
   decimalCount: number = solDecimals,
   formatOptions?: FormatNumberOptions,
 ) {

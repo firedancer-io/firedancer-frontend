@@ -47,6 +47,7 @@ import type {
   catchUpHistorySchema,
   repairSlotSchema,
   turbineSlotSchema,
+  schedulerCountsSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -137,6 +138,8 @@ export type PeerRemove = z.infer<typeof peerRemoveSchema>;
 export type SlotTransactions = z.infer<typeof slotTransactionsSchema>;
 
 export type SlotPublish = z.infer<typeof slotPublishSchema>;
+
+export type SchedulerCounts = z.infer<typeof schedulerCountsSchema>;
 
 export type SlotResponse = z.infer<typeof slotResponseSchema>;
 
