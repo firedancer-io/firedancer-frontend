@@ -1,4 +1,4 @@
-export const successColor = "#67B873";
+export const nonVoteColor = "#67B873";
 export const failureColor = "#E5484D"; // radix red.9
 export const nextColor = "#C567EA";
 export const mySlotsColor = "#2A7EDF";

@@ -33,14 +33,6 @@
   }
 }
 
-.slot-name {
-  font-size: 18px;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .slot-navigation-container {
   height: var(--slot-nav-height);
   box-shadow: 0 4px 4px 0 var(--color-background);
@@ -113,12 +105,4 @@
   &.next-navigation {
     mask-image: linear-gradient(to left, transparent 0%, black 100%);
   }
-}
-
-.header {
-  display: flex;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid var(--container-border-color);
-  background: var(--container-background-color);
 }

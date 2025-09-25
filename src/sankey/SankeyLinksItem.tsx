@@ -25,7 +25,7 @@ import {
   sankeyDroppedLinkColor,
   sankeyIncomingLinkColor,
   sankeyRetainedLinkColor,
-  successColor,
+  nonVoteColor,
   votesColor,
 } from "../colors";
 
@@ -102,7 +102,7 @@ export const SankeyLinksItem = <N extends DefaultNode, L extends DefaultLink>({
   ) {
     linkColor = sankeyRetainedLinkColor;
   } else if (successfulSlotNodes.includes(link.target.id as SlotNode)) {
-    linkColor = successColor;
+    linkColor = nonVoteColor;
   } else if (failedSlotNodes.includes(link.target.id as SlotNode)) {
     linkColor = failureColor;
   } else if (link.target.id === SlotNode.Votes) {
