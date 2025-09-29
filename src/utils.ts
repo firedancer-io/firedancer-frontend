@@ -82,13 +82,15 @@ export function getStake(peer: Peer) {
   );
 }
 
-export function getFmtStake(stake?: bigint) {
+export function getFmtStake(stake?: bigint, smallValueDecimals?: number) {
   if (stake === undefined) return;
 
   let value = "";
   const solAmount = Number(stake) / lamportsPerSol;
   if (solAmount < 1) {
-    value = solAmount.toLocaleString();
+    value = solAmount.toLocaleString(undefined, {
+      maximumFractionDigits: smallValueDecimals,
+    });
   } else if (solAmount < 100) {
     value = solAmount.toLocaleString(undefined, {
       maximumFractionDigits: 2,

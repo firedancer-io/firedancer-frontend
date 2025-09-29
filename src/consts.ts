@@ -1,5 +1,7 @@
 export const slotsPerLeader = 4;
 
+export const solDecimals = 4;
+
 export const lamportsPerSol = 1_000_000_000;
 
 /** Max compute units is dynamic and pulled from the server,

@@ -6,7 +6,7 @@ import { DisplayType, sankeyDisplayTypeAtom, selectedSlotAtom } from "./atoms";
 import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";
 import { fixValue } from "../../../utils";
 import { useMemo, useState } from "react";
-import { lamportsPerSol } from "../../../consts";
+import { lamportsPerSol, solDecimals } from "../../../consts";
 import { formatNumber } from "../../../numUtils";
 import RowSeparator from "../../../components/RowSeparator";
 import { PlusIcon, MinusIcon } from "@radix-ui/react-icons";
@@ -61,11 +61,11 @@ function SlotStats() {
   const values = useMemo(() => {
     if (!query.response?.publish) return;
 
-    const transactionFee3Decimals = query.response.publish.transaction_fee
+    const transactionFeeRounded = query.response.publish.transaction_fee
       ? formatNumber(
           Number(query.response.publish.transaction_fee) / lamportsPerSol,
           {
-            decimals: 3,
+            decimals: solDecimals,
           },
         )
       : "0";
@@ -76,11 +76,11 @@ function SlotStats() {
         ).toFixed(9)
       : "0";
 
-    const priorityFee3Decimals = query.response.publish.priority_fee
+    const priorityFeeRounded = query.response.publish.priority_fee
       ? formatNumber(
           Number(query.response.publish.priority_fee) / lamportsPerSol,
           {
-            decimals: 3,
+            decimals: solDecimals,
           },
         )
       : "0";
@@ -91,9 +91,9 @@ function SlotStats() {
         )
       : "0";
 
-    const tips3Decimals = query.response.publish.tips
+    const tipsRounded = query.response.publish.tips
       ? formatNumber(Number(query.response.publish.tips) / lamportsPerSol, {
-          decimals: 3,
+          decimals: solDecimals,
         })
       : "0";
 
@@ -106,11 +106,11 @@ function SlotStats() {
     return {
       computeUnits,
       transactionFeeFull,
-      transactionFee3Decimals,
+      transactionFeeRounded,
       priorityFeeFull,
-      priorityFee3Decimals,
+      priorityFeeRounded,
       tips,
-      tips3Decimals,
+      tipsRounded,
     };
   }, [query.response]);
 
@@ -141,7 +141,7 @@ function SlotStats() {
             }
           >
             <Text align="right" color="cyan">
-              {values?.priorityFee3Decimals ?? "-"}
+              {values?.priorityFeeRounded ?? "-"}
             </Text>
           </Tooltip>
           <Text color="indigo">Transaction Fees</Text>
@@ -153,13 +153,13 @@ function SlotStats() {
             }
           >
             <Text align="right" color="indigo">
-              {values?.transactionFee3Decimals ?? "-"}
+              {values?.transactionFeeRounded ?? "-"}
             </Text>
           </Tooltip>
           <Text color="jade">Tips</Text>
           <Tooltip content={values?.tips ? `${values?.tips} SOL` : null}>
             <Text align="right" color="jade">
-              {values?.tips3Decimals ?? "-"}
+              {values?.tipsRounded ?? "-"}
             </Text>
           </Tooltip>
           <div style={{ gridColumn: "span 2" }}>

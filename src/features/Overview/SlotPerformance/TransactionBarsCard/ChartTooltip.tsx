@@ -26,7 +26,7 @@ import {
   incomePerCuToggleControlColor,
   iconButtonColor,
 } from "../../../../colors";
-import { txnErrorCodeMap } from "../../../../consts";
+import { solDecimals, txnErrorCodeMap } from "../../../../consts";
 import { peersListAtom } from "../../../../atoms";
 
 export default function ChartTooltip() {
@@ -192,10 +192,9 @@ function IncomeDisplay({ transactions, txnIdx }: DisplayProps) {
   return (
     <LabelValueDisplay
       label="CU Income"
-      value={`${calcTxnIncome(
-        transactions,
-        txnIdx,
-      )?.toLocaleString()}${rankText}`}
+      value={`${calcTxnIncome(transactions, txnIdx)?.toLocaleString(undefined, {
+        maximumFractionDigits: solDecimals,
+      })}${rankText}`}
       color={incomePerCuToggleControlColor}
     />
   );

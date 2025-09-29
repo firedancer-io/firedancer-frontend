@@ -1,10 +1,10 @@
-import { lamportsPerSol } from "../../../consts";
+import { lamportsPerSol, solDecimals } from "../../../consts";
 import type { FormatNumberOptions } from "../../../numUtils";
 import { formatNumber } from "../../../numUtils";
 
 export function formatNumberLamports(
   value: bigint,
-  decimalCount: number = 3,
+  decimalCount: number = solDecimals,
   formatOptions?: FormatNumberOptions,
 ) {
   if (!value) return "0";
