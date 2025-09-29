@@ -18,7 +18,11 @@ import skippedIcon from "../../../assets/Skipped.svg";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import { fixValue } from "../../../utils";
 import { useMedia, usePrevious, useRafLoop, useUnmount } from "react-use";
-import { defaultMaxComputeUnits, lamportsPerSol } from "../../../consts";
+import {
+  defaultMaxComputeUnits,
+  lamportsPerSol,
+  solDecimals,
+} from "../../../consts";
 import { formatNumberLamports } from "../../Overview/ValidatorsCard/formatAmt";
 import {
   setScrollFuncsAtom,
@@ -233,9 +237,9 @@ function getRowValues(publish: SlotPublish): RowValues {
   );
   const totalFees = formatNumberLamports(
     (publish.transaction_fee ?? 0n) + (publish.priority_fee ?? 0n),
-    3,
+    solDecimals,
     {
-      decimals: 3,
+      decimals: solDecimals,
       trailingZeroes: true,
     },
   );
@@ -250,8 +254,8 @@ function getRowValues(publish: SlotPublish): RowValues {
       ? (Number(publish.priority_fee) / lamportsPerSol).toString()
       : "0";
 
-  const tips = formatNumberLamports(publish.tips ?? 0n, 3, {
-    decimals: 3,
+  const tips = formatNumberLamports(publish.tips ?? 0n, solDecimals, {
+    decimals: solDecimals,
     trailingZeroes: true,
   });
   const tipsFull =

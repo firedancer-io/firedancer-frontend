@@ -5,6 +5,7 @@ import styles from "./cuChartTooltip.module.css";
 import { Text } from "@radix-ui/themes";
 import clsx from "clsx";
 import { getFmtStake } from "../../../../utils";
+import { solDecimals } from "../../../../consts";
 
 export default function CuChartTooltip() {
   const chartData = useAtomValue(cuChartTooltipDataAtom);
@@ -34,11 +35,11 @@ export default function CuChartTooltip() {
           </Text>
           <Text className={clsx(styles.tips, styles.label)}>Tips</Text>
           <Text className={styles.tips}>
-            {getFmtStake(BigInt(chartData.tips || 0))}
+            {getFmtStake(BigInt(chartData.tips || 0), solDecimals)}
           </Text>
           <Text className={clsx(styles.fees, styles.label)}>Fees</Text>
           <Text className={styles.fees}>
-            {getFmtStake(BigInt(chartData.fees || 0))}
+            {getFmtStake(BigInt(chartData.fees || 0), solDecimals)}
           </Text>
         </div>
       )}

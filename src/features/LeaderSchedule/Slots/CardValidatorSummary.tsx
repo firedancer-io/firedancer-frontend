@@ -152,13 +152,14 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
     ? `${peer.gossip.version[0] === "0" ? "Frankendancer" : "Agave"} v${peer.gossip.version}`
     : undefined;
 
-  const message = [
-    peer?.gossip?.version
-      ? `${peer.gossip.version[0] === "0" ? "Frankendancer" : "Agave"} v${peer.gossip.version}`
-      : undefined,
-    getStakeMsg(peer, peerStats?.activeStake, peerStats?.delinquentStake),
-    removePortFromIp(peer?.gossip?.sockets["tvu"] ?? ""),
-  ]
+  const stakeMsg = getStakeMsg(
+    peer,
+    peerStats?.activeStake,
+    peerStats?.delinquentStake,
+  );
+  const ipWithoutPort = removePortFromIp(peer?.gossip?.sockets["tvu"] ?? "");
+
+  const message = [validator, stakeMsg, ipWithoutPort]
     .filter(isDefined)
     .join(" - ");
 
@@ -167,10 +168,8 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
   const isFd = validator?.startsWith("Frankendancer");
   const isAgave = validator && !isFd;
   const validatorText = validator || "Unknown";
-  const stakeText =
-    getStakeMsg(peer, peerStats?.activeStake, peerStats?.delinquentStake) ?? "";
-  const ipText =
-    removePortFromIp(peer?.gossip?.sockets["tvu"] ?? "") || "Offline";
+  const stakeText = stakeMsg ?? "";
+  const ipText = ipWithoutPort || "Offline";
   const textLength = (validatorText + stakeText + ipText).length;
   const shouldWrap = textLength > 54;
   const textProps: TextProps = shouldWrap

@@ -16,13 +16,6 @@ export interface NumberFormatOptions {
   trailingZeroes?: boolean;
 }
 
-export const numberFormat = ({
-  decimals = 4,
-  significantDigits,
-  trailingZeroes = true,
-}: NumberFormatOptions = {}): Intl.NumberFormat =>
-  nfMemo(decimals, significantDigits, trailingZeroes);
-
 const nfMemo = memoize(
   (decimals?: number, significantDigits?: number, trailingZeroes?: boolean) => {
     return new Intl.NumberFormat(undefined, {
