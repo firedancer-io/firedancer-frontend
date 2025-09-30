@@ -7,7 +7,6 @@ import {
   currentLeaderSlotAtom,
   epochAtom,
   firstProcessedSlotAtom,
-  isNavCollapsedAtom,
   leaderSlotsAtom,
   mostRecentSlotLeaderAtom,
   SlotNavFilter,
@@ -32,6 +31,7 @@ import {
 } from "@floating-ui/react";
 import { isScrollingAtom } from "./atoms";
 import { useEventListener } from "../../hooks/useEventListener";
+import { useSlotsNavigation } from "../../hooks/useSlotsNavigation";
 
 // 1 tick about 10 leaders or 40 slots
 const sliderMaxValue = 10_800;
@@ -301,7 +301,7 @@ function SliderEpochProgress({
 const MSliderEpochProgress = memo(SliderEpochProgress);
 
 function SliderThumbTooltip({ isOpen }: { isOpen: boolean }) {
-  const isNavCollapsed = useAtomValue(isNavCollapsedAtom);
+  const { showNav } = useSlotsNavigation();
   const { refs, elements, floatingStyles, update } = useFloating({
     placement: "right",
     middleware: [offset(5)],
@@ -324,7 +324,7 @@ function SliderThumbTooltip({ isOpen }: { isOpen: boolean }) {
       <Slider.Thumb
         ref={refs.setReference}
         className={clsx(styles.sliderThumb, {
-          [styles.collapsed]: isNavCollapsed,
+          [styles.collapsed]: !showNav,
         })}
       />
       <FloatingPortal id="app">

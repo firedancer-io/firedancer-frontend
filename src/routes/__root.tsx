@@ -5,12 +5,10 @@ import StartupProgress from "../features/StartupProgress";
 import Toast from "../features/Toast";
 import Navigation from "../features/Navigation";
 import Header from "../features/Header";
-import { useMedia } from "react-use";
-import { isNavCollapsedAtom } from "../atoms";
-import { useAtom } from "jotai";
-import { headerSpacing, narrowNavMedia, slotsNavSpacing } from "../consts";
+import { headerSpacing, slotsNavSpacing } from "../consts";
 import NavBlur from "../features/Navigation/NavBlur";
 import { useCurrentRoute } from "../hooks/useCurrentRoute";
+import { useSlotsNavigation } from "../hooks/useSlotsNavigation";
 
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
@@ -59,14 +57,14 @@ function Root() {
 }
 
 function OutletContainer() {
-  const isNarrow = useMedia(narrowNavMedia);
-  const [isNavCollapsed, setIsNavCollapsed] = useAtom(isNavCollapsedAtom);
   const isSchedule = useCurrentRoute() === "Schedule";
+  const { setIsNavCollapsed, isNarrowScreen, occupyRowWidth, blurBackground } =
+    useSlotsNavigation();
 
   useEffect(() => {
     // automatically open / close on narrow switch
-    setIsNavCollapsed(isNarrow);
-  }, [isNarrow, setIsNavCollapsed]);
+    setIsNavCollapsed(isNarrowScreen);
+  }, [isNarrowScreen, setIsNavCollapsed]);
 
   return (
     <Box
@@ -75,13 +73,13 @@ function OutletContainer() {
       minWidth="0"
       pb="2"
       pl={
-        isNarrow || isNavCollapsed || isSchedule
+        isSchedule || !occupyRowWidth
           ? "0px"
           : `${headerSpacing - slotsNavSpacing}px`
       }
     >
       <Outlet />
-      {isNarrow && !isNavCollapsed && <NavBlur />}
+      {blurBackground && <NavBlur />}
     </Box>
   );
 }
