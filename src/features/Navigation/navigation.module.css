@@ -40,6 +40,16 @@
   }
 }
 
+.toggle-button-size {
+  height: 15px;
+  width: 15px;
+
+  &.lg {
+    height: 18px;
+    width: 18px;
+  }
+}
+
 .toggle-button {
   border-radius: 5px;
   background-color: var(--epoch-slider-progress-color);
@@ -54,6 +64,13 @@
 
   svg {
     fill: var(--nav-button-text-color);
+    height: 15px;
+    width: 15px;
+
+    &.lg {
+      height: 18px;
+      width: 18px;
+    }
 
     &.mirror {
       transform: scaleX(-1);

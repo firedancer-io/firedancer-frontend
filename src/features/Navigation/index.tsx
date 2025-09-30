@@ -19,15 +19,13 @@ import {
 } from "../../consts";
 import { StatusIndicator } from "./Status";
 import AutoSizer from "react-virtualized-auto-sizer";
-import { useCurrentRoute } from "../../hooks/useCurrentRoute";
 import NavFilterToggles from "./NavFilterToggles";
 import EpochSlider from "./EpochSlider";
-import { isNavCollapsedAtom } from "../../atoms";
-import { useAtomValue } from "jotai";
 import clsx from "clsx";
 import styles from "./navigation.module.css";
 import NavCollapseToggle from "./NavCollapseToggle";
 import { useMedia } from "react-use";
+import { useSlotsNavigation } from "../../hooks/useSlotsNavigation";
 
 const top = clusterIndicatorHeight + headerHeight;
 
@@ -36,29 +34,29 @@ const top = clusterIndicatorHeight + headerHeight;
  * On collapse, content width shrinks to 0
  */
 export default function Navigation() {
-  const isNavCollapsed = useAtomValue(isNavCollapsedAtom);
   const isNarrow = useMedia(narrowNavMedia);
+
+  const { showNav, occupyRowWidth, showOnlyEpochBar } = useSlotsNavigation();
 
   // padding to make sure epoch thumb is visible,
   // as it is positioned slightly outside of the container
-  const thumbPadding = isNavCollapsed ? 0 : epochThumbPadding;
+  const thumbPadding = showNav ? epochThumbPadding : 0;
 
-  const currentRoute = useCurrentRoute();
   const width = useMemo(() => {
-    return currentRoute === "Schedule" ? slotNavWithoutListWidth : slotNavWidth;
-  }, [currentRoute]);
+    return showOnlyEpochBar ? slotNavWithoutListWidth : slotNavWidth;
+  }, [showOnlyEpochBar]);
 
   return (
     <div
       style={{
         // resizes outlet content immediately
         flexShrink: 0,
-        width: isNarrow || isNavCollapsed ? "0" : `${width}px`,
+        width: occupyRowWidth ? `${width}px` : "0",
       }}
     >
       <Flex
         // width transitions
-        width={isNavCollapsed ? "0" : `${width + thumbPadding}px`}
+        width={showNav ? `${width + thumbPadding}px` : "0"}
         overflow="hidden"
         className={clsx("sticky", styles.slotNavContainer)}
         style={{
@@ -87,7 +85,7 @@ export default function Navigation() {
           <EpochSlider />
         </Flex>
 
-        {currentRoute !== "Schedule" && (
+        {!showOnlyEpochBar && (
           <Flex
             ml={`${logoRightSpacing}px`}
             direction="column"
