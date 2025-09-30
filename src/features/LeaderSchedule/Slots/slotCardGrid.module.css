@@ -67,6 +67,7 @@
 }
 
 .row-text {
+  white-space: nowrap;
   color: var(--slot-card-section-color);
   padding: 0 6px;
   font-variant-numeric: tabular-nums;
