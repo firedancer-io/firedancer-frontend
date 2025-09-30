@@ -1,10 +1,9 @@
 import { IconButton } from "@radix-ui/themes";
 import clsx from "clsx";
-import { useAtom } from "jotai";
-import { isNavCollapsedAtom } from "../../atoms";
 import styles from "./navigation.module.css";
 import ReadMore from "@material-design-icons/svg/filled/read_more.svg?react";
 import { largeNavToggleHeight, navToggleHeight } from "../../consts";
+import { useSlotsNavigation } from "../../hooks/useSlotsNavigation";
 
 interface NavCollapseToggleProps {
   isFloating?: boolean;
@@ -15,16 +14,29 @@ export default function NavCollapseToggle({
   isFloating,
   isLarge,
 }: NavCollapseToggleProps) {
-  const [isNavCollapsed, setIsNavCollapsed] = useAtom(isNavCollapsedAtom);
+  const { showNav, setIsNavCollapsed, showOnlyEpochBar } = useSlotsNavigation();
 
   const buttonSize = `${isLarge ? largeNavToggleHeight : navToggleHeight}px`;
-  const iconSize = isLarge ? "18px" : "15px";
+
+  if (showOnlyEpochBar) {
+    // Don't allow collapsing when only the epoch bar is shown
+    return (
+      <div
+        style={{
+          height: buttonSize,
+          width: buttonSize,
+        }}
+      />
+    );
+  }
 
   return (
     <IconButton
       size="1"
       onClick={() => setIsNavCollapsed((prev) => !prev)}
-      className={clsx(styles.toggleButton, { [styles.floating]: isFloating })}
+      className={clsx(styles.toggleButton, {
+        [styles.floating]: isFloating,
+      })}
       style={{
         height: buttonSize,
         width: buttonSize,
@@ -32,11 +44,9 @@ export default function NavCollapseToggle({
     >
       <ReadMore
         className={clsx({
-          [styles.mirror]: !isNavCollapsed,
+          [styles.lg]: isLarge,
+          [styles.mirror]: showNav,
         })}
-        style={{
-          height: iconSize,
-        }}
       />
     </IconButton>
   );

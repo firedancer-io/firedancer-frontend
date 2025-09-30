@@ -14,33 +14,29 @@ import {
 import Logo from "./Logo";
 import { CluserIndicator, Cluster } from "./Cluster";
 import NavCollapseToggle from "../Navigation/NavCollapseToggle";
-import { isNavCollapsedAtom } from "../../atoms";
-import { useAtomValue } from "jotai";
 import NavBlur from "../Navigation/NavBlur";
 import { slotNavBackgroundColor } from "../../colors";
-import { useCurrentRoute } from "../../hooks/useCurrentRoute";
 import { useMemo } from "react";
+import { useSlotsNavigation } from "../../hooks/useSlotsNavigation";
 
 export default function Header() {
   const showDropdownNav = useMedia("(max-width: 900px)");
   const isXNarrow = useMedia("(max-width: 401px)");
-  const isNarrow = useMedia("(max-width: 768px)");
-  const isNavCollapsed = useAtomValue(isNavCollapsedAtom);
 
-  const currentRoute = useCurrentRoute();
-  const isSchedule = currentRoute === "Schedule";
+  const { isNarrowScreen, blurBackground, showNav, showOnlyEpochBar } =
+    useSlotsNavigation();
 
   const leftBackground = useMemo(() => {
-    if (isNavCollapsed) return undefined;
-    if (isSchedule) {
+    if (!showNav) return undefined;
+    if (showOnlyEpochBar) {
       // only color the epoch bar portion
       const width = `${slotNavWithoutListWidth + epochThumbPadding}px`;
       return `linear-gradient(to right, ${slotNavBackgroundColor} 0px ${width}, transparent ${width} 100%)`;
     }
     return slotNavBackgroundColor;
-  }, [isNavCollapsed, isSchedule]);
+  }, [showOnlyEpochBar, showNav]);
 
-  const useExtraNarrowGap = isNavCollapsed && isXNarrow;
+  const useExtraNarrowGap = !showNav && isXNarrow;
   const extraNarrowGap = "3px";
 
   return (
@@ -69,11 +65,7 @@ export default function Header() {
             ml={`${-epochThumbPadding}px`}
             pl={`${epochThumbPadding}px`}
           >
-            {isNarrow && isNavCollapsed && (
-              <div style={{ width: isNavCollapsed ? undefined : "0" }}>
-                <NavCollapseToggle isLarge />
-              </div>
-            )}
+            {isNarrowScreen && !showNav && <NavCollapseToggle isLarge />}
             <Logo />
             <Cluster />
           </Flex>
@@ -97,11 +89,11 @@ export default function Header() {
 
             <IdentityKey />
 
-            {isNarrow && !isNavCollapsed && <NavBlur />}
+            {blurBackground && <NavBlur />}
           </Flex>
         </Flex>
 
-        {!isNarrow && (
+        {!isNarrowScreen && (
           <div
             style={{
               position: "relative",
@@ -114,7 +106,7 @@ export default function Header() {
                 left: 0,
               }}
             >
-              <NavCollapseToggle isFloating={isNavCollapsed} />
+              <NavCollapseToggle isFloating={!showNav} />
             </div>
           </div>
         )}
