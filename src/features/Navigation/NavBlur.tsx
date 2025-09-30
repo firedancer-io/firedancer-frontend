@@ -1,9 +1,8 @@
-import { useSetAtom } from "jotai";
-import { isNavCollapsedAtom } from "../../atoms";
 import { maxZIndex } from "../../consts";
+import { useSlotsNavigation } from "../../hooks/useSlotsNavigation";
 
 export default function NavBlur() {
-  const setIsNavCollapsed = useSetAtom(isNavCollapsedAtom);
+  const { setIsNavCollapsed } = useSlotsNavigation();
 
   return (
     <div
