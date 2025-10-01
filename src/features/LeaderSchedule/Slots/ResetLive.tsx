@@ -1,11 +1,9 @@
 import { useAtom, useAtomValue } from "jotai";
 import { currentLeaderSlotAtom, slotOverrideAtom } from "../../../atoms";
 import styles from "./resetLive.module.css";
-import arrowDown from "../../../assets/arrow_down.svg";
-import arrowUp from "../../../assets/arrow_up.svg";
-import { Button } from "@radix-ui/themes";
-import { slotsPerLeader } from "../../../consts";
-import { initUpcomingSlotCardCount } from "./SlotCardList";
+import { Button, Text } from "@radix-ui/themes";
+import { scheduleUpcomingSlotsCount, slotsPerLeader } from "../../../consts";
+import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
 
 export default function ResetLive() {
   const [slotOverride, setSlotOverride] = useAtom(slotOverrideAtom);
@@ -16,7 +14,7 @@ export default function ResetLive() {
 
   const pastSlot =
     slotOverride <=
-    currentLeaderSlot + initUpcomingSlotCardCount * slotsPerLeader;
+    currentLeaderSlot + scheduleUpcomingSlotsCount * slotsPerLeader;
 
   return (
     <div className={styles.container}>
@@ -27,8 +25,8 @@ export default function ResetLive() {
         }}
         onClick={() => setSlotOverride(undefined)}
       >
-        Skip to Now
-        {pastSlot ? <img src={arrowUp} /> : <img src={arrowDown} />}
+        <Text>Skip to Realtime</Text>
+        {pastSlot ? <ArrowUpIcon /> : <ArrowDownIcon />}
       </Button>
     </div>
   );
