@@ -9,7 +9,7 @@ import styles from "./identityKey.module.css";
 import PeerIcon from "../../components/PeerIcon";
 import { myStakePctAtom, myStakeAmountAtom } from "../../atoms";
 import type { PropsWithChildren } from "react";
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import { DateTime } from "luxon";
 import { slowDateTimeNow, getSolString, getDurationValues } from "../../utils";
 import { formatNumber } from "../../numUtils";
@@ -246,12 +246,14 @@ function StartupTime() {
 
   return (
     <Label label="Uptime">
-      {values?.map(([value, suffix], i) => (
-        <>
-          {i !== 0 && "\xa0"}
-          <ValueWithSuffix key={i} value={value} suffix={suffix} excludeSpace />
-        </>
-      ))}
+      {values?.map(([value, suffix], i) => {
+        return (
+          <Fragment key={`${value}${suffix}`}>
+            {i !== 0 && "\xa0"}
+            <ValueWithSuffix value={value} suffix={suffix} excludeSpace />
+          </Fragment>
+        );
+      })}
     </Label>
   );
 }
