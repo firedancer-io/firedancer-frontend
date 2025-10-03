@@ -8,6 +8,36 @@ export const bootProgressPhaseAtom = atom<BootProgress["phase"] | undefined>(
   (get) => get(bootProgressAtom)?.phase,
 );
 
+export const bootProgressTotalElapsedAtom = atom<number | undefined>((get) => {
+  const bootProgress = get(bootProgressAtom);
+  if (!bootProgress) return;
+
+  const {
+    phase,
+    joining_gossip_elapsed_seconds,
+    loading_full_snapshot_elapsed_seconds,
+    loading_incremental_snapshot_elapsed_seconds,
+    catching_up_elapsed_seconds,
+  } = bootProgress;
+
+  const gossip = joining_gossip_elapsed_seconds ?? 0;
+  const fullSnapshot = loading_full_snapshot_elapsed_seconds ?? 0;
+  const incrSnapshot = loading_incremental_snapshot_elapsed_seconds ?? 0;
+  const catchingUp = catching_up_elapsed_seconds ?? 0;
+
+  switch (phase) {
+    case BootPhaseEnum.joining_gossip:
+      return gossip;
+    case BootPhaseEnum.loading_full_snapshot:
+      return gossip + fullSnapshot;
+    case BootPhaseEnum.loading_incr_snapshot:
+      return gossip + fullSnapshot + incrSnapshot;
+    case BootPhaseEnum.catching_up:
+    case BootPhaseEnum.running:
+      return gossip + fullSnapshot + incrSnapshot + catchingUp;
+  }
+});
+
 export const showStartupProgressAtom = atom(true);
 export const isStartupProgressExpandedAtom = atom(true);
 export const expandStartupProgressElAtom = atom<HTMLButtonElement | null>(null);
@@ -34,12 +64,13 @@ export const bootProgressBarPctAtom = atom((get) => {
       return 0;
     }
     case BootPhaseEnum.loading_full_snapshot: {
-      const total = bootProgress.loading_full_snapshot_total_bytes;
-      const insert = bootProgress.loading_full_snapshot_insert_bytes;
+      const total = bootProgress.loading_full_snapshot_total_bytes_compressed;
+      const insert =
+        bootProgress.loading_full_snapshot_insert_bytes_decompressed;
       const decompress_compressed =
-        bootProgress.loading_full_snapshot_decompress_compressed_bytes;
+        bootProgress.loading_full_snapshot_decompress_bytes_compressed;
       const decompress_decompressed =
-        bootProgress.loading_full_snapshot_decompress_decompressed_bytes;
+        bootProgress.loading_full_snapshot_decompress_bytes_decompressed;
 
       if (
         !insert ||
@@ -56,12 +87,14 @@ export const bootProgressBarPctAtom = atom((get) => {
       return Math.min(100, (insertCompleted / total) * 100);
     }
     case BootPhaseEnum.loading_incr_snapshot: {
-      const total = bootProgress.loading_incremental_snapshot_total_bytes;
-      const insert = bootProgress.loading_incremental_snapshot_insert_bytes;
+      const total =
+        bootProgress.loading_incremental_snapshot_total_bytes_compressed;
+      const insert =
+        bootProgress.loading_incremental_snapshot_insert_bytes_decompressed;
       const decompress_compressed =
-        bootProgress.loading_incremental_snapshot_decompress_compressed_bytes;
+        bootProgress.loading_incremental_snapshot_decompress_bytes_decompressed;
       const decompress_decompressed =
-        bootProgress.loading_incremental_snapshot_decompress_decompressed_bytes;
+        bootProgress.loading_incremental_snapshot_decompress_bytes_decompressed;
 
       if (
         !insert ||
