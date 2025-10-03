@@ -243,134 +243,66 @@ export const BootPhaseEnum = bootPhaseSchema.enum;
 
 export const bootProgressSchema = z.object({
   phase: bootPhaseSchema,
-  total_elapsed: z.number(),
-
-  // joining_gossip
-  joining_gossip_elapsed: z.number().nullable(),
-
-  // loading_full_snapshot
-  loading_full_snapshot_reset_cnt: z.number().nullable().optional(),
+  joining_gossip_elapsed_seconds: z.number().nullable().optional(),
+  loading_full_snapshot_elapsed_seconds: z.number().nullable().optional(),
+  loading_full_snapshot_reset_count: z.number().nullable().optional(),
   loading_full_snapshot_slot: z.number().nullable().optional(),
-  loading_full_snapshot_peer: z.string().nullable().optional(),
-  loading_full_snapshot_peer_identity: z.string().nullable().optional(),
-  loading_full_snapshot_total_bytes: z.coerce.number().nullable().optional(),
-  loading_full_snapshot_elapsed: z.number().nullable().optional(),
-  loading_full_snapshot_read_bytes: z.coerce.number().nullable().optional(),
-  loading_full_snapshot_read_throughput: z.number().nullable().optional(),
-  loading_full_snapshot_current_bytes: z.coerce.number().nullable().optional(),
-  loading_full_snapshot_read_remaining: z.number().nullable().optional(),
-  loading_full_snapshot_read_elapsed: z.number().nullable().optional(),
+  loading_full_snapshot_total_bytes_compressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_full_snapshot_read_bytes_compressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
   loading_full_snapshot_read_path: z.string().nullable().optional(),
-  loading_full_snapshot_decompress_bytes: z.number().nullable().optional(),
-  loading_full_snapshot_decompress_elapsed: z.number().nullable().optional(),
-  loading_full_snapshot_decompress_throughput: z.number().nullable().optional(),
-  loading_full_snapshot_decompress_compressed_bytes: z.coerce
+  loading_full_snapshot_decompress_bytes_decompressed: z.coerce
     .number()
     .nullable()
     .optional(),
-  loading_full_snapshot_decompress_decompressed_bytes: z.coerce
+  loading_full_snapshot_decompress_bytes_compressed: z.coerce
     .number()
     .nullable()
     .optional(),
-  loading_full_snapshot_decompress_remaining: z.number().nullable().optional(),
-  loading_full_snapshot_insert_bytes: z.coerce.number().nullable().optional(),
-  loading_full_snapshot_insert_throughput: z.number().nullable().optional(),
-  loading_full_snapshot_insert_remaining: z.number().nullable().optional(),
-  loading_full_snapshot_insert_path: z.string().nullable().optional(),
-  loading_full_snapshot_insert_elapsed: z.number().nullable().optional(),
-  loading_full_snapshot_insert_accounts_throughput: z
+  loading_full_snapshot_insert_bytes_decompressed: z.coerce
     .number()
     .nullable()
     .optional(),
-  loading_full_snapshot_insert_accounts_current: z
-    .number()
-    .nullable()
-    .optional(),
+  loading_full_snapshot_insert_accounts: z.number().nullable().optional(),
 
-  // loading_incremental_snapshot
-  loading_incremental_snapshot_reset_cnt: z.number().nullable().optional(),
-  loading_incremental_snapshot_peer_identity: z.string().nullable().optional(),
+  loading_incremental_snapshot_elapsed_seconds: z
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_reset_count: z.number().nullable().optional(),
   loading_incremental_snapshot_slot: z.number().nullable().optional(),
-  loading_incremental_snapshot_peer: z.string().nullable().optional(),
-  loading_incremental_snapshot_total_bytes: z.coerce
+  loading_incremental_snapshot_total_bytes_compressed: z.coerce
     .number()
     .nullable()
     .optional(),
-  loading_incremental_snapshot_elapsed: z.number().nullable().optional(),
-  loading_incremental_snapshot_read_bytes: z.coerce
+  loading_incremental_snapshot_read_bytes_compressed: z.coerce
     .number()
     .nullable()
     .optional(),
-  loading_incremental_snapshot_read_elapsed: z.number().nullable().optional(),
-  loading_incremental_snapshot_read_throughput: z
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_read_remaining: z.number().nullable().optional(),
   loading_incremental_snapshot_read_path: z.string().nullable().optional(),
-  loading_incremental_snapshot_current_bytes: z.coerce
+  loading_incremental_snapshot_decompress_bytes_decompressed: z.coerce
     .number()
     .nullable()
     .optional(),
-  loading_incremental_snapshot_decompress_bytes: z.coerce
+  loading_incremental_snapshot_decompress_bytes_compressed: z.coerce
     .number()
     .nullable()
     .optional(),
-
-  loading_incremental_snapshot_decompress_elapsed: z
+  loading_incremental_snapshot_insert_bytes_decompressed: z.coerce
     .number()
     .nullable()
     .optional(),
-  loading_incremental_snapshot_decompress_throughput: z
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_decompress_compressed_bytes: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_decompress_decompressed_bytes: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_decompress_remaining: z
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_insert_bytes: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_insert_elapsed: z.number().nullable().optional(),
-  loading_incremental_snapshot_insert_throughput: z
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_insert_remaining: z
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_insert_path: z.string().nullable().optional(),
-  loading_incremental_snapshot_insert_accounts_throughput: z
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_insert_accounts_current: z
+  loading_incremental_snapshot_insert_accounts: z
     .number()
     .nullable()
     .optional(),
 
-  // catching_up
-  catching_up_elapsed: z.number().nullable().optional(),
-  catching_up_min_turbine_slot: z.number().nullable().optional(),
-  catching_up_max_turbine_slot: z.number().nullable().optional(),
-  catching_up_min_repair_slot: z.number().nullable().optional(),
-  catching_up_max_repair_slot: z.number().nullable().optional(),
-  catching_up_max_replay_slot: z.number().nullable().optional(),
-  catching_up_first_turbine_slot: z.number().nullable().optional(),
-  catching_up_latest_turbine_slot: z.number().nullable().optional(),
-  catching_up_latest_repair_slot: z.number().nullable().optional(),
-  catching_up_latest_replay_slot: z.number().nullable().optional(),
+  catching_up_elapsed_seconds: z.number().nullable().optional(),
 });
 
 export const slotTransactionsSchema = z.object({

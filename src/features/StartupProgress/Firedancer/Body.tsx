@@ -1,9 +1,9 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { bootProgressAtom } from "../../../api/atoms";
 import styles from "./body.module.css";
 import { useEffect } from "react";
 import {
   bootProgressPhaseAtom,
+  bootProgressTotalElapsedAtom,
   isStartupProgressExpandedAtom,
   showStartupProgressAtom,
 } from "../atoms";
@@ -94,7 +94,7 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
 }
 
 function TotalDuration() {
-  const totalElapsed = useAtomValue(bootProgressAtom)?.total_elapsed;
+  const totalElapsed = useAtomValue(bootProgressTotalElapsedAtom);
   const duration = totalElapsed == null ? "--" : formatDuration(totalElapsed);
   return <Text>{duration}</Text>;
 }
