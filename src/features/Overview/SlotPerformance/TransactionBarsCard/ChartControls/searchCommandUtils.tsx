@@ -202,10 +202,6 @@ export function getIpLabelFn(
   peerName?: string | null,
 ) {
   return function getLabel(searchValue: string) {
-    if (!searchValue.length) {
-      return "";
-    }
-
     const ipMatch = findIpMatch(ip, searchValue);
     const hasMultiple = txnIdxCount > 1;
 
