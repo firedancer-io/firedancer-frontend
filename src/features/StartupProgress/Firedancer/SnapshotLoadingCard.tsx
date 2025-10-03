@@ -9,17 +9,17 @@ const MAX_THROUGHPUT = 300000000;
 
 interface SnapshotLoadingCardProps {
   title: string;
-  estimatedRemaining?: number | null;
-  throughput?: number | null;
   completed?: number | null;
   total?: number | null;
 }
 export function SnapshotLoadingCard({
   title,
-  throughput,
   completed,
   total,
 }: SnapshotLoadingCardProps) {
+  // TODO: calculate throughput
+  const throughput = 0;
+
   const throughputObj = throughput == null ? undefined : byteSize(throughput);
   const completedObj = completed == null ? undefined : byteSize(completed);
   const totalObj = total == null ? undefined : byteSize(total);
