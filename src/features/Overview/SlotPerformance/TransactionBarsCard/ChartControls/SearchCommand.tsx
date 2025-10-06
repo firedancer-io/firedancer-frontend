@@ -33,7 +33,8 @@ import {
 import { focusedBorderColor } from "../../../../../colors";
 
 /** Multiplier to determine the desired scale zoom range for the txn (ex. scale range of 30x txn duration length) */
-const desiredScaleRangeMultiplier = 30;
+const desiredScaleRangeMultiplierMax = 30;
+const desiredScaleRangeMultiplierMin = 20;
 
 enum SearchMode {
   TxnSignature = "Txn Sig",
@@ -280,8 +281,13 @@ export default function SearchCommand({
           const headerRect = document
             .getElementById("transaction-bars-controls")
             ?.getBoundingClientRect();
-          // Check if the element is hidden behind the sticky header
-          if (headerRect && canvasRect.top < headerRect.bottom) {
+          if (
+            headerRect &&
+            // Check if header is stickied
+            !headerRect.top &&
+            // Check if the element is hidden behind the sticky header
+            canvasRect.top < headerRect.bottom
+          ) {
             window.scrollBy({
               top: -headerRect.bottom - canvasRect.top,
             });
@@ -296,46 +302,61 @@ export default function SearchCommand({
       }
 
       uplotAction((u, _bankIdx) => {
-        if (bankIdx !== _bankIdx) return;
+        if (bankIdx !== _bankIdx) {
+          // To redraw non-focused banks without focus
+          u.redraw();
+          return;
+        }
 
         const scale = u.scales[xScaleKey];
         const scaleMin = scale.min ?? -Infinity;
         const scaleMax = scale.max ?? Infinity;
         const currentScaleRange = scaleMax - scaleMin;
 
-        // Some txns within a bundle have identical timestamps for their start/end when they error,
-        // if so then focus on the whole microblock duration instead of the individual txn
-        const zeroTsDuration =
-          transactions.txn_preload_end_timestamps_nanos[txnIdx] ===
-          transactions.txn_end_timestamps_nanos[txnIdx];
+        const isFirstTxnInBundle =
+          transactions.txn_from_bundle[txnIdx] &&
+          transactions.txn_microblock_id[txnIdx - 1] !==
+            transactions.txn_microblock_id[txnIdx];
+        const isLastTxnInBundle =
+          transactions.txn_from_bundle[txnIdx] &&
+          transactions.txn_microblock_id[txnIdx + 1] !==
+            transactions.txn_microblock_id[txnIdx];
+
         const startTs = Number(
-          (transactions.txn_from_bundle[txnIdx] && !zeroTsDuration
-            ? transactions.txn_preload_end_timestamps_nanos[txnIdx]
-            : transactions.txn_mb_start_timestamps_nanos[txnIdx]) -
+          (isFirstTxnInBundle || !transactions.txn_from_bundle[txnIdx]
+            ? transactions.txn_mb_start_timestamps_nanos[txnIdx]
+            : transactions.txn_preload_end_timestamps_nanos[txnIdx]) -
             transactions.start_timestamp_nanos,
         );
         const endTs = Number(
-          (transactions.txn_from_bundle[txnIdx] && !zeroTsDuration
-            ? transactions.txn_end_timestamps_nanos[txnIdx]
-            : transactions.txn_mb_end_timestamps_nanos[txnIdx]) -
+          (isLastTxnInBundle || !transactions.txn_from_bundle[txnIdx]
+            ? transactions.txn_mb_end_timestamps_nanos[txnIdx]
+            : transactions.txn_end_timestamps_nanos[txnIdx]) -
             transactions.start_timestamp_nanos,
         );
-        const desiredScaleRange =
-          (endTs - startTs) * desiredScaleRangeMultiplier;
+        const desiredScaleRangeMax =
+          (endTs - startTs) * desiredScaleRangeMultiplierMax;
+        const desiredScaleRangeMin =
+          (endTs - startTs) * desiredScaleRangeMultiplierMin;
 
         // If txn is already fully out of view, adjust the scale to include it
         const notWithinScale = endTs < scaleMin || startTs > scaleMax;
         // If the current scale is too large, zoom in to the desired scale
-        const scaleRangeTooLarge = currentScaleRange > desiredScaleRange;
+        const scaleRangeTooLarge = currentScaleRange > desiredScaleRangeMax;
+        // If the current scale is too small, zoom out to the desired scale
+        const scaleRangeTooSmall = currentScaleRange < desiredScaleRangeMin;
 
         // Zooms the charts into the desired scale, taking into account min/max range bounds of the data
         // Then sets the color highlighting for that txn
         u.batch(() => {
-          if (notWithinScale || scaleRangeTooLarge) {
-            let min = Math.max(u.data[0][0], startTs - desiredScaleRange / 2);
-            const max = min + desiredScaleRange;
+          if (notWithinScale || scaleRangeTooLarge || scaleRangeTooSmall) {
+            let min = Math.max(
+              u.data[0][0],
+              startTs - desiredScaleRangeMax / 2,
+            );
+            const max = min + desiredScaleRangeMax;
             if (max > u.data[0][u.data[0].length - 1]) {
-              min = max - desiredScaleRange;
+              min = max - desiredScaleRangeMax;
             }
 
             u.setScale(xScaleKey, { min, max });
