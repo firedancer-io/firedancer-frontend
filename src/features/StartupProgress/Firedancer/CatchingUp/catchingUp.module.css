@@ -1,0 +1,121 @@
+.secondary-color {
+  color: #858585;
+}
+
+.bold {
+  font-weight: 700;
+}
+
+.ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.labels-row {
+  flex-wrap: nowrap;
+  font-size: 14px;
+  width: calc(
+    var(--turbine-head-x, 0px) + var(--turbine-head-label-width, 0px) / 2
+  );
+  min-width: max(
+    var(--turbine-start-label-width, 0px),
+    var(--turbine-head-label-width, 0px)
+  );
+  max-width: 100%;
+
+  .dynamic-gap {
+    width: 20px;
+    min-width: 8px;
+    flex-shrink: 100;
+  }
+
+  & > * {
+    justify-content: flex-end;
+    gap: 8px;
+    width: calc(
+      var(--turbine-start-x, 0px) + var(--turbine-start-label-width, 0px) / 2
+    );
+
+    &.left-labels {
+      flex-shrink: 0;
+    }
+    &.right-labels {
+      flex-grow: 1;
+      min-width: 0;
+    }
+  }
+
+  .replayed {
+    color: var(--replayed-slots-text-color);
+    .bold {
+      color: var(--replayed-slots-bold-text-color);
+    }
+  }
+
+  .repaired {
+    color: var(--repaired-slots-text-color);
+    .bold {
+      color: var(--repaired-slots-bold-text-color);
+    }
+  }
+
+  .received-by-turbine {
+    color: var(--turbine-slots-text-color);
+    .bold {
+      color: var(--turbine-slots-bold-text-color);
+    }
+  }
+
+  .turbine-label {
+    white-space: nowrap;
+    flex-shrink: 0;
+    border-radius: 3px;
+    padding: 2px;
+    text-align: center;
+    color: black;
+
+    &.start {
+      background-color: var(--first-turbine-slot-color);
+    }
+
+    &.head {
+      background-color: var(--latest-turbine-slot-color);
+    }
+  }
+
+  .equation {
+    white-space: pre;
+  }
+}
+
+.footer-row {
+  gap: 4px;
+  font-size: 14px;
+  color: #ccc;
+
+  & > * {
+    flex-wrap: nowrap;
+    background-color: #2c2c2c;
+    border-radius: 3px;
+    padding: 4px;
+    text-align: center;
+
+    &.left-footer {
+      width: var(--turbine-start-x, 0px);
+      gap: 4px;
+      flex-shrink: 0;
+    }
+  }
+
+  .footer-title {
+    flex-grow: 1;
+    font-weight: 700;
+  }
+
+  .footer-value {
+    color: #bcbcbc;
+    flex-shrink: 10000;
+    direction: rtl;
+  }
+}
