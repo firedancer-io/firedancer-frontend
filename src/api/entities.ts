@@ -95,6 +95,12 @@ export const rootSlotSchema = z.number();
 export const optimisticallyConfirmedSlotSchema = z.number();
 
 export const completedSlotSchema = z.number();
+export const turbineSlotSchema = z.number().nullable();
+export const repairSlotSchema = z.number().nullable();
+export const catchUpHistorySchema = z.object({
+  repair: z.number().array(),
+  turbine: z.number().array(),
+});
 
 export const estimatedSlotSchema = z.number();
 
@@ -476,6 +482,18 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("skip_rate"),
     value: skipRateSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("turbine_slot"),
+    value: turbineSlotSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("repair_slot"),
+    value: repairSlotSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("catch_up_history"),
+    value: catchUpHistorySchema,
   }),
 ]);
 
