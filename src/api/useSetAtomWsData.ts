@@ -22,6 +22,7 @@ import {
   scheduleStrategyAtom,
   bootProgressAtom,
   gossipNetworkStatsAtom,
+  completedSlotAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
@@ -45,6 +46,7 @@ import {
   skipRateAtom,
 } from "../atoms";
 import type {
+  CatchUpHistory,
   EstimatedSlotDuration,
   EstimatedTps,
   LiveTilePrimaryMetric,
@@ -63,6 +65,10 @@ import {
 } from "./consts";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
 import { slowDateTimeNow } from "../utils";
+import {
+  addRepairSlotAtom,
+  addTurbineSlotAtom,
+} from "../features/StartupProgress/atoms";
 
 export function useSetAtomWsData() {
   const setVersion = useSetAtom(versionAtom);
@@ -147,6 +153,8 @@ export function useSetAtomWsData() {
 
   const setBlockEngine = useSetAtom(blockEngineAtom);
 
+  const setCompletedSlot = useSetAtom(completedSlotAtom);
+
   const handleSlotUpdate = (value: SlotResponse) => {
     setSlotStatus(value.publish.slot, value.publish.level);
 
@@ -168,6 +176,14 @@ export function useSetAtomWsData() {
         });
       }
     }
+  };
+
+  const addTurbineSlots = useSetAtom(addTurbineSlotAtom);
+  const addRepairSlots = useSetAtom(addRepairSlotAtom);
+
+  const handleCatchUpUpdate = ({ repair, turbine }: CatchUpHistory) => {
+    addTurbineSlots(turbine);
+    addRepairSlots(repair);
   };
 
   useServerMessages((msg) => {
@@ -256,9 +272,24 @@ export function useSetAtomWsData() {
             setSkipRate(value);
             break;
           }
+          case "completed_slot": {
+            setCompletedSlot(value);
+            break;
+          }
+          case "turbine_slot": {
+            addTurbineSlots([value]);
+            break;
+          }
+          case "repair_slot": {
+            addRepairSlots([value]);
+            break;
+          }
+          case "catch_up_history": {
+            handleCatchUpUpdate(value);
+            break;
+          }
           case "root_slot":
           case "optimistically_confirmed_slot":
-          case "completed_slot":
           case "estimated_slot":
           case "ping":
             break;

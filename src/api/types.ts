@@ -43,6 +43,7 @@ import type {
   bootPhaseSchema,
   bootProgressSchema,
   gossipNetworkStatsSchema,
+  catchUpHistorySchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -78,6 +79,7 @@ export type OptimisticallyConfirmedSlot = z.infer<
 // >;
 
 export type CompletedSlot = z.infer<typeof completedSlotSchema>;
+export type CatchUpHistory = z.infer<typeof catchUpHistorySchema>;
 
 // export type SlotCompleted = z.infer<typeof slotCompletedSchema>;
 
