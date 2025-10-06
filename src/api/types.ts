@@ -44,6 +44,9 @@ import type {
   bootPhaseSchema,
   bootProgressSchema,
   gossipNetworkStatsSchema,
+  catchUpHistorySchema,
+  repairSlotSchema,
+  turbineSlotSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -79,6 +82,7 @@ export type OptimisticallyConfirmedSlot = z.infer<
 // >;
 
 export type CompletedSlot = z.infer<typeof completedSlotSchema>;
+export type CatchUpHistory = z.infer<typeof catchUpHistorySchema>;
 
 // export type SlotCompleted = z.infer<typeof slotCompletedSchema>;
 
@@ -137,6 +141,9 @@ export type SlotPublish = z.infer<typeof slotPublishSchema>;
 export type SlotResponse = z.infer<typeof slotResponseSchema>;
 
 export type SkippedSlots = z.infer<typeof slotSkippedHistorySchema>;
+
+export type RepairSlot = z.infer<typeof repairSlotSchema>;
+export type TurbineSlot = z.infer<typeof turbineSlotSchema>;
 
 export type BlockEngineUpdate = z.infer<typeof blockEngineUpdateSchema>;
 

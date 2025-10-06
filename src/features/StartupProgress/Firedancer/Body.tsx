@@ -21,6 +21,7 @@ import Logo from "./Logo";
 import { appMaxWidth } from "../../../consts";
 import { SnapshotProgress } from "./SnapshotProgress";
 import { useUptimeDuration } from "../../../hooks/useUptime";
+import CatchingUp from "./CatchingUp";
 
 const classNames: { [phase in BootPhase]?: string } = {
   [BootPhaseEnum.joining_gossip]: styles.gossip,
@@ -75,6 +76,7 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
           phase === BootPhaseEnum.loading_incremental_snapshot) && (
           <SnapshotProgress />
         )}
+        {phase === BootPhaseEnum.catching_up && <CatchingUp />}
       </Box>
     </Container>
   );
