@@ -1,8 +1,12 @@
 import { atom } from "jotai";
-import { bootProgressAtom } from "../../api/atoms";
+import { bootProgressAtom, completedSlotAtom } from "../../api/atoms";
 import { BootPhaseEnum, ClientEnum } from "../../api/entities";
 import type { BootProgress } from "../../api/types";
 import { clientAtom } from "../../atoms";
+import {
+  catchingUpStartSlotAtom,
+  latestTurbineSlotAtom,
+} from "./Firedancer/CatchingUp/atoms";
 
 export const bootProgressPhaseAtom = atom<BootProgress["phase"] | undefined>(
   (get) => get(bootProgressAtom)?.phase,
@@ -81,7 +85,22 @@ export const bootProgressBarPctAtom = atom((get) => {
       return Math.min(100, (insertCompleted / total) * 100);
     }
     case BootPhaseEnum.catching_up: {
-      return 0;
+      const startSlot = get(catchingUpStartSlotAtom);
+      const latestTurbineSlot = get(latestTurbineSlotAtom);
+      const latestReplaySlot = get(completedSlotAtom);
+
+      if (
+        startSlot == null ||
+        latestTurbineSlot == null ||
+        latestReplaySlot == null
+      )
+        return 0;
+
+      const totalSlotsToReplay = latestTurbineSlot - startSlot + 1;
+      if (!totalSlotsToReplay) return 0;
+
+      const replayedSlots = latestReplaySlot - startSlot + 1;
+      return (100 * replayedSlots) / totalSlotsToReplay;
     }
     case BootPhaseEnum.running: {
       return 0;
