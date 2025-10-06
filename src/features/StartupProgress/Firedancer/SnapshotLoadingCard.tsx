@@ -4,8 +4,9 @@ import type { ByteSizeResult } from "byte-size";
 import byteSize from "byte-size";
 import clsx from "clsx";
 import { Bars } from "./Bars";
+import { useValuePerSecond } from "./useValuePerSecond";
 
-const MAX_THROUGHPUT = 300000000;
+const MAX_THROUGHPUT_BYTES_PER_S = 300_000_000;
 
 interface SnapshotLoadingCardProps {
   title: string;
@@ -17,8 +18,7 @@ export function SnapshotLoadingCard({
   completed,
   total,
 }: SnapshotLoadingCardProps) {
-  // TODO: calculate throughput
-  const throughput = 0;
+  const throughput = useValuePerSecond(completed);
 
   const throughputObj = throughput == null ? undefined : byteSize(throughput);
   const completedObj = completed == null ? undefined : byteSize(completed);
@@ -58,7 +58,7 @@ export function SnapshotLoadingCard({
           )}
         </Flex>
 
-        <Bars value={throughput ?? 0} max={MAX_THROUGHPUT} />
+        <Bars value={throughput ?? 0} max={MAX_THROUGHPUT_BYTES_PER_S} />
       </Flex>
     </Card>
   );
