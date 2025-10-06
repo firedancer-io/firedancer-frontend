@@ -75,6 +75,21 @@ export const progressBarCompleteCatchupColor = "#0C6B5A";
 export const snapshotAreaChartDark = "rgba(16, 129, 108, 0.53)";
 export const snapshotAreaChartGridLineColor = "#ffffff1a";
 
+// catching up bars
+export const firstTurbineSlotColor = "#3972C9";
+export const latestTurbineSlotColor = "#74AFEA";
+export const missingSlotColor = "#0F1313";
+export const replayedSlotColor = "#408E7B";
+export const needsReplaySlotColor = "#163454";
+export const repairedNeedsReplaySlotColor = "#89603E";
+
+export const repairedSlotsTextColor = "#EF5F00";
+export const repairedSlotsBoldTextColor = "#F76B15";
+export const replayedSlotsTextColor = "#0D9B8A";
+export const replayedSlotsBoldTextColor = "#53B9AB";
+export const turbineSlotsTextColor = "#0588F0";
+export const turbineSlotsBoldTextColor = "#0090FF";
+
 // cluster colors
 export const clusterMainnetBetaColor = appTeal;
 export const clusterTestnetColor = "#E7B81C";

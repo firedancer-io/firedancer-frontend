@@ -22,6 +22,7 @@ import {
   scheduleStrategyAtom,
   bootProgressAtom,
   gossipNetworkStatsAtom,
+  completedSlotAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
@@ -49,7 +50,9 @@ import type {
   EstimatedTps,
   LiveTilePrimaryMetric,
   LiveTxnWaterfall,
+  RepairSlot,
   SlotResponse,
+  TurbineSlot,
 } from "./types";
 import { useThrottledCallback } from "use-debounce";
 import { useInterval } from "react-use";
@@ -63,6 +66,10 @@ import {
 } from "./consts";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
 import { slowDateTimeNow } from "../utils";
+import {
+  addTurbineSlotsAtom,
+  addRepairSlotsAtom,
+} from "../features/StartupProgress/Firedancer/CatchingUp/atoms";
 
 export function useSetAtomWsData() {
   const setVersion = useSetAtom(versionAtom);
@@ -147,6 +154,8 @@ export function useSetAtomWsData() {
 
   const setBlockEngine = useSetAtom(blockEngineAtom);
 
+  const setCompletedSlot = useSetAtom(completedSlotAtom);
+
   const handleSlotUpdate = (value: SlotResponse) => {
     setSlotStatus(value.publish.slot, value.publish.level);
 
@@ -168,6 +177,18 @@ export function useSetAtomWsData() {
         });
       }
     }
+  };
+
+  const addTurbineSlots = useSetAtom(addTurbineSlotsAtom);
+  const addTurbineSlot = (slot: TurbineSlot) => {
+    if (slot == null) return;
+    addTurbineSlots([slot]);
+  };
+
+  const addRepairSlots = useSetAtom(addRepairSlotsAtom);
+  const addRepairSlot = (slot: RepairSlot) => {
+    if (slot == null) return;
+    addRepairSlots([slot]);
   };
 
   useServerMessages((msg) => {
@@ -256,9 +277,25 @@ export function useSetAtomWsData() {
             setSkipRate(value);
             break;
           }
+          case "completed_slot": {
+            setCompletedSlot(value);
+            break;
+          }
+          case "turbine_slot": {
+            addTurbineSlot(value);
+            break;
+          }
+          case "repair_slot": {
+            addRepairSlot(value);
+            break;
+          }
+          case "catch_up_history": {
+            addTurbineSlots(value.turbine);
+            addRepairSlots(value.repair);
+            break;
+          }
           case "root_slot":
           case "optimistically_confirmed_slot":
-          case "completed_slot":
           case "estimated_slot":
           case "ping":
             break;
