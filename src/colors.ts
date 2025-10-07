@@ -164,11 +164,15 @@ export const circularProgressPathColor = slotStatusBlue;
 
 // slot details
 export const slotDetailsMySlotsColor = "#0080e6";
-export const slotDetailsQuickSearchTextPrimaryColor = "#cecece";
-export const slotDetailsQuickSearchTextSecondaryColor = "#646464";
-export const slotDetailsEarliestSlotColor = "#00A2C7";
-export const slotDetailsMostRecentSlotColor = "#1D863B";
-export const slotDetailsLastSkippedSlotColor = "#EB6262";
+export const slotDetailsSearchLabelColor = "#FFF";
+export const slotDetailsQuickSearchTextColor = "var(--gray-10)";
+export const slotDetailsEarliestSlotColor = "var(--teal-9)";
+export const slotDetailsRecentSlotColor = "var(--cyan-9)";
+export const slotDetailsSkippedSlotColor = "var(--red-8)";
+export const slotDetailsFeesSlotColor = "var(--sky-8)";
+export const slotDetailsTipsSlotColor = "var(--green-9)";
+export const slotDetailsRewardsSlotColor = "var(--indigo-10)";
+export const slotDetailsClickableSlotColor = "var(--blue-9)";
 export const slotDetailsBackgroundColor = "#15181e";
 export const slotDetailsColor = "#9aabc3";
 export const slotDetailsSkippedBackgroundColor = "#250f0f";
