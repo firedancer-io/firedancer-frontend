@@ -1,0 +1,53 @@
+.search-grid {
+  align-content: center;
+}
+
+.search-label {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--slot-details-search-label-color);
+}
+
+.search-field {
+  width: 100%;
+}
+
+.error-text {
+  color: var(--failure-color);
+}
+
+.quick-search-card {
+  border-radius: 8px;
+  border: 1px solid var(--container-border-color);
+  background: var(--container-background-color);
+  color: var(--slot-details-quick-search-text-color);
+}
+
+.quick-search-header {
+  color: var(--quick-search-color);
+  font-size: 18px;
+
+  svg {
+    width: 32px;
+    height: 32px;
+    fill: var(--quick-search-color);
+  }
+}
+
+.quick-search-slot {
+  font-size: 12px;
+
+  &.clickable {
+    cursor: pointer;
+    color: var(--slot-details-clickable-slot-color);
+  }
+
+  &:not(.clickable) {
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+.quick-search-metric {
+  font-size: 12px;
+}
