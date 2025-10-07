@@ -40,6 +40,7 @@ import type {
   slotTransactionsSchema,
   voteBalanceSchema,
   scheduleStrategySchema,
+  slotRankingsSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -131,3 +132,5 @@ export type SkippedSlots = z.infer<typeof slotSkippedHistorySchema>;
 export type BlockEngineUpdate = z.infer<typeof blockEngineUpdateSchema>;
 
 export type BlockEngineStatus = z.infer<typeof blockEngineStatusSchema>;
+
+export type SlotRankings = z.infer<typeof slotRankingsSchema>;

@@ -288,28 +288,30 @@ export const firstProcessedSlotAtom = atom((get) => {
   return startupProgress.ledger_max_slot + 1;
 });
 
-export const earliestProcessedSlotLeaderAtom = atom((get) => {
-  const firstProcessedSlot = get(firstProcessedSlotAtom);
+export const firstProcessedLeaderIndexAtom = atom((get) => {
   const leaderSlots = get(leaderSlotsAtom);
+  const firstProcessedSlot = get(firstProcessedSlotAtom);
 
-  if (firstProcessedSlot === undefined || !leaderSlots?.length) return;
-  return leaderSlots.find((s) => s >= firstProcessedSlot);
+  if (!leaderSlots || firstProcessedSlot === undefined) return;
+
+  const leaderIndex = leaderSlots.findIndex((s) => s >= firstProcessedSlot);
+  return leaderIndex !== -1 ? leaderIndex : undefined;
 });
 
-export const mostRecentSlotLeaderAtom = atom((get) => {
-  const earliestProcessedSlotLeader = get(earliestProcessedSlotLeaderAtom);
+export const firstProcessedLeaderAtom = atom((get) => {
   const leaderSlots = get(leaderSlotsAtom);
-  const currentLeaderSlot = get(currentLeaderSlotAtom);
+  const firstProcessedLeaderIndex = get(firstProcessedLeaderIndexAtom);
+  return firstProcessedLeaderIndex
+    ? leaderSlots?.[firstProcessedLeaderIndex]
+    : undefined;
+});
 
-  if (
-    earliestProcessedSlotLeader === undefined ||
-    currentLeaderSlot === undefined ||
-    !leaderSlots?.length
-  )
-    return;
-  return leaderSlots.findLast(
-    (s) => earliestProcessedSlotLeader <= s && s <= currentLeaderSlot,
-  );
+export const lastProcessedLeaderAtom = atom((get) => {
+  const leaderSlots = get(leaderSlotsAtom);
+  const nextLeaderSlotIndex = get(nextLeaderSlotIndexAtom);
+  return nextLeaderSlotIndex
+    ? leaderSlots?.[nextLeaderSlotIndex - 1]
+    : undefined;
 });
 
 const _currentSlotAtom = atom<number | undefined>(undefined);

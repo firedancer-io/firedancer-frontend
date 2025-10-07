@@ -23,6 +23,7 @@ import type {
   BlockEngineUpdate,
   VoteBalance,
   ScheduleStrategy,
+  SlotRankings,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 
@@ -85,3 +86,5 @@ export const voteDistanceAtom = atom<VoteDistance | undefined>(undefined);
 export const skippedSlotsAtom = atom<SkippedSlots | undefined>(undefined);
 
 export const blockEngineAtom = atom<BlockEngineUpdate | undefined>(undefined);
+
+export const slotRankingsAtom = atom<SlotRankings | undefined>(undefined);
