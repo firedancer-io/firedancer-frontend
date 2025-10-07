@@ -20,6 +20,7 @@ import {
   voteStateAtom,
   voteBalanceAtom,
   scheduleStrategyAtom,
+  slotRankingsAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
@@ -130,6 +131,7 @@ export function useSetAtomWsData() {
 
   const setSkippedSlots = useSetAtom(skippedSlotsAtom);
   const setSlotResponse = useSetAtom(setSlotResponseAtom);
+  const setSlotRankings = useSetAtom(slotRankingsAtom);
 
   const [epoch, setEpoch] = useAtom(epochAtom);
 
@@ -278,6 +280,10 @@ export function useSetAtomWsData() {
               setSlotResponse(value);
               handleSlotUpdate(value);
             }
+            break;
+          }
+          case "query_rankings": {
+            setSlotRankings(value);
             break;
           }
         }

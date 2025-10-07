@@ -478,6 +478,33 @@ export const slotResponseSchema = z.object({
 
 export const slotSkippedHistorySchema = z.number().array();
 
+export const slotRankingsSchema = z.object({
+  slots_largest_tips: z.number().array(),
+  vals_largest_tips: z.coerce.bigint().array(),
+  slots_smallest_tips: z.number().array(),
+  vals_smallest_tips: z.coerce.bigint().array(),
+  slots_largest_fees: z.number().array(),
+  vals_largest_fees: z.coerce.bigint().array(),
+  slots_smallest_fees: z.number().array(),
+  vals_smallest_fees: z.coerce.bigint().array(),
+  slots_largest_rewards: z.number().array(),
+  vals_largest_rewards: z.coerce.bigint().array(),
+  slots_smallest_rewards: z.number().array(),
+  vals_smallest_rewards: z.coerce.bigint().array(),
+  slots_largest_duration: z.number().array(),
+  vals_largest_duration: z.coerce.bigint().array(),
+  slots_smallest_duration: z.number().array(),
+  vals_smallest_duration: z.coerce.bigint().array(),
+  slots_largest_compute_units: z.number().array(),
+  vals_largest_compute_units: z.coerce.bigint().array(),
+  slots_smallest_compute_units: z.number().array(),
+  vals_smallest_compute_units: z.coerce.bigint().array(),
+  slots_largest_skipped: z.number().array(),
+  vals_largest_skipped: z.coerce.bigint().array(),
+  slots_smallest_skipped: z.number().array(),
+  vals_smallest_skipped: z.coerce.bigint().array(),
+});
+
 export const slotSchema = z.discriminatedUnion("key", [
   slotTopicSchema.extend({
     key: z.literal("skipped_history"),
@@ -490,6 +517,10 @@ export const slotSchema = z.discriminatedUnion("key", [
   slotTopicSchema.extend({
     key: z.literal("query"),
     value: slotResponseSchema.nullable(),
+  }),
+  slotTopicSchema.extend({
+    key: z.literal("query_rankings"),
+    value: slotRankingsSchema,
   }),
 ]);
 
