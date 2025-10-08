@@ -24,7 +24,7 @@ import { SnapshotProgress } from "./SnapshotProgress";
 const classNames: { [phase in BootPhase]?: string } = {
   [BootPhaseEnum.joining_gossip]: styles.gossip,
   [BootPhaseEnum.loading_full_snapshot]: styles.fullSnapshot,
-  [BootPhaseEnum.loading_incr_snapshot]: styles.incrSnapshot,
+  [BootPhaseEnum.loading_incremental_snapshot]: styles.incrSnapshot,
   [BootPhaseEnum.catching_up]: styles.catchingUp,
 };
 
@@ -85,7 +85,7 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
       <Box pt="6" flexGrow="1">
         {phase === BootPhaseEnum.joining_gossip && <GossipProgress />}
         {(phase === BootPhaseEnum.loading_full_snapshot ||
-          phase === BootPhaseEnum.loading_incr_snapshot) && (
+          phase === BootPhaseEnum.loading_incremental_snapshot) && (
           <SnapshotProgress />
         )}
       </Box>
