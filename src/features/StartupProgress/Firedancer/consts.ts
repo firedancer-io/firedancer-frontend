@@ -47,7 +47,7 @@ const phases: {
     estimatedPct: 0.5,
     borderColor: progressBarInProgressFullSnapshotBorder,
   },
-  [BootPhaseEnum.loading_incr_snapshot]: {
+  [BootPhaseEnum.loading_incremental_snapshot]: {
     name: "Loading Incremental Snapshot ...",
     incompleteColor: progressBarIncompleteIncSnapshotColor,
     inProgressBackground: progressBarInProgressIncSnapshotBackground,
