@@ -5,6 +5,8 @@ import byteSize from "byte-size";
 import clsx from "clsx";
 import { Bars } from "./Bars";
 import { useValuePerSecond } from "./useValuePerSecond";
+import { bootProgressPhaseAtom } from "../atoms";
+import { useAtomValue } from "jotai";
 
 const MAX_THROUGHPUT_BYTES_PER_S = 300_000_000;
 
@@ -18,7 +20,8 @@ export function SnapshotLoadingCard({
   completed,
   total,
 }: SnapshotLoadingCardProps) {
-  const throughput = useValuePerSecond(completed);
+  const phase = useAtomValue(bootProgressPhaseAtom);
+  const throughput = useValuePerSecond(completed, 1_000, phase);
 
   const throughputObj = throughput == null ? undefined : byteSize(throughput);
   const completedObj = completed == null ? undefined : byteSize(completed);
