@@ -1,23 +1,19 @@
 import { useAtomValue } from "jotai";
-import {
-  identityBalanceAtom,
-  startupTimeAtom,
-  voteBalanceAtom,
-} from "../../api/atoms";
+import { identityBalanceAtom, voteBalanceAtom } from "../../api/atoms";
 import { Text, Flex, Tooltip } from "@radix-ui/themes";
 import styles from "./identityKey.module.css";
 import PeerIcon from "../../components/PeerIcon";
 import { myStakePctAtom, myStakeAmountAtom } from "../../atoms";
 import type { PropsWithChildren } from "react";
 import { Fragment, useEffect } from "react";
-import { DateTime } from "luxon";
-import { slowDateTimeNow, getSolString, getDurationValues } from "../../utils";
+import { getSolString, getDurationValues } from "../../utils";
 import { formatNumber } from "../../numUtils";
-import { useInterval, useMedia, useUpdate } from "react-use";
+import { useMedia } from "react-use";
 import clsx from "clsx";
 import { useIdentityPeer } from "../../hooks/useIdentityPeer";
 import PopoverDropdown from "../../components/PopoverDropdown";
 import { maxZIndex } from "../../consts";
+import { useUptimeDuration } from "../../hooks/useUptime";
 
 export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
@@ -224,25 +220,13 @@ function Commission() {
 }
 
 function StartupTime() {
-  const startupTime = useAtomValue(startupTimeAtom);
+  const uptimeDuration = useUptimeDuration(60_000);
 
-  const getValues = () => {
-    if (!startupTime) return;
-    const uptimeDuration = slowDateTimeNow.diff(
-      DateTime.fromMillis(
-        Math.floor(Number(startupTime.startupTimeNanos) / 1_000_000),
-      ),
-    );
-
-    return getDurationValues(uptimeDuration.rescale(), {
-      omitSeconds: true,
-    });
-  };
-
-  const values = getValues();
-
-  const update = useUpdate();
-  useInterval(update, 60_000);
+  const values = uptimeDuration
+    ? getDurationValues(uptimeDuration, {
+        omitSeconds: true,
+      })
+    : undefined;
 
   return (
     <Label label="Uptime">

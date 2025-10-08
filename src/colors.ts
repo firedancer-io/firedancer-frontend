@@ -50,6 +50,7 @@ export const bootProgressGossipHighThresholdBarColor = "#CE3636";
 export const bootProgressPrimaryTextColor = "#A2A2A2";
 export const bootProgressSecondaryTextColor = "#454545";
 export const bootProgressSnapshotPctColor = "#C8B3B3";
+export const bootProgressSnapshotUnitsColor = "#686868";
 
 export const progressBarIncompleteGossipColor = "#171765ff";
 export const progressBarInProgressGossipBackground = `linear-gradient(270deg, #1414B8 -1.75%, #090952 101.75%)`;
