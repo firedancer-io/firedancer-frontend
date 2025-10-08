@@ -1,9 +1,9 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import styles from "./body.module.css";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  bootProgressBarPctAtom,
   bootProgressPhaseAtom,
-  bootProgressTotalElapsedAtom,
   isStartupProgressExpandedAtom,
   showStartupProgressAtom,
 } from "../atoms";
@@ -20,6 +20,7 @@ import type { BootPhase } from "../../../api/types";
 import Logo from "./Logo";
 import { appMaxWidth } from "../../../consts";
 import { SnapshotProgress } from "./SnapshotProgress";
+import { startupTimeAtom } from "../../../api/atoms";
 
 const classNames: { [phase in BootPhase]?: string } = {
   [BootPhaseEnum.joining_gossip]: styles.gossip,
@@ -56,7 +57,6 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
   const isStartupProgressExpanded = useAtomValue(isStartupProgressExpandedAtom);
 
   const phaseClass = phase ? classNames[phase] : "";
-  const step = steps[phase];
 
   return (
     <Container
@@ -67,20 +67,7 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
       })}
       p="4"
     >
-      <Header />
-      <Flex justify="between" mt="4" mb="20px" className={styles.stepContainer}>
-        <span>
-          <Text className={styles.secondaryText}>Elapsed</Text>{" "}
-          <TotalDuration />
-        </span>
-        <Text className={styles.stepName}>{step.name}</Text>
-        <span>
-          <Text>79% </Text>
-          <Text className={styles.secondaryText}>Complete</Text>
-        </span>
-      </Flex>
-
-      <ProgressBar stepIndex={step.index} />
+      <PhaseHeader phase={phase} />
 
       <Box pt="6" flexGrow="1">
         {phase === BootPhaseEnum.joining_gossip && <GossipProgress />}
@@ -93,8 +80,66 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
   );
 }
 
+function getDurationSeconds(startNanos: bigint | undefined) {
+  if (startNanos == null) return;
+  const durationMs = new Date().getTime() - Number(startNanos) / 1_000_000;
+  return durationMs / 1_000;
+}
+
 function TotalDuration() {
-  const totalElapsed = useAtomValue(bootProgressTotalElapsedAtom);
-  const duration = totalElapsed == null ? "--" : formatDuration(totalElapsed);
-  return <Text>{duration}</Text>;
+  const startupTimeNanos = useAtomValue(startupTimeAtom)?.startupTimeNanos;
+  const [elapsedSeconds, setElapsedSeconds] = useState<number | undefined>(
+    getDurationSeconds(startupTimeNanos),
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsedSeconds(getDurationSeconds(startupTimeNanos));
+    }, 1_000);
+    return () => clearInterval(interval);
+  }, [startupTimeNanos]);
+
+  return (
+    <Text>
+      {elapsedSeconds == null ? "--" : formatDuration(elapsedSeconds)}
+    </Text>
+  );
+}
+
+function PhaseHeader({ phase }: { phase: BootPhase }) {
+  const step = steps[phase];
+  const phasePct = useAtomValue(bootProgressBarPctAtom);
+
+  const prevPhasesPctSum = useMemo(() => {
+    return (
+      Object.values(steps).reduce((acc, { index, estimatedPct }) => {
+        if (index < step.index) {
+          acc += estimatedPct;
+        }
+        return acc;
+      }, 0) * 100
+    );
+  }, [step]);
+
+  const overallPct =
+    prevPhasesPctSum + Math.round(step.estimatedPct * phasePct);
+
+  return (
+    <>
+      <Header />
+      <Flex justify="between" mt="4" mb="20px" className={styles.stepContainer}>
+        <span>
+          <Text className={styles.secondaryText}>Elapsed </Text>
+          <TotalDuration />
+        </span>
+        <Text className={styles.stepName}>{step.name}</Text>
+        <span>
+          <Text>{overallPct}% </Text>
+          <Text className={styles.secondaryText}>Complete</Text>
+        </span>
+      </Flex>
+
+      <ProgressBar stepIndex={step.index} />
+    </>
+  );
 }
