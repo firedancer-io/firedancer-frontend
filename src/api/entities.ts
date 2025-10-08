@@ -234,7 +234,7 @@ export const startupProgressSchema = z.object({
 export const bootPhaseSchema = z.enum([
   "joining_gossip",
   "loading_full_snapshot",
-  "loading_incr_snapshot",
+  "loading_incremental_snapshot",
   "catching_up",
   "running",
 ]);

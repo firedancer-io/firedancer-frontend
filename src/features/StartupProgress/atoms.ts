@@ -30,7 +30,7 @@ export const bootProgressTotalElapsedAtom = atom<number | undefined>((get) => {
       return gossip;
     case BootPhaseEnum.loading_full_snapshot:
       return gossip + fullSnapshot;
-    case BootPhaseEnum.loading_incr_snapshot:
+    case BootPhaseEnum.loading_incremental_snapshot:
       return gossip + fullSnapshot + incrSnapshot;
     case BootPhaseEnum.catching_up:
     case BootPhaseEnum.running:
@@ -86,7 +86,7 @@ export const bootProgressBarPctAtom = atom((get) => {
 
       return Math.min(100, (insertCompleted / total) * 100);
     }
-    case BootPhaseEnum.loading_incr_snapshot: {
+    case BootPhaseEnum.loading_incremental_snapshot: {
       const total =
         bootProgress.loading_incremental_snapshot_total_bytes_compressed;
       const insert =
