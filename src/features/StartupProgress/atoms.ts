@@ -8,36 +8,6 @@ export const bootProgressPhaseAtom = atom<BootProgress["phase"] | undefined>(
   (get) => get(bootProgressAtom)?.phase,
 );
 
-export const bootProgressTotalElapsedAtom = atom<number | undefined>((get) => {
-  const bootProgress = get(bootProgressAtom);
-  if (!bootProgress) return;
-
-  const {
-    phase,
-    joining_gossip_elapsed_seconds,
-    loading_full_snapshot_elapsed_seconds,
-    loading_incremental_snapshot_elapsed_seconds,
-    catching_up_elapsed_seconds,
-  } = bootProgress;
-
-  const gossip = joining_gossip_elapsed_seconds ?? 0;
-  const fullSnapshot = loading_full_snapshot_elapsed_seconds ?? 0;
-  const incrSnapshot = loading_incremental_snapshot_elapsed_seconds ?? 0;
-  const catchingUp = catching_up_elapsed_seconds ?? 0;
-
-  switch (phase) {
-    case BootPhaseEnum.joining_gossip:
-      return gossip;
-    case BootPhaseEnum.loading_full_snapshot:
-      return gossip + fullSnapshot;
-    case BootPhaseEnum.loading_incremental_snapshot:
-      return gossip + fullSnapshot + incrSnapshot;
-    case BootPhaseEnum.catching_up:
-    case BootPhaseEnum.running:
-      return gossip + fullSnapshot + incrSnapshot + catchingUp;
-  }
-});
-
 export const showStartupProgressAtom = atom(true);
 export const isStartupProgressExpandedAtom = atom(true);
 export const expandStartupProgressElAtom = atom<HTMLButtonElement | null>(null);
