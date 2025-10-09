@@ -8,7 +8,7 @@ import {
   slotNavFilterAtom,
   slotOverrideAtom,
 } from "../../atoms";
-import { Box } from "@radix-ui/themes";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import type { RefObject } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./slotsList.module.css";
@@ -72,6 +72,7 @@ function InnerSlotsList({
   const visibleStartIndexRef = useRef<number | null>(null);
 
   const [hideList, setHideList] = useState(true);
+  const [totalListHeight, setTotalListHeight] = useState(0);
 
   useEffect(() => {
     // initially hide list to
@@ -156,7 +157,11 @@ function InnerSlotsList({
         getIndexForSlot={getIndexForSlot}
         debouncedScroll={debouncedScroll}
       />
-      <SlotsPlaceholder width={width} height={height} />
+      <SlotsPlaceholder
+        width={width}
+        height={height}
+        totalListHeight={totalListHeight}
+      />
       <ResetLive />
       <Virtuoso
         ref={listRef}
@@ -174,6 +179,7 @@ function InnerSlotsList({
         rangeChanged={rangeChanged}
         components={{ ScrollSeekPlaceholder: MScrollSeekPlaceHolder }}
         scrollSeekConfiguration={scrollSeekConfiguration}
+        totalListHeightChanged={(height) => setTotalListHeight(height)}
       />
     </Box>
   );
@@ -335,6 +341,23 @@ function MySlotsList({ width, height }: SlotsListProps) {
   );
 
   if (!mySlots) return null;
+
+  if (mySlots.length === 0) {
+    return (
+      <Flex
+        width={`${width}px`}
+        height={`${height}px`}
+        justify="center"
+        align="center"
+      >
+        <Text className={styles.noSlotsText}>
+          No Slots
+          <br />
+          Available
+        </Text>
+      </Flex>
+    );
+  }
 
   return (
     <InnerSlotsList

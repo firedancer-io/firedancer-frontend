@@ -2,7 +2,8 @@ import { atom, useAtomValue } from "jotai";
 import {
   currentLeaderSlotAtom,
   currentSlotAtom,
-  earliestProcessedSlotLeaderAtom,
+  firstProcessedSlotAtom,
+  leaderSlotsAtom,
   nextLeaderSlotAtom,
   slotDurationAtom,
 } from "../../atoms";
@@ -40,10 +41,13 @@ export default function SlotsRenderer(props: { leaderSlotForGroup: number }) {
 
 const getStatusAtom = atom((get) => {
   const currentLeaderSlot = get(currentLeaderSlotAtom);
-  const earliestProcessedSlotLeader = get(earliestProcessedSlotLeaderAtom);
+  const firstProcessedSlot = get(firstProcessedSlotAtom);
+  const leaderSlots = get(leaderSlotsAtom);
+
   if (
+    !leaderSlots ||
     currentLeaderSlot === undefined ||
-    earliestProcessedSlotLeader === undefined
+    firstProcessedSlot === undefined
   )
     return;
 
@@ -55,7 +59,7 @@ const getStatusAtom = atom((get) => {
         currentLeaderSlot <= slot && slot < currentLeaderSlot + slotsPerLeader,
       isFutureSlotGroup: currentLeaderSlot + slotsPerLeader <= slot,
       isProcessedSlotGroup:
-        earliestProcessedSlotLeader <= slot && slot <= currentLeaderSlot,
+        firstProcessedSlot <= slot && slot <= currentLeaderSlot,
       isYourNextLeaderGroup:
         nextLeaderSlot &&
         nextLeaderSlot <= slot &&
@@ -233,11 +237,14 @@ function SlotContent({ firstSlot }: SlotGroupProps) {
 export function SlotsPlaceholder({
   width,
   height,
+  totalListHeight,
 }: {
   width: number;
   height: number;
+  totalListHeight: number;
 }) {
   const items = useMemo(() => Math.ceil(height / 46), [height]);
+  if (totalListHeight < height) return;
 
   return (
     <Box
