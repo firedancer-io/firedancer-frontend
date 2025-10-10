@@ -30,7 +30,7 @@ export const clientAtom = atom(() => {
 
   if (parsedClient.error) {
     // default
-    return ClientEnum.Frankendancer;
+    return ClientEnum.Firedancer;
   }
 
   return parsedClient.data;

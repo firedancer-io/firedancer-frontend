@@ -230,7 +230,7 @@ export const startupProgressSchema = z.object({
 export const bootPhaseSchema = z.enum([
   "joining_gossip",
   "loading_full_snapshot",
-  "loading_incr_snapshot",
+  "loading_incremental_snapshot",
   "catching_up",
   "running",
 ]);
@@ -496,25 +496,25 @@ export const epochSchema = z.discriminatedUnion("key", [
   }),
 ]);
 
-const gossipNetworkHealthSchema = z.object({
-  push_rx_pct: z.number().nullable().optional(),
-  pull_response_rx_pct: z.number().nullable().optional(),
-  push_rx_dup_pct: z.number().nullable().optional(),
-  pull_response_rx_dup_pct: z.number().nullable().optional(),
-  push_rx_msg_bad_pct: z.number().nullable().optional(),
-  push_rx_entry_bad_pct: z.number().nullable().optional(),
-  pull_response_rx_msg_bad_pct: z.number().nullable().optional(),
-  pull_response_rx_entry_bad_pct: z.number().nullable().optional(),
-  pull_already_known_pct: z.number().nullable().optional(),
-  total_stake: z.coerce.bigint().nullable().optional(),
-  total_staked_peers: z.number().nullable().optional(),
-  total_unstaked_peers: z.number().nullable().optional(),
-  connected_stake: z.coerce.bigint().nullable().optional(),
-  connected_staked_peers: z.number().nullable().optional(),
-  connected_unstaked_peers: z.number().nullable().optional(),
+export const gossipNetworkHealthSchema = z.object({
+  num_pull_response_entries_rx_duplicate: z.number(),
+  num_pull_response_entries_rx_failure: z.number(),
+  num_pull_response_entries_rx_success: z.number(),
+  num_pull_response_messages_rx_failure: z.number(),
+  num_pull_response_messages_rx_success: z.number(),
+  num_push_entries_rx_duplicate: z.number(),
+  num_push_entries_rx_failure: z.number(),
+  num_push_entries_rx_success: z.number(),
+  num_push_messages_rx_failure: z.number(),
+  num_push_messages_rx_success: z.number(),
+  connected_stake: z.coerce.bigint(),
+  connected_staked_peers: z.number(),
+  connected_unstaked_peers: z.number(),
+  total_peers: z.number(),
+  total_stake: z.coerce.bigint(),
 });
 
-const gossipNetworkTrafficSchema = z.object({
+export const gossipNetworkTrafficSchema = z.object({
   total_throughput: z.number().nullable().optional(),
   peer_names: z.string().array().nullable().optional(),
   peer_identities: z.string().array().nullable().optional(),
@@ -523,22 +523,18 @@ const gossipNetworkTrafficSchema = z.object({
 
 const gossipStorageStatsSchema = z.object({
   capacity: z.number().nullable().optional(),
-  expired_total: z.number().nullable().optional(),
-  evicted_total: z.number().nullable().optional(),
+  expired_count: z.number().nullable().optional(),
+  evicted_count: z.number().nullable().optional(),
   count: z.number().array().nullable().optional(),
-  bps_tx: z.number().array().nullable().optional(),
-  eps_tx: z.number().array().nullable().optional(),
+  count_tx: z.number().array().nullable().optional(),
+  bytes_tx: z.number().array().nullable().optional(),
 });
 
 const gossipMessageStatsSchema = z.object({
-  bytes_rx_total: z.number().array().nullable().optional(),
-  count_rx_total: z.number().array().nullable().optional(),
-  bytes_tx_total: z.number().array().nullable().optional(),
-  count_tx_total: z.number().array().nullable().optional(),
-  bps_rx: z.number().array().nullable().optional(),
-  mps_rx: z.number().array().nullable().optional(),
-  bps_tx: z.number().array().nullable().optional(),
-  mps_tx: z.number().array().nullable().optional(),
+  num_bytes_rx: z.number().array().nullable().optional(),
+  num_bytes_tx: z.number().array().nullable().optional(),
+  num_messages_rx: z.number().array().nullable().optional(),
+  num_messages_tx: z.number().array().nullable().optional(),
 });
 
 export const gossipNetworkStatsSchema = z.object({
@@ -549,10 +545,44 @@ export const gossipNetworkStatsSchema = z.object({
   messages: gossipMessageStatsSchema,
 });
 
+export const gossipPeersSizeUpdateSchema = z.number();
+
+export const gossipCellDataSchema = z.union([z.string(), z.number()]);
+
+export const gossipQueryRowsSchema = z
+  .record(z.string(), z.record(z.string(), gossipCellDataSchema))
+  .nullable();
+
+export const gossipViewUpdateSchema = z.object({
+  changes: z.array(
+    z.object({
+      row_index: z.number(),
+      column_name: z.string(),
+      new_value: gossipCellDataSchema,
+    }),
+  ),
+});
+
 export const gossipSchema = z.discriminatedUnion("key", [
   gossipTopicSchema.extend({
     key: z.literal("network_stats"),
     value: gossipNetworkStatsSchema,
+  }),
+  gossipTopicSchema.extend({
+    key: z.literal("peers_size_update"),
+    value: gossipPeersSizeUpdateSchema,
+  }),
+  gossipTopicSchema.extend({
+    key: z.literal("query_scroll"),
+    value: gossipQueryRowsSchema,
+  }),
+  gossipTopicSchema.extend({
+    key: z.literal("query_sort"),
+    value: gossipQueryRowsSchema,
+  }),
+  gossipTopicSchema.extend({
+    key: z.literal("view_update"),
+    value: gossipViewUpdateSchema,
   }),
 ]);
 

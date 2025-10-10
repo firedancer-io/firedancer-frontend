@@ -14,9 +14,14 @@ import {
   messageEventType,
 } from "./ConnectionContext";
 
-const VITE_WEBSOCKET_URL = import.meta.env.PROD
-  ? null
-  : (import.meta.env.VITE_WEBSOCKET_URL as string)?.trim();
+// const VITE_WEBSOCKET_URL =
+//   "http://tsfra2-solana-mainnet-val3.jumpisolated.com/websocket";
+  
+const VITE_WEBSOCKET_URL =
+  "http://gusc1a-ossdev-firedancer62.jumpisolated.com/websocket";
+// const VITE_WEBSOCKET_URL = import.meta.env.PROD
+  // ? null
+  // : (import.meta.env.VITE_WEBSOCKET_URL as string)?.trim();
 
 export function ConnectionProvider({ children }: PropsWithChildren) {
   const [ctxValue, _setCtxValue] = useState(defaultCtxValue);

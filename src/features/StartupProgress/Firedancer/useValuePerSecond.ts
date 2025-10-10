@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
-export function useValuePerSecond(cumulativeValue?: number | null) {
+export function useValuePerSecond(
+  cumulativeValue?: number | null,
+  range: number = 500,
+) {
   const [values, setValues] = useState<[number, number][]>([]);
 
   useEffect(() => {
@@ -12,12 +15,12 @@ export function useValuePerSecond(cumulativeValue?: number | null) {
         number,
         number,
       ][];
-      while (newValues[0] && newValues[0][1] <= now - 500) {
+      while (newValues[0] && newValues[0][1] <= now - range) {
         newValues.shift();
       }
       return newValues;
     });
-  }, [cumulativeValue]);
+  }, [cumulativeValue, range]);
 
   return useMemo(() => {
     if (values.length <= 1) return;

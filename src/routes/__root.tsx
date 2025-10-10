@@ -11,7 +11,6 @@ import { useCurrentRoute } from "../hooks/useCurrentRoute";
 import { useSlotsNavigation } from "../hooks/useSlotsNavigation";
 import { useAtomValue } from "jotai";
 import { isStartupProgressVisibleAtom } from "../features/StartupProgress/atoms";
-
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -34,6 +33,7 @@ function Root() {
   return (
     <>
       <Toast />
+      {/* <Network /> */}
       <StartupProgress>
         <div
           id="scroll-container"
