@@ -1,0 +1,12 @@
+.slots-list {
+  scrollbar-width: none;
+  &.hidden {
+    visibility: hidden;
+  }
+}
+
+.no-slots-text {
+  font-size: 12px;
+  color: var(--regular-text-color);
+  text-align: center;
+}

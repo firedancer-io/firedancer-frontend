@@ -47,12 +47,7 @@ export default function App() {
   );
 
   return (
-    <Theme
-      className="app"
-      appearance="dark"
-      ref={setRefAndColors}
-      scaling="90%"
-    >
+    <Theme id="app" appearance="dark" ref={setRefAndColors} scaling="90%">
       <ConnectionProvider>
         <RouterProvider router={router} />
       </ConnectionProvider>

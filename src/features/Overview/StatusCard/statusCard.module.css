@@ -12,14 +12,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  width: 100%;
 
   > div {
     flex: 1 1 auto;
     min-width: 180px;
   }
-
-  /* display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); */
 }
 
 .vote-distance {

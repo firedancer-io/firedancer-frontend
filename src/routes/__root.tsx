@@ -1,9 +1,15 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { lazy } from "react";
-import Header from "../features/Header";
-import { Container } from "@radix-ui/themes";
+import { lazy, useEffect } from "react";
+import { Box, Flex } from "@radix-ui/themes";
 import StartupProgress from "../features/StartupProgress";
 import Toast from "../features/Toast";
+import Navigation from "../features/Navigation";
+import Header from "../features/Header";
+import { headerSpacing, slotsNavSpacing } from "../consts";
+import NavBlur from "../features/Navigation/NavBlur";
+import { useCurrentRoute } from "../hooks/useCurrentRoute";
+import { useSlotsNavigation } from "../hooks/useSlotsNavigation";
+
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -19,16 +25,61 @@ const TanStackRouterDevtools =
         })),
       );
 
-export const Route = createRootRoute({
-  component: () => (
+export const Route = createRootRoute({ component: Root });
+
+function Root() {
+  return (
     <>
       <Toast />
       <StartupProgress>
-        <Container maxWidth="1920px">
+        <div
+          id="scroll-container"
+          style={{
+            position: "relative",
+            height: "100dvh",
+            overflowY: "auto",
+            willChange: "scroll-position",
+            contain: "paint",
+            // create new stacking context so whatever portals to containerEl will be above content
+            isolation: "isolate",
+          }}
+        >
           <Header />
-          <Outlet />
-        </Container>
+
+          <Flex className="app-width-container" px="2" position="relative">
+            <Navigation />
+            <OutletContainer />
+          </Flex>
+        </div>
       </StartupProgress>
     </>
-  ),
-});
+  );
+}
+
+function OutletContainer() {
+  const isSchedule = useCurrentRoute() === "Schedule";
+  const { setIsNavCollapsed, isNarrowScreen, occupyRowWidth, blurBackground } =
+    useSlotsNavigation();
+
+  useEffect(() => {
+    // automatically open / close on narrow switch
+    setIsNavCollapsed(isNarrowScreen);
+  }, [isNarrowScreen, setIsNavCollapsed]);
+
+  return (
+    <Box
+      position="relative"
+      flexGrow="1"
+      minWidth="0"
+      pb="2"
+      pl={
+        isSchedule || !occupyRowWidth
+          ? "0px"
+          : `${headerSpacing - slotsNavSpacing}px`
+      }
+    >
+      <Outlet />
+      {blurBackground && <NavBlur />}
+    </Box>
+  );
+}

@@ -3,7 +3,7 @@
   grid:
     auto-flow / minMax(80px, auto) minMax(80px, auto) minMax(70px, auto)
     minMax(70px, auto)
-    minMax(75px, auto) minMax(100px, auto) minMax(49px, auto);
+    minMax(75px, auto) minMax(149px, auto);
   row-gap: 1px;
   overflow-x: auto;
   min-width: 80px;
@@ -43,6 +43,11 @@
   color: var(--compute-units-color);
 }
 
+.compute-units-pct {
+  width: 50px;
+  display: inline-block;
+}
+
 .slot-text {
   /* Slight padding to make it easier to text select the slot # */
   padding-left: 10px;
@@ -73,16 +78,11 @@
   font-variant-numeric: tabular-nums;
 
   &.active {
-    background: rgba(250, 250, 250, 0.05);
+    background: var(--container-background-color);
     color: var(--primary-text-color);
   }
 
   &.narrow-screen {
     padding-left: 0;
-  }
-
-  .icon {
-    height: 14px;
-    width: 14px;
   }
 }

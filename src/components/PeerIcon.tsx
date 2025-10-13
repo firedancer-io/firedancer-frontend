@@ -12,12 +12,14 @@ interface PeerIconProps {
   isYou?: boolean;
   size: number;
   hideFallback?: boolean;
+  hideTooltip?: boolean;
 }
 
 export default function PeerIcon({
   url,
   size,
   hideFallback,
+  hideTooltip = false,
   isYou,
 }: PeerIconProps) {
   const [globalHasError, setGlobalHasError] = useAtom(
@@ -26,27 +28,21 @@ export default function PeerIcon({
   const [hasError, setHasError] = useState(globalHasError);
   const [hasLoaded, setHasLoaded] = useState(false);
 
+  const iconStyles = { width: `${size}px`, height: `${size}px` };
+
   if (!url || hasError) {
     if (hideFallback) {
-      return;
-    } else if (isYou) {
-      return (
-        <Tooltip content="Your current validator">
-          <img
-            src={privateYouIcon}
-            style={{ height: `${size}px`, width: `${size}px` }}
-          />
-        </Tooltip>
-      );
-    } else {
-      return (
-        <img
-          src={privateIcon}
-          alt="private"
-          style={{ height: `${size}px`, width: `${size}px` }}
-        />
-      );
+      return <div style={iconStyles} />;
     }
+
+    if (isYou) {
+      const img = <img src={privateYouIcon} style={iconStyles} />;
+
+      if (hideTooltip) return img;
+      return <Tooltip content="Your current validator">{img}</Tooltip>;
+    }
+
+    return <img src={privateIcon} alt="private" style={iconStyles} />;
   }
 
   const handleError = () => {
@@ -58,14 +54,14 @@ export default function PeerIcon({
     <>
       <img
         className={clsx({ [styles.hide]: !hasLoaded })}
-        style={{ height: `${size}px`, width: `${size}px` }}
+        style={iconStyles}
         onError={handleError}
         onLoad={() => setHasLoaded(true)}
         src={url}
       />
       <img
         className={clsx({ [styles.hide]: hasLoaded })}
-        style={{ height: `${size}px`, width: `${size}px` }}
+        style={iconStyles}
         src={privateIcon}
         alt="private"
       />

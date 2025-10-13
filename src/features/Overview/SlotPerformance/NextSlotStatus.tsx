@@ -3,8 +3,11 @@ import styles from "./nextSlotStatus.module.css";
 import useNextSlot from "../../../hooks/useNextSlot";
 
 export default function NextSlotStatus() {
-  const { progressSinceLastLeader, nextSlotText, nextLeaderSlot } =
-    useNextSlot();
+  const { progressSinceLastLeader, nextSlotText, nextLeaderSlot } = useNextSlot(
+    {
+      showNowIfCurrent: true,
+    },
+  );
 
   const slotText = nextLeaderSlot !== undefined ? ` (${nextLeaderSlot})` : "";
 
