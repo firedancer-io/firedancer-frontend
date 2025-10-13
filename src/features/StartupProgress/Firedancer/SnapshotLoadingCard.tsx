@@ -7,6 +7,7 @@ import { Bars } from "./Bars";
 import { useValuePerSecond } from "./useValuePerSecond";
 import { bootProgressPhaseAtom } from "../atoms";
 import { useAtomValue } from "jotai";
+import { useEffect } from "react";
 
 const MAX_THROUGHPUT_BYTES_PER_S = 300_000_000;
 
@@ -21,7 +22,15 @@ export function SnapshotLoadingCard({
   total,
 }: SnapshotLoadingCardProps) {
   const phase = useAtomValue(bootProgressPhaseAtom);
-  const throughput = useValuePerSecond(completed, 1_000, phase);
+  const { valuePerSecond: throughput, reset } = useValuePerSecond(
+    completed,
+    1_000,
+  );
+
+  useEffect(() => {
+    // reset throughput history on phase change
+    reset();
+  }, [phase, reset]);
 
   const throughputObj = throughput == null ? undefined : byteSize(throughput);
   const completedObj = completed == null ? undefined : byteSize(completed);

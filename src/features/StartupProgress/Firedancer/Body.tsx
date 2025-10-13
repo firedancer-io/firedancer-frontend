@@ -1,6 +1,6 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import styles from "./body.module.css";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import {
   bootProgressBarPctAtom,
   bootProgressPhaseAtom,
@@ -12,7 +12,7 @@ import clsx from "clsx";
 import { ProgressBar } from "./ProgressBar";
 import { Header } from "./Header";
 import { BootPhaseEnum } from "../../../api/entities";
-import { formatDuration } from "../../../utils";
+import { getTimeTillText } from "../../../utils";
 import { bootProgressContainerElAtom } from "../../../atoms";
 import { GossipProgress } from "./GossipProgress";
 import { steps } from "./consts";
@@ -20,7 +20,7 @@ import type { BootPhase } from "../../../api/types";
 import Logo from "./Logo";
 import { appMaxWidth } from "../../../consts";
 import { SnapshotProgress } from "./SnapshotProgress";
-import { startupTimeAtom } from "../../../api/atoms";
+import { useUptimeDuration } from "../../../hooks/useUptime";
 
 const classNames: { [phase in BootPhase]?: string } = {
   [BootPhaseEnum.joining_gossip]: styles.gossip,
@@ -80,28 +80,12 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
   );
 }
 
-function getDurationSeconds(startNanos: bigint | undefined) {
-  if (startNanos == null) return;
-  const durationMs = new Date().getTime() - Number(startNanos) / 1_000_000;
-  return durationMs / 1_000;
-}
-
 function TotalDuration() {
-  const startupTimeNanos = useAtomValue(startupTimeAtom)?.startupTimeNanos;
-  const [elapsedSeconds, setElapsedSeconds] = useState<number | undefined>(
-    getDurationSeconds(startupTimeNanos),
-  );
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsedSeconds(getDurationSeconds(startupTimeNanos));
-    }, 1_000);
-    return () => clearInterval(interval);
-  }, [startupTimeNanos]);
+  const uptimeDuration = useUptimeDuration(1_000);
 
   return (
     <Text>
-      {elapsedSeconds == null ? "--" : formatDuration(elapsedSeconds)}
+      {uptimeDuration == null ? "--" : getTimeTillText(uptimeDuration)}
     </Text>
   );
 }
