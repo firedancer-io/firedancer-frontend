@@ -15,7 +15,11 @@ export function useValuePerSecond(
         number,
         number,
       ][];
-      while (newValues[0] && newValues[0][1] <= now - windowMs) {
+      while (
+        newValues.length > 2 &&
+        newValues[0] &&
+        newValues[0][1] <= now - windowMs
+      ) {
         newValues.shift();
       }
       return newValues;

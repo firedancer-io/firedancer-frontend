@@ -22,6 +22,9 @@ import {
   scheduleStrategyAtom,
   bootProgressAtom,
   gossipNetworkStatsAtom,
+  gossipPeersSizeAtom,
+  gossipPeersRowsUpdateAtom,
+  gossipPeersCellUpdateAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
@@ -47,6 +50,8 @@ import {
 import type {
   EstimatedSlotDuration,
   EstimatedTps,
+  GossipNetworkStats,
+  GossipPeersSize,
   LiveTilePrimaryMetric,
   LiveTxnWaterfall,
   SlotResponse,
@@ -140,6 +145,22 @@ export function useSetAtomWsData() {
   const setSlotStatus = useSetAtom(setSlotStatusAtom);
 
   const setGossipNetworkStats = useSetAtom(gossipNetworkStatsAtom);
+  const setDbGossipNetworkStats = useThrottledCallback(
+    (value?: GossipNetworkStats) => {
+      setGossipNetworkStats(value);
+    },
+    250,
+  );
+
+  const setGossipPeersSize = useSetAtom(gossipPeersSizeAtom);
+  const setDbGossipPeersSize = useThrottledCallback(
+    (value?: GossipPeersSize) => {
+      setGossipPeersSize(value);
+    },
+    1_000,
+  );
+  const setGossipPeersRows = useSetAtom(gossipPeersRowsUpdateAtom);
+  const setGossipPeersCells = useSetAtom(gossipPeersCellUpdateAtom);
 
   const addPeers = useSetAtom(addPeersAtom);
   const updatePeers = useSetAtom(updatePeersAtom);
@@ -274,7 +295,20 @@ export function useSetAtomWsData() {
         const { key, value } = gossipSchema.parse(msg);
         switch (key) {
           case "network_stats": {
-            setGossipNetworkStats(value);
+            setDbGossipNetworkStats(value);
+            break;
+          }
+          case "peers_size_update": {
+            setDbGossipPeersSize(value);
+            break;
+          }
+          case "query_scroll":
+          case "query_sort": {
+            setGossipPeersRows(value);
+            break;
+          }
+          case "view_update": {
+            setGossipPeersCells(value);
             break;
           }
         }
