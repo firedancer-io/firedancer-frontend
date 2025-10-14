@@ -303,6 +303,8 @@ export const bootProgressSchema = z.object({
     .optional(),
 
   catching_up_elapsed_seconds: z.number().nullable().optional(),
+
+  catching_up_first_replay_slot: z.number().nullable().optional(),
 });
 
 export const slotTransactionsSchema = z.object({
