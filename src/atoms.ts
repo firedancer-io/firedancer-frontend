@@ -2,6 +2,7 @@ import { atom } from "jotai";
 import { slotsPerLeader } from "./consts";
 import { atomWithImmer } from "jotai-immer";
 import {
+  bootProgressAtom,
   estimatedSlotDurationAtom,
   identityKeyAtom,
   skippedSlotsAtom,
@@ -284,10 +285,15 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
 });
 
 export const firstProcessedSlotAtom = atom((get) => {
-  const startupProgress = get(startupProgressAtom);
-  if (startupProgress?.ledger_max_slot == null) return;
+  const client = get(clientAtom);
+  if (client === ClientEnum.Frankendancer) {
+    const startupProgress = get(startupProgressAtom);
+    if (startupProgress?.ledger_max_slot == null) return;
 
-  return startupProgress.ledger_max_slot + 1;
+    return startupProgress.ledger_max_slot + 1;
+  }
+
+  return get(bootProgressAtom)?.catching_up_first_replay_slot ?? undefined;
 });
 
 export const earliestProcessedSlotLeaderAtom = atom((get) => {
