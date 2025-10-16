@@ -22,6 +22,7 @@ export default defineConfig({
     },
   },
   build: {
+    minify: "esbuild",
     rollupOptions: {
       plugins: [
         license({
