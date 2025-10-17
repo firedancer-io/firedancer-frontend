@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { bootProgressAtom } from "../../api/atoms";
+import { bootProgressAtom, completedSlotAtom } from "../../api/atoms";
 import { BootPhaseEnum, ClientEnum } from "../../api/entities";
 import type { BootProgress } from "../../api/types";
 import { clientAtom } from "../../atoms";
@@ -81,10 +81,111 @@ export const bootProgressBarPctAtom = atom((get) => {
       return Math.min(100, (insertCompleted / total) * 100);
     }
     case BootPhaseEnum.catching_up: {
-      return 0;
+      const catchingUpData = get(catchingUpDataAtom);
+      if (!catchingUpData) return 0;
+
+      const { startSlot, latestReplaySlot, latestTurbineSlot } = catchingUpData;
+
+      const totalSlotsToReplay = latestTurbineSlot - startSlot + 1;
+      if (!totalSlotsToReplay) return 0;
+
+      const replayedSlots = latestReplaySlot
+        ? latestReplaySlot - startSlot + 1
+        : 0;
+
+      return (100 * replayedSlots) / totalSlotsToReplay;
     }
     case BootPhaseEnum.running: {
       return 0;
     }
   }
 });
+
+export const turbineBarIndicesAtom = atom<{
+  first: number;
+  latest: number;
+}>();
+
+export interface CatchingUpData {
+  startSlot: number;
+  repairSlots: Set<number>;
+  latestReplaySlot: number;
+  firstTurbineSlot: number;
+  latestTurbineSlot: number;
+  turbineSlots: Set<number>;
+}
+
+export const catchingUpDataAtom = atom<CatchingUpData | undefined>((get) => {
+  const startSlot =
+    get(bootProgressAtom)?.loading_incremental_snapshot_slot ??
+    get(bootProgressAtom)?.loading_full_snapshot_slot;
+  const turbineSlots = get(turbineSlotsAtom);
+  const firstTurbineSlot = get(firstTurbineSlotAtom);
+  const latestTurbineSlot = get(latestTurbineSlotAtom);
+  const latestReplaySlot = get(completedSlotAtom) ?? 0;
+  const repairSlots = get(repairSlotsAtom);
+
+  if (
+    startSlot == null ||
+    !turbineSlots.size ||
+    firstTurbineSlot == null ||
+    latestTurbineSlot == null
+  )
+    return;
+
+  return {
+    startSlot,
+    repairSlots,
+    latestReplaySlot,
+    firstTurbineSlot,
+    latestTurbineSlot,
+    turbineSlots,
+  };
+});
+
+export const [
+  turbineSlotsAtom,
+  addTurbineSlotAtom,
+  firstTurbineSlotAtom,
+  latestTurbineSlotAtom,
+] = (function getTurbineAtoms() {
+  const _turbineSlotsAtom = atom<Set<number>>(new Set<number>());
+  const _firstTurbineSlotAtom = atom<number | undefined>();
+  const _latestTurbineSlotAtom = atom<number | undefined>();
+
+  return [
+    atom((get) => get(_turbineSlotsAtom)),
+    atom(null, (get, set, slots: number[]) => {
+      set(_turbineSlotsAtom, (prev) => {
+        slots.forEach((slot) => {
+          prev.add(slot);
+          set(_firstTurbineSlotAtom, (first) =>
+            first ? Math.min(first, slot) : slot,
+          );
+          set(_latestTurbineSlotAtom, (latest) =>
+            latest ? Math.max(latest, slot) : slot,
+          );
+        });
+        return prev;
+      });
+    }),
+    atom((get) => get(_firstTurbineSlotAtom)),
+    atom((get) => get(_latestTurbineSlotAtom)),
+  ];
+})();
+
+export const [repairSlotsAtom, addRepairSlotAtom] =
+  (function getTurbineAtoms() {
+    const _repairSlotsAtom = atom<Set<number>>(new Set<number>());
+    return [
+      atom((get) => get(_repairSlotsAtom)),
+      atom(null, (get, set, slots: number[]) => {
+        set(_repairSlotsAtom, (prev) => {
+          slots.forEach((slot) => {
+            prev.add(slot);
+          });
+          return prev;
+        });
+      }),
+    ];
+  })();
