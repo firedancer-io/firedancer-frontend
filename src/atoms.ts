@@ -147,7 +147,7 @@ export const setSlotStatusAtom = atom(
   },
 );
 
-const selectedSlotNearbyOffset = 2;
+const selectedSlotNearbyOffset = 10;
 const selectedSlotNearbyYouLeadersAtom = atom<number[] | undefined>((get) => {
   const leaderSlots = get(leaderSlotsAtom);
   const selectedSlot = get(selectedSlotAtom);
