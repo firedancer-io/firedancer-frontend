@@ -163,7 +163,7 @@ export const circularProgressTrailColor = "#666666";
 export const circularProgressPathColor = slotStatusBlue;
 
 // slot details
-export const slotDetailsMySlotsColor = "#0080e6";
+export const slotDetailsMySlotsNotSelectedColor = "#19457A";
 export const slotDetailsSearchLabelColor = "#FFF";
 export const slotDetailsQuickSearchTextColor = "var(--gray-10)";
 export const slotDetailsEarliestSlotColor = "var(--teal-9)";
