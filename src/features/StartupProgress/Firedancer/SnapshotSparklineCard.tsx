@@ -17,7 +17,7 @@ import { useMeasure } from "react-use";
 
 const gridSize = 20;
 // add 1 px for the final grid line
-const height = gridSize * 5 + 1;
+const height = gridSize * 6 + 1;
 const width = gridSize * 15 + 1;
 
 const rollingWindowMs = 6000;

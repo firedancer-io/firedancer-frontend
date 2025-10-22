@@ -15,12 +15,16 @@ function getSnapshotValues(bootProgress: BootProgress) {
     loading_full_snapshot_decompress_bytes_compressed,
     loading_full_snapshot_decompress_bytes_decompressed,
     loading_full_snapshot_insert_bytes_decompressed,
+    loading_full_snapshot_read_path,
+    loading_full_snapshot_insert_accounts,
 
     loading_incremental_snapshot_total_bytes_compressed,
     loading_incremental_snapshot_read_bytes_compressed,
     loading_incremental_snapshot_decompress_bytes_compressed,
     loading_incremental_snapshot_decompress_bytes_decompressed,
     loading_incremental_snapshot_insert_bytes_decompressed,
+    loading_incremental_snapshot_read_path,
+    loading_incremental_snapshot_insert_accounts,
   } = bootProgress;
 
   if (
@@ -30,22 +34,26 @@ function getSnapshotValues(bootProgress: BootProgress) {
     return {
       totalBytes: loading_full_snapshot_total_bytes_compressed,
       readBytes: loading_full_snapshot_read_bytes_compressed,
+      readPath: loading_full_snapshot_read_path,
       decompressCompressedBytes:
         loading_full_snapshot_decompress_bytes_compressed,
       decompressDecompressedBytes:
         loading_full_snapshot_decompress_bytes_decompressed,
       insertBytes: loading_full_snapshot_insert_bytes_decompressed,
+      insertAccounts: loading_full_snapshot_insert_accounts,
     };
   }
 
   return {
     totalBytes: loading_incremental_snapshot_total_bytes_compressed,
     readBytes: loading_incremental_snapshot_read_bytes_compressed,
+    readPath: loading_incremental_snapshot_read_path,
     decompressCompressedBytes:
       loading_incremental_snapshot_decompress_bytes_compressed,
     decompressDecompressedBytes:
       loading_incremental_snapshot_decompress_bytes_decompressed,
     insertBytes: loading_incremental_snapshot_insert_bytes_decompressed,
+    insertAccounts: loading_incremental_snapshot_insert_accounts,
   };
 }
 
@@ -56,9 +64,11 @@ export function SnapshotProgress() {
   const {
     totalBytes,
     readBytes,
+    readPath,
     decompressCompressedBytes,
     decompressDecompressedBytes,
     insertBytes,
+    insertAccounts,
   } = getSnapshotValues(bootProgress);
 
   const insertCompletedBytes =
@@ -73,6 +83,7 @@ export function SnapshotProgress() {
           title="Reading"
           completed={readBytes}
           total={totalBytes}
+          footerText={readPath}
         />
         <SnapshotSparklineCard
           title="CPU Utilization"
@@ -102,6 +113,8 @@ export function SnapshotProgress() {
           title="Inserting"
           completed={insertCompletedBytes}
           total={totalBytes}
+          showAccountRate
+          cumulativeAccounts={insertAccounts}
         />
         <SnapshotSparklineCard
           title="CPU Utilization"
