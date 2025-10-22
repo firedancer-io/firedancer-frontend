@@ -100,3 +100,10 @@ export function getNumOfCommonLeadingDigits(a: number, b: number): number {
 
   return aStr.length;
 }
+
+export const compactSingleDecimalFormatter = Intl.NumberFormat(undefined, {
+  notation: "compact",
+  compactDisplay: "short",
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
