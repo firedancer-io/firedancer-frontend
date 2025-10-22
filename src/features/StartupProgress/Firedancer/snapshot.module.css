@@ -2,89 +2,107 @@
   color: var(--boot-progress-snapshot-units-color);
 }
 
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .card {
+  padding: 20px;
+  gap: 20px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(234, 103, 103, 0.05);
   color: var(--boot-progress-primary-text-color);
 }
 
 .sparkline-card {
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  gap: 20px;
+  justify-content: space-between;
   flex-shrink: 0;
-}
 
-.sparkline-container {
-  position: relative;
-  flex-shrink: 0;
-  padding: "10px 0";
-
-  background-image:
-    linear-gradient(
-      to right,
-      var(--snapshot-area-chart-grid-line-color) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      to bottom,
-      var(--snapshot-area-chart-grid-line-color) 1px,
-      transparent 1px
-    );
-}
-
-.card-header {
-  font-size: 28px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-}
-
-.loading-card {
-  flex-grow: 1;
-  flex-shrink: 1;
-  padding: 20px;
-}
-
-.snapshot-pct-text {
-  color: var(--boot-progress-snapshot-pct-color);
-  font-size: 28px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-}
-
-.snapshot-loading-row {
-  font-size: 14px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-
-  > * {
-    width: 33%;
+  .snapshot-tile-title {
+    color: var(--boot-progress-primary-text-color);
+    font-size: 18px;
+    font-weight: 400;
   }
 
-  .center-align {
+  .snapshot-tile-busy {
+    font-size: 18px;
+    font-weight: 400;
+  }
+
+  .sparkline-container {
+    position: relative;
+    flex-shrink: 0;
+    padding: "10px 0";
+
+    background-image:
+      linear-gradient(
+        to right,
+        var(--snapshot-area-chart-grid-line-color) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        var(--snapshot-area-chart-grid-line-color) 1px,
+        transparent 1px
+      );
+  }
+}
+
+.throughput-card {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  .card-header {
+    font-size: 18px;
+    line-height: normal;
+    font-weight: 400;
+    & > * {
+      flex-basis: 25%;
+    }
+  }
+
+  .title {
+    font-size: 28px;
+    font-weight: 400;
+    min-width: 0;
+  }
+
+  .accounts-rate {
     text-align: center;
   }
 
-  .right-align {
-    text-align: right;
+  .total {
+    text-align: center;
   }
-}
 
-.snapshot-tile-title {
-  color: var(--boot-progress-primary-text-color);
-  font-size: 18px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-}
+  .throughput {
+    text-align: end;
+  }
 
-.snapshot-tile-busy {
-  font-size: 18px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
+  .snapshot-pct-text {
+    color: var(--boot-progress-snapshot-pct-color);
+    font-size: 28px;
+    font-weight: 400;
+  }
+
+  .footer {
+    color: var(--app-teal);
+    font-size: 16px;
+    svg {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      fill: var(--app-teal);
+    }
+
+    .footer-text {
+      min-width: 0;
+    }
+  }
 }

@@ -1,13 +1,14 @@
 import { Card, Flex, Text } from "@radix-ui/themes";
 import styles from "./snapshot.module.css";
-import type { ByteSizeResult } from "byte-size";
 import byteSize from "byte-size";
 import clsx from "clsx";
 import { Bars } from "./Bars";
 import { useValuePerSecond } from "./useValuePerSecond";
 import { bootProgressPhaseAtom } from "../atoms";
 import { useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import StorageIcon from "@material-design-icons/svg/filled/storage.svg?react";
+import { compactSingleDecimalFormatter } from "../../../numUtils";
 
 const MAX_THROUGHPUT_BYTES_PER_S = 300_000_000;
 
@@ -15,11 +16,17 @@ interface SnapshotLoadingCardProps {
   title: string;
   completed?: number | null;
   total?: number | null;
+  showAccountRate?: boolean;
+  cumulativeAccounts?: number | null;
+  footerText?: string | null;
 }
 export function SnapshotLoadingCard({
   title,
   completed,
   total,
+  showAccountRate = false,
+  cumulativeAccounts,
+  footerText,
 }: SnapshotLoadingCardProps) {
   const phase = useAtomValue(bootProgressPhaseAtom);
   const { valuePerSecond: throughput, reset } = useValuePerSecond(
@@ -37,61 +44,93 @@ export function SnapshotLoadingCard({
   const totalObj = total == null ? undefined : byteSize(total);
 
   return (
-    <Card className={clsx(styles.card, styles.loadingCard)}>
-      <Flex direction="column" gap="20px" justify="between" height="100%">
-        <Flex
-          justify="between"
-          align="center"
-          className={styles.snapshotLoadingRow}
-        >
-          <Text className={styles.cardHeader}>{title}</Text>
+    <Card className={clsx(styles.card, styles.throughputCard)}>
+      <Flex justify="between" align="center" className={styles.cardHeader}>
+        <Text className={clsx(styles.title, styles.ellipsis)}>{title}</Text>
 
-          <div className={styles.centerAlign}>
-            <ValueUnitText byteSizeResult={completedObj} />
+        {showAccountRate && (
+          <AccountsRate cumulativeAccounts={cumulativeAccounts} />
+        )}
 
-            <Text> / </Text>
+        <div className={styles.total}>
+          <ValueUnitText
+            value={completedObj?.value}
+            unit={completedObj?.unit}
+          />
 
-            <ValueUnitText byteSizeResult={totalObj} />
-          </div>
+          <Text> / </Text>
 
-          {throughputObj ? (
-            <span className={styles.rightAlign}>
-              <Text className={styles.snapshotPctText}>
-                {throughputObj.value}
-              </Text>{" "}
-              <Text className={styles.secondaryColor}>
-                {throughputObj.unit}/sec
-              </Text>
-            </span>
-          ) : (
-            <Text className={clsx(styles.secondaryColor, styles.rightAlign)}>
-              --
-            </Text>
-          )}
-        </Flex>
+          <ValueUnitText value={totalObj?.value} unit={totalObj?.unit} />
+        </div>
 
-        <Bars value={throughput ?? 0} max={MAX_THROUGHPUT_BYTES_PER_S} />
+        <span className={styles.throughput}>
+          <Text className={styles.snapshotPctText}>
+            {throughputObj?.value ?? "--"}
+          </Text>{" "}
+          <Text className={styles.secondaryColor}>
+            {throughputObj?.unit}/sec
+          </Text>
+        </span>
       </Flex>
+
+      <Bars value={throughput ?? 0} max={MAX_THROUGHPUT_BYTES_PER_S} />
+
+      {footerText && (
+        <Flex align="center" gap="10px" wrap="nowrap" className={styles.footer}>
+          <StorageIcon />
+          <Text className={clsx(styles.footerText, styles.ellipsis)}>
+            {footerText}
+          </Text>
+        </Flex>
+      )}
     </Card>
   );
 }
 
 function ValueUnitText({
-  byteSizeResult,
-  unitSuffix,
+  value,
+  unit,
 }: {
-  byteSizeResult?: ByteSizeResult;
-  unitSuffix?: string;
+  value?: string | number;
+  unit?: string;
 }) {
-  return byteSizeResult ? (
+  return (
     <>
-      <Text>{byteSizeResult.value}</Text>{" "}
-      <Text className={styles.secondaryColor}>
-        {byteSizeResult.unit}
-        {unitSuffix}
-      </Text>
+      <Text>{value ?? "--"}</Text>
+      {unit && (
+        <>
+          {" "}
+          <Text className={styles.secondaryColor}>{unit}</Text>
+        </>
+      )}
     </>
-  ) : (
-    "--"
+  );
+}
+
+interface AccountsRateProps {
+  cumulativeAccounts?: number | null;
+}
+function AccountsRate({ cumulativeAccounts }: AccountsRateProps) {
+  const phase = useAtomValue(bootProgressPhaseAtom);
+
+  const { valuePerSecond: accountsPerSecond, reset } = useValuePerSecond(
+    cumulativeAccounts,
+    1_000,
+  );
+
+  useEffect(() => {
+    // reset throughput history on phase change
+    reset();
+  }, [phase, reset]);
+
+  const value = useMemo(() => {
+    if (accountsPerSecond == null) return;
+    return compactSingleDecimalFormatter.format(accountsPerSecond);
+  }, [accountsPerSecond]);
+
+  return (
+    <div className={styles.accountsRate}>
+      <ValueUnitText value={value} unit="Accounts / sec" />
+    </div>
   );
 }
