@@ -81,5 +81,8 @@
 .slot-nav-container {
   transition: width 0.3s;
   box-sizing: border-box;
-  background: var(--slot-nav-background-color);
+
+  &.nav-background {
+    background-color: var(--slot-nav-background-color);
+  }
 }
