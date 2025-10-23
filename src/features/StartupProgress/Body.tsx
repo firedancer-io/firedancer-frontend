@@ -74,12 +74,17 @@ export default function Body() {
   const [_hideSteps, setHideSteps] = useState<boolean>();
 
   useEffect(() => {
+    if (startupProgress?.phase !== "running") {
+      // show again if validator is restarted
+      setShowStartupProgress(true);
+    }
+
     setHideSteps((prev) => {
       if (!startupProgress) return prev;
 
       return startupProgress.phase === "running";
     });
-  }, [startupProgress]);
+  }, [setShowStartupProgress, startupProgress]);
 
   const hideSteps = _hideSteps === true || _hideSteps === undefined;
 
