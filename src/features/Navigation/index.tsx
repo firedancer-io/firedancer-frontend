@@ -58,7 +58,9 @@ export default function Navigation() {
         // width transitions
         width={showNav ? `${width + thumbPadding}px` : "0"}
         overflow="hidden"
-        className={clsx("sticky", styles.slotNavContainer)}
+        className={clsx("sticky", styles.slotNavContainer, {
+          [styles.navBackground]: !showOnlyEpochBar,
+        })}
         style={{
           zIndex: maxZIndex - 1,
         }}
