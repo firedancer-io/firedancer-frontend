@@ -1,4 +1,5 @@
-import { Box, Card, Flex } from "@radix-ui/themes";
+import { Box, Flex } from "@radix-ui/themes";
+import Card from "../../../components/Card";
 import CardStat from "../../../components/CardStat";
 import CardHeader from "../../../components/CardHeader";
 import Chart from "./Chart";
