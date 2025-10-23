@@ -4,9 +4,9 @@ import { useMemo } from "react";
 export type RouteLabel = "Overview" | "Schedule" | "Gossip" | "Slot Details";
 export const RouteLabelToPath: Record<RouteLabel, string> = {
   Overview: "/",
+  "Slot Details": "/slotDetails",
   Schedule: "/leaderSchedule",
   Gossip: "/gossip",
-  "Slot Details": "/slotDetails",
 };
 
 export function useCurrentRoute() {
