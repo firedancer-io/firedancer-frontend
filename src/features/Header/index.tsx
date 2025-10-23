@@ -8,16 +8,15 @@ import {
   headerSpacing,
   logoRightSpacing,
   maxZIndex,
-  slotNavWithoutListWidth,
   slotsNavSpacing,
 } from "../../consts";
 import Logo from "./Logo";
 import { CluserIndicator, Cluster } from "./Cluster";
 import NavCollapseToggle from "../Navigation/NavCollapseToggle";
 import NavBlur from "../Navigation/NavBlur";
-import { slotNavBackgroundColor } from "../../colors";
-import { useMemo } from "react";
 import { useSlotsNavigation } from "../../hooks/useSlotsNavigation";
+import clsx from "clsx";
+import styles from "./header.module.css";
 
 export default function Header() {
   const showDropdownNav = useMedia("(max-width: 900px)");
@@ -25,16 +24,6 @@ export default function Header() {
 
   const { isNarrowScreen, blurBackground, showNav, showOnlyEpochBar } =
     useSlotsNavigation();
-
-  const leftBackground = useMemo(() => {
-    if (!showNav) return undefined;
-    if (showOnlyEpochBar) {
-      // only color the epoch bar portion
-      const width = `${slotNavWithoutListWidth + epochThumbPadding}px`;
-      return `linear-gradient(to right, ${slotNavBackgroundColor} 0px ${width}, transparent ${width} 100%)`;
-    }
-    return slotNavBackgroundColor;
-  }, [showOnlyEpochBar, showNav]);
 
   const useExtraNarrowGap = !showNav && isXNarrow;
   const extraNarrowGap = "3px";
@@ -53,14 +42,14 @@ export default function Header() {
       <Box px="2" className="app-width-container">
         <Flex height={`${headerHeight}px`} align="center">
           <Flex
+            className={clsx({
+              [styles.navBackground]: showNav && !showOnlyEpochBar,
+            })}
             height="100%"
             align="center"
             gapX={useExtraNarrowGap ? extraNarrowGap : `${logoRightSpacing}px`}
             // slots nav background color boundary
             pr={useExtraNarrowGap ? extraNarrowGap : `${slotsNavSpacing}px`}
-            style={{
-              background: leftBackground,
-            }}
             // align with epoch bar thumb overflow padding
             ml={`${-epochThumbPadding}px`}
             pl={`${epochThumbPadding}px`}
