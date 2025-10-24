@@ -50,7 +50,6 @@ export function GossipProgress() {
               : "-- Mbit"}
           </Text>
           <Bars
-            title="Ingress"
             value={ingress.total_throughput ?? 0}
             max={MAX_THROUGHPUT_BYTES}
           />
@@ -64,7 +63,6 @@ export function GossipProgress() {
               : "-- Mbit"}
           </Text>
           <Bars
-            title="Egress"
             value={egress.total_throughput ?? 0}
             max={MAX_THROUGHPUT_BYTES}
           />
