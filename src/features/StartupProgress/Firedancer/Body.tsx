@@ -34,11 +34,9 @@ export default function Body() {
   const setShowStartupProgress = useSetAtom(showStartupProgressAtom);
   const phase = useAtomValue(bootProgressPhaseAtom);
 
-  // close startup when complete
+  // close startup when running, reopen on restart
   useEffect(() => {
-    if (phase === "running") {
-      setShowStartupProgress(false);
-    }
+    setShowStartupProgress(phase !== "running");
   }, [setShowStartupProgress, phase]);
 
   return (
