@@ -46,11 +46,13 @@ export function Cluster() {
     <Flex
       width={`${slotsListWidth + offset}px`}
       className={styles.clusterContainer}
+      gap="5px"
       ml={`-${offset}px`}
       p={`${offset}px 5px ${offset}px ${offset}px`}
     >
       <Flex
         className={styles.cluster}
+        flexGrow="1"
         direction="column"
         align="center"
         style={{ background: getClusterColor(cluster) }}
@@ -166,19 +168,19 @@ function StrategyIcon() {
   if (scheduleStrategy === ScheduleStrategyEnum.balanced) {
     return (
       <Tooltip content="Transaction scheduler strategy: balanced">
-        <div style={{ fontSize }}>{icon}</div>
+        <div style={{ margin: "0 -3px 0 0", fontSize }}>{icon}</div>
       </Tooltip>
     );
   } else if (scheduleStrategy === ScheduleStrategyEnum.perf) {
     return (
       <Tooltip content="Transaction scheduler strategy: performance">
-        <div style={{ margin: "0 -1px", fontSize }}>{icon}</div>
+        <div style={{ margin: "0 -3px 0 -1px", fontSize }}>{icon}</div>
       </Tooltip>
     );
   } else if (scheduleStrategy === ScheduleStrategyEnum.revenue) {
     return (
       <Tooltip content="Transaction scheduler strategy: revenue">
-        <div style={{ fontSize }}>{icon}</div>
+        <div style={{ margin: "0 -3px 0 0", fontSize }}>{icon}</div>
       </Tooltip>
     );
   }
