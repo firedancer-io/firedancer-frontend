@@ -2,7 +2,6 @@ import { Table, Text } from "@radix-ui/themes";
 import { gossipNetworkStatsAtom } from "../../../api/atoms";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import byteSize from "byte-size";
 import RateTableCell from "./RateTableCell";
 
 const messageTypes = [
@@ -15,26 +14,26 @@ const messageTypes = [
 ];
 
 export default function MessagesTable() {
-  const networkStats = useAtomValue(gossipNetworkStatsAtom);
+  const messages = useAtomValue(gossipNetworkStatsAtom)?.messages;
+
   const data = useMemo(() => {
-    const messages = networkStats?.messages;
     if (!messages?.num_bytes_rx) return;
 
     return messages.num_bytes_rx.map((_, i) => {
       return {
         type: messageTypes[i],
         ingressBytes: messages.num_bytes_rx?.[i],
-        ingressMessageCount: messages.num_bytes_tx?.[i],
-        egressBytes: messages.num_messages_rx?.[i],
-        egressMessageCount: messages.num_messages_tx?.[i],
+        egressBytes: messages.num_bytes_tx?.[i],
+        ingressMessages: messages.num_messages_rx?.[i],
+        egressMessages: messages.num_messages_tx?.[i],
       };
     });
-  }, [networkStats]);
+  }, [messages]);
 
   if (!data) return;
 
   return (
-    <div style={{minWidth: "500px"}}>
+    <div style={{ minWidth: "500px" }}>
       <Text>Messages</Text>
       <Table.Root>
         <Table.Header>
@@ -48,14 +47,14 @@ export default function MessagesTable() {
         </Table.Header>
 
         <Table.Body>
-          {data?.map((row) => {
+          {data?.map((row, i) => {
             return (
               <Table.Row key={row.type}>
                 <Table.RowHeaderCell>{row.type}</Table.RowHeaderCell>
                 <RateTableCell value={row.ingressBytes ?? 0} inBytes />
                 <RateTableCell value={row.egressBytes ?? 0} inBytes />
-                <RateTableCell value={row.ingressMessageCount ?? 0} />
-                <RateTableCell value={row.egressMessageCount ?? 0} />
+                <RateTableCell value={row.ingressMessages ?? 0} />
+                <RateTableCell value={row.egressMessages ?? 0} />
               </Table.Row>
             );
           })}

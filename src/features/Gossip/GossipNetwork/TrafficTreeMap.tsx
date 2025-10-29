@@ -60,7 +60,7 @@ interface TrafficeNetworkChartProps {
   includeAll: boolean;
 }
 
-const colors: Record<string, string> = {} satisfies Record<string, string>;
+// const colors: Record<string, string> = {} satisfies Record<string, string>;
 
 function TrafficNetworkChart({
   networkTraffic,
@@ -72,7 +72,7 @@ function TrafficNetworkChart({
 
     const threshold = 0.7;
     let currentTotal = 0;
-    const singleNodeThreshold = 0.005;
+    // const singleNodeThreshold = 0.005;
     let i = 0;
     const children = [];
     while (
@@ -87,11 +87,7 @@ function TrafficNetworkChart({
         networkTraffic.peer_identities?.[i] ||
         "";
 
-      let color = colorsList[Math.trunc(Math.random() * colorsList.length)];
-    //   if (colors[id]) {
-    //     color = colors[id];
-    //   }
-    //   colors[id] = color;
+      const color = colorsList[Math.trunc(Math.random() * colorsList.length)];
 
       children.push({
         name: id,
@@ -110,7 +106,7 @@ function TrafficNetworkChart({
     children.push({
       name: "rest",
       loc: includeAll
-        ? (networkTraffic.total_throughput ?? 0 - currentTotal)
+        ? (networkTraffic.total_throughput ?? 0) - currentTotal
         : restOfThroughput,
       color: "#1CE7C2",
     });
@@ -142,7 +138,7 @@ function TrafficNetworkChart({
         valueFormat=".02s"
         margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
         labelSkipSize={16}
-        labelTextColor={"black"}
+        labelTextColor="black"
         // labelTextColor={{ from: "color", modifiers: [["darker", 1.2]] }}
         enableParentLabel={false}
         // parentLabelPosition="left"
