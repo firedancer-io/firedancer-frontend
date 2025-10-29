@@ -584,10 +584,44 @@ export const gossipNetworkStatsSchema = z.object({
   messages: gossipMessageStatsSchema,
 });
 
+export const gossipPeersSizeUpdateSchema = z.number();
+
+export const gossipCellDataSchema = z.union([z.string(), z.number()]);
+
+export const gossipQueryRowsSchema = z
+  .record(z.string(), z.record(z.string(), gossipCellDataSchema))
+  .nullable();
+
+export const gossipViewUpdateSchema = z.object({
+  changes: z.array(
+    z.object({
+      row_index: z.number(),
+      column_name: z.string(),
+      new_value: gossipCellDataSchema,
+    }),
+  ),
+});
+
 export const gossipSchema = z.discriminatedUnion("key", [
   gossipTopicSchema.extend({
     key: z.literal("network_stats"),
     value: gossipNetworkStatsSchema,
+  }),
+  gossipTopicSchema.extend({
+    key: z.literal("peers_size_update"),
+    value: gossipPeersSizeUpdateSchema,
+  }),
+  gossipTopicSchema.extend({
+    key: z.literal("query_scroll"),
+    value: gossipQueryRowsSchema,
+  }),
+  gossipTopicSchema.extend({
+    key: z.literal("query_sort"),
+    value: gossipQueryRowsSchema,
+  }),
+  gossipTopicSchema.extend({
+    key: z.literal("view_update"),
+    value: gossipViewUpdateSchema,
   }),
 ]);
 
