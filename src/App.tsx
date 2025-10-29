@@ -12,8 +12,11 @@ import { kebabCase } from "lodash";
 import FiredancerLogo from "./assets/firedancer_logo.svg";
 import FrankendancerLogo from "./assets/frankendancer_logo.svg";
 import { ClientEnum } from "./api/entities";
+import { enableMapSet } from "immer";
 
 const router = createRouter({ routeTree });
+
+enableMapSet();
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {
@@ -47,12 +50,7 @@ export default function App() {
   );
 
   return (
-    <Theme
-      className="app"
-      appearance="dark"
-      ref={setRefAndColors}
-      scaling="90%"
-    >
+    <Theme id="app" appearance="dark" ref={setRefAndColors} scaling="90%">
       <ConnectionProvider>
         <RouterProvider router={router} />
       </ConnectionProvider>

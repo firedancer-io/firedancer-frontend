@@ -1,0 +1,64 @@
+.slot-item-group {
+  gap: 4px;
+  padding: 2px;
+  border-radius: 5px;
+  border-top-width: 3px;
+  border: 1px solid var(--slot-details-my-slots-not-selected-color);
+
+  &.disabled {
+    border: 1px solid var(--slot-details-disabled-slot-border-color);
+  }
+
+  &.is-selected {
+    border: 1px solid var(--slots-list-my-slots-selected-border-color);
+  }
+}
+
+.slot-item {
+  text-decoration: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 3px 10px;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 400;
+  border-radius: 3px;
+  /* Because --item-width as measured includes padding, we want to set width as padding included */
+  box-sizing: border-box;
+  width: var(--item-width);
+  background: var(--slot-details-background-color);
+  color: var(--slot-details-color);
+
+  &.selected-slot {
+    font-weight: 600;
+    background: var(--slot-details-selected-background-color);
+    color: var(--slot-details-selected-color);
+  }
+
+  &.skipped-slot {
+    background: var(--slot-details-skipped-background-color);
+  }
+
+  &.skipped-slot.selected-slot {
+    background: var(--slot-details-skipped-selected-background-color);
+  }
+}
+
+.fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: clamp(32px, 8vw, 96px);
+  pointer-events: none;
+
+  &.fade-left {
+    left: 0;
+    background: linear-gradient(to left, transparent 0%, black 100%);
+  }
+
+  &.fade-right {
+    right: 0;
+    background: linear-gradient(to right, transparent 0%, black 100%);
+  }
+}

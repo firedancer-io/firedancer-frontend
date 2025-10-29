@@ -1,0 +1,61 @@
+.container {
+  --collapse-duration: 0.3s;
+  --collapse-location-time: 0.2s;
+
+  --transform-origin: top right;
+
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  background-color: var(--startup-background-color);
+
+  transform-origin: var(--transform-origin);
+  transition:
+    opacity var(--collapse-duration) linear,
+    transform var(--collapse-duration) linear,
+    background-color 0.2s linear;
+
+  &.collapsed {
+    transform: scale(0);
+    opacity: 0.5;
+    overflow: hidden;
+  }
+
+  &.gossip {
+    background-color: var(--boot-progress-gossip-background-color);
+  }
+
+  &.full-snapshot {
+    background-color: var(--boot-progress-full-snapshot-background-color);
+  }
+
+  &.incr-snapshot {
+    background-color: var(--boot-progress-incr-snapshot-background-color);
+  }
+
+  &.catchup {
+    background-color: var(--boot-progress-catchup-background-color);
+  }
+}
+
+.secondary-text {
+  color: var(--boot-progress-secondary-text-color);
+}
+
+.step-container {
+  color: var(--boot-progress-primary-text-color);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: normal;
+
+  .step-name {
+    font-weight: 700;
+  }
+}

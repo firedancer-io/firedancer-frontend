@@ -4,13 +4,116 @@ import {
   tilesAtom,
   tileTimerAtom,
 } from "../../../api/atoms";
-import type { TxnWaterfall } from "../../../api/types";
+import type { Epoch, TileType, TxnWaterfall } from "../../../api/types";
 import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
 import { countBy } from "lodash";
+import { tileTypeSchema } from "../../../api/entities";
+import {
+  currentSlotAtom,
+  epochAtom,
+  firstProcessedSlotAtom,
+  leaderSlotsAtom,
+  slotOverrideAtom,
+} from "../../../atoms";
+import { getSlotGroupLeader } from "../../../utils";
 
-// Note: do not user setter directly as it's derived from search params
-export const selectedSlotAtom = atom<number>();
+export enum SelectedSlotValidityState {
+  Valid = "valid",
+  NotReady = "invalid",
+  OutsideEpoch = "outside-epoch",
+  BeforeFirstProcessed = "before-first-processed",
+  Future = "future",
+  NotYou = "not-you",
+}
+
+function getSlotState(
+  slot?: number,
+  epoch?: Epoch,
+  leaderSlots?: number[],
+  firstProcessedSlot?: number,
+  currentSlot?: number,
+) {
+  if (slot === undefined) return SelectedSlotValidityState.Valid;
+  if (
+    !epoch ||
+    !leaderSlots ||
+    firstProcessedSlot === undefined ||
+    currentSlot === undefined
+  )
+    return SelectedSlotValidityState.NotReady;
+  if (slot < epoch.start_slot || epoch.end_slot < slot)
+    return SelectedSlotValidityState.OutsideEpoch;
+  if (!leaderSlots.includes(getSlotGroupLeader(slot)))
+    return SelectedSlotValidityState.NotYou;
+  if (slot < firstProcessedSlot)
+    return SelectedSlotValidityState.BeforeFirstProcessed;
+  if (slot >= currentSlot) return SelectedSlotValidityState.Future;
+  return SelectedSlotValidityState.Valid;
+}
+
+export const baseSelectedSlotAtom = (function () {
+  const _baseSelectedSlotAtom = atom<number>();
+  const _isInitializedAtom = atom(false);
+
+  return atom(
+    (get) => {
+      const epoch = get(epochAtom);
+      const slot = get(_baseSelectedSlotAtom);
+      const leaderSlots = get(leaderSlotsAtom);
+      const firstProcessedSlot = get(firstProcessedSlotAtom);
+      const currentSlot = get(currentSlotAtom);
+      const state = getSlotState(
+        slot,
+        epoch,
+        leaderSlots,
+        firstProcessedSlot,
+        currentSlot,
+      );
+      return {
+        slot,
+        state,
+        isValid: state === SelectedSlotValidityState.Valid,
+        isInitialized: get(_isInitializedAtom),
+      };
+    },
+    (get, set, slot?: number, epoch?: Epoch) => {
+      const leaderSlots = get(leaderSlotsAtom);
+      const firstProcessedSlot = get(firstProcessedSlotAtom);
+      const currentSlot = get(currentSlotAtom);
+      if (
+        !epoch ||
+        !leaderSlots ||
+        firstProcessedSlot === undefined ||
+        currentSlot === undefined
+      ) {
+        set(_baseSelectedSlotAtom, undefined);
+        return;
+      }
+
+      set(_baseSelectedSlotAtom, slot);
+      set(_isInitializedAtom, true);
+      const isValid =
+        getSlotState(
+          slot,
+          epoch,
+          leaderSlots,
+          firstProcessedSlot,
+          currentSlot,
+        ) === SelectedSlotValidityState.Valid;
+
+      if (isValid && slot !== undefined) {
+        // Scroll to selected slot if new selection is defined
+        set(slotOverrideAtom, slot);
+      }
+    },
+  );
+})();
+
+export const selectedSlotAtom = atom<number | undefined>((get) => {
+  const { slot, isValid } = get(baseSelectedSlotAtom);
+  return isValid ? slot : undefined;
+});
 
 export enum DisplayType {
   Count = "Count",
@@ -25,6 +128,46 @@ export const liveTileTimerfallAtom = atom((get) => {
   if (selectedSlot) return;
 
   return get(tileTimerAtom);
+});
+
+export const snapshotTimerIndicesAtom = atom(
+  (get): [TileType, number[]][] | undefined => {
+    const tiles = get(tilesAtom);
+    const tileTypes: TileType[] = ["snaprd", "snapdc", "snapin"];
+
+    if (!tiles) return;
+
+    const grouped = tiles.reduce((acc, tile, i) => {
+      const parsedTileKind = tileTypeSchema.safeParse(tile.kind);
+      if (parsedTileKind.error || !tileTypes.includes(parsedTileKind.data)) {
+        return acc;
+      }
+
+      const indices = acc.get(parsedTileKind.data) ?? [];
+      indices.push(i);
+      acc.set(parsedTileKind.data, indices);
+      return acc;
+    }, new Map<TileType, number[]>());
+
+    return Array.from(grouped.entries()).map<[TileType, number[]]>(
+      ([type, indices]) => [type, indices],
+    );
+  },
+);
+
+export const liveSnapshotTimersAtom = atom((get) => {
+  const timers = get(tileTimerAtom);
+  const snapshotTimerIndices = get(snapshotTimerIndicesAtom);
+
+  if (!timers || !snapshotTimerIndices) return;
+
+  return snapshotTimerIndices.reduce(
+    (acc, [tileType, indices]) => {
+      acc[tileType] = indices.map((i) => timers[i]);
+      return acc;
+    },
+    {} as Partial<Record<TileType, number[]>>,
+  );
 });
 
 export const liveWaterfallAtom = atom((get) => {

@@ -6,6 +6,7 @@
   position: relative;
   aspect-ratio: 4.5;
   min-height: 250px;
+  overflow: hidden;
 
   .slot-sankey-container {
     height: 100%;

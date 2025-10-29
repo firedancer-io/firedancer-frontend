@@ -1,9 +1,14 @@
 import type uPlot from "uplot";
 import placement from "../uplot/placement";
 import { xScaleKey } from "../features/Overview/SlotPerformance/ComputeUnitsCard/consts";
+import { throttle } from "lodash";
 
 // Persisted tooltip function should persist across charts, only 1 shown tooltip at a time
 let persistTooltip = false;
+
+function getScrollContainer() {
+  return document.getElementById("scroll-container") ?? document.body;
+}
 
 export function baseTooltipPlugin({
   elId,
@@ -56,6 +61,11 @@ export function baseTooltipPlugin({
     }
   }
 
+  const tClosePersistedTooltip = throttle(closePersistedTooltip, 100, {
+    leading: true,
+    trailing: true,
+  });
+
   function setCursorPointer() {
     if (!showPointer) return;
 
@@ -98,15 +108,10 @@ export function baseTooltipPlugin({
         overlay.style.display = "none";
         overlay.style.pointerEvents = "none";
 
-        // overlay.style.zIndex = "10000"
-
         over = u.over;
-
-        // bound = over;
         bound = document.body;
 
         over.onmouseenter = () => {
-          // overlay.style.display = "block";
           isCurrentlyHovered = true;
         };
 
@@ -117,14 +122,21 @@ export function baseTooltipPlugin({
           unsetCursorPointer();
           persistTooltip = false;
         };
+
+        getScrollContainer().addEventListener("scroll", tClosePersistedTooltip);
       },
       destroy: () => {
         over.onmouseenter = null;
         over.onmouseleave = null;
         unsetCursorPointer();
         closePersistedTooltip();
+
+        getScrollContainer().removeEventListener(
+          "scroll",
+          tClosePersistedTooltip,
+        );
       },
-      setSize: (u) => {
+      setSize: () => {
         syncBounds();
       },
       syncRect: () => {

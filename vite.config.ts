@@ -5,6 +5,7 @@ import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
 import license from "rollup-plugin-license";
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
+import svgr from "vite-plugin-svgr";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -37,6 +38,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    svgr(),
     TanStackRouterVite(),
     wasm(),
     topLevelAwait(),

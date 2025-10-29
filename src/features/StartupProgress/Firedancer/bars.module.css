@@ -1,0 +1,34 @@
+.bars {
+  width: 100%;
+  height: 77px;
+
+  rect {
+    fill: var(--boot-progress-gossip-bars-color);
+    &.threshold {
+      fill: var(--app-teal);
+    }
+    &.filled {
+      fill: var(--boot-progress-gossip-filled-bar-color);
+    }
+
+    &.mid {
+      fill: var(--boot-progress-gossip-mid-bar-color);
+      &.filled {
+        fill: var(--boot-progress-gossip-mid-filled-bar-color);
+      }
+      &.threshold {
+        fill: var(--boot-progress-gossip-mid-threshold-bar-color);
+      }
+    }
+
+    &.high {
+      fill: var(--boot-progress-gossip-high-bar-color);
+      &.filled {
+        fill: var(--boot-progress-gossip-high-filled-bar-color);
+      }
+      &.threshold {
+        fill: var(--boot-progress-gossip-high-threshold-bar-color);
+      }
+    }
+  }
+}

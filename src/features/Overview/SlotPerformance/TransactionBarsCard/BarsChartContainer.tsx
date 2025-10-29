@@ -14,6 +14,14 @@ import BarChartFloatingAction from "./BarChartFloatingAction";
 import CardHeader from "../../../../components/CardHeader";
 import { getMaxTsWithBuffer } from "../../../../transactionUtils";
 import { cardBackgroundColor } from "../../../../colors";
+import {
+  clusterIndicatorHeight,
+  headerHeight,
+  slotNavHeight,
+} from "../../../../consts";
+
+const navigationTop = clusterIndicatorHeight + headerHeight;
+export const txnBarsControlsStickyTop = navigationTop + slotNavHeight;
 
 export default function BarsChartContainer() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -59,7 +67,7 @@ export default function BarsChartContainer() {
         id="transaction-bars-controls"
         gap="2"
         position="sticky"
-        top="0px"
+        top={`${txnBarsControlsStickyTop}px`}
         style={{
           // For solid background when sticky scrolling matching the card's background
           background: cardBackgroundColor,

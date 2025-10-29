@@ -11,6 +11,10 @@ const epochTopicSchema = z.object({
   topic: z.literal("epoch"),
 });
 
+const gossipTopicSchema = z.object({
+  topic: z.literal("gossip"),
+});
+
 const peersTopicSchema = z.object({
   topic: z.literal("peers"),
 });
@@ -26,6 +30,7 @@ const blockEngineTopicSchema = z.object({
 export const topicSchema = z.discriminatedUnion("topic", [
   summaryTopicSchema,
   epochTopicSchema,
+  gossipTopicSchema,
   peersTopicSchema,
   slotTopicSchema,
   blockEngineTopicSchema,
@@ -71,6 +76,9 @@ export const tileTypeSchema = z.enum([
   "plugin",
   "gui",
   "cswtch",
+  "snaprd",
+  "snapdc",
+  "snapin",
 ]);
 
 export const tileSchema = z.object({
@@ -87,6 +95,12 @@ export const rootSlotSchema = z.number();
 export const optimisticallyConfirmedSlotSchema = z.number();
 
 export const completedSlotSchema = z.number();
+export const turbineSlotSchema = z.number().nullable();
+export const repairSlotSchema = z.number().nullable();
+export const catchUpHistorySchema = z.object({
+  repair: z.number().array(),
+  turbine: z.number().array(),
+});
 
 export const estimatedSlotSchema = z.number();
 
@@ -198,8 +212,8 @@ export const startupProgressSchema = z.object({
   downloading_full_snapshot_elapsed_secs: z.number().nullable(),
   downloading_full_snapshot_remaining_secs: z.number().nullable(),
   downloading_full_snapshot_throughput: z.number().nullable(),
-  downloading_full_snapshot_total_bytes: z.number().nullable(),
-  downloading_full_snapshot_current_bytes: z.number().nullable(),
+  downloading_full_snapshot_total_bytes: z.coerce.number().nullable(),
+  downloading_full_snapshot_current_bytes: z.coerce.number().nullable(),
 
   // downloading incremental snapshot
   downloading_incremental_snapshot_slot: z.number().nullable(),
@@ -207,8 +221,8 @@ export const startupProgressSchema = z.object({
   downloading_incremental_snapshot_elapsed_secs: z.number().nullable(),
   downloading_incremental_snapshot_remaining_secs: z.number().nullable(),
   downloading_incremental_snapshot_throughput: z.number().nullable(),
-  downloading_incremental_snapshot_total_bytes: z.number().nullable(),
-  downloading_incremental_snapshot_current_bytes: z.number().nullable(),
+  downloading_incremental_snapshot_total_bytes: z.coerce.number().nullable(),
+  downloading_incremental_snapshot_current_bytes: z.coerce.number().nullable(),
 
   // processing ledger
   ledger_slot: z.number().nullable(),
@@ -217,6 +231,82 @@ export const startupProgressSchema = z.object({
   // waiting for supermajority
   waiting_for_supermajority_slot: z.number().nullable(),
   waiting_for_supermajority_stake_percent: z.number().nullable(),
+});
+
+export const bootPhaseSchema = z.enum([
+  "joining_gossip",
+  "loading_full_snapshot",
+  "loading_incremental_snapshot",
+  "catching_up",
+  "running",
+]);
+
+export const BootPhaseEnum = bootPhaseSchema.enum;
+
+export const bootProgressSchema = z.object({
+  phase: bootPhaseSchema,
+  joining_gossip_elapsed_seconds: z.number().nullable().optional(),
+  loading_full_snapshot_elapsed_seconds: z.number().nullable().optional(),
+  loading_full_snapshot_reset_count: z.number().nullable().optional(),
+  loading_full_snapshot_slot: z.number().nullable().optional(),
+  loading_full_snapshot_total_bytes_compressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_full_snapshot_read_bytes_compressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_full_snapshot_read_path: z.string().nullable().optional(),
+  loading_full_snapshot_decompress_bytes_decompressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_full_snapshot_decompress_bytes_compressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_full_snapshot_insert_bytes_decompressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_full_snapshot_insert_accounts: z.number().nullable().optional(),
+
+  loading_incremental_snapshot_elapsed_seconds: z
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_reset_count: z.number().nullable().optional(),
+  loading_incremental_snapshot_slot: z.number().nullable().optional(),
+  loading_incremental_snapshot_total_bytes_compressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_read_bytes_compressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_read_path: z.string().nullable().optional(),
+  loading_incremental_snapshot_decompress_bytes_decompressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_decompress_bytes_compressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_insert_bytes_decompressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_insert_accounts: z
+    .number()
+    .nullable()
+    .optional(),
+
+  catching_up_elapsed_seconds: z.number().nullable().optional(),
+
+  catching_up_first_replay_slot: z.number().nullable().optional(),
 });
 
 export const slotTransactionsSchema = z.object({
@@ -374,6 +464,10 @@ export const summarySchema = z.discriminatedUnion("key", [
     value: startupProgressSchema,
   }),
   summaryTopicSchema.extend({
+    key: z.literal("boot_progress"),
+    value: bootProgressSchema,
+  }),
+  summaryTopicSchema.extend({
     key: z.literal("tps_history"),
     value: tpsHistorySchema,
   }),
@@ -388,6 +482,18 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("skip_rate"),
     value: skipRateSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("turbine_slot"),
+    value: turbineSlotSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("repair_slot"),
+    value: repairSlotSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("catch_up_history"),
+    value: catchUpHistorySchema,
   }),
 ]);
 
@@ -407,6 +513,63 @@ export const epochSchema = z.discriminatedUnion("key", [
   epochTopicSchema.extend({
     key: z.literal("new"),
     value: epochNewSchema,
+  }),
+]);
+
+export const gossipNetworkHealthSchema = z.object({
+  num_push_messages_rx_success: z.number(),
+  num_push_messages_rx_failure: z.number(),
+  num_push_entries_rx_success: z.number(),
+  num_push_entries_rx_failure: z.number(),
+  num_push_entries_rx_duplicate: z.number(),
+  num_pull_response_messages_rx_success: z.number(),
+  num_pull_response_messages_rx_failure: z.number(),
+  num_pull_response_entries_rx_success: z.number(),
+  num_pull_response_entries_rx_failure: z.number(),
+  num_pull_response_entries_rx_duplicate: z.number(),
+
+  total_peers: z.number(),
+  total_stake: z.coerce.bigint(),
+  connected_stake: z.coerce.bigint(),
+  connected_staked_peers: z.number(),
+  connected_unstaked_peers: z.number(),
+});
+
+export const gossipNetworkTrafficSchema = z.object({
+  total_throughput: z.number(),
+  peer_names: z.string().array(),
+  peer_identities: z.string().array(),
+  peer_throughput: z.number().array(),
+});
+
+const gossipStorageStatsSchema = z.object({
+  capacity: z.number(),
+  expired_count: z.number(),
+  evicted_count: z.number(),
+  count: z.number().array(),
+  count_tx: z.number().array(),
+  bytes_tx: z.number().array(),
+});
+
+const gossipMessageStatsSchema = z.object({
+  num_bytes_rx: z.number().array(),
+  num_bytes_tx: z.number().array(),
+  num_messages_rx: z.number().array(),
+  num_messages_tx: z.number().array(),
+});
+
+export const gossipNetworkStatsSchema = z.object({
+  health: gossipNetworkHealthSchema,
+  ingress: gossipNetworkTrafficSchema,
+  egress: gossipNetworkTrafficSchema,
+  storage: gossipStorageStatsSchema,
+  messages: gossipMessageStatsSchema,
+});
+
+export const gossipSchema = z.discriminatedUnion("key", [
+  gossipTopicSchema.extend({
+    key: z.literal("network_stats"),
+    value: gossipNetworkStatsSchema,
   }),
 ]);
 
@@ -474,6 +637,33 @@ export const slotResponseSchema = z.object({
 
 export const slotSkippedHistorySchema = z.number().array();
 
+export const slotRankingsSchema = z.object({
+  slots_largest_tips: z.number().array(),
+  vals_largest_tips: z.coerce.bigint().array(),
+  slots_smallest_tips: z.number().array(),
+  vals_smallest_tips: z.coerce.bigint().array(),
+  slots_largest_fees: z.number().array(),
+  vals_largest_fees: z.coerce.bigint().array(),
+  slots_smallest_fees: z.number().array(),
+  vals_smallest_fees: z.coerce.bigint().array(),
+  slots_largest_rewards: z.number().array(),
+  vals_largest_rewards: z.coerce.bigint().array(),
+  slots_smallest_rewards: z.number().array(),
+  vals_smallest_rewards: z.coerce.bigint().array(),
+  slots_largest_duration: z.number().array(),
+  vals_largest_duration: z.coerce.bigint().array(),
+  slots_smallest_duration: z.number().array(),
+  vals_smallest_duration: z.coerce.bigint().array(),
+  slots_largest_compute_units: z.number().array(),
+  vals_largest_compute_units: z.coerce.bigint().array(),
+  slots_smallest_compute_units: z.number().array(),
+  vals_smallest_compute_units: z.coerce.bigint().array(),
+  slots_largest_skipped: z.number().array(),
+  vals_largest_skipped: z.coerce.bigint().array(),
+  slots_smallest_skipped: z.number().array(),
+  vals_smallest_skipped: z.coerce.bigint().array(),
+});
+
 export const slotSchema = z.discriminatedUnion("key", [
   slotTopicSchema.extend({
     key: z.literal("skipped_history"),
@@ -486,6 +676,10 @@ export const slotSchema = z.discriminatedUnion("key", [
   slotTopicSchema.extend({
     key: z.literal("query"),
     value: slotResponseSchema.nullable(),
+  }),
+  slotTopicSchema.extend({
+    key: z.literal("query_rankings"),
+    value: slotRankingsSchema,
   }),
 ]);
 

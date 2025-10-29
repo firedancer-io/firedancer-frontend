@@ -40,6 +40,13 @@ import type {
   slotTransactionsSchema,
   voteBalanceSchema,
   scheduleStrategySchema,
+  slotRankingsSchema,
+  bootPhaseSchema,
+  bootProgressSchema,
+  gossipNetworkStatsSchema,
+  catchUpHistorySchema,
+  repairSlotSchema,
+  turbineSlotSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -75,6 +82,7 @@ export type OptimisticallyConfirmedSlot = z.infer<
 // >;
 
 export type CompletedSlot = z.infer<typeof completedSlotSchema>;
+export type CatchUpHistory = z.infer<typeof catchUpHistorySchema>;
 
 // export type SlotCompleted = z.infer<typeof slotCompletedSchema>;
 
@@ -98,9 +106,13 @@ export type TileType = z.infer<typeof tileTypeSchema>;
 
 export type TileTimer = z.infer<typeof tileTimerSchema>;
 
+export type BootProgress = z.infer<typeof bootProgressSchema>;
+
 export type StartupProgress = z.infer<typeof startupProgressSchema>;
 
 export type StartupPhase = z.infer<typeof startupPhaseSchema>;
+
+export type BootPhase = z.infer<typeof bootPhaseSchema>;
 
 export type TpsHistory = z.infer<typeof tpsHistorySchema>;
 
@@ -113,6 +125,8 @@ export type SkipRate = z.infer<typeof skipRateSchema>;
 export type Epoch = z.infer<typeof epochNewSchema>;
 
 export type SlotLevel = z.infer<typeof slotLevelSchema>;
+
+export type GossipNetworkStats = z.infer<typeof gossipNetworkStatsSchema>;
 
 export interface Peer extends z.infer<typeof peerUpdateSchema> {
   removed?: boolean;
@@ -128,6 +142,11 @@ export type SlotResponse = z.infer<typeof slotResponseSchema>;
 
 export type SkippedSlots = z.infer<typeof slotSkippedHistorySchema>;
 
+export type RepairSlot = z.infer<typeof repairSlotSchema>;
+export type TurbineSlot = z.infer<typeof turbineSlotSchema>;
+
 export type BlockEngineUpdate = z.infer<typeof blockEngineUpdateSchema>;
 
 export type BlockEngineStatus = z.infer<typeof blockEngineStatusSchema>;
+
+export type SlotRankings = z.infer<typeof slotRankingsSchema>;

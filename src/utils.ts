@@ -1,7 +1,16 @@
 import type { Duration } from "luxon";
 import { DateTime } from "luxon";
-import type { Epoch, Peer, SlotTransactions } from "./api/types";
+import type { Cluster, Epoch, Peer, SlotTransactions } from "./api/types";
 import { lamportsPerSol, slotsPerLeader } from "./consts";
+import {
+  clusterMainnetBetaColor,
+  clusterTestnetColor,
+  clusterDevelopmentColor,
+  clusterDevnetColor,
+  clusterPythnetColor,
+  clusterPythtestColor,
+  clusterUnknownColor,
+} from "./colors";
 
 export function getLeaderSlots(epoch: Epoch, pubkey: string) {
   return epoch.leader_slots.reduce<number[]>((leaderSlots, pubkeyIndex, i) => {
@@ -9,6 +18,70 @@ export function getLeaderSlots(epoch: Epoch, pubkey: string) {
       leaderSlots.push(i * slotsPerLeader + epoch.start_slot);
     return leaderSlots;
   }, []);
+}
+
+export function getSlotGroupLeader(slot: number) {
+  return slot - (slot % slotsPerLeader);
+}
+
+const descendingUnits = [
+  { unit: "years", suffix: "y" },
+  { unit: "months", suffix: "m" },
+  { unit: "weeks", suffix: "w" },
+  { unit: "days", suffix: "d" },
+  { unit: "hours", suffix: "h" },
+  { unit: "minutes", suffix: "m" },
+  { unit: "seconds", suffix: "s" },
+] as const;
+
+export interface DurationOptions {
+  showOnlyTwoSignificantUnits?: boolean;
+  omitSeconds?: boolean;
+}
+
+function getUnitValues(
+  duration: Duration,
+  options?: DurationOptions,
+): [number, string][] {
+  if (options?.showOnlyTwoSignificantUnits) {
+    const firstUnitIndex = descendingUnits.findIndex(
+      ({ unit }) => !!duration[unit],
+    );
+    return descendingUnits
+      .slice(firstUnitIndex, firstUnitIndex + 2)
+      .map(({ unit, suffix }) => [duration[unit], suffix]);
+  }
+
+  return descendingUnits
+    .filter(({ unit }) => {
+      if (options?.omitSeconds && unit === "seconds") return false;
+
+      // drop zero values
+      return !!duration[unit];
+    })
+    .map(({ unit, suffix }) => [duration[unit], suffix]);
+}
+
+export function getDurationValues(
+  duration?: Duration,
+  options?: DurationOptions,
+): [number, string][] | undefined {
+  if (!duration) return;
+
+  if (duration.toMillis() < 1000) return [[0, "s"]];
+
+  const units = getUnitValues(duration, options);
+  return units.length ? units : [[0, "s"]];
+}
+
+export function getDurationText(
+  duration?: Duration,
+  options?: DurationOptions,
+) {
+  const values = getDurationValues(duration, options);
+  if (!values) return "Never";
+
+  return values.map(([val, suffix]) => `${val}${suffix}`).join(" ");
 }
 
 export function getTimeTillText(
@@ -82,26 +155,35 @@ export function getStake(peer: Peer) {
   );
 }
 
-export function getFmtStake(stake?: bigint, smallValueDecimals?: number) {
-  if (stake === undefined) return;
+export function getSolString(
+  lamportAmount?: bigint,
+  smallValueDecimals?: number,
+) {
+  if (lamportAmount === undefined) return;
 
-  let value = "";
-  const solAmount = Number(stake) / lamportsPerSol;
+  const solAmount = Number(lamportAmount) / lamportsPerSol;
   if (solAmount < 1) {
-    value = solAmount.toLocaleString(undefined, {
+    return solAmount.toLocaleString(undefined, {
       maximumFractionDigits: smallValueDecimals,
-    });
-  } else if (solAmount < 100) {
-    value = solAmount.toLocaleString(undefined, {
-      maximumFractionDigits: 2,
-    });
-  } else {
-    value = solAmount.toLocaleString(undefined, {
-      maximumFractionDigits: 0,
     });
   }
 
-  return `${value}\xa0SOL`;
+  if (solAmount < 100) {
+    return solAmount.toLocaleString(undefined, {
+      maximumFractionDigits: 2,
+    });
+  }
+
+  return solAmount.toLocaleString(undefined, {
+    maximumFractionDigits: 0,
+  });
+}
+
+export function getFmtStake(stake?: bigint, smallValueDecimals?: number) {
+  const solString = getSolString(stake, smallValueDecimals);
+  if (solString === undefined) return;
+
+  return `${solString}\xa0SOL`;
 }
 
 /** Dumb workaround for Array.isArray type checking with eslint for readonly arrays */
@@ -179,4 +261,49 @@ export function getTxnIncome(transactions: SlotTransactions, txnIdx: number) {
 
 export function removePortFromIp(ip: string) {
   return ip.split(":")[0];
+}
+
+export function getClusterColor(cluster?: Cluster) {
+  switch (cluster) {
+    case "mainnet-beta":
+      return clusterMainnetBetaColor;
+    case "testnet":
+      return clusterTestnetColor;
+    case "development":
+      return clusterDevelopmentColor;
+    case "devnet":
+      return clusterDevnetColor;
+    case "pythnet":
+      return clusterPythnetColor;
+    case "pythtest":
+      return clusterPythtestColor;
+    case "unknown":
+    case undefined:
+      return clusterUnknownColor;
+  }
+}
+
+export function formatBytesAsBits(bytes: number): {
+  value: number;
+  unit: string;
+} {
+  const bits = bytes * 8;
+  if (bits < 1_000) return { value: bits, unit: "bit" };
+  if (bits < 1_000_000)
+    return { value: getRoundedBitsValue(bits / 1_000), unit: "Kbit" };
+  if (bits < 1_000_000_000) {
+    return { value: getRoundedBitsValue(bits / 1_000_000), unit: "Mbit" };
+  }
+
+  return { value: getRoundedBitsValue(bits / 1_000_000_000), unit: "Gbit" };
+}
+
+/**
+ * Round to 1 decimal place if value is <= 10, otherwise round to nearest integer
+ */
+function getRoundedBitsValue(value: number) {
+  if (value >= 9.5) return Math.round(value);
+
+  // 1 decimal place
+  return Math.round(value * 10) / 10;
 }

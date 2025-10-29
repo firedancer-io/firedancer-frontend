@@ -20,10 +20,15 @@ import {
   voteStateAtom,
   voteBalanceAtom,
   scheduleStrategyAtom,
+  slotRankingsAtom,
+  bootProgressAtom,
+  gossipNetworkStatsAtom,
+  completedSlotAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
   epochSchema,
+  gossipSchema,
   peersSchema,
   slotSchema,
   summarySchema,
@@ -46,7 +51,9 @@ import type {
   EstimatedTps,
   LiveTilePrimaryMetric,
   LiveTxnWaterfall,
+  RepairSlot,
   SlotResponse,
+  TurbineSlot,
 } from "./types";
 import { useThrottledCallback } from "use-debounce";
 import { useInterval } from "react-use";
@@ -60,6 +67,10 @@ import {
 } from "./consts";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
 import { slowDateTimeNow } from "../utils";
+import {
+  addTurbineSlotsAtom,
+  addRepairSlotsAtom,
+} from "../features/StartupProgress/Firedancer/CatchingUp/atoms";
 
 export function useSetAtomWsData() {
   const setVersion = useSetAtom(versionAtom);
@@ -120,6 +131,7 @@ export function useSetAtomWsData() {
     setTileTimer(value);
   }, tileTimerDebounceMs);
 
+  const setBootProgress = useSetAtom(bootProgressAtom);
   const setStartupProgress = useSetAtom(startupProgressAtom);
 
   const setTpsHistory = useSetAtom(tpsHistoryAtom);
@@ -130,16 +142,21 @@ export function useSetAtomWsData() {
 
   const setSkippedSlots = useSetAtom(skippedSlotsAtom);
   const setSlotResponse = useSetAtom(setSlotResponseAtom);
+  const setSlotRankings = useSetAtom(slotRankingsAtom);
 
   const [epoch, setEpoch] = useAtom(epochAtom);
 
   const setSlotStatus = useSetAtom(setSlotStatusAtom);
+
+  const setGossipNetworkStats = useSetAtom(gossipNetworkStatsAtom);
 
   const addPeers = useSetAtom(addPeersAtom);
   const updatePeers = useSetAtom(updatePeersAtom);
   const removePeers = useSetAtom(removePeersAtom);
 
   const setBlockEngine = useSetAtom(blockEngineAtom);
+
+  const setCompletedSlot = useSetAtom(completedSlotAtom);
 
   const handleSlotUpdate = (value: SlotResponse) => {
     setSlotStatus(value.publish.slot, value.publish.level);
@@ -162,6 +179,18 @@ export function useSetAtomWsData() {
         });
       }
     }
+  };
+
+  const addTurbineSlots = useSetAtom(addTurbineSlotsAtom);
+  const addTurbineSlot = (slot: TurbineSlot) => {
+    if (slot == null) return;
+    addTurbineSlots([slot]);
+  };
+
+  const addRepairSlots = useSetAtom(addRepairSlotsAtom);
+  const addRepairSlot = (slot: RepairSlot) => {
+    if (slot == null) return;
+    addRepairSlots([slot]);
   };
 
   useServerMessages((msg) => {
@@ -226,6 +255,10 @@ export function useSetAtomWsData() {
             setDbTileTimer(value);
             break;
           }
+          case "boot_progress": {
+            setBootProgress(value);
+            break;
+          }
           case "startup_progress": {
             setStartupProgress(value);
             break;
@@ -246,9 +279,25 @@ export function useSetAtomWsData() {
             setSkipRate(value);
             break;
           }
+          case "completed_slot": {
+            setCompletedSlot(value);
+            break;
+          }
+          case "turbine_slot": {
+            addTurbineSlot(value);
+            break;
+          }
+          case "repair_slot": {
+            addRepairSlot(value);
+            break;
+          }
+          case "catch_up_history": {
+            addTurbineSlots(value.turbine);
+            addRepairSlots(value.repair);
+            break;
+          }
           case "root_slot":
           case "optimistically_confirmed_slot":
-          case "completed_slot":
           case "estimated_slot":
           case "ping":
             break;
@@ -259,6 +308,14 @@ export function useSetAtomWsData() {
           case "new":
             setEpoch(value);
             break;
+        }
+      } else if (topic === "gossip") {
+        const { key, value } = gossipSchema.parse(msg);
+        switch (key) {
+          case "network_stats": {
+            setGossipNetworkStats(value);
+            break;
+          }
         }
       } else if (topic === "peers") {
         const { value } = peersSchema.parse(msg);
@@ -278,6 +335,10 @@ export function useSetAtomWsData() {
               setSlotResponse(value);
               handleSlotUpdate(value);
             }
+            break;
+          }
+          case "query_rankings": {
+            setSlotRankings(value);
             break;
           }
         }

@@ -1,17 +1,8 @@
 .header-container {
-  height: var(--header-height);
-}
-
-.header-inner {
-  z-index: 1;
-  background: var(--color-background);
-  height: inherit;
-  padding: 10px;
   top: 0;
-  left: 0;
-  right: 0;
-}
+  background-color: var(--color-background);
 
-.header-row {
-  height: var(--header-row-height);
+  .nav-background {
+    background-color: var(--slot-nav-background-color);
+  }
 }

@@ -1,6 +1,5 @@
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { slotsPerLeader } from "../../../consts";
-import { usePubKey } from "../../../hooks/usePubKey";
 import styles from "./upcomingSlot.module.css";
 import sharedStyles from "./slots.module.css";
 import { useAtomValue } from "jotai";
@@ -9,14 +8,13 @@ import {
   currentSlotAtom,
   slotDurationAtom,
 } from "../../../atoms";
-import { usePeer } from "../../../hooks/usePeer";
-import { identityKeyAtom } from "../../../api/atoms";
 import { useReducer } from "react";
 import { DateTime, Duration } from "luxon";
-import { getTimeTillText, slowDateTimeNow } from "../../../utils";
+import { getDurationText, slowDateTimeNow } from "../../../utils";
 import PeerIcon from "../../../components/PeerIcon";
 import { useHarmonicIntervalFn, useMedia } from "react-use";
 import clsx from "clsx";
+import { useSlotInfo } from "../../../hooks/useSlotInfo";
 
 interface UpcomingSlotCardProps {
   slot: number;
@@ -24,11 +22,8 @@ interface UpcomingSlotCardProps {
 
 export default function UpcomingSlotCard({ slot }: UpcomingSlotCardProps) {
   const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
-  const myPubkey = useAtomValue(identityKeyAtom);
-  const pubkey = usePubKey(slot);
-  const peer = usePeer(pubkey ?? "");
+  const { pubkey, peer, isLeader, name } = useSlotInfo(slot);
 
-  const isLeader = myPubkey === pubkey;
   const isOneAway =
     currentLeaderSlot !== undefined &&
     slot === currentLeaderSlot + slotsPerLeader;
@@ -36,8 +31,7 @@ export default function UpcomingSlotCard({ slot }: UpcomingSlotCardProps) {
     currentLeaderSlot !== undefined &&
     slot === currentLeaderSlot + slotsPerLeader * 2;
 
-  const isWideScreen = useMedia("(min-width: 1200px)");
-  const name = peer?.info?.name ?? (isLeader ? "You" : "Private");
+  const isWideScreen = useMedia("(min-width: 1250px)");
 
   return (
     <div
@@ -84,13 +78,13 @@ function UpcomingSlotBody({
   slot,
 }: UpcomingSlotBodyProps) {
   return (
-    <Flex gap="2">
-      <Flex gap="2" minWidth="300px" align="center">
+    <Flex gap="2" align="center">
+      <Flex gap="2" minWidth="300px" width="505px" align="center" pr="20px">
         <PeerIcon url={iconUrl} size={24} isYou={isLeader} />
         <Text className={styles.nameText}>{name}</Text>
       </Flex>
       <Text className={styles.pubkeyText}>{pubkey}</Text>
-      <Flex flexGrow="1" justify="center">
+      <Flex justify="center" minWidth="190px">
         <Text>{slot}</Text>
       </Flex>
       <TimeTillText slot={slot} />
@@ -140,7 +134,7 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
 
   const [timeTillText, setTimeTillText] = useReducer(
     timeTillTextReducer,
-    getTimeTillText(timeTill),
+    getDurationText(timeTill),
   );
 
   useHarmonicIntervalFn(() => {
@@ -164,7 +158,7 @@ function dtTextReducer(_: string, timeTill: Duration | undefined) {
 }
 
 function timeTillTextReducer(_: string, timeTill: Duration | undefined) {
-  return getTimeTillText(timeTill);
+  return getDurationText(timeTill);
 }
 
 function getDtText(timeTill?: Duration) {

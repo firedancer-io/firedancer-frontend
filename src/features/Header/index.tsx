@@ -1,47 +1,137 @@
-import { Box, Flex } from "@radix-ui/themes";
+import { Box, Flex, IconButton } from "@radix-ui/themes";
 import IdentityKey from "./IdentityKey";
-import Cluster from "./Cluster";
-import styles from "./header.module.css";
-import { useEffect } from "react";
-import useNavigateLeaderSlot from "../../hooks/useNavigateLeaderSlot";
+import { DropdownNav, NavHandler, NavLinks } from "./Nav";
+import { useMedia } from "react-use";
+import {
+  epochThumbPadding,
+  headerHeight,
+  headerSpacing,
+  logoRightSpacing,
+  maxZIndex,
+  slotsNavSpacing,
+} from "../../consts";
 import Logo from "./Logo";
-import EpochBar from "../EpochBar";
-import CluserIndicator from "./ClusterIndicator";
-import NavLinks from "./NavLinks";
-import MenuNavLinks from "./MenuNavLinks";
+import { CluserIndicator, Cluster } from "./Cluster";
+import NavCollapseToggle from "../Navigation/NavCollapseToggle";
+import NavBlur from "../Navigation/NavBlur";
+import { useSlotsNavigation } from "../../hooks/useSlotsNavigation";
+import clsx from "clsx";
+import styles from "./header.module.css";
+
+import { useAtomValue, useSetAtom } from "jotai";
+import {
+  expandStartupProgressElAtom,
+  isStartupProgressExpandedAtom,
+  showStartupProgressAtom,
+} from "../StartupProgress/atoms";
+import { TimerIcon } from "@radix-ui/react-icons";
 
 export default function Header() {
-  // TODO move somehere it won't trigger re-renders
-  const nav = useNavigateLeaderSlot();
-  useEffect(() => {
-    const navigate = (e: KeyboardEvent) => {
-      if (e.code === "ArrowLeft") {
-        nav.navPrevLeaderSlot();
-      } else if (e.code === "ArrowRight") {
-        nav.navNextLeaderSlot();
-      }
-    };
+  const showDropdownNav = useMedia("(max-width: 900px)");
+  const isXNarrow = useMedia("(max-width: 401px)");
 
-    document.addEventListener("keydown", navigate);
+  const { isNarrowScreen, blurBackground, showNav, showOnlyEpochBar } =
+    useSlotsNavigation();
 
-    return () => document.removeEventListener("keydown", navigate);
-  }, [nav]);
+  const useExtraNarrowGap = !showNav && isXNarrow;
+  const extraNarrowGap = "3px";
 
   return (
-    <Box className={styles.headerContainer}>
-      <Flex className={styles.headerInner} direction="column">
-        <CluserIndicator />
-        <Flex className={styles.headerRow} justify="between" align="center">
-          <MenuNavLinks />
-          <Flex gap="2" align="start">
+    <div
+      className="sticky"
+      style={{
+        top: 0,
+        backgroundColor: "var(--color-background)",
+        zIndex: maxZIndex,
+      }}
+    >
+      <CluserIndicator />
+
+      <Box px="2" className="app-width-container">
+        <Flex height={`${headerHeight}px`} align="center">
+          <Flex
+            className={clsx({
+              [styles.navBackground]: showNav && !showOnlyEpochBar,
+            })}
+            height="100%"
+            align="center"
+            gapX={useExtraNarrowGap ? extraNarrowGap : `${logoRightSpacing}px`}
+            // slots nav background color boundary
+            pr={useExtraNarrowGap ? extraNarrowGap : `${slotsNavSpacing}px`}
+            // align with epoch bar thumb overflow padding
+            ml={`${-epochThumbPadding}px`}
+            pl={`${epochThumbPadding}px`}
+          >
+            {isNarrowScreen && !showNav && <NavCollapseToggle isLarge />}
             <Logo />
             <Cluster />
           </Flex>
-          <NavLinks />
-          <IdentityKey />
+
+          <Flex
+            position="relative"
+            gapX={useExtraNarrowGap ? extraNarrowGap : `${headerSpacing}px`}
+            height="100%"
+            flexGrow="1"
+            align="center"
+            justify="between"
+            pl={
+              useExtraNarrowGap
+                ? extraNarrowGap
+                : // blur color boundary
+                  `${headerSpacing - slotsNavSpacing}px`
+            }
+          >
+            <NavHandler />
+            {showDropdownNav ? <DropdownNav /> : <NavLinks />}
+
+            <Flex gap="3" align="center">
+              <IdentityKey />
+              <ExpandStartupProgressButton />
+            </Flex>
+
+            {blurBackground && <NavBlur />}
+          </Flex>
         </Flex>
-        <EpochBar />
-      </Flex>
-    </Box>
+
+        {!isNarrowScreen && (
+          <div
+            style={{
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+              }}
+            >
+              <NavCollapseToggle isFloating={!showNav} />
+            </div>
+          </div>
+        )}
+      </Box>
+    </div>
+  );
+}
+
+function ExpandStartupProgressButton() {
+  const showStartupProgress = useAtomValue(showStartupProgressAtom);
+  const setIsStartupProgressExpanded = useSetAtom(
+    isStartupProgressExpandedAtom,
+  );
+  const setExpandStartupProgressEl = useSetAtom(expandStartupProgressElAtom);
+
+  if (!showStartupProgress) return null;
+
+  return (
+    <IconButton
+      ref={setExpandStartupProgressEl}
+      variant="ghost"
+      color="gray"
+      onClick={() => setIsStartupProgressExpanded(true)}
+    >
+      <TimerIcon />
+    </IconButton>
   );
 }

@@ -1,16 +1,21 @@
 .my-slots {
   color: var(--summary-my-slots-color);
   border-radius: 10px;
-  background: rgba(250, 250, 250, 0.05);
+  background: var(--container-background-color);
   padding: 2px 5px;
+}
+
+.summary-container {
+  width: 40%;
+  min-width: 430px;
 }
 
 .name {
   color: var(--primary-text-color);
   font-size: 24px;
   line-height: normal;
-  width: 365px;
   min-width: 30px;
+  width: 100%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

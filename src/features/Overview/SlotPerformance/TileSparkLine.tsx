@@ -1,13 +1,14 @@
-import { useInterval, useMeasure } from "react-use";
-import { useMemo, useState } from "react";
-import { isDefined } from "../../../utils";
+import { useMeasure } from "react-use";
+import { useMemo } from "react";
 import {
   tileBusyGreenColor,
   tileBusyRedColor,
   tileSparklineBackgroundColor,
 } from "../../../colors";
-
-const dataCount = 160;
+import type { UseMeasureRef } from "react-use/lib/useMeasure";
+import type { SparklineRange } from "./useTileSparkline";
+import { strokeLineWidth, useScaledDataPoints } from "./useTileSparkline";
+import styles from "./tileSparkline.module.css";
 
 interface TileParkLineProps {
   value?: number;
@@ -15,71 +16,101 @@ interface TileParkLineProps {
 }
 
 export default function TileSparkLine({ value, queryBusy }: TileParkLineProps) {
-  const [ref, { width, height }] = useMeasure<SVGSVGElement>();
+  const [svgRef, { width }] = useMeasure<SVGSVGElement>();
+  const height = 24;
 
-  const [busyData, setBusyData] = useState<(number | undefined)[]>([]);
-
-  useInterval(() => {
-    if (queryBusy?.length) return;
-
-    setBusyData((prev) => {
-      const newState = [...prev, value];
-      if (newState.length >= dataCount) {
-        newState.shift();
-      }
-      return newState;
-    });
-  }, 10);
-
-  const scaledDataPoints = useMemo(() => {
-    const data = queryBusy ?? busyData;
-
-    const xRatio = width / data.length;
-
-    return data
-      .map((d, i) => {
-        if (d === undefined) return;
-
-        return {
-          x: i * xRatio,
-          y: Math.trunc((1 - d) * height),
-        };
-      })
-      .filter(isDefined);
-  }, [queryBusy, busyData, width, height]);
-
-  const points = scaledDataPoints.map(({ x, y }) => `${x},${y}`).join(" ");
+  const { scaledDataPoints, range } = useScaledDataPoints({
+    value,
+    queryBusy,
+    rollingWindowMs: 1600,
+    height,
+    width,
+    updateIntervalMs: 10,
+  });
 
   return (
-    <svg
-      ref={ref}
-      xmlns="http://www.w3.org/2000/svg"
-      width="100%"
-      height="20px"
-      fill="none"
-      style={{ background: tileSparklineBackgroundColor, padding: "2px 0" }}
-    >
-      <polyline
-        points={points}
-        stroke="url(#paint0_linear_2971_11300)"
-        widths={2}
-        strokeWidth={2}
-        strokeLinecap="round"
-      />
+    <Sparkline
+      svgRef={svgRef}
+      scaledDataPoints={scaledDataPoints}
+      range={range}
+      height={height}
+    />
+  );
+}
 
-      <defs>
-        <linearGradient
-          id="paint0_linear_2971_11300"
-          x1="59.5"
-          y1="20"
-          x2="59.5"
-          y2="0"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor={tileBusyGreenColor} />
-          <stop offset="1" stopColor={tileBusyRedColor} />
-        </linearGradient>
-      </defs>
-    </svg>
+interface SparklineProps {
+  svgRef: UseMeasureRef<SVGSVGElement>;
+  scaledDataPoints: {
+    x: number;
+    y: number;
+  }[];
+  range: SparklineRange;
+  showRange?: boolean;
+  height: number;
+  background?: string;
+}
+export function Sparkline({
+  svgRef,
+  scaledDataPoints,
+  range,
+  showRange = false,
+  height,
+  background = tileSparklineBackgroundColor,
+}: SparklineProps) {
+  const points = scaledDataPoints.map(({ x, y }) => `${x},${y}`).join(" ");
+
+  // where the gradient colors start / end, given y scale and offset
+  const gradientRange: SparklineRange = useMemo(() => {
+    const scale = range[1] - range[0];
+    const gradientHeight = (height - strokeLineWidth * 2) / scale;
+    const top = gradientHeight * (range[1] - 1);
+    const bottom = top + gradientHeight;
+    return [bottom, top];
+  }, [height, range]);
+
+  return (
+    <>
+      <svg
+        ref={svgRef}
+        xmlns="http://www.w3.org/2000/svg"
+        width="100%"
+        height={`${height}px`}
+        fill="none"
+        style={{ background }}
+      >
+        <polyline
+          points={points}
+          stroke="url(#paint0_linear_2971_11300)"
+          widths={2}
+          strokeWidth={strokeLineWidth}
+          strokeLinecap="round"
+        />
+
+        <defs>
+          <linearGradient
+            id="paint0_linear_2971_11300"
+            x1="59.5"
+            y1={gradientRange[0]}
+            x2="59.5"
+            y2={gradientRange[1]}
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor={tileBusyGreenColor} />
+            <stop offset="1" stopColor={tileBusyRedColor} />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      {showRange && (
+        <>
+          <div className={styles.rangeLabel} style={{ top: 0 }}>
+            {Math.round(range[1] * 100)}%
+          </div>
+          <div className={styles.rangeLabel} style={{ bottom: 0 }}>
+            {Math.round(range[0] * 100)}%
+          </div>
+        </>
+      )}
+    </>
   );
 }
