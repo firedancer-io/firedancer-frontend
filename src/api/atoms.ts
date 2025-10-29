@@ -26,6 +26,9 @@ import type {
   SlotRankings,
   BootProgress,
   GossipNetworkStats,
+  GossipPeersSize,
+  GossipPeersRowsUpdate,
+  GossipPeersCellUpdate,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 
@@ -81,6 +84,14 @@ export const bootProgressAtom = atom<BootProgress | undefined>(undefined);
 export const startupProgressAtom = atom<StartupProgress | undefined>(undefined);
 
 export const gossipNetworkStatsAtom = atom<GossipNetworkStats | undefined>(
+  undefined,
+);
+
+export const gossipPeersSizeAtom = atom<GossipPeersSize | undefined>(undefined);
+export const gossipPeersRowsUpdateAtom = atom<GossipPeersRowsUpdate | undefined>(
+  undefined,
+);
+export const gossipPeersCellUpdateAtom = atom<GossipPeersCellUpdate | undefined>(
   undefined,
 );
 
