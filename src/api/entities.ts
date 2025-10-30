@@ -664,6 +664,23 @@ export const slotRankingsSchema = z.object({
   vals_smallest_skipped: z.coerce.bigint().array(),
 });
 
+export enum ShredEvent {
+  shred_repair_request = 0,
+  shred_received_turbine,
+  shred_received_repair,
+  shred_replayed,
+  slot_complete,
+}
+
+export const liveShredsSchema = z.object({
+  reference_slot: z.number(),
+  reference_ts: z.coerce.bigint(),
+  slot_delta: z.number().array(),
+  shred_idx: z.number().nullable().array(),
+  event: z.nativeEnum(ShredEvent).array(),
+  event_ts_delta: z.coerce.number().array(),
+});
+
 export const slotSchema = z.discriminatedUnion("key", [
   slotTopicSchema.extend({
     key: z.literal("skipped_history"),
@@ -680,6 +697,10 @@ export const slotSchema = z.discriminatedUnion("key", [
   slotTopicSchema.extend({
     key: z.literal("query_rankings"),
     value: slotRankingsSchema,
+  }),
+  slotTopicSchema.extend({
+    key: z.literal("live_shreds"),
+    value: liveShredsSchema,
   }),
 ]);
 
