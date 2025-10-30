@@ -41,9 +41,9 @@ export const [
   return [
     atom((get) => get(_turbineSlotsAtom)),
     atom(null, (_get, set, slots: number[]) => {
-      set(_turbineSlotsAtom, (prev) => {
+      set(_turbineSlotsAtom, (draft) => {
         slots.forEach((slot) => {
-          prev.add(slot);
+          draft.add(slot);
 
           set(_firstTurbineSlotAtom, (first) =>
             first ? Math.min(first, slot) : slot,
@@ -53,7 +53,6 @@ export const [
             latest ? Math.max(latest, slot) : slot,
           );
         });
-        return prev;
       });
     }),
     atom((get) => get(_firstTurbineSlotAtom)),
@@ -67,11 +66,10 @@ export const [repairSlotsAtom, addRepairSlotsAtom] =
     return [
       atom((get) => get(_repairSlotsAtom)),
       atom(null, (_get, set, slots: number[]) => {
-        set(_repairSlotsAtom, (prev) => {
+        set(_repairSlotsAtom, (draft) => {
           slots.forEach((slot) => {
-            prev.add(slot);
+            draft.add(slot);
           });
-          return prev;
         });
       }),
     ];

@@ -1,11 +1,13 @@
-import { Flex } from "@radix-ui/themes";
-
+import { Card, Flex, Text } from "@radix-ui/themes";
 import { CatchingUpBars } from "./CatchingUpBars";
-
 import { BarsFooter } from "./BarsFooter";
 import BarsLabels from "./BarsLabels";
 import { useAtomValue, useSetAtom } from "jotai";
 import { catchingUpContainerElAtom, hasCatchingUpDataAtom } from "./atoms";
+import ShredsChart from "../../../Overview/ShredsProgression/ShredsChart";
+import styles from "./catchingUp.module.css";
+
+const chartHeight = 280;
 
 export default function CatchingUp() {
   const setContainerEl = useSetAtom(catchingUpContainerElAtom);
@@ -13,10 +15,31 @@ export default function CatchingUp() {
   if (!hasCatchingUpData) return;
 
   return (
-    <Flex ref={setContainerEl} direction="column" gap="5px">
-      <BarsLabels />
-      <CatchingUpBars />
-      <BarsFooter />
+    <Flex direction="column" gap="20px">
+      <Flex ref={setContainerEl} direction="column" gap="5px">
+        <BarsLabels />
+        <CatchingUpBars />
+        <BarsFooter />
+      </Flex>
+
+      <Card className={styles.card}>
+        <Text className={styles.title}>Shreds before turbine start</Text>
+        <ShredsChart
+          chartId="catching-up-before-turbine-shreds"
+          chartHeight={chartHeight}
+          drawOnlyBeforeFirstTurbine
+          drawOnlyDots
+        />
+      </Card>
+
+      <Card className={styles.card}>
+        <Text className={styles.title}>Shreds from turbine start</Text>
+        <ShredsChart
+          chartId="catching-up-from-turbine-shreds"
+          chartHeight={chartHeight}
+          drawOnlyDots
+        />
+      </Card>
     </Flex>
   );
 }

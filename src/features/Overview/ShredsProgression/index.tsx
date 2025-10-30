@@ -5,6 +5,7 @@ import ShredsTiles from "./ShredsTiles";
 import { useAtomValue } from "jotai";
 import { ClientEnum } from "../../../api/entities";
 import { clientAtom } from "../../../atoms";
+import ShredsChart from "./ShredsChart";
 
 export default function ShredsProgression() {
   const client = useAtomValue(clientAtom);
@@ -13,8 +14,13 @@ export default function ShredsProgression() {
 
   return (
     <Card>
-      <Flex direction="column" height="100%" gap="2">
+      <Flex direction="column" gap="4">
         <CardHeader text="Shreds" />
+        <ShredsChart
+          chartId="overview-shreds-chart"
+          chartHeight={400}
+          pauseDrawingDuringStartup
+        />
         <ShredsTiles />
       </Flex>
     </Card>
