@@ -12,7 +12,25 @@ export const bootProgressPhaseAtom = atom<BootProgress["phase"] | undefined>(
   (get) => get(bootProgressAtom)?.phase,
 );
 
-export const showStartupProgressAtom = atom(true);
+export const [showStartupProgressAtom, startupFinalTurbineHeadAtom] =
+  (function getShowStartupProgressAtom() {
+    const _showStartupProgressAtom = atom(true);
+    const _startupFinalTurbineHeadAtom = atom<number>();
+    return [
+      atom(
+        (get) => get(_showStartupProgressAtom),
+        (get, set, show: boolean) => {
+          set(_showStartupProgressAtom, show);
+          set(
+            _startupFinalTurbineHeadAtom,
+            show ? undefined : (get(latestTurbineSlotAtom) ?? -1),
+          );
+        },
+      ),
+      atom((get) => get(_startupFinalTurbineHeadAtom)),
+    ];
+  })();
+
 export const isStartupProgressExpandedAtom = atom(true);
 export const expandStartupProgressElAtom = atom<HTMLButtonElement | null>(null);
 

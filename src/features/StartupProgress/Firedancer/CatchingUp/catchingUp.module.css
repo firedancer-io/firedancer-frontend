@@ -1,3 +1,13 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  gap: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(234, 103, 103, 0.05);
+  color: var(--boot-progress-primary-text-color);
+}
+
 .secondary-color {
   color: #858585;
 }
@@ -36,6 +46,7 @@
     width: calc(
       var(--turbine-start-x, 0px) + var(--turbine-start-label-width, 0px) / 2
     );
+    min-width: calc(var(--turbine-start-label-width, 0px) + 4px);
 
     &.left-labels {
       flex-shrink: 0;
