@@ -36,6 +36,7 @@
     width: calc(
       var(--turbine-start-x, 0px) + var(--turbine-start-label-width, 0px) / 2
     );
+    min-width: calc(var(--turbine-start-label-width, 0px) + 4px);
 
     &.left-labels {
       flex-shrink: 0;
