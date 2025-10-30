@@ -48,6 +48,9 @@ import {
   deleteSlotStatusBoundsAtom,
   deleteSlotResponseBoundsAtom,
   skipRateAtom,
+  addSkippedClusterSlotsAtom,
+  deleteSkippedClusterSlotAtom,
+  deleteSkippedClusterSlotsRangeAtom,
 } from "../atoms";
 import type {
   EstimatedSlotDuration,
@@ -76,6 +79,11 @@ import {
   addTurbineSlotsAtom,
   addRepairSlotsAtom,
 } from "../features/StartupProgress/Firedancer/CatchingUp/atoms";
+import {
+  addLiveShredsAtom,
+  deleteLiveShredsAtom,
+} from "../features/Overview/ShredsProgression/atoms";
+import { xRangeMs } from "../features/Overview/ShredsProgression/const";
 
 export function useSetAtomWsData() {
   const setVersion = useSetAtom(versionAtom);
@@ -179,8 +187,17 @@ export function useSetAtomWsData() {
 
   const setCompletedSlot = useSetAtom(completedSlotAtom);
 
+  const addSkippedClusterSlots = useSetAtom(addSkippedClusterSlotsAtom);
+  const deleteSkippedClusterSlot = useSetAtom(deleteSkippedClusterSlotAtom);
+
   const handleSlotUpdate = (value: SlotResponse) => {
     setSlotStatus(value.publish.slot, value.publish.level);
+
+    if (value.publish.skipped) {
+      addSkippedClusterSlots([value.publish.slot]);
+    } else {
+      deleteSkippedClusterSlot(value.publish.slot);
+    }
 
     if (value.publish.mine) {
       if (value.publish.skipped) {
@@ -213,6 +230,8 @@ export function useSetAtomWsData() {
     if (slot == null) return;
     addRepairSlots([slot]);
   };
+
+  const addLiveShreds = useSetAtom(addLiveShredsAtom);
 
   useServerMessages((msg) => {
     try {
@@ -363,6 +382,10 @@ export function useSetAtomWsData() {
             setSkippedSlots(value.sort());
             break;
           }
+          case "skipped_history_cluster": {
+            addSkippedClusterSlots(value);
+            break;
+          }
           case "update":
           case "query": {
             if (value) {
@@ -373,6 +396,10 @@ export function useSetAtomWsData() {
           }
           case "query_rankings": {
             setSlotRankings(value);
+            break;
+          }
+          case "live_shreds": {
+            addLiveShreds(value);
             break;
           }
         }
@@ -409,6 +436,9 @@ export function useSetAtomWsData() {
 
   const deleteSlotStatusBounds = useSetAtom(deleteSlotStatusBoundsAtom);
   const deleteSlotResponseBounds = useSetAtom(deleteSlotResponseBoundsAtom);
+  const deleteSkippedClusterSlotsRange = useSetAtom(
+    deleteSkippedClusterSlotsRangeAtom,
+  );
 
   useInterval(() => {
     deleteSlotStatusBounds();
@@ -420,6 +450,14 @@ export function useSetAtomWsData() {
           (slot) => slot >= epoch.start_slot && slot <= epoch.end_slot,
         );
       });
+
+      deleteSkippedClusterSlotsRange(epoch.start_slot, epoch.end_slot);
     }
   }, 5_000);
+
+  const deleteLiveShreds = useSetAtom(deleteLiveShredsAtom);
+
+  useInterval(() => {
+    deleteLiveShreds();
+  }, xRangeMs / 4);
 }

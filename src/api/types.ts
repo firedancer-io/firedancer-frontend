@@ -53,6 +53,7 @@ import type {
   gossipViewUpdateSchema,
   gossipCellDataSchema,
   gossipNetworkHealthSchema,
+  liveShredsSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -163,3 +164,4 @@ export type BlockEngineUpdate = z.infer<typeof blockEngineUpdateSchema>;
 export type BlockEngineStatus = z.infer<typeof blockEngineStatusSchema>;
 
 export type SlotRankings = z.infer<typeof slotRankingsSchema>;
+export type LiveShreds = z.infer<typeof liveShredsSchema>;

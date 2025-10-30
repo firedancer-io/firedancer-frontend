@@ -136,6 +136,16 @@ export const tilePrimaryStatValueColor = "#DB8F38";
 
 export const nextSlotValueColor = "#CACACA";
 
+// shreds
+export const gridTicksColor = "#858585";
+export const gridLineColor = "#312D42";
+
+export const shredRepairRequestedColor = "#792C2C";
+export const shredReceivedTurbineColor = "#163454";
+export const shredReceivedRepairColor = "#89603E";
+export const shredReplayedColor = "#408E7B";
+export const shredSkippedColor = "#FF5353";
+
 // epoch bar
 export const epochTextColor = "#FAFAFA";
 export const epochNotLiveColor = "#3CB4FF";

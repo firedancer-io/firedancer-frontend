@@ -659,3 +659,42 @@ export const statusAtom = atom<Status | null>((get) => {
 
   return "Past";
 });
+
+export const [
+  skippedClusterSlotsAtom,
+  addSkippedClusterSlotsAtom,
+  deleteSkippedClusterSlotAtom,
+  deleteSkippedClusterSlotsRangeAtom,
+] = (function getSkippedSlotsClusterAtom() {
+  const _skippedClusterSlotsAtom = atomWithImmer(new Set<number>());
+  return [
+    atom((get) => get(_skippedClusterSlotsAtom)),
+    atom(null, (_get, set, slots: number[]) => {
+      set(_skippedClusterSlotsAtom, (prev) => {
+        for (const slot of slots) {
+          prev.add(slot);
+        }
+        return prev;
+      });
+    }),
+    atom(null, (_get, set, slot: number) => {
+      set(_skippedClusterSlotsAtom, (prev) => {
+        prev.delete(slot);
+        return prev;
+      });
+    }),
+
+    atom(null, (_get, set, startSlot: number, endSlot: number) => {
+      set(_skippedClusterSlotsAtom, (prev) => {
+        const toKeep = new Set<number>();
+
+        for (const slot of prev) {
+          if (slot < startSlot || slot > endSlot) continue;
+          toKeep.add(slot);
+        }
+
+        return toKeep;
+      });
+    }),
+  ];
+})();
