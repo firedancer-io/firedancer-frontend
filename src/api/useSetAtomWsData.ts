@@ -71,6 +71,11 @@ import {
   addTurbineSlotsAtom,
   addRepairSlotsAtom,
 } from "../features/StartupProgress/Firedancer/CatchingUp/atoms";
+import {
+  addLiveShredsAtom,
+  deleteLiveShredsAtom,
+} from "../features/Overview/ShredsProgression/atoms";
+import { xRangeMs } from "../features/Overview/ShredsProgression/const";
 
 export function useSetAtomWsData() {
   const setVersion = useSetAtom(versionAtom);
@@ -192,6 +197,8 @@ export function useSetAtomWsData() {
     if (slot == null) return;
     addRepairSlots([slot]);
   };
+
+  const addLiveShreds = useSetAtom(addLiveShredsAtom);
 
   useServerMessages((msg) => {
     try {
@@ -341,6 +348,10 @@ export function useSetAtomWsData() {
             setSlotRankings(value);
             break;
           }
+          case "live_shreds": {
+            addLiveShreds(value);
+            break;
+          }
         }
       } else if (topic === "block_engine") {
         const { key, value } = blockEngineSchema.parse(msg);
@@ -388,4 +399,10 @@ export function useSetAtomWsData() {
       });
     }
   }, 5_000);
+
+  const deleteLiveShreds = useSetAtom(deleteLiveShredsAtom);
+
+  useInterval(() => {
+    deleteLiveShreds();
+  }, xRangeMs / 4);
 }
