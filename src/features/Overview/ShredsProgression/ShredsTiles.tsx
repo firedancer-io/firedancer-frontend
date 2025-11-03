@@ -1,0 +1,37 @@
+import type { TileType } from "../../../api/types";
+import TileCard from "../SlotPerformance/TileCard";
+import styles from "../SlotPerformance/tilesPerformance.module.css";
+import { useTilesPerformance } from "../SlotPerformance/useTilesPerformance";
+
+const tiles: TileType[] = [
+  "netlnk",
+  "ipecho",
+  "gossvf",
+  "gossip",
+  "repair",
+  "replay",
+  "exec",
+  "tower",
+  "send",
+  "rpc",
+];
+
+export default function ShredTiles() {
+  const { tileCounts, groupedLiveIdlePerTile, showLive, queryIdleData } =
+    useTilesPerformance();
+
+  return (
+    <div className={styles.container}>
+      {tiles.map((tile) => (
+        <TileCard
+          key={tile}
+          header={tile}
+          tileCount={tileCounts[tile]}
+          liveIdlePerTile={groupedLiveIdlePerTile?.[tile]}
+          queryIdlePerTile={showLive ? undefined : queryIdleData?.[tile]}
+          statLabel=""
+        />
+      ))}
+    </div>
+  );
+}

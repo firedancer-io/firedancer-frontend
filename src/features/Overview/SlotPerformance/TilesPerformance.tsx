@@ -1,84 +1,10 @@
 import styles from "./tilesPerformance.module.css";
 import TileCard from "./TileCard";
-import { useAtomValue } from "jotai";
-import { tilesAtom } from "../../../api/atoms";
-import {
-  liveTileTimerfallAtom,
-  selectedSlotAtom,
-  tileCountAtom,
-} from "./atoms";
-import { useMemo } from "react";
-import type { TileType } from "../../../api/types";
-import { tileTypeSchema } from "../../../api/entities";
-import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";
+import { useTilesPerformance } from "./useTilesPerformance";
 
 export default function TilesPerformance() {
-  const liveTileTimers = useAtomValue(liveTileTimerfallAtom);
-  const slot = useAtomValue(selectedSlotAtom);
-  const showLive = !slot;
-  const tiles = useAtomValue(tilesAtom);
-  const tileCounts = useAtomValue(tileCountAtom);
-
-  const groupedLiveIdlePerTile = liveTileTimers?.reduce<
-    Record<TileType, number[]>
-  >(
-    (grouped, timer, i) => {
-      const tile = tiles?.[i];
-      if (!tile) return grouped;
-
-      const parsedTileKind = tileTypeSchema.safeParse(tile.kind);
-      if (parsedTileKind.error) {
-        return grouped;
-      }
-
-      grouped[parsedTileKind.data] ??= [];
-      grouped[parsedTileKind.data].push(timer);
-
-      return grouped;
-    },
-    {} as Record<TileType, number[]>,
-  );
-
-  const query = useSlotQueryResponseDetailed(slot);
-
-  const queryIdleData = useMemo(() => {
-    if (!query.response?.tile_timers?.length || showLive || !tiles) return;
-
-    return query.response.tile_timers.reduce<Record<string, number[][]>>(
-      (aggTimerPerTileType, timers) => {
-        if (!timers.tile_timers.length) return aggTimerPerTileType;
-        const idleTimersPerTileType: Record<string, number[]> = {};
-
-        if (timers.tile_timers.length !== tiles.length) {
-          console.warn(
-            "Length mismatch between tiles and time timers",
-            timers.tile_timers,
-            tiles,
-          );
-        }
-
-        for (let i = 0; i < timers.tile_timers.length; i++) {
-          const timer = timers.tile_timers[i];
-
-          const tile = tiles[i];
-          if (!tile) continue;
-
-          idleTimersPerTileType[tile.kind] ??= [];
-          idleTimersPerTileType[tile.kind].push(timer);
-        }
-
-        for (const [tile, idlePerTile] of Object.entries(
-          idleTimersPerTileType,
-        )) {
-          aggTimerPerTileType[tile] ??= [];
-          aggTimerPerTileType[tile].push(idlePerTile);
-        }
-
-        return aggTimerPerTileType;
-      },
-      {},
-    );
-  }, [query.response?.tile_timers, showLive, tiles]);
+  const { tileCounts, groupedLiveIdlePerTile, showLive, queryIdleData } =
+    useTilesPerformance();
 
   const netType = tileCounts["net"] ? "net" : "sock";
 
