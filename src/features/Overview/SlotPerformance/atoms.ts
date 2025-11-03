@@ -130,6 +130,29 @@ export const liveTileTimerfallAtom = atom((get) => {
   return get(tileTimerAtom);
 });
 
+export const groupedLiveIdlePerTileAtom = atom((get) => {
+  const liveTileTimers = get(liveTileTimerfallAtom);
+  const tiles = get(tilesAtom);
+
+  return liveTileTimers?.reduce<Record<TileType, number[]>>(
+    (grouped, timer, i) => {
+      const tile = tiles?.[i];
+      if (!tile) return grouped;
+
+      const parsedTileKind = tileTypeSchema.safeParse(tile.kind);
+      if (parsedTileKind.error) {
+        return grouped;
+      }
+
+      grouped[parsedTileKind.data] ??= [];
+      grouped[parsedTileKind.data].push(timer);
+
+      return grouped;
+    },
+    {} as Record<TileType, number[]>,
+  );
+});
+
 export const snapshotTimerIndicesAtom = atom(
   (get): [TileType, number[]][] | undefined => {
     const tiles = get(tilesAtom);
