@@ -4,6 +4,7 @@ import SlotPerformance from "./SlotPerformance";
 import ValidatorsCard from "./ValidatorsCard";
 import SlotStatusCard from "./StatusCard";
 import EpochCard from "./EpochCard";
+import ShredsProgression from "./ShredsProgression";
 
 export default function Overview() {
   return (
@@ -14,6 +15,7 @@ export default function Overview() {
         <ValidatorsCard />
         <TransactionsCard />
       </Flex>
+      <ShredsProgression />
       <SlotPerformance />
     </Flex>
   );
