@@ -70,17 +70,16 @@ export const tileTypeSchema = z.enum([
   "poh",
   "shred",
   "store",
-  "sign",
-  "metric",
-  "http",
-  "plugin",
-  "gui",
-  "cswtch",
-  "snaprd",
+
+  // snapshot
+  "snapct",
+  "snapld",
   "snapdc",
   "snapin",
+
   // shred tiles
   "netlnk",
+  "metric",
   "ipecho",
   "gossvf",
   "gossip",
@@ -89,7 +88,15 @@ export const tileTypeSchema = z.enum([
   "exec",
   "tower",
   "send",
+  "sign",
   "rpc",
+  "gui",
+
+  // others
+  "http",
+  "plugin",
+  "cswtch",
+  "genesi",
 ]);
 
 export const tileSchema = z.object({
