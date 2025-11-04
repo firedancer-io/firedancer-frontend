@@ -87,7 +87,7 @@ export function SnapshotProgress() {
         />
         <SnapshotSparklineCard
           title="CPU Utilization"
-          tileType="snaprd"
+          tileType="snapld"
           isComplete={!!readBytes && readBytes === totalBytes}
         />
       </Flex>
