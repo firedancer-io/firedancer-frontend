@@ -28,6 +28,7 @@ import {
   secondaryTextColor,
   votesColor,
 } from "../colors";
+import type { SVGAttributes } from "react";
 
 const store = getDefaultStore();
 
@@ -72,7 +73,7 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
     .map((node) => {
       let x;
       let y;
-      let textAnchor;
+      let textAnchor: SVGAttributes<SVGTextElement>["textAnchor"];
 
       if (layout === "horizontal") {
         y = node.y + node.height / 2 - 5;
