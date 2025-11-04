@@ -5,6 +5,7 @@ import { useTilesPerformance } from "../SlotPerformance/useTilesPerformance";
 
 const tiles: TileType[] = [
   "netlnk",
+  "metric",
   "ipecho",
   "gossvf",
   "gossip",
@@ -13,9 +14,10 @@ const tiles: TileType[] = [
   "exec",
   "tower",
   "send",
+  "sign",
   "rpc",
+  "gui",
 ];
-
 export default function ShredTiles() {
   const { tileCounts, groupedLiveIdlePerTile, showLive, queryIdleData } =
     useTilesPerformance();
