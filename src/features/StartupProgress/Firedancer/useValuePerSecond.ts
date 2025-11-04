@@ -8,9 +8,9 @@ import { useInterval } from "react-use";
 function addNewValueAndShift(
   prev: [number, number][],
   newValue: number,
-  now: number,
   windowMs: number,
 ) {
+  const now = performance.now();
   const newValues = [...prev, [newValue, now]] satisfies [number, number][];
 
   while (
@@ -33,23 +33,21 @@ export function useValuePerSecond(
 
   useEffect(() => {
     if (cumulativeValue == null) return;
-
-    const now = performance.now();
-    setValues((prev) =>
-      addNewValueAndShift(prev, cumulativeValue, now, windowMs),
-    );
+    setValues((prev) => addNewValueAndShift(prev, cumulativeValue, windowMs));
   }, [cumulativeValue, windowMs]);
 
   // Handle unchanged cumulative values by
   // adding the unchanged value to the end of the array
   useInterval(() => {
-    const now = performance.now();
-    const latestValue = values[values.length - 1];
-    if (latestValue && latestValue[1] < now - windowMs) {
-      setValues((prev) =>
-        addNewValueAndShift(prev, latestValue[0], now, windowMs),
-      );
-    }
+    setValues((prev) => {
+      const now = performance.now();
+      const latestValue = prev[prev.length - 1];
+      if (latestValue && latestValue[1] < now - windowMs) {
+        return addNewValueAndShift(prev, prev[prev.length - 1][0], windowMs);
+      } else {
+        return prev;
+      }
+    });
   }, windowMs);
 
   const reset = useCallback(() => {
