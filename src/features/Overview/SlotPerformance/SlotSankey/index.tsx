@@ -87,6 +87,7 @@ function getResolvOut(out: TxnWaterfallOut, resolvRetainedOut: number) {
 function getPackOut(out: TxnWaterfallOut) {
   return (
     out.pack_invalid +
+    out.pack_already_executed +
     out.pack_invalid_bundle +
     out.pack_expired +
     out.pack_leader_slow +
@@ -125,7 +126,12 @@ function getSharedLinks(
     waterfall.in.pack_cranked +
     packCount -
     getPackOut(waterfall.out);
-  const blockCount = bankCount - waterfall.out.bank_invalid;
+  const blockCount =
+    bankCount -
+    waterfall.out.bank_invalid -
+    waterfall.out.bank_nonce_already_advanced -
+    waterfall.out.bank_nonce_advance_failed -
+    waterfall.out.bank_nonce_wrong_blockhash;
 
   return [
     {
@@ -284,6 +290,11 @@ function getSharedLinks(
     },
     {
       source: SlotNode.Pack,
+      target: SlotNode.PackAlreadyExecuted,
+      value: getValue(waterfall.out.pack_already_executed),
+    },
+    {
+      source: SlotNode.Pack,
       target: SlotNode.PackLeaderSlow,
       value: getValue(waterfall.out.pack_leader_slow),
     },
@@ -301,6 +312,21 @@ function getSharedLinks(
       source: SlotNode.Bank,
       target: SlotNode.BankInvalid,
       value: getValue(waterfall.out.bank_invalid),
+    },
+    {
+      source: SlotNode.Bank,
+      target: SlotNode.BankNonceAlreadyAdvanced,
+      value: getValue(waterfall.out.bank_nonce_already_advanced),
+    },
+    {
+      source: SlotNode.Bank,
+      target: SlotNode.BankNonceAdvanceFailed,
+      value: getValue(waterfall.out.bank_nonce_advance_failed),
+    },
+    {
+      source: SlotNode.Bank,
+      target: SlotNode.BankNonceWrongBlockhash,
+      value: getValue(waterfall.out.bank_nonce_wrong_blockhash),
     },
     {
       source: SlotNode.Bank,
