@@ -36,10 +36,14 @@ export const enum SlotNode {
   PackInvalid = "Unpackable",
   PackInvalidBundle = "Bad Bundle",
   PackExpired = "Expired:pack",
+  PackAlreadyExecuted = "AlreadyExecuted:pack",
   PackRetained = "Buffered:pack",
   PackLeaderSlow = "Buffer full",
   PackWaitFull = "Storage full",
   BankInvalid = "Unexecutable",
+  BankNonceAlreadyAdvanced = "NonceAlreadyAdvanced",
+  BankNonceAdvanceFailed = "NonceAdvanceFailed",
+  BankNonceWrongBlockhash = "NonceWrongBlockhash",
 
   BlockSuccess = "Success",
   BlockFailure = "Failure",
@@ -79,10 +83,14 @@ export const droppedSlotNodes: SlotNode[] = [
   SlotNode.PackInvalid,
   SlotNode.PackInvalidBundle,
   SlotNode.PackExpired,
+  SlotNode.PackAlreadyExecuted,
   SlotNode.PackRetained,
   SlotNode.PackLeaderSlow,
   SlotNode.PackWaitFull,
   SlotNode.BankInvalid,
+  SlotNode.BankNonceAlreadyAdvanced,
+  SlotNode.BankNonceAdvanceFailed,
+  SlotNode.BankNonceWrongBlockhash,
 ];
 
 export const incomingSlotNodes: SlotNode[] = [
@@ -132,9 +140,13 @@ export const slotNodes = [
   { id: SlotNode.PackInvalid, labelPositionOverride: "right" },
   { id: SlotNode.PackInvalidBundle, labelPositionOverride: "right" },
   { id: SlotNode.PackExpired, labelPositionOverride: "right" },
+  { id: SlotNode.PackAlreadyExecuted, labelPositionOverride: "right" },
   { id: SlotNode.PackLeaderSlow, labelPositionOverride: "right" },
   { id: SlotNode.PackWaitFull, labelPositionOverride: "right" },
   { id: SlotNode.BankInvalid, labelPositionOverride: "right" },
+  { id: SlotNode.BankNonceAlreadyAdvanced, labelPositionOverride: "right" },
+  { id: SlotNode.BankNonceAdvanceFailed, labelPositionOverride: "right" },
+  { id: SlotNode.BankNonceWrongBlockhash, labelPositionOverride: "right" },
   {
     id: SlotNode.SlotStart,
     alignLabelBottom: true,
