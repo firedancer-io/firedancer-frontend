@@ -50,6 +50,9 @@ export const txnErrorCodeMap: Record<string, string> = {
   38: "Program Cache Hit Max Limit", //	The program cache allocated for transaction batch for this transaction hit its load limit
   39: "Commit Cancelled", //	This transaction was part of a bundle that failed
   40: "Bundle Peer", //	This transaction was part of a bundle that failed
+  50: "Blockhash Nonce Already Advanced", //	This transaction references a nonce account that is already advanced
+  51: "Blockhash Advanced Failed", //	This transaction is a nonce transaction but the advance instruction was not valid or failed
+  52: "Blockhash Wrong Nonce", //	This transaction is a nonce transaction but the blockhash is not the correct one
 };
 
 export const nonBreakingSpace = "\u00A0";
