@@ -11,6 +11,7 @@ import { Box, Flex, Progress, Text } from "@radix-ui/themes";
 import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
 import type React from "react";
 import { memo, useMemo } from "react";
+import type { CSSProperties } from "react";
 import styles from "./slotsRenderer.module.css";
 import PeerIcon from "../../components/PeerIcon";
 import { slotsPerLeader } from "../../consts";
@@ -30,6 +31,7 @@ import SlotClient from "../../components/SlotClient";
 import { useIsLeaderGroupSkipped } from "../../hooks/useIsLeaderGroupSkipped";
 import { isScrollingAtom } from "./atoms";
 import useNextSlot from "../../hooks/useNextSlot";
+import type { SlotPublish } from "../../api/types";
 
 export default function SlotsRenderer(props: { leaderSlotForGroup: number }) {
   const isScrolling = useAtomValue(isScrollingAtom);
@@ -352,6 +354,22 @@ function SlotStatus({
   );
 }
 
+function getSlotStatusColorStyles(publish?: SlotPublish): CSSProperties {
+  if (!publish) return {};
+  if (publish.skipped) return { backgroundColor: slotStatusRed };
+  switch (publish.level) {
+    case "incomplete":
+      return {};
+    case "completed":
+      return { borderColor: slotStatusGreen };
+    case "optimistically_confirmed":
+      return { backgroundColor: slotStatusGreen };
+    case "finalized":
+    case "rooted":
+      return { backgroundColor: slotStatusTeal };
+  }
+}
+
 function CurrentSlotStatus({ slot }: { slot: number }) {
   const currentSlot = useAtomValue(currentSlotAtom);
   const queryPublish = useSlotQueryPublish(slot);
@@ -360,19 +378,7 @@ function CurrentSlotStatus({ slot }: { slot: number }) {
   const isCurrent = useMemo(() => slot === currentSlot, [slot, currentSlot]);
   const colorStyle = useMemo(() => {
     if (isCurrent) return { borderColor: slotStatusBlue };
-    if (!queryPublish.publish) return {};
-    if (queryPublish.publish.skipped) return { backgroundColor: slotStatusRed };
-    switch (queryPublish.publish.level) {
-      case "incomplete":
-        return {};
-      case "completed":
-        return { borderColor: slotStatusGreen };
-      case "optimistically_confirmed":
-        return { backgroundColor: slotStatusGreen };
-      case "finalized":
-      case "rooted":
-        return { backgroundColor: slotStatusTeal };
-    }
+    return getSlotStatusColorStyles(queryPublish.publish);
   }, [isCurrent, queryPublish.publish]);
 
   return (
@@ -387,27 +393,22 @@ function CurrentSlotStatus({ slot }: { slot: number }) {
 function PastSlotStatus({ slot }: { slot: number }) {
   const queryPublish = useSlotQueryPublish(slot);
   const selectedSlot = useAtomValue(selectedSlotAtom);
-  const backgroundColor = useMemo(() => {
-    if (!queryPublish.publish) return;
-    if (queryPublish.publish.skipped) return slotStatusRed;
-    switch (queryPublish.publish.level) {
-      case "incomplete":
-        return;
-      case "completed":
-        return slotStatusGreen;
-      case "optimistically_confirmed":
-        return slotStatusGreen;
-      case "finalized":
-      case "rooted":
-        if (
-          selectedSlot !== undefined &&
-          getSlotGroupLeader(slot) === getSlotGroupLeader(selectedSlot)
-        ) {
-          return slotStatusTeal;
-        }
-        return slotStatusDullTeal;
+  const colorStyle = useMemo(() => {
+    const style = getSlotStatusColorStyles(queryPublish.publish);
+    if (
+      queryPublish?.publish?.level === "rooted" &&
+      (selectedSlot === undefined ||
+        getSlotGroupLeader(slot) !== getSlotGroupLeader(selectedSlot))
+    ) {
+      style.backgroundColor = slotStatusDullTeal;
     }
+    return style;
   }, [queryPublish.publish, selectedSlot, slot]);
 
-  return <SlotStatus backgroundColor={backgroundColor} />;
+  return (
+    <SlotStatus
+      borderColor={colorStyle.borderColor}
+      backgroundColor={colorStyle.backgroundColor}
+    />
+  );
 }
