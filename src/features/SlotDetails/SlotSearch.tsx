@@ -117,20 +117,19 @@ function QuickSearch() {
   const leaderSlots = useAtomValue(leaderSlotsAtom);
   const firstProcessedLeaderIndex = useAtomValue(firstProcessedLeaderIndexAtom);
   const nextLeaderIndex = useAtomValue(nextLeaderSlotIndexAtom);
-  const earliestQuickSlots = useMemo(
-    () =>
-      firstProcessedLeaderIndex !== undefined
-        ? leaderSlots?.slice(firstProcessedLeaderIndex)
-        : undefined,
-    [firstProcessedLeaderIndex, leaderSlots],
-  );
-  const mostRecentQuickSlots = useMemo(
-    () =>
-      nextLeaderIndex !== undefined
-        ? leaderSlots?.slice(0, nextLeaderIndex)?.toReversed()
-        : undefined,
-    [leaderSlots, nextLeaderIndex],
-  );
+  const { earliestQuickSlots, mostRecentQuickSlots } = useMemo(() => {
+    if (leaderSlots === undefined || firstProcessedLeaderIndex === undefined)
+      return {};
+
+    const pastProcessedSlots = leaderSlots.slice(
+      firstProcessedLeaderIndex,
+      nextLeaderIndex,
+    );
+    return {
+      earliestQuickSlots: pastProcessedSlots,
+      mostRecentQuickSlots: pastProcessedSlots.toReversed(),
+    };
+  }, [firstProcessedLeaderIndex, leaderSlots, nextLeaderIndex]);
 
   return (
     <>
