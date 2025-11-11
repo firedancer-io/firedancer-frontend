@@ -9,6 +9,7 @@ import { delayMs, shredColors, shredEventDescPriorities } from "./const";
 import { startupFinalTurbineHeadAtom } from "../../StartupProgress/atoms";
 import { shredSkippedColor } from "../../../colors";
 import { skippedClusterSlotsAtom } from "../../../atoms";
+import { clamp } from "lodash";
 
 const store = getDefaultStore();
 const xScaleKey = "x";
@@ -66,25 +67,36 @@ export function shredsProgressionPlugin(
           );
 
           const canvasHeight = u.bbox.height;
-          const shredPxHeight = canvasHeight / maxShreds;
+          // each row is at least 1 px
+          const rowPxHeight = clamp(canvasHeight / maxShreds, 1, 10);
+          const rowsCount = Math.trunc(canvasHeight / rowPxHeight);
+          const shredsPerRow = maxShreds / rowsCount;
 
           for (const slotNumber of orderedSlotNumbers) {
             const slot = liveShreds.slots[slotNumber];
             const isSlotSkipped = skippedSlotsCluster.has(slotNumber);
 
-            for (let shredIdx = 0; shredIdx < slot.shreds.length; shredIdx++) {
-              const eventTsDeltas = slot.shreds[shredIdx];
-              if (!eventTsDeltas) continue;
+            for (let rowIdx = 0; rowIdx < rowsCount; rowIdx++) {
+              const shredsAboveRow = rowIdx * shredsPerRow;
+              const firstShredIdx = Math.trunc(shredsAboveRow);
 
-              drawShred({
-                drawOnlyDots,
-                isSlotSkipped,
+              const shredsAboveOrInRow = (rowIdx + 1) * shredsPerRow;
+              const lastShredIdx = Math.min(
+                maxShreds,
+                Math.ceil(shredsAboveOrInRow) - 1,
+              );
+
+              drawRow({
                 u,
-                eventTsDeltas: slot.shreds[shredIdx],
+                firstShredIdx,
+                lastShredIdx,
+                shreds: slot.shreds,
                 slotCompletionTsDelta: slot.completionTsDelta,
+                isSlotSkipped,
+                drawOnlyDots,
                 tsXValueOffset,
-                y: shredPxHeight * shredIdx + u.bbox.top,
-                height: Math.max(1, shredPxHeight),
+                y: rowPxHeight * rowIdx + u.bbox.top,
+                height: rowPxHeight,
                 scaleX: u.scales[xScaleKey],
                 getXPos,
               });
@@ -150,12 +162,14 @@ const getDrawInfo = (
   };
 };
 
-interface DrawShredArgs {
-  drawOnlyDots: boolean;
-  isSlotSkipped: boolean;
+interface DrawRowArgs {
   u: uPlot;
-  eventTsDeltas: ShredEventTsDeltas | undefined;
+  firstShredIdx: number;
+  lastShredIdx: number;
+  shreds: (ShredEventTsDeltas | undefined)[];
   slotCompletionTsDelta: number | undefined;
+  isSlotSkipped: boolean;
+  drawOnlyDots: boolean;
   tsXValueOffset: number;
   y: number;
   height: number;
@@ -163,21 +177,33 @@ interface DrawShredArgs {
   getXPos: (xVal: number) => number;
 }
 /**
- * Draw event rectangles or dots for shred
+ * Draw rows for shreds, with rectangles or dots for events.
+ * Each row may represent partial or multiple shreds. Draw the most completed shred.
  */
-function drawShred({
-  drawOnlyDots,
-  isSlotSkipped,
+function drawRow({
   u,
-  eventTsDeltas,
+  firstShredIdx,
+  lastShredIdx,
+  shreds,
   slotCompletionTsDelta,
   tsXValueOffset,
+  drawOnlyDots,
+  isSlotSkipped,
   y,
   height,
   scaleX,
   getXPos,
-}: DrawShredArgs) {
-  if (scaleX.max == null || scaleX.min == null || !eventTsDeltas) return;
+}: DrawRowArgs) {
+  if (scaleX.max == null || scaleX.min == null) return;
+
+  const shredIdx = getMostCompletedShredIdx(
+    firstShredIdx,
+    lastShredIdx,
+    shreds,
+  );
+
+  const eventTsDeltas = shreds[shredIdx];
+  if (!eventTsDeltas) return;
 
   const drawEvent =
     drawOnlyDots || isSlotSkipped
@@ -212,4 +238,37 @@ function drawShred({
     drawEvent(startXPos, endXPos);
     endXPos = startXPos;
   }
+}
+
+function getMostCompletedShredIdx(
+  firstShredIdx: number,
+  lastShredIdx: number,
+  shreds: (ShredEventTsDeltas | undefined)[],
+): number {
+  for (const shredEvent of shredEventDescPriorities) {
+    const shredIdx = findShredIdx(
+      firstShredIdx,
+      lastShredIdx,
+      shreds,
+      (shred: ShredEventTsDeltas | undefined) => shred?.[shredEvent] != null,
+    );
+    if (shredIdx !== -1) return shredIdx;
+  }
+  return firstShredIdx;
+}
+
+/**
+ * Find first shred index that satisfies the condition.
+ * Returns -1 if no shred passes the condition.
+ */
+function findShredIdx(
+  firstShredIdx: number,
+  lastShredIdx: number,
+  shreds: (ShredEventTsDeltas | undefined)[],
+  condition: (shred: ShredEventTsDeltas | undefined) => boolean,
+) {
+  for (let shredIdx = firstShredIdx; shredIdx < lastShredIdx; shredIdx++) {
+    if (condition(shreds[shredIdx])) return shredIdx;
+  }
+  return -1;
 }
