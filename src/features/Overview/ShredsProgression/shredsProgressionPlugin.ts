@@ -5,8 +5,7 @@ import {
   type ShredEventTsDeltas,
   type SlotsShreds,
 } from "./atoms";
-import { delayMs, shredColors } from "./const";
-import type { ShredEvent } from "../../../api/entities";
+import { delayMs, shredColors, shredEventDescPriorities } from "./const";
 import { startupFinalTurbineHeadAtom } from "../../StartupProgress/atoms";
 import { shredSkippedColor } from "../../../colors";
 import { skippedClusterSlotsAtom } from "../../../atoms";
@@ -155,7 +154,7 @@ interface DrawShredArgs {
   drawOnlyDots: boolean;
   isSlotSkipped: boolean;
   u: uPlot;
-  eventTsDeltas: ShredEventTsDeltas;
+  eventTsDeltas: ShredEventTsDeltas | undefined;
   slotCompletionTsDelta: number | undefined;
   tsXValueOffset: number;
   y: number;
@@ -178,7 +177,7 @@ function drawShred({
   scaleX,
   getXPos,
 }: DrawShredArgs) {
-  if (scaleX.max == null || scaleX.min == null) return;
+  if (scaleX.max == null || scaleX.min == null || !eventTsDeltas) return;
 
   const drawEvent =
     drawOnlyDots || isSlotSkipped
@@ -187,54 +186,30 @@ function drawShred({
       : // draw rect for event duration
         (x: number, xEnd: number) => u.ctx.fillRect(x, y, xEnd - x, height);
 
-  // filter to non-empty events
-  const events = eventTsDeltas.reduce<
-    {
-      eventType: Exclude<ShredEvent, ShredEvent.slot_complete>;
-      tsDelta: number;
-    }[]
-  >((acc, tsDelta, eventType) => {
-    if (tsDelta == null) return acc;
-    acc.push({
-      eventType,
-      tsDelta,
-    });
-    return acc;
-  }, []);
+  const maxXPos = u.bbox.left + u.bbox.width;
+  let endXPos: number =
+    slotCompletionTsDelta == null
+      ? // event goes to max x
+        maxXPos
+      : // event goes to slot completion or max x
+        Math.min(getXPos(slotCompletionTsDelta - tsXValueOffset), maxXPos);
 
-  for (let i = 0; i < events.length; i++) {
-    const { eventType, tsDelta } = events[i];
+  // draw events from highest to lowest priority
+  for (const eventType of shredEventDescPriorities) {
+    const tsDelta = eventTsDeltas[eventType];
+    if (tsDelta == null) continue;
 
-    const xVal = tsDelta - tsXValueOffset;
-    const xPos = getXPos(xVal);
+    const startXVal = tsDelta - tsXValueOffset;
+    const startXPos = getXPos(startXVal);
 
-    if (xVal > scaleX.max) {
-      // this event starts after max x; no further events to draw
-      return;
-    }
+    // ignore overlapping events with lower priority
+    if (startXPos >= endXPos) continue;
 
     u.ctx.fillStyle = isSlotSkipped
       ? shredSkippedColor
       : (shredColors[eventType] ?? "transparent");
 
-    const nextEventStartTsDelta = events[i + 1]?.tsDelta;
-
-    if (slotCompletionTsDelta == null && nextEventStartTsDelta == null) {
-      // Event does not end, draw rectangle to max x
-      drawEvent(xPos, u.bbox.left + u.bbox.width);
-      return;
-    }
-
-    if (
-      slotCompletionTsDelta != null &&
-      (nextEventStartTsDelta == null ||
-        slotCompletionTsDelta < nextEventStartTsDelta)
-    ) {
-      // End this event at slot completion, and ignore events after slot completion
-      drawEvent(xPos, getXPos(slotCompletionTsDelta - tsXValueOffset));
-      return;
-    }
-
-    drawEvent(xPos, getXPos(nextEventStartTsDelta - tsXValueOffset));
+    drawEvent(startXPos, endXPos);
+    endXPos = startXPos;
   }
 }

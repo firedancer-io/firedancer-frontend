@@ -9,14 +9,14 @@ import { nsPerMs } from "../../../consts";
 
 type ShredEventTsDeltaMs = number | undefined;
 /**
- * Array of <event ts delta in ms>
- * Array index, i corresponds to the shred event type
- * The ts delta is relative to the referenceTs
+ * Array of <event ts delta in ms>.
+ * Array index, i corresponds to the shred event type.
+ * The ts delta is relative to the referenceTs.
  */
 export type ShredEventTsDeltas = ShredEventTsDeltaMs[];
 
 type Slot = {
-  shreds: ShredEventTsDeltas[];
+  shreds: (ShredEventTsDeltas | undefined)[];
   minEventTsDelta?: number;
   completionTsDelta?: number;
 };

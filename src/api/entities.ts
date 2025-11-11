@@ -693,6 +693,7 @@ export enum ShredEvent {
   shred_received_repair,
   shred_replayed,
   slot_complete,
+  shred_replay_start,
 }
 
 export const liveShredsSchema = z.object({

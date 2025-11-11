@@ -79,7 +79,7 @@ export const snapshotAreaChartGridLineColor = "#ffffff1a";
 export const firstTurbineSlotColor = "#3972C9";
 export const latestTurbineSlotColor = "#74AFEA";
 export const missingSlotColor = "#0F1313";
-export const replayedSlotColor = "#408E7B";
+export const replayedSlotColor = "#1CE7C2";
 export const needsReplaySlotColor = "#163454";
 export const repairedNeedsReplaySlotColor = "#89603E";
 
@@ -143,7 +143,8 @@ export const gridLineColor = "#312D42";
 export const shredRepairRequestedColor = "#792C2C";
 export const shredReceivedTurbineColor = "#163454";
 export const shredReceivedRepairColor = "#89603E";
-export const shredReplayedColor = "#408E7B";
+export const shredReplayStartedColor = "#3DB9CF";
+export const shredReplayedColor = "#1CE7C2";
 export const shredSkippedColor = "#FF5353";
 
 // epoch bar
