@@ -1,7 +1,16 @@
 import type { Duration } from "luxon";
 import { DateTime } from "luxon";
-import type { Epoch, Peer, SlotTransactions } from "./api/types";
+import type { Cluster, Epoch, Peer, SlotTransactions } from "./api/types";
 import { lamportsPerSol, slotsPerLeader } from "./consts";
+import {
+  clusterMainnetBetaColor,
+  clusterTestnetColor,
+  clusterDevelopmentColor,
+  clusterDevnetColor,
+  clusterPythnetColor,
+  clusterPythtestColor,
+  clusterUnknownColor,
+} from "./colors";
 
 export function getLeaderSlots(epoch: Epoch, pubkey: string) {
   return epoch.leader_slots.reduce<number[]>((leaderSlots, pubkeyIndex, i) => {
@@ -11,56 +20,65 @@ export function getLeaderSlots(epoch: Epoch, pubkey: string) {
   }, []);
 }
 
-export function getTimeTillText(
+export function getSlotGroupLeader(slot: number) {
+  return slot - (slot % slotsPerLeader);
+}
+
+const descendingUnits = [
+  { unit: "years", suffix: "y" },
+  { unit: "months", suffix: "m" },
+  { unit: "weeks", suffix: "w" },
+  { unit: "days", suffix: "d" },
+  { unit: "hours", suffix: "h" },
+  { unit: "minutes", suffix: "m" },
+  { unit: "seconds", suffix: "s" },
+] as const;
+
+export interface DurationOptions {
+  showOnlyTwoSignificantUnits?: boolean;
+  omitSeconds?: boolean;
+}
+
+function getUnitText(value: number, suffix: string, showZeros: boolean) {
+  if (value === 0 && !showZeros) return;
+  return `${value}${suffix}`;
+}
+
+function getUnitTexts(duration: Duration, options?: DurationOptions) {
+  if (options?.showOnlyTwoSignificantUnits) {
+    const firstUnitIndex = descendingUnits.findIndex(({ unit }) => {
+      return !!duration[unit];
+    });
+    return descendingUnits
+      .slice(firstUnitIndex, firstUnitIndex + 2)
+      .map(({ unit, suffix }) => {
+        const value = duration[unit];
+        return getUnitText(value, suffix, true);
+      });
+  }
+
+  return descendingUnits
+    .map(({ unit, suffix }) => {
+      if (options?.omitSeconds && unit === "seconds") return;
+
+      const value = duration[unit];
+      if (!value) return;
+
+      return getUnitText(value, suffix, false);
+    })
+    .filter((v) => !!v);
+}
+
+export function getDurationText(
   duration?: Duration,
-  options: { showSeconds: boolean } = { showSeconds: true },
+  options?: DurationOptions,
 ) {
   if (!duration) return "Never";
 
-  if (duration.toMillis() < 0) return "0s";
+  if (duration.toMillis() < 1000) return "0s";
 
-  let text = "";
-
-  if (duration.years) {
-    if (text) text += " ";
-    text += `${duration.years}y`;
-  }
-
-  if (duration.months) {
-    if (text) text += " ";
-    text += `${duration.months}m`;
-  }
-
-  if (duration.weeks) {
-    if (text) text += " ";
-    text += `${duration.weeks}w`;
-  }
-
-  if (duration.days) {
-    if (text) text += " ";
-    text += `${duration.days}d`;
-  }
-
-  if (duration.hours) {
-    if (text) text += " ";
-    text += `${duration.hours}h`;
-  }
-
-  if (duration.minutes) {
-    if (text) text += " ";
-    text += `${duration.minutes}m`;
-  }
-
-  if (duration.seconds && options.showSeconds) {
-    if (text) text += " ";
-    text += `${duration.seconds}s`;
-  }
-
-  if (!text) {
-    text = "0s";
-  }
-
-  return text;
+  const texts = getUnitTexts(duration, options);
+  return texts.join(" ") || "0s";
 }
 
 export let slowDateTimeNow = DateTime.now();
@@ -179,4 +197,24 @@ export function getTxnIncome(transactions: SlotTransactions, txnIdx: number) {
 
 export function removePortFromIp(ip: string) {
   return ip.split(":")[0];
+}
+
+export function getClusterColor(cluster?: Cluster) {
+  switch (cluster) {
+    case "mainnet-beta":
+      return clusterMainnetBetaColor;
+    case "testnet":
+      return clusterTestnetColor;
+    case "development":
+      return clusterDevelopmentColor;
+    case "devnet":
+      return clusterDevnetColor;
+    case "pythnet":
+      return clusterPythnetColor;
+    case "pythtest":
+      return clusterPythtestColor;
+    case "unknown":
+    case undefined:
+      return clusterUnknownColor;
+  }
 }

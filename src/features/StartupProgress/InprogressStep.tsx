@@ -1,7 +1,6 @@
 import { Box, Flex, Spinner, Text } from "@radix-ui/themes";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import styles from "./inprogressStep.module.css";
-import type { ReactNode } from "@tanstack/react-router";
 
 interface InprogressStepProps {
   label: string;

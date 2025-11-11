@@ -50,7 +50,9 @@ function CurrentSlotText() {
 }
 
 function UpcomingSlotText() {
-  const { nextLeaderSlot } = useNextSlot();
+  const { nextLeaderSlot } = useNextSlot({
+    showNowIfCurrent: true,
+  });
 
   return (
     <CardStat
@@ -67,7 +69,9 @@ function UpcomingSlotText() {
 }
 
 function NextSlotTimeText() {
-  const { progressSinceLastLeader, nextSlotText } = useNextSlot();
+  const { progressSinceLastLeader, nextSlotText } = useNextSlot({
+    showNowIfCurrent: true,
+  });
 
   return (
     <Flex direction="column">

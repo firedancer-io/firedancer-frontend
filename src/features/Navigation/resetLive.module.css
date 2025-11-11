@@ -1,0 +1,17 @@
+.container {
+  display: flex;
+  justify-content: center;
+
+  .button {
+    position: absolute;
+    width: 100px;
+    height: 18px;
+    padding: 2px 4px 2px 6px;
+    align-items: center;
+    border-radius: 40px;
+    background: #174e45;
+    box-shadow: 0 4px 4px 0 rgba(28, 82, 73, 0.4);
+    font-size: 12px;
+    font-weight: 600;
+  }
+}
