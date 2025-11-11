@@ -301,6 +301,8 @@ function SliderEpochProgress({
 const MSliderEpochProgress = memo(SliderEpochProgress);
 
 function SliderThumbTooltip({ isOpen }: { isOpen: boolean }) {
+  const slotOverride = useAtomValue(slotOverrideAtom);
+
   const { showNav } = useSlotsNavigation();
   const { refs, elements, floatingStyles, update } = useFloating({
     placement: "right",
@@ -328,28 +330,20 @@ function SliderThumbTooltip({ isOpen }: { isOpen: boolean }) {
         })}
       />
       <FloatingPortal id="app">
-        <div
+        <Text
+          size="1"
           ref={refs.setFloating}
           style={floatingStyles}
           className={clsx(
             "rt-TooltipContent",
+            "rt-TooltipText",
             isOpen ? styles.show : styles.hide,
           )}
         >
-          <SlotOverrideText />
-        </div>
+          {slotOverride}
+        </Text>
       </FloatingPortal>
     </>
-  );
-}
-
-function SlotOverrideText() {
-  const slotOverride = useAtomValue(slotOverrideAtom);
-
-  return (
-    <Text size="1" className="rt-TooltipText">
-      {slotOverride}
-    </Text>
   );
 }
 
