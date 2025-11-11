@@ -4,8 +4,8 @@
 
 .sankey-container {
   position: relative;
-  aspect-ratio: 4.5;
-  min-height: 250px;
+  aspect-ratio: 4;
+  min-height: 450px;
 
   .slot-sankey-container {
     height: 100%;
