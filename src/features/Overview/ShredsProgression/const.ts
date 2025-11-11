@@ -4,6 +4,7 @@ import {
   shredReceivedTurbineColor,
   shredReceivedRepairColor,
   shredReplayedColor,
+  shredReplayStartedColor,
 } from "../../../colors";
 
 export const xRangeMs = 10_000;
@@ -15,5 +16,21 @@ export const shredColors: {
   [ShredEvent.shred_repair_request]: shredRepairRequestedColor,
   [ShredEvent.shred_received_turbine]: shredReceivedTurbineColor,
   [ShredEvent.shred_received_repair]: shredReceivedRepairColor,
+  [ShredEvent.shred_replay_start]: shredReplayStartedColor,
   [ShredEvent.shred_replayed]: shredReplayedColor,
 };
+
+/**
+ * Draw highest to lowest priority events.
+ * Ignore lower priority events that overlap.
+ */
+export const shredEventDescPriorities: Exclude<
+  ShredEvent,
+  ShredEvent.slot_complete
+>[] = [
+  ShredEvent.shred_replayed,
+  ShredEvent.shred_replay_start,
+  ShredEvent.shred_received_repair,
+  ShredEvent.shred_received_turbine,
+  ShredEvent.shred_repair_request,
+];
