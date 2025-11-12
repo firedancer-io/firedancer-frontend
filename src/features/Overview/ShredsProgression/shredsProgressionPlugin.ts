@@ -14,6 +14,10 @@ import { clamp } from "lodash";
 const store = getDefaultStore();
 const xScaleKey = "x";
 
+type EventsByFillStyle = {
+  [fillStyle: string]: Array<[x: number, y: number, width: number]>;
+};
+
 export function shredsProgressionPlugin(
   drawOnlyBeforeFirstTurbine: boolean,
   drawOnlyDots: boolean,
@@ -73,6 +77,8 @@ export function shredsProgressionPlugin(
           const shredsPerRow = maxShreds / rowsCount;
 
           for (const slotNumber of orderedSlotNumbers) {
+            const eventsByFillStyle: EventsByFillStyle = {};
+
             const slot = liveShreds.slots[slotNumber];
             const isSlotSkipped = skippedSlotsCluster.has(slotNumber);
 
@@ -86,7 +92,8 @@ export function shredsProgressionPlugin(
                 Math.ceil(shredsAboveOrInRow) - 1,
               );
 
-              drawRow({
+              addEventsForRow({
+                eventsByFillStyle,
                 u,
                 firstShredIdx,
                 lastShredIdx,
@@ -96,10 +103,20 @@ export function shredsProgressionPlugin(
                 drawOnlyDots,
                 tsXValueOffset,
                 y: rowPxHeight * rowIdx + u.bbox.top,
-                height: rowPxHeight,
+                dotWidth: rowPxHeight,
                 scaleX: u.scales[xScaleKey],
                 getXPos,
               });
+            }
+
+            // draw events, one fillStyle at a time for this slot
+            for (const fillStyle of Object.keys(eventsByFillStyle)) {
+              u.ctx.beginPath();
+              u.ctx.fillStyle = fillStyle;
+              for (const [x, y, width] of eventsByFillStyle[fillStyle]) {
+                u.ctx.rect(x, y, width, rowPxHeight);
+              }
+              u.ctx.fill();
             }
           }
 
@@ -162,7 +179,8 @@ const getDrawInfo = (
   };
 };
 
-interface DrawRowArgs {
+interface AddEventsForRowArgs {
+  eventsByFillStyle: EventsByFillStyle;
   u: uPlot;
   firstShredIdx: number;
   lastShredIdx: number;
@@ -172,15 +190,17 @@ interface DrawRowArgs {
   drawOnlyDots: boolean;
   tsXValueOffset: number;
   y: number;
-  height: number;
+  dotWidth: number;
   scaleX: uPlot.Scale;
   getXPos: (xVal: number) => number;
 }
 /**
+ * Mutate eventsByFillStyle
  * Draw rows for shreds, with rectangles or dots for events.
- * Each row may represent partial or multiple shreds. Draw the most completed shred.
+ * Each row may represent partial or multiple shreds. Use the most completed shred.
  */
-function drawRow({
+function addEventsForRow({
+  eventsByFillStyle,
   u,
   firstShredIdx,
   lastShredIdx,
@@ -190,10 +210,10 @@ function drawRow({
   drawOnlyDots,
   isSlotSkipped,
   y,
-  height,
+  dotWidth,
   scaleX,
   getXPos,
-}: DrawRowArgs) {
+}: AddEventsForRowArgs) {
   if (scaleX.max == null || scaleX.min == null) return;
 
   const shredIdx = getMostCompletedShredIdx(
@@ -204,13 +224,6 @@ function drawRow({
 
   const eventTsDeltas = shreds[shredIdx];
   if (!eventTsDeltas) return;
-
-  const drawEvent =
-    drawOnlyDots || isSlotSkipped
-      ? // draw dot at event time
-        (x: number) => u.ctx.fillRect(x, y, height, height)
-      : // draw rect for event duration
-        (x: number, xEnd: number) => u.ctx.fillRect(x, y, xEnd - x, height);
 
   const maxXPos = u.bbox.left + u.bbox.width;
   let endXPos: number =
@@ -231,11 +244,17 @@ function drawRow({
     // ignore overlapping events with lower priority
     if (startXPos >= endXPos) continue;
 
-    u.ctx.fillStyle = isSlotSkipped
+    const fillStyle = isSlotSkipped
       ? shredSkippedColor
       : (shredColors[eventType] ?? "transparent");
 
-    drawEvent(startXPos, endXPos);
+    eventsByFillStyle[fillStyle] ??= [];
+    eventsByFillStyle[fillStyle].push(
+      drawOnlyDots || isSlotSkipped
+        ? [startXPos, y, dotWidth]
+        : [startXPos, y, endXPos - startXPos],
+    );
+
     endXPos = startXPos;
   }
 }
