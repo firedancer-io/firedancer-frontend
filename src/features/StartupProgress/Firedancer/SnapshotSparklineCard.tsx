@@ -13,7 +13,6 @@ import {
 } from "../../Overview/SlotPerformance/useTileSparkline";
 import type { TileType } from "../../../api/types";
 import TileBusy from "../../Overview/SlotPerformance/TileBusy";
-import { useMeasure } from "react-use";
 
 const gridSize = 15;
 // add 1 px for the final grid line
@@ -35,7 +34,6 @@ export default function SnapshotSparklineCard({
 }: SnapshotSparklineCardProps) {
   const tileCounts = useAtomValue(tileCountAtom);
   const timers = useAtomValue(liveSnapshotTimersAtom);
-  const [svgRef] = useMeasure<SVGSVGElement>();
 
   const { avgBusy } = useTileSparkline({
     isLive: true,
@@ -68,7 +66,6 @@ export default function SnapshotSparklineCard({
         }}
       >
         <Sparkline
-          svgRef={svgRef}
           scaledDataPoints={scaledDataPoints}
           range={range}
           showRange

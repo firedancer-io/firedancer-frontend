@@ -24,6 +24,9 @@ import {
   bootProgressAtom,
   gossipNetworkStatsAtom,
   completedSlotAtom,
+  gossipPeersSizeAtom,
+  gossipPeersRowsUpdateAtom,
+  gossipPeersCellUpdateAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
@@ -34,9 +37,9 @@ import {
   summarySchema,
   topicSchema,
 } from "./entities";
+import type { z } from "zod";
 import { ZodError } from "zod";
 import {
-  addPeersAtom,
   removePeersAtom,
   setSlotResponseAtom,
   setSlotStatusAtom,
@@ -52,13 +55,17 @@ import {
 import type {
   EstimatedSlotDuration,
   EstimatedTps,
+  GossipNetworkStats,
+  GossipPeersSize,
   LiveTilePrimaryMetric,
   LiveTxnWaterfall,
+  Peer,
+  PeerRemove,
   RepairSlot,
   SlotResponse,
   TurbineSlot,
 } from "./types";
-import { useThrottledCallback } from "use-debounce";
+import { useDebouncedCallback, useThrottledCallback } from "use-debounce";
 import { useInterval } from "react-use";
 import { useServerMessages } from "./ws/utils";
 import { DateTime } from "luxon";
@@ -76,10 +83,10 @@ import {
 } from "../features/StartupProgress/Firedancer/CatchingUp/atoms";
 import { shredsAtoms } from "../features/Overview/ShredsProgression/atoms";
 import { xRangeMs } from "../features/Overview/ShredsProgression/const";
-import { useEffect } from "react";
 import { showStartupProgressAtom } from "../features/StartupProgress/atoms";
 import { socketStateAtom } from "./ws/atoms";
 import { SocketState } from "./ws/types";
+import { useEffect, useRef } from "react";
 
 export function useSetAtomWsData() {
   const setVersion = useSetAtom(versionAtom);
@@ -158,8 +165,23 @@ export function useSetAtomWsData() {
   const setSlotStatus = useSetAtom(setSlotStatusAtom);
 
   const setGossipNetworkStats = useSetAtom(gossipNetworkStatsAtom);
+  const setDbGossipNetworkStats = useThrottledCallback(
+    (value?: GossipNetworkStats) => {
+      setGossipNetworkStats(value);
+    },
+    300,
+  );
 
-  const addPeers = useSetAtom(addPeersAtom);
+  const setGossipPeersSize = useSetAtom(gossipPeersSizeAtom);
+  const setDbGossipPeersSize = useThrottledCallback(
+    (value?: GossipPeersSize) => {
+      setGossipPeersSize(value);
+    },
+    1_000,
+  );
+  const setGossipPeersRows = useSetAtom(gossipPeersRowsUpdateAtom);
+  const setGossipPeersCells = useSetAtom(gossipPeersCellUpdateAtom);
+
   const updatePeers = useSetAtom(updatePeersAtom);
   const removePeers = useSetAtom(removePeersAtom);
 
@@ -212,6 +234,43 @@ export function useSetAtomWsData() {
   };
 
   const addLiveShreds = useSetAtom(shredsAtoms.addShredEvents);
+
+  const peersBuffer = useRef(new Map<string, Peer>());
+  const removePeersBuffer = useRef(new Map<string, PeerRemove>());
+
+  const dbFlushBuffer = useDebouncedCallback(
+    () => {
+      updatePeers([...peersBuffer.current.values()]);
+      removePeers([...removePeersBuffer.current.values()]);
+      peersBuffer.current.clear();
+      removePeersBuffer.current.clear();
+    },
+    1_000,
+    { maxWait: 1_000 },
+  );
+
+  const addToPeersBuffer = (value: z.infer<typeof peersSchema>["value"]) => {
+    if (value.add) {
+      for (const add of value.add) {
+        peersBuffer.current.set(add.identity_pubkey, add);
+        removePeersBuffer.current.delete(add.identity_pubkey);
+      }
+    }
+    // todo: might need to fix updates overwriting with nulls
+    if (value.update) {
+      for (const update of value.update) {
+        peersBuffer.current.set(update.identity_pubkey, update);
+      }
+    }
+    if (value.remove) {
+      for (const remove of value.remove) {
+        peersBuffer.current.delete(remove.identity_pubkey);
+        removePeersBuffer.current.set(remove.identity_pubkey, remove);
+      }
+    }
+
+    dbFlushBuffer();
+  };
 
   useServerMessages((msg) => {
     try {
@@ -333,15 +392,26 @@ export function useSetAtomWsData() {
         const { key, value } = gossipSchema.parse(msg);
         switch (key) {
           case "network_stats": {
-            setGossipNetworkStats(value);
+            setDbGossipNetworkStats(value);
+            break;
+          }
+          case "peers_size_update": {
+            setDbGossipPeersSize(value);
+            break;
+          }
+          case "query_scroll":
+          case "query_sort": {
+            setGossipPeersRows(value);
+            break;
+          }
+          case "view_update": {
+            setGossipPeersCells(value);
             break;
           }
         }
       } else if (topic === "peers") {
         const { value } = peersSchema.parse(msg);
-        addPeers(value.add);
-        updatePeers(value.update);
-        removePeers(value.remove);
+        addToPeersBuffer(value);
       } else if (topic === "slot") {
         const { key, value } = slotSchema.parse(msg);
         switch (key) {

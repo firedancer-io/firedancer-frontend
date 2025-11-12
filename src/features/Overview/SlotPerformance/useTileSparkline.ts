@@ -58,7 +58,7 @@ export function useTileSparkline({
 }
 
 export type SparklineRange = [number, number];
-const range: SparklineRange = [0, 1];
+export const sparkLineRange: SparklineRange = [0, 1];
 
 interface UseScaledDataPointsProps {
   value?: number;
@@ -121,6 +121,6 @@ export function useScaledDataPoints({
 
   return {
     scaledDataPoints,
-    range,
+    range: sparkLineRange,
   };
 }

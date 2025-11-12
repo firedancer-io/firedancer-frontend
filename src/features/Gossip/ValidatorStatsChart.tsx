@@ -1,22 +1,25 @@
 import { Text } from "@radix-ui/themes";
 import AutoSizer from "react-virtualized-auto-sizer";
-import styles from "./chart.module.css";
+import styles from "./pieChart.module.css";
 import type { ComputedDatum, PieTooltipProps } from "@nivo/pie";
 import { Pie } from "@nivo/pie";
 import { useMemo } from "react";
-import { formatNumberLamports } from "./formatAmt";
+import { formatNumberLamports } from "../Overview/ValidatorsCard/formatAmt";
 import { sum } from "lodash";
 import {
   failureColor,
   nonDelinquentChartColor,
   nonDelinquentColor,
-} from "../../../colors";
+} from "../../colors";
 
-interface ChartProps {
+interface ValidatorStatsChartProps {
   activeStake: bigint;
   delinquentStake: bigint;
 }
-export default function Chart({ activeStake, delinquentStake }: ChartProps) {
+export default function ValidatorStatsChart({
+  activeStake,
+  delinquentStake,
+}: ValidatorStatsChartProps) {
   const data = useMemo(() => {
     return [
       {
