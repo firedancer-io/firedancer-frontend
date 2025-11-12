@@ -118,10 +118,11 @@ export function createLiveShredsAtoms() {
 
           if (!prev || !slotRange) return;
 
+          let minSlot = slotRange.min;
           if (slotRange.max - slotRange.min > 50) {
             // only keep 50 slots
             for (
-              let slotNumber = slotRange.min;
+              let slotNumber = minSlot;
               slotNumber <= slotRange.max - 50;
               slotNumber++
             ) {
@@ -130,32 +131,33 @@ export function createLiveShredsAtoms() {
 
               delete prev.slots[slotNumber];
             }
-          } else {
-            // delete slots outside visible x range
-            const nowDelta = new Date().getTime() - prev.referenceTs;
-            const chartXRange = xRangeMs + delayMs;
 
-            let shouldDeleteSlot = false;
-            for (
-              let slotNumber = slotRange.max;
-              slotNumber >= slotRange.min;
-              slotNumber--
+            minSlot = slotRange.max - 50;
+          }
+          // delete slots outside visible x range
+          const nowDelta = new Date().getTime() - prev.referenceTs;
+          const chartXRange = xRangeMs + delayMs;
+
+          let shouldDeleteSlot = false;
+          for (
+            let slotNumber = minSlot;
+            slotNumber >= slotRange.min;
+            slotNumber--
+          ) {
+            const slot = prev.slots[slotNumber];
+            if (!slot) continue;
+
+            if (
+              !shouldDeleteSlot &&
+              slot.completionTsDelta != null &&
+              nowDelta - slot.completionTsDelta > chartXRange
             ) {
-              const slot = prev.slots[slotNumber];
-              if (!slot) continue;
+              // once we find a slot that is complete and far enough in the past, delete all slot numbers less it
+              shouldDeleteSlot = true;
+            }
 
-              if (
-                !shouldDeleteSlot &&
-                slot.completionTsDelta != null &&
-                nowDelta - slot.completionTsDelta > chartXRange
-              ) {
-                // once we find a slot that is complete and far enough in the past, delete all slot numbers less it
-                shouldDeleteSlot = true;
-              }
-
-              if (shouldDeleteSlot) {
-                delete prev.slots[slotNumber];
-              }
+            if (shouldDeleteSlot) {
+              delete prev.slots[slotNumber];
             }
           }
 
