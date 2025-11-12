@@ -7,19 +7,25 @@ import {
 } from "../../../colors";
 import type { UseMeasureRef } from "react-use/lib/useMeasure";
 import type { SparklineRange } from "./useTileSparkline";
-import { sparkLineRange, strokeLineWidth, useScaledDataPoints } from "./useTileSparkline";
+import {
+  sparkLineRange,
+  strokeLineWidth,
+  useScaledDataPoints,
+} from "./useTileSparkline";
 import styles from "./tileSparkline.module.css";
 
 interface TileParkLineProps {
   value?: number;
   queryBusy?: number[];
   height?: number;
+  includeBg?: boolean;
 }
 
 export default function TileSparkLine({
   value,
   queryBusy,
   height = 24,
+  includeBg,
 }: TileParkLineProps) {
   const [svgRef, { width }] = useMeasure<SVGSVGElement>();
 
@@ -38,6 +44,7 @@ export default function TileSparkLine({
       scaledDataPoints={scaledDataPoints}
       range={range}
       height={height}
+      background={includeBg ? undefined : "unset"}
     />
   );
 }

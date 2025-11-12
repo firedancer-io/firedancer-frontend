@@ -695,7 +695,7 @@ export function txnBarsPlugin(
           },
         },
         scales: {
-          x: {
+          [xScaleKey]: {
             range(u: { data: number[][] }, min: number, max: number) {
               if (mode === 2) {
                 const colWid = u.data[0][1] - u.data[0][0];
