@@ -564,7 +564,7 @@ export const gossipNetworkTrafficSchema = z.object({
   peer_throughput: z.number().array(),
 });
 
-const gossipStorageStatsSchema = z.object({
+export const gossipStorageStatsSchema = z.object({
   capacity: z.number(),
   expired_count: z.number(),
   evicted_count: z.number(),
@@ -573,7 +573,7 @@ const gossipStorageStatsSchema = z.object({
   bytes_tx: z.number().array(),
 });
 
-const gossipMessageStatsSchema = z.object({
+export const gossipMessageStatsSchema = z.object({
   num_bytes_rx: z.number().array(),
   num_bytes_tx: z.number().array(),
   num_messages_rx: z.number().array(),
@@ -588,10 +588,44 @@ export const gossipNetworkStatsSchema = z.object({
   messages: gossipMessageStatsSchema,
 });
 
+export const gossipPeersSizeUpdateSchema = z.number();
+
+export const gossipCellDataSchema = z.union([z.string(), z.number()]);
+
+export const gossipQueryRowsSchema = z
+  .record(z.string(), z.record(z.string(), gossipCellDataSchema))
+  .nullable();
+
+export const gossipViewUpdateSchema = z.object({
+  changes: z.array(
+    z.object({
+      row_index: z.number(),
+      column_name: z.string(),
+      new_value: gossipCellDataSchema,
+    }),
+  ),
+});
+
 export const gossipSchema = z.discriminatedUnion("key", [
   gossipTopicSchema.extend({
     key: z.literal("network_stats"),
     value: gossipNetworkStatsSchema,
+  }),
+  gossipTopicSchema.extend({
+    key: z.literal("peers_size_update"),
+    value: gossipPeersSizeUpdateSchema,
+  }),
+  gossipTopicSchema.extend({
+    key: z.literal("query_scroll"),
+    value: gossipQueryRowsSchema,
+  }),
+  gossipTopicSchema.extend({
+    key: z.literal("query_sort"),
+    value: gossipQueryRowsSchema,
+  }),
+  gossipTopicSchema.extend({
+    key: z.literal("view_update"),
+    value: gossipViewUpdateSchema,
   }),
 ]);
 
@@ -618,6 +652,7 @@ const peerUpdateInfoSchema = z.object({
   details: z.nullable(z.string()),
   website: z.nullable(z.string()),
   icon_url: z.nullable(z.string()),
+  keybase_username: z.nullable(z.string()),
 });
 
 export const peerUpdateSchema = z.object({

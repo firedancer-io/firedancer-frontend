@@ -1,8 +1,0 @@
-.grid {
-  --ag-background-color: var(--container-background-color);
-  --ag-header-background-color: var(--container-background-color);
-  --ag-foreground-color: var(--primary-text-color);
-  --ag-secondary-foreground-color: var(--primary-text-color);
-  --ag-header-foreground-color: var(--primary-text-color);
-  --ag-data-color: #858c95;
-}

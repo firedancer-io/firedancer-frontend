@@ -48,6 +48,14 @@ import type {
   repairSlotSchema,
   turbineSlotSchema,
   liveShredsSchema,
+  gossipNetworkTrafficSchema,
+  gossipPeersSizeUpdateSchema,
+  gossipQueryRowsSchema,
+  gossipViewUpdateSchema,
+  gossipCellDataSchema,
+  gossipNetworkHealthSchema,
+  gossipStorageStatsSchema,
+  gossipMessageStatsSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -128,6 +136,15 @@ export type Epoch = z.infer<typeof epochNewSchema>;
 export type SlotLevel = z.infer<typeof slotLevelSchema>;
 
 export type GossipNetworkStats = z.infer<typeof gossipNetworkStatsSchema>;
+export type GossipStorageStats = z.infer<typeof gossipStorageStatsSchema>;
+export type GossipMessageStats = z.infer<typeof gossipMessageStatsSchema>;
+export type GossipNetworkTraffic = z.infer<typeof gossipNetworkTrafficSchema>;
+export type GossipNetworkHealth = z.infer<typeof gossipNetworkHealthSchema>;
+
+export type GossipPeersSize = z.infer<typeof gossipPeersSizeUpdateSchema>;
+export type GossipPeersRowsUpdate = z.infer<typeof gossipQueryRowsSchema>;
+export type GossipPeersCellUpdate = z.infer<typeof gossipViewUpdateSchema>;
+export type GossipPeersCellData = z.infer<typeof gossipCellDataSchema>;
 
 export interface Peer extends z.infer<typeof peerUpdateSchema> {
   removed?: boolean;

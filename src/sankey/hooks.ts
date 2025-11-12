@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { useState, useMemo } from "react";
 import cloneDeep from "lodash/cloneDeep";
-import { useTheme, usePropertyAccessor, useValueFormatter } from "@nivo/core";
+import { usePropertyAccessor, useValueFormatter } from "@nivo/core";
 import { useOrdinalColorScale, useInheritedColor } from "@nivo/colors";
 import { sankeyAlignmentFromProp } from "./props";
 import type {
@@ -186,16 +186,14 @@ export const useSankey = <N extends DefaultNode, L extends DefaultLink>({
     return sankeyAlignmentFromProp(align);
   }, [align]);
 
-  const theme = useTheme();
-
   const getColor = useOrdinalColorScale(colors, "id");
-  const getNodeBorderColor = useInheritedColor(nodeBorderColor, theme);
+  const getNodeBorderColor = useInheritedColor(nodeBorderColor);
 
   const getLabel = usePropertyAccessor<
     Omit<SankeyNodeDatum<N, L>, "color" | "label">,
     string
   >(label);
-  const getLabelTextColor = useInheritedColor(labelTextColor, theme);
+  const getLabelTextColor = useInheritedColor(labelTextColor);
   const formatValue = useValueFormatter<number>(valueFormat);
 
   const { nodes, links } = useMemo(

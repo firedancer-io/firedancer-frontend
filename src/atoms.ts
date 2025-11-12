@@ -427,22 +427,16 @@ export const peersAtomFamily = atomFamily((peer?: string) =>
   atom((get) => (peer !== undefined ? get(peersAtom)[peer] : undefined)),
 );
 
-export const addPeersAtom = atom(null, (_, set, peers?: Peer[]) => {
-  if (!peers?.length) return;
-
-  set(peersAtom, (draft) => {
-    for (const peer of peers) {
-      draft[peer.identity_pubkey] = peer;
-    }
-  });
-});
-
 export const updatePeersAtom = atom(null, (_, set, peers?: Peer[]) => {
   if (!peers?.length) return;
 
   set(peersAtom, (draft) => {
     for (const peer of peers) {
-      draft[peer.identity_pubkey] = merge(draft[peer.identity_pubkey], peer);
+      if (draft[peer.identity_pubkey]) {
+        draft[peer.identity_pubkey] = merge(draft[peer.identity_pubkey], peer);
+      } else {
+        draft[peer.identity_pubkey] = peer;
+      }
     }
   });
 });

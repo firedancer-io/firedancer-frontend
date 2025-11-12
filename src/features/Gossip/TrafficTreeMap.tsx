@@ -1,0 +1,422 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { useCallback, useMemo } from "react";
+import { Flex, Text } from "@radix-ui/themes";
+import type { GossipNetworkTraffic } from "../../api/types";
+import { hierarchy, Treemap, treemapSquarify } from "@visx/hierarchy";
+import { Group } from "@visx/group";
+
+import { scaleOrdinal } from "d3-scale";
+import type {
+  HierarchyNode,
+  HierarchyRectangularNode,
+} from "@visx/hierarchy/lib/types";
+import { useAtomValue } from "jotai";
+import { peersAtom } from "../../atoms";
+import { formatNumberLamports } from "../Overview/ValidatorsCard/formatAmt";
+import { sum } from "lodash";
+import byteSize from "byte-size";
+import AutoSizer from "react-virtualized-auto-sizer";
+
+const colorsList = [
+  "#00F0FF",
+  "#00B5FF",
+  "#5BFFFF",
+  "#00FFD1",
+  "#0EEAD5",
+  "#D9F8FF",
+];
+
+interface TrafficeNetworkChartProps {
+  networkTraffic: GossipNetworkTraffic;
+  label: string;
+  includeAll?: boolean;
+}
+
+type GetPeerValues = (
+  id: string,
+) => { stake?: string; name?: string; iconUrl?: string } | undefined;
+
+export function TrafficTreeMap({
+  networkTraffic,
+  label,
+  includeAll = false,
+}: TrafficeNetworkChartProps) {
+  const peers = useAtomValue(peersAtom);
+
+  const data = useMemo(() => {
+    if (!networkTraffic.peer_throughput) return;
+
+    const threshold = 0.7;
+    let currentTotal = 0;
+    let i = 0;
+    const children: TrafficNode[] = [];
+    while (
+      i < networkTraffic.peer_throughput.length &&
+      currentTotal * threshold < (networkTraffic.total_throughput ?? 0)
+    ) {
+      const id =
+        networkTraffic.peer_names?.[i] ||
+        networkTraffic.peer_identities?.[i] ||
+        "";
+
+      const color = colorsList[Math.trunc(Math.random() * colorsList.length)];
+
+      children.push({
+        id,
+        value: networkTraffic.peer_throughput[i],
+        color,
+      });
+      currentTotal += networkTraffic.peer_throughput[i];
+      i++;
+    }
+
+    let restOfThroughput = 0;
+    for (i; i < networkTraffic.peer_throughput.length; i++) {
+      restOfThroughput += networkTraffic.peer_throughput[i];
+    }
+
+    children.push({
+      id: "rest",
+      value: includeAll
+        ? (networkTraffic.total_throughput ?? 0) - currentTotal
+        : restOfThroughput,
+      color: "#1CE7C2",
+    });
+
+    return {
+      id: "peers",
+      children: children,
+      color: undefined,
+      value: networkTraffic.total_throughput,
+    };
+  }, [includeAll, networkTraffic]);
+
+  const getPeerValues = useCallback<GetPeerValues>(
+    (id: string) => {
+      const peer = peers[id];
+      if (!peer) return;
+
+      const stakeValue = sum(
+        peer.vote.map((v) => (v.delinquent ? 0 : Number(v.activated_stake))),
+      );
+
+      const stake = stakeValue
+        ? `${formatNumberLamports(stakeValue)} SOL`
+        : undefined;
+      const iconUrl =
+        peer.info?.icon_url ||
+        (peer.info?.keybase_username
+          ? `https://keybase.io/${peer.info.keybase_username}/picture`
+          : undefined) ||
+        undefined;
+
+      const name = peer.info?.name ?? undefined;
+
+      return { stake, iconUrl, name };
+    },
+    [peers],
+  );
+
+  if (!data) return;
+
+  return (
+    <Flex direction="column" minHeight="300px">
+      <Flex justify="between">
+        <Text size="4">{label}</Text>
+
+        <span>
+          <Text size="4" style={{ color: "var(--gray-11)" }}>
+            Total:
+          </Text>
+          <Text size="4">
+            &nbsp;{byteSize(networkTraffic.total_throughput).toString()}&nbsp;/s
+          </Text>
+        </span>
+      </Flex>
+      <AutoSizer>
+        {({ height, width }) => (
+          <TreemapTwoLevel
+            data={data}
+            width={width}
+            height={height}
+            getPeerValues={getPeerValues}
+          />
+        )}
+      </AutoSizer>
+    </Flex>
+  );
+}
+
+interface TrafficNode {
+  id: string;
+  value: number;
+  color?: string;
+}
+
+// Text measurement utilities
+// Use a cached canvas for measuring text widths to drive truncation.
+const measureTextWidth = (() => {
+  let canvas: HTMLCanvasElement | null = null;
+  let ctx: CanvasRenderingContext2D | null = null;
+  return (text: string, font: string) => {
+    if (!canvas) canvas = document.createElement("canvas");
+    if (!ctx) ctx = canvas.getContext("2d");
+    if (!ctx) return text.length * 7;
+    ctx.font = font;
+    return ctx.measureText(text).width;
+  };
+})();
+
+function truncateToWidth(text: string, font: string, maxWidth: number) {
+  const w = measureTextWidth(text, font);
+  if (w <= maxWidth) return text;
+  const ellipsis = "…";
+  const ellW = measureTextWidth(ellipsis, font);
+  if (ellW > maxWidth) return ""; // no space even for ellipsis
+  // Binary search for max chars that fit with ellipsis
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    const candidate = text.slice(0, mid) + ellipsis;
+    const cw = measureTextWidth(candidate, font);
+    if (cw <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  return text.slice(0, lo) + ellipsis;
+}
+
+type Props = {
+  data: TrafficNode & { children: TrafficNode[] };
+  width: number;
+  height: number;
+  colors?: string[];
+  getPeerValues: GetPeerValues;
+};
+
+const minLabelWidth = 55;
+const minLabelHeight = 40;
+const labelPadding = 8;
+const lineGap = 2;
+
+export default function TreemapTwoLevel({
+  data,
+  width,
+  height,
+  colors,
+  getPeerValues,
+}: Props) {
+  const total = useMemo(
+    () => data.children.reduce((sum, c) => sum + (c.value || 0), 0),
+    [data],
+  );
+
+  const root = useMemo(() => {
+    const h = hierarchy({
+      name: data.id,
+      children: data.children.map((c) => ({ name: c.id, value: c.value })),
+      // TODO: fix typing and reconcile name/id
+    } as any)
+      .sum((d: any) => {
+        return d.value || 0;
+      })
+      // sorting helps squarify produce nicer aspect ratios
+      .sort(
+        (a: HierarchyNode<any>, b: HierarchyNode<any>) =>
+          (b.value || 0) - (a.value || 0),
+      );
+    return h;
+  }, [data]);
+
+  // Color scale per leaf id
+  const color = useMemo(() => {
+    const palette = colors ?? [
+      "#48295C",
+      "#562800",
+      "#132D21",
+      "#331E0B",
+      "#0D2847",
+      "#292929",
+    ];
+
+    return scaleOrdinal<string, string>()
+      .domain(data.children.map((c) => c.id))
+      .range(palette);
+  }, [data, colors]);
+
+  // Increase ratio to bias more width; decrease toward 1.0 for more square
+  const squarifyTile = useMemo(() => treemapSquarify.ratio(1.1), []);
+
+  return (
+    <svg width={width} height={height}>
+      <Treemap
+        root={root}
+        size={[width, height]}
+        tile={squarifyTile}
+        round
+        paddingInner={2}
+      >
+        {(treemap) => (
+          <Group>
+            {treemap.leaves().map((leaf) => {
+              const x = leaf.x0;
+              const y = leaf.y0;
+              const rectWidth = leaf.x1 - leaf.x0;
+              const rectHeight = leaf.y1 - leaf.y0;
+
+              const id = String(leaf.data.name);
+
+              return (
+                <Group key={id}>
+                  <rect
+                    x={x}
+                    y={y}
+                    width={rectWidth}
+                    height={rectHeight}
+                    rx={1}
+                    ry={1}
+                    fill={color(id)}
+                  />
+                  <NodeText
+                    leaf={leaf}
+                    total={total}
+                    getPeerValues={getPeerValues}
+                  />
+                </Group>
+              );
+            })}
+          </Group>
+        )}
+      </Treemap>
+    </svg>
+  );
+}
+
+interface NodeTextProps {
+  leaf: HierarchyRectangularNode<any>;
+  total: number;
+  getPeerValues: GetPeerValues;
+}
+
+function NodeText({ leaf, total, getPeerValues }: NodeTextProps) {
+  const x = leaf.x0;
+  const y = leaf.y0;
+  const rectWidth = leaf.x1 - leaf.x0;
+  const rectHeight = leaf.y1 - leaf.y0;
+
+  const id = String(leaf.data.name);
+  const pct = total > 0 ? (100 * (leaf.value || 0)) / total : 0;
+
+  const showLabel = rectWidth >= minLabelWidth && rectHeight >= minLabelHeight;
+  const showThirdLine = rectHeight > 30 * 2;
+  // TODO: take out this scaling probably
+  const fontSize = Math.max(11, Math.min(16, Math.floor(rectWidth / 12)));
+  const peerValues = getPeerValues(id);
+  const idFont = `${fontSize}px Inter Tight`;
+
+  const centerX = x + rectWidth / 2;
+  const lineDy = fontSize + lineGap;
+  const textY = y + rectHeight / 3;
+
+  const iconGap = 2;
+  const iconSize = fontSize + 4;
+  const availableWidth = Math.max(
+    0,
+    rectWidth - 2 * labelPadding - (iconSize ? iconSize + iconGap : 0),
+  );
+  const idText = truncateToWidth(
+    peerValues?.name ?? id,
+    idFont,
+    availableWidth,
+  );
+  const idTextWidth = measureTextWidth(idText, idFont);
+
+  const firstLineBlockWidth = (iconSize ? iconSize + iconGap : 0) + idTextWidth;
+  const blockStartX = centerX - firstLineBlockWidth / 2;
+
+  // const firstLineTop = y + labelPadding;
+  const firstBaselineY = textY; // firstLineTop + idFontSize;
+  // const iconY = textY; // firstLineTop + Math.max(0, (idFontSize - iconSize) / 2);
+
+  const byteValue = byteSize(leaf.value ?? 0);
+  let throughputLine = `${byteValue ? `${byteValue.toString()} ` : ""}(${pct.toFixed(1)}%)`;
+
+  const showPct = measureTextWidth(throughputLine, idFont) < availableWidth;
+  if (!showPct) {
+    throughputLine = `${byteValue.toString()}`;
+  }
+
+  if (rectWidth < minLabelWidth) return;
+
+  return (
+    <>
+      {peerValues?.iconUrl ? (
+        <>
+          (
+          <image
+            href={peerValues.iconUrl}
+            x={blockStartX}
+            y={firstBaselineY}
+            width={iconSize}
+            height={iconSize}
+            preserveAspectRatio="xMidYMid meet"
+            crossOrigin="anonymous"
+          />
+          <text
+            x={blockStartX + iconSize + iconGap}
+            y={firstBaselineY}
+            fontSize={fontSize}
+            alignmentBaseline="text-before-edge"
+            fontFamily="Inter Tight"
+            fontWeight={600}
+            fill="#CCCCCC"
+            textAnchor="start"
+            pointerEvents="none"
+          >
+            {idText}
+          </text>
+          )
+        </>
+      ) : (
+        <text
+          x={centerX}
+          y={firstBaselineY}
+          fontSize={fontSize}
+          fontFamily="Inter Tight"
+          fontWeight={600}
+          fill="#CCCCCC"
+          alignmentBaseline="text-before-edge"
+          textAnchor="middle"
+          pointerEvents="none"
+        >
+          {idText}
+        </text>
+      )}
+      {showLabel && (
+        <>
+          <text
+            x={centerX}
+            y={firstBaselineY + 12}
+            fontSize={fontSize}
+            fontFamily="Inter Tight"
+            fill="#CCCCCC"
+            pointerEvents="none"
+            alignmentBaseline="text-before-edge"
+            textAnchor="middle"
+          >
+            <tspan x={centerX} dy={lineDy} fill="#8A8A8A">
+              {throughputLine}
+            </tspan>
+            {showThirdLine && (
+              <tspan x={centerX} dy={lineDy} fill="#8A8A8A">
+                {peerValues?.stake}
+              </tspan>
+            )}
+          </text>
+        </>
+      )}
+    </>
+  );
+}

@@ -7,7 +7,7 @@ import {
 } from "../../../colors";
 import type { UseMeasureRef } from "react-use/lib/useMeasure";
 import type { SparklineRange } from "./useTileSparkline";
-import { strokeLineWidth, useScaledDataPoints } from "./useTileSparkline";
+import { sparkLineRange, strokeLineWidth, useScaledDataPoints } from "./useTileSparkline";
 import styles from "./tileSparkline.module.css";
 
 interface TileParkLineProps {
@@ -39,12 +39,12 @@ export default function TileSparkLine({ value, queryBusy }: TileParkLineProps) {
 }
 
 interface SparklineProps {
-  svgRef: UseMeasureRef<SVGSVGElement>;
+  svgRef?: UseMeasureRef<SVGSVGElement>;
   scaledDataPoints: {
     x: number;
     y: number;
   }[];
-  range: SparklineRange;
+  range?: SparklineRange;
   showRange?: boolean;
   height: number;
   background?: string;
@@ -52,7 +52,7 @@ interface SparklineProps {
 export function Sparkline({
   svgRef,
   scaledDataPoints,
-  range,
+  range = sparkLineRange,
   showRange = false,
   height,
   background = tileSparklineBackgroundColor,
