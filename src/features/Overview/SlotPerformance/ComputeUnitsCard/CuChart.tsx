@@ -181,7 +181,7 @@ export default function CuChart({
         points: { show: false },
       },
       scales: {
-        x: {
+        [xScaleKey]: {
           time: false,
         },
         [computeUnitsScaleKey]: {

@@ -23,7 +23,7 @@ import {
 import { useCustomMotionConfig } from "./useCustomMotionConfig";
 import {
   failureColor,
-  successColor,
+  nonVoteColor,
   sankeyBaseLabelColor,
   secondaryTextColor,
   votesColor,
@@ -213,7 +213,7 @@ function getLabelFill(label: SlotNode, value: number) {
     return [sankeyBaseLabelColor, sankeyBaseLabelColor];
   }
   if (successfulSlotNodes.includes(label)) {
-    return [sankeyBaseLabelColor, successColor];
+    return [sankeyBaseLabelColor, nonVoteColor];
   }
 
   if (tileNodes.includes(label)) {

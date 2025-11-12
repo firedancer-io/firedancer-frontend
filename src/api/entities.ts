@@ -684,12 +684,52 @@ const tsTileTimersSchema = z.object({
   tile_timers: z.number().array(),
 });
 
+export const schedulerCountsSchema = z.object({
+  timestamp_nanos: z.coerce.bigint(),
+  regular: z.number(),
+  votes: z.number(),
+  conflicting: z.number(),
+  bundles: z.number(),
+});
+
+const writeAcctCostSchema = z.object({
+  account: z.string(),
+  cost: z.number(),
+});
+
+const slotLimitsSchema = z.object({
+  used_total_block_cost: z.number(),
+  used_total_vote_cost: z.number(),
+  used_account_write_costs: writeAcctCostSchema.array(),
+  used_total_bytes: z.number(),
+  used_total_microblocks: z.number(),
+  max_total_block_cost: z.number(),
+  max_total_vote_cost: z.number(),
+  max_account_write_cost: z.number(),
+  max_total_bytes: z.number(),
+  max_total_microblocks: z.number(),
+});
+
+const slotScheduleStatsSchema = z.object({
+  block_hash: z.string(),
+  end_slot_reason: z.string(),
+  slot_schedule_counts: z.number().array(),
+  end_slot_schedule_counts: z.number().array(),
+  pending_smallest_cost: z.number().nullable(),
+  pending_smallest_bytes: z.number().nullable(),
+  pending_vote_smallest_cost: z.number().nullable(),
+  pending_vote_smallest_bytes: z.number().nullable(),
+});
+
 export const slotResponseSchema = z.object({
   publish: slotPublishSchema,
   waterfall: txnWaterfallSchema.nullable().optional(),
   tile_primary_metric: tilePrimaryMetricSchema.nullable().optional(),
   tile_timers: tsTileTimersSchema.array().nullable().optional(),
+  scheduler_counts: schedulerCountsSchema.array().nullable().optional(),
   transactions: slotTransactionsSchema.nullable().optional(),
+  limits: slotLimitsSchema.nullable().optional(),
+  scheduler_stats: slotScheduleStatsSchema.nullable().optional(),
 });
 
 export const slotSkippedHistorySchema = z.number().array();

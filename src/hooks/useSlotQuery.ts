@@ -119,7 +119,10 @@ export function useSlotQueryResponseDetailed(slot?: number) {
   const skipQuery =
     !!response?.waterfall &&
     !!response?.tile_timers &&
-    !!response?.tile_primary_metric;
+    !!response?.tile_primary_metric &&
+    !!response.scheduler_counts &&
+    !!response.scheduler_stats &&
+    !!response.limits;
 
   const { hasWaitedForData } = useSlotQuery(
     slot,

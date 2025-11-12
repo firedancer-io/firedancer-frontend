@@ -1,8 +1,7 @@
-export const successColor = "#67B873";
 export const failureColor = "#E5484D"; // radix red.9
+export const successColor = "#67B873";
 export const nextColor = "#C567EA";
 export const mySlotsColor = "#2A7EDF";
-export const votesColor = "#557AE0";
 export const appTeal = "#1CE7C2";
 
 export const primaryTextColor = "#B2BCC9";
@@ -20,6 +19,9 @@ export const rowSeparatorBackgroundColor = "#333333";
 
 export const navButtonTextColor = "#F7F7F7";
 export const navButtonInactiveTextColor = headerLabelTextColor;
+
+export const votesColor = "#557AE0";
+export const nonVoteColor = successColor;
 
 // slot navigation
 export const slotNavFilterBackgroundColor = "#00205F";
@@ -253,6 +255,8 @@ export const slotDetailsSelectedBackgroundColor = "#283551";
 export const slotDetailsSkippedSelectedBackgroundColor = "#3b0c0c";
 export const slotDetailsSelectedColor = "#e3efff";
 export const slotDetailsDisabledSlotBorderColor = "#484D53B2";
+export const slotDetailsStatsPrimary = "var(--gray-11)";
+export const slotDetailsStatsSecondary = "var(--gray-10)";
 
 // slots list
 export const slotsListSlotBackgroundColor = "#070A13";

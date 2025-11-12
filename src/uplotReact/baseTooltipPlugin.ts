@@ -1,6 +1,5 @@
 import type uPlot from "uplot";
 import placement from "../uplot/placement";
-import { xScaleKey } from "../features/Overview/SlotPerformance/ComputeUnitsCard/consts";
 import { throttle } from "lodash";
 
 // Persisted tooltip function should persist across charts, only 1 shown tooltip at a time
@@ -151,7 +150,7 @@ export function baseTooltipPlugin({
         const { left, top, idx } = u.cursor;
 
         if (left === undefined || top === undefined || idx == null) return;
-        const xVal = u.posToVal(left ?? 0, xScaleKey);
+        const xVal = u.posToVal(left ?? 0, Object.keys(u.scales)[0]);
         const anchor = { left: left + bLeft + 5, top: top + bTop };
 
         const showTooltip = showOnCursor(u, xVal, idx);

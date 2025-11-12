@@ -1,0 +1,11 @@
+.container {
+  height: 30px;
+  border-radius: 4px;
+  /*  TODO: fix overflow that occurs on some chart's data */
+  overflow: hidden;
+
+  .label {
+    color: var(--slot-details-stats-primary);
+    pointer-events: none;
+  }
+}

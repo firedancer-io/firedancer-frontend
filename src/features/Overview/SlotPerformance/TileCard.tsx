@@ -21,8 +21,9 @@ interface TileCardProps {
   queryIdlePerTile?: number[][];
   metricType?: keyof TilePrimaryMetric;
   sparklineHeight?: number;
-  isExpanded: boolean;
-  setIsExpanded: (isExpanded: boolean) => void;
+  isExpanded?: boolean;
+  setIsExpanded?: (isExpanded: boolean) => void;
+  includeBg?: boolean;
 }
 
 export default function TileCard({
@@ -34,8 +35,9 @@ export default function TileCard({
   queryIdlePerTile,
   metricType,
   sparklineHeight,
-  isExpanded,
-  setIsExpanded,
+  isExpanded = false,
+  setIsExpanded = () => {},
+  includeBg = true,
 }: TileCardProps) {
   const [ref, { width }] = useMeasure<HTMLDivElement>();
 
@@ -52,7 +54,7 @@ export default function TileCard({
 
   return (
     <Flex ref={ref}>
-      <Card style={{ width: "100%" }}>
+      <Card includeBg={includeBg} style={{ width: "100%" }}>
         <Flex direction="column" justify="between" height="100%" gap="1">
           <TileHeader
             header={header}
@@ -65,6 +67,7 @@ export default function TileCard({
             value={avgBusy}
             queryBusy={aggQueryBusyPerTs}
             height={sparklineHeight}
+            includeBg={includeBg}
           />
           <TileSparkLineExpandedContainer
             tileCountArr={tileCountArr}

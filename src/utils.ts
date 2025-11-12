@@ -307,3 +307,12 @@ function getRoundedBitsValue(value: number) {
   // 1 decimal place
   return Math.round(value * 10) / 10;
 }
+
+export function getMax(arr: number[]) {
+  let max = -Infinity;
+  for (let i = 0; i < arr.length; i++) {
+    const value = arr[i];
+    if (value > max) max = value;
+  }
+  return max;
+}

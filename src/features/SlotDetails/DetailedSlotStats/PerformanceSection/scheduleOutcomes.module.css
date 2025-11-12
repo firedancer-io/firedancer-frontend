@@ -1,0 +1,9 @@
+.table-container {
+  th {
+    color: var(--slot-details-stats-secondary);
+  }
+
+  td {
+    color: var(--slot-details-stats-primary);
+  }
+}
