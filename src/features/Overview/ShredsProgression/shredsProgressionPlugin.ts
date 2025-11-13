@@ -71,9 +71,15 @@ export function shredsProgressionPlugin(
           );
 
           const canvasHeight = u.bbox.height;
+
           // each row is at least 1 px
           const rowPxHeight = clamp(canvasHeight / maxShreds, 1, 10);
-          const rowsCount = Math.trunc(canvasHeight / rowPxHeight);
+          const gapPxHeight = 1;
+
+          // n rows, n-1 gaps
+          const rowsCount = Math.trunc(
+            (canvasHeight + gapPxHeight) / (rowPxHeight + gapPxHeight),
+          );
           const shredsPerRow = maxShreds / rowsCount;
 
           for (const slotNumber of orderedSlotNumbers) {
@@ -102,7 +108,7 @@ export function shredsProgressionPlugin(
                 isSlotSkipped,
                 drawOnlyDots,
                 tsXValueOffset,
-                y: rowPxHeight * rowIdx + u.bbox.top,
+                y: (rowPxHeight + gapPxHeight) * rowIdx + u.bbox.top,
                 dotWidth: rowPxHeight,
                 scaleX: u.scales[xScaleKey],
                 getXPos,
