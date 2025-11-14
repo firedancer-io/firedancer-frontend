@@ -140,8 +140,8 @@ export function createLiveShredsAtoms() {
 
           let shouldDeleteSlot = false;
           for (
-            let slotNumber = minSlot;
-            slotNumber >= slotRange.min;
+            let slotNumber = slotRange.max;
+            slotNumber >= minSlot;
             slotNumber--
           ) {
             const slot = prev.slots[slotNumber];
