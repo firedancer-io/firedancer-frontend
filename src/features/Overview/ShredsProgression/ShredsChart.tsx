@@ -5,9 +5,13 @@ import type uPlot from "uplot";
 import { chartAxisColor, gridLineColor, gridTicksColor } from "../../../colors";
 import type { AlignedData } from "uplot";
 import { xRangeMs } from "./const";
-import { shredsProgressionPlugin } from "./shredsProgressionPlugin";
 import { useMedia, useRafLoop } from "react-use";
-import { Box } from "@radix-ui/themes";
+import {
+  shredsProgressionPlugin,
+  shredsXScaleKey,
+} from "./shredsProgressionPlugin";
+import { Box, Flex } from "@radix-ui/themes";
+import ShredsSlotLabels from "./ShredsSlotLabels";
 
 const REDRAW_INTERVAL_MS = 40;
 
@@ -89,24 +93,25 @@ export default function ShredsChart({
       width: 0,
       height: 0,
       scales: {
-        x: { time: false },
+        [shredsXScaleKey]: { time: false },
         y: {
           time: false,
           range: [0, 1],
         },
       },
-      series: [{}, {}],
+      series: [{ scale: shredsXScaleKey }, {}],
       cursor: {
         show: false,
         drag: {
           // disable zoom
-          x: false,
+          [shredsXScaleKey]: false,
           y: false,
         },
       },
       legend: { show: false },
       axes: [
         {
+          scale: shredsXScaleKey,
           incrs: xIncrs,
           size: 30,
           ticks: {
@@ -152,21 +157,24 @@ export default function ShredsChart({
   });
 
   return (
-    <Box height="100%" mx={`-${chartXPadding}px`}>
-      <AutoSizer>
-        {({ height, width }) => {
-          options.width = width;
-          options.height = height;
-          return (
-            <UplotReact
-              id={chartId}
-              options={options}
-              data={chartData}
-              onCreate={handleCreate}
-            />
-          );
-        }}
-      </AutoSizer>
-    </Box>
+    <Flex direction="column" gap="2px" height="100%">
+      {!isOnStartupScreen && <ShredsSlotLabels />}
+      <Box flexGrow="1" mx={`-${chartXPadding}px`}>
+        <AutoSizer>
+          {({ height, width }) => {
+            options.width = width;
+            options.height = height;
+            return (
+              <UplotReact
+                id={chartId}
+                options={options}
+                data={chartData}
+                onCreate={handleCreate}
+              />
+            );
+          }}
+        </AutoSizer>
+      </Box>
+    </Flex>
   );
 }

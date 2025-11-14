@@ -2,7 +2,8 @@ import { atom } from "jotai";
 import type { LiveShreds } from "../../../api/types";
 import { maxShredEvent, ShredEvent } from "../../../api/entities";
 import { delayMs, xRangeMs } from "./const";
-import { nsPerMs } from "../../../consts";
+import { nsPerMs, slotsPerLeader } from "../../../consts";
+import { getSlotGroupLeader } from "../../../utils";
 
 type ShredEventTsDeltaMs = number | undefined;
 /**
@@ -12,8 +13,11 @@ type ShredEventTsDeltaMs = number | undefined;
  */
 export type ShredEventTsDeltas = ShredEventTsDeltaMs[];
 
-type Slot = {
+export type Slot = {
   shreds: (ShredEventTsDeltas | undefined)[];
+  /**
+   * earliest event (start) of the slot
+   */
   minEventTsDelta?: number;
   maxEventTsDelta?: number;
   completionTsDelta?: number;
@@ -42,6 +46,18 @@ export function createLiveShredsAtoms() {
      */
     minCompletedSlot: atom((get) => get(_minCompletedSlotAtom)),
     range: atom((get) => get(_slotRangeAtom)),
+    groupLeaderSlots: atom((get) => {
+      const range = get(_slotRangeAtom);
+      if (!range) return [];
+
+      const slots = [getSlotGroupLeader(range.min)];
+      while (slots[slots.length - 1] + slotsPerLeader - 1 < range.max) {
+        slots.push(
+          getSlotGroupLeader(slots[slots.length - 1] + slotsPerLeader),
+        );
+      }
+      return slots;
+    }),
     slotsShreds: atom((get) => get(_liveShredsAtom)),
     addShredEvents: atom(
       null,
@@ -187,8 +203,10 @@ export function createLiveShredsAtoms() {
                 slot.completionTsDelta != null &&
                 isBeforeChartX(slot.completionTsDelta, now, prev.referenceTs)
               ) {
-                // once we find a slot that is complete and far enough in the past, delete all slot numbers less it
+                // once we find a slot that is complete and far enough in the past,
+                // delete all slot numbers less it but keep this one for label spacing reference
                 shouldDeleteSlot = true;
+                continue;
               }
 
               if (shouldDeleteSlot) {
@@ -203,8 +221,10 @@ export function createLiveShredsAtoms() {
             if (!prevRange || !prev.slots.size) {
               return;
             }
-            prevRange.min = Math.min(...remainingSlotNumbers);
-            return prevRange;
+            return {
+              min: Math.min(...remainingSlotNumbers),
+              max: prevRange.max,
+            };
           });
 
           return prev;
