@@ -1,4 +1,4 @@
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   identityBalanceAtom,
   blockEngineAtom,
@@ -74,12 +74,12 @@ import {
   addTurbineSlotsAtom,
   addRepairSlotsAtom,
 } from "../features/StartupProgress/Firedancer/CatchingUp/atoms";
-import {
-  addLiveShredsAtom,
-  deleteLiveShredsAtom,
-} from "../features/Overview/ShredsProgression/atoms";
+import { shredsAtoms } from "../features/Overview/ShredsProgression/atoms";
 import { xRangeMs } from "../features/Overview/ShredsProgression/const";
 import { useEffect } from "react";
+import { showStartupProgressAtom } from "../features/StartupProgress/atoms";
+import { socketStateAtom } from "./ws/atoms";
+import { SocketState } from "./ws/types";
 
 export function useSetAtomWsData() {
   const setVersion = useSetAtom(versionAtom);
@@ -211,7 +211,7 @@ export function useSetAtomWsData() {
     addRepairSlots([slot]);
   };
 
-  const addLiveShreds = useSetAtom(addLiveShredsAtom);
+  const addLiveShreds = useSetAtom(shredsAtoms.addShredEvents);
 
   useServerMessages((msg) => {
     try {
@@ -425,9 +425,22 @@ export function useSetAtomWsData() {
     deleteSkippedClusterSlotsRange(epoch.start_slot, epoch.end_slot);
   }, [deleteSkippedClusterSlotsRange, epoch]);
 
-  const deleteLiveShreds = useSetAtom(deleteLiveShredsAtom);
+  const isStartup = useAtomValue(showStartupProgressAtom);
+  const isSocketDisconnected =
+    useAtomValue(socketStateAtom) === SocketState.Disconnected;
 
-  useInterval(() => {
-    deleteLiveShreds();
-  }, xRangeMs / 4);
+  const deleteLiveShreds = useSetAtom(shredsAtoms.deleteSlots);
+
+  useEffect(() => {
+    if (isSocketDisconnected) {
+      deleteLiveShreds(isSocketDisconnected, isStartup);
+    }
+  }, [deleteLiveShreds, isSocketDisconnected, isStartup]);
+
+  useInterval(
+    () => {
+      deleteLiveShreds(isSocketDisconnected, isStartup);
+    },
+    isStartup ? 1_000 : xRangeMs / 4,
+  );
 }

@@ -11,9 +11,6 @@
   left: 0;
   z-index: 20;
 
-  display: flex;
-  flex-direction: column;
-  overflow: auto;
   background-color: var(--startup-background-color);
 
   transform-origin: var(--transform-origin);

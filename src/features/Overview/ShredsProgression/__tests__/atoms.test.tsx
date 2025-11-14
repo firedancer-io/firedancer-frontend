@@ -57,13 +57,17 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
 
     expect(result.current.slotsShreds).toEqual({
       referenceTs: 123,
-      slots: {
-        2003: {
-          minEventTsDelta: 2,
-          completionTsDelta: 3,
-          shreds: [undefined, undefined, [6, undefined, 2, 7]],
-        },
-      },
+      slots: new Map([
+        [
+          2003,
+          {
+            minEventTsDelta: 2,
+            maxEventTsDelta: 8,
+            completionTsDelta: 3,
+            shreds: [undefined, undefined, [6, undefined, 2, 7]],
+          },
+        ],
+      ]),
     });
     expect(result.current.range).toEqual({
       min: 2003,
@@ -89,17 +93,25 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
     // update shred events with min ts
     expect(result.current.slotsShreds).toEqual({
       referenceTs: 123,
-      slots: {
-        2002: {
-          minEventTsDelta: 6,
-          shreds: [undefined, [undefined, 6]],
-        },
-        2003: {
-          minEventTsDelta: 2,
-          completionTsDelta: 3,
-          shreds: [undefined, undefined, [2, undefined, 2, 3]],
-        },
-      },
+      slots: new Map([
+        [
+          2002,
+          {
+            minEventTsDelta: 6,
+            maxEventTsDelta: 6,
+            shreds: [undefined, [undefined, 6]],
+          },
+        ],
+        [
+          2003,
+          {
+            minEventTsDelta: 2,
+            maxEventTsDelta: 8,
+            completionTsDelta: 3,
+            shreds: [undefined, undefined, [2, undefined, 2, 3]],
+          },
+        ],
+      ]),
     });
     expect(result.current.range).toEqual({
       min: 2002,
@@ -107,7 +119,7 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
     });
   });
 
-  it("deletes slot numbers before max completed slot number that was completed after chart min X", () => {
+  it("for non-startup: deletes slot numbers before max completed slot number that was completed after chart min X", () => {
     vi.useFakeTimers({
       toFake: ["Date"],
     });
@@ -124,7 +136,12 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
         const range = useAtomValue(atoms.range);
         const addShredEvents = useSetAtom(atoms.addShredEvents);
         const deleteSlots = useSetAtom(atoms.deleteSlots);
-        return { slotsShreds, range, addShredEvents, deleteSlots };
+        return {
+          slotsShreds,
+          range,
+          addShredEvents,
+          deleteSlots,
+        };
       },
       { wrapper: emptyStoreWrapper },
     );
@@ -181,14 +198,45 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
 
     expect(result.current.slotsShreds).toEqual({
       referenceTs: 0,
-      slots: {
-        "0": { shreds: [[-1]], minEventTsDelta: -1 },
-        "1": { shreds: [], completionTsDelta: 1 },
-        "2": { shreds: [[1]], minEventTsDelta: 1 },
-        "3": { shreds: [], completionTsDelta: -1 },
-        "4": { shreds: [], completionTsDelta: 0 },
-        "6": { shreds: [[2]], minEventTsDelta: 2 },
-      },
+      slots: new Map([
+        [0, { shreds: [[-1]], minEventTsDelta: -1, maxEventTsDelta: -1 }],
+        [
+          1,
+          {
+            shreds: [],
+            minEventTsDelta: 1,
+            maxEventTsDelta: 1,
+            completionTsDelta: 1,
+          },
+        ],
+        [2, { shreds: [[1]], minEventTsDelta: 1, maxEventTsDelta: 1 }],
+        [
+          3,
+          {
+            shreds: [],
+            minEventTsDelta: -1,
+            maxEventTsDelta: -1,
+            completionTsDelta: -1,
+          },
+        ],
+        [
+          4,
+          {
+            shreds: [],
+            minEventTsDelta: 0,
+            maxEventTsDelta: 0,
+            completionTsDelta: 0,
+          },
+        ],
+        [
+          6,
+          {
+            shreds: [[2]],
+            minEventTsDelta: 2,
+            maxEventTsDelta: 2,
+          },
+        ],
+      ]),
     });
     expect(result.current.range).toEqual({
       min: 0,
@@ -197,15 +245,30 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
 
     // delete old slots
     act(() => {
-      result.current.deleteSlots(false);
+      result.current.deleteSlots(false, false);
     });
 
     expect(result.current.slotsShreds).toEqual({
       referenceTs: 0,
-      slots: {
-        "4": { shreds: [], completionTsDelta: 0 },
-        "6": { shreds: [[2]], minEventTsDelta: 2 },
-      },
+      slots: new Map([
+        [
+          4,
+          {
+            shreds: [],
+            minEventTsDelta: 0,
+            maxEventTsDelta: 0,
+            completionTsDelta: 0,
+          },
+        ],
+        [
+          6,
+          {
+            shreds: [[2]],
+            minEventTsDelta: 2,
+            maxEventTsDelta: 2,
+          },
+        ],
+      ]),
     });
     expect(result.current.range).toEqual({
       min: 4,
@@ -214,7 +277,168 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
 
     // delete all
     act(() => {
-      result.current.deleteSlots(true);
+      result.current.deleteSlots(true, false);
+    });
+
+    expect(result.current.slotsShreds).toBeUndefined();
+    expect(result.current.range).toBeUndefined();
+  });
+
+  it("for startup: deletes slots with events before chart x range", () => {
+    vi.useFakeTimers({
+      toFake: ["Date"],
+    });
+    const chartRangeMs = xRangeMs + delayMs;
+    const chartRangeNs = chartRangeMs / nsPerMs;
+    const date = new Date(chartRangeMs);
+    vi.setSystemTime(date);
+
+    const atoms = createLiveShredsAtoms();
+
+    const { result } = renderHook(
+      () => {
+        const slotsShreds = useAtomValue(atoms.slotsShreds);
+        const range = useAtomValue(atoms.range);
+        const addShredEvents = useSetAtom(atoms.addShredEvents);
+        const deleteSlots = useSetAtom(atoms.deleteSlots);
+        return {
+          slotsShreds,
+          range,
+          addShredEvents,
+          deleteSlots,
+        };
+      },
+      { wrapper: emptyStoreWrapper },
+    );
+
+    const events = [
+      {
+        slot: 0,
+        // deleted
+        ts: chartRangeNs - 1_000_000,
+        e: ShredEvent.shred_repair_request,
+      },
+      {
+        slot: 1,
+        // not deleted
+        ts: chartRangeNs + 1_000_000,
+        e: ShredEvent.slot_complete,
+      },
+      {
+        slot: 2,
+        // not deleted
+        ts: chartRangeNs + 1_000_000,
+        e: ShredEvent.shred_repair_request,
+      },
+      {
+        // deleted
+        slot: 3,
+        ts: chartRangeNs - 1_000_000,
+        e: ShredEvent.slot_complete,
+      },
+      {
+        slot: 4,
+        // threshold of not being deleted
+        ts: chartRangeNs,
+        e: ShredEvent.slot_complete,
+      },
+    ];
+
+    // add initial shreds
+    act(() => {
+      result.current.addShredEvents({
+        reference_slot: 0,
+        reference_ts: 0n,
+        slot_delta: Object.values(events).map((v) => v.slot),
+        shred_idx: Object.values(events).map((v) => 0),
+        event: Object.values(events).map((v) => v.e),
+        event_ts_delta: Object.values(events).map((v) => v.ts),
+      });
+    });
+
+    expect(result.current.slotsShreds).toEqual({
+      referenceTs: 0,
+      slots: new Map([
+        [0, { shreds: [[-1]], minEventTsDelta: -1, maxEventTsDelta: -1 }],
+        [
+          1,
+          {
+            shreds: [],
+            minEventTsDelta: 1,
+            maxEventTsDelta: 1,
+            completionTsDelta: 1,
+          },
+        ],
+        [2, { shreds: [[1]], minEventTsDelta: 1, maxEventTsDelta: 1 }],
+        [
+          3,
+          {
+            shreds: [],
+            minEventTsDelta: -1,
+            maxEventTsDelta: -1,
+            completionTsDelta: -1,
+          },
+        ],
+        [
+          4,
+          {
+            shreds: [],
+            minEventTsDelta: 0,
+            maxEventTsDelta: 0,
+            completionTsDelta: 0,
+          },
+        ],
+      ]),
+    });
+    expect(result.current.range).toEqual({
+      min: 0,
+      max: 4,
+    });
+
+    // delete old slots
+    act(() => {
+      result.current.deleteSlots(false, true);
+    });
+
+    expect(result.current.slotsShreds).toEqual({
+      referenceTs: 0,
+      slots: new Map([
+        [
+          1,
+          {
+            shreds: [],
+            minEventTsDelta: 1,
+            maxEventTsDelta: 1,
+            completionTsDelta: 1,
+          },
+        ],
+        [
+          2,
+          {
+            shreds: [[1]],
+            minEventTsDelta: 1,
+            maxEventTsDelta: 1,
+          },
+        ],
+        [
+          4,
+          {
+            shreds: [],
+            minEventTsDelta: 0,
+            maxEventTsDelta: 0,
+            completionTsDelta: 0,
+          },
+        ],
+      ]),
+    });
+    expect(result.current.range).toEqual({
+      min: 1,
+      max: 4,
+    });
+
+    // delete all
+    act(() => {
+      result.current.deleteSlots(true, true);
     });
 
     expect(result.current.slotsShreds).toBeUndefined();

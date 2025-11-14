@@ -24,17 +24,11 @@ const xIncrs = getXIncrs();
 
 interface ShredsChartProps {
   chartId: string;
-  chartHeight: number;
-  drawOnlyDots?: boolean;
-  drawOnlyBeforeFirstTurbine?: boolean;
-  pauseDrawingDuringStartup?: boolean;
+  isOnStartupScreen: boolean;
 }
 export default function ShredsChart({
   chartId,
-  chartHeight,
-  drawOnlyDots = false,
-  drawOnlyBeforeFirstTurbine = false,
-  pauseDrawingDuringStartup = false,
+  isOnStartupScreen,
 }: ShredsChartProps) {
   const uplotRef = useRef<uPlot>();
   const lastRedrawRef = useRef(0);
@@ -95,15 +89,9 @@ export default function ShredsChart({
           },
         },
       ],
-      plugins: [
-        shredsProgressionPlugin(
-          drawOnlyBeforeFirstTurbine,
-          drawOnlyDots,
-          pauseDrawingDuringStartup,
-        ),
-      ],
+      plugins: [shredsProgressionPlugin(isOnStartupScreen)],
     };
-  }, [drawOnlyBeforeFirstTurbine, drawOnlyDots, pauseDrawingDuringStartup]);
+  }, [isOnStartupScreen]);
 
   useRafLoop((time: number) => {
     if (!uplotRef) return;
@@ -117,21 +105,19 @@ export default function ShredsChart({
   });
 
   return (
-    <div style={{ height: `${chartHeight}px` }}>
-      <AutoSizer>
-        {({ height, width }) => {
-          options.width = width;
-          options.height = height;
-          return (
-            <UplotReact
-              id={chartId}
-              options={options}
-              data={chartData}
-              onCreate={handleCreate}
-            />
-          );
-        }}
-      </AutoSizer>
-    </div>
+    <AutoSizer>
+      {({ height, width }) => {
+        options.width = width;
+        options.height = height;
+        return (
+          <UplotReact
+            id={chartId}
+            options={options}
+            data={chartData}
+            onCreate={handleCreate}
+          />
+        );
+      }}
+    </AutoSizer>
   );
 }

@@ -61,21 +61,24 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
     <Container
       ref={(el: HTMLDivElement) => setBootProgressContainerEl(el)}
       maxWidth={appMaxWidth}
+      height="100%"
       className={clsx(styles.container, phaseClass, {
         [styles.collapsed]: !showStartupProgress || !isStartupProgressExpanded,
       })}
       p="4"
     >
-      <PhaseHeader phase={phase} />
+      <Flex direction="column" height="100%">
+        <PhaseHeader phase={phase} />
 
-      <Box pt="6" flexGrow="1">
-        {phase === BootPhaseEnum.joining_gossip && <GossipProgress />}
-        {(phase === BootPhaseEnum.loading_full_snapshot ||
-          phase === BootPhaseEnum.loading_incremental_snapshot) && (
-          <SnapshotProgress />
-        )}
-        {phase === BootPhaseEnum.catching_up && <CatchingUp />}
-      </Box>
+        <Box pt="6" flexGrow="1">
+          {phase === BootPhaseEnum.joining_gossip && <GossipProgress />}
+          {(phase === BootPhaseEnum.loading_full_snapshot ||
+            phase === BootPhaseEnum.loading_incremental_snapshot) && (
+            <SnapshotProgress />
+          )}
+          {phase === BootPhaseEnum.catching_up && <CatchingUp />}
+        </Box>
+      </Flex>
     </Container>
   );
 }
@@ -109,7 +112,7 @@ function PhaseHeader({ phase }: { phase: BootPhase }) {
     prevPhasesPctSum + Math.round(step.estimatedPct * phasePct);
 
   return (
-    <>
+    <Box flexShrink="0">
       <Header />
       <Flex justify="between" mt="4" mb="20px" className={styles.stepContainer}>
         <span>
@@ -124,6 +127,6 @@ function PhaseHeader({ phase }: { phase: BootPhase }) {
       </Flex>
 
       <ProgressBar stepIndex={step.index} />
-    </>
+    </Box>
   );
 }

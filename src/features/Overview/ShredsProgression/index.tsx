@@ -1,4 +1,4 @@
-import { Flex } from "@radix-ui/themes";
+import { Box, Flex } from "@radix-ui/themes";
 import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
 import ShredsTiles from "./ShredsTiles";
@@ -16,11 +16,12 @@ export default function ShredsProgression() {
     <Card>
       <Flex direction="column" gap="4">
         <CardHeader text="Shreds" />
-        <ShredsChart
-          chartId="overview-shreds-chart"
-          chartHeight={400}
-          pauseDrawingDuringStartup
-        />
+        <Box height="400px">
+          <ShredsChart
+            chartId="overview-shreds-chart"
+            isOnStartupScreen={false}
+          />
+        </Box>
         <ShredsTiles />
       </Flex>
     </Card>

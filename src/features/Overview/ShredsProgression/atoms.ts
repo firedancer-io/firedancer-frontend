@@ -2,9 +2,6 @@ import { atom } from "jotai";
 import type { LiveShreds } from "../../../api/types";
 import { ShredEvent } from "../../../api/entities";
 import { delayMs, xRangeMs } from "./const";
-import { firstTurbineSlotAtom } from "../../StartupProgress/Firedancer/CatchingUp/atoms";
-import { socketStateAtom } from "../../../api/ws/atoms";
-import { SocketState } from "../../../api/ws/types";
 import { nsPerMs } from "../../../consts";
 
 type ShredEventTsDeltaMs = number | undefined;
@@ -18,14 +15,14 @@ export type ShredEventTsDeltas = ShredEventTsDeltaMs[];
 type Slot = {
   shreds: (ShredEventTsDeltas | undefined)[];
   minEventTsDelta?: number;
+  maxEventTsDelta?: number;
   completionTsDelta?: number;
 };
 
 export type SlotsShreds = {
   referenceTs: number;
-  slots: {
-    [slotNumber: number]: Slot;
-  };
+  // slot number to Slot
+  slots: Map<number, Slot>;
 };
 
 /**
@@ -60,7 +57,7 @@ export function createLiveShredsAtoms() {
         set(_liveShredsAtom, (prev) => {
           const updated: SlotsShreds = prev ?? {
             referenceTs: Math.round(Number(reference_ts) / nsPerMs),
-            slots: {},
+            slots: new Map(),
           };
 
           for (let i = 0; i < event.length; i++) {
@@ -80,11 +77,14 @@ export function createLiveShredsAtoms() {
             );
 
             // add event to slot shred
-            updated.slots[slotNumber] = addEventToSlot(
-              shredIdx,
-              ev,
-              eventTsDelta,
-              updated.slots[slotNumber],
+            updated.slots.set(
+              slotNumber,
+              addEventToSlot(
+                shredIdx,
+                ev,
+                eventTsDelta,
+                updated.slots.get(slotNumber),
+              ),
             );
 
             // update range
@@ -103,11 +103,11 @@ export function createLiveShredsAtoms() {
 
     deleteSlots:
       /**
-       * Delete slots that completed before the chart x-axis starting time.
+       * Delete slots that completed before the chart x-axis starting time, or with dots outside visible x range
        * Update the min slot
        */
-      atom(null, (get, set, shouldDeleteAll: boolean) => {
-        if (shouldDeleteAll) {
+      atom(null, (get, set, deleteAll: boolean, isStartup: boolean) => {
+        if (deleteAll) {
           set(_slotRangeAtom, undefined);
           set(_liveShredsAtom, undefined);
           return;
@@ -116,57 +116,72 @@ export function createLiveShredsAtoms() {
         set(_liveShredsAtom, (prev) => {
           const slotRange = get(_slotRangeAtom);
 
-          if (!prev || !slotRange) return;
+          if (!prev || !slotRange) return prev;
 
-          let minSlot = slotRange.min;
-          if (slotRange.max - slotRange.min > 50) {
-            // only keep 50 slots
+          const now = new Date().getTime();
+
+          if (isStartup) {
+            // During startup, we only show event dots, not spans. Delete slots without events in chart view
             for (
-              let slotNumber = minSlot;
-              slotNumber <= slotRange.max - 50;
+              let slotNumber = slotRange.min;
+              slotNumber <= slotRange.max;
               slotNumber++
             ) {
-              const slot = prev.slots[slotNumber];
+              const slot = prev.slots.get(slotNumber);
               if (!slot) continue;
+              if (
+                slot.maxEventTsDelta == null ||
+                isBeforeChartX(slot.maxEventTsDelta, now, prev.referenceTs)
+              ) {
+                prev.slots.delete(slotNumber);
+              }
+            }
+          } else {
+            // After startup complete
+            let minSlot = slotRange.min;
+            if (slotRange.max - slotRange.min > 50) {
+              // only keep 50 slots
+              for (
+                let slotNumber = minSlot;
+                slotNumber <= slotRange.max - 50;
+                slotNumber++
+              ) {
+                const slot = prev.slots.get(slotNumber);
+                if (!slot) continue;
+                prev.slots.delete(slotNumber);
+              }
 
-              delete prev.slots[slotNumber];
+              minSlot = slotRange.max - 50;
             }
 
-            minSlot = slotRange.max - 50;
-          }
-          // delete slots outside visible x range
-          const nowDelta = new Date().getTime() - prev.referenceTs;
-          const chartXRange = xRangeMs + delayMs;
-
-          let shouldDeleteSlot = false;
-          for (
-            let slotNumber = slotRange.max;
-            slotNumber >= minSlot;
-            slotNumber--
-          ) {
-            const slot = prev.slots[slotNumber];
-            if (!slot) continue;
-
-            if (
-              !shouldDeleteSlot &&
-              slot.completionTsDelta != null &&
-              nowDelta - slot.completionTsDelta > chartXRange
+            let shouldDeleteSlot = false;
+            for (
+              let slotNumber = slotRange.max;
+              slotNumber >= minSlot;
+              slotNumber--
             ) {
-              // once we find a slot that is complete and far enough in the past, delete all slot numbers less it
-              shouldDeleteSlot = true;
-            }
+              const slot = prev.slots.get(slotNumber);
+              if (slot?.maxEventTsDelta == null) continue;
 
-            if (shouldDeleteSlot) {
-              delete prev.slots[slotNumber];
+              if (
+                !shouldDeleteSlot &&
+                slot.completionTsDelta != null &&
+                isBeforeChartX(slot.completionTsDelta, now, prev.referenceTs)
+              ) {
+                // once we find a slot that is complete and far enough in the past, delete all slot numbers less it
+                shouldDeleteSlot = true;
+              }
+
+              if (shouldDeleteSlot) {
+                prev.slots.delete(slotNumber);
+              }
             }
           }
 
           // update range to reflect remaining slots
-          const remainingSlotNumbers = Object.keys(prev.slots).map(
-            (slotNumber) => parseInt(slotNumber),
-          );
+          const remainingSlotNumbers = prev.slots.keys();
           set(_slotRangeAtom, (prevRange) => {
-            if (!prevRange || !remainingSlotNumbers.length) {
+            if (!prevRange || !prev.slots.size) {
               return;
             }
             prevRange.min = Math.min(...remainingSlotNumbers);
@@ -179,77 +194,13 @@ export function createLiveShredsAtoms() {
   };
 }
 
-const beforeFirstTurbineShredsAtoms = createLiveShredsAtoms();
-const fromFirstTurbineShredsAtoms = createLiveShredsAtoms();
-
-export const addLiveShredsAtom = atom(
-  null,
-  (
-    get,
-    set,
-    {
-      reference_slot,
-      reference_ts,
-      slot_delta,
-      shred_idx,
-      event,
-      event_ts_delta,
-    }: LiveShreds,
-  ) => {
-    const firstTurbineSlot = get(firstTurbineSlotAtom);
-    if (firstTurbineSlot == null) return;
-
-    const beforeFirstTurbineLiveShreds: LiveShreds = {
-      reference_slot,
-      reference_ts,
-      slot_delta: [],
-      shred_idx: [],
-      event: [],
-      event_ts_delta: [],
-    };
-
-    const fromFirstTurbineLiveShreds: LiveShreds = {
-      reference_slot,
-      reference_ts,
-      slot_delta: [],
-      shred_idx: [],
-      event: [],
-      event_ts_delta: [],
-    };
-
-    for (let i = 0; i < event.length; i++) {
-      const slotNumber = reference_slot + slot_delta[i];
-      const group =
-        slotNumber < firstTurbineSlot
-          ? beforeFirstTurbineLiveShreds
-          : fromFirstTurbineLiveShreds;
-
-      group.slot_delta.push(slot_delta[i]);
-      group.shred_idx.push(shred_idx[i]);
-      group.event.push(event[i]);
-      group.event_ts_delta.push(event_ts_delta[i]);
-    }
-
-    set(
-      beforeFirstTurbineShredsAtoms.addShredEvents,
-      beforeFirstTurbineLiveShreds,
-    );
-
-    set(fromFirstTurbineShredsAtoms.addShredEvents, fromFirstTurbineLiveShreds);
-  },
-);
-
-export const deleteLiveShredsAtom = atom(null, (get, set) => {
-  const shouldDeleteAll = get(socketStateAtom) === SocketState.Disconnected;
-  set(beforeFirstTurbineShredsAtoms.deleteSlots, shouldDeleteAll);
-  set(fromFirstTurbineShredsAtoms.deleteSlots, shouldDeleteAll);
-});
-
-export function getLiveShredsAtoms(drawOnlyBeforeFirstTurbine: boolean) {
-  return drawOnlyBeforeFirstTurbine
-    ? beforeFirstTurbineShredsAtoms
-    : fromFirstTurbineShredsAtoms;
+function isBeforeChartX(tsDelta: number, now: number, referenceTs: number) {
+  const nowDelta = now - referenceTs;
+  const chartXRange = xRangeMs + delayMs;
+  return nowDelta - tsDelta > chartXRange;
 }
+
+export const shredsAtoms = createLiveShredsAtoms();
 
 /**
  * Mutate shred by adding an event ts to event index
@@ -280,6 +231,18 @@ function addEventToSlot(
     shreds: [],
   };
 
+  // update slot min event ts
+  slot.minEventTsDelta = Math.min(
+    eventTsDelta,
+    slot.minEventTsDelta ?? eventTsDelta,
+  );
+
+  // update slot max event ts
+  slot.maxEventTsDelta = Math.max(
+    eventTsDelta,
+    slot.maxEventTsDelta ?? eventTsDelta,
+  );
+
   if (event === ShredEvent.slot_complete) {
     slot.completionTsDelta = Math.min(
       eventTsDelta,
@@ -292,12 +255,6 @@ function addEventToSlot(
     console.error("Missing shred ID");
     return slot;
   }
-
-  // update slot min event ts
-  slot.minEventTsDelta = Math.min(
-    eventTsDelta,
-    slot.minEventTsDelta ?? eventTsDelta,
-  );
 
   // update shred
   slot.shreds[shredIdx] = addEventToShred(
