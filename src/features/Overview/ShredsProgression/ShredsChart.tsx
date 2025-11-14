@@ -5,9 +5,13 @@ import type uPlot from "uplot";
 import { chartAxisColor, gridLineColor, gridTicksColor } from "../../../colors";
 import type { AlignedData } from "uplot";
 import { xRangeMs } from "./const";
-import { shredsProgressionPlugin } from "./shredsProgressionPlugin";
 import { useMedia, useRafLoop } from "react-use";
-import { Box } from "@radix-ui/themes";
+import {
+  shredsProgressionPlugin,
+  type LabelPositions,
+} from "./shredsProgressionPlugin";
+import { Box, Flex } from "@radix-ui/themes";
+import ShredsSlotLabels from "./ShredsSlotLabels";
 
 const REDRAW_INTERVAL_MS = 40;
 
@@ -65,6 +69,7 @@ export default function ShredsChart({
 
   const uplotRef = useRef<uPlot>();
   const lastRedrawRef = useRef(0);
+  const labelPositionsRef = useRef<LabelPositions>();
 
   const handleCreate = useCallback((u: uPlot) => {
     uplotRef.current = u;
@@ -136,7 +141,7 @@ export default function ShredsChart({
           },
         },
       ],
-      plugins: [shredsProgressionPlugin(isOnStartupScreen)],
+      plugins: [shredsProgressionPlugin(isOnStartupScreen, labelPositionsRef)],
     };
   }, [isOnStartupScreen, xIncrs]);
 
@@ -152,21 +157,24 @@ export default function ShredsChart({
   });
 
   return (
-    <Box height="100%" mx={`-${chartXPadding}px`}>
-      <AutoSizer>
-        {({ height, width }) => {
-          options.width = width;
-          options.height = height;
-          return (
-            <UplotReact
-              id={chartId}
-              options={options}
-              data={chartData}
-              onCreate={handleCreate}
-            />
-          );
-        }}
-      </AutoSizer>
-    </Box>
+    <Flex direction="column" gap="2px" height="100%">
+      {!isOnStartupScreen && <ShredsSlotLabels />}
+      <Box flexGrow="1" mx={`-${chartXPadding}px`}>
+        <AutoSizer>
+          {({ height, width }) => {
+            options.width = width;
+            options.height = height;
+            return (
+              <UplotReact
+                id={chartId}
+                options={options}
+                data={chartData}
+                onCreate={handleCreate}
+              />
+            );
+          }}
+        </AutoSizer>
+      </Box>
+    </Flex>
   );
 }

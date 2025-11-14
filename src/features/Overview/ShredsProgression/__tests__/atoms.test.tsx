@@ -120,7 +120,7 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
     });
   });
 
-  it("for non-startup: deletes slot numbers before max completed slot number that was completed after chart min X", () => {
+  it("for non-startup: deletes slot numbers before max completed slot number that was completed before chart min X", () => {
     vi.useFakeTimers({
       toFake: ["Date"],
     });
@@ -161,13 +161,13 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
       {
         slot: 2,
         // this will be deleted even if it has an event in chart range,
-        // because a slot number larger than it is marked as completed and being deleted
+        // because a slot number larger than it is marked as completed and before chart min x
         ts: chartRangeNs + 1_000_000,
         e: ShredEvent.shred_repair_request,
       },
       {
         // max slot number that is complete before chart min X
-        // delete this and all slot numbers before it
+        // keep this and delete all slot numbers before it
         slot: 3,
         ts: chartRangeNs - 1_000_000,
         e: ShredEvent.slot_complete,
@@ -253,6 +253,15 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
       referenceTs: 0,
       slots: new Map([
         [
+          3,
+          {
+            shreds: [],
+            minEventTsDelta: -1,
+            maxEventTsDelta: -1,
+            completionTsDelta: -1,
+          },
+        ],
+        [
           4,
           {
             shreds: [],
@@ -272,7 +281,7 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
       ]),
     });
     expect(result.current.range).toEqual({
-      min: 4,
+      min: 3,
       max: 6,
     });
 
