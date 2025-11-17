@@ -5,8 +5,11 @@ import { useAtomValue } from "jotai";
 import SnapshotSparklineCard from "./SnapshotSparklineCard";
 import { BootPhaseEnum } from "../../../api/entities";
 import type { BootProgress } from "../../../api/types";
+import styles from "./snapshot.module.css";
+import { useMedia } from "react-use";
 
 const rowGap = "5";
+const columnGap = "26px";
 
 function getSnapshotValues(bootProgress: BootProgress) {
   const {
@@ -59,6 +62,10 @@ function getSnapshotValues(bootProgress: BootProgress) {
 
 export function SnapshotProgress() {
   const bootProgress = useAtomValue(bootProgressAtom);
+  const isNarrowScreen = useMedia("(max-width: 560px)");
+  const wrap = isNarrowScreen ? "wrap" : "nowrap";
+  const gap = isNarrowScreen ? columnGap : rowGap;
+
   if (!bootProgress) return;
 
   const {
@@ -77,8 +84,8 @@ export function SnapshotProgress() {
       : 0;
 
   return (
-    <Flex direction="column" gap="40px">
-      <Flex gap={rowGap}>
+    <Flex direction="column" gap={columnGap}>
+      <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
         <SnapshotLoadingCard
           title="Reading"
           completed={readBytes}
@@ -92,7 +99,7 @@ export function SnapshotProgress() {
         />
       </Flex>
 
-      <Flex gap={rowGap}>
+      <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
         <SnapshotLoadingCard
           title="Decompressing"
           completed={decompressCompressedBytes}
@@ -108,7 +115,7 @@ export function SnapshotProgress() {
         />
       </Flex>
 
-      <Flex gap={rowGap}>
+      <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
         <SnapshotLoadingCard
           title="Inserting"
           completed={insertCompletedBytes}

@@ -1,10 +1,9 @@
 .progress-bar {
-  height: 25px;
   align-items: center;
   width: 100%;
 
   .current-step {
-    height: 100%;
+    height: 40px;
     border-width: 1px;
     border-style: solid;
     border-radius: 5px;
@@ -19,6 +18,6 @@
   }
 
   div {
-    height: 50%;
+    height: 25px;
   }
 }

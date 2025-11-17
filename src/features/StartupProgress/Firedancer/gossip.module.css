@@ -15,7 +15,7 @@
   line-height: normal;
 
   .value {
-    color: var(--boot-progress-snapshot-pct-color);
+    color: var(--boot-progress-tertiary-color);
     font-size: 36px;
     font-style: normal;
     font-weight: 400;

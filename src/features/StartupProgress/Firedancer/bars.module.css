@@ -1,6 +1,6 @@
 .bars {
   width: 100%;
-  height: 77px;
+  height: 50px;
 
   rect {
     fill: var(--boot-progress-gossip-bars-color);

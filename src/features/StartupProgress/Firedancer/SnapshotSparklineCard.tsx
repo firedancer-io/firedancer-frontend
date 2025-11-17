@@ -15,7 +15,7 @@ import type { TileType } from "../../../api/types";
 import TileBusy from "../../Overview/SlotPerformance/TileBusy";
 import { useMeasure } from "react-use";
 
-const gridSize = 20;
+const gridSize = 15;
 // add 1 px for the final grid line
 const height = gridSize * 6 + 1;
 const width = gridSize * 15 + 1;
@@ -62,6 +62,7 @@ export default function SnapshotSparklineCard({
       <Flex
         className={styles.sparklineContainer}
         style={{
+          alignSelf: "center",
           width: `${width}px`,
           backgroundSize: `${gridSize}px ${gridSize}px`,
         }}

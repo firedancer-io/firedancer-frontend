@@ -22,6 +22,7 @@ import { appMaxWidth } from "../../../consts";
 import { SnapshotProgress } from "./SnapshotProgress";
 import { useUptimeDuration } from "../../../hooks/useUptime";
 import CatchingUp from "./CatchingUp";
+import { useMedia } from "react-use";
 
 const classNames: { [phase in BootPhase]?: string } = {
   [BootPhaseEnum.joining_gossip]: styles.gossip,
@@ -57,6 +58,8 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
 
   const phaseClass = phase ? classNames[phase] : "";
 
+  const isNarrow = useMedia("(max-width: 750px)");
+
   return (
     <Container
       ref={(el: HTMLDivElement) => setBootProgressContainerEl(el)}
@@ -70,7 +73,7 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
       <Flex direction="column" height="100%">
         <PhaseHeader phase={phase} />
 
-        <Box pt="6" flexGrow="1">
+        <Box flexGrow="1" mt="7" mb="1" mx={isNarrow ? "1" : "9"}>
           {phase === BootPhaseEnum.joining_gossip && <GossipProgress />}
           {(phase === BootPhaseEnum.loading_full_snapshot ||
             phase === BootPhaseEnum.loading_incremental_snapshot) && (
@@ -114,15 +117,15 @@ function PhaseHeader({ phase }: { phase: BootPhase }) {
   return (
     <Box flexShrink="0">
       <Header />
-      <Flex justify="between" mt="4" mb="20px" className={styles.stepContainer}>
+      <Flex justify="between" mt="7" mb="2" className={styles.stepContainer}>
         <span>
           <Text className={styles.secondaryText}>Elapsed </Text>
           <TotalDuration />
         </span>
         <Text className={styles.stepName}>{step.name}</Text>
         <span>
+          <Text className={styles.secondaryText}>Complete </Text>
           <Text>{overallPct}% </Text>
-          <Text className={styles.secondaryText}>Complete</Text>
         </span>
       </Flex>
 

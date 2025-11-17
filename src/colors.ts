@@ -48,8 +48,8 @@ export const bootProgressGossipHighFilledBarColor = "#5E1717";
 export const bootProgressGossipHighThresholdBarColor = "#CE3636";
 
 export const bootProgressPrimaryTextColor = "#A2A2A2";
-export const bootProgressSecondaryTextColor = "#454545";
-export const bootProgressSnapshotPctColor = "#C8B3B3";
+export const bootProgressSecondaryTextColor = "#666";
+export const bootProgressTertiaryColor = "#C8B3B3";
 export const bootProgressSnapshotUnitsColor = "#686868";
 
 export const progressBarIncompleteGossipColor = "#171765ff";
