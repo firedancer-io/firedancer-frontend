@@ -80,6 +80,8 @@ import { slowDateTimeNow } from "../utils";
 import {
   addTurbineSlotsAtom,
   addRepairSlotsAtom,
+  resetTurbineSlotsAtom,
+  resetRepairSlotsAtom,
 } from "../features/StartupProgress/Firedancer/CatchingUp/atoms";
 import { shredsAtoms } from "../features/Overview/ShredsProgression/atoms";
 import { xRangeMs } from "../features/Overview/ShredsProgression/const";
@@ -506,6 +508,15 @@ export function useSetAtomWsData() {
       deleteLiveShreds(isSocketDisconnected, isStartup);
     }
   }, [deleteLiveShreds, isSocketDisconnected, isStartup]);
+
+  const resetTurbineSlots = useSetAtom(resetTurbineSlotsAtom);
+  const resetRepairSlots = useSetAtom(resetRepairSlotsAtom);
+  useEffect(() => {
+    if (!isStartup) {
+      resetTurbineSlots();
+      resetRepairSlots();
+    }
+  }, [isStartup, resetRepairSlots, resetTurbineSlots]);
 
   useInterval(
     () => {
