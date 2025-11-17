@@ -1,6 +1,7 @@
 import { atom } from "jotai";
 import { bootProgressAtom } from "../../../../api/atoms";
 import { atomWithImmer } from "jotai-immer";
+import { showStartupProgressAtom } from "../../atoms";
 
 export const catchingUpContainerElAtom = atom<HTMLDivElement | null>(null);
 
@@ -28,11 +29,15 @@ export const hasCatchingUpDataAtom = atom((get) => {
   return startSlot != null && !!turbineSlots.size;
 });
 
+/**
+ * Only collected during startup, and reset at end of startup
+ */
 export const [
   turbineSlotsAtom,
   addTurbineSlotsAtom,
   firstTurbineSlotAtom,
   latestTurbineSlotAtom,
+  resetTurbineSlotsAtom,
 ] = (function getTurbineAtoms() {
   const _turbineSlotsAtom = atomWithImmer<Set<number>>(new Set<number>());
   const _firstTurbineSlotAtom = atom<number>();
@@ -40,7 +45,9 @@ export const [
 
   return [
     atom((get) => get(_turbineSlotsAtom)),
-    atom(null, (_get, set, slots: number[]) => {
+    atom(null, (get, set, slots: number[]) => {
+      if (!get(showStartupProgressAtom)) return;
+
       set(_turbineSlotsAtom, (draft) => {
         slots.forEach((slot) => {
           draft.add(slot);
@@ -57,20 +64,33 @@ export const [
     }),
     atom((get) => get(_firstTurbineSlotAtom)),
     atom((get) => get(_latestTurbineSlotAtom)),
+    atom(null, (_get, set) => {
+      set(_firstTurbineSlotAtom, undefined);
+      set(_latestTurbineSlotAtom, undefined);
+      set(_turbineSlotsAtom, new Set());
+    }),
   ];
 })();
 
-export const [repairSlotsAtom, addRepairSlotsAtom] =
+/**
+ * Only collected during startup, and reset at end of startup
+ */
+export const [repairSlotsAtom, addRepairSlotsAtom, resetRepairSlotsAtom] =
   (function getRepairAtoms() {
     const _repairSlotsAtom = atomWithImmer<Set<number>>(new Set<number>());
     return [
       atom((get) => get(_repairSlotsAtom)),
-      atom(null, (_get, set, slots: number[]) => {
+      atom(null, (get, set, slots: number[]) => {
+        if (!get(showStartupProgressAtom)) return;
+
         set(_repairSlotsAtom, (draft) => {
           slots.forEach((slot) => {
             draft.add(slot);
           });
         });
+      }),
+      atom(null, (_get, set) => {
+        set(_repairSlotsAtom, new Set());
       }),
     ];
   })();
