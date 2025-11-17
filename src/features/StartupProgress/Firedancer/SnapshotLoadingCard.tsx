@@ -45,7 +45,13 @@ export function SnapshotLoadingCard({
 
   return (
     <Card className={clsx(styles.card, styles.throughputCard)}>
-      <Flex justify="between" align="center" className={styles.cardHeader}>
+      <Flex
+        justify="between"
+        align="center"
+        wrap="wrap"
+        gapX="4"
+        className={styles.cardHeader}
+      >
         <Text className={clsx(styles.title, styles.ellipsis)}>{title}</Text>
 
         {showAccountRate && (
@@ -63,14 +69,13 @@ export function SnapshotLoadingCard({
           <ValueUnitText value={totalObj?.value} unit={totalObj?.unit} />
         </div>
 
-        <span className={styles.throughput}>
-          <Text className={styles.snapshotPctText}>
-            {throughputObj?.value ?? "--"}
-          </Text>{" "}
-          <Text className={styles.secondaryColor}>
-            {throughputObj?.unit}/sec
-          </Text>
-        </span>
+        <div className={styles.throughput}>
+          <ValueUnitText
+            value={throughputObj?.value}
+            unit={throughputObj?.unit}
+          />
+          <Text className={styles.secondaryColor}>/sec</Text>
+        </div>
       </Flex>
 
       <Bars value={throughput ?? 0} max={MAX_THROUGHPUT_BYTES_PER_S} />
