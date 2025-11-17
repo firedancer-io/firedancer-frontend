@@ -29,6 +29,7 @@ export function catchingUpBarsPlugin(
 
           const barWidth = barWidthPx * window.devicePixelRatio;
           const gapWidth = gapWidthPx * window.devicePixelRatio;
+          const radius = barWidth / 2;
 
           const totalBarsThatFit = Math.trunc(
             (u.bbox.width + gapWidth) / (barWidth + gapWidth),
@@ -76,6 +77,8 @@ export function catchingUpBarsPlugin(
             }px`,
           );
 
+          const barXByColors = new Map<string, number[]>();
+
           for (
             let barIndex = 0;
             barIndex <= latestTurbineBarIndex;
@@ -102,8 +105,18 @@ export function catchingUpBarsPlugin(
               turbineSlots,
             );
 
-            const radius = barWidth / 2;
-            drawBar(ctx, color, x, y, barWidth, height, radius);
+            const barXs = barXByColors.get(color) ?? [];
+            barXs.push(x);
+            barXByColors.set(color, barXs);
+          }
+
+          for (const [color, barXs] of barXByColors.entries()) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            for (const x of barXs) {
+              ctx.roundRect(x, y, barWidth, height, radius);
+            }
+            ctx.fill();
           }
 
           ctx.restore();
@@ -115,25 +128,4 @@ export function catchingUpBarsPlugin(
 
 function getX(barIndex: number, barWidth: number, gapWidth: number) {
   return barIndex * (barWidth + gapWidth);
-}
-
-function drawBar(
-  ctx: CanvasRenderingContext2D,
-  color: string,
-  x: number,
-  y: number,
-  barWidth: number,
-  height: number,
-  radius: number,
-) {
-  ctx.fillStyle = color;
-
-  // draw corners clockwise, starting with top left
-  ctx.beginPath();
-  ctx.arc(x + radius, y + radius, radius, Math.PI, 1.5 * Math.PI);
-  ctx.arc(x + barWidth - radius, y + radius, radius, 1.5 * Math.PI, 0);
-  ctx.arc(x + barWidth - radius, y + height - radius, radius, 0, 0.5 * Math.PI);
-  ctx.arc(x + radius, y + height - radius, radius, 0.5 * Math.PI, Math.PI);
-  ctx.closePath();
-  ctx.fill();
 }
