@@ -80,6 +80,7 @@ export const firstTurbineSlotColor = "#3972C9";
 export const latestTurbineSlotColor = "#74AFEA";
 export const missingSlotColor = "#0F1313";
 export const replayedSlotColor = "#1CE7C2";
+export const replayedMissingSlotColor = "#871616";
 export const needsReplaySlotColor = "#163454";
 export const repairedNeedsReplaySlotColor = "#89603E";
 

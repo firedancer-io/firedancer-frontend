@@ -5,6 +5,7 @@ import {
   repairedNeedsReplaySlotColor,
   needsReplaySlotColor,
   replayedSlotColor,
+  replayedMissingSlotColor,
 } from "../../../../colors";
 
 /**
@@ -53,6 +54,7 @@ function barHasSomeSlot(
  * - missing slot
  * - repaired needs replay slot
  * - needs replay slot
+ * - replayed slot but previously missing
  * - replayed slot
  */
 export function getBarColor(
@@ -101,5 +103,15 @@ export function getBarColor(
     return needsReplaySlotColor;
   }
 
+  // all slots were replayed
+  if (
+    barHasSomeSlot(firstSlot, lastSlot, (slot: number) => {
+      return (
+        !isRepaired(slot, repairSlots) && !isFromTurbine(slot, turbineSlots)
+      );
+    })
+  ) {
+    return replayedMissingSlotColor;
+  }
   return replayedSlotColor;
 }
