@@ -2,9 +2,14 @@ import styles from "./tilesPerformance.module.css";
 import TileCard from "./TileCard";
 import { useTilesPerformance } from "./useTilesPerformance";
 import { useState } from "react";
+import { useAtomValue } from "jotai";
+import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
 
 export default function TilesPerformance() {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [_isExpanded, setIsExpanded] = useState(false);
+  const isStartupVisible = useAtomValue(isStartupProgressVisibleAtom);
+  const isExpanded = _isExpanded && !isStartupVisible;
+
   const { tileCounts, groupedLiveIdlePerTile, showLive, queryIdleData } =
     useTilesPerformance();
 
