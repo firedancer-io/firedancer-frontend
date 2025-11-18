@@ -1,14 +1,14 @@
 import { Card, Flex, Text } from "@radix-ui/themes";
 
 import styles from "./gossip.module.css";
-import { Bars } from "./Bars";
+import { gossipNetworkStatsAtom } from "../../../../api/atoms";
 import { useAtomValue } from "jotai";
-import { gossipNetworkStatsAtom } from "../../../api/atoms";
-import { formatBytesAsBits, getFmtStake } from "../../../utils";
+import { getFmtStake, formatBytesAsBits } from "../../../../utils";
+import { Bars } from "../Bars";
 
 const MAX_THROUGHPUT_BYTES = 1_8750_000; // 150Mbit
 
-export function GossipProgress() {
+export default function Gossip() {
   const networkStats = useAtomValue(gossipNetworkStatsAtom);
   if (!networkStats) return null;
 
