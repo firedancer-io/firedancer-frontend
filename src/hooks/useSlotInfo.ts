@@ -9,7 +9,7 @@ export function useSlotInfo(slot: number) {
   const peer = usePeer(pubkey ?? "");
 
   const isLeader = myPubkey === pubkey;
-  const name = peer?.info?.name ?? (isLeader ? "You" : "Private");
+  const name = isLeader ? "You" : (peer?.info?.name ?? "Private");
   const version = peer?.gossip?.version;
   const client = version
     ? version[0] === "0"
