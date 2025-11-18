@@ -162,33 +162,23 @@ function JitoIcon() {
 
 function StrategyIcon() {
   const scheduleStrategy = useAtomValue(scheduleStrategyAtom);
-  const icon = useMemo(
-    () =>
-      scheduleStrategy && (
-        <ScheduleStrategyIcon strategy={scheduleStrategy} iconSize={12} />
-      ),
-    [scheduleStrategy],
-  );
+  const tooltipContent = useMemo(() => {
+    if (scheduleStrategy === ScheduleStrategyEnum.balanced) {
+      return "Transaction scheduler strategy: balanced";
+    } else if (scheduleStrategy === ScheduleStrategyEnum.perf) {
+      return "Transaction scheduler strategy: performance";
+    } else if (scheduleStrategy === ScheduleStrategyEnum.revenue) {
+      return "Transaction scheduler strategy: revenue";
+    }
+  }, [scheduleStrategy]);
 
   if (!scheduleStrategy) return;
 
-  if (scheduleStrategy === ScheduleStrategyEnum.balanced) {
-    return (
-      <Tooltip content="Transaction scheduler strategy: balanced">
-        {icon}
-      </Tooltip>
-    );
-  } else if (scheduleStrategy === ScheduleStrategyEnum.perf) {
-    return (
-      <Tooltip content="Transaction scheduler strategy: performance">
-        {icon}
-      </Tooltip>
-    );
-  } else if (scheduleStrategy === ScheduleStrategyEnum.revenue) {
-    return (
-      <Tooltip content="Transaction scheduler strategy: revenue">
-        {icon}
-      </Tooltip>
-    );
-  }
+  return (
+    <ScheduleStrategyIcon
+      strategy={scheduleStrategy}
+      iconSize={12}
+      tooltipContent={tooltipContent}
+    />
+  );
 }
