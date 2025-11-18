@@ -16,9 +16,10 @@ import { SocketState } from "../../api/ws/types";
 import type { BlockEngineUpdate } from "../../api/types";
 import { connectedColor, connectingColor, failureColor } from "../../colors";
 import { ScheduleStrategyEnum } from "../../api/entities";
-import { scheduleStrategyIcons } from "../../strategyIcons";
+import { ScheduleStrategyIcon } from "../../components/ScheduleStrategyIcon";
 import { clusterIndicatorHeight, slotsListWidth } from "../../consts";
 import { getClusterColor } from "../../utils";
+import { useMemo } from "react";
 
 const offset = 2;
 
@@ -160,27 +161,33 @@ function JitoIcon() {
 }
 
 function StrategyIcon() {
-  const fontSize = "12px";
   const scheduleStrategy = useAtomValue(scheduleStrategyAtom);
+  const icon = useMemo(
+    () =>
+      scheduleStrategy && (
+        <ScheduleStrategyIcon strategy={scheduleStrategy} iconSize={12} />
+      ),
+    [scheduleStrategy],
+  );
+
   if (!scheduleStrategy) return;
 
-  const icon = scheduleStrategyIcons[scheduleStrategy];
   if (scheduleStrategy === ScheduleStrategyEnum.balanced) {
     return (
       <Tooltip content="Transaction scheduler strategy: balanced">
-        <div style={{ margin: "0 -3px 0 0", fontSize }}>{icon}</div>
+        {icon}
       </Tooltip>
     );
   } else if (scheduleStrategy === ScheduleStrategyEnum.perf) {
     return (
       <Tooltip content="Transaction scheduler strategy: performance">
-        <div style={{ margin: "0 -3px 0 -1px", fontSize }}>{icon}</div>
+        {icon}
       </Tooltip>
     );
   } else if (scheduleStrategy === ScheduleStrategyEnum.revenue) {
     return (
       <Tooltip content="Transaction scheduler strategy: revenue">
-        <div style={{ margin: "0 -3px 0 0", fontSize }}>{icon}</div>
+        {icon}
       </Tooltip>
     );
   }
