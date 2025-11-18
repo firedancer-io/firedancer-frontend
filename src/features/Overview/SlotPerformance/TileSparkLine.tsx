@@ -13,11 +13,15 @@ import styles from "./tileSparkline.module.css";
 interface TileParkLineProps {
   value?: number;
   queryBusy?: number[];
+  height?: number;
 }
 
-export default function TileSparkLine({ value, queryBusy }: TileParkLineProps) {
+export default function TileSparkLine({
+  value,
+  queryBusy,
+  height = 24,
+}: TileParkLineProps) {
   const [svgRef, { width }] = useMeasure<SVGSVGElement>();
-  const height = 24;
 
   const { scaledDataPoints, range } = useScaledDataPoints({
     value,

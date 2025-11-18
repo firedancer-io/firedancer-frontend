@@ -131,3 +131,18 @@
     direction: rtl;
   }
 }
+
+.tiles-row {
+  & > * {
+    flex-grow: 1;
+    height: 93px;
+    min-width: 130px;
+    max-width: 334px;
+  }
+}
+
+@media (max-width: 1250px) {
+  .tiles-row {
+    flex-wrap: wrap;
+  }
+}

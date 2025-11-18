@@ -6,19 +6,21 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { catchingUpContainerElAtom, hasCatchingUpDataAtom } from "./atoms";
 import ShredsChart from "../../../Overview/ShredsProgression/ShredsChart";
 import styles from "./catchingUp.module.css";
+import CatchingUpTiles from "./CatchingUpTiles";
 
 export default function CatchingUp() {
   const setContainerEl = useSetAtom(catchingUpContainerElAtom);
   const hasCatchingUpData = useAtomValue(hasCatchingUpDataAtom);
-  if (!hasCatchingUpData) return;
 
   return (
     <Flex direction="column" height="100%" gap="20px">
-      <Flex ref={setContainerEl} direction="column" gap="5px">
-        <BarsLabels />
-        <CatchingUpBars />
-        <BarsFooter />
-      </Flex>
+      {hasCatchingUpData && (
+        <Flex ref={setContainerEl} direction="column" gap="5px">
+          <BarsLabels />
+          <CatchingUpBars />
+          <BarsFooter />
+        </Flex>
+      )}
 
       <Card className={styles.card}>
         <Text className={styles.title}>Shreds</Text>
@@ -26,6 +28,8 @@ export default function CatchingUp() {
           <ShredsChart chartId="catching-up-shreds" isOnStartupScreen />
         </Box>
       </Card>
+
+      <CatchingUpTiles />
     </Flex>
   );
 }

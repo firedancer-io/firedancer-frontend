@@ -20,6 +20,7 @@ interface TileCardProps {
   liveIdlePerTile?: number[];
   queryIdlePerTile?: number[][];
   metricType?: keyof TilePrimaryMetric;
+  sparklineHeight?: number;
   isExpanded: boolean;
   setIsExpanded: (isExpanded: boolean) => void;
 }
@@ -32,6 +33,7 @@ export default function TileCard({
   liveIdlePerTile,
   queryIdlePerTile,
   metricType,
+  sparklineHeight,
   isExpanded,
   setIsExpanded,
 }: TileCardProps) {
@@ -50,7 +52,7 @@ export default function TileCard({
 
   return (
     <Flex ref={ref}>
-      <Card>
+      <Card style={{ width: "100%" }}>
         <Flex direction="column" justify="between" height="100%" gap="1">
           <TileHeader
             header={header}
@@ -59,7 +61,11 @@ export default function TileCard({
             metricType={metricType}
           />
           <Box flexGrow="1" />
-          <TileSparkLine value={avgBusy} queryBusy={aggQueryBusyPerTs} />
+          <TileSparkLine
+            value={avgBusy}
+            queryBusy={aggQueryBusyPerTs}
+            height={sparklineHeight}
+          />
           <TileSparkLineExpandedContainer
             tileCountArr={tileCountArr}
             liveBusyPerTile={liveBusyPerTile}

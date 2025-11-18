@@ -7,7 +7,7 @@ import {
   isStartupProgressExpandedAtom,
   showStartupProgressAtom,
 } from "../atoms";
-import { Box, Container, Flex, Text } from "@radix-ui/themes";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import clsx from "clsx";
 import { ProgressBar } from "./ProgressBar";
 import { Header } from "./Header";
@@ -61,16 +61,22 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
   const isNarrow = useMedia("(max-width: 750px)");
 
   return (
-    <Container
+    <Flex
       ref={(el: HTMLDivElement) => setBootProgressContainerEl(el)}
-      maxWidth={appMaxWidth}
-      height="100%"
+      direction="column"
+      overflowY="auto"
       className={clsx(styles.container, phaseClass, {
         [styles.collapsed]: !showStartupProgress || !isStartupProgressExpanded,
       })}
-      p="4"
     >
-      <Flex direction="column" height="100%">
+      <Flex
+        direction="column"
+        height="100%"
+        width="100%"
+        maxWidth={appMaxWidth}
+        m="auto"
+        px="7px"
+      >
         <PhaseHeader phase={phase} />
 
         <Box flexGrow="1" mt="7" mb="1" mx={isNarrow ? "1" : "9"}>
@@ -82,7 +88,7 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
           {phase === BootPhaseEnum.catching_up && <CatchingUp />}
         </Box>
       </Flex>
-    </Container>
+    </Flex>
   );
 }
 
