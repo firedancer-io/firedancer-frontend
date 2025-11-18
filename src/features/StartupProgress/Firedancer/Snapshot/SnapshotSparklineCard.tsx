@@ -1,18 +1,18 @@
 import { Card, Flex, Text } from "@radix-ui/themes";
-import { Sparkline } from "../../Overview/SlotPerformance/TileSparkLine";
-import styles from "./snapshot.module.css";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
+import type { TileType } from "../../../../api/types";
 import {
-  liveSnapshotTimersAtom,
   tileCountAtom,
-} from "../../Overview/SlotPerformance/atoms";
+  liveSnapshotTimersAtom,
+} from "../../../Overview/SlotPerformance/atoms";
+import TileBusy from "../../../Overview/SlotPerformance/TileBusy";
+import { Sparkline } from "../../../Overview/SlotPerformance/TileSparkLine";
 import {
-  useScaledDataPoints,
   useTileSparkline,
-} from "../../Overview/SlotPerformance/useTileSparkline";
-import type { TileType } from "../../../api/types";
-import TileBusy from "../../Overview/SlotPerformance/TileBusy";
+  useScaledDataPoints,
+} from "../../../Overview/SlotPerformance/useTileSparkline";
+import styles from "./snapshot.module.css";
 
 const gridSize = 15;
 // add 1 px for the final grid line

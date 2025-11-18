@@ -2,13 +2,13 @@ import { Card, Flex, Text } from "@radix-ui/themes";
 import styles from "./snapshot.module.css";
 import byteSize from "byte-size";
 import clsx from "clsx";
-import { Bars } from "./Bars";
-import { useValuePerSecond } from "./useValuePerSecond";
-import { bootProgressPhaseAtom } from "../atoms";
+import { Bars } from "../Bars";
+import { useValuePerSecond } from "../useValuePerSecond";
+import { bootProgressPhaseAtom } from "../../atoms";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import StorageIcon from "@material-design-icons/svg/filled/storage.svg?react";
-import { compactSingleDecimalFormatter } from "../../../numUtils";
+import { compactSingleDecimalFormatter } from "../../../../numUtils";
 
 const MAX_THROUGHPUT_BYTES_PER_S = 300_000_000;
 

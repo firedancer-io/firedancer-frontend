@@ -1,12 +1,13 @@
 import { Flex } from "@radix-ui/themes";
-import { SnapshotLoadingCard } from "./SnapshotLoadingCard";
-import { bootProgressAtom } from "../../../api/atoms";
-import { useAtomValue } from "jotai";
-import SnapshotSparklineCard from "./SnapshotSparklineCard";
-import { BootPhaseEnum } from "../../../api/entities";
-import type { BootProgress } from "../../../api/types";
+
 import styles from "./snapshot.module.css";
 import { useMedia } from "react-use";
+import { useAtomValue } from "jotai";
+import { bootProgressAtom } from "../../../../api/atoms";
+import { BootPhaseEnum } from "../../../../api/entities";
+import type { BootProgress } from "../../../../api/types";
+import { SnapshotLoadingCard } from "./SnapshotLoadingCard";
+import SnapshotSparklineCard from "./SnapshotSparklineCard";
 
 const rowGap = "5";
 const columnGap = "26px";
@@ -60,7 +61,7 @@ function getSnapshotValues(bootProgress: BootProgress) {
   };
 }
 
-export function SnapshotProgress() {
+export default function Snapshot() {
   const bootProgress = useAtomValue(bootProgressAtom);
   const isNarrowScreen = useMedia("(max-width: 560px)");
   const wrap = isNarrowScreen ? "wrap" : "nowrap";

@@ -14,12 +14,12 @@ import { Header } from "./Header";
 import { BootPhaseEnum } from "../../../api/entities";
 import { getTimeTillText } from "../../../utils";
 import { bootProgressContainerElAtom } from "../../../atoms";
-import { GossipProgress } from "./GossipProgress";
+import Gossip from "./Gossip";
 import { steps } from "./consts";
 import type { BootPhase } from "../../../api/types";
 import Logo from "./Logo";
 import { appMaxWidth } from "../../../consts";
-import { SnapshotProgress } from "./SnapshotProgress";
+import Snapshot from "./Snapshot";
 import { useUptimeDuration } from "../../../hooks/useUptime";
 import CatchingUp from "./CatchingUp";
 import { useMedia } from "react-use";
@@ -80,10 +80,10 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
         <PhaseHeader phase={phase} />
 
         <Box flexGrow="1" mt="7" mb="1" mx={isNarrow ? "1" : "9"}>
-          {phase === BootPhaseEnum.joining_gossip && <GossipProgress />}
+          {phase === BootPhaseEnum.joining_gossip && <Gossip />}
           {(phase === BootPhaseEnum.loading_full_snapshot ||
             phase === BootPhaseEnum.loading_incremental_snapshot) && (
-            <SnapshotProgress />
+            <Snapshot />
           )}
           {phase === BootPhaseEnum.catching_up && <CatchingUp />}
         </Box>
