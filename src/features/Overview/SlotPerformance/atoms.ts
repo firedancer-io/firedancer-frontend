@@ -274,8 +274,6 @@ export const rateLiveWaterfallAtom = atom(
   },
 );
 
-export const isTileSparkLineExpandedAtom = atom(false);
-
 export const tileCountAtom = atom((get) => {
   const tiles = get(tilesAtom);
   return countBy(tiles, (t) => t.kind);

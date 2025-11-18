@@ -1,8 +1,10 @@
 import styles from "./tilesPerformance.module.css";
 import TileCard from "./TileCard";
 import { useTilesPerformance } from "./useTilesPerformance";
+import { useState } from "react";
 
 export default function TilesPerformance() {
+  const [isExpanded, setIsExpanded] = useState(false);
   const { tileCounts, groupedLiveIdlePerTile, showLive, queryIdleData } =
     useTilesPerformance();
 
@@ -18,6 +20,8 @@ export default function TilesPerformance() {
         queryIdlePerTile={showLive ? undefined : queryIdleData?.[netType]}
         statLabel="Ingress"
         metricType="net_in"
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       />
       <TileCard
         header="QUIC"
@@ -26,6 +30,8 @@ export default function TilesPerformance() {
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["quic"]}
         statLabel="Conns"
         metricType="quic"
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       />
       {"bundle" in tileCounts && (
         <TileCard
@@ -42,6 +48,8 @@ export default function TilesPerformance() {
                 statLabel: "Lat p90",
                 metricType: "bundle_rx_delay_millis_p90",
               })}
+          isExpanded={isExpanded}
+          setIsExpanded={setIsExpanded}
         />
       )}
       <TileCard
@@ -51,6 +59,8 @@ export default function TilesPerformance() {
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["verify"]}
         statLabel="Failed"
         metricType="verify"
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       />
       <TileCard
         header="dedup"
@@ -59,6 +69,8 @@ export default function TilesPerformance() {
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["dedup"]}
         statLabel="Dupes"
         metricType="dedup"
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       />
       <TileCard
         header="resolv"
@@ -66,6 +78,8 @@ export default function TilesPerformance() {
         liveIdlePerTile={groupedLiveIdlePerTile?.["resolv"]}
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["resolv"]}
         statLabel="Resolv"
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       />
       <TileCard
         header="pack"
@@ -74,6 +88,8 @@ export default function TilesPerformance() {
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["pack"]}
         statLabel="Full"
         metricType="pack"
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       />
       <TileCard
         header="bank"
@@ -82,6 +98,8 @@ export default function TilesPerformance() {
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["bank"]}
         statLabel="TPS"
         metricType="bank"
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       />
       <TileCard
         header="poh"
@@ -90,6 +108,8 @@ export default function TilesPerformance() {
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["poh"]}
         statLabel="Hash"
         // metricType="poh"
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       />
       <TileCard
         header="shred"
@@ -98,6 +118,8 @@ export default function TilesPerformance() {
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["shred"]}
         statLabel="Shreds"
         // metricType="shred"
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       />
       <TileCard
         header="store"
@@ -106,6 +128,8 @@ export default function TilesPerformance() {
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["store"]}
         statLabel="Latency"
         // metricType="store"
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       />
       <TileCard
         header={netType}
@@ -115,6 +139,8 @@ export default function TilesPerformance() {
         queryIdlePerTile={showLive ? undefined : queryIdleData?.[netType]}
         statLabel="Egress" // mbs
         metricType="net_out"
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       />
     </div>
   );

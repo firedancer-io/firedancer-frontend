@@ -20,6 +20,8 @@ interface TileCardProps {
   liveIdlePerTile?: number[];
   queryIdlePerTile?: number[][];
   metricType?: keyof TilePrimaryMetric;
+  isExpanded: boolean;
+  setIsExpanded: (isExpanded: boolean) => void;
 }
 
 export default function TileCard({
@@ -30,6 +32,8 @@ export default function TileCard({
   liveIdlePerTile,
   queryIdlePerTile,
   metricType,
+  isExpanded,
+  setIsExpanded,
 }: TileCardProps) {
   const [ref, { width }] = useMeasure<HTMLDivElement>();
 
@@ -69,6 +73,8 @@ export default function TileCard({
                 metricType={metricType}
               />
             }
+            isExpanded={isExpanded}
+            setIsExpanded={setIsExpanded}
           >
             <div className={styles.tileContainer}>
               {tileCountArr.map((_, i) => {
