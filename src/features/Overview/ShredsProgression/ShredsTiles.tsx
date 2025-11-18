@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { TileType } from "../../../api/types";
 import TileCard from "../SlotPerformance/TileCard";
 import styles from "../SlotPerformance/tilesPerformance.module.css";
@@ -19,6 +20,7 @@ const tiles: TileType[] = [
   "gui",
 ];
 export default function ShredTiles() {
+  const [isExpanded, setIsExpanded] = useState(false);
   const { tileCounts, groupedLiveIdlePerTile, showLive, queryIdleData } =
     useTilesPerformance();
 
@@ -32,6 +34,8 @@ export default function ShredTiles() {
           liveIdlePerTile={groupedLiveIdlePerTile?.[tile]}
           queryIdlePerTile={showLive ? undefined : queryIdleData?.[tile]}
           statLabel=""
+          isExpanded={isExpanded}
+          setIsExpanded={setIsExpanded}
         />
       ))}
     </div>

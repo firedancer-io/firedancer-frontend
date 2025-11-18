@@ -1,8 +1,6 @@
 import { Button, Flex, Popover } from "@radix-ui/themes";
 import type { PropsWithChildren, ReactNode } from "react";
 import styles from "./tileSparkLineExpandedContainer.module.css";
-import { useAtom } from "jotai";
-import { isTileSparkLineExpandedAtom } from "./atoms";
 import TileSparkLine from "./TileSparkLine";
 import TileBusy from "./TileBusy";
 import { mean } from "lodash";
@@ -16,6 +14,8 @@ interface TileSparkLineExpandedContainerProps {
   queryIdlePerTile?: number[][];
   width: number;
   header: ReactNode;
+  isExpanded: boolean;
+  setIsExpanded: (isExpanded: boolean) => void;
 }
 
 export default function TileSparkLineExpandedContainer({
@@ -25,28 +25,26 @@ export default function TileSparkLineExpandedContainer({
   queryIdlePerTile,
   width,
   header,
+  isExpanded,
+  setIsExpanded,
 }: PropsWithChildren<TileSparkLineExpandedContainerProps>) {
   const canExpand = tileCountArr.length > 1;
-  const [isTileSparkLineExpanded, setIsSparkLineExpanded] = useAtom(
-    isTileSparkLineExpandedAtom,
-  );
-
   if (!canExpand) return <Flex gap="1">{children}</Flex>;
 
   return (
     <Popover.Root
-      open={isTileSparkLineExpanded}
+      open={isExpanded}
       onOpenChange={(open) => {
         if (recentlyOnOpen) return;
 
-        setIsSparkLineExpanded(open);
+        setIsExpanded(open);
         recentlyOnOpen = true;
         setTimeout(() => (recentlyOnOpen = false), 10);
       }}
       defaultOpen={false}
     >
       <Popover.Trigger>
-        {!isTileSparkLineExpanded ? (
+        {!isExpanded ? (
           <Button className={styles.btn}>{children}</Button>
         ) : (
           <div></div>
