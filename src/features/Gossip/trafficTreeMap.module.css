@@ -1,0 +1,14 @@
+.header-text {
+  color: var(--primary-text-color);
+  font-size: 18px;
+}
+
+.total-text {
+  color: var(--gray-7);
+  font-size: 18px;
+}
+
+.throughput-text {
+  color: var(--gray-10);
+  font-size: 18px;
+}

@@ -2,8 +2,8 @@ import { Flex, Table, Text } from "@radix-ui/themes";
 import { useMemo } from "react";
 import EmaTableCell from "./RateTableCell";
 import type { GossipMessageStats } from "../../api/types";
-import { messageTypes } from "./consts";
-import tableStyles from "./table.module.css";
+import { headerGap, messageTypes, tableMinWidth } from "./consts";
+import styles from "./table.module.css";
 
 interface MessageStatsTableProps {
   messages: GossipMessageStats;
@@ -27,9 +27,9 @@ export default function MessageStatsTable({
   if (!tableData) return;
 
   return (
-    <Flex direction="column" gap="1">
-      <Text size="4">Message Stats</Text>
-      <Table.Root variant="surface" className={tableStyles.root} size="1">
+    <Flex direction="column" gap={headerGap} minWidth={tableMinWidth}>
+      <Text className={styles.headerText}>Message Stats</Text>
+      <Table.Root variant="surface" className={styles.root} size="1">
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeaderCell>Message Type</Table.ColumnHeaderCell>

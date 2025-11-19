@@ -17,6 +17,9 @@ import byteSize from "byte-size";
 import { CaretDownIcon, CaretUpIcon } from "@radix-ui/react-icons";
 import { useKey } from "react-use";
 import { copyToClipboard } from "../../../utils";
+import styles from "./peerTable.module.css";
+import clsx from "clsx";
+import { headerGap } from "../consts";
 
 const defaultTableSize = 1_000;
 const buffer = 0;
@@ -129,11 +132,16 @@ export default function PeerTable() {
   }, []);
 
   return (
-    <Flex direction="column" flexGrow="1">
-      <Text size="4">Peers</Text>
+    <Flex direction="column" gap={headerGap} flexGrow="1">
+      <Text className={styles.headerText}>Peers</Text>
       <Box flexGrow="1" minHeight="300px" asChild>
         <TableVirtuoso
-          className="rt-TableRoot rt-r-size-1 rt-variant-surface"
+          className={clsx(
+            "rt-TableRoot",
+            "rt-r-size-1",
+            "rt-variant-surface",
+            styles.peerTable,
+          )}
           totalCount={size}
           increaseViewportBy={200}
           rangeChanged={onRangeChanged}
@@ -209,11 +217,7 @@ export default function PeerTable() {
                   <Table.ColumnHeaderCell key={colId} align={align} p="0">
                     <Flex align="center" height="100%">
                       <Reset>
-                        <Box
-                          flexGrow="1"
-                          style={{ padding: "var(--table-cell-padding)" }}
-                          asChild
-                        >
+                        <Box flexGrow="1" className={styles.headerCell} asChild>
                           <button onClick={() => sort(colId)}>
                             <Flex
                               align="center"
@@ -244,9 +248,7 @@ export default function PeerTable() {
                         <Separator
                           orientation="vertical"
                           size="2"
-                          style={{
-                            background: "var(--gray-7)",
-                          }}
+                          className={styles.headerSeparator}
                         />
                       </div>
                     </Flex>

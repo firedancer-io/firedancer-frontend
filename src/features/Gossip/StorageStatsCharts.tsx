@@ -1,5 +1,13 @@
 import { useMemo, useRef } from "react";
-import { storageTypes } from "./consts";
+import {
+  gridColumns,
+  gridGap,
+  gridMinWidth,
+  headerGap,
+  pieChartMinDiameter,
+  statsCardPieChartGap,
+  storageTypes,
+} from "./consts";
 import type { GossipStorageStats } from "../../api/types";
 import { Box, Flex, Grid, Text } from "@radix-ui/themes";
 import { useValuePerSecond } from "../StartupProgress/Firedancer/useValuePerSecond";
@@ -60,26 +68,33 @@ export default function StorageStatsCharts({
 
   if (!data) return;
   return (
-    <Flex direction="column" gap="1">
-      <Text size="4">Storage Stats</Text>
-      <Flex gap="1">
+    <Flex direction="column" gap={headerGap}>
+      <Text className={styles.headerText}>Storage Stats</Text>
+      <Flex gap={statsCardPieChartGap} wrap="wrap">
         <Grid
-          columns="repeat(auto-fill, minmax(160px, 1fr)"
-          gap="4"
+          columns={gridColumns}
+          minWidth={gridMinWidth}
+          gap={gridGap}
           flexGrow="1"
+          flexBasis="0"
         >
           <StatCard
-            label="Expired /s"
+            label="Expired (/s)"
             value={`${Math.trunc(expired.valuePerSecond ?? 0)}`}
           />
           <StatCard
-            label="Expired last min"
+            label="Expired (Last Min)"
             value={`${expiredLastMin.toLocaleString()}`}
           />
           <StatCard label="Total Evicted" value={storage.evicted_count} />
           <StatCard label="Capacity Used" value={usedCapacity} />
         </Grid>
-        <Box flexGrow="1">
+        <Box
+          minWidth={pieChartMinDiameter}
+          minHeight={pieChartMinDiameter}
+          flexGrow="1"
+          flexBasis="0"
+        >
           <StorageStatsPieChart storage={storage} usedCapacity={usedCapacity} />
         </Box>
       </Flex>

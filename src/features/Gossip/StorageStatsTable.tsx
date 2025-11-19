@@ -1,9 +1,9 @@
 import { Flex, Table, Text } from "@radix-ui/themes";
 import { useMemo } from "react";
 import EmaTableCell from "./RateTableCell";
-import { storageTypes } from "./consts";
+import { headerGap, storageTypes, tableMinWidth } from "./consts";
 import type { GossipStorageStats } from "../../api/types";
-import tableStyles from "./table.module.css";
+import styles from "./table.module.css";
 
 interface StorageStatsTableProps {
   storage: GossipStorageStats;
@@ -29,22 +29,16 @@ export default function StorageStatsTable({ storage }: StorageStatsTableProps) {
 
   return (
     <Flex
+      className={styles.storageStatsContainer}
       direction="column"
-      gap="1"
-      style={{
-        // takes table out of grid track sizing so it will size up to the other column's table
-        contain: "size",
-        // so it doesn't shrink to 0 when collapsed to single column
-        minHeight: "250px",
-      }}
+      gap={headerGap}
+      minWidth={tableMinWidth}
+      height="100%"
+      // Prevents shrinking to 0 when collapsed to single column
+      minHeight="250px"
     >
-      <Text size="4">Storage Stats</Text>
-      <Table.Root
-        variant="surface"
-        className={tableStyles.root}
-        style={{ minHeight: 0 }}
-        size="1"
-      >
+      <Text className={styles.headerText}>Storage Stats</Text>
+      <Table.Root variant="surface" className={styles.root} size="1">
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeaderCell>Entry Type</Table.ColumnHeaderCell>

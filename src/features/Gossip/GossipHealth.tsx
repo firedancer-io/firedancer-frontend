@@ -20,7 +20,7 @@ interface GossipHealthProps {
 
 export default function GossipHealth({ health }: GossipHealthProps) {
   return (
-    <Flex gap="2">
+    <Flex gap="2" wrap="wrap">
       <Flex direction="column" flexGrow="1" gap="2">
         <TotalEntriesCard health={health} />
         <TotalMessagesCard health={health} />
@@ -149,7 +149,6 @@ function SparkLineCard({ label, value, total, color }: SparkLineCardProps) {
           label={label}
           value={Math.trunc(value)}
           valueColor={color}
-          size="sm"
         />
         <Text
           style={{
@@ -234,13 +233,11 @@ function TotalEntriesCard({ health }: GossipHealthProps) {
               label="Push /s"
               value={Math.trunc(push).toLocaleString()}
               valueColor="var(--green-9)"
-              size="sm"
             />
             <StatCardContent
               label="Pull /s"
               value={Math.trunc(pull).toLocaleString()}
               valueColor="var(--gold-10)"
-              size="sm"
             />
           </Flex>
         </Flex>
@@ -271,13 +268,11 @@ function TotalMessagesCard({ health }: GossipHealthProps) {
               label="Push /s"
               value={Math.trunc(push).toLocaleString()}
               valueColor="var(--green-9)"
-              size="sm"
             />
             <StatCardContent
               label="Pull /s"
               value={Math.trunc(pull).toLocaleString()}
               valueColor="var(--gold-10)"
-              size="sm"
             />
           </Flex>
         </Flex>
@@ -307,13 +302,11 @@ function PushCard({ health }: GossipHealthProps) {
               label="Duplicates /s"
               value={Math.trunc(dupe).toLocaleString()}
               valueColor={dupeColor}
-              size="sm"
             />
             <StatCardContent
               label="Failures /s"
               value={Math.trunc(fail).toLocaleString()}
               valueColor={failColor}
-              size="sm"
             />
           </Flex>
         </Flex>
@@ -346,13 +339,11 @@ function PullCard({ health }: GossipHealthProps) {
               label="Duplicates /s"
               value={Math.trunc(dupe).toLocaleString()}
               valueColor={dupeColor}
-              size="sm"
             />
             <StatCardContent
               label="Failures /s"
               value={Math.trunc(fail).toLocaleString()}
               valueColor={failColor}
-              size="sm"
             />
           </Flex>
         </Flex>

@@ -223,6 +223,8 @@ export const slotTextVisitedLinkColor = "#967DC8";
 
 // gossip
 export const gossipDelinquentPubkeyColor = "#6D6F71";
+export const gossipTableHeaderColor = "#CBCBCB";
+export const gossipTableBodyColor = "#8A8A8A";
 
 // slot status
 export const slotStatusRed = "#871616";
