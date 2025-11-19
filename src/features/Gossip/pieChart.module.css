@@ -1,7 +1,26 @@
+.header-text {
+  color: var(--primary-text-color);
+  font-size: 18px;
+}
+
+/* This prevents the nivo tooltip wrapper from overflowing and
+causing a horizontal scrollbar */
+div:has(> .tooltip) {
+  width: 1px;
+  height: 1px;
+}
+
 .tooltip {
+  width: fit-content;
+  /* This left aligns the tooltip from the position nivo calculates */
+  transform: translate(calc(-100% - 5px));
   padding: 4px;
   background: #131923;
   border: 1px solid #2e343e;
   border-radius: 4px 8px;
   color: var(--regular-text-color);
+
+  span {
+    white-space: nowrap;
+  }
 }

@@ -1,5 +1,34 @@
+.header-text {
+  color: var(--primary-text-color);
+  font-size: 18px;
+}
+
+.storage-stats-container {
+  /* takes table out of grid track sizing so it will size up to the other column's table */
+  contain: size;
+}
+
 .root {
-  td, th {
+  min-height: 0;
+
+  thead {
+    th {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--gossip-table-header-color);
+    }
+  }
+
+  tbody {
+    th,
+    td {
+      font-size: 14px;
+      color: var(--gossip-table-body-color);
+    }
+  }
+
+  td,
+  th {
     white-space: nowrap;
   }
   td {
@@ -7,6 +36,6 @@
   }
 }
 
-.align-right{
+.align-right {
   text-align: right;
 }

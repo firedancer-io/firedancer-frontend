@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { useCallback, useMemo } from "react";
-import { Flex, Text } from "@radix-ui/themes";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import type { GossipNetworkTraffic } from "../../api/types";
 import { hierarchy, Treemap, treemapSquarify } from "@visx/hierarchy";
 import { Group } from "@visx/group";
@@ -18,6 +18,8 @@ import { formatNumberLamports } from "../Overview/ValidatorsCard/formatAmt";
 import { sum } from "lodash";
 import byteSize from "byte-size";
 import AutoSizer from "react-virtualized-auto-sizer";
+import { headerGap } from "./consts";
+import styles from "./trafficTreeMap.module.css";
 
 const colorsList = [
   "#00F0FF",
@@ -122,29 +124,35 @@ export function TrafficTreeMap({
   if (!data) return;
 
   return (
-    <Flex direction="column" minHeight="300px">
+    <Flex
+      direction="column"
+      gap={headerGap}
+      minHeight="300px"
+      minWidth="300px"
+      flexGrow="1"
+    >
       <Flex justify="between">
-        <Text size="4">{label}</Text>
+        <Text className={styles.headerText}>{label}</Text>
 
         <span>
-          <Text size="4" style={{ color: "var(--gray-11)" }}>
-            Total:
-          </Text>
-          <Text size="4">
-            &nbsp;{byteSize(networkTraffic.total_throughput).toString()}&nbsp;/s
+          <Text className={styles.totalText}>Total</Text>
+          <Text className={styles.throughputText}>
+            &nbsp;{byteSize(networkTraffic.total_throughput).toString()}/s
           </Text>
         </span>
       </Flex>
-      <AutoSizer>
-        {({ height, width }) => (
-          <TreemapTwoLevel
-            data={data}
-            width={width}
-            height={height}
-            getPeerValues={getPeerValues}
-          />
-        )}
-      </AutoSizer>
+      <Box flexGrow="1">
+        <AutoSizer>
+          {({ height, width }) => (
+            <TreemapTwoLevel
+              data={data}
+              width={width}
+              height={height}
+              getPeerValues={getPeerValues}
+            />
+          )}
+        </AutoSizer>
+      </Box>
     </Flex>
   );
 }

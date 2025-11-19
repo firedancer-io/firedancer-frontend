@@ -1,10 +1,10 @@
 import { Card, Flex, Text } from "@radix-ui/themes";
+import styles from "./statCard.module.css";
 
 interface StatCardProps {
   label: string;
   value: number | string;
   valueColor?: string;
-  size?: "sm";
 }
 
 export function StatCard(props: StatCardProps) {
@@ -15,22 +15,15 @@ export function StatCard(props: StatCardProps) {
   );
 }
 
-export function StatCardContent({
-  value,
-  label,
-  valueColor,
-  size,
-}: StatCardProps) {
+export function StatCardContent({ value, label, valueColor }: StatCardProps) {
   const formattedValue =
     typeof value === "string" ? value : value.toLocaleString();
   return (
-    <Flex direction="column">
-      <Text size="5" style={{ color: "var(--gray-10)" }}>
-        {label}
-      </Text>
+    <Flex direction="column" minWidth="0" gap="10px">
+      <Text className={styles.label}>{label}</Text>
       <Text
-        size={size === "sm" ? '7' : '8'}
-        style={{ color: valueColor ?? "var(--gray-11)" }}
+        className={styles.value}
+        style={valueColor ? { color: valueColor } : undefined}
       >
         {formattedValue}
       </Text>

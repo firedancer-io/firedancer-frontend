@@ -119,7 +119,7 @@ function Tooltip(
 
   return (
     <div className={styles.tooltip}>
-      <Text style={{ whiteSpace: "nowrap" }}>
+      <Text>
         {props.datum.label}:&nbsp;{fmtValue}
       </Text>
     </div>

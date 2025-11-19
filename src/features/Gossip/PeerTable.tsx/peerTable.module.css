@@ -1,0 +1,40 @@
+.header-text {
+  color: var(--primary-text-color);
+  font-size: 18px;
+}
+
+.peer-table {
+  thead {
+    tr {
+      font-size: 12px;
+      color: var(--gossip-table-header-color);
+    }
+  }
+
+  tbody {
+    tr {
+      font-size: 14px;
+      color: var(--gossip-table-body-color);
+    }
+  }
+}
+
+.header-cell {
+  padding: var(--table-cell-padding);
+}
+
+.header-separator {
+  background: var(--gray-7);
+}
+
+.body-cell {
+  outline-offset: -2px;
+
+  &.selected {
+    outline: 1px dashed var(--gray-10);
+
+    &.copied {
+      outline: 1px dashed var(--gray-11);
+    }
+  }
+}

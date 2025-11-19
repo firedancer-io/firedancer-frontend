@@ -10,6 +10,15 @@ import {
 import ValidatorStatsChart from "./ValidatorStatsChart";
 import { formatNumberLamports } from "../Overview/ValidatorsCard/formatAmt";
 import { StatCard } from "./StatCard";
+import styles from "./pieChart.module.css";
+import {
+  gridColumns,
+  gridGap,
+  gridMinWidth,
+  headerGap,
+  pieChartMinDiameter,
+  statsCardPieChartGap,
+} from "./consts";
 
 export default function StakeStatsChart() {
   {
@@ -20,33 +29,31 @@ export default function StakeStatsChart() {
     const delinquentLabel = formatNumberLamports(peerStats.delinquentStake);
 
     return (
-      <Flex gap="1" direction="column">
-        <Text size="4">Validator Stats</Text>
-        <Flex align="stretch" justify="between" gap="2">
-          {/* TODO fix do avoid 3x1 */}
+      <Flex direction="column" gap={headerGap}>
+        <Text className={styles.headerText}>Validator Stats</Text>
+        <Flex gap={statsCardPieChartGap} wrap="wrap">
           <Grid
-            columns="repeat(auto-fit, minmax(200px, 1fr)"
-            gap="4"
-            flexGrow=".6"
+            columns={gridColumns}
+            minWidth={gridMinWidth}
+            gap={gridGap}
+            flexGrow="1"
+            flexBasis="0"
           >
             <StatCard
               label="Total Validators"
               value={peerStats.validatorCount.toLocaleString()}
               valueColor={totalValidatorsColor}
             />
-
             <StatCard
               label="Non-delinquent Stake"
               value={activeLabel}
               valueColor={nonDelinquentColor}
             />
-
             <StatCard
               label="RPC Nodes"
               value={peerStats.rpcCount.toLocaleString()}
               valueColor={headerColor}
             />
-
             <StatCard
               label="Delinquent Stake"
               value={delinquentLabel}
@@ -54,7 +61,12 @@ export default function StakeStatsChart() {
             />
           </Grid>
 
-          <Box minWidth="100px" minHeight="100px" flexGrow="1">
+          <Box
+            minWidth={pieChartMinDiameter}
+            minHeight={pieChartMinDiameter}
+            flexGrow="1"
+            flexBasis="0"
+          >
             <ValidatorStatsChart
               activeStake={peerStats.activeStake}
               delinquentStake={peerStats.delinquentStake}
