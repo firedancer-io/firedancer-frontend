@@ -93,7 +93,7 @@
 }
 
 .reading-card {
-  .readPathContainer {
+  .read-path-container {
     color: var(--app-teal);
     font-size: 16px;
     svg {
@@ -103,7 +103,7 @@
       fill: var(--app-teal);
     }
 
-    .readPath {
+    .read-path {
       min-width: 0;
     }
   }
@@ -122,11 +122,22 @@
 
 @media (max-width: 1190px) {
   .decompressing-card {
-    .total {
-      text-align: right;
+    justify-content: space-between;
+
+    .decompressing-card-left {
+      flex-direction: column;
+      flex-grow: 0;
+      align-items: flex-start;
+
+      .title,
+      .total {
+        text-align: left;
+      }
     }
-    .throughputs {
-      flex-grow: 1;
+    .decompressing-card-right {
+      flex-direction: column;
+      flex-grow: 0;
+      text-align: right;
     }
   }
 }
@@ -158,14 +169,15 @@
       flex-direction: column;
       align-items: flex-start;
     }
+    .decompressing-card-left,
+    .decompressing-card-right {
+      flex-direction: column;
+      align-items: flex-start;
+    }
     .total,
     .throughput,
     .accounts-rate {
       text-align: left;
-    }
-    .throughputs {
-      flex-direction: column;
-      flex-grow: 1;
     }
   }
 }

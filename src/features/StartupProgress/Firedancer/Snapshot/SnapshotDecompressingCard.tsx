@@ -54,9 +54,21 @@ export function SnapshotDecompressingCard({
       containerClassName={styles.decompressingCard}
       headerContent={
         <>
-          <SnapshotTitle text="Decompressing" />
-          <SnapshotTotalComplete completed={completedObj} total={totalObj} />
-          <Flex gapX="30px" justify="between" className={styles.throughputs}>
+          <Flex
+            flexGrow="1"
+            justify="between"
+            align="center"
+            className={styles.decompressingCardLeft}
+          >
+            <SnapshotTitle text="Decompressing" />
+            <SnapshotTotalComplete completed={completedObj} total={totalObj} />
+          </Flex>
+          <Flex
+            gapX="30px"
+            justify="end"
+            flexGrow="1"
+            className={styles.decompressingCardRight}
+          >
             <SnapshotThroughput
               prefix="Input"
               throughput={compressedThroughputObj}
