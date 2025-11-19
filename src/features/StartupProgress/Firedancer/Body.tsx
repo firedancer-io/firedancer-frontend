@@ -75,11 +75,11 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
         width="100%"
         maxWidth={appMaxWidth}
         m="auto"
-        px="7px"
+        px="20px"
       >
         <PhaseHeader phase={phase} />
 
-        <Box flexGrow="1" mt="7" mb="1" mx={isNarrow ? "1" : "9"}>
+        <Box flexGrow="1" mt="52px" mb="1" mx={isNarrow ? "0" : "69px"}>
           {phase === BootPhaseEnum.joining_gossip && <Gossip />}
           {(phase === BootPhaseEnum.loading_full_snapshot ||
             phase === BootPhaseEnum.loading_incremental_snapshot) && (

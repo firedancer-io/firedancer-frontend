@@ -298,6 +298,30 @@ export function formatBytesAsBits(bytes: number): {
   return { value: getRoundedBitsValue(bits / 1_000_000_000), unit: "Gbit" };
 }
 
+export interface FormattedBytes {
+  value: string;
+  unit: string;
+}
+
+export function formatBytes(
+  bytes: number,
+  precision = 1,
+  noDecimalForZero = true,
+): {
+  value: string;
+  unit: string;
+} {
+  if (bytes === 0 && noDecimalForZero) return { value: "0", unit: "B" };
+  if (bytes < 1_000) return { value: bytes.toFixed(precision), unit: "B" };
+  if (bytes < 1_000_000)
+    return { value: (bytes / 1_000).toFixed(precision), unit: "KB" };
+  if (bytes < 1_000_000_000) {
+    return { value: (bytes / 1_000_000).toFixed(precision), unit: "MB" };
+  }
+
+  return { value: (bytes / 1_000_000_000).toFixed(precision), unit: "GB" };
+}
+
 /**
  * Round to 1 decimal place if value is <= 10, otherwise round to nearest integer
  */
