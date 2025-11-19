@@ -6,8 +6,10 @@ import { useAtomValue } from "jotai";
 import { bootProgressAtom } from "../../../../api/atoms";
 import { BootPhaseEnum } from "../../../../api/entities";
 import type { BootProgress } from "../../../../api/types";
-import { SnapshotLoadingCard } from "./SnapshotLoadingCard";
 import SnapshotSparklineCard from "./SnapshotSparklineCard";
+import { SnapshotReadingCard } from "./SnapshotReadingCard";
+import { SnapshotDecompressingCard } from "./SnapshotDecompressingCard";
+import { SnapshotInsertingCard } from "./SnapshotInsertingCard";
 
 const rowGap = "5";
 const columnGap = "26px";
@@ -36,27 +38,28 @@ function getSnapshotValues(bootProgress: BootProgress) {
     !loading_incremental_snapshot_total_bytes_compressed
   ) {
     return {
-      totalBytes: loading_full_snapshot_total_bytes_compressed,
-      readBytes: loading_full_snapshot_read_bytes_compressed,
+      totalCompressedBytes: loading_full_snapshot_total_bytes_compressed,
+      readCompressedBytes: loading_full_snapshot_read_bytes_compressed,
       readPath: loading_full_snapshot_read_path,
       decompressCompressedBytes:
         loading_full_snapshot_decompress_bytes_compressed,
       decompressDecompressedBytes:
         loading_full_snapshot_decompress_bytes_decompressed,
-      insertBytes: loading_full_snapshot_insert_bytes_decompressed,
+      insertDecompressedBytes: loading_full_snapshot_insert_bytes_decompressed,
       insertAccounts: loading_full_snapshot_insert_accounts,
     };
   }
 
   return {
-    totalBytes: loading_incremental_snapshot_total_bytes_compressed,
-    readBytes: loading_incremental_snapshot_read_bytes_compressed,
+    totalCompressedBytes: loading_incremental_snapshot_total_bytes_compressed,
+    readCompressedBytes: loading_incremental_snapshot_read_bytes_compressed,
     readPath: loading_incremental_snapshot_read_path,
     decompressCompressedBytes:
       loading_incremental_snapshot_decompress_bytes_compressed,
     decompressDecompressedBytes:
       loading_incremental_snapshot_decompress_bytes_decompressed,
-    insertBytes: loading_incremental_snapshot_insert_bytes_decompressed,
+    insertDecompressedBytes:
+      loading_incremental_snapshot_insert_bytes_decompressed,
     insertAccounts: loading_incremental_snapshot_insert_accounts,
   };
 }
@@ -70,65 +73,77 @@ export default function Snapshot() {
   if (!bootProgress) return;
 
   const {
-    totalBytes,
-    readBytes,
+    totalCompressedBytes,
+    readCompressedBytes,
     readPath,
     decompressCompressedBytes,
     decompressDecompressedBytes,
-    insertBytes,
+    insertDecompressedBytes,
     insertAccounts,
   } = getSnapshotValues(bootProgress);
 
-  const insertCompletedBytes =
-    insertBytes && decompressCompressedBytes && decompressDecompressedBytes
-      ? insertBytes * (decompressCompressedBytes / decompressDecompressedBytes)
+  const insertCompressedBytes =
+    insertDecompressedBytes &&
+    decompressCompressedBytes &&
+    decompressDecompressedBytes
+      ? insertDecompressedBytes *
+        (decompressCompressedBytes / decompressDecompressedBytes)
+      : 0;
+
+  const totalDecompressedBytes =
+    totalCompressedBytes &&
+    decompressCompressedBytes &&
+    decompressDecompressedBytes
+      ? (totalCompressedBytes * decompressDecompressedBytes) /
+        decompressCompressedBytes
       : 0;
 
   return (
     <Flex direction="column" gap={columnGap}>
       <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
-        <SnapshotLoadingCard
-          title="Reading"
-          completed={readBytes}
-          total={totalBytes}
-          footerText={readPath}
+        <SnapshotReadingCard
+          compressedCompleted={readCompressedBytes}
+          compressedTotal={totalCompressedBytes}
+          readPath={readPath}
         />
         <SnapshotSparklineCard
           title="CPU Utilization"
           tileType="snapld"
-          isComplete={!!readBytes && readBytes === totalBytes}
+          isComplete={
+            !!readCompressedBytes &&
+            readCompressedBytes === totalCompressedBytes
+          }
         />
       </Flex>
 
       <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
-        <SnapshotLoadingCard
-          title="Decompressing"
-          completed={decompressCompressedBytes}
-          total={totalBytes}
+        <SnapshotDecompressingCard
+          compressedCompleted={decompressCompressedBytes}
+          decompressedCompleted={decompressDecompressedBytes}
+          compressedTotal={totalCompressedBytes}
         />
         <SnapshotSparklineCard
           title="CPU Utilization"
           tileType="snapdc"
           isComplete={
             !!decompressCompressedBytes &&
-            decompressCompressedBytes === totalBytes
+            decompressCompressedBytes === totalCompressedBytes
           }
         />
       </Flex>
 
       <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
-        <SnapshotLoadingCard
-          title="Inserting"
-          completed={insertCompletedBytes}
-          total={totalBytes}
-          showAccountRate
+        <SnapshotInsertingCard
+          decompressedCompleted={insertDecompressedBytes}
+          decompressedTotal={totalDecompressedBytes}
           cumulativeAccounts={insertAccounts}
         />
         <SnapshotSparklineCard
           title="CPU Utilization"
           tileType="snapin"
           isComplete={
-            !!insertCompletedBytes && insertCompletedBytes === totalBytes
+            !!insertCompressedBytes &&
+            insertCompressedBytes === totalCompressedBytes
           }
         />
       </Flex>
