@@ -1,7 +1,7 @@
 import { Button, Flex, IconButton, Separator } from "@radix-ui/themes";
 import { ZoomInIcon, ZoomOutIcon, ResetIcon } from "@radix-ui/react-icons";
 import styles from "./cuChartActions.module.css";
-import { xScaleKey } from "./consts";
+import { banksXScaleKey } from "./consts";
 import { useAtomValue } from "jotai";
 import { isFullXRangeAtom } from "./atoms";
 
@@ -20,14 +20,14 @@ export default function CuChartActions({ onUplot }: CuChartActionsProps) {
           variant="soft"
           onClick={() =>
             onUplot((u) => {
-              const min = u.scales[xScaleKey].min ?? 0;
-              const max = u.scales[xScaleKey].max ?? 0;
+              const min = u.scales[banksXScaleKey].min ?? 0;
+              const max = u.scales[banksXScaleKey].max ?? 0;
               const range = max - min;
               if (range <= 0) return;
 
               const zoomDiff = range * 0.2;
 
-              u.setScale(xScaleKey, {
+              u.setScale(banksXScaleKey, {
                 min: min + zoomDiff,
                 max: max - zoomDiff,
               });
@@ -43,14 +43,14 @@ export default function CuChartActions({ onUplot }: CuChartActionsProps) {
             onUplot((u) => {
               const scaleMin = u.data[0][0];
               const scaleMax = u.data[0].at(-1) ?? scaleMin;
-              const min = u.scales[xScaleKey].min ?? 0;
-              const max = u.scales[xScaleKey].max ?? 0;
+              const min = u.scales[banksXScaleKey].min ?? 0;
+              const max = u.scales[banksXScaleKey].max ?? 0;
               const range = max - min;
               if (range <= 0) return;
 
               const zoomDiff = range * 0.2;
 
-              u.setScale(xScaleKey, {
+              u.setScale(banksXScaleKey, {
                 min: Math.max(min - zoomDiff, scaleMin),
                 max: Math.min(max + zoomDiff, scaleMax),
               });
@@ -65,7 +65,7 @@ export default function CuChartActions({ onUplot }: CuChartActionsProps) {
           variant="soft"
           onClick={() =>
             onUplot((u) =>
-              u.setScale(xScaleKey, {
+              u.setScale(banksXScaleKey, {
                 min: u.data[0][0],
                 max: u.data[0].at(-1) ?? 0,
               }),

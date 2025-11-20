@@ -1,4 +1,4 @@
-export const bankScaleKey = "banks";
+export const bankCountScaleKey = "banks";
 export const lamportsScaleKey = "lamports";
 export const computeUnitsScaleKey = "computeUnits";
-export const xScaleKey = "banksXScale";
+export const banksXScaleKey = "banksXScale";

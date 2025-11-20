@@ -1,4 +1,4 @@
-import { xScaleKey } from "./consts";
+import { banksXScaleKey } from "./consts";
 import { startLineColor } from "../../../../colors";
 import { getDefaultStore } from "jotai";
 import { ScheduleStrategyEnum } from "../../../../api/entities";
@@ -33,8 +33,8 @@ export function startLinePlugin(): uPlot.Plugin {
             return;
           }
 
-          const xScale = u.scales[xScaleKey];
-          const x = Math.round(u.valToPos(lineNs, xScaleKey, true));
+          const xScale = u.scales[banksXScaleKey];
+          const x = Math.round(u.valToPos(lineNs, banksXScaleKey, true));
 
           // no line if out of bounds
           if (
@@ -61,7 +61,9 @@ export function startLinePlugin(): uPlot.Plugin {
           ctx.restore();
 
           if (iconEl) {
-            const infoIconX = Math.round(u.valToPos(lineNs, xScaleKey, false));
+            const infoIconX = Math.round(
+              u.valToPos(lineNs, banksXScaleKey, false),
+            );
 
             const anchor = {
               left: infoIconX + u.over.offsetLeft - iconSize / 2,

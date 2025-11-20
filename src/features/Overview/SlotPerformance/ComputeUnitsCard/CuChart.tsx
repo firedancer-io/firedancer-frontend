@@ -10,10 +10,10 @@ import { timeScaleDragPlugin } from "../TransactionBarsCard/scaleDragPlugin";
 import { cuRefAreaPlugin } from "./cuRefAreaPlugin";
 import { startLinePlugin } from "./startLinePlugin";
 import {
-  bankScaleKey,
+  bankCountScaleKey,
   computeUnitsScaleKey,
   lamportsScaleKey,
-  xScaleKey,
+  banksXScaleKey,
 } from "./consts";
 import {
   cuChartTooltipDataAtom,
@@ -176,12 +176,12 @@ export default function CuChart({
       drawOrder: ["axes", "series"] as uPlot.DrawOrderKey[],
       cursor: {
         sync: {
-          key: xScaleKey,
+          key: banksXScaleKey,
         },
         points: { show: false },
       },
       scales: {
-        [xScaleKey]: {
+        [banksXScaleKey]: {
           time: false,
         },
         [computeUnitsScaleKey]: {
@@ -197,7 +197,7 @@ export default function CuChart({
             ];
           },
         },
-        [bankScaleKey]: {
+        [bankCountScaleKey]: {
           range: [0, maxBankCount + 1],
         },
         [lamportsScaleKey]: {
@@ -322,14 +322,16 @@ export default function CuChart({
         },
       ],
       series: [
-        {},
+        {
+          scale: banksXScaleKey,
+        },
         {
           label: "Active Bank",
           stroke: "rgba(117, 77, 18, 1)",
           paths,
           points: { show: false },
           width: 2 / devicePixelRatio,
-          scale: bankScaleKey,
+          scale: bankCountScaleKey,
         },
         {
           label: "Compute Units",

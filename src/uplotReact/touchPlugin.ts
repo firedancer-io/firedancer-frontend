@@ -1,7 +1,6 @@
 // derived from https://github.com/leeoniya/uPlot/blob/master/demos/zoom-touch.html
 
 import type uPlot from "uplot";
-import { xScaleKey } from "../features/Overview/SlotPerformance/ComputeUnitsCard/consts";
 import { clamp } from "./utils";
 
 interface Position {
@@ -57,8 +56,9 @@ export function touchPlugin(): uPlot.Plugin {
   return {
     hooks: {
       ready: (u) => {
-        xMin = u.scales.x.min ?? 0;
-        xMax = u.scales.x.max ?? 0;
+        const xScale = u.series[0].scale ?? "x";
+        xMin = u.scales[xScale].min ?? 0;
+        xMax = u.scales[xScale].max ?? 0;
         fxRange = xMax - xMin;
 
         function zoom() {
@@ -75,7 +75,7 @@ export function touchPlugin(): uPlot.Plugin {
           [nxMin, nxMax] = clamp(nxRange, nxMin, nxMax, fxRange, xMin, xMax);
 
           u.batch(() => {
-            u.setScale(xScaleKey, {
+            u.setScale(xScale, {
               min: nxMin,
               max: nxMax,
             });
@@ -95,14 +95,14 @@ export function touchPlugin(): uPlot.Plugin {
 
         u.over.addEventListener("touchstart", function (e) {
           if (
-            u.scales[xScaleKey].max === undefined ||
-            u.scales[xScaleKey].min === undefined
+            u.scales[xScale].max === undefined ||
+            u.scales[xScale].min === undefined
           )
             return;
 
           rect = u.over.getBoundingClientRect();
-          oxRange = u.scales[xScaleKey].max - u.scales[xScaleKey].min;
-          xVal = u.posToVal(fromPos.x, xScaleKey);
+          oxRange = u.scales[xScale].max - u.scales[xScale].min;
+          xVal = u.posToVal(fromPos.x, xScale);
 
           storePos(e, fromPos, rect);
 

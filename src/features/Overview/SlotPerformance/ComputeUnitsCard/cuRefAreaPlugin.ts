@@ -1,7 +1,7 @@
 import uPlot from "uplot";
 import type { SlotTransactions } from "../../../../api/types";
 import type { RefObject } from "react";
-import { computeUnitsScaleKey, xScaleKey } from "./consts";
+import { computeUnitsScaleKey, banksXScaleKey } from "./consts";
 import { round } from "lodash";
 import { getDefaultStore } from "jotai";
 import { showChartProjectionsAtom } from "./atoms";
@@ -330,7 +330,7 @@ export function cuRefAreaPlugin({
           const refLines = onlyMaxCu
             ? []
             : getRefLinesWithinScales(
-                u.scales[xScaleKey],
+                u.scales[banksXScaleKey],
                 u.scales[computeUnitsScaleKey],
                 slotTransactions,
                 refLineMaxComputeUnits,
@@ -340,8 +340,11 @@ export function cuRefAreaPlugin({
           // Adding a max CU line unrelated to bank count
           refLines.unshift({
             line: [
-              { x: u.scales[xScaleKey].min ?? 0, y: maxComputeUnits },
-              { x: u.scales[xScaleKey].max ?? 450_000_000, y: maxComputeUnits },
+              { x: u.scales[banksXScaleKey].min ?? 0, y: maxComputeUnits },
+              {
+                x: u.scales[banksXScaleKey].max ?? 450_000_000,
+                y: maxComputeUnits,
+              },
             ],
             bankCount: 0,
           });
@@ -358,11 +361,11 @@ export function cuRefAreaPlugin({
           // draw lines and labels
           for (let i = 0; i < refLines.length; i++) {
             const { line, bankCount } = refLines[i];
-            const x0 = Math.round(u.valToPos(line[0].x, xScaleKey, true));
+            const x0 = Math.round(u.valToPos(line[0].x, banksXScaleKey, true));
             const y0 = Math.round(
               u.valToPos(line[0].y, computeUnitsScaleKey, true),
             );
-            const x1 = Math.round(u.valToPos(line[1].x, xScaleKey, true));
+            const x1 = Math.round(u.valToPos(line[1].x, banksXScaleKey, true));
             const y1 = Math.round(
               u.valToPos(line[1].y, computeUnitsScaleKey, true),
             );
@@ -474,7 +477,8 @@ export function cuRefAreaPlugin({
               u.scales[computeUnitsScaleKey].max ??
               0 - (u.scales[computeUnitsScaleKey].min ?? 0);
             const midTs =
-              u.scales[xScaleKey].max ?? 0 - (u.scales[xScaleKey].min ?? 0);
+              u.scales[banksXScaleKey].max ??
+              0 - (u.scales[banksXScaleKey].min ?? 0);
             // scale shown is between reference lines
             const tEnd = Number(
               slotTransactions.target_end_timestamp_nanos -

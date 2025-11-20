@@ -1,5 +1,5 @@
 import type uPlot from "uplot";
-import { xScaleKey } from "../features/Overview/SlotPerformance/ComputeUnitsCard/consts";
+import { banksXScaleKey } from "../features/Overview/SlotPerformance/ComputeUnitsCard/consts";
 import { clamp } from "./utils";
 
 export function wheelZoomPlugin(opts: { factor: number }): uPlot.Plugin {
@@ -18,10 +18,14 @@ export function wheelZoomPlugin(opts: { factor: number }): uPlot.Plugin {
   return {
     hooks: {
       ready(u) {
-        xMin = u.scales.x.min ?? 0;
-        xMax = u.scales.x.max ?? 0;
-        yMin = u.scales.y.min ?? 0;
-        yMax = u.scales.y.max ?? 0;
+        const xScaleKey = u.series[0].scale ?? "x";
+        const yScaleKey =
+          u.series.find((s, i) => i > 0 && s.show !== false)?.scale ?? "y";
+
+        xMin = u.scales[xScaleKey].min ?? 0;
+        xMax = u.scales[xScaleKey].max ?? 0;
+        yMin = u.scales[yScaleKey].min ?? 0;
+        yMax = u.scales[yScaleKey].max ?? 0;
 
         xRange = xMax - xMin;
         yRange = yMax - yMin;
@@ -47,10 +51,12 @@ export function wheelZoomPlugin(opts: { factor: number }): uPlot.Plugin {
 
             const leftPct = left / rect.width;
             const btmPct = 1 - top / rect.height;
-            const xVal = u.posToVal(left, xScaleKey);
+            const xVal = u.posToVal(left, banksXScaleKey);
             const yVal = u.posToVal(top, "y");
-            const oxRange = (u.scales.x.max ?? 0) - (u.scales.x.min ?? 0);
-            const oyRange = (u.scales.y.max ?? 0) - (u.scales.y.min ?? 0);
+            const oxRange =
+              (u.scales[xScaleKey].max ?? 0) - (u.scales[xScaleKey].min ?? 0);
+            const oyRange =
+              (u.scales[yScaleKey].max ?? 0) - (u.scales[yScaleKey].min ?? 0);
 
             const nxRange = e.deltaY < 0 ? oxRange * factor : oxRange / factor;
             let nxMin = xVal - leftPct * nxRange;
@@ -79,7 +85,7 @@ export function wheelZoomPlugin(opts: { factor: number }): uPlot.Plugin {
 
             requestAnimationFrame(() =>
               u.batch(() => {
-                u.setScale(xScaleKey, {
+                u.setScale(banksXScaleKey, {
                   min: nxMin,
                   max: nxMax,
                 });
@@ -90,7 +96,8 @@ export function wheelZoomPlugin(opts: { factor: number }): uPlot.Plugin {
               }),
             );
           } else if (e.shiftKey) {
-            const nxRange = (u.scales.x.max ?? 0) - (u.scales.x.min ?? 0);
+            const nxRange =
+              (u.scales[xScaleKey].max ?? 0) - (u.scales[xScaleKey].min ?? 0);
             let panDistance = nxRange * panFactor;
             if (e.deltaY >= 0) {
               panDistance *= -1;
@@ -98,15 +105,15 @@ export function wheelZoomPlugin(opts: { factor: number }): uPlot.Plugin {
 
             const [min, max] = clamp(
               nxRange,
-              (u.scales.x.min ?? 0) + panDistance,
-              (u.scales.x.max ?? 0) + panDistance,
+              (u.scales[xScaleKey].min ?? 0) + panDistance,
+              (u.scales[xScaleKey].max ?? 0) + panDistance,
               nxRange,
               xMin ?? 0,
               xMax ?? 0,
             );
 
             requestAnimationFrame(() =>
-              u.setScale(xScaleKey, {
+              u.setScale(banksXScaleKey, {
                 min,
                 max,
               }),

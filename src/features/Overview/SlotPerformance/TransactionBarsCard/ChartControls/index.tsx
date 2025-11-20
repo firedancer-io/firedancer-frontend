@@ -48,7 +48,7 @@ import {
   chartBufferMs,
   getMaxTsWithBuffer,
 } from "../../../../../transactionUtils";
-import { xScaleKey } from "../../ComputeUnitsCard/consts";
+import { banksXScaleKey } from "../../ComputeUnitsCard/consts";
 import { tooltipTxnIdxAtom, tooltipTxnStateAtom } from "../chartTooltipAtoms";
 import SearchCommand from "./SearchCommand";
 import {
@@ -735,7 +735,7 @@ function ArrivalControl({ transactions }: WithTransactionsProps) {
             setRangeValue(value);
 
             uplotAction((u) => {
-              const left = u.valToPos(value[changedValueIdx], xScaleKey);
+              const left = u.valToPos(value[changedValueIdx], banksXScaleKey);
               u.setCursor({ left, top: 0 });
             });
 

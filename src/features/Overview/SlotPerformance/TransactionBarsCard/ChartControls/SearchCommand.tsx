@@ -9,7 +9,7 @@ import { useDebounce } from "use-debounce";
 import { getUplotId } from "../chartUtils";
 import { txnBarsUplotActionAtom } from "../uplotAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
-import { xScaleKey } from "../../ComputeUnitsCard/consts";
+import { banksXScaleKey } from "../../ComputeUnitsCard/consts";
 import { highlightTxnIdx } from "../txnBarsPlugin";
 import {
   ChevronUpIcon,
@@ -127,7 +127,7 @@ export default function SearchCommand({
     setInputValue("");
     setDInputValue("");
     uplotAction((u, _bankIdx) => {
-      u.setScale(xScaleKey, {
+      u.setScale(banksXScaleKey, {
         min: u.data[0][0],
         max: u.data[0][u.data[0].length - 1],
       });
@@ -309,7 +309,7 @@ export default function SearchCommand({
           return;
         }
 
-        const scale = u.scales[xScaleKey];
+        const scale = u.scales[banksXScaleKey];
         const scaleMin = scale.min ?? -Infinity;
         const scaleMax = scale.max ?? Infinity;
         const currentScaleRange = scaleMax - scaleMin;
@@ -360,7 +360,7 @@ export default function SearchCommand({
               min = max - desiredScaleRangeMax;
             }
 
-            u.setScale(xScaleKey, { min, max });
+            u.setScale(banksXScaleKey, { min, max });
           }
 
           highlightTxnIdx(txnIdx);
