@@ -731,12 +731,17 @@ export enum ShredEvent {
   shred_replay_start,
 }
 
+const shredEventNumbers = Object.values(ShredEvent).filter(
+  (v) => typeof v === "number",
+) satisfies number[];
+export const maxShredEvent: ShredEvent = Math.max(...shredEventNumbers);
+
 export const liveShredsSchema = z.object({
   reference_slot: z.number(),
   reference_ts: z.coerce.bigint(),
   slot_delta: z.number().array(),
   shred_idx: z.number().nullable().array(),
-  event: z.nativeEnum(ShredEvent).array(),
+  event: z.number().array(),
   event_ts_delta: z.coerce.number().array(),
 });
 
