@@ -1,28 +1,39 @@
 import UplotReact from "../../../uplotReact/UplotReact";
 import AutoSizer from "react-virtualized-auto-sizer";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type uPlot from "uplot";
 import { chartAxisColor, gridLineColor, gridTicksColor } from "../../../colors";
 import type { AlignedData } from "uplot";
 import { xRangeMs } from "./const";
 import { shredsProgressionPlugin } from "./shredsProgressionPlugin";
-import { useRafLoop } from "react-use";
+import { useMedia, useRafLoop } from "react-use";
 import { Box } from "@radix-ui/themes";
 
 const REDRAW_INTERVAL_MS = 40;
+
 // prevent x axis tick labels from being cut off
 const chartXPadding = 15;
-const chartData: AlignedData = [[-xRangeMs, 0], new Array(2)];
 
-const minXIncrement = 1600;
-const getXIncrs = () => {
-  const incrs = [minXIncrement];
-  while (incrs[incrs.length - 1] < xRangeMs) {
+const minXIncrRange = {
+  min: 200,
+  max: 1_600,
+};
+
+/**
+ * Get dynamic x axis tick increments based on chart scale
+ */
+const getXIncrs = (scale: number) => {
+  const scaledIncr = scale * minXIncrRange.max;
+  // round to multiples of minimum increment
+  const minIncrMultiple =
+    Math.trunc(scaledIncr / minXIncrRange.min) * minXIncrRange.min;
+
+  const incrs = [minIncrMultiple];
+  while (incrs[incrs.length - 1] < xRangeMs * scale) {
     incrs.push(incrs[incrs.length - 1] * 2);
   }
   return incrs;
 };
-const xIncrs = getXIncrs();
 
 interface ShredsChartProps {
   chartId: string;
@@ -32,12 +43,45 @@ export default function ShredsChart({
   chartId,
   isOnStartupScreen,
 }: ShredsChartProps) {
+  const isXL = useMedia("(max-width: 2100px)");
+  const isL = useMedia("(max-width: 1800px)");
+  const isM = useMedia("(max-width: 1500px)");
+  const isS = useMedia("(max-width: 1200px)");
+  const isXS = useMedia("(max-width: 900px)");
+  const isXXS = useMedia("(max-width: 600px)");
+  const scale = isXXS
+    ? 1 / 7
+    : isXS
+      ? 2 / 7
+      : isS
+        ? 3 / 7
+        : isM
+          ? 4 / 7
+          : isL
+            ? 5 / 7
+            : isXL
+              ? 6 / 7
+              : 1;
+
   const uplotRef = useRef<uPlot>();
   const lastRedrawRef = useRef(0);
 
   const handleCreate = useCallback((u: uPlot) => {
     uplotRef.current = u;
   }, []);
+
+  const [chartData, xIncrs] = useMemo(() => {
+    return [
+      [[Math.trunc(scale * -xRangeMs), 0], new Array(2)] satisfies AlignedData,
+      getXIncrs(scale),
+    ];
+  }, [scale]);
+
+  useEffect(() => {
+    if (!uplotRef.current) return;
+    uplotRef.current.axes[0].incrs = () => xIncrs;
+    uplotRef.current.setData(chartData, true);
+  }, [chartData, xIncrs]);
 
   const options = useMemo<uPlot.Options>(() => {
     return {
@@ -94,7 +138,7 @@ export default function ShredsChart({
       ],
       plugins: [shredsProgressionPlugin(isOnStartupScreen)],
     };
-  }, [isOnStartupScreen]);
+  }, [isOnStartupScreen, xIncrs]);
 
   useRafLoop((time: number) => {
     if (!uplotRef) return;
