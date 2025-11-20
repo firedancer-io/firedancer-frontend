@@ -66,6 +66,8 @@ function getSnapshotValues(bootProgress: BootProgress) {
 
 export default function Snapshot() {
   const bootProgress = useAtomValue(bootProgressAtom);
+  const isIncremental =
+    bootProgress?.phase === BootPhaseEnum.loading_incremental_snapshot;
   const isNarrowScreen = useMedia("(max-width: 560px)");
   const wrap = isNarrowScreen ? "wrap" : "nowrap";
   const gap = isNarrowScreen ? columnGap : rowGap;
@@ -110,6 +112,7 @@ export default function Snapshot() {
           title="CPU Utilization"
           tileType="snapld"
           isComplete={
+            isIncremental &&
             !!readCompressedBytes &&
             readCompressedBytes === totalCompressedBytes
           }
@@ -126,6 +129,7 @@ export default function Snapshot() {
           title="CPU Utilization"
           tileType="snapdc"
           isComplete={
+            isIncremental &&
             !!decompressCompressedBytes &&
             decompressCompressedBytes === totalCompressedBytes
           }
@@ -142,6 +146,7 @@ export default function Snapshot() {
           title="CPU Utilization"
           tileType="snapin"
           isComplete={
+            isIncremental &&
             !!insertCompressedBytes &&
             insertCompressedBytes === totalCompressedBytes
           }

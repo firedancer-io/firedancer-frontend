@@ -10,7 +10,7 @@ import { selectedSlotAtom } from "./atoms";
 import TileSparkLineExpandedContainer from "./TileSparkLineExpandedContainer";
 import { useMeasure } from "react-use";
 import type React from "react";
-import { useTileSparkline } from "./useTileSparkline";
+import { useLastDefinedValue, useTileSparkline } from "./useTileSparkline";
 
 interface TileCardProps {
   header: string;
@@ -42,13 +42,19 @@ export default function TileCard({
   const selectedSlot = useAtomValue(selectedSlotAtom);
   const isLive = selectedSlot === undefined;
 
-  const { avgBusy, aggQueryBusyPerTs, tileCountArr, liveBusyPerTile, busy } =
-    useTileSparkline({
-      isLive,
-      tileCount,
-      liveIdlePerTile,
-      queryIdlePerTile,
-    });
+  const {
+    avgBusy: currentAvgBusy,
+    aggQueryBusyPerTs,
+    tileCountArr,
+    liveBusyPerTile,
+    busy,
+  } = useTileSparkline({
+    isLive,
+    tileCount,
+    liveIdlePerTile,
+    queryIdlePerTile,
+  });
+  const avgBusy = useLastDefinedValue(currentAvgBusy);
 
   return (
     <Flex ref={ref}>

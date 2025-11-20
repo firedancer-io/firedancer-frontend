@@ -1,5 +1,5 @@
 import { mean } from "lodash";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useInterval } from "react-use";
 
 export const strokeLineWidth = 2;
@@ -21,9 +21,9 @@ export function useTileSparkline({
     [tileCount],
   );
 
-  const liveBusyPerTile = liveIdlePerTile
-    ?.filter((idle) => idle !== -1)
-    .map((idle) => 1 - idle);
+  const liveBusyPerTile = liveIdlePerTile?.map((idle) =>
+    idle === -1 ? undefined : 1 - idle,
+  );
 
   const aggQueryBusyPerTs = queryIdlePerTile
     ?.map((idlePerTile) => {
@@ -57,6 +57,14 @@ export function useTileSparkline({
   };
 }
 
+export function useLastDefinedValue(value: number | undefined) {
+  const lastDefined = useRef<number | undefined>();
+  if (value !== undefined) {
+    lastDefined.current = value;
+  }
+  return value ?? lastDefined.current;
+}
+
 export type SparklineRange = [number, number];
 export const sparkLineRange: SparklineRange = [0, 1];
 
@@ -84,23 +92,26 @@ export function useScaledDataPoints({
   }[];
   range: SparklineRange;
 } {
-  const [busyData, setBusyData] = useState<(number | undefined)[]>([]);
+  const dataPointsCount = Math.trunc(rollingWindowMs / updateIntervalMs);
+  const [busyData, setBusyData] = useState<(number | undefined)[]>(
+    () => new Array<number>(dataPointsCount),
+  );
 
   useInterval(() => {
     if (stopShifting || queryBusy?.length) return;
 
     setBusyData((prev) => {
       const newState = [...prev, value];
-      if (newState.length >= Math.trunc(rollingWindowMs / updateIntervalMs)) {
+      if (newState.length >= dataPointsCount) {
         newState.shift();
       }
       return newState;
     });
   }, updateIntervalMs);
 
-  const scaledDataPoints = useMemo((): { x: number; y: number }[] => {
-    const data = queryBusy ?? busyData;
+  const data = queryBusy ?? busyData;
 
+  const scaledDataPoints = useMemo((): { x: number; y: number }[] => {
     // include all points in x spacing
     const xRatio = width / data.length;
 
@@ -117,7 +128,7 @@ export function useScaledDataPoints({
       },
       [] as { x: number; y: number }[],
     );
-  }, [queryBusy, busyData, width, height]);
+  }, [width, data, height]);
 
   return {
     scaledDataPoints,
