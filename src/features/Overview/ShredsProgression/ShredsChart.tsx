@@ -7,9 +7,11 @@ import type { AlignedData } from "uplot";
 import { xRangeMs } from "./const";
 import { shredsProgressionPlugin } from "./shredsProgressionPlugin";
 import { useRafLoop } from "react-use";
+import { Box } from "@radix-ui/themes";
 
 const REDRAW_INTERVAL_MS = 40;
-
+// prevent x axis tick labels from being cut off
+const chartXPadding = 15;
 const chartData: AlignedData = [[-xRangeMs, 0], new Array(2)];
 
 const minXIncrement = 1600;
@@ -39,6 +41,7 @@ export default function ShredsChart({
 
   const options = useMemo<uPlot.Options>(() => {
     return {
+      padding: [0, chartXPadding, 0, chartXPadding],
       width: 0,
       height: 0,
       scales: {
@@ -105,19 +108,21 @@ export default function ShredsChart({
   });
 
   return (
-    <AutoSizer>
-      {({ height, width }) => {
-        options.width = width;
-        options.height = height;
-        return (
-          <UplotReact
-            id={chartId}
-            options={options}
-            data={chartData}
-            onCreate={handleCreate}
-          />
-        );
-      }}
-    </AutoSizer>
+    <Box height="100%" mx={`-${chartXPadding}px`}>
+      <AutoSizer>
+        {({ height, width }) => {
+          options.width = width;
+          options.height = height;
+          return (
+            <UplotReact
+              id={chartId}
+              options={options}
+              data={chartData}
+              onCreate={handleCreate}
+            />
+          );
+        }}
+      </AutoSizer>
+    </Box>
   );
 }
