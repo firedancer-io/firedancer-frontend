@@ -5,12 +5,13 @@ import TileSparkLine from "./TileSparkLine";
 import TileBusy from "./TileBusy";
 import { mean } from "lodash";
 import { isDefined } from "../../../utils";
+import { useLastDefinedValue } from "./useTileSparkline";
 
 let recentlyOnOpen = false;
 
 interface TileSparkLineExpandedContainerProps {
   tileCountArr: unknown[];
-  liveBusyPerTile?: number[];
+  liveBusyPerTile?: (number | undefined)[];
   queryIdlePerTile?: number[][];
   width: number;
   header: ReactNode;
@@ -61,10 +62,7 @@ export default function TileSparkLineExpandedContainer({
           {header}
           {liveBusyPerTile
             ? liveBusyPerTile.map((busy, i) => (
-                <Flex key={i}>
-                  <TileSparkLine value={busy} />
-                  <TileBusy busy={busy} />
-                </Flex>
+                <LiveBusySparkline key={i} busy={busy} />
               ))
             : tileCountArr?.map((_, i) => {
                 const queryBusy = queryIdlePerTile
@@ -87,5 +85,15 @@ export default function TileSparkLineExpandedContainer({
         </Flex>
       </Popover.Content>
     </Popover.Root>
+  );
+}
+
+function LiveBusySparkline({ busy }: { busy?: number }) {
+  const lastDefinedBusy = useLastDefinedValue(busy);
+  return (
+    <Flex>
+      <TileSparkLine value={lastDefinedBusy} />
+      <TileBusy busy={lastDefinedBusy} />
+    </Flex>
   );
 }

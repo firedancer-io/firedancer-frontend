@@ -11,6 +11,7 @@ import { Sparkline } from "../../../Overview/SlotPerformance/TileSparkLine";
 import {
   useTileSparkline,
   useScaledDataPoints,
+  useLastDefinedValue,
 } from "../../../Overview/SlotPerformance/useTileSparkline";
 import styles from "./snapshot.module.css";
 
@@ -35,11 +36,12 @@ export default function SnapshotSparklineCard({
   const tileCounts = useAtomValue(tileCountAtom);
   const timers = useAtomValue(liveSnapshotTimersAtom);
 
-  const { avgBusy } = useTileSparkline({
+  const { avgBusy: currentAvgBusy } = useTileSparkline({
     isLive: true,
     tileCount: tileCounts[tileType],
     liveIdlePerTile: timers?.[tileType],
   });
+  const avgBusy = useLastDefinedValue(currentAvgBusy);
 
   const { scaledDataPoints, range } = useScaledDataPoints({
     value: avgBusy,
