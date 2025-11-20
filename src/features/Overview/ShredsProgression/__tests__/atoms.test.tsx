@@ -17,7 +17,7 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
     vi.useRealTimers();
   });
 
-  it("adds live shred events for single shred, replacing duplicates with min ts", () => {
+  it("adds live shred events for single shred, replacing duplicates with min ts and ignoring unsupported event types", () => {
     const atoms = createLiveShredsAtoms();
 
     const { result } = renderHook(
@@ -39,8 +39,8 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
       result.current.addShredEvents({
         reference_slot: 2000,
         reference_ts: 123_000_000n,
-        slot_delta: [3, 3, 3, 3, 3, 3],
-        shred_idx: [2, null, 2, 2, null, 2],
+        slot_delta: [3, 3, 3, 3, 3, 3, 3],
+        shred_idx: [2, null, 2, 2, null, 2, 1],
         event: [
           ShredEvent.shred_received_repair,
           ShredEvent.slot_complete,
@@ -48,6 +48,7 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
           ShredEvent.shred_repair_request,
           ShredEvent.slot_complete,
           ShredEvent.shred_replayed,
+          99999, // unsupported event type
         ],
         event_ts_delta: [
           2_000_030, 4_123_456, 5_678_234, 8_000_000, 3_234_123, 7_345_456,
