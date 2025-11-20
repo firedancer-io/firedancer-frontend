@@ -1,5 +1,5 @@
 import type uPlot from "uplot";
-import { xScaleKey } from "../features/Overview/SlotPerformance/ComputeUnitsCard/consts";
+import { banksXScaleKey } from "../features/Overview/SlotPerformance/ComputeUnitsCard/consts";
 import { uplotActionAtom } from "./uplotAtoms";
 import { getDefaultStore } from "jotai";
 
@@ -11,9 +11,9 @@ export function syncXScalePlugin(): uPlot.Plugin {
     hooks: {
       setScale: (u, scaleKey) => {
         if (syncInProgress) return;
-        if (scaleKey !== xScaleKey) return;
+        if (scaleKey !== banksXScaleKey) return;
 
-        const xScale = u.scales[xScaleKey];
+        const xScale = u.scales[banksXScaleKey];
 
         syncInProgress = true;
         let min = xScale.min ?? 0;
@@ -25,7 +25,7 @@ export function syncXScalePlugin(): uPlot.Plugin {
         }
 
         store.set(uplotActionAtom, (u) => {
-          u.setScale(xScaleKey, { min, max });
+          u.setScale(banksXScaleKey, { min, max });
         });
 
         syncInProgress = false;

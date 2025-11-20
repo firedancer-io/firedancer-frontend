@@ -20,6 +20,9 @@ import PackBufferChartTooltip from "./PackBufferChartTooltip";
 import { SlotDetailsSubSection } from "../../SlotDetailsSubSection";
 import { Box } from "@radix-ui/themes";
 
+const xScaleKey = "packX";
+const yScaleKey = "packTxnsY";
+
 export default function PackBufferChart() {
   const slot = useAtomValue(selectedSlotAtom);
   const response = useSlotQueryResponseDetailed(slot).response;
@@ -54,14 +57,14 @@ export default function PackBufferChart() {
       drawOrder: ["axes", "series"] as uPlot.DrawOrderKey[],
       cursor: {},
       scales: {
-        x: {
+        [xScaleKey]: {
           time: false,
         },
-        txns: {},
+        [yScaleKey]: {},
       },
       axes: [
         {
-          scale: "x",
+          scale: xScaleKey,
           border: {
             show: true,
             width: 1 / devicePixelRatio,
@@ -82,7 +85,7 @@ export default function PackBufferChart() {
           space: 100,
         },
         {
-          scale: "txns",
+          scale: yScaleKey,
           border: {
             show: true,
             width: 1 / devicePixelRatio,
@@ -122,34 +125,34 @@ export default function PackBufferChart() {
         },
       ],
       series: [
-        { scale: "x" },
+        { scale: xScaleKey },
         {
           label: "Regular",
           stroke: nonVoteColor,
           points: { show: false },
           width: 2 / devicePixelRatio,
-          scale: "txns",
+          scale: yScaleKey,
         },
         {
           label: "Votes",
           stroke: votesColor,
           points: { show: false },
           width: 2 / devicePixelRatio,
-          scale: "txns",
+          scale: yScaleKey,
         },
         {
           label: "Conflicting",
           stroke: slotStatusRed,
           points: { show: false },
           width: 2 / devicePixelRatio,
-          scale: "txns",
+          scale: yScaleKey,
         },
         {
           label: "Bundles",
           stroke: tipsColor,
           points: { show: false },
           width: 2 / devicePixelRatio,
-          scale: "txns",
+          scale: yScaleKey,
         },
       ],
       legend: { show: false },

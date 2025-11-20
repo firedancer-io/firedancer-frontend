@@ -23,7 +23,7 @@ import {
   txnIdxSidx,
   getCuIncomeRankingRatios,
 } from "./txnBarsPluginUtils";
-import { xScaleKey } from "../ComputeUnitsCard/consts";
+import { banksXScaleKey } from "../ComputeUnitsCard/consts";
 
 const laneWidth = 1;
 const laneDistr = SPACE_BETWEEN;
@@ -484,8 +484,11 @@ export function txnBarsPlugin(
                   // To avoid excess drawing when zoomed, avoid drawing boxes past bbox
                   if (rgt >= u.bbox.left && lft <= u.bbox.left + u.bbox.width) {
                     const scaleDiff =
-                      u.scales.x.min != null && u.scales.x.max != null
-                        ? 400_000_000 / (u.scales.x.max - u.scales.x.min)
+                      u.scales[banksXScaleKey].min != null &&
+                      u.scales[banksXScaleKey].max != null
+                        ? 400_000_000 /
+                          (u.scales[banksXScaleKey].max -
+                            u.scales[banksXScaleKey].min)
                         : undefined;
                     putBox(
                       u.data,
@@ -624,9 +627,9 @@ export function txnBarsPlugin(
       },
       setCursor: (u: uPlot) => {
         if (mode === 1) {
-          const val = u.posToVal(u.cursor.left ?? 0, xScaleKey);
+          const val = u.posToVal(u.cursor.left ?? 0, banksXScaleKey);
           if (legendTimeValueEl)
-            legendTimeValueEl.textContent = u.scales.x.time
+            legendTimeValueEl.textContent = u.scales[banksXScaleKey].time
               ? fmtDate(new Date(val * 1e3))
               : val.toFixed(2);
         }
@@ -636,7 +639,7 @@ export function txnBarsPlugin(
       uPlot.assign(opts, {
         cursor: {
           sync: {
-            key: xScaleKey,
+            key: banksXScaleKey,
             // setSeries: true,
             // scales: [xScaleKey],
             // match: [matchScaleKeys, matchScaleKeys, matchScaleKeys],
@@ -695,7 +698,7 @@ export function txnBarsPlugin(
           },
         },
         scales: {
-          [xScaleKey]: {
+          [banksXScaleKey]: {
             range(u: { data: number[][] }, min: number, max: number) {
               if (mode === 2) {
                 const colWid = u.data[0][1] - u.data[0][0];

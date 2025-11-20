@@ -1,6 +1,7 @@
 import { getDefaultStore } from "jotai";
 import type uPlot from "uplot";
 import { isFullXRangeAtom } from "./atoms";
+import { banksXScaleKey } from "./consts";
 
 const store = getDefaultStore();
 
@@ -10,13 +11,14 @@ export function cuIsFullXRangePlugin(): uPlot.Plugin {
   return {
     hooks: {
       ready(u) {
-        xMin = u.scales.x.min ?? 0;
-        xMax = u.scales.x.max ?? 0;
+        xMin = u.scales[banksXScaleKey].min ?? 0;
+        xMax = u.scales[banksXScaleKey].max ?? 0;
       },
       setScale(u) {
         store.set(
           isFullXRangeAtom,
-          u.scales.x.min === xMin && u.scales.x.max === xMax,
+          u.scales[banksXScaleKey].min === xMin &&
+            u.scales[banksXScaleKey].max === xMax,
         );
       },
     },
