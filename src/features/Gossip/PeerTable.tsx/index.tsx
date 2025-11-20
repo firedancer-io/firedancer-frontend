@@ -48,6 +48,8 @@ const colSpecs: Record<string, ColSpec> = {
     },
   },
   Pubkey: { width: 200 },
+  Name: { width: 160 },
+  Country: { width: 80 },
   ["IP Addr"]: { width: 80 },
   ["Ingress Pull"]: {
     width: 80,
