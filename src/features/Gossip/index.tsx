@@ -7,7 +7,7 @@ import StorageStatsCharts from "./StorageStatsCharts.tsx";
 import MessageStatsTable from "./MessageStatsTable.tsx";
 import PeerTable from "./PeerTable.tsx/index.tsx";
 import StakeStatsChart from "./StakeStatsChart.tsx";
-import GossipHealth from "./GossipHealth.tsx";
+import GossipHealth from "./GossipHealth/index.tsx";
 import { TrafficTreeMap } from "./TrafficTreeMap.tsx";
 import { useDebounce } from "use-debounce";
 import { rowGap, tableMinWidth } from "./consts.ts";
