@@ -22,7 +22,7 @@ export default function PopoverDropdown({
 
   return (
     <Popover.Root open={isOpen} onOpenChange={onOpenChange}>
-      <Flex>
+      <Flex minWidth="0">
         <Popover.Trigger asChild>{children}</Popover.Trigger>
         <Popover.Anchor></Popover.Anchor>
       </Flex>
