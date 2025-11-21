@@ -1,5 +1,4 @@
 import type uPlot from "uplot";
-import { banksXScaleKey } from "../features/Overview/SlotPerformance/ComputeUnitsCard/consts";
 import { uplotActionAtom } from "./uplotAtoms";
 import { getDefaultStore } from "jotai";
 
@@ -10,10 +9,12 @@ export function syncXScalePlugin(): uPlot.Plugin {
   return {
     hooks: {
       setScale: (u, scaleKey) => {
-        if (syncInProgress) return;
-        if (scaleKey !== banksXScaleKey) return;
+        const xScaleKey = u.series[0].scale ?? "x";
 
-        const xScale = u.scales[banksXScaleKey];
+        if (syncInProgress) return;
+        if (scaleKey !== xScaleKey) return;
+
+        const xScale = u.scales[xScaleKey];
 
         syncInProgress = true;
         let min = xScale.min ?? 0;
@@ -24,8 +25,11 @@ export function syncXScalePlugin(): uPlot.Plugin {
           max = mid + 50;
         }
 
+        // Find matching charts with the same xScaleKey to sync scales with
         store.set(uplotActionAtom, (u) => {
-          u.setScale(banksXScaleKey, { min, max });
+          if (xScaleKey === (u.series[0].scale ?? "x")) {
+            u.setScale(xScaleKey, { min, max });
+          }
         });
 
         syncInProgress = false;
