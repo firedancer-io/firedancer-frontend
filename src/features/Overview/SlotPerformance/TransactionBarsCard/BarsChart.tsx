@@ -18,6 +18,7 @@ import { syncXScalePlugin } from "../../../../uplotReact/syncXScalePlugin";
 import { leftAxisSizeAtom, rightAxisSizeAtom } from "../ComputeUnitsCard/atoms";
 import { touchPlugin } from "../../../../uplotReact/touchPlugin";
 import { chartAxisColor, chartGridStrokeColor } from "../../../../colors";
+import { banksXScaleKey } from "../ComputeUnitsCard/consts";
 
 /** Buffer of the canvas past the axes of the chart to prevent the first and last tick labels from being cut off */
 const xBuffer = 20;
@@ -84,7 +85,7 @@ export default function BarsChart({
       height: 0,
       class: styles.chart,
       drawOrder: ["series", "axes"] as uPlot.DrawOrderKey[],
-      scales: { x: { time: false } },
+      scales: { [banksXScaleKey]: { time: false } },
       axes: [
         {
           stroke: chartAxisColor,
@@ -119,7 +120,7 @@ export default function BarsChart({
       ],
       legend: { markers: { width: 0 }, show: false },
       padding: [0, xBuffer, 0, xBuffer],
-      series: [{ label: "Time" }, { label: `Bank ${bankIdx}` }, {}],
+      series: [{ scale: banksXScaleKey }, { label: `Bank ${bankIdx}` }, {}],
       plugins: [
         txnBarsPlugin(transactionsRef),
         txnBarsTooltipPlugin({ transactionsRef, setTxnIdx, setTxnState }),
