@@ -19,9 +19,8 @@ export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
 
   const isXXNarrowScreen = useMedia("(min-width: 473px)");
-  const isXNarrowScreen = useMedia("(min-width: 608px)");
+  const isXNarrowScreen = useMedia("(min-width: 620px)");
   const isNarrowScreen = useMedia("(min-width: 1100px)");
-  const truncateKey = useMedia("(max-width: 1330px)");
 
   useEffect(() => {
     let title = document.title;
@@ -45,8 +44,9 @@ export default function IdentityKey() {
           <Label
             label="Validator Name"
             tooltip="The validators identity public key"
+            shouldShrink
           >
-            {truncateKey ? `${identityKey?.substring(0, 8)}...` : identityKey}
+            {identityKey}
           </Label>
         )}
         {isXNarrowScreen && (
@@ -133,14 +133,12 @@ function VoteBalance() {
   const solString = getSolString(voteBalance);
 
   return (
-    <>
-      <Label
-        label="Vote Balance"
-        tooltip="Account balance of this validators vote account. The balance is on the highest slot of the currently active fork of the validator."
-      >
-        <ValueWithSuffix value={solString} suffix="SOL" />
-      </Label>
-    </>
+    <Label
+      label="Vote Balance"
+      tooltip="Account balance of this validators vote account. The balance is on the highest slot of the currently active fork of the validator."
+    >
+      <ValueWithSuffix value={solString} suffix="SOL" />
+    </Label>
   );
 }
 
@@ -245,13 +243,19 @@ function StartupTime() {
 interface LabelProps {
   label: string;
   tooltip?: string;
+  shouldShrink?: boolean;
 }
-function Label({ label, tooltip, children }: PropsWithChildren<LabelProps>) {
+function Label({
+  label,
+  tooltip,
+  shouldShrink = false,
+  children,
+}: PropsWithChildren<LabelProps>) {
   if (!children) return null;
   const content = <div className={styles.value}>{children}</div>;
 
   return (
-    <Flex direction="column">
+    <Flex direction="column" minWidth="0" flexShrink={shouldShrink ? "1" : "0"}>
       <Text className={styles.label}>{label}</Text>
       {tooltip ? <Tooltip content={tooltip}>{content}</Tooltip> : content}
     </Flex>

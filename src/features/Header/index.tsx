@@ -80,11 +80,14 @@ export default function Header() {
                 : // blur color boundary
                   `${headerSpacing - slotsNavSpacing}px`
             }
+            minWidth="0"
           >
-            <NavHandler />
-            {showDropdownNav ? <DropdownNav /> : <NavLinks />}
+            <Flex flexShrink="0">
+              <NavHandler />
+              {showDropdownNav ? <DropdownNav /> : <NavLinks />}
+            </Flex>
 
-            <Flex gap="3" align="center">
+            <Flex gap="3" align="center" minWidth="0">
               <IdentityKey />
               <ExpandStartupProgressButton />
             </Flex>
