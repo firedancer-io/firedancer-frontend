@@ -360,3 +360,7 @@ export const getCountryFlagEmoji = memoize(
   },
   { maxSize: 100 },
 );
+export function roundToDPR(x: number) {
+  const dpr = window.devicePixelRatio || 1;
+  return Math.round(x * dpr) / dpr;
+}

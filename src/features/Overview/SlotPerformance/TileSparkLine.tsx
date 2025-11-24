@@ -1,5 +1,5 @@
 import { useMeasure } from "react-use";
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import {
   tileBusyGreenColor,
   tileBusyRedColor,
@@ -13,6 +13,11 @@ import {
   useScaledDataPoints,
 } from "./useTileSparkline";
 import styles from "./tileSparkline.module.css";
+import clsx from "clsx";
+
+// 4 slots worth
+const windowMs = 400 * 4;
+const updateIntervalMs = 80;
 
 interface TileParkLineProps {
   value?: number;
@@ -25,18 +30,19 @@ export default function TileSparkLine({
   value,
   queryBusy,
   height = 24,
-  includeBg,
+  includeBg = true,
 }: TileParkLineProps) {
   const [svgRef, { width }] = useMeasure<SVGSVGElement>();
 
-  const { scaledDataPoints, range } = useScaledDataPoints({
-    value,
-    queryBusy,
-    rollingWindowMs: 1600,
-    height,
-    width,
-    updateIntervalMs: 10,
-  });
+  const { scaledDataPoints, range, pxPerTick, chartTickMs, isLive } =
+    useScaledDataPoints({
+      value,
+      queryBusy,
+      windowMs,
+      height,
+      width,
+      updateIntervalMs,
+    });
 
   return (
     <Sparkline
@@ -45,6 +51,9 @@ export default function TileSparkLine({
       range={range}
       height={height}
       background={includeBg ? undefined : "unset"}
+      pxPerTick={pxPerTick}
+      tickMs={chartTickMs}
+      isLive={isLive}
     />
   );
 }
@@ -59,6 +68,9 @@ interface SparklineProps {
   showRange?: boolean;
   height: number;
   background?: string;
+  pxPerTick: number;
+  tickMs: number;
+  isLive: boolean;
 }
 export function Sparkline({
   svgRef,
@@ -67,8 +79,13 @@ export function Sparkline({
   showRange = false,
   height,
   background = tileSparklineBackgroundColor,
+  pxPerTick,
+  tickMs,
+  isLive,
 }: SparklineProps) {
-  const points = scaledDataPoints.map(({ x, y }) => `${x},${y}`).join(" ");
+  const gRef = useRef<SVGGElement | null>(null);
+  const polyRef = useRef<SVGPolylineElement | null>(null);
+  const animateRef = useRef<Animation | null>(null);
 
   // where the gradient colors start / end, given y scale and offset
   const gradientRange: SparklineRange = useMemo(() => {
@@ -79,6 +96,51 @@ export function Sparkline({
     return [bottom, top];
   }, [height, range]);
 
+  const points = useMemo(
+    () => scaledDataPoints.map(({ x, y }) => `${x},${y}`).join(" "),
+    [scaledDataPoints],
+  );
+
+  useLayoutEffect(() => {
+    const el = gRef.current;
+    if (!el) return;
+
+    if (isLive) {
+      // Only initialize animate object the first time
+      if (!animateRef.current) {
+        animateRef.current = el.animate(
+          [
+            { transform: "translate3d(0px, 0, 0)" },
+            { transform: "translate3d(0px, 0, 0)" },
+          ],
+          { duration: tickMs, easing: "linear", fill: "forwards" },
+        );
+        animateRef.current.cancel();
+      }
+
+      animateRef.current.finish();
+
+      polyRef.current?.setAttribute("points", points);
+
+      const effect = animateRef.current.effect as KeyframeEffect;
+      effect.setKeyframes([
+        { transform: "translate3d(0px, 0, 0)" },
+        { transform: `translate3d(${-pxPerTick}px, 0, 0)` },
+      ]);
+      effect.updateTiming({
+        duration: tickMs,
+        easing: "linear",
+        fill: "forwards",
+      });
+
+      animateRef.current.currentTime = 0;
+      animateRef.current.play();
+    } else {
+      polyRef.current?.setAttribute("points", points);
+      animateRef.current?.cancel();
+    }
+  }, [isLive, points, pxPerTick, tickMs]);
+
   return (
     <>
       <svg
@@ -88,14 +150,18 @@ export function Sparkline({
         height={`${height}px`}
         fill="none"
         style={{ background }}
+        shapeRendering="optimizeSpeed"
       >
-        <polyline
-          points={points}
-          stroke="url(#paint0_linear_2971_11300)"
-          widths={2}
-          strokeWidth={strokeLineWidth}
-          strokeLinecap="round"
-        />
+        <g ref={gRef} className={styles.gTransform}>
+          <polyline
+            ref={polyRef}
+            stroke="url(#paint0_linear_2971_11300)"
+            strokeWidth={strokeLineWidth}
+            strokeLinecap="butt"
+            vectorEffect="non-scaling-stroke"
+            pointerEvents="none"
+          />
+        </g>
 
         <defs>
           <linearGradient
@@ -114,10 +180,10 @@ export function Sparkline({
 
       {showRange && (
         <>
-          <div className={styles.rangeLabel} style={{ top: 0 }}>
+          <div className={clsx(styles.rangeLabel, styles.top)}>
             {Math.round(range[1] * 100)}%
           </div>
-          <div className={styles.rangeLabel} style={{ bottom: 0 }}>
+          <div className={clsx(styles.rangeLabel, styles.bottom)}>
             {Math.round(range[0] * 100)}%
           </div>
         </>

@@ -123,7 +123,8 @@ export enum DisplayType {
 
 export const sankeyDisplayTypeAtom = atom(DisplayType.Count);
 
-export const liveTileTimerfallAtom = atom((get) => {
+//** Returns either the live tile timers, or undefined if a slot is selected */
+export const liveTileTimerAtom = atom((get) => {
   const selectedSlot = get(selectedSlotAtom);
   if (selectedSlot) return;
 
@@ -131,7 +132,7 @@ export const liveTileTimerfallAtom = atom((get) => {
 });
 
 export const groupedLiveIdlePerTileAtom = atom((get) => {
-  const liveTileTimers = get(liveTileTimerfallAtom);
+  const liveTileTimers = get(liveTileTimerAtom);
   const tiles = get(tilesAtom);
 
   return liveTileTimers?.reduce<Record<TileType, number[]>>(
