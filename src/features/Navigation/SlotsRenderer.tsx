@@ -146,7 +146,7 @@ function FutureSlotGroup({ firstSlot }: SlotGroupProps) {
 }
 
 function CurrentLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
-  const { isLeader: isYou } = useSlotInfo(firstSlot);
+  const { isLeader: isYou, countryFlag } = useSlotInfo(firstSlot);
   const hasSkipped = useIsLeaderGroupSkipped(firstSlot);
   const currentSlot = useAtomValue(currentSlotAtom);
   return (
@@ -159,9 +159,10 @@ function CurrentLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
     >
       <Flex direction="column" className={styles.leftColumn}>
         <SlotIconName slot={firstSlot} iconSize={22} />
-        <Flex gap="2" align="center" className={styles.currentSlotRow}>
+        <Flex gap="1" align="center" className={styles.currentSlotRow}>
           <SlotClient slot={firstSlot} size="small" />
           <Text size="2">{currentSlot}</Text>
+          {countryFlag && <Text>{countryFlag}</Text>}
         </Flex>
       </Flex>
 
@@ -225,12 +226,14 @@ function YourProcessedSlotGroup({ firstSlot }: { firstSlot: number }) {
 }
 
 function SlotContent({ firstSlot }: SlotGroupProps) {
+  const { countryFlag } = useSlotInfo(firstSlot);
   return (
     <Flex className={styles.leftColumn} direction="column">
       <SlotIconName slot={firstSlot} />
       <Flex className={styles.slotItemContent}>
         <SlotClient slot={firstSlot} size="small" />
         <Text>{firstSlot}</Text>
+        {countryFlag && <Text>{countryFlag}</Text>}
       </Flex>
     </Flex>
   );

@@ -635,6 +635,7 @@ const peerUpdateGossipSchema = z.object({
   version: z.string().nullable(),
   feature_set: z.number().nullable(),
   sockets: z.record(z.string(), z.string()),
+  country_code: z.string().nullable(),
 });
 
 const peerUpdateVoteAccountSchema = z.object({

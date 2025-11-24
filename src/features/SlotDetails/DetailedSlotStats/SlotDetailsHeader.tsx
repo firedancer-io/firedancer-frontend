@@ -1,4 +1,4 @@
-import { Box, Flex, Text } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import PeerIcon from "../../../components/PeerIcon";
 import SlotClient from "../../../components/SlotClient";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
@@ -18,7 +18,9 @@ import {
 
 export default function SlotDetailsHeader() {
   const slot = useAtomValue(selectedSlotAtom);
-  const { peer, isLeader, name } = useSlotInfo(slot ?? 0);
+  const { peer, isLeader, name, countryCode, countryFlag } = useSlotInfo(
+    slot ?? 0,
+  );
   const epoch = useAtomValue(epochAtom);
   const slotPublish = useSlotQueryPublish(slot).publish;
   const schedulerStats =
@@ -56,7 +58,13 @@ export default function SlotDetailsHeader() {
         </Text>
         <SlotClient slot={slot} size="large" />
       </Flex>
-      <HorizontalLabelValue label="Country" value="USA" />
+      {countryCode && (
+        <HorizontalLabelValue
+          label="Country"
+          value={countryCode}
+          icon={countryFlag}
+        />
+      )}
       <HorizontalLabelValue label="Slot Time" value={slotTime} />
       <HorizontalLabelValue
         label="Block Hash"
@@ -86,17 +94,23 @@ export default function SlotDetailsHeader() {
 interface HorizontalLabelValueProps {
   label: string;
   value?: string | number;
+  icon?: string;
 }
 
-function HorizontalLabelValue({ label, value }: HorizontalLabelValueProps) {
+function HorizontalLabelValue({
+  label,
+  value,
+  icon,
+}: HorizontalLabelValueProps) {
   return (
-    <Box flexGrow="1">
+    <Flex flexGrow="1" gap="1">
       <Text size="1" style={{ color: slotDetailsStatsSecondary }}>
-        {label}&nbsp;
+        {label}
       </Text>
       <Text size="1" style={{ color: slotDetailsStatsPrimary }}>
-        &nbsp;{value}
+        {value}
       </Text>
-    </Box>
+      {icon && <Text size="1">{icon}</Text>}
+    </Flex>
   );
 }
