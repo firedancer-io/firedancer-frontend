@@ -7,6 +7,7 @@ import {
   getFmtStake,
   isDefined,
   removePortFromIp,
+  getCountryFlagEmoji,
 } from "../../../utils";
 import { useAtomValue } from "jotai";
 import PeerIcon from "../../../components/PeerIcon";
@@ -134,6 +135,9 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
     ? `${peer.gossip.version[0] === "0" ? "Frankendancer" : "Agave"} v${peer.gossip.version}`
     : undefined;
 
+  const countryCode = peer?.gossip?.country_code;
+  const countryFlag = getCountryFlagEmoji(countryCode);
+
   const stakeMsg = getStakeMsg(
     peer,
     peerStats?.activeStake,
@@ -169,6 +173,15 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
       >
         {validatorText}
       </Text>
+
+      {countryCode && (
+        <>
+          <Text className={styles.divider}>&bull;</Text>
+          <Text>{countryCode}</Text>
+          <Text>{countryFlag}</Text>
+        </>
+      )}
+
       <Text className={styles.divider}>&bull;</Text>
       <Text {...textProps}>{stakeText}</Text>
       <Text className={styles.divider}>&bull;</Text>

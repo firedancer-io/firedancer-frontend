@@ -2,6 +2,7 @@ import { useAtomValue } from "jotai";
 import { identityKeyAtom } from "../api/atoms";
 import { usePubKey } from "./usePubKey";
 import { usePeer } from "./usePeer";
+import { getCountryFlagEmoji } from "../utils";
 
 export function useSlotInfo(slot: number) {
   const myPubkey = useAtomValue(identityKeyAtom);
@@ -16,6 +17,17 @@ export function useSlotInfo(slot: number) {
       ? "Frankendancer"
       : "Agave"
     : undefined;
+  const countryCode = peer?.gossip?.country_code;
+  const countryFlag = getCountryFlagEmoji(countryCode);
 
-  return { pubkey, peer, isLeader, name, client, version };
+  return {
+    pubkey,
+    peer,
+    isLeader,
+    name,
+    client,
+    version,
+    countryCode,
+    countryFlag,
+  };
 }

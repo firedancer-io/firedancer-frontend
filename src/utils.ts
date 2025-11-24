@@ -11,6 +11,7 @@ import {
   clusterPythtestColor,
   clusterUnknownColor,
 } from "./colors";
+import memoize from "micro-memoize";
 
 export function getLeaderSlots(epoch: Epoch, pubkey: string) {
   return epoch.leader_slots.reduce<number[]>((leaderSlots, pubkeyIndex, i) => {
@@ -340,3 +341,22 @@ export function getMax(arr: number[]) {
   }
   return max;
 }
+
+export const getCountryFlagEmoji = memoize(
+  (countryCode?: string | null) => {
+    // Unicode offset for Regional Indicator Symbol Letter A
+    const OFFSET = 0x1f1e6;
+    // ASCII code for uppercase letter
+    const ASCII_A = 65;
+
+    if (!countryCode) return;
+    return countryCode
+      .toUpperCase()
+      .split("")
+      .map((char) =>
+        String.fromCodePoint(char.charCodeAt(0) - ASCII_A + OFFSET),
+      )
+      .join("");
+  },
+  { maxSize: 100 },
+);
