@@ -11,6 +11,8 @@ import PeerIcon from "../../../components/PeerIcon";
 import { skippedClusterSlotsAtom } from "../../../atoms";
 import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
 
+const height = 30;
+
 /**
  * Labels for shreds slots.
  * Don't render during startup, because there will be multiple overlapping slots
@@ -23,7 +25,12 @@ export default function ShredsSlotLabels() {
   if (isStartup) return;
 
   return (
-    <Flex overflow="hidden" position="relative" style={{ height: "25px" }}>
+    <Flex
+      overflow="hidden"
+      position="relative"
+      // extra space for borders
+      height={`${height + 2}px`}
+    >
       {groupLeaderSlots.map((slot) => (
         <SlotGroupLabel key={slot} firstSlot={slot} />
       ))}
@@ -53,36 +60,41 @@ function SlotGroupLabel({ firstSlot }: SlotGroupLabelProps) {
 
   return (
     <Flex
-      height="100%"
+      height={`${height}px`}
       direction="column"
       gap="2px"
       position="absolute"
-      justify="center"
       align="center"
       overflow="hidden"
       id={getSlotGroupLabelId(firstSlot)}
       className={clsx(styles.slotGroupLabel, {
         [styles.you]: isLeader,
-        [styles.skipped]: skippedSlots.size > 0,
       })}
     >
       <Flex
-        justify="center"
         align="center"
-        width="100%"
-        gap="4px"
-        p="1px 2px"
-        wrap="nowrap"
         flexGrow="1"
-        className={styles.slotGroupNameContainer}
+        px="2px"
+        className={clsx(styles.slotGroupTopContainer, {
+          [styles.skipped]: skippedSlots.size > 0,
+        })}
       >
-        <PeerIcon
-          url={peer?.info?.icon_url}
-          size={17}
-          isYou={isLeader}
-          hideTooltip
-        />
-        <Text className={styles.name}>{name}</Text>
+        <Flex
+          justify="center"
+          align="center"
+          width="100%"
+          gap="4px"
+          wrap="nowrap"
+          className={styles.slotGroupNameContainer}
+        >
+          <PeerIcon
+            url={peer?.info?.icon_url}
+            size={17}
+            isYou={isLeader}
+            hideTooltip
+          />
+          <Text className={styles.name}>{name}</Text>
+        </Flex>
       </Flex>
 
       <Flex

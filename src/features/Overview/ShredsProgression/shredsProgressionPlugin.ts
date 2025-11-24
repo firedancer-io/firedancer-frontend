@@ -754,13 +754,15 @@ function moveLabelPosition(
   const prevPositions = prevLabelPositions?.[key];
   const prevVisible = !!prevPositions?.[slotNumber];
 
-  if (forceUpdates || isVisible !== prevVisible) {
-    // hide / show
-    const prop = isGroup ? "--group-y" : "--slot-y";
-    el.style.setProperty(prop, isVisible ? "0" : "-150%");
+  if (!isVisible) {
+    if (forceUpdates || prevVisible) {
+      // hide
+      const prop = isGroup ? "--group-x" : "--slot-x";
+      el.style.setProperty(prop, isVisible ? "0" : "-100000px");
+    }
+    return;
   }
 
-  if (!isVisible) return;
   positionsToMutate[slotNumber] = position;
 
   const xPos = position[0];
@@ -774,7 +776,8 @@ function moveLabelPosition(
   // no width data -- extend to max width
   const width = position[1];
   const isExtended = position[1] == null;
-  const extendedWidth = width ?? maxXPos - xPos;
+  // extend past maxXPos to hide right border
+  const extendedWidth = width ?? maxXPos + 1 - xPos;
   const prevWidth = prevPositions?.[slotNumber]?.[1];
 
   if (forceUpdates || extendedWidth !== prevWidth) {
