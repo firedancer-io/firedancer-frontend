@@ -36,7 +36,7 @@ const phases: {
     incompleteColor: progressBarIncompleteGossipColor,
     inProgressBackground: progressBarInProgressGossipBackground,
     completeColor: progressBarCompleteGossipColor,
-    estimatedPct: 0.2,
+    estimatedPct: 0.1,
     borderColor: progressBarInProgressGossipBorder,
   },
   [BootPhaseEnum.loading_full_snapshot]: {
@@ -44,7 +44,7 @@ const phases: {
     incompleteColor: progressBarIncompleteFullSnapshotColor,
     inProgressBackground: progressBarInProgressFullSnapshotBackground,
     completeColor: progressBarCompleteFullSnapshotColor,
-    estimatedPct: 0.5,
+    estimatedPct: 0.6,
     borderColor: progressBarInProgressFullSnapshotBorder,
   },
   [BootPhaseEnum.loading_incremental_snapshot]: {
