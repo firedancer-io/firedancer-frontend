@@ -20,8 +20,8 @@ const gridSize = 15;
 const height = gridSize * 6 + 1;
 const width = gridSize * 15 + 1;
 
-const rollingWindowMs = 6000;
-const updateIntervalMs = 10;
+const windowMs = 6000;
+const updateIntervalMs = 50;
 
 interface SnapshotSparklineCardProps {
   title: string;
@@ -43,14 +43,15 @@ export default function SnapshotSparklineCard({
   });
   const avgBusy = useLastDefinedValue(currentAvgBusy);
 
-  const { scaledDataPoints, range } = useScaledDataPoints({
-    value: avgBusy,
-    rollingWindowMs,
-    height,
-    width,
-    updateIntervalMs,
-    stopShifting: isComplete,
-  });
+  const { scaledDataPoints, range, pxPerTick, chartTickMs, isLive } =
+    useScaledDataPoints({
+      value: avgBusy,
+      windowMs,
+      height,
+      width,
+      updateIntervalMs,
+      stopShifting: isComplete,
+    });
 
   return (
     <Card className={clsx(styles.card, styles.sparklineCard)}>
@@ -73,6 +74,9 @@ export default function SnapshotSparklineCard({
           showRange
           height={height}
           background="transparent"
+          tickMs={chartTickMs}
+          pxPerTick={pxPerTick}
+          isLive={isLive}
         />
       </Flex>
     </Card>

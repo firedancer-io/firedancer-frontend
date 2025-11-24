@@ -5,3 +5,15 @@
   font-weight: 400;
   color: var(--tile-sparkline-range-text-color);
 }
+
+.top {
+  top: 0;
+}
+
+.bottom {
+  bottom: 0;
+}
+
+.g-transform {
+  will-change: transform;
+}

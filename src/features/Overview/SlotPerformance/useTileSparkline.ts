@@ -1,6 +1,7 @@
 import { mean } from "lodash";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useInterval } from "react-use";
+import { clockSub } from "../../../clockUtils";
 
 export const strokeLineWidth = 2;
 
@@ -68,70 +69,162 @@ export function useLastDefinedValue(value: number | undefined) {
 export type SparklineRange = [number, number];
 export const sparkLineRange: SparklineRange = [0, 1];
 
+interface PointSample {
+  value: number | undefined;
+  ts: number;
+}
+
+const tickMs = 150;
+/** How many ticks of extra buffer data is drawn for the transform to slide over */
+const tickBufferCount = 3;
+
+const clock = clockSub(tickMs);
+
+function setDataWindow(
+  data: (PointSample | undefined)[],
+  windowMs: number,
+  value: number | undefined,
+) {
+  const now = performance.now();
+
+  data.push({ value, ts: now });
+
+  // keep 1 extra point past the window so window always has a value at left most axis
+  while ((data[1]?.ts ?? 0) + windowMs < now) {
+    data.shift();
+  }
+
+  return data;
+}
+
 interface UseScaledDataPointsProps {
   value?: number;
   queryBusy?: number[];
-  rollingWindowMs: number;
+  windowMs: number;
   height: number;
   width: number;
   updateIntervalMs: number;
   stopShifting?: boolean;
 }
+
 export function useScaledDataPoints({
   value,
   queryBusy,
-  rollingWindowMs,
+  windowMs: _windowMs,
   height,
-  width,
+  width: _width,
   updateIntervalMs,
   stopShifting,
-}: UseScaledDataPointsProps): {
-  scaledDataPoints: {
-    x: number;
-    y: number;
-  }[];
-  range: SparklineRange;
-} {
-  const dataPointsCount = Math.trunc(rollingWindowMs / updateIntervalMs);
-  const [busyData, setBusyData] = useState<(number | undefined)[]>(
-    () => new Array<number>(dataPointsCount),
-  );
+}: UseScaledDataPointsProps) {
+  const [scaledDataPoints, setScaledDataPoints] = useState<
+    { x: number; y: number }[]
+  >([]);
+
+  const { pxPerTick, width, windowMs } = useMemo(() => {
+    let windowMs = _windowMs;
+    let width = _width;
+    const pxPerTick = width / (windowMs / tickMs);
+
+    if (!queryBusy) {
+      windowMs += tickMs * tickBufferCount;
+      width += pxPerTick * tickBufferCount;
+    }
+    return {
+      pxPerTick,
+      width,
+      windowMs,
+    };
+  }, [_width, _windowMs, queryBusy]);
+
+  const busyDataRef = useRef([
+    { value: undefined, ts: performance.now() - windowMs },
+    { value: undefined, ts: performance.now() },
+  ]);
+
+  useLayoutEffect(() => {
+    if (stopShifting || queryBusy?.length) return;
+
+    setDataWindow(busyDataRef.current, windowMs, value);
+  }, [queryBusy?.length, windowMs, stopShifting, value]);
 
   useInterval(() => {
     if (stopShifting || queryBusy?.length) return;
 
-    setBusyData((prev) => {
-      const newState = [...prev, value];
-      if (newState.length >= dataPointsCount) {
-        newState.shift();
-      }
-      return newState;
-    });
+    const lastTs = busyDataRef.current[busyDataRef.current.length - 1]?.ts;
+    // Don't add a artifical tick point if one was added within the specified update interval
+    if (lastTs !== undefined && performance.now() - lastTs < updateIntervalMs) {
+      return;
+    }
+
+    setDataWindow(busyDataRef.current, windowMs, value);
   }, updateIntervalMs);
 
-  const data = queryBusy ?? busyData;
+  useEffect(() => {
+    function tick(data: (PointSample | undefined)[], tEnd: number) {
+      const size = data.length;
+      if (size === 0) {
+        setScaledDataPoints([]);
+        return;
+      }
 
-  const scaledDataPoints = useMemo((): { x: number; y: number }[] => {
-    // include all points in x spacing
-    const xRatio = width / data.length;
+      const tStart = tEnd - windowMs;
+      const scale = width / windowMs;
 
-    return data.reduce(
-      (acc, d, i) => {
-        if (d === undefined) return acc;
+      const points = new Array<{ x: number; y: number }>(size);
+      for (let i = 0; i < size; i++) {
+        const d = data[i];
+        if (d === undefined && i === 0) {
+          continue;
+        }
 
-        acc.push({
-          x: i * xRatio,
-          // make space for full line width on top and bottom edges
-          y: (1 - d) * (height - strokeLineWidth) + strokeLineWidth / 2,
-        });
-        return acc;
-      },
-      [] as { x: number; y: number }[],
-    );
-  }, [width, data, height]);
+        let dTs = d?.ts;
+        if (dTs === undefined) {
+          const nextTs = data[i + 1]?.ts ?? tEnd;
+          const prevTs = data[i - 1]?.ts ?? 0;
+          dTs = (nextTs - prevTs) / 2;
+        }
+
+        const prevPoint = points[i - 1];
+        if (prevPoint === undefined && d?.value === undefined) continue;
+
+        const x = (dTs - tStart) * scale;
+        const y =
+          d?.value !== undefined
+            ? // make space for full line width on top and bottom edges
+              (1 - d.value) * (height - strokeLineWidth) + strokeLineWidth / 2
+            : (prevPoint.y ?? 0);
+
+        points[i] = { x: x, y: y };
+      }
+
+      setScaledDataPoints(points);
+    }
+
+    // historical query
+    if (queryBusy) {
+      const tEnd = performance.now();
+      const ratio = windowMs / (queryBusy.length - 1);
+      const tStart = tEnd - windowMs;
+      const data = queryBusy.map((value, i) => {
+        return { value, ts: tStart + i * ratio };
+      });
+      tick(data, tEnd);
+    }
+    // live
+    else {
+      const unsub = clock.subscribeClock((tEnd) => {
+        tick(busyDataRef.current, tEnd);
+      });
+
+      return unsub;
+    }
+  }, [height, queryBusy, width, windowMs]);
 
   return {
     scaledDataPoints,
     range: sparkLineRange,
+    pxPerTick,
+    chartTickMs: tickMs,
+    isLive: !queryBusy,
   };
 }
