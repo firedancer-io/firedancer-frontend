@@ -770,6 +770,7 @@ export enum ShredEvent {
   shred_replayed,
   slot_complete,
   shred_replay_start,
+  shred_published,
 }
 
 const shredEventNumbers = Object.values(ShredEvent).filter(
