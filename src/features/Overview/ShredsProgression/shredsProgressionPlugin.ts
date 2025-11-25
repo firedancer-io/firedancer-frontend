@@ -39,20 +39,30 @@ export function shredsProgressionPlugin(
 
           const liveShreds = store.get(atoms.slotsShreds);
           const slotRange = store.get(atoms.range);
+          const minCompletedSlot = store.get(atoms.minCompletedSlot);
           const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
 
           if (!liveShreds || !slotRange) {
             return;
           }
 
-          if (!isOnStartupScreen && store.get(showStartupProgressAtom)) {
+          if (!isOnStartupScreen) {
             // if startup is running, prevent drawing non-startup screen chart
-            return;
+            if (store.get(showStartupProgressAtom)) return;
+            // Sometimes we've missed the completion event for the first slots
+            // depending on connection time. Ignore those slots, and only draw slots
+            // from min completed.
+            if (minCompletedSlot == null) return;
           }
 
           // Offset to convert shred event delta to chart x value
           const delayedNow = new Date().getTime() - delayMs;
           const tsXValueOffset = delayedNow - liveShreds.referenceTs;
+
+          const minSlot = isOnStartupScreen
+            ? slotRange.min
+            : Math.max(slotRange.min, minCompletedSlot ?? slotRange.min);
+          const maxSlot = slotRange.max;
 
           u.ctx.save();
           u.ctx.rect(u.bbox.left, u.bbox.top, u.bbox.width, u.bbox.height);
@@ -62,8 +72,8 @@ export function shredsProgressionPlugin(
           const getXPos = (xVal: number) => u.valToPos(xVal, xScaleKey, true);
 
           const { maxShreds, orderedSlotNumbers } = getDrawInfo(
-            slotRange.min,
-            slotRange.max,
+            minSlot,
+            maxSlot,
             liveShreds,
             u.scales[xScaleKey],
             tsXValueOffset,
