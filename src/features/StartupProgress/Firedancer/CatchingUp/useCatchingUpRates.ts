@@ -10,8 +10,12 @@ const rateCalcWindowMs = 10_000;
 /**
  * Provides a ref that estimates how many slots will be replayed in total
  */
-export default function useEstimateTotalSlots() {
-  const totalSlotsRef = useRef<number>();
+export default function useCatchingUpRates() {
+  const catchingUpRatesRef = useRef<{
+    totalSlotsEstimate?: number;
+    replaySlotsPerSecond?: number;
+    turbineSlotsPerSecond?: number;
+  }>({});
   const startSlot = useAtomValue(catchingUpStartSlotAtom);
   const latestTurbineSlot = useAtomValue(latestTurbineSlotAtom);
   const latestReplaySlot = useAtomValue(completedSlotAtom);
@@ -34,30 +38,37 @@ export default function useEstimateTotalSlots() {
     if (
       startSlot == null ||
       latestTurbineSlot == null ||
-      totalSlotsRef.current != null
+      catchingUpRatesRef.current.totalSlotsEstimate != null
     )
       return;
 
-    totalSlotsRef.current = calculateTotalSlots(
-      400,
-      100,
+    const replaySlotsPerSecond = 400;
+    const turbineSlotsPerSecond = 100;
+    const totalSlotsEsimtate = calculateTotalSlots(
+      replaySlotsPerSecond,
+      turbineSlotsPerSecond,
       startSlot,
       latestReplaySlot,
       latestTurbineSlot,
     );
-  }, [latestReplaySlot, latestTurbineSlot, startSlot, totalSlotsRef]);
+
+    catchingUpRatesRef.current = {
+      totalSlotsEstimate: totalSlotsEsimtate,
+      replaySlotsPerSecond,
+      turbineSlotsPerSecond,
+    };
+  }, [latestReplaySlot, latestTurbineSlot, startSlot, catchingUpRatesRef]);
 
   // only reduce estimate, to prevent the drawn bars from being compressed to the left
   useInterval(() => {
-    const prevEstimate = totalSlotsRef.current;
+    const prevEstimate = catchingUpRatesRef.current.totalSlotsEstimate;
 
     if (
       startSlot == null ||
       latestTurbineSlot == null ||
-      totalSlotsRef.current == null ||
+      prevEstimate == null ||
       replayRate == null ||
-      turbineRate == null ||
-      !prevEstimate
+      turbineRate == null
     ) {
       return;
     }
@@ -78,10 +89,15 @@ export default function useEstimateTotalSlots() {
       prevEstimate - newEstimate,
     );
 
-    totalSlotsRef.current = prevEstimate - diffToApply;
+    const updatedEstimate = prevEstimate - diffToApply;
+    catchingUpRatesRef.current = {
+      totalSlotsEstimate: updatedEstimate,
+      replaySlotsPerSecond: replayRate,
+      turbineSlotsPerSecond: turbineRate,
+    };
   }, 500);
 
-  return totalSlotsRef;
+  return catchingUpRatesRef;
 }
 
 /**
