@@ -30,6 +30,7 @@ export default function ShredsSlotLabels() {
       position="relative"
       // extra space for borders
       height={`${height + 2}px`}
+      style={{ opacity: 0.8 }}
     >
       {groupLeaderSlots.map((slot) => (
         <SlotGroupLabel key={slot} firstSlot={slot} />

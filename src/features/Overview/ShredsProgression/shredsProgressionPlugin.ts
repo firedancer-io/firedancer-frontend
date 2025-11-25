@@ -667,46 +667,28 @@ function getGroupTsDeltas(
   } = {};
 
   for (const leaderSlot of groupLeaderSlots) {
-    // get first defined slot
-    // ignore missing slots at the start when positioning group
-    let firstDefinedSlot = undefined;
-    for (
-      let slotNumber = leaderSlot;
-      slotNumber < leaderSlot + slotsPerLeader;
-      slotNumber++
-    ) {
-      if (slotNumber in slotTsDeltas) {
-        firstDefinedSlot = slotNumber;
-        break;
-      }
-    }
+    const slotNumbers = Array.from(
+      { length: slotsPerLeader },
+      (_, i) => i + leaderSlot,
+    );
+    const definedSlotTsDeltas = slotNumbers
+      .map((slotNumber) => slotTsDeltas[slotNumber])
+      .filter((v) => v !== undefined);
 
-    if (firstDefinedSlot === undefined) {
+    if (definedSlotTsDeltas.length === 0) {
       continue;
     }
 
-    let groupStart = Infinity;
-    let groupEnd = -Infinity;
+    // ignore missing slots at the start when positioning group
+    const minStart = Math.min(...definedSlotTsDeltas.map(([start]) => start));
+    const ends = definedSlotTsDeltas.map(([, end]) => end);
+    const definedEnds = ends.filter((end) => end !== undefined);
 
-    for (
-      let slotNumber = firstDefinedSlot;
-      slotNumber < leaderSlot + slotsPerLeader;
-      slotNumber++
-    ) {
-      const slotTsDeltaRange = slotTsDeltas[slotNumber];
-      const slotStart = slotTsDeltaRange?.[0];
-      const slotEnd = slotTsDeltaRange?.[1];
+    // undefined slot end will extend to max x
+    const hasUndefinedEnd = ends.length > definedEnds.length;
+    const maxEnd = hasUndefinedEnd ? undefined : Math.max(...definedEnds);
 
-      if (slotStart != null) {
-        groupStart = Math.min(groupStart, slotStart);
-      }
-      // undefined slot end will extend to max x
-      groupEnd = Math.max(groupEnd, slotEnd ?? Infinity);
-    }
-
-    // replace Infinity with undefined for end
-    const end = groupEnd === Infinity ? undefined : groupEnd;
-    groupTsDeltas[leaderSlot] = [groupStart, end];
+    groupTsDeltas[leaderSlot] = [minStart, maxEnd];
   }
   return groupTsDeltas;
 }
@@ -749,6 +731,7 @@ function moveLabelPosition(
 
   const key = isGroup ? "groups" : "slots";
   const positionsToMutate = labelPositionsToMutate[key];
+  const xPosProp = isGroup ? "--group-x" : "--slot-x";
 
   const isVisible = !!position;
   const prevPositions = prevLabelPositions?.[key];
@@ -757,8 +740,7 @@ function moveLabelPosition(
   if (!isVisible) {
     if (forceUpdates || prevVisible) {
       // hide
-      const prop = isGroup ? "--group-x" : "--slot-x";
-      el.style.setProperty(prop, isVisible ? "0" : "-100000px");
+      el.style.setProperty(xPosProp, "-100000px");
     }
     return;
   }
@@ -769,25 +751,26 @@ function moveLabelPosition(
   const prevXPos = prevPositions?.[slotNumber]?.[0];
 
   if (forceUpdates || xPos !== prevXPos) {
-    const prop = isGroup ? "--group-x" : "--slot-x";
-    el.style.setProperty(prop, `${xPos}px`);
+    el.style.setProperty(xPosProp, `${xPos}px`);
   }
 
   // no width data -- extend to max width
   const width = position[1];
   const isExtended = position[1] == null;
-  // extend past maxXPos to hide right border
-  const extendedWidth = width ?? maxXPos + 1 - xPos;
   const prevWidth = prevPositions?.[slotNumber]?.[1];
+  // extend past maxXPos to hide right border
+  const newWidth = isExtended ? maxXPos - xPos + 1 : width;
 
-  if (forceUpdates || extendedWidth !== prevWidth) {
-    el.style.width = `${extendedWidth}px`;
+  if (forceUpdates || newWidth !== prevWidth) {
+    el.style.width = `${newWidth}px`;
   }
 
   const wasPrevExtended =
     prevPositions?.[slotNumber] && prevPositions[slotNumber][1] == null;
 
   if (isGroup && (forceUpdates || isExtended !== wasPrevExtended)) {
+    // Extended groups don't have a defined end, so we don't know where to center the name text.
+    // Set to opacity 0, and transition to 1 when the group end becomes defined.
     el.style.setProperty("--group-name-opacity", isExtended ? "0" : "1");
   }
 }
