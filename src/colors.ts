@@ -143,12 +143,15 @@ export const nextSlotValueColor = "#CACACA";
 export const gridTicksColor = "#858585";
 export const gridLineColor = "#312D42";
 
-export const shredRepairRequestedColor = "#A34B4B";
-export const shredReceivedTurbineColor = "#106AA7";
-export const shredReceivedRepairColor = "#885D2D";
-export const shredReplayStartedColor = "#326E79";
-export const shredReplayedColor = "#1C443A";
-export const shredSkippedColor = "#FF5353";
+export const shredRepairRequestedColor = "#8B5148";
+export const shredReceivedTurbineColor = "#3E6883";
+export const shredReceivedRepairColor = "#896549";
+export const shredReplayStartedColor = "#3A7B84";
+export const shredReplayedTurbineColor = "#59A693";
+export const shredReplayedRepairColor = "#5C844B";
+export const shredReplayedNothingColor = "#616A68";
+export const shredSkippedColor = "#8B4648";
+export const shredPublishedColor = "#685C70";
 
 // epoch bar
 export const epochTextColor = "#FAFAFA";
