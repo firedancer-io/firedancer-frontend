@@ -30,12 +30,17 @@ export type SlotsShreds = {
  * Use reference / delta slot number and timestamp to minimize memory usage
  */
 export function createLiveShredsAtoms() {
+  const _minCompletedSlotAtom = atom<number>();
   const _liveShredsAtom = atom<SlotsShreds>();
   const _slotRangeAtom = atom<{
     min: number;
     max: number;
   }>();
   return {
+    /**
+     * min completed slot we've seen since we started collecting data
+     */
+    minCompletedSlot: atom((get) => get(_minCompletedSlotAtom)),
     range: atom((get) => get(_slotRangeAtom)),
     slotsShreds: atom((get) => get(_liveShredsAtom)),
     addShredEvents: atom(
@@ -53,6 +58,8 @@ export function createLiveShredsAtoms() {
         }: LiveShreds,
       ) => {
         let slotRange = get(_slotRangeAtom);
+        const minCompletedSlot = get(_minCompletedSlotAtom);
+        let newMinCompletedSlot = minCompletedSlot;
 
         set(_liveShredsAtom, (prev) => {
           const updated: SlotsShreds = prev ?? {
@@ -90,6 +97,13 @@ export function createLiveShredsAtoms() {
               ),
             );
 
+            if (ev === ShredEvent.slot_complete) {
+              newMinCompletedSlot = Math.min(
+                slotNumber,
+                minCompletedSlot ?? slotNumber,
+              );
+            }
+
             // update range
             slotRange = {
               min: Math.min(slotNumber, slotRange?.min ?? slotNumber),
@@ -101,6 +115,7 @@ export function createLiveShredsAtoms() {
         });
 
         set(_slotRangeAtom, slotRange);
+        set(_minCompletedSlotAtom, newMinCompletedSlot);
       },
     ),
 
@@ -112,6 +127,7 @@ export function createLiveShredsAtoms() {
       atom(null, (get, set, deleteAll: boolean, isStartup: boolean) => {
         if (deleteAll) {
           set(_slotRangeAtom, undefined);
+          set(_minCompletedSlotAtom, undefined);
           set(_liveShredsAtom, undefined);
           return;
         }
