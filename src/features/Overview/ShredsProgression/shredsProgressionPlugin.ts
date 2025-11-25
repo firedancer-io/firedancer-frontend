@@ -8,6 +8,7 @@ import {
 import { delayMs, shredEventDescPriorities } from "./const";
 import { showStartupProgressAtom } from "../../StartupProgress/atoms";
 import {
+  shredPublishedColor,
   shredReceivedRepairColor,
   shredReceivedTurbineColor,
   shredRepairRequestedColor,
@@ -86,7 +87,8 @@ export function shredsProgressionPlugin(
           const getYOffset = isOnStartupScreen
             ? (eventType: Exclude<ShredEvent, ShredEvent.slot_complete>) => {
                 switch (eventType) {
-                  case ShredEvent.shred_received_turbine: {
+                  case ShredEvent.shred_received_turbine:
+                  case ShredEvent.shred_published: {
                     return 0;
                   }
                   case ShredEvent.shred_repair_request:
@@ -342,6 +344,9 @@ function addEventsForRow({
           addEventPosition(shredReplayedNothingColor, position);
         }
         break;
+      }
+      case ShredEvent.shred_published: {
+        addEventPosition(shredPublishedColor, position);
       }
     }
   }

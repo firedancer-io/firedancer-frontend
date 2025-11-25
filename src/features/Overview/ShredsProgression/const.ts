@@ -11,6 +11,7 @@ export const shredEventDescPriorities: Exclude<
   ShredEvent,
   ShredEvent.slot_complete
 >[] = [
+  ShredEvent.shred_published,
   ShredEvent.shred_replayed,
   ShredEvent.shred_replay_start,
   ShredEvent.shred_received_repair,
