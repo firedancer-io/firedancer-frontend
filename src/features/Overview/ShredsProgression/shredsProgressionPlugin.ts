@@ -5,9 +5,18 @@ import {
   type ShredEventTsDeltas,
   type SlotsShreds,
 } from "./atoms";
-import { delayMs, shredColors, shredEventDescPriorities } from "./const";
+import { delayMs, shredEventDescPriorities } from "./const";
 import { showStartupProgressAtom } from "../../StartupProgress/atoms";
-import { shredSkippedColor } from "../../../colors";
+import {
+  shredReceivedRepairColor,
+  shredReceivedTurbineColor,
+  shredRepairRequestedColor,
+  shredReplayedNothingColor,
+  shredReplayedRepairColor,
+  shredReplayedTurbineColor,
+  shredReplayStartedColor,
+  shredSkippedColor,
+} from "../../../colors";
 import { skippedClusterSlotsAtom } from "../../../atoms";
 import { clamp } from "lodash";
 import { ShredEvent } from "../../../api/entities";
@@ -94,6 +103,13 @@ export function shredsProgressionPlugin(
 
           for (const slotNumber of orderedSlotNumbers) {
             const eventsByFillStyle: EventsByFillStyle = {};
+            const addEventPosition = (
+              fillStyle: string,
+              position: [x: number, y: number, width: number],
+            ) => {
+              eventsByFillStyle[fillStyle] ??= [];
+              eventsByFillStyle[fillStyle].push(position);
+            };
 
             const slot = liveShreds.slots.get(slotNumber);
             if (!slot) continue;
@@ -111,7 +127,7 @@ export function shredsProgressionPlugin(
               );
 
               addEventsForRow({
-                eventsByFillStyle,
+                addEventPosition,
                 u,
                 firstShredIdx,
                 lastShredIdx,
@@ -199,7 +215,10 @@ const getDrawInfo = (
 };
 
 interface AddEventsForRowArgs {
-  eventsByFillStyle: EventsByFillStyle;
+  addEventPosition: (
+    fillStyle: string,
+    position: [x: number, y: number, width: number],
+  ) => void;
   u: uPlot;
   firstShredIdx: number;
   lastShredIdx: number;
@@ -217,12 +236,11 @@ interface AddEventsForRowArgs {
   getXPos: (xVal: number) => number;
 }
 /**
- * Mutate eventsByFillStyle
  * Draw rows for shreds, with rectangles or dots for events.
  * Each row may represent partial or multiple shreds. Use the most completed shred.
  */
 function addEventsForRow({
-  eventsByFillStyle,
+  addEventPosition,
   u,
   firstShredIdx,
   lastShredIdx,
@@ -256,6 +274,11 @@ function addEventsForRow({
       : // event goes to slot completion or max x
         Math.min(getXPos(slotCompletionTsDelta - tsXValueOffset), maxXPos);
 
+  const eventPositions = new Map<
+    Exclude<ShredEvent, ShredEvent.slot_complete>,
+    [x: number, y: number, width: number]
+  >();
+
   // draw events from highest to lowest priority
   for (const eventType of shredEventDescPriorities) {
     const tsDelta = eventTsDeltas[eventType];
@@ -269,18 +292,48 @@ function addEventsForRow({
 
     const yOffset = getYOffset?.(eventType) ?? 0;
 
-    const fillStyle = isSlotSkipped
-      ? shredSkippedColor
-      : (shredColors[eventType] ?? "transparent");
-
-    eventsByFillStyle[fillStyle] ??= [];
-    eventsByFillStyle[fillStyle].push(
+    eventPositions.set(
+      eventType,
       drawOnlyDots || isSlotSkipped
         ? [startXPos, y + yOffset, dotWidth]
         : [startXPos, y + yOffset, endXPos - startXPos],
     );
-
     endXPos = startXPos;
+  }
+
+  for (const [eventType, position] of eventPositions.entries()) {
+    if (isSlotSkipped) {
+      addEventPosition(shredSkippedColor, position);
+      continue;
+    }
+    switch (eventType) {
+      case ShredEvent.shred_repair_request: {
+        addEventPosition(shredRepairRequestedColor, position);
+        break;
+      }
+      case ShredEvent.shred_received_turbine: {
+        addEventPosition(shredReceivedTurbineColor, position);
+        break;
+      }
+      case ShredEvent.shred_received_repair: {
+        addEventPosition(shredReceivedRepairColor, position);
+        break;
+      }
+      case ShredEvent.shred_replay_start: {
+        addEventPosition(shredReplayStartedColor, position);
+        break;
+      }
+      case ShredEvent.shred_replayed: {
+        if (eventPositions.has(ShredEvent.shred_received_repair)) {
+          addEventPosition(shredReplayedRepairColor, position);
+        } else if (eventPositions.has(ShredEvent.shred_received_turbine)) {
+          addEventPosition(shredReplayedTurbineColor, position);
+        } else {
+          addEventPosition(shredReplayedNothingColor, position);
+        }
+        break;
+      }
+    }
   }
 }
 
