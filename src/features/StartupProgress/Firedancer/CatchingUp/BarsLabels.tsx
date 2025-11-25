@@ -8,11 +8,8 @@ import {
   catchingUpStartSlotAtom,
   firstTurbineSlotAtom,
   latestTurbineSlotAtom,
-  repairSlotsAtom,
-  turbineSlotsAtom,
 } from "./atoms";
 import { useEffect } from "react";
-import { completedSlotAtom } from "../../../../api/atoms";
 
 export default function BarsLabels() {
   const startSlot = useAtomValue(catchingUpStartSlotAtom);
@@ -27,83 +24,19 @@ export default function BarsLabels() {
     return;
   }
 
-  const isLeftSectionWider =
-    firstTurbineSlot - startSlot >= latestTurbineSlot - firstTurbineSlot;
-
   return (
     <Flex className={styles.labelsRow}>
-      <Flex className={styles.leftLabels}>
-        {isLeftSectionWider && <EquationLabels />}
+      <Flex justify="end" flexShrink="0" className={styles.labelsLeft}>
         <TurbineLabel slot={firstTurbineSlot} />
       </Flex>
 
-      <Flex className={styles.rightLabels}>
-        {!isLeftSectionWider && <EquationLabels />}
+      <Flex
+        justify="end"
+        flexGrow="1"
+        minWidth="0"
+        className={styles.labelsRight}
+      >
         <TurbineLabel slot={latestTurbineSlot} isHead />
-      </Flex>
-    </Flex>
-  );
-}
-
-interface SlotLabelProps {
-  value: number;
-  label: string;
-  className: string;
-}
-function SlotLabel({ value, label, className }: SlotLabelProps) {
-  return (
-    <Text className={clsx(className, styles.ellipsis)}>
-      <Text className={styles.bold}>{value} </Text>
-      {label}
-    </Text>
-  );
-}
-
-function EquationLabels() {
-  const startSlot = useAtomValue(catchingUpStartSlotAtom);
-  const turbineSlots = useAtomValue(turbineSlotsAtom);
-  const repairSlots = useAtomValue(repairSlotsAtom);
-  const latestReplaySlot = useAtomValue(completedSlotAtom);
-
-  if (startSlot == null || !turbineSlots.size) {
-    return;
-  }
-
-  return (
-    <Flex
-      justify="center"
-      flexGrow="1"
-      minWidth="0"
-      align="end"
-      className={styles.equation}
-    >
-      <SlotLabel
-        className={styles.replayed}
-        value={latestReplaySlot ? latestReplaySlot - startSlot + 1 : 0}
-        label="Slots Replayed"
-      />
-
-      <div className={styles.dynamicGap} />
-      <Text> : </Text>
-      <div className={styles.dynamicGap} />
-
-      <Flex gap="2px" align="center" minWidth="0">
-        <Text>( </Text>
-        <SlotLabel
-          className={styles.repaired}
-          value={repairSlots.size}
-          label="Repaired"
-        />
-
-        <Text> + </Text>
-
-        <SlotLabel
-          className={styles.receivedByTurbine}
-          value={turbineSlots.size}
-          label="Received by Turbine"
-        />
-
-        <Text> ) </Text>
       </Flex>
     </Flex>
   );

@@ -11,14 +11,20 @@ import {
 } from "./atoms";
 import { useAtomValue } from "jotai";
 import { catchingUpBarsPlugin } from "./catchingUpBarsPlugin";
-import useEstimateTotalSlots from "./useEstimateTotalSlots";
 import { Box } from "@radix-ui/themes";
 import { useThrottledCallback } from "use-debounce";
 import { completedSlotAtom } from "../../../../api/atoms";
 
 const emptyChartData: uPlot.AlignedData = [[0], [null]];
 
-export function CatchingUpBars() {
+interface CatchingUpBarsProps {
+  catchingUpRatesRef: React.MutableRefObject<{
+    totalSlotsEstimate?: number;
+    replaySlotsPerSecond?: number;
+    turbineSlotsPerSecond?: number;
+  }>;
+}
+export function CatchingUpBars({ catchingUpRatesRef }: CatchingUpBarsProps) {
   const startSlot = useAtomValue(catchingUpStartSlotAtom);
   const repairSlots = useAtomValue(repairSlotsAtom);
   const turbineSlots = useAtomValue(turbineSlotsAtom);
@@ -28,7 +34,6 @@ export function CatchingUpBars() {
 
   const dataRef = useRef<CatchingUpData | undefined>();
   const uplotRef = useRef<uPlot>();
-  const totalSlotsRef = useEstimateTotalSlots();
 
   const options = useMemo<uPlot.Options>(() => {
     return {
@@ -43,9 +48,9 @@ export function CatchingUpBars() {
       },
       legend: { show: false },
 
-      plugins: [catchingUpBarsPlugin(totalSlotsRef, dataRef)],
+      plugins: [catchingUpBarsPlugin(catchingUpRatesRef, dataRef)],
     };
-  }, [dataRef, totalSlotsRef]);
+  }, [dataRef, catchingUpRatesRef]);
 
   const handleCreate = useCallback((u: uPlot) => {
     uplotRef.current = u;

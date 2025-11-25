@@ -10,14 +10,20 @@ const barWidthPx = 4;
 const gapWidthPx = barWidthPx;
 
 export function catchingUpBarsPlugin(
-  totalSlotsRef: MutableRefObject<number | undefined>,
+  catchingUpRatesRef: React.MutableRefObject<{
+    totalSlotsEstimate?: number;
+    replaySlotsPerSecond?: number;
+    turbineSlotsPerSecond?: number;
+  }>,
   dataRef: MutableRefObject<CatchingUpData | undefined>,
 ): uPlot.Plugin {
   return {
     hooks: {
       drawSeries: [
         (u) => {
-          if (totalSlotsRef.current == null || !dataRef.current) {
+          const totalSlotsEstimate =
+            catchingUpRatesRef.current.totalSlotsEstimate;
+          if (totalSlotsEstimate == null || !dataRef.current) {
             return;
           }
 
@@ -35,8 +41,7 @@ export function catchingUpBarsPlugin(
             (u.bbox.width + gapWidth) / (barWidth + gapWidth),
           );
 
-          const totalSlotsCount = totalSlotsRef.current;
-          const slotsPerBar = totalSlotsCount / totalBarsThatFit;
+          const slotsPerBar = totalSlotsEstimate / totalBarsThatFit;
 
           const {
             startSlot,

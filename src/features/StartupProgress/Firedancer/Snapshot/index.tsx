@@ -104,7 +104,7 @@ export default function Snapshot() {
   return (
     <>
       <PhaseHeader phase={bootProgress.phase} />
-      <Flex direction="column" mt="52px" gap={columnGap}>
+      <Flex mt="52px" direction="column" gap={columnGap}>
         <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
           <SnapshotReadingCard
             compressedCompleted={readCompressedBytes}
