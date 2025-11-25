@@ -5,7 +5,7 @@
   background-color: #080b13;
   border-radius: 2px;
   border: 1px solid #3c4652;
-  will-change: transform, width;
+  will-change: transform;
   transform: translate(var(--group-x));
 
   &.you {
@@ -42,7 +42,7 @@
       --slot-x: 0;
 
       position: absolute;
-      will-change: transform, width;
+      will-change: transform;
       transform: translate(var(--slot-x));
 
       height: 100%;

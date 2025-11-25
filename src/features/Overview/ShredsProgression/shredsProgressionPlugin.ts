@@ -662,35 +662,43 @@ function getGroupTsDeltas(
   },
   groupLeaderSlots: number[],
 ) {
-  const groupTsDeltas: {
+  const tsDeltasByGroup: {
     [leaderSlotNumber: number]: TsDeltaRange;
   } = {};
 
   for (const leaderSlot of groupLeaderSlots) {
-    const slotNumbers = Array.from(
-      { length: slotsPerLeader },
-      (_, i) => i + leaderSlot,
+    const fullGroupTsDeltas = Array.from({ length: slotsPerLeader }, (_, i) => {
+      const slotNumber = i + leaderSlot;
+      return slotTsDeltas[slotNumber];
+    });
+
+    const firstDefinedSlotIdx = fullGroupTsDeltas.findIndex(
+      (v) => v !== undefined,
     );
-    const definedSlotTsDeltas = slotNumbers
-      .map((slotNumber) => slotTsDeltas[slotNumber])
-      .filter((v) => v !== undefined);
 
-    if (definedSlotTsDeltas.length === 0) {
-      continue;
-    }
+    // no slots, no group
+    if (firstDefinedSlotIdx === -1) continue;
 
-    // ignore missing slots at the start when positioning group
-    const minStart = Math.min(...definedSlotTsDeltas.map(([start]) => start));
-    const ends = definedSlotTsDeltas.map(([, end]) => end);
-    const definedEnds = ends.filter((end) => end !== undefined);
+    // ignore missing slots at the start when positioning group.
+    // handles the case where some we sometimes miss early slot completion events,
+    // depending on the connection timing
+    const groupTsDeltas = fullGroupTsDeltas.slice(firstDefinedSlotIdx);
+
+    const minStart = Math.min(
+      ...groupTsDeltas.filter((v) => v !== undefined).map(([start]) => start),
+    );
+
+    const definedEnds = groupTsDeltas
+      .map((pos) => pos?.[1] ?? undefined)
+      .filter((end) => end !== undefined);
 
     // undefined slot end will extend to max x
-    const hasUndefinedEnd = ends.length > definedEnds.length;
+    const hasUndefinedEnd = definedEnds.length < groupTsDeltas.length;
     const maxEnd = hasUndefinedEnd ? undefined : Math.max(...definedEnds);
 
-    groupTsDeltas[leaderSlot] = [minStart, maxEnd];
+    tsDeltasByGroup[leaderSlot] = [minStart, maxEnd];
   }
-  return groupTsDeltas;
+  return tsDeltasByGroup;
 }
 
 /**
