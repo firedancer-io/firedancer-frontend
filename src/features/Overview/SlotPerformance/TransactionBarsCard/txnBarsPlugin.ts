@@ -4,11 +4,11 @@ import uPlot from "uplot";
 import { ceil, round } from "lodash";
 import { pointWithin, Quadtree } from "./quadTree";
 import type { MutableRefObject } from "react";
-import type { SlotTransactions } from "../../../../api/types";
+import type { Client, SlotTransactions } from "../../../../api/types";
 import { getDefaultStore } from "jotai";
 import { logRatio } from "../../../../mathUtils";
 import { barCountAtom } from "./atoms";
-import { FilterEnum, stateColors } from "./consts";
+import { FilterEnum, stateColors, TxnState } from "./consts";
 import {
   getMaxFees,
   getMaxTips,
@@ -16,7 +16,6 @@ import {
   getMaxCuRequested,
   isTimeSeries,
   isTxnIdxSeries,
-  getChartTxnState,
   isMicroblockSeries,
   bigIntRatio,
   isAdditionalSeries,
@@ -24,6 +23,7 @@ import {
   getCuIncomeRankingRatios,
 } from "./txnBarsPluginUtils";
 import { banksXScaleKey } from "../ComputeUnitsCard/consts";
+import { getTxnState, type TxnBundleStats } from "../../../../transactionUtils";
 
 const laneWidth = 1;
 const laneDistr = SPACE_BETWEEN;
@@ -59,6 +59,8 @@ export const setPauseDrawing = (pause: boolean) => (pauseDrawing = pause);
 
 export function txnBarsPlugin(
   transactionsRef: MutableRefObject<SlotTransactions | null | undefined>,
+  transactionsBundleStats: (TxnBundleStats | undefined)[],
+  client: Client,
 ): uPlot.Plugin {
   let maxFees = 0n;
   let maxTips = 0n;
@@ -98,7 +100,15 @@ export function txnBarsPlugin(
       if (isTxnIdxSeries(seriesIdx)) {
         return {
           fill: stateColors[
-            getChartTxnState(data, dataIdx, transactionsRef.current, value)
+            !data || !transactionsRef.current
+              ? TxnState.DEFAULT
+              : getTxnState(
+                  data[0][dataIdx],
+                  transactionsRef.current,
+                  value,
+                  transactionsBundleStats[value]?.bundleTxnIdx,
+                  client,
+                )
           ],
           brightness:
             focusedTxnIdx === data[txnIdxSidx][dataIdx]

@@ -4,10 +4,14 @@ import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery
 import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
 import { useMemo } from "react";
 import { getDurationWithUnits } from "../../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
-import type { SlotTransactions } from "../../../../api/types";
 import PctBar from "../PctBar";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import { slotDetailsStatsPrimary } from "../../../../colors";
+import {
+  getTxnBundleStats,
+  getTxnStateDurations,
+} from "../../../../transactionUtils";
+import { clientAtom } from "../../../../atoms";
 
 const initDurations = {
   preLoading: 0,
@@ -18,42 +22,12 @@ const initDurations = {
   total: 0,
 };
 
-function sumDurations(
-  transactions: SlotTransactions,
-  i: number,
-  durations: typeof initDurations,
-) {
-  const startTs = transactions.txn_mb_start_timestamps_nanos[i];
-  const endTs = transactions.txn_mb_end_timestamps_nanos[i];
-
-  // todo: bundles
-  durations.preLoading += Number(
-    transactions.txn_preload_end_timestamps_nanos[i] - startTs,
-  );
-  durations.validating += Number(
-    transactions.txn_start_timestamps_nanos[i] -
-      transactions.txn_preload_end_timestamps_nanos[i],
-  );
-  durations.loading += Number(
-    transactions.txn_load_end_timestamps_nanos[i] -
-      transactions.txn_start_timestamps_nanos[i],
-  );
-  durations.execute += Number(
-    transactions.txn_end_timestamps_nanos[i] -
-      transactions.txn_load_end_timestamps_nanos[i],
-  );
-  durations.postExecute += Number(
-    endTs - transactions.txn_end_timestamps_nanos[i],
-  );
-
-  return durations;
-}
-
 function getTotal(durations: typeof initDurations) {
   return Object.values(durations).reduce((acc, val) => acc + val, 0);
 }
 
 export default function CumulativeExecutionTimeStats() {
+  const client = useAtomValue(clientAtom);
   const selectedSlot = useAtomValue(selectedSlotAtom);
   const transactions =
     useSlotQueryResponseTransactions(selectedSlot).response?.transactions;
@@ -66,12 +40,30 @@ export default function CumulativeExecutionTimeStats() {
     const landedFailed = { ...initDurations };
 
     for (let i = 0; i < transactions.txn_landed.length; i++) {
+      const bundleStats = getTxnBundleStats(transactions, i);
+      const duration = getTxnStateDurations(
+        transactions,
+        i,
+        bundleStats.bundleTxnIdx,
+        client,
+      );
+
+      const sumDurations = (
+        durations: typeof initDurations,
+        b: typeof duration,
+      ) => {
+        durations.preLoading += Number(b.preLoading);
+        durations.validating += Number(b.validating);
+        durations.loading += Number(b.loading);
+        durations.execute += Number(b.execute);
+        durations.postExecute += Number(b.postExecute);
+      };
       if (!transactions.txn_landed[i]) {
-        sumDurations(transactions, i, unlanded);
+        sumDurations(unlanded, duration);
       } else if (transactions.txn_error_code[i] === 0) {
-        sumDurations(transactions, i, landedSuccess);
+        sumDurations(landedSuccess, duration);
       } else {
-        sumDurations(transactions, i, landedFailed);
+        sumDurations(landedFailed, duration);
       }
     }
 
@@ -85,7 +77,7 @@ export default function CumulativeExecutionTimeStats() {
       landedFailed,
       max: Math.max(unlanded.total, landedSuccess.total, landedFailed.total),
     };
-  }, [transactions]);
+  }, [transactions, client]);
 
   if (!durations) return;
 

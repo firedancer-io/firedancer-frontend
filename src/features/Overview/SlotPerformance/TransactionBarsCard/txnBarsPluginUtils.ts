@@ -1,62 +1,6 @@
-import type uPlot from "uplot";
 import type { MutableRefObject } from "react";
 import type { SlotTransactions } from "../../../../api/types";
-import { TxnState } from "./consts";
 import { getTxnIncome } from "../../../../utils";
-
-export function getTxnState(
-  ts: number,
-  txns: SlotTransactions,
-  txnIdx: number,
-) {
-  if (
-    ts <
-    Number(
-      txns.txn_preload_end_timestamps_nanos[txnIdx] -
-        txns.start_timestamp_nanos,
-    )
-  ) {
-    return TxnState.PRELOADING;
-  }
-
-  if (
-    ts <
-    Number(txns.txn_start_timestamps_nanos[txnIdx] - txns.start_timestamp_nanos)
-  ) {
-    return TxnState.VALIDATE;
-  }
-
-  if (
-    ts <
-    Number(
-      txns.txn_load_end_timestamps_nanos[txnIdx] - txns.start_timestamp_nanos,
-    )
-  ) {
-    return TxnState.LOADING;
-  }
-
-  if (
-    ts <
-    Number(txns.txn_end_timestamps_nanos[txnIdx] - txns.start_timestamp_nanos)
-  ) {
-    return TxnState.EXECUTE;
-  }
-
-  return TxnState.POST_EXECUTE;
-}
-
-export function getChartTxnState(
-  chartData: uPlot.AlignedData | undefined,
-  dataIdx: number,
-  txns: SlotTransactions | undefined | null,
-  txnIdx: number,
-) {
-  if (!chartData || !txns) return TxnState.DEFAULT;
-
-  const ts = chartData[0][dataIdx];
-
-  return getTxnState(ts, txns, txnIdx);
-}
 
 export const timeSidx = 0;
 export const txnIdxSidx = 1;
