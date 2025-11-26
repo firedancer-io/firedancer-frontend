@@ -1,4 +1,4 @@
-import { Flex } from "@radix-ui/themes";
+import { Grid } from "@radix-ui/themes";
 import type { TileType } from "../../../../api/types";
 import TileCard from "../../../Overview/SlotPerformance/TileCard";
 import { useTilesPerformance } from "../../../Overview/SlotPerformance/useTilesPerformance";
@@ -19,7 +19,14 @@ export default function CatchingUpTiles() {
     useTilesPerformance();
 
   return (
-    <Flex gap="20px" justify="center" className={styles.tilesRow}>
+    <Grid
+      className={styles.tilesGrid}
+      columns={{
+        xs: "2",
+        md: "4",
+      }}
+      gap="20px"
+    >
       {tiles.map((tile) => (
         <TileCard
           key={tile}
@@ -33,6 +40,6 @@ export default function CatchingUpTiles() {
           setIsExpanded={setIsExpanded}
         />
       ))}
-    </Flex>
+    </Grid>
   );
 }
