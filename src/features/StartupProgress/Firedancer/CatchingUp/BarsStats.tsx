@@ -1,7 +1,6 @@
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
 import styles from "./catchingUp.module.css";
-import clsx from "clsx";
 import { catchingUpStartSlotAtom, latestTurbineSlotAtom } from "./atoms";
 import { completedSlotAtom } from "../../../../api/atoms";
 
@@ -49,7 +48,7 @@ export function BarsStats({ catchingUpRatesRef }: CatchingUpBarsProps) {
       <Flex justify="between" className={styles.barsStatsColumn}>
         <SlotLabel
           className={styles.speed}
-          value={replayRate === undefined ? undefined : Math.round(replayRate)}
+          value={replayRate}
           label="Slots/s Replay Speed"
         />
         <SlotLabel
@@ -63,14 +62,20 @@ export function BarsStats({ catchingUpRatesRef }: CatchingUpBarsProps) {
 }
 
 interface SlotLabelProps {
-  value: number | string | undefined;
+  value: number | undefined;
   label: string;
   className: string;
 }
 function SlotLabel({ value, label, className }: SlotLabelProps) {
+  const formattedValue =
+    value === undefined
+      ? "--"
+      : value.toLocaleString(undefined, {
+          maximumFractionDigits: 0,
+        });
   return (
-    <Text className={clsx(className, styles.ellipsis)}>
-      <Text className={styles.bold}>{value ?? "--"} </Text>
+    <Text truncate className={className}>
+      <Text className={styles.bold}>{formattedValue} </Text>
       {label}
     </Text>
   );
