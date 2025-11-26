@@ -10,6 +10,7 @@ import SnapshotSparklineCard from "./SnapshotSparklineCard";
 import { SnapshotReadingCard } from "./SnapshotReadingCard";
 import { SnapshotDecompressingCard } from "./SnapshotDecompressingCard";
 import { SnapshotInsertingCard } from "./SnapshotInsertingCard";
+import { PhaseHeader } from "../PhaseHeader";
 
 const rowGap = "5";
 const columnGap = "26px";
@@ -101,57 +102,60 @@ export default function Snapshot() {
       : 0;
 
   return (
-    <Flex direction="column" gap={columnGap}>
-      <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
-        <SnapshotReadingCard
-          compressedCompleted={readCompressedBytes}
-          compressedTotal={totalCompressedBytes}
-          readPath={readPath}
-        />
-        <SnapshotSparklineCard
-          title="CPU Utilization"
-          tileType="snapld"
-          isComplete={
-            isIncremental &&
-            !!readCompressedBytes &&
-            readCompressedBytes === totalCompressedBytes
-          }
-        />
-      </Flex>
+    <>
+      <PhaseHeader phase={bootProgress.phase} />
+      <Flex direction="column" mt="52px" gap={columnGap}>
+        <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
+          <SnapshotReadingCard
+            compressedCompleted={readCompressedBytes}
+            compressedTotal={totalCompressedBytes}
+            readPath={readPath}
+          />
+          <SnapshotSparklineCard
+            title="CPU Utilization"
+            tileType="snapld"
+            isComplete={
+              isIncremental &&
+              !!readCompressedBytes &&
+              readCompressedBytes === totalCompressedBytes
+            }
+          />
+        </Flex>
 
-      <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
-        <SnapshotDecompressingCard
-          compressedCompleted={decompressCompressedBytes}
-          decompressedCompleted={decompressDecompressedBytes}
-          compressedTotal={totalCompressedBytes}
-        />
-        <SnapshotSparklineCard
-          title="CPU Utilization"
-          tileType="snapdc"
-          isComplete={
-            isIncremental &&
-            !!decompressCompressedBytes &&
-            decompressCompressedBytes === totalCompressedBytes
-          }
-        />
-      </Flex>
+        <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
+          <SnapshotDecompressingCard
+            compressedCompleted={decompressCompressedBytes}
+            decompressedCompleted={decompressDecompressedBytes}
+            compressedTotal={totalCompressedBytes}
+          />
+          <SnapshotSparklineCard
+            title="CPU Utilization"
+            tileType="snapdc"
+            isComplete={
+              isIncremental &&
+              !!decompressCompressedBytes &&
+              decompressCompressedBytes === totalCompressedBytes
+            }
+          />
+        </Flex>
 
-      <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
-        <SnapshotInsertingCard
-          decompressedCompleted={insertDecompressedBytes}
-          decompressedTotal={totalDecompressedBytes}
-          cumulativeAccounts={insertAccounts}
-        />
-        <SnapshotSparklineCard
-          title="CPU Utilization"
-          tileType="snapin"
-          isComplete={
-            isIncremental &&
-            !!insertCompressedBytes &&
-            insertCompressedBytes === totalCompressedBytes
-          }
-        />
+        <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
+          <SnapshotInsertingCard
+            decompressedCompleted={insertDecompressedBytes}
+            decompressedTotal={totalDecompressedBytes}
+            cumulativeAccounts={insertAccounts}
+          />
+          <SnapshotSparklineCard
+            title="CPU Utilization"
+            tileType="snapin"
+            isComplete={
+              isIncremental &&
+              !!insertCompressedBytes &&
+              insertCompressedBytes === totalCompressedBytes
+            }
+          />
+        </Flex>
       </Flex>
-    </Flex>
+    </>
   );
 }

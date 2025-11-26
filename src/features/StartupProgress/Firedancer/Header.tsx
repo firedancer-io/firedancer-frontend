@@ -16,7 +16,7 @@ import { useCallback } from "react";
 // TODO update with newer header styles
 export function Header() {
   return (
-    <Flex justify="between" gap="3" align="center">
+    <Flex justify="between" gap="3" align="center" flexShrink="0">
       <Flex gap="2" align="start" flexShrink="0">
         <img src={fdLogo} alt="fd" />
         <Cluster />
