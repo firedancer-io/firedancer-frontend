@@ -19,6 +19,8 @@ import { leftAxisSizeAtom, rightAxisSizeAtom } from "../ComputeUnitsCard/atoms";
 import { touchPlugin } from "../../../../uplotReact/touchPlugin";
 import { chartAxisColor, chartGridStrokeColor } from "../../../../colors";
 import { banksXScaleKey } from "../ComputeUnitsCard/consts";
+import { clientAtom } from "../../../../atoms";
+import { getTxnBundleStats } from "../../../../transactionUtils";
 
 /** Buffer of the canvas past the axes of the chart to prevent the first and last tick labels from being cut off */
 const xBuffer = 20;
@@ -45,6 +47,7 @@ export default function BarsChart({
   const isFirstOrLastChart = isFirstChart || isLastChart;
   const leftAxisSize = useAtomValue(leftAxisSizeAtom) - xBuffer;
   const rightAxisSize = useAtomValue(rightAxisSizeAtom) - xBuffer;
+  const client = useAtomValue(clientAtom);
 
   const setTxnIdx = useSetAtom(tooltipTxnIdxAtom);
   const setTxnState = useSetAtom(tooltipTxnStateAtom);
@@ -76,6 +79,14 @@ export default function BarsChart({
     },
     [bankIdx, maxTs, transactions],
   );
+
+  const transactionsBundleStats = useMemo(() => {
+    return transactions.txn_from_bundle.map((from_bundle, i) => {
+      if (!from_bundle) return;
+
+      return getTxnBundleStats(transactions, i);
+    });
+  }, [transactions]);
 
   const options = useMemo<uPlot.Options | undefined>(() => {
     if (!chartData?.length) return;
@@ -122,8 +133,14 @@ export default function BarsChart({
       padding: [0, xBuffer, 0, xBuffer],
       series: [{ scale: banksXScaleKey }, { label: `Bank ${bankIdx}` }, {}],
       plugins: [
-        txnBarsPlugin(transactionsRef),
-        txnBarsTooltipPlugin({ transactionsRef, setTxnIdx, setTxnState }),
+        txnBarsPlugin(transactionsRef, transactionsBundleStats, client),
+        txnBarsTooltipPlugin({
+          transactionsRef,
+          setTxnIdx,
+          setTxnState,
+          transactionsBundleStats,
+          client,
+        }),
         timeScaleDragPlugin(),
         wheelZoomPlugin({ factor: 0.75 }),
         syncXScalePlugin(),
@@ -146,6 +163,8 @@ export default function BarsChart({
     isFirstOrLastChart,
     setTxnIdx,
     setTxnState,
+    transactionsBundleStats,
+    client,
   ]);
 
   const barCount = useAtomValue(barCountAtom);

@@ -27,7 +27,12 @@ import {
   iconButtonColor,
 } from "../../../../colors";
 import { solDecimals, txnErrorCodeMap } from "../../../../consts";
-import { peersListAtom } from "../../../../atoms";
+import { clientAtom, peersListAtom } from "../../../../atoms";
+import {
+  getTxnBundleStats,
+  getTxnStateDurations,
+} from "../../../../transactionUtils";
+import { sum, values } from "lodash";
 
 export default function ChartTooltip() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -41,19 +46,7 @@ export default function ChartTooltip() {
     if (txnIdx < 0) return;
     if (!transactions.txn_from_bundle[txnIdx]) return;
 
-    const mbId = transactions.txn_microblock_id[txnIdx];
-    const bundleTxnIdx: number[] = [];
-
-    for (let i = 0; i < transactions.txn_microblock_id.length; i++) {
-      if (transactions.txn_microblock_id[i] !== mbId) continue;
-      bundleTxnIdx.push(i);
-    }
-
-    return {
-      totalCount: bundleTxnIdx.length,
-      order: bundleTxnIdx.indexOf(txnIdx) + 1,
-      bundleTxnIdx,
-    };
+    return getTxnBundleStats(transactions, txnIdx);
   }, [transactions, txnIdx]);
 
   return (
@@ -259,60 +252,16 @@ function StateDurationDisplay({
   txnIdx,
   bundleTxnIdx,
 }: StateDurationDisplayProps) {
+  const client = useAtomValue(clientAtom);
+
   const durations = useMemo(() => {
-    if (txnIdx < 0) return;
-
-    let startTs = transactions.txn_mb_start_timestamps_nanos[txnIdx];
-    let endTs = transactions.txn_mb_end_timestamps_nanos[txnIdx];
-    let bundleTotal = null;
-
-    if (transactions.txn_from_bundle[txnIdx] && bundleTxnIdx?.length) {
-      const bundleIdx = bundleTxnIdx.indexOf(txnIdx) ?? -1;
-      const prevTxnIdx = bundleTxnIdx[bundleIdx - 1];
-      if (prevTxnIdx > 0) {
-        startTs = transactions.txn_preload_end_timestamps_nanos[txnIdx];
-      }
-
-      const nextTxnIdx = bundleTxnIdx[bundleIdx + 1];
-      if (nextTxnIdx > 0) {
-        endTs = transactions.txn_preload_end_timestamps_nanos[nextTxnIdx];
-      }
-
-      bundleTotal =
-        transactions.txn_mb_end_timestamps_nanos[
-          bundleTxnIdx[bundleTxnIdx.length - 1]
-        ] - transactions.txn_mb_start_timestamps_nanos[bundleTxnIdx[0]];
-    }
-
-    const preLoading =
-      transactions.txn_preload_end_timestamps_nanos[txnIdx] - startTs;
-    const validating =
-      transactions.txn_start_timestamps_nanos[txnIdx] -
-      transactions.txn_preload_end_timestamps_nanos[txnIdx];
-    const loading =
-      transactions.txn_load_end_timestamps_nanos[txnIdx] -
-      transactions.txn_start_timestamps_nanos[txnIdx];
-    const execute =
-      transactions.txn_end_timestamps_nanos[txnIdx] -
-      transactions.txn_load_end_timestamps_nanos[txnIdx];
-    const postExecute = endTs - transactions.txn_end_timestamps_nanos[txnIdx];
-    const total = endTs - startTs;
-
-    return {
-      preLoading,
-      validating,
-      loading,
-      execute,
-      postExecute,
-      total,
-      bundleTotal,
-    };
-  }, [bundleTxnIdx, transactions, txnIdx]);
+    return getTxnStateDurations(transactions, txnIdx, bundleTxnIdx, client);
+  }, [bundleTxnIdx, transactions, txnIdx, client]);
 
   const durationRatios = useMemo(() => {
     if (!durations) return;
 
-    const total = Number(durations.total);
+    const total = sum(values(durations).map((n) => Number(n)));
     const preLoading = Math.max(
       0,
       (Number(durations.preLoading) / total) * 100,
@@ -334,15 +283,21 @@ function StateDurationDisplay({
   const durationUnits = useMemo(() => {
     if (!durations) return;
 
+    const _total = sum(values(durations).map((n) => Number(n)));
+
     const preLoading = getDurationWithUnits(durations.preLoading);
     const validating = getDurationWithUnits(durations.validating);
     const loading = getDurationWithUnits(durations.loading);
     const execute = getDurationWithUnits(durations.execute);
     const postExecute = getDurationWithUnits(durations.postExecute);
-    const total = getDurationWithUnits(durations.total);
+    const total = getDurationWithUnits(_total);
+
+    const startTs = transactions.txn_mb_start_timestamps_nanos[txnIdx];
+    const endTs = transactions.txn_mb_end_timestamps_nanos[txnIdx];
     const bundleTotal =
-      durations.bundleTotal != null &&
-      getDurationWithUnits(durations.bundleTotal);
+      bundleTxnIdx?.length && transactions.txn_from_bundle[txnIdx]
+        ? getDurationWithUnits(endTs - startTs)
+        : null;
 
     return {
       preLoading,
@@ -353,7 +308,7 @@ function StateDurationDisplay({
       total,
       bundleTotal,
     };
-  }, [durations]);
+  }, [transactions, durations, txnIdx, bundleTxnIdx]);
 
   if (!durations || !durationRatios || !durationUnits) return;
 
@@ -436,7 +391,7 @@ function StateDurationDisplay({
         value={durationUnits.total.value}
         unit={durationUnits.total.unit}
       />
-      {durations.bundleTotal && durationUnits.bundleTotal && (
+      {durationUnits.bundleTotal && (
         <LabelValueDisplay
           label="Total (Bundle)"
           value={durationUnits.bundleTotal.value}

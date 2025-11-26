@@ -1,18 +1,25 @@
 import type uPlot from "uplot";
-import type { SlotTransactions } from "../../../../api/types.js";
+import type { Client, SlotTransactions } from "../../../../api/types.js";
 import type { MutableRefObject } from "react";
-import type { TxnState } from "./consts.js";
-import { getTxnState } from "./txnBarsPluginUtils.js";
 import { baseTooltipPlugin } from "../../../../uplotReact/baseTooltipPlugin.js";
+import {
+  getTxnState,
+  type TxnBundleStats,
+} from "../../../../transactionUtils.js";
+import type { TxnState } from "./consts.js";
 
 export function txnBarsTooltipPlugin({
   transactionsRef,
   setTxnIdx,
   setTxnState,
+  transactionsBundleStats,
+  client,
 }: {
   transactionsRef: MutableRefObject<SlotTransactions | null | undefined>;
   setTxnIdx: (txnIdx: number) => void;
   setTxnState: (state: TxnState) => void;
+  transactionsBundleStats: (TxnBundleStats | undefined)[];
+  client: Client;
 }): uPlot.Plugin {
   function showOnCursor(
     u: uPlot,
@@ -20,6 +27,12 @@ export function txnBarsTooltipPlugin({
     idx: number, // closest idx to cursor
   ) {
     let txnIdx = u.data[1][idx];
+
+    // We are "closest" to the start of the next state, but we're actually mousing over the state before.
+    if (u.data[0][idx] > xVal) {
+      txnIdx = u.data[1][idx - 1];
+    }
+
     // To catch second half of bar where end point is undefined indicating end of state
     if (txnIdx == null && u.data[1][idx - 1] != null) {
       txnIdx = u.data[1][idx - 1];
@@ -32,7 +45,14 @@ export function txnBarsTooltipPlugin({
     if (txnIdx == null || !transactionsRef.current || noDataAtPoint) {
       return false;
     } else {
-      setTxnState(getTxnState(xVal, transactionsRef.current, txnIdx));
+      const txnState = getTxnState(
+        xVal,
+        transactionsRef.current,
+        txnIdx,
+        transactionsBundleStats[txnIdx]?.bundleTxnIdx,
+        client,
+      );
+      setTxnState(txnState);
       setTxnIdx(txnIdx);
       return true;
     }

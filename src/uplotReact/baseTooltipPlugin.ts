@@ -147,12 +147,14 @@ export function baseTooltipPlugin({
         if (!isCurrentlyHovered) return;
         if (persistTooltip) return;
 
-        const { left, top, idx } = u.cursor;
+        const { idx, left, top } = u.cursor;
 
         if (left === undefined || top === undefined || idx == null) return;
-        const xVal = u.posToVal(left ?? 0, Object.keys(u.scales)[0]);
-        const anchor = { left: left + bLeft + 5, top: top + bTop };
-
+        const xVal = u.posToVal(left ?? 0, u.series[0].scale ?? "x");
+        const anchor = {
+          left: left + bLeft + 5,
+          top: top + bTop,
+        };
         const showTooltip = showOnCursor(u, xVal, idx);
         if (showTooltip) {
           overlay.style.display = "block";

@@ -11,8 +11,15 @@ import {
 import { getDurationWithUnits } from "../../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import MonoText from "../../../../components/MonoText";
+import {
+  getTxnBundleStats,
+  getTxnStateDurations,
+} from "../../../../transactionUtils";
+import { clientAtom } from "../../../../atoms";
+import { sum, values } from "lodash";
 
 export default function ExecutionTime() {
+  const client = useAtomValue(clientAtom);
   const selectedSlot = useAtomValue(selectedSlotAtom);
   const query = useSlotQueryResponseTransactions(selectedSlot);
   const transactions = query.response?.transactions;
@@ -31,44 +38,15 @@ export default function ExecutionTime() {
       i < transactions.txn_mb_start_timestamps_nanos.length;
       i++
     ) {
-      const startTs = transactions.txn_mb_start_timestamps_nanos[i];
-      const endTs = transactions.txn_mb_end_timestamps_nanos[i];
-      // let bundleTotal = null;
+      const bundleStats = getTxnBundleStats(transactions, i);
+      const duration = getTxnStateDurations(
+        transactions,
+        i,
+        bundleStats.bundleTxnIdx,
+        client,
+      );
 
-      // TODO: fix for bundles
-      // if (transactions.txn_from_bundle[i] && bundleTxnIdx?.length) {
-      //   const bundleIdx = bundleTxnIdx.indexOf(txnIdx) ?? -1;
-      //   const prevTxnIdx = bundleTxnIdx[bundleIdx - 1];
-      //   if (prevTxnIdx > 0) {
-      //     startTs = transactions.txn_preload_end_timestamps_nanos[i];
-      //   }
-
-      //   const nextTxnIdx = bundleTxnIdx[bundleIdx + 1];
-      //   if (nextTxnIdx > 0) {
-      //     endTs = transactions.txn_preload_end_timestamps_nanos[nextTxnIdx];
-      //   }
-
-      //   bundleTotal =
-      //     transactions.txn_mb_end_timestamps_nanos[
-      //       bundleTxnIdx[bundleTxnIdx.length - 1]
-      //     ] - transactions.txn_mb_start_timestamps_nanos[bundleTxnIdx[0]];
-      // }
-
-      let total = 0n;
-
-      total += transactions.txn_preload_end_timestamps_nanos[i] - startTs;
-      total +=
-        transactions.txn_start_timestamps_nanos[i] -
-        transactions.txn_preload_end_timestamps_nanos[i];
-      total +=
-        transactions.txn_load_end_timestamps_nanos[i] -
-        transactions.txn_start_timestamps_nanos[i];
-      total +=
-        transactions.txn_end_timestamps_nanos[i] -
-        transactions.txn_load_end_timestamps_nanos[i];
-      total += endTs - transactions.txn_end_timestamps_nanos[i];
-
-      const totalNum = Number(total);
+      const totalNum = sum(values(duration).map((n) => Number(n)));
 
       if (transactions.txn_is_simple_vote[i]) {
         vote.total += totalNum;
@@ -101,7 +79,7 @@ export default function ExecutionTime() {
       bundleMin: bundle.min,
       bundleMax: bundle.max,
     };
-  }, [transactions]);
+  }, [transactions, client]);
 
   if (!durations) return;
 
