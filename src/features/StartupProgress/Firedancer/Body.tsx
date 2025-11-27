@@ -6,9 +6,9 @@ import {
   isStartupProgressExpandedAtom,
   showStartupProgressAtom,
 } from "../atoms";
-import { Flex } from "@radix-ui/themes";
+import { Box, Flex } from "@radix-ui/themes";
 import clsx from "clsx";
-import { Header } from "./Header";
+import { Header } from "./PhaseHeader/Header";
 import { BootPhaseEnum } from "../../../api/entities";
 import { bootProgressContainerElAtom } from "../../../atoms";
 import Gossip from "./Gossip";
@@ -56,9 +56,8 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
   const isNarrow = useMedia("(max-width: 750px)");
 
   return (
-    <Flex
+    <Box
       ref={(el: HTMLDivElement) => setBootProgressContainerEl(el)}
-      direction="column"
       overflowY="auto"
       className={clsx(styles.container, phaseClass, {
         [styles.collapsed]: !showStartupProgress || !isStartupProgressExpanded,
@@ -66,11 +65,11 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
     >
       <Flex
         direction="column"
+        height="100%"
         width="100%"
         maxWidth={appMaxWidth}
         mx="auto"
         px={isNarrow ? "20px" : "89px"}
-        pb="20px"
       >
         <Header />
 
@@ -78,7 +77,9 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
         {(phase === BootPhaseEnum.loading_full_snapshot ||
           phase === BootPhaseEnum.loading_incremental_snapshot) && <Snapshot />}
         {phase === BootPhaseEnum.catching_up && <CatchingUp />}
+
+        <Box pb="20px" />
       </Flex>
-    </Flex>
+    </Box>
   );
 }

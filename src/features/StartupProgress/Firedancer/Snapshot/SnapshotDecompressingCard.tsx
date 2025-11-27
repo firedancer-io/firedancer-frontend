@@ -1,4 +1,3 @@
-import { useValuePerSecond } from "../useValuePerSecond";
 import { bootProgressPhaseAtom } from "../../atoms";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
@@ -11,6 +10,7 @@ import {
 import { Flex } from "@radix-ui/themes";
 import { formatBytes } from "../../../../utils";
 import styles from "./snapshot.module.css";
+import { useEma } from "../../../../hooks/useEma";
 
 interface SnapshotDecompressingCardProps {
   compressedCompleted?: number | null;
@@ -23,11 +23,12 @@ export function SnapshotDecompressingCard({
   compressedTotal,
 }: SnapshotDecompressingCardProps) {
   const phase = useAtomValue(bootProgressPhaseAtom);
-  const { valuePerSecond: compressedThroughput, reset: resetCompressed } =
-    useValuePerSecond(compressedCompleted, 1_000);
+  const { ema: compressedThroughput, reset: resetCompressed } =
+    useEma(compressedCompleted);
 
-  const { valuePerSecond: decompressedThroughput, reset: resetDecompressed } =
-    useValuePerSecond(decompressedCompleted, 1_000);
+  const { ema: decompressedThroughput, reset: resetDecompressed } = useEma(
+    decompressedCompleted,
+  );
 
   useEffect(() => {
     // reset throughput history on phase change

@@ -5,7 +5,8 @@
   padding: 14px;
   gap: 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(234, 103, 103, 0.05);
+  border-radius: 8px;
+  background: rgba(250, 250, 250, 0.05);
   color: var(--boot-progress-primary-text-color);
 }
 

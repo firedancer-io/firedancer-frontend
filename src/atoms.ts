@@ -426,6 +426,8 @@ export const peersAtom = atomWithImmer<Record<string, Peer>>({});
 
 export const peersListAtom = atom((get) => Object.values(get(peersAtom)));
 
+export const peersCountAtom = atom((get) => get(peersListAtom).length);
+
 export const peersAtomFamily = atomFamily((peer?: string) =>
   atom((get) => (peer !== undefined ? get(peersAtom)[peer] : undefined)),
 );

@@ -15,7 +15,7 @@ const defaultUseEmaOptions = {
 
 export function useEma(
   cumulativeValue: number | null | undefined,
-  _options: UseEmaOptions,
+  _options?: UseEmaOptions,
 ) {
   const { forceUpdateIntervalMs, halfLifeMs, initMinSamples } = {
     ...defaultUseEmaOptions,

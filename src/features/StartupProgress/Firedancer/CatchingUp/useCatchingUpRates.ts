@@ -1,21 +1,22 @@
 import { useAtomValue } from "jotai";
 import { useRef, useEffect } from "react";
 import { useInterval } from "react-use";
-import { useValuePerSecond } from "../useValuePerSecond";
 import { completedSlotAtom } from "../../../../api/atoms";
 import { catchingUpStartSlotAtom, latestTurbineSlotAtom } from "./atoms";
+import { useEmaValue } from "../../../../hooks/useEma";
 
-const rateCalcWindowMs = 10_000;
-
+export interface CatchingUpRates {
+  targetTotalSlotsEstimate?: number;
+  totalSlotsEstimate?: number;
+  replaySlotsPerSecond?: number;
+  turbineSlotsPerSecond?: number;
+  remainingSeconds?: number;
+}
 /**
  * Provides a ref that estimates how many slots will be replayed in total
  */
 export default function useCatchingUpRates() {
-  const catchingUpRatesRef = useRef<{
-    totalSlotsEstimate?: number;
-    replaySlotsPerSecond?: number;
-    turbineSlotsPerSecond?: number;
-  }>({});
+  const catchingUpRatesRef = useRef<CatchingUpRates>({});
   const startSlot = useAtomValue(catchingUpStartSlotAtom);
   const latestTurbineSlot = useAtomValue(latestTurbineSlotAtom);
   const latestReplaySlot = useAtomValue(completedSlotAtom);
@@ -23,14 +24,11 @@ export default function useCatchingUpRates() {
   const replaySlot =
     latestReplaySlot ?? (startSlot == null ? undefined : startSlot - 1);
 
-  const { valuePerSecond: replayRate } = useValuePerSecond(
-    replaySlot,
-    rateCalcWindowMs,
-  );
-  const { valuePerSecond: turbineRate } = useValuePerSecond(
-    latestTurbineSlot,
-    rateCalcWindowMs,
-  );
+  const replayRate = useEmaValue(replaySlot);
+  const turbineRate = useEmaValue(latestTurbineSlot);
+
+  catchingUpRatesRef.current.replaySlotsPerSecond = replayRate;
+  catchingUpRatesRef.current.turbineSlotsPerSecond = turbineRate;
 
   // initialize estimate of how many slots we'll need to replay
   // determines initial widths
@@ -44,7 +42,7 @@ export default function useCatchingUpRates() {
 
     const replaySlotsPerSecond = 400;
     const turbineSlotsPerSecond = 100;
-    const totalSlotsEsimtate = calculateTotalSlots(
+    const totalSlotsEstimate = calculateTotalSlots(
       replaySlotsPerSecond,
       turbineSlotsPerSecond,
       startSlot,
@@ -53,9 +51,7 @@ export default function useCatchingUpRates() {
     );
 
     catchingUpRatesRef.current = {
-      totalSlotsEstimate: totalSlotsEsimtate,
-      replaySlotsPerSecond,
-      turbineSlotsPerSecond,
+      totalSlotsEstimate,
     };
   }, [latestReplaySlot, latestTurbineSlot, startSlot, catchingUpRatesRef]);
 
@@ -81,6 +77,18 @@ export default function useCatchingUpRates() {
       latestTurbineSlot,
     );
 
+    const remainingReplaySlots =
+      latestReplaySlot == null || newEstimate == null
+        ? undefined
+        : newEstimate + startSlot - 1 - latestReplaySlot;
+    const remainingSeconds =
+      replayRate === 0 || remainingReplaySlots == null
+        ? undefined
+        : remainingReplaySlots / replayRate;
+
+    catchingUpRatesRef.current.remainingSeconds = remainingSeconds;
+
+    // only update total estimate (determining number of bars) if decreasing estimate
     if (!newEstimate || newEstimate >= prevEstimate) return;
 
     // decrement gradually
@@ -90,11 +98,8 @@ export default function useCatchingUpRates() {
     );
 
     const updatedEstimate = prevEstimate - diffToApply;
-    catchingUpRatesRef.current = {
-      totalSlotsEstimate: updatedEstimate,
-      replaySlotsPerSecond: replayRate,
-      turbineSlotsPerSecond: turbineRate,
-    };
+
+    catchingUpRatesRef.current.totalSlotsEstimate = updatedEstimate;
   }, 500);
 
   return catchingUpRatesRef;

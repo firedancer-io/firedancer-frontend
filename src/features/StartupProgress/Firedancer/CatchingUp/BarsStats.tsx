@@ -3,21 +3,18 @@ import { useAtomValue } from "jotai";
 import styles from "./catchingUp.module.css";
 import { catchingUpStartSlotAtom, latestTurbineSlotAtom } from "./atoms";
 import { completedSlotAtom } from "../../../../api/atoms";
+import type { CatchingUpRates } from "./useCatchingUpRates";
 
 interface CatchingUpBarsProps {
-  catchingUpRatesRef: React.MutableRefObject<{
-    totalSlotsEstimate?: number;
-    replaySlotsPerSecond?: number;
-    turbineSlotsPerSecond?: number;
-  }>;
+  catchingUpRates: CatchingUpRates;
 }
-export function BarsStats({ catchingUpRatesRef }: CatchingUpBarsProps) {
+export function BarsStats({ catchingUpRates }: CatchingUpBarsProps) {
   const startSlot = useAtomValue(catchingUpStartSlotAtom);
   const latestTurbineSlot = useAtomValue(latestTurbineSlotAtom);
   const latestReplaySlot = useAtomValue(completedSlotAtom);
 
-  const replayRate = catchingUpRatesRef.current.replaySlotsPerSecond;
-  const turbineHeadRate = catchingUpRatesRef.current.turbineSlotsPerSecond;
+  const replayRate = catchingUpRates.replaySlotsPerSecond;
+  const turbineHeadRate = catchingUpRates.turbineSlotsPerSecond;
   const catchUpRate =
     replayRate == null || turbineHeadRate == null
       ? undefined

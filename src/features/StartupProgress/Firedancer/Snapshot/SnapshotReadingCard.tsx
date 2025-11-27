@@ -1,4 +1,3 @@
-import { useValuePerSecond } from "../useValuePerSecond";
 import { bootProgressPhaseAtom } from "../../atoms";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
@@ -11,6 +10,7 @@ import {
 } from "./SnapshotBarsCard";
 import { formatBytes } from "../../../../utils";
 import styles from "./snapshot.module.css";
+import { useEma } from "../../../../hooks/useEma";
 
 interface SnapshotReadingCardProps {
   compressedCompleted?: number | null;
@@ -23,10 +23,7 @@ export function SnapshotReadingCard({
   readPath,
 }: SnapshotReadingCardProps) {
   const phase = useAtomValue(bootProgressPhaseAtom);
-  const { valuePerSecond: throughput, reset } = useValuePerSecond(
-    completed,
-    1_000,
-  );
+  const { ema: throughput, reset } = useEma(completed);
 
   useEffect(() => {
     // reset throughput history on phase change
