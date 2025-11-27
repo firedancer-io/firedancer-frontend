@@ -1,16 +1,16 @@
 import { Cross1Icon } from "@radix-ui/react-icons";
 import { Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
-import fdLogo from "../../../assets/firedancer_logo.svg";
-import { Cluster } from "../../Header/Cluster";
+import fdLogo from "../../../../assets/firedancer_logo.svg";
+import { Cluster } from "../../../Header/Cluster";
 import {
   isStartupProgressExpandedAtom,
   expandStartupProgressElAtom,
-} from "../atoms";
+} from "../../atoms";
 import styles from "./header.module.css";
 import { useSetAtom, useAtomValue } from "jotai";
-import PeerIcon from "../../../components/PeerIcon";
-import { useIdentityPeer } from "../../../hooks/useIdentityPeer";
-import { bootProgressContainerElAtom } from "../../../atoms";
+import PeerIcon from "../../../../components/PeerIcon";
+import { useIdentityPeer } from "../../../../hooks/useIdentityPeer";
+import { bootProgressContainerElAtom } from "../../../../atoms";
 import { useCallback } from "react";
 
 // TODO update with newer header styles

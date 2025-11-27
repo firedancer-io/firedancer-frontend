@@ -41,18 +41,3 @@
     background-color: var(--boot-progress-catchup-background-color);
   }
 }
-
-.secondary-text {
-  color: var(--boot-progress-secondary-text-color);
-}
-
-.step-container {
-  color: var(--boot-progress-primary-text-color);
-  font-size: 28px;
-  font-weight: 400;
-  line-height: normal;
-
-  .step-name {
-    font-weight: 700;
-  }
-}

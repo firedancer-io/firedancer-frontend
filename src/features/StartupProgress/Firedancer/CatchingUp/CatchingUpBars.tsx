@@ -14,15 +14,12 @@ import { Box } from "@radix-ui/themes";
 import { useThrottledCallback } from "use-debounce";
 import { completedSlotAtom } from "../../../../api/atoms";
 import { useMeasure } from "react-use";
+import type { CatchingUpRates } from "./useCatchingUpRates";
 
 const emptyChartData: uPlot.AlignedData = [[0], [null]];
 
 interface CatchingUpBarsProps {
-  catchingUpRatesRef: React.MutableRefObject<{
-    totalSlotsEstimate?: number;
-    replaySlotsPerSecond?: number;
-    turbineSlotsPerSecond?: number;
-  }>;
+  catchingUpRatesRef: React.MutableRefObject<CatchingUpRates>;
 }
 export function CatchingUpBars({ catchingUpRatesRef }: CatchingUpBarsProps) {
   const [measureRef, measureRect] = useMeasure<HTMLDivElement>();

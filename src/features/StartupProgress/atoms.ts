@@ -1,12 +1,9 @@
 import { atom } from "jotai";
-import { bootProgressAtom, completedSlotAtom } from "../../api/atoms";
-import { BootPhaseEnum, ClientEnum } from "../../api/entities";
+import { bootProgressAtom } from "../../api/atoms";
+import { ClientEnum } from "../../api/entities";
 import type { BootProgress } from "../../api/types";
 import { clientAtom } from "../../atoms";
-import {
-  catchingUpStartSlotAtom,
-  latestTurbineSlotAtom,
-} from "./Firedancer/CatchingUp/atoms";
+import { latestTurbineSlotAtom } from "./Firedancer/CatchingUp/atoms";
 
 export const bootProgressPhaseAtom = atom<BootProgress["phase"] | undefined>(
   (get) => get(bootProgressAtom)?.phase,
@@ -45,83 +42,4 @@ export const isStartupProgressVisibleAtom = atom((get) => {
     return showStartupProgress && get(isStartupProgressExpandedAtom);
   }
   return true;
-});
-
-export const bootProgressBarPctAtom = atom((get) => {
-  const bootProgress = get(bootProgressAtom);
-  if (!bootProgress) return 0;
-
-  switch (bootProgress.phase) {
-    case BootPhaseEnum.joining_gossip: {
-      return 0;
-    }
-    case BootPhaseEnum.loading_full_snapshot: {
-      const total = bootProgress.loading_full_snapshot_total_bytes_compressed;
-      const insert =
-        bootProgress.loading_full_snapshot_insert_bytes_decompressed;
-      const decompress_compressed =
-        bootProgress.loading_full_snapshot_decompress_bytes_compressed;
-      const decompress_decompressed =
-        bootProgress.loading_full_snapshot_decompress_bytes_decompressed;
-
-      if (
-        !insert ||
-        !decompress_compressed ||
-        !decompress_decompressed ||
-        !total
-      ) {
-        return 0;
-      }
-
-      const insertCompleted =
-        insert * (decompress_compressed / decompress_decompressed);
-
-      return Math.min(100, (insertCompleted / total) * 100);
-    }
-    case BootPhaseEnum.loading_incremental_snapshot: {
-      const total =
-        bootProgress.loading_incremental_snapshot_total_bytes_compressed;
-      const insert =
-        bootProgress.loading_incremental_snapshot_insert_bytes_decompressed;
-      const decompress_compressed =
-        bootProgress.loading_incremental_snapshot_decompress_bytes_decompressed;
-      const decompress_decompressed =
-        bootProgress.loading_incremental_snapshot_decompress_bytes_decompressed;
-
-      if (
-        !insert ||
-        !decompress_compressed ||
-        !decompress_decompressed ||
-        !total
-      ) {
-        return 0;
-      }
-
-      const insertCompleted =
-        insert * (decompress_compressed / decompress_decompressed);
-
-      return Math.min(100, (insertCompleted / total) * 100);
-    }
-    case BootPhaseEnum.catching_up: {
-      const startSlot = get(catchingUpStartSlotAtom);
-      const latestTurbineSlot = get(latestTurbineSlotAtom);
-      const latestReplaySlot = get(completedSlotAtom);
-
-      if (
-        startSlot == null ||
-        latestTurbineSlot == null ||
-        latestReplaySlot == null
-      )
-        return 0;
-
-      const totalSlotsToReplay = latestTurbineSlot - startSlot + 1;
-      if (!totalSlotsToReplay) return 0;
-
-      const replayedSlots = latestReplaySlot - startSlot + 1;
-      return (100 * replayedSlots) / totalSlotsToReplay;
-    }
-    case BootPhaseEnum.running: {
-      return 0;
-    }
-  }
 });

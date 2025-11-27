@@ -32,7 +32,7 @@ const phases: {
   [phase in BootPhase]: PhaseInfo;
 } = {
   [BootPhaseEnum.joining_gossip]: {
-    name: "Joining Gossip ...",
+    name: "Joining Gossip",
     incompleteColor: progressBarIncompleteGossipColor,
     inProgressBackground: progressBarInProgressGossipBackground,
     completeColor: progressBarCompleteGossipColor,
@@ -40,7 +40,7 @@ const phases: {
     borderColor: progressBarInProgressGossipBorder,
   },
   [BootPhaseEnum.loading_full_snapshot]: {
-    name: "Loading Full Snapshot ...",
+    name: "Loading Full Snapshot",
     incompleteColor: progressBarIncompleteFullSnapshotColor,
     inProgressBackground: progressBarInProgressFullSnapshotBackground,
     completeColor: progressBarCompleteFullSnapshotColor,
@@ -48,7 +48,7 @@ const phases: {
     borderColor: progressBarInProgressFullSnapshotBorder,
   },
   [BootPhaseEnum.loading_incremental_snapshot]: {
-    name: "Loading Incremental Snapshot ...",
+    name: "Loading Incremental Snapshot",
     incompleteColor: progressBarIncompleteIncSnapshotColor,
     inProgressBackground: progressBarInProgressIncSnapshotBackground,
     completeColor: progressBarCompleteIncSnapshotColor,
@@ -56,7 +56,7 @@ const phases: {
     borderColor: progressBarInProgressIncSnapshotBorder,
   },
   [BootPhaseEnum.catching_up]: {
-    name: "Catching Up ...",
+    name: "Catching Up",
     incompleteColor: progressBarIncompleteCatchupColor,
     inProgressBackground: progressBarInProgressCatchupBackground,
     completeColor: progressBarCompleteCatchupColor,
@@ -64,7 +64,7 @@ const phases: {
     borderColor: progressBarInProgressCatchupBorder,
   },
   [BootPhaseEnum.running]: {
-    name: "Running ...",
+    name: "Running",
     incompleteColor: "",
     inProgressBackground: "",
     completeColor: "",

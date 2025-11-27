@@ -1,17 +1,14 @@
 import { Flex } from "@radix-ui/themes";
-import { useAtomValue } from "jotai";
-import { bootProgressBarPctAtom } from "../atoms";
 import styles from "./progressBar.module.css";
-import { steps } from "./consts";
-import { BootPhaseEnum } from "../../../api/entities";
+import { BootPhaseEnum } from "../../../../api/entities";
+import { steps } from "../consts";
 
 interface ProgressBarProps {
   stepIndex: number;
+  phaseCompletePct: number;
 }
 
-export function ProgressBar({ stepIndex }: ProgressBarProps) {
-  const pctComplete = useAtomValue(bootProgressBarPctAtom);
-
+export function ProgressBar({ stepIndex, phaseCompletePct }: ProgressBarProps) {
   return (
     <Flex className={styles.progressBar}>
       {Object.entries(steps).map(
@@ -47,7 +44,7 @@ export function ProgressBar({ stepIndex }: ProgressBarProps) {
                 <div
                   className={styles.progressingBar}
                   style={{
-                    transform: `scaleX(${pctComplete / 100})`,
+                    transform: `scaleX(${phaseCompletePct / 100})`,
                     background: inProgressBackground,
                   }}
                 />
