@@ -88,7 +88,7 @@ import { xRangeMs } from "../features/Overview/ShredsProgression/const";
 import { showStartupProgressAtom } from "../features/StartupProgress/atoms";
 import { socketStateAtom } from "./ws/atoms";
 import { SocketState } from "./ws/types";
-import { useEffect, useRef } from "react";
+import { useEffect, useReducer, useRef } from "react";
 
 export function useSetAtomWsData() {
   const setVersion = useSetAtom(versionAtom);
@@ -104,21 +104,27 @@ export function useSetAtomWsData() {
 
   const [startupTime, setStartupTime] = useAtom(startupTimeAtom);
 
-  const uptimeDuration =
-    startupTime !== undefined
-      ? slowDateTimeNow.diff(
-          DateTime.fromMillis(
-            Math.floor(Number(startupTime.startupTimeNanos) / 1_000_000),
-          ),
-        )
-      : undefined;
-  const uptimeMins =
-    uptimeDuration !== undefined ? uptimeDuration.get("minutes") : undefined;
+  const [slotDurationDbMs, updateSlotDurationDbMs] = useReducer(() => {
+    const uptimeDuration =
+      startupTime !== undefined
+        ? slowDateTimeNow.diff(
+            DateTime.fromMillis(
+              Math.floor(Number(startupTime.startupTimeNanos) / 1_000_000),
+            ),
+          )
+        : undefined;
+
+    const uptimeMins =
+      uptimeDuration !== undefined ? uptimeDuration.as("minutes") : undefined;
+    return uptimeMins !== undefined && uptimeMins > 5 ? 1_000 * 60 : 1_000;
+  }, 1_000);
+
+  useInterval(updateSlotDurationDbMs, 1_000);
 
   const setEstimatedSlotDuration = useSetAtom(estimatedSlotDurationAtom);
   const setDbEstimatedSlotDuration = useThrottledCallback(
     (value?: EstimatedSlotDuration) => setEstimatedSlotDuration(value),
-    uptimeMins !== undefined && uptimeMins > 5 ? 1_000 * 60 : 1_000,
+    slotDurationDbMs,
   );
 
   const setEstimatedTps = useSetAtom(estimatedTpsAtom);
@@ -381,6 +387,13 @@ export function useSetAtomWsData() {
           case "optimistically_confirmed_slot":
           case "estimated_slot":
           case "ping":
+          case "vote_key":
+          case "reset_slot":
+          case "storage_slot":
+          case "vote_slot":
+          case "slot_caught_up":
+          case "live_network_metrics":
+          case "live_tile_metrics":
             break;
         }
       } else if (topic === "epoch") {
