@@ -1,13 +1,14 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { estimatedTpsAtom, tpsHistoryAtom } from "../../../api/atoms";
 import { useEffect, useRef } from "react";
 import { tpsDataAtom } from "./atoms";
 import type { EstimatedTps } from "../../../api/types";
 import { maxTransactionChartPoints } from "./consts";
 
+const store = getDefaultStore();
+
 export default function useUpdateTransactions() {
   const tpsHistory = useAtomValue(tpsHistoryAtom);
-  const tps = useAtomValue(estimatedTpsAtom);
   const setTpsData = useSetAtom(tpsDataAtom);
 
   useEffect(() => {
@@ -53,6 +54,8 @@ export default function useUpdateTransactions() {
 
   const pushTpsData = () => {
     if (!tpsHistory) return;
+
+    const tps = store.get(estimatedTpsAtom);
     if (tps === undefined) return;
 
     setTpsData((draft) => {

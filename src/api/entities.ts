@@ -51,6 +51,7 @@ export const clusterSchema = z.enum([
 export const commitHashSchema = z.string();
 
 export const identityKeySchema = z.string();
+export const voteKeySchema = z.string();
 
 export const startupTimeNanosSchema = z.coerce.bigint();
 
@@ -121,6 +122,10 @@ export const catchUpHistorySchema = z.object({
 });
 
 export const estimatedSlotSchema = z.number();
+export const resetSlotSchema = z.number();
+export const storageSlotSchema = z.number();
+export const voteSlotSchema = z.number();
+export const slotCaughtUpSchema = z.number();
 
 export const estimatedSlotDurationSchema = z.number();
 
@@ -129,6 +134,11 @@ export const estimatedTpsSchema = z.object({
   vote: z.number(),
   nonvote_success: z.number(),
   nonvote_failed: z.number(),
+});
+
+export const liveNetworkMetricsSchema = z.object({
+  ingress: z.array(z.number()),
+  egress: z.array(z.number()),
 });
 
 export const txnWaterfallInSchema = z.object({
@@ -201,6 +211,15 @@ export const tilePrimaryMetricSchema = z.object({
 export const liveTilePrimaryMetricSchema = z.object({
   next_leader_slot: z.number().nullable(),
   tile_primary_metric: tilePrimaryMetricSchema,
+});
+
+export const tileMetricsSchema = z.object({
+  timers: z.array(z.array(z.number())),
+  in_backp: z.array(z.boolean()),
+  backp_msgs: z.array(z.number()),
+  alive: z.array(z.number()),
+  nvcsw: z.array(z.number()),
+  nivcsw: z.array(z.number()),
 });
 
 export const tileTimerSchema = z.object({
@@ -381,6 +400,7 @@ export const slotPublishSchema = z.object({
   compute_units: z.number().nullable(),
   duration_nanos: z.number().nullable(),
   completed_time_nanos: z.coerce.bigint().nullable(),
+  vote_slot: z.number().nullable().optional(),
 });
 
 export const tpsHistorySchema = z.array(
@@ -426,6 +446,10 @@ export const summarySchema = z.discriminatedUnion("key", [
     value: identityKeySchema,
   }),
   summaryTopicSchema.extend({
+    key: z.literal("vote_key"),
+    value: voteKeySchema,
+  }),
+  summaryTopicSchema.extend({
     key: z.literal("startup_time_nanos"),
     value: startupTimeNanosSchema,
   }),
@@ -462,6 +486,22 @@ export const summarySchema = z.discriminatedUnion("key", [
     value: estimatedSlotSchema,
   }),
   summaryTopicSchema.extend({
+    key: z.literal("reset_slot"),
+    value: resetSlotSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("storage_slot"),
+    value: storageSlotSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("vote_slot"),
+    value: voteSlotSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("slot_caught_up"),
+    value: slotCaughtUpSchema,
+  }),
+  summaryTopicSchema.extend({
     key: z.literal("estimated_slot_duration_nanos"),
     value: estimatedSlotDurationSchema,
   }),
@@ -470,12 +510,20 @@ export const summarySchema = z.discriminatedUnion("key", [
     value: estimatedTpsSchema,
   }),
   summaryTopicSchema.extend({
+    key: z.literal("live_network_metrics"),
+    value: liveNetworkMetricsSchema,
+  }),
+  summaryTopicSchema.extend({
     key: z.literal("live_txn_waterfall"),
     value: liveTxnWaterfallSchema,
   }),
   summaryTopicSchema.extend({
     key: z.literal("live_tile_primary_metric"),
     value: liveTilePrimaryMetricSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("live_tile_metrics"),
+    value: tileMetricsSchema,
   }),
   summaryTopicSchema.extend({
     key: z.literal("live_tile_timers"),
