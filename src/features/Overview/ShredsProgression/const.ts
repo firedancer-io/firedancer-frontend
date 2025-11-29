@@ -1,4 +1,15 @@
 import { ShredEvent } from "../../../api/entities";
+import {
+  shredPublishedColor,
+  shredReceivedRepairColor,
+  shredReceivedTurbineColor,
+  shredRepairRequestedColor,
+  shredReplayedNothingColor,
+  shredReplayedRepairColor,
+  shredReplayedTurbineColor,
+  shredReplayStartedColor,
+  shredSkippedColor,
+} from "../../../colors";
 
 export const xRangeMs = 10_000;
 export const delayMs = 50;
@@ -18,3 +29,15 @@ export const shredEventDescPriorities: Exclude<
   ShredEvent.shred_received_turbine,
   ShredEvent.shred_repair_request,
 ];
+
+export const legend = {
+  "Repair Requested": shredRepairRequestedColor,
+  "Received Turbine": shredReceivedTurbineColor,
+  "Received Repair": shredReceivedRepairColor,
+  "Replay Started": shredReplayStartedColor,
+  "Replayed Turbine": shredReplayedTurbineColor,
+  "Replayed Repair": shredReplayedRepairColor,
+  "Replayed Nothing": shredReplayedNothingColor,
+  Skipped: shredSkippedColor,
+  Published: shredPublishedColor,
+};

@@ -10,6 +10,7 @@ import CatchingUpTiles from "./CatchingUpTiles";
 import { PhaseHeader } from "../PhaseHeader";
 import useEstimateTotalSlots from "./useCatchingUpRates";
 import { BarsStats } from "./BarsStats";
+import { ShredsChartLegend } from "../../../Overview/ShredsProgression/ShredsChartLegend";
 
 export default function CatchingUp() {
   const setContainerEl = useSetAtom(catchingUpContainerElAtom);
@@ -30,7 +31,10 @@ export default function CatchingUp() {
         )}
 
         <Card className={styles.card} mb="14px">
-          <Text className={styles.title}>Shreds</Text>
+          <Flex gap="15px" align="center" wrap="wrap">
+            <Text className={styles.title}>Shreds</Text>
+            <ShredsChartLegend />
+          </Flex>
           <Box flexGrow="1" minHeight="280px">
             <ShredsChart chartId="catching-up-shreds" isOnStartupScreen />
           </Box>
