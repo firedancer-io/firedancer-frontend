@@ -66,3 +66,14 @@
     }
   }
 }
+
+.legend-color-box {
+  width: 10px;
+  height: 10px;
+  border-radius: 1px;
+}
+
+.legend-label {
+  font-size: 10px;
+  color: var(--header-label-text-color);
+}
