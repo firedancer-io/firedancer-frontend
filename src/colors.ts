@@ -37,8 +37,8 @@ export const startupCompleteStepColor = "#3BA158";
 // boot progress
 export const bootProgressGossipBackgroundColor = "#030312";
 export const bootProgressFullSnapshotBackgroundColor = "#020C12";
-export const bootProgressIncrSnapshotBackgroundColor = "#120212";
-export const bootProgressCatchupBackgroundColor = "#120212";
+export const bootProgressIncrSnapshotBackgroundColor = "#020912";
+export const bootProgressCatchupBackgroundColor = "#060E0E";
 
 export const bootProgressGossipBarsColor = "#252D2C";
 export const bootProgressGossipFilledBarColor = "#175E51";
@@ -55,7 +55,7 @@ export const bootProgressTertiaryColor = "#C8B3B3";
 export const bootProgressSnapshotUnitsColor = "#686868";
 
 export const progressBarIncompleteGossipColor = "#171765ff";
-export const progressBarInProgressGossipBackground = `linear-gradient(270deg, #1414B8 -1.75%, #090952 101.75%)`;
+export const progressBarInProgressGossipBackground = `linear-gradient(270deg, #1414B8 0%, #090952 100%)`;
 export const progressBarInProgressGossipBorder = "#8F8FED";
 export const progressBarCompleteGossipColor = "#0E0E8E";
 
@@ -64,10 +64,10 @@ export const progressBarInProgressFullSnapshotBackground = `linear-gradient(270d
 export const progressBarInProgressFullSnapshotBorder = "#47B4EB";
 export const progressBarCompleteFullSnapshotColor = "#0F3F57";
 
-export const progressBarIncompleteIncSnapshotColor = "#150915";
-export const progressBarInProgressIncSnapshotBackground = `linear-gradient(270deg, #8B0E8B 0%, #250425 112.5%)`;
-export const progressBarInProgressIncSnapshotBorder = "#C06AC0";
-export const progressBarCompleteIncSnapshotColor = "#570F57";
+export const progressBarIncompleteIncSnapshotColor = "#041225";
+export const progressBarInProgressIncSnapshotBackground = `linear-gradient(270deg, #0E448B 0%, #090E15 100%)`;
+export const progressBarInProgressIncSnapshotBorder = "#83B3F2";
+export const progressBarCompleteIncSnapshotColor = "#0E448B";
 
 export const progressBarIncompleteCatchupColor = "#091515";
 export const progressBarInProgressCatchupBackground = `linear-gradient(270deg, ${appTeal} 0%, #0C6B5A 100%)`;
