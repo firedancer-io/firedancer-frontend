@@ -11,8 +11,6 @@ import PeerIcon from "../../../components/PeerIcon";
 import { skippedClusterSlotsAtom } from "../../../atoms";
 import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
 
-const height = 30;
-
 /**
  * Labels for shreds slots.
  * Don't render during startup, because there will be multiple overlapping slots
@@ -26,10 +24,10 @@ export default function ShredsSlotLabels() {
 
   return (
     <Flex
-      overflow="hidden"
+      overflowX="hidden"
       position="relative"
       // extra space for borders
-      height={`${height + 2}px`}
+      height="30px"
       style={{ opacity: 0.8 }}
     >
       {groupLeaderSlots.map((slot) => (
@@ -61,31 +59,28 @@ function SlotGroupLabel({ firstSlot }: SlotGroupLabelProps) {
 
   return (
     <Flex
-      height={`${height}px`}
+      height="100%"
       direction="column"
       gap="2px"
       position="absolute"
-      align="center"
-      overflow="hidden"
       id={getSlotGroupLabelId(firstSlot)}
       className={clsx(styles.slotGroupLabel, {
         [styles.you]: isLeader,
       })}
     >
       <Flex
-        align="center"
+        justify="center"
         flexGrow="1"
+        minWidth="0"
         px="2px"
         className={clsx(styles.slotGroupTopContainer, {
           [styles.skipped]: skippedSlots.size > 0,
         })}
       >
         <Flex
-          justify="center"
           align="center"
-          width="100%"
           gap="4px"
-          wrap="nowrap"
+          minWidth="0"
           className={styles.slotGroupNameContainer}
         >
           <PeerIcon
@@ -99,10 +94,8 @@ function SlotGroupLabel({ firstSlot }: SlotGroupLabelProps) {
       </Flex>
 
       <Flex
-        width="100%"
         height="3px"
         position="relative"
-        overflow="hidden"
         className={styles.slotBarsContainer}
       >
         {slots.map((slot) => (

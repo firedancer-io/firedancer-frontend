@@ -8,7 +8,7 @@ import { xRangeMs } from "./const";
 import { useMedia, useRafLoop } from "react-use";
 import {
   shredsProgressionPlugin,
-  type LabelPositions,
+  shredsXScaleKey,
 } from "./shredsProgressionPlugin";
 import { Box, Flex } from "@radix-ui/themes";
 import ShredsSlotLabels from "./ShredsSlotLabels";
@@ -69,7 +69,6 @@ export default function ShredsChart({
 
   const uplotRef = useRef<uPlot>();
   const lastRedrawRef = useRef(0);
-  const labelPositionsRef = useRef<LabelPositions>();
 
   const handleCreate = useCallback((u: uPlot) => {
     uplotRef.current = u;
@@ -94,24 +93,25 @@ export default function ShredsChart({
       width: 0,
       height: 0,
       scales: {
-        x: { time: false },
+        [shredsXScaleKey]: { time: false },
         y: {
           time: false,
           range: [0, 1],
         },
       },
-      series: [{}, {}],
+      series: [{ scale: shredsXScaleKey }, {}],
       cursor: {
         show: false,
         drag: {
           // disable zoom
-          x: false,
+          [shredsXScaleKey]: false,
           y: false,
         },
       },
       legend: { show: false },
       axes: [
         {
+          scale: shredsXScaleKey,
           incrs: xIncrs,
           size: 30,
           ticks: {
@@ -141,7 +141,7 @@ export default function ShredsChart({
           },
         },
       ],
-      plugins: [shredsProgressionPlugin(isOnStartupScreen, labelPositionsRef)],
+      plugins: [shredsProgressionPlugin(isOnStartupScreen)],
     };
   }, [isOnStartupScreen, xIncrs]);
 

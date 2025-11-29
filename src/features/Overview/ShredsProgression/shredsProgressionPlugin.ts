@@ -24,7 +24,7 @@ import { getSlotGroupLabelId, getSlotLabelId } from "./utils";
 import { slotsPerLeader } from "../../../consts";
 
 const store = getDefaultStore();
-const xScaleKey = "x";
+export const shredsXScaleKey = "shredsXScaleKey";
 
 type EventsByFillStyle = {
   [fillStyle: string]: Array<[x: number, y: number, width: number]>;
@@ -41,7 +41,6 @@ export type LabelPositions = {
 
 export function shredsProgressionPlugin(
   isOnStartupScreen: boolean,
-  labelPositionsRef: React.MutableRefObject<LabelPositions | undefined>,
 ): uPlot.Plugin {
   return {
     hooks: {
@@ -53,7 +52,8 @@ export function shredsProgressionPlugin(
           const slotRange = store.get(atoms.range);
           const minCompletedSlot = store.get(atoms.minCompletedSlot);
           const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
-          const maxX = u.scales[xScaleKey].max;
+
+          const maxX = u.scales[shredsXScaleKey].max;
 
           if (!liveShreds || !slotRange || maxX == null) {
             return;
@@ -82,13 +82,14 @@ export function shredsProgressionPlugin(
           u.ctx.clip();
 
           // helper to get x pos
-          const getXPos = (xVal: number) => u.valToPos(xVal, xScaleKey, true);
+          const getXPos = (xVal: number) =>
+            u.valToPos(xVal, shredsXScaleKey, true);
 
           const { maxShreds, orderedSlotNumbers } = getDrawInfo(
             minSlot,
             maxSlot,
             liveShreds,
-            u.scales[xScaleKey],
+            u.scales[shredsXScaleKey],
             tsXValueOffset,
           );
 
@@ -162,7 +163,7 @@ export function shredsProgressionPlugin(
                 y: (rowPxHeight + gapPxHeight) * rowIdx + u.bbox.top,
                 getYOffset,
                 dotWidth: rowPxHeight,
-                scaleX: u.scales[xScaleKey],
+                scaleX: u.scales[shredsXScaleKey],
                 getXPos,
               });
             }
@@ -188,7 +189,6 @@ export function shredsProgressionPlugin(
               u,
               maxX,
               tsXValueOffset,
-              labelPositionsRef,
             );
           }
         },
@@ -414,19 +414,14 @@ function updateLabels(
   u: uPlot,
   maxX: number,
   tsXValueOffset: number,
-  labelPositionsRef: React.MutableRefObject<LabelPositions | undefined>,
 ) {
   const slotBlocks = getSlotBlocks(slotRange, slots);
   const slotTsDeltas = estimateSlotTsDeltas(slotBlocks, skippedSlotsCluster);
   const groupLeaderSlots = store.get(shredsAtoms.groupLeaderSlots);
   const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, groupLeaderSlots);
 
-  const newLabelPositions: LabelPositions = {
-    groups: {},
-    slots: {},
-  };
-
-  const xValToCssPos = (xVal: number) => u.valToPos(xVal, xScaleKey, false);
+  const xValToCssPos = (xVal: number) =>
+    u.valToPos(xVal, shredsXScaleKey, false);
   const maxXPos = xValToCssPos(maxX);
 
   for (let groupIdx = 0; groupIdx < groupLeaderSlots.length; groupIdx++) {
@@ -442,15 +437,7 @@ function updateLabels(
       tsXValueOffset,
       xValToCssPos,
     );
-    moveLabelPosition(
-      true,
-      leaderSlot,
-      groupPos,
-      maxXPos,
-      leaderEl,
-      labelPositionsRef.current,
-      newLabelPositions,
-    );
+    moveLabelPosition(true, groupPos, maxXPos, leaderEl);
 
     for (
       let slotNumber = leaderSlot;
@@ -474,37 +461,27 @@ function updateLabels(
           ? ([slotPos[0] - groupPos[0], slotPos[1]] satisfies Position)
           : undefined;
 
-      moveLabelPosition(
-        false,
-        slotNumber,
-        relativeSlotPos,
-        maxXPos,
-        slotEl,
-        labelPositionsRef.current,
-        newLabelPositions,
-      );
+      moveLabelPosition(false, relativeSlotPos, maxXPos, slotEl);
     }
   }
-
-  // update stored positions
-  labelPositionsRef.current = newLabelPositions;
 }
 
 interface CompleteBlock {
   type: "complete";
   startTsDelta: number;
-  completionTsDelta: number;
+  endTsDelta: number;
   slotNumber: number;
 }
 interface IncompleteBlock {
   type: "incomplete";
   startTsDelta: number;
-  nextCompletionTsDelta: number | undefined;
-  nextStartTsDelta: number | undefined;
+  endTsDelta: number | undefined;
   slotNumbers: number[];
 }
 /**
- * Group ordered slots into blocks that are compelted / incomplete
+ * Group ordered slots into blocks that are complete / incomplete.
+ * Each block has a slot or array of slots sharing the same
+ * start and end ts
  */
 function getSlotBlocks(
   slotRange: {
@@ -513,48 +490,39 @@ function getSlotBlocks(
   },
   slots: SlotsShreds["slots"],
 ): Array<CompleteBlock | IncompleteBlock> {
-  // skip to the first defined slot
-  let firstDefinedSlotNumber = undefined;
+  const blocks: Array<CompleteBlock | IncompleteBlock> = [];
+  let incompleteBlockSlotNumbers: number[] = [];
+
   for (
     let slotNumber = slotRange.min;
     slotNumber <= slotRange.max;
     slotNumber++
   ) {
     const slot = slots.get(slotNumber);
-    if (slot?.minEventTsDelta != null) {
-      firstDefinedSlotNumber = slotNumber;
-      break;
-    }
-  }
 
-  if (firstDefinedSlotNumber === undefined) return [];
-
-  // Collect all blocks based on shared start and completion ts
-  // For incomplete blocks, include next start ts but not next completion ts yet
-  const blocks: Array<CompleteBlock | IncompleteBlock> = [];
-  let incompleteBlockSlotNumbers: number[] = [];
-  let incompleteBlockStart: number | undefined = undefined;
-
-  for (
-    let slotNumber = firstDefinedSlotNumber;
-    slotNumber <= slotRange.max;
-    slotNumber++
-  ) {
-    const slot = slots.get(slotNumber);
-
-    // add missing slot to incomplete block
     if (slot?.minEventTsDelta == null) {
+      // We don't want incomplete blocks with unknown start ts, so
+      // don't collect incomplete blocks until we have at least one block stored
+      if (blocks.length === 0) continue;
+
+      // add missing slot to incomplete block
       incompleteBlockSlotNumbers.push(slotNumber);
       continue;
     }
 
-    // mark potential end for incomplete block
-    if (incompleteBlockSlotNumbers.length && incompleteBlockStart != null) {
+    // mark incomplete block's end with current slot's start
+    if (incompleteBlockSlotNumbers.length) {
+      const blockStart = getIncompleteBlockStart(
+        incompleteBlockSlotNumbers,
+        slots,
+        blocks[blocks.length - 1],
+      );
+      if (!blockStart) break;
+
       blocks.push({
         type: "incomplete",
-        startTsDelta: incompleteBlockStart,
-        nextStartTsDelta: slot.minEventTsDelta,
-        nextCompletionTsDelta: undefined,
+        startTsDelta: blockStart,
+        endTsDelta: slot.minEventTsDelta,
         slotNumbers: incompleteBlockSlotNumbers,
       });
 
@@ -566,40 +534,63 @@ function getSlotBlocks(
       blocks.push({
         type: "complete",
         startTsDelta: slot.minEventTsDelta,
-        completionTsDelta: slot.completionTsDelta,
+        endTsDelta: slot.completionTsDelta,
         slotNumber,
       });
-      incompleteBlockStart = slot.completionTsDelta;
     } else {
       // incomplete
-      incompleteBlockStart = slot.minEventTsDelta;
       incompleteBlockSlotNumbers.push(slotNumber);
     }
   }
 
   // add final incomplete block
-  if (incompleteBlockSlotNumbers.length && incompleteBlockStart != null) {
+  if (incompleteBlockSlotNumbers.length) {
+    const blockStart = getIncompleteBlockStart(
+      incompleteBlockSlotNumbers,
+      slots,
+      blocks[blocks.length - 1],
+    );
+    if (!blockStart) return blocks;
+
     blocks.push({
       type: "incomplete",
-      startTsDelta: incompleteBlockStart,
-      nextStartTsDelta: undefined,
-      nextCompletionTsDelta: undefined,
+      startTsDelta: blockStart,
+      endTsDelta: undefined,
       slotNumbers: incompleteBlockSlotNumbers,
     });
   }
+  return blocks;
+}
 
-  // iterate backwards to populate incomplete blocks with next completion ts deltas
-  let nextCompletionTsDelta = undefined;
-  for (let i = blocks.length - 1; i >= 0; i--) {
-    const block = blocks[i];
-    if (block.type === "complete") {
-      nextCompletionTsDelta = block.completionTsDelta;
-      continue;
-    }
-    block.nextCompletionTsDelta = nextCompletionTsDelta;
+/**
+ *
+ * incomplete block starts at either start of first
+ * slot in the block, or end of the previous block
+ */
+function getIncompleteBlockStart(
+  blockSlotNumbers: number[],
+  slots: SlotsShreds["slots"],
+  previousBlock: CompleteBlock | IncompleteBlock,
+) {
+  const firstSlotNumber = blockSlotNumbers[0];
+  const startFirstSlotNumber = slots.get(firstSlotNumber)?.minEventTsDelta;
+
+  const prevBlockEnd =
+    previousBlock.type === "complete"
+      ? previousBlock.endTsDelta
+      : previousBlock.endTsDelta;
+
+  // incomplete block started at either start of first
+  // slot, or end of previous block
+  const blockStart = startFirstSlotNumber ?? prevBlockEnd;
+  if (blockStart == null) {
+    console.error(
+      `Missing block start ts for incomplete block beginning at ${firstSlotNumber}`,
+    );
+    return;
   }
 
-  return blocks;
+  return blockStart;
 }
 
 type TsDeltaRange = [startTsDelta: number, endTsDelta: number | undefined];
@@ -610,9 +601,8 @@ type TsDeltaRange = [startTsDelta: number, endTsDelta: number | undefined];
  * Incomplete blocks:
  *   - split the range (incomplete block start ts to next start ts) equally among the slots
  *   - skipped slots will have the above range, offset by its index in the incomplete block
- *   - non-skipped slots will extend from the incomplete block start to the next completion start
- *     (when a slot is completed, all previous slots are considered completed too)
- *   - if there is no next start ts or next completion ts, only include the first slot in the block, ending at max X ts
+ *   - non-skipped slots will extend from the incomplete block start to the max X axis value
+ *   - if there is no next start ts, only include the first slot in the block, ending at max X ts
  */
 function estimateSlotTsDeltas(
   slotBlocks: Array<CompleteBlock | IncompleteBlock>,
@@ -624,14 +614,11 @@ function estimateSlotTsDeltas(
 
   for (const block of slotBlocks) {
     if (block.type === "complete") {
-      slotTsDeltas[block.slotNumber] = [
-        block.startTsDelta,
-        block.completionTsDelta,
-      ];
+      slotTsDeltas[block.slotNumber] = [block.startTsDelta, block.endTsDelta];
       continue;
     }
 
-    if (block.nextStartTsDelta == null) {
+    if (block.endTsDelta == null) {
       // unknown incomplete block end time
       // only include first slot, because we don't have a good estimate for when the others would have started
       slotTsDeltas[block.slotNumbers[0]] = [block.startTsDelta, undefined];
@@ -641,14 +628,14 @@ function estimateSlotTsDeltas(
     // known block end time
     // split block range equally to determine slot start ts
     const singleSlotTsRange =
-      (block.nextStartTsDelta - block.startTsDelta) / block.slotNumbers.length;
+      (block.endTsDelta - block.startTsDelta) / block.slotNumbers.length;
     for (let i = 0; i < block.slotNumbers.length; i++) {
       const slotNumber = block.slotNumbers[i];
       const slotStart = block.startTsDelta + i * singleSlotTsRange;
 
       const slotEnd = skippedSlotsCluster.has(slotNumber)
         ? slotStart + singleSlotTsRange
-        : block.nextCompletionTsDelta;
+        : undefined;
       slotTsDeltas[slotNumber] = [slotStart, slotEnd];
     }
   }
@@ -656,6 +643,10 @@ function estimateSlotTsDeltas(
   return slotTsDeltas;
 }
 
+/**
+ * Get start and end ts deltas for group, from its slots ts deltas
+ * Undefined end indicates the group extends to max X
+ */
 function getGroupTsDeltas(
   slotTsDeltas: {
     [slotNumber: number]: TsDeltaRange;
@@ -667,36 +658,34 @@ function getGroupTsDeltas(
   } = {};
 
   for (const leaderSlot of groupLeaderSlots) {
-    const fullGroupTsDeltas = Array.from({ length: slotsPerLeader }, (_, i) => {
-      const slotNumber = i + leaderSlot;
-      return slotTsDeltas[slotNumber];
-    });
+    let minStart = Infinity;
+    let maxEnd = -Infinity;
+    for (let slot = leaderSlot; slot < leaderSlot + slotsPerLeader; slot++) {
+      const slotStart = slotTsDeltas[slot]?.[0];
+      const slotEnd = slotTsDeltas[slot]?.[1];
 
-    const firstDefinedSlotIdx = fullGroupTsDeltas.findIndex(
-      (v) => v !== undefined,
-    );
+      if (slotStart !== undefined) {
+        minStart = Math.min(slotStart, minStart);
+      }
 
-    // no slots, no group
-    if (firstDefinedSlotIdx === -1) continue;
+      // don't track end times for initial undefined slots
+      const hasSeenDefinedSlot = minStart !== Infinity;
+      if (!hasSeenDefinedSlot) continue;
 
-    // ignore missing slots at the start when positioning group.
-    // handles the case where some we sometimes miss early slot completion events,
-    // depending on the connection timing
-    const groupTsDeltas = fullGroupTsDeltas.slice(firstDefinedSlotIdx);
+      // undefind slotEnd means the slot extends to the max X
+      maxEnd = Math.max(slotEnd ?? Infinity, maxEnd);
+    }
 
-    const minStart = Math.min(
-      ...groupTsDeltas.filter((v) => v !== undefined).map(([start]) => start),
-    );
+    // no defined slots
+    if (minStart === Infinity || maxEnd === -Infinity) {
+      continue;
+    }
 
-    const definedEnds = groupTsDeltas
-      .map((pos) => pos?.[1] ?? undefined)
-      .filter((end) => end !== undefined);
-
-    // undefined slot end will extend to max x
-    const hasUndefinedEnd = definedEnds.length < groupTsDeltas.length;
-    const maxEnd = hasUndefinedEnd ? undefined : Math.max(...definedEnds);
-
-    tsDeltasByGroup[leaderSlot] = [minStart, maxEnd];
+    tsDeltasByGroup[leaderSlot] = [
+      minStart,
+      // convert back to undefined
+      maxEnd === Infinity ? undefined : maxEnd,
+    ];
   }
   return tsDeltasByGroup;
 }
@@ -723,60 +712,36 @@ function getPosFromTsDeltaRange(
 }
 
 /**
- * Update changed styles and store new positions in labelPositions
+ * Update label element styles
  */
 function moveLabelPosition(
   isGroup: boolean,
-  slotNumber: number,
   position: Position | undefined,
   maxXPos: number,
   el: HTMLElement,
-  prevLabelPositions: LabelPositions | undefined,
-  labelPositionsToMutate: LabelPositions,
 ) {
-  // force all updates if previously, nothing was positioned
-  const forceUpdates = !prevLabelPositions;
-
-  const key = isGroup ? "groups" : "slots";
-  const positionsToMutate = labelPositionsToMutate[key];
+  const groupBorderOffset = 1;
   const xPosProp = isGroup ? "--group-x" : "--slot-x";
 
   const isVisible = !!position;
-  const prevPositions = prevLabelPositions?.[key];
-  const prevVisible = !!prevPositions?.[slotNumber];
-
   if (!isVisible) {
-    if (forceUpdates || prevVisible) {
-      // hide
-      el.style.setProperty(xPosProp, "-100000px");
-    }
+    // hide
+    el.style.setProperty(xPosProp, "-100000px");
     return;
   }
 
-  positionsToMutate[slotNumber] = position;
+  const [xPos, width] = position;
+  el.style.setProperty(
+    xPosProp,
+    `${xPos + (isGroup ? groupBorderOffset : 0)}px`,
+  );
 
-  const xPos = position[0];
-  const prevXPos = prevPositions?.[slotNumber]?.[0];
+  // If missing width, extend to max width (with extra px to hide right border)
+  const newWidth = width ?? maxXPos - xPos + 1;
+  el.style.width = `${newWidth + (isGroup ? groupBorderOffset * 2 : 0)}px`;
 
-  if (forceUpdates || xPos !== prevXPos) {
-    el.style.setProperty(xPosProp, `${xPos}px`);
-  }
-
-  // no width data -- extend to max width
-  const width = position[1];
-  const isExtended = position[1] == null;
-  const prevWidth = prevPositions?.[slotNumber]?.[1];
-  // extend past maxXPos to hide right border
-  const newWidth = isExtended ? maxXPos - xPos + 1 : width;
-
-  if (forceUpdates || newWidth !== prevWidth) {
-    el.style.width = `${newWidth}px`;
-  }
-
-  const wasPrevExtended =
-    prevPositions?.[slotNumber] && prevPositions[slotNumber][1] == null;
-
-  if (isGroup && (forceUpdates || isExtended !== wasPrevExtended)) {
+  const isExtended = width == null;
+  if (isGroup) {
     // Extended groups don't have a defined end, so we don't know where to center the name text.
     // Set to opacity 0, and transition to 1 when the group end becomes defined.
     el.style.setProperty("--group-name-opacity", isExtended ? "0" : "1");

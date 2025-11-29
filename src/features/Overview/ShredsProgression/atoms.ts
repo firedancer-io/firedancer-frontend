@@ -13,8 +13,11 @@ type ShredEventTsDeltaMs = number | undefined;
  */
 export type ShredEventTsDeltas = ShredEventTsDeltaMs[];
 
-type Slot = {
+export type Slot = {
   shreds: (ShredEventTsDeltas | undefined)[];
+  /**
+   * earliest event (start) of the slot
+   */
   minEventTsDelta?: number;
   maxEventTsDelta?: number;
   completionTsDelta?: number;
