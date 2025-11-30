@@ -160,7 +160,7 @@ export const epochSliderProgressColor = "#142D53";
 export const epochSkippedSlotColor = "#FF5353";
 
 // sankey
-export const sankeyStartEndNodeColor = "#494D73";
+export const sankeyStartEndNodeColor = "#525463";
 export const sankeyIncomingLinkColor = "#23639E";
 export const sankeyDroppedLinkColor = "#5C5555";
 export const sankeyRetainedLinkColor = "#452909";

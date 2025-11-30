@@ -1,14 +1,9 @@
-import type { MouseEvent } from "react";
-import { createElement, useCallback } from "react";
-import { useSpring, animated } from "@react-spring/web";
-import { useTooltip } from "@nivo/tooltip";
 import type {
   DefaultLink,
   DefaultNode,
   SankeyCommonProps,
   SankeyNodeDatum,
 } from "./types";
-import { useCustomMotionConfig } from "./useCustomMotionConfig";
 import { sankeyStartEndNodeColor } from "../colors";
 
 interface SankeyNodesItemProps<N extends DefaultNode, L extends DefaultLink> {
@@ -43,64 +38,67 @@ export const SankeyNodesItem = <N extends DefaultNode, L extends DefaultLink>({
   onClick,
   tooltip,
 }: SankeyNodesItemProps<N, L>) => {
-  const { animate, config: springConfig } = useCustomMotionConfig();
-  const animatedProps = useSpring({
-    x,
-    y,
-    width,
-    height,
-    opacity,
-    color,
-    config: springConfig,
-    immediate: !animate,
-  });
+  // const { animate, config: springConfig } = useCustomMotionConfig();
+  // const animatedProps = useSpring({
+  //   x,
+  //   y,
+  //   width,
+  //   height,
+  //   opacity,
+  //   color,
+  //   config: springConfig,
+  //   immediate: !animate,
+  // });
 
-  const { showTooltipFromEvent, hideTooltip } = useTooltip();
+  // const { showTooltipFromEvent, hideTooltip } = useTooltip();
 
-  const handleMouseEnter = useCallback(
-    (event: MouseEvent<SVGRectElement>) => {
-      setCurrent(node);
-      showTooltipFromEvent(createElement(tooltip, { node }), event, "left");
-    },
-    [setCurrent, node, showTooltipFromEvent, tooltip],
-  );
+  // const handleMouseEnter = useCallback(
+  //   (event: MouseEvent<SVGRectElement>) => {
+  //     setCurrent(node);
+  //     showTooltipFromEvent(createElement(tooltip, { node }), event, "left");
+  //   },
+  //   [setCurrent, node, showTooltipFromEvent, tooltip],
+  // );
 
-  const handleMouseMove = useCallback(
-    (event: MouseEvent<SVGRectElement>) => {
-      showTooltipFromEvent(createElement(tooltip, { node }), event, "left");
-    },
-    [showTooltipFromEvent, node, tooltip],
-  );
+  // const handleMouseMove = useCallback(
+  //   (event: MouseEvent<SVGRectElement>) => {
+  //     showTooltipFromEvent(createElement(tooltip, { node }), event, "left");
+  //   },
+  //   [showTooltipFromEvent, node, tooltip],
+  // );
 
-  const handleMouseLeave = useCallback(() => {
-    setCurrent(null);
-    hideTooltip();
-  }, [setCurrent, hideTooltip]);
+  // const handleMouseLeave = useCallback(() => {
+  //   setCurrent(null);
+  //   hideTooltip();
+  // }, [setCurrent, hideTooltip]);
 
-  const handleClick = useCallback(
-    (event: MouseEvent<SVGRectElement>) => {
-      onClick?.(node, event);
-    },
-    [onClick, node],
-  );
+  // const handleClick = useCallback(
+  //   (event: MouseEvent<SVGRectElement>) => {
+  //     onClick?.(node, event);
+  //   },
+  //   [onClick, node],
+  // );
+
+  // console.log(opacity)
 
   return (
-    <animated.rect
-      x={animatedProps.x}
-      y={animatedProps.y}
-      rx={borderRadius}
-      ry={borderRadius}
-      width={animatedProps.width.to((v) => Math.max(v, 0))}
-      height={animatedProps.height.to((v) => Math.max(v, 0))}
-      fill={animatedProps.color}
-      fillOpacity={animatedProps.opacity}
-      strokeWidth={borderWidth}
-      stroke={sankeyStartEndNodeColor}
-      strokeOpacity={opacity}
-      onMouseEnter={isInteractive ? handleMouseEnter : undefined}
-      onMouseMove={isInteractive ? handleMouseMove : undefined}
-      onMouseLeave={isInteractive ? handleMouseLeave : undefined}
-      onClick={isInteractive ? handleClick : undefined}
+    <rect
+      x={x}
+      y={y}
+      // rx={borderRadius}
+      // ry={borderRadius}
+      width={width}
+      height={height}
+      // fill={"animatedProps.color"}
+      fill={sankeyStartEndNodeColor}
+      // fillOpacity={animatedProps.opacity}
+      // strokeWidth={borderWidth}
+      // stroke={sankeyStartEndNodeColor}
+      // strokeOpacity={opacity}
+      // onMouseEnter={isInteractive ? handleMouseEnter : undefined}
+      // onMouseMove={isInteractive ? handleMouseMove : undefined}
+      // onMouseLeave={isInteractive ? handleMouseLeave : undefined}
+      // onClick={isInteractive ? handleClick : undefined}
     />
   );
 };
