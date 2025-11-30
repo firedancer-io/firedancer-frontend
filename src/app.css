@@ -55,3 +55,10 @@
   background: rgba(0, 0, 0, 0.54);
   backdrop-filter: blur(2px);
 }
+
+.sankey-label {
+  pointer-events: none;
+  white-space: pre-line;
+  font-size: 14px;
+  font-family: Inter Tight;
+}

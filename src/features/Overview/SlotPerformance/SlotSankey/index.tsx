@@ -484,18 +484,25 @@ function SlotSankey({ slot }: { slot?: number }) {
             isInteractive={false}
             nodeThickness={0}
             nodeSpacing={getNodeSpacing(height)}
-            nodeBorderWidth={1}
+            nodeBorderWidth={0}
             sort="input"
-            nodeBorderRadius={3}
+            nodeBorderRadius={0}
             linkOpacity={1}
             enableLinkGradient
             labelPosition="outside"
             labelPadding={16}
+            animate={false}
+            nodeTooltip={NullComponent}
+            linkTooltip={NullComponent}
           />
         );
       }}
     </AutoSizer>
   );
+}
+
+function NullComponent() {
+  return null;
 }
 
 function getNodeSpacing(height: number) {

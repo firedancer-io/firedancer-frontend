@@ -70,7 +70,8 @@ export function shredsProgressionPlugin(
           }
 
           // Offset to convert shred event delta to chart x value
-          const delayedNow = new Date().getTime() - delayMs;
+          const delayedNow = Date.now() - delayMs;
+
           const tsXValueOffset = delayedNow - liveShreds.referenceTs;
 
           const minSlot = isOnStartupScreen

@@ -153,7 +153,7 @@ export function createLiveShredsAtoms() {
 
           if (!prev || !slotRange) return prev;
 
-          const now = new Date().getTime();
+          const now = Date.now();
 
           if (isStartup) {
             // During startup, we only show event dots, not spans. Delete slots without events in chart view

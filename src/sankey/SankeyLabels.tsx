@@ -1,5 +1,3 @@
-import { useSprings, animated } from "@react-spring/web";
-import { useTheme } from "@nivo/core";
 import type {
   DefaultLink,
   DefaultNode,
@@ -20,7 +18,6 @@ import {
   successfulSlotNodes,
   failedSlotNodes,
 } from "../features/Overview/SlotPerformance/SlotSankey/consts";
-import { useCustomMotionConfig } from "./useCustomMotionConfig";
 import {
   failureColor,
   nonVoteColor,
@@ -65,7 +62,7 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
   labelPadding,
   labelOrientation,
 }: SankeyLabelsProps<N, L>) => {
-  const theme = useTheme();
+  // const theme = useTheme();
 
   const labelRotation = labelOrientation === "vertical" ? -90 : 0;
   const labels = nodes
@@ -138,22 +135,21 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
       };
     });
 
-  const { animate, config: springConfig } = useCustomMotionConfig();
-  const springs = useSprings(
-    labels.length,
-    labels.map((label) => {
-      return {
-        transform: `translate(${label.x}, ${label.y}) rotate(${labelRotation})`,
-        config: springConfig,
-        immediate: !animate,
-      };
-    }),
-  );
+  // const { animate, config: springConfig } = useCustomMotionConfig();
+  // const springs = useSprings(
+  //   labels.length,
+  //   labels.map((label) => {
+  //     return {
+  //       transform: `translate(${label.x}, ${label.y}) rotate(${labelRotation})`,
+  //       config: springConfig,
+  //       immediate: !animate,
+  //     };
+  //   }),
+  // );
 
   return (
     <>
-      {springs.map((animatedProps, index) => {
-        const label = labels[index];
+      {labels.map((label) => {
         const [labelFill, valueFill] = getLabelFill(
           label.label as SlotNode,
           label.value,
@@ -167,18 +163,12 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
             value={label.value}
             key={label.id}
           >
-            <animated.text
+            <text
               key={label.id}
               dominantBaseline="central"
               textAnchor={label.textAnchor}
-              transform={animatedProps.transform}
-              style={{
-                ...theme.labels.text,
-                pointerEvents: "none",
-                whiteSpace: "pre-line",
-                fontSize: "14px",
-                fontFamily: "Inter Tight",
-              }}
+              transform={`translate(${label.x}, ${label.y}) rotate(${labelRotation})`}
+              className="sankey-label"
             >
               {getLabelParts(labelText).map((part, i) => {
                 return (
@@ -196,7 +186,7 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
                 {label.value?.toLocaleString()}
                 {getSuffix()}
               </tspan>
-            </animated.text>
+            </text>
           </ShowNode>
         );
       })}

@@ -1,8 +1,3 @@
-import type { MouseEvent } from "react";
-import { createElement, useCallback } from "react";
-import { useSpring, animated } from "@react-spring/web";
-import { useAnimatedPath } from "@nivo/core";
-import { useTooltip } from "@nivo/tooltip";
 import { SankeyLinkGradient } from "./SankeyLinkGradient";
 import type {
   DefaultLink,
@@ -19,7 +14,6 @@ import {
   failedSlotNodes,
 } from "../features/Overview/SlotPerformance/SlotSankey/consts";
 import { useShowNode } from "./useShowNode";
-import { useCustomMotionConfig } from "./useCustomMotionConfig";
 import {
   failureColor,
   sankeyDroppedLinkColor,
@@ -56,43 +50,43 @@ export const SankeyLinksItem = <N extends DefaultNode, L extends DefaultLink>({
   onClick,
 }: SankeyLinksItemProps<N, L>) => {
   const linkId = `${link.source.id}.${link.target.id}.${link.index}`;
-  const { animate, config: springConfig } = useCustomMotionConfig();
-  const animatedPath = useAnimatedPath(path);
-  const animatedProps = useSpring({
-    color,
-    opacity,
-    config: springConfig,
-    immediate: !animate,
-  });
+  // const { animate, config: springConfig } = useCustomMotionConfig();
+  // const animatedPath = useAnimatedPath(path);
+  // const animatedProps = useSpring({
+  //   color,
+  //   opacity,
+  //   config: springConfig,
+  //   immediate: !animate,
+  // });
 
-  const { showTooltipFromEvent, hideTooltip } = useTooltip();
+  // const { showTooltipFromEvent, hideTooltip } = useTooltip();
 
-  const handleMouseEnter = useCallback(
-    (event: MouseEvent<SVGPathElement>) => {
-      setCurrent(link);
-      showTooltipFromEvent(createElement(tooltip, { link }), event, "left");
-    },
-    [setCurrent, link, showTooltipFromEvent, tooltip],
-  );
+  // const handleMouseEnter = useCallback(
+  //   (event: MouseEvent<SVGPathElement>) => {
+  //     setCurrent(link);
+  //     showTooltipFromEvent(createElement(tooltip, { link }), event, "left");
+  //   },
+  //   [setCurrent, link, showTooltipFromEvent, tooltip],
+  // );
 
-  const handleMouseMove = useCallback(
-    (event: MouseEvent<SVGPathElement>) => {
-      showTooltipFromEvent(createElement(tooltip, { link }), event, "left");
-    },
-    [showTooltipFromEvent, link, tooltip],
-  );
+  // const handleMouseMove = useCallback(
+  //   (event: MouseEvent<SVGPathElement>) => {
+  //     showTooltipFromEvent(createElement(tooltip, { link }), event, "left");
+  //   },
+  //   [showTooltipFromEvent, link, tooltip],
+  // );
 
-  const handleMouseLeave = useCallback(() => {
-    setCurrent(null);
-    hideTooltip();
-  }, [setCurrent, hideTooltip]);
+  // const handleMouseLeave = useCallback(() => {
+  //   setCurrent(null);
+  //   hideTooltip();
+  // }, [setCurrent, hideTooltip]);
 
-  const handleClick = useCallback(
-    (event: MouseEvent<SVGPathElement>) => {
-      onClick?.(link, event);
-    },
-    [onClick, link],
-  );
+  // const handleClick = useCallback(
+  //   (event: MouseEvent<SVGPathElement>) => {
+  //     onClick?.(link, event);
+  //   },
+  //   [onClick, link],
+  // );
   let linkColor;
   if (incomingSlotNodes.includes(link.source.id as SlotNode)) {
     linkColor = sankeyIncomingLinkColor;
@@ -125,19 +119,16 @@ export const SankeyLinksItem = <N extends DefaultNode, L extends DefaultLink>({
           endColor={link.endColor || link.target.color}
         />
       )}
-      <animated.path
+      <path
         fill={
-          linkColor ??
-          (enableGradient
-            ? `url("#${encodeURI(linkId)}")`
-            : animatedProps.color)
+          linkColor ?? (enableGradient ? `url("#${encodeURI(linkId)}")` : color)
         }
-        d={animatedPath}
-        fillOpacity={animatedProps.opacity}
-        onMouseEnter={isInteractive ? handleMouseEnter : undefined}
-        onMouseMove={isInteractive ? handleMouseMove : undefined}
-        onMouseLeave={isInteractive ? handleMouseLeave : undefined}
-        onClick={isInteractive ? handleClick : undefined}
+        d={path}
+        // fillOpacity={animatedProps.opacity}
+        // onMouseEnter={isInteractive ? handleMouseEnter : undefined}
+        // onMouseMove={isInteractive ? handleMouseMove : undefined}
+        // onMouseLeave={isInteractive ? handleMouseLeave : undefined}
+        // onClick={isInteractive ? handleClick : undefined}
       />
     </>
   );

@@ -40,11 +40,11 @@ export const SankeyNodes = <N extends DefaultNode, L extends DefaultLink>({
   onClick,
   tooltip,
 }: SankeyNodesProps<N, L>) => {
-  const getOpacity = (node: SankeyNodeDatum<N, L>) => {
-    if (!currentNode && !currentLink) return nodeOpacity;
-    if (isCurrentNode(node)) return nodeHoverOpacity;
-    return nodeHoverOthersOpacity;
-  };
+  // const getOpacity = (node: SankeyNodeDatum<N, L>) => {
+  //   if (!currentNode && !currentLink) return nodeOpacity;
+  //   if (isCurrentNode(node)) return nodeHoverOpacity;
+  //   return nodeHoverOthersOpacity;
+  // };
 
   return (
     <>
@@ -57,7 +57,7 @@ export const SankeyNodes = <N extends DefaultNode, L extends DefaultLink>({
           width={node.width}
           height={node.height}
           color={node.color}
-          opacity={getOpacity(node)}
+          opacity={1}
           borderWidth={borderWidth}
           borderColor={getBorderColor(node)}
           borderRadius={borderRadius}

@@ -62,16 +62,16 @@ export const svgDefaultProps = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as InheritedColorConfig<SankeyNodeDatum<any, any>>,
 
-  isInteractive: true,
+  isInteractive: false,
   nodeTooltip: SankeyNodeTooltip,
   linkTooltip: SankeyLinkTooltip,
 
   legends: [],
 
-  layers: ["links", "nodes", "labels", "legends"] as SankeyLayerId[],
+  layers: ["links", "nodes", "labels"] as SankeyLayerId[],
 
   role: "img",
 
-  animate: true,
+  animate: false,
   motionConfig: "gentle",
 };

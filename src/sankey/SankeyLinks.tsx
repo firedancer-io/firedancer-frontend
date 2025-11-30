@@ -44,11 +44,11 @@ export const SankeyLinks = <N extends DefaultNode, L extends DefaultLink>({
   onClick,
   tooltip,
 }: SankeyLinksProps<N, L>) => {
-  const getOpacity = (link: SankeyLinkDatum<N, L>) => {
-    if (!currentNode && !currentLink) return linkOpacity;
-    if (isCurrentLink(link)) return linkHoverOpacity;
-    return linkHoverOthersOpacity;
-  };
+  // const getOpacity = (link: SankeyLinkDatum<N, L>) => {
+  //   if (!currentNode && !currentLink) return linkOpacity;
+  //   if (isCurrentLink(link)) return linkHoverOpacity;
+  //   return linkHoverOthersOpacity;
+  // };
 
   const getLinkPath = useMemo(
     () =>
@@ -65,7 +65,8 @@ export const SankeyLinks = <N extends DefaultNode, L extends DefaultLink>({
           layout={layout}
           path={getLinkPath(link, linkContract)}
           color={link.color}
-          opacity={getOpacity(link)}
+          // opacity={getOpacity(link)}
+          opacity={1}
           blendMode={linkBlendMode}
           enableGradient={enableLinkGradient}
           setCurrent={setCurrentLink}
