@@ -1,5 +1,4 @@
 import { useRef, useMemo, useCallback, useEffect } from "react";
-import AutoSizer from "react-virtualized-auto-sizer";
 import UplotReact from "../../../../uplotReact/UplotReact";
 import type { CatchingUpData } from "./atoms";
 import {
@@ -14,6 +13,7 @@ import { catchingUpBarsPlugin } from "./catchingUpBarsPlugin";
 import { Box } from "@radix-ui/themes";
 import { useThrottledCallback } from "use-debounce";
 import { completedSlotAtom } from "../../../../api/atoms";
+import { useMeasure } from "react-use";
 
 const emptyChartData: uPlot.AlignedData = [[0], [null]];
 
@@ -25,6 +25,7 @@ interface CatchingUpBarsProps {
   }>;
 }
 export function CatchingUpBars({ catchingUpRatesRef }: CatchingUpBarsProps) {
+  const [measureRef, measureRect] = useMeasure<HTMLDivElement>();
   const startSlot = useAtomValue(catchingUpStartSlotAtom);
   const repairSlots = useAtomValue(repairSlotsAtom);
   const turbineSlots = useAtomValue(turbineSlotsAtom);
@@ -51,6 +52,9 @@ export function CatchingUpBars({ catchingUpRatesRef }: CatchingUpBarsProps) {
       plugins: [catchingUpBarsPlugin(catchingUpRatesRef, dataRef)],
     };
   }, [dataRef, catchingUpRatesRef]);
+
+  options.width = measureRect.width;
+  options.height = measureRect.height;
 
   const handleCreate = useCallback((u: uPlot) => {
     uplotRef.current = u;
@@ -103,22 +107,13 @@ export function CatchingUpBars({ catchingUpRatesRef }: CatchingUpBarsProps) {
   }
 
   return (
-    <Box height="77px">
-      <AutoSizer>
-        {({ height, width }) => {
-          options.width = width;
-          options.height = height;
-
-          return (
-            <UplotReact
-              id="catching-up-slot-bars"
-              options={options}
-              data={emptyChartData}
-              onCreate={handleCreate}
-            />
-          );
-        }}
-      </AutoSizer>
+    <Box height="77px" ref={measureRef}>
+      <UplotReact
+        id="catching-up-slot-bars"
+        options={options}
+        data={emptyChartData}
+        onCreate={handleCreate}
+      />
     </Box>
   );
 }
