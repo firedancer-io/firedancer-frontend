@@ -99,6 +99,7 @@ export default function BarsChart({
       scales: { [banksXScaleKey]: { time: false } },
       axes: [
         {
+          scale: banksXScaleKey,
           stroke: chartAxisColor,
           values: (self, ticks) => {
             return isFirstOrLastChart

@@ -226,6 +226,7 @@ export default function CuChart({
             return ticks.map((rawValue) => rawValue / 1_000_000 + "ms");
           },
           space: 100,
+          scale: banksXScaleKey,
         },
         {
           scale: computeUnitsScaleKey,
