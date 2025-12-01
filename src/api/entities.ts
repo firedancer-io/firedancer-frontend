@@ -125,7 +125,7 @@ export const estimatedSlotSchema = z.number();
 export const resetSlotSchema = z.number();
 export const storageSlotSchema = z.number();
 export const voteSlotSchema = z.number();
-export const slotCaughtUpSchema = z.number();
+export const slotCaughtUpSchema = z.number().nullable();
 
 export const estimatedSlotDurationSchema = z.number();
 
