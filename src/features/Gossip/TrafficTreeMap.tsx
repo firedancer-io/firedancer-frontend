@@ -16,10 +16,10 @@ import { useAtomValue } from "jotai";
 import { peersAtom } from "../../atoms";
 import { formatNumberLamports } from "../Overview/ValidatorsCard/formatAmt";
 import { sum } from "lodash";
-import byteSize from "byte-size";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { headerGap } from "./consts";
 import styles from "./trafficTreeMap.module.css";
+import { formatBytesAsBits } from "../../utils";
 
 const colorsList = [
   "#00F0FF",
@@ -123,6 +123,10 @@ export function TrafficTreeMap({
 
   if (!data) return;
 
+  const formattedThroughput = formatBytesAsBits(
+    networkTraffic.total_throughput,
+  );
+
   return (
     <Flex
       direction="column"
@@ -137,7 +141,7 @@ export function TrafficTreeMap({
         <span>
           <Text className={styles.totalText}>Total</Text>
           <Text className={styles.throughputText}>
-            &nbsp;{byteSize(networkTraffic.total_throughput).toString()}/s
+            &nbsp;{`${formattedThroughput.value} ${formattedThroughput.unit}`}/s
           </Text>
         </span>
       </Flex>
@@ -348,12 +352,12 @@ function NodeText({ leaf, total, getPeerValues }: NodeTextProps) {
   const firstBaselineY = textY; // firstLineTop + idFontSize;
   // const iconY = textY; // firstLineTop + Math.max(0, (idFontSize - iconSize) / 2);
 
-  const byteValue = byteSize(leaf.value ?? 0);
-  let throughputLine = `${byteValue ? `${byteValue.toString()} ` : ""}(${pct.toFixed(1)}%)`;
+  const formatted = formatBytesAsBits(leaf.value ?? 0);
+  let throughputLine = `${formatted ? `${formatted.value} ${formatted.unit} ` : ""}(${pct.toFixed(1)}%)`;
 
   const showPct = measureTextWidth(throughputLine, idFont) < availableWidth;
   if (!showPct) {
-    throughputLine = `${byteValue.toString()}`;
+    throughputLine = `${formatted.value} ${formatted.unit}`;
   }
 
   if (rectWidth < minLabelWidth) return;
