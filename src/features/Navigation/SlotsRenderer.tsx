@@ -400,6 +400,7 @@ function PastSlotStatus({ slot }: { slot: number }) {
     const style = getSlotStatusColorStyles(queryPublish.publish);
     if (
       queryPublish?.publish?.level === "rooted" &&
+      !queryPublish.publish?.skipped &&
       (selectedSlot === undefined ||
         getSlotGroupLeader(slot) !== getSlotGroupLeader(selectedSlot))
     ) {
