@@ -13,10 +13,9 @@ import { gossipPeersSizeAtom } from "../../../api/atoms";
 import usePeerTableQuery, { type SortOrder } from "./usePeerTableQuery";
 import { Box, Flex, Reset, Separator, Table, Text } from "@radix-ui/themes";
 import { lamportsPerSol } from "../../../consts";
-import byteSize from "byte-size";
 import { CaretDownIcon, CaretUpIcon } from "@radix-ui/react-icons";
 import { useKey } from "react-use";
-import { copyToClipboard } from "../../../utils";
+import { copyToClipboard, formatBytesAsBits } from "../../../utils";
 import styles from "./peerTable.module.css";
 import clsx from "clsx";
 import { headerGap } from "../consts";
@@ -31,7 +30,7 @@ interface ColSpec {
 }
 const byteFormat = (value: number | string) => {
   if (typeof value === "number") {
-    const formatted = byteSize(value);
+    const formatted = formatBytesAsBits(value);
     return `${formatted.value} ${formatted.unit}`;
   }
   return value;
