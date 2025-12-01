@@ -1,11 +1,10 @@
 import UplotReact from "../../../uplotReact/UplotReact";
-import AutoSizer from "react-virtualized-auto-sizer";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type uPlot from "uplot";
 import { chartAxisColor, gridLineColor, gridTicksColor } from "../../../colors";
 import type { AlignedData } from "uplot";
 import { xRangeMs } from "./const";
-import { useMedia, useRafLoop } from "react-use";
+import { useMeasure, useMedia, useRafLoop } from "react-use";
 import {
   shredsProgressionPlugin,
   shredsXScaleKey,
@@ -69,6 +68,7 @@ export default function ShredsChart({
 
   const uplotRef = useRef<uPlot>();
   const lastRedrawRef = useRef(0);
+  const [measureRef, measureRect] = useMeasure<HTMLDivElement>();
 
   const handleCreate = useCallback((u: uPlot) => {
     uplotRef.current = u;
@@ -145,6 +145,9 @@ export default function ShredsChart({
     };
   }, [isOnStartupScreen, xIncrs]);
 
+  options.width = measureRect.width;
+  options.height = measureRect.height;
+
   useRafLoop((time: number) => {
     if (!uplotRef) return;
     if (
@@ -159,21 +162,13 @@ export default function ShredsChart({
   return (
     <Flex direction="column" gap="2px" height="100%">
       {!isOnStartupScreen && <ShredsSlotLabels />}
-      <Box flexGrow="1" mx={`-${chartXPadding}px`}>
-        <AutoSizer>
-          {({ height, width }) => {
-            options.width = width;
-            options.height = height;
-            return (
-              <UplotReact
-                id={chartId}
-                options={options}
-                data={chartData}
-                onCreate={handleCreate}
-              />
-            );
-          }}
-        </AutoSizer>
+      <Box flexGrow="1" mx={`-${chartXPadding}px`} ref={measureRef}>
+        <UplotReact
+          id={chartId}
+          options={options}
+          data={chartData}
+          onCreate={handleCreate}
+        />
       </Box>
     </Flex>
   );
