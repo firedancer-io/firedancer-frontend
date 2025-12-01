@@ -24,9 +24,9 @@ export default function ShredsSlotLabels() {
 
   return (
     <Flex
+      flexShrink="0"
       overflowX="hidden"
       position="relative"
-      // extra space for borders
       height="30px"
       style={{ opacity: 0.8 }}
     >

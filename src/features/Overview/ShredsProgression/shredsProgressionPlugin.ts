@@ -53,6 +53,7 @@ export function shredsProgressionPlugin(
           const slotRange = store.get(atoms.range);
           const minCompletedSlot = store.get(atoms.minCompletedSlot);
           const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
+          const rangeAfterStartup = store.get(atoms.rangeAfterStartup);
 
           const maxX = u.scales[shredsXScaleKey].max;
 
@@ -67,6 +68,8 @@ export function shredsProgressionPlugin(
             // depending on connection time. Ignore those slots, and only draw slots
             // from min completed.
             if (minCompletedSlot == null) return;
+
+            if (!rangeAfterStartup) return;
           }
 
           // Offset to convert shred event delta to chart x value
@@ -184,9 +187,9 @@ export function shredsProgressionPlugin(
 
           u.ctx.restore();
 
-          if (!isOnStartupScreen) {
+          if (!isOnStartupScreen && rangeAfterStartup) {
             updateLabels(
-              slotRange,
+              rangeAfterStartup,
               liveShreds.slots,
               skippedSlotsCluster,
               u,
@@ -581,22 +584,17 @@ function getIncompleteBlockStart(
   const firstSlotNumber = blockSlotNumbers[0];
   const startFirstSlotNumber = slots.get(firstSlotNumber)?.minEventTsDelta;
 
-  const prevBlockEnd =
-    previousBlock.type === "complete"
-      ? previousBlock.endTsDelta
-      : previousBlock.endTsDelta;
+  if (startFirstSlotNumber != null) return startFirstSlotNumber;
 
-  // incomplete block started at either start of first
-  // slot, or end of previous block
-  const blockStart = startFirstSlotNumber ?? prevBlockEnd;
-  if (blockStart == null) {
+  const prevBlockEnd = previousBlock.endTsDelta;
+  if (prevBlockEnd == null) {
     console.error(
       `Missing block start ts for incomplete block beginning at ${firstSlotNumber}`,
     );
     return;
   }
 
-  return blockStart;
+  return prevBlockEnd;
 }
 
 type TsDeltaRange = [startTsDelta: number, endTsDelta: number | undefined];

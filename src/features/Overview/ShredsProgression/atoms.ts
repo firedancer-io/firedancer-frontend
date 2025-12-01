@@ -4,6 +4,7 @@ import { maxShredEvent, ShredEvent } from "../../../api/entities";
 import { delayMs, xRangeMs } from "./const";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
 import { getSlotGroupLeader } from "../../../utils";
+import { startupFinalTurbineHeadAtom } from "../../StartupProgress/atoms";
 
 type ShredEventTsDeltaMs = number | undefined;
 /**
@@ -40,17 +41,35 @@ export function createLiveShredsAtoms() {
     min: number;
     max: number;
   }>();
+  const rangeAfterStartupAtom = atom((get) => {
+    const range = get(_slotRangeAtom);
+    const startupFinalTurbineHead = get(startupFinalTurbineHeadAtom);
+    if (!range || startupFinalTurbineHead == null) return;
+
+    // no slots after final turbine head
+    if (startupFinalTurbineHead + 1 > range.max) return;
+
+    return {
+      min: Math.max(startupFinalTurbineHead + 1, range.min),
+      max: range.max,
+    };
+  });
   return {
     /**
      * min completed slot we've seen since we started collecting data
      */
     minCompletedSlot: atom((get) => get(_minCompletedSlotAtom)),
     range: atom((get) => get(_slotRangeAtom)),
+    rangeAfterStartup: rangeAfterStartupAtom,
+    // leader slots after turbine head at the end of startup
     groupLeaderSlots: atom((get) => {
-      const range = get(_slotRangeAtom);
-      if (!range) return [];
+      const range = get(rangeAfterStartupAtom);
+      const startupFinalTurbineHead = get(startupFinalTurbineHeadAtom);
+      if (!range || startupFinalTurbineHead == null) return [];
 
-      const slots = [getSlotGroupLeader(range.min)];
+      const min = Math.max(startupFinalTurbineHead + 1, range.min);
+
+      const slots = [getSlotGroupLeader(min)];
       while (slots[slots.length - 1] + slotsPerLeader - 1 < range.max) {
         slots.push(
           getSlotGroupLeader(slots[slots.length - 1] + slotsPerLeader),
