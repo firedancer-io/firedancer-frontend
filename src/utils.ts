@@ -315,7 +315,7 @@ export function formatBytes(
   if (bytes === 0 && noDecimalForZero) return { value: "0", unit: "B" };
   if (bytes < 1_000) return { value: bytes.toFixed(precision), unit: "B" };
   if (bytes < 1_000_000)
-    return { value: (bytes / 1_000).toFixed(precision), unit: "KB" };
+    return { value: (bytes / 1_000).toFixed(precision), unit: "kB" };
   if (bytes < 1_000_000_000) {
     return { value: (bytes / 1_000_000).toFixed(precision), unit: "MB" };
   }
