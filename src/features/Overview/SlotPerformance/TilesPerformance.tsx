@@ -127,16 +127,6 @@ export default function TilesPerformance() {
         setIsExpanded={setIsExpanded}
       />
       <TileCard
-        header="store"
-        tileCount={tileCounts["store"]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.["store"]}
-        queryIdlePerTile={showLive ? undefined : queryIdleData?.["store"]}
-        statLabel="Latency"
-        // metricType="store"
-        isExpanded={isExpanded}
-        setIsExpanded={setIsExpanded}
-      />
-      <TileCard
         header={netType}
         subHeader="(out)"
         tileCount={tileCounts[netType]}

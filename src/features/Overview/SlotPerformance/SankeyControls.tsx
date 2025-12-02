@@ -1,15 +1,7 @@
 import styles from "./sankeyControls.module.css";
-import { Button, Flex, Text, Tooltip } from "@radix-ui/themes";
 import * as ToggleGroup from "@radix-ui/react-toggle-group";
-import { useAtom, useAtomValue } from "jotai";
-import { DisplayType, sankeyDisplayTypeAtom, selectedSlotAtom } from "./atoms";
-import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";
-import { fixValue } from "../../../utils";
-import { useMemo, useState } from "react";
-import { lamportsPerSol, solDecimals } from "../../../consts";
-import { formatNumber } from "../../../numUtils";
-import RowSeparator from "../../../components/RowSeparator";
-import { PlusIcon, MinusIcon } from "@radix-ui/react-icons";
+import { useAtom } from "jotai";
+import { DisplayType, sankeyDisplayTypeAtom } from "./atoms";
 
 export default function SankeyControls() {
   const [value, setValue] = useAtom(sankeyDisplayTypeAtom);
@@ -47,130 +39,6 @@ export default function SankeyControls() {
           Rate
         </ToggleGroup.Item>
       </ToggleGroup.Root>
-      <SlotStats />
     </div>
-  );
-}
-
-function SlotStats() {
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  const selectedSlot = useAtomValue(selectedSlotAtom);
-  const query = useSlotQueryResponseDetailed(selectedSlot);
-
-  const values = useMemo(() => {
-    if (!query.response?.publish) return;
-
-    const transactionFeeRounded = query.response.publish.transaction_fee
-      ? formatNumber(
-          Number(query.response.publish.transaction_fee) / lamportsPerSol,
-          {
-            decimals: solDecimals,
-          },
-        )
-      : "0";
-
-    const transactionFeeFull = query.response.publish.transaction_fee
-      ? (
-          Number(query.response.publish.transaction_fee) / lamportsPerSol
-        ).toFixed(9)
-      : "0";
-
-    const priorityFeeRounded = query.response.publish.priority_fee
-      ? formatNumber(
-          Number(query.response.publish.priority_fee) / lamportsPerSol,
-          {
-            decimals: solDecimals,
-          },
-        )
-      : "0";
-
-    const priorityFeeFull = query.response.publish.priority_fee
-      ? (Number(query.response.publish.priority_fee) / lamportsPerSol).toFixed(
-          9,
-        )
-      : "0";
-
-    const tipsRounded = query.response.publish.tips
-      ? formatNumber(Number(query.response.publish.tips) / lamportsPerSol, {
-          decimals: solDecimals,
-        })
-      : "0";
-
-    const tips = query.response.publish.tips
-      ? (Number(query.response.publish.tips) / lamportsPerSol).toFixed(9)
-      : "0";
-
-    const computeUnits = fixValue(query.response.publish.compute_units ?? 0);
-
-    return {
-      computeUnits,
-      transactionFeeFull,
-      transactionFeeRounded,
-      priorityFeeFull,
-      priorityFeeRounded,
-      tips,
-      tipsRounded,
-    };
-  }, [query.response]);
-
-  if (!selectedSlot) return;
-
-  return (
-    <Flex direction="column" gap="1" className={styles.statsContainer}>
-      <Button
-        size="2"
-        variant="outline"
-        className={styles.slotStatsToggleButton}
-        onClick={() => setIsExpanded((prev) => !prev)}
-      >
-        Metrics{" "}
-        {isExpanded ? (
-          <MinusIcon style={{ width: 10, height: 10 }} />
-        ) : (
-          <PlusIcon style={{ width: 10, height: 10 }} />
-        )}
-      </Button>
-
-      {isExpanded && (
-        <div className={styles.stats}>
-          <Text color="cyan">Priority Fees</Text>
-          <Tooltip
-            content={
-              values?.priorityFeeFull ? `${values?.priorityFeeFull} SOL` : null
-            }
-          >
-            <Text align="right" color="cyan">
-              {values?.priorityFeeRounded ?? "-"}
-            </Text>
-          </Tooltip>
-          <Text color="indigo">Transaction Fees</Text>
-          <Tooltip
-            content={
-              values?.transactionFeeFull
-                ? `${values?.transactionFeeFull} SOL`
-                : null
-            }
-          >
-            <Text align="right" color="indigo">
-              {values?.transactionFeeRounded ?? "-"}
-            </Text>
-          </Tooltip>
-          <Text color="jade">Tips</Text>
-          <Tooltip content={values?.tips ? `${values?.tips} SOL` : null}>
-            <Text align="right" color="jade">
-              {values?.tipsRounded ?? "-"}
-            </Text>
-          </Tooltip>
-          <div style={{ gridColumn: "span 2" }}>
-            <RowSeparator my="0" />
-          </div>
-          <Text color="plum">Compute Units</Text>
-          <Text align="right" color="plum">
-            {values?.computeUnits?.toLocaleString() ?? "-"}
-          </Text>
-        </div>
-      )}
-    </Flex>
   );
 }
