@@ -16,12 +16,17 @@ import SlotNavigation from "./SlotNavigation";
 import DetailedSlotStats from "./DetailedSlotStats";
 
 export default function SlotDetails() {
+  const baseSelectedSlot = useAtomValue(baseSelectedSlotAtom);
   const selectedSlot = useAtomValue(selectedSlotAtom);
 
   return (
     <>
       <Setup />
-      {selectedSlot === undefined ? <SlotSearch /> : <SlotContent />}
+      {!baseSelectedSlot.isInitialized ? null : selectedSlot === undefined ? (
+        <SlotSearch />
+      ) : (
+        <SlotContent />
+      )}
     </>
   );
 }
