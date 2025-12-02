@@ -7,7 +7,6 @@ import {
   shredReplayedNothingColor,
   shredReplayedRepairColor,
   shredReplayedTurbineColor,
-  shredReplayStartedColor,
   shredSkippedColor,
 } from "../../../colors";
 
@@ -24,7 +23,6 @@ export const shredEventDescPriorities: Exclude<
 >[] = [
   ShredEvent.shred_published,
   ShredEvent.shred_replayed,
-  ShredEvent.shred_replay_start,
   ShredEvent.shred_received_repair,
   ShredEvent.shred_received_turbine,
   ShredEvent.shred_repair_request,
@@ -34,7 +32,6 @@ export const legend = {
   "Repair Requested": shredRepairRequestedColor,
   "Received Turbine": shredReceivedTurbineColor,
   "Received Repair": shredReceivedRepairColor,
-  "Replay Started": shredReplayStartedColor,
   "Replayed Turbine": shredReplayedTurbineColor,
   "Replayed Repair": shredReplayedRepairColor,
   "Replayed Nothing": shredReplayedNothingColor,

@@ -15,7 +15,6 @@ import {
   shredReplayedNothingColor,
   shredReplayedRepairColor,
   shredReplayedTurbineColor,
-  shredReplayStartedColor,
   shredSkippedColor,
 } from "../../../colors";
 import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
@@ -115,7 +114,6 @@ export function shredsProgressionPlugin(
                   case ShredEvent.shred_received_repair: {
                     return canvasHeight;
                   }
-                  case ShredEvent.shred_replay_start:
                   case ShredEvent.shred_replayed: {
                     return canvasHeight * 2;
                   }
@@ -360,10 +358,6 @@ function addEventsForRow({
       }
       case ShredEvent.shred_received_repair: {
         addEventPosition(shredReceivedRepairColor, position);
-        break;
-      }
-      case ShredEvent.shred_replay_start: {
-        addEventPosition(shredReplayStartedColor, position);
         break;
       }
       case ShredEvent.shred_replayed: {

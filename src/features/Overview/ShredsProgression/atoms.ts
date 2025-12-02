@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 import type { LiveShreds } from "../../../api/types";
-import { maxShredEvent, ShredEvent } from "../../../api/entities";
+import { ShredEvent } from "../../../api/entities";
 import { delayMs, xRangeMs } from "./const";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
 import { getSlotGroupLeader } from "../../../utils";
@@ -106,7 +106,10 @@ export function createLiveShredsAtoms() {
           for (let i = 0; i < event.length; i++) {
             const ev = event[i];
             // unsupported event type
-            if (ev > maxShredEvent) continue;
+            if (!(ev in ShredEvent)) {
+              console.debug(`received unsupported shred event type ${ev}`);
+              continue;
+            }
 
             if (slot_delta[i] == null || event_ts_delta[i] == null) {
               console.error(`invalid shred data arrays, missing index ${i}`);

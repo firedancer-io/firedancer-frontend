@@ -151,7 +151,6 @@ export const gridLineColor = "#312D42";
 export const shredRepairRequestedColor = "#A66759";
 export const shredReceivedTurbineColor = "#597FA6";
 export const shredReceivedRepairColor = "#A67F59";
-export const shredReplayStartedColor = "#5998A6";
 export const shredReplayedTurbineColor = "#366357";
 export const shredReplayedRepairColor = "#B2904D";
 export const shredReplayedNothingColor = "#2F3842";
