@@ -46,55 +46,47 @@ export default function Gossip() {
         remainingSeconds={remainingSeconds}
       />
 
-      <Flex gapX="162px" mt="52px">
-        <Flex direction="column" gap="20px" flexGrow="1" flexBasis="1">
-          <Flex justify="between" gap="20px" align="stretch">
-            <GossipCard
-              title="Staked Peers"
-              value={health.connected_staked_peers.toLocaleString(undefined, {
-                maximumFractionDigits: 0,
-              })}
-            />
-            <GossipCard
-              title="Unstaked Peers"
-              value={health.connected_unstaked_peers.toLocaleString(undefined, {
-                maximumFractionDigits: 0,
-              })}
-            />
-            <GossipCard
-              title="Connected Stake"
-              value={formattedConnectedStake}
-            />
-          </Flex>
-
-          <Flex direction="column" gap="10px">
-            <Text className={styles.barTitle}>Ingress</Text>
-            <Text className={styles.barValue}>
-              {ingressThroughput
-                ? `${ingressThroughput.value} ${ingressThroughput.unit}/s`
-                : "-- Mbit/s"}
-            </Text>
-            <Bars
-              value={ingress.total_throughput ?? 0}
-              max={MAX_THROUGHPUT_BYTES}
-            />
-          </Flex>
-
-          <Flex direction="column" gap="10px">
-            <Text className={styles.barTitle}>Egress</Text>
-            <Text className={styles.barValue}>
-              {egressThroughput
-                ? `${egressThroughput.value} ${egressThroughput.unit}/s`
-                : "-- Mbit/s"}
-            </Text>
-            <Bars
-              value={egress.total_throughput ?? 0}
-              max={MAX_THROUGHPUT_BYTES}
-            />
-          </Flex>
+      <Flex mt="52px" direction="column" gap="20px" flexGrow="1" flexBasis="1">
+        <Flex justify="between" gap="20px" align="stretch" wrap="wrap">
+          <GossipCard
+            title="Staked Peers"
+            value={health.connected_staked_peers.toLocaleString(undefined, {
+              maximumFractionDigits: 0,
+            })}
+          />
+          <GossipCard
+            title="Unstaked Peers"
+            value={health.connected_unstaked_peers.toLocaleString(undefined, {
+              maximumFractionDigits: 0,
+            })}
+          />
+          <GossipCard title="Connected Stake" value={formattedConnectedStake} />
         </Flex>
-        <Flex flexGrow="1" flexBasis="1" justify="center">
-          <Text>Stake Discovered</Text>
+
+        <Flex direction="column" gap="10px">
+          <Text className={styles.barTitle}>Ingress</Text>
+          <Text className={styles.barValue}>
+            {ingressThroughput
+              ? `${ingressThroughput.value} ${ingressThroughput.unit}ps`
+              : "-- Mbps"}
+          </Text>
+          <Bars
+            value={ingress.total_throughput ?? 0}
+            max={MAX_THROUGHPUT_BYTES}
+          />
+        </Flex>
+
+        <Flex direction="column" gap="10px">
+          <Text className={styles.barTitle}>Egress</Text>
+          <Text className={styles.barValue}>
+            {egressThroughput
+              ? `${egressThroughput.value} ${egressThroughput.unit}ps`
+              : "-- Mbps"}
+          </Text>
+          <Bars
+            value={egress.total_throughput ?? 0}
+            max={MAX_THROUGHPUT_BYTES}
+          />
         </Flex>
       </Flex>
     </>
