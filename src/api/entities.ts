@@ -823,19 +823,13 @@ export const slotRankingsSchema = z.object({
 });
 
 export enum ShredEvent {
-  shred_repair_request,
-  shred_received_turbine,
-  shred_received_repair,
-  shred_replayed,
-  slot_complete,
-  shred_replay_start,
-  shred_published,
+  shred_repair_request = 0,
+  shred_received_turbine = 1,
+  shred_received_repair = 2,
+  shred_replayed = 3,
+  slot_complete = 4,
+  shred_published = 6,
 }
-
-const shredEventNumbers = Object.values(ShredEvent).filter(
-  (v) => typeof v === "number",
-) satisfies number[];
-export const maxShredEvent: ShredEvent = Math.max(...shredEventNumbers);
 
 export const liveShredsSchema = z.object({
   reference_slot: z.number(),
