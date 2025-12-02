@@ -58,6 +58,8 @@ import type {
   gossipMessageStatsSchema,
   schedulerCountsSchema,
   serverTimeNanosSchema,
+  liveNetworkMetricsSchema,
+  tileMetricsSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -105,11 +107,15 @@ export type EstimatedSlotDuration = z.infer<typeof estimatedSlotDurationSchema>;
 
 export type EstimatedTps = z.infer<typeof estimatedTpsSchema>;
 
+export type LiveNetworkMetrics = z.infer<typeof liveNetworkMetricsSchema>;
+
 export type LiveTxnWaterfall = z.infer<typeof liveTxnWaterfallSchema>;
 
 export type LiveTilePrimaryMetric = z.infer<typeof liveTilePrimaryMetricSchema>;
 
 export type TilePrimaryMetric = z.infer<typeof tilePrimaryMetricSchema>;
+
+export type TileMetrics = z.infer<typeof tileMetricsSchema>;
 
 export type TxnWaterfallIn = z.infer<typeof txnWaterfallInSchema>;
 export type TxnWaterfallOut = z.infer<typeof txnWaterfallOutSchema>;

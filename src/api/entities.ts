@@ -128,6 +128,7 @@ export const resetSlotSchema = z.number().nullable();
 export const storageSlotSchema = z.number().nullable();
 export const voteSlotSchema = z.number();
 export const slotCaughtUpSchema = z.number().nullable();
+export const activeForkCountSchema = z.number();
 
 export const estimatedSlotDurationSchema = z.number();
 
@@ -502,6 +503,10 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("slot_caught_up"),
     value: slotCaughtUpSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("active_fork_count"),
+    value: activeForkCountSchema,
   }),
   summaryTopicSchema.extend({
     key: z.literal("estimated_slot_duration_nanos"),

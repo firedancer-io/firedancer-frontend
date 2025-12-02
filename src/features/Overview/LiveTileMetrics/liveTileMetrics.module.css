@@ -1,0 +1,48 @@
+.row {
+  .green {
+    color: var(--green-9);
+  }
+
+  .red {
+    color: var(--red-9);
+  }
+
+  td {
+    text-align: left;
+    &[align="right"] {
+      text-align: right;
+    }
+    vertical-align: middle;
+
+    &.pct-gradient {
+      color: color-mix(
+        in srgb,
+        var(--tile-busy-green-color),
+        var(--tile-busy-red-color) var(--pct)
+      );
+    }
+
+    &.no-padding {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+
+    .increment-text {
+      min-width: 5ch;
+      display: inline-block;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  background: rgb(19, 23, 32);
+}
+
+.table {
+  table {
+    table-layout: fixed;
+  }
+}

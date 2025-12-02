@@ -3,17 +3,18 @@ import clsx from "clsx";
 import { clamp } from "lodash";
 import { useMeasure } from "react-use";
 
-const barWidth = 4;
-const barGap = barWidth * 1.5;
+const _barWidth = 2;
 const viewBoxHeight = 1000;
 
 interface BarsProps {
   value: number;
   max: number;
+  barWidth?: number;
 }
-export function Bars({ value, max }: BarsProps) {
+export function Bars({ value, max, barWidth = _barWidth }: BarsProps) {
   const [ref, { width }] = useMeasure<SVGSVGElement>();
 
+  const barGap = barWidth * 1.5;
   const barCount = Math.trunc(width / (barWidth + barGap));
 
   // only show empty bars if no max, or value is actually 0
@@ -34,7 +35,7 @@ export function Bars({ value, max }: BarsProps) {
       xmlns="http://www.w3.org/2000/svg"
     >
       {Array.from({ length: barCount }, (_, i) => {
-        const isHigh = i >= barCount * 0.95;
+        const isHigh = i >= barCount * 0.95 || i === barCount - 1;
         const isMid = !isHigh && i >= barCount * 0.85;
 
         return (

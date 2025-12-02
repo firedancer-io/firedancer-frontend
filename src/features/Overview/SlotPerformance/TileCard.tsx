@@ -12,6 +12,7 @@ import { useMeasure } from "react-use";
 import type React from "react";
 import { useLastDefinedValue, useTileSparkline } from "./useTileSparkline";
 import clsx from "clsx";
+import { tileChartDarkBackground } from "../../../colors";
 
 interface TileCardProps {
   header: string;
@@ -79,7 +80,7 @@ export default function TileCard({
             value={avgBusy}
             queryBusy={aggQueryBusyPerTs}
             height={sparklineHeight}
-            background={isDark ? "#0000001F" : undefined}
+            background={isDark ? tileChartDarkBackground : undefined}
           />
           <TileSparkLineExpandedContainer
             tileCountArr={tileCountArr}

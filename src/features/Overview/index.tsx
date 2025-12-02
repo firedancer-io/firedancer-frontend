@@ -5,6 +5,8 @@ import ValidatorsCard from "./ValidatorsCard";
 import SlotStatusCard from "./StatusCard";
 import EpochCard from "./EpochCard";
 import ShredsProgression from "./ShredsProgression";
+import LiveNetworkMetrics from "./LiveNetworkMetrics";
+import LiveTileMetrics from "./LiveTileMetrics";
 
 export default function Overview() {
   return (
@@ -17,6 +19,8 @@ export default function Overview() {
       </Flex>
       <ShredsProgression />
       <SlotPerformance />
+      <LiveNetworkMetrics />
+      <LiveTileMetrics />
     </Flex>
   );
 }
