@@ -82,6 +82,7 @@ export function SnapshotDecompressingCard({
         </>
       }
       throughput={compressedThroughput}
+      maxThroughput={800_000_000}
     />
   );
 }
