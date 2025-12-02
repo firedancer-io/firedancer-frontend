@@ -31,6 +31,16 @@
       min-width: 5ch;
       display: inline-block;
       font-variant-numeric: tabular-nums;
+
+      &.low-increment {
+        color: var(--low-increment-text-color);
+      }
+      &.mid-increment {
+        color: var(--mid-increment-text-color);
+      }
+      &.high-increment {
+        color: var(--high-increment-text-color);
+      }
     }
   }
 }

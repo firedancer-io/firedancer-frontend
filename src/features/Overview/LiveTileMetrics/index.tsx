@@ -137,15 +137,11 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
       </Table.Cell>
       <Table.Cell align="right">
         {nivcsw.toLocaleString()} |
-        <Text className={styles.incrementText}>
-          +{(nivcsw - (prevNivcsw ?? 0)).toLocaleString()}
-        </Text>
+        <IncrementText value={nivcsw - (prevNivcsw ?? 0)} />
       </Table.Cell>
       <Table.Cell align="right">
         {nvcsw.toLocaleString()} |
-        <Text className={styles.incrementText}>
-          +{(nvcsw - (prevNvcsw ?? 0)).toLocaleString()}
-        </Text>
+        <IncrementText value={nvcsw - (prevNvcsw ?? 0)} />
       </Table.Cell>
       <Table.Cell className={clsx({ [styles.red]: inBackpressure })}>
         {inBackpressure ? "Yes" : "-"}
@@ -154,7 +150,8 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
         {backPressureCount.toLocaleString()} |
         <Text
           className={clsx(styles.incrementText, {
-            [styles.red]: backPressureCount - (prevBackPressureCount ?? 0),
+            [styles.highIncrement]:
+              backPressureCount - (prevBackPressureCount ?? 0),
           })}
         >
           +{(backPressureCount - (prevBackPressureCount ?? 0)).toLocaleString()}
@@ -180,6 +177,24 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
         }
       />
     </Table.Row>
+  );
+}
+
+interface IncrementTextProps {
+  value: number;
+}
+function IncrementText({ value }: IncrementTextProps) {
+  const formatted = value.toLocaleString();
+  return (
+    <Text
+      className={clsx(styles.incrementText, {
+        [styles.lowIncrement]: 1 <= value && value <= 10,
+        [styles.midIncrement]: 11 <= value && value <= 100,
+        [styles.highIncrement]: value >= 101,
+      })}
+    >
+      +{formatted}
+    </Text>
   );
 }
 

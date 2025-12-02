@@ -127,6 +127,11 @@ export const transactionVotePathColor = "#19307C";
 export const transactionFailedPathColor = "#743F4D";
 export const transactionAxisTextColor = "#919191";
 
+// overview stats
+export const lowIncrementTextColor = "#13864E";
+export const midIncrementTextColor = "#866913";
+export const highIncrementTextColor = "#E5484D"; // radix red.9
+
 // slot performance
 export const tileBusyGreenColor = "#55BA83";
 export const tileBusyRedColor = "#D94343";
