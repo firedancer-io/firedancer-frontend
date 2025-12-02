@@ -24,9 +24,11 @@ import {
   isStartupProgressExpandedAtom,
   showStartupProgressAtom,
 } from "../StartupProgress/atoms";
-import { TimerIcon } from "@radix-ui/react-icons";
+import { Cross1Icon, TimerIcon } from "@radix-ui/react-icons";
+import { bootProgressContainerElAtom } from "../../atoms";
+import { useCallback } from "react";
 
-export default function Header() {
+export default function Header({ isStartup }: { isStartup?: boolean }) {
   const showDropdownNav = useMedia("(max-width: 900px)");
   const isXNarrow = useMedia("(max-width: 401px)");
 
@@ -62,7 +64,9 @@ export default function Header() {
             ml={`${-epochThumbPadding}px`}
             pl={`${epochThumbPadding}px`}
           >
-            {isNarrowScreen && !showNav && <NavCollapseToggle isLarge />}
+            {!isStartup && isNarrowScreen && !showNav && (
+              <NavCollapseToggle isLarge />
+            )}
             <Logo />
             <Cluster />
           </Flex>
@@ -82,21 +86,33 @@ export default function Header() {
             }
             minWidth="0"
           >
-            <Flex flexShrink="0">
-              <NavHandler />
-              {showDropdownNav ? <DropdownNav /> : <NavLinks />}
-            </Flex>
+            {!isStartup && (
+              <Flex flexShrink="0">
+                <NavHandler />
+                {showDropdownNav ? <DropdownNav /> : <NavLinks />}
+              </Flex>
+            )}
 
-            <Flex gap="3" align="center" minWidth="0">
+            <Flex
+              gap="3"
+              justify="end"
+              align="center"
+              minWidth="0"
+              flexGrow="1"
+            >
               <IdentityKey />
-              <ExpandStartupProgressButton />
+              {isStartup ? (
+                <CollapseStartupProgressButton />
+              ) : (
+                <ExpandStartupProgressButton />
+              )}
             </Flex>
 
             {blurBackground && <NavBlur />}
           </Flex>
         </Flex>
 
-        {!isNarrowScreen && (
+        {!isStartup && !isNarrowScreen && (
           <div
             style={{
               position: "relative",
@@ -135,6 +151,36 @@ function ExpandStartupProgressButton() {
       onClick={() => setIsStartupProgressExpanded(true)}
     >
       <TimerIcon />
+    </IconButton>
+  );
+}
+
+function CollapseStartupProgressButton() {
+  const showStartupProgress = useAtomValue(showStartupProgressAtom);
+  const setIsStartupProgressExpanded = useSetAtom(
+    isStartupProgressExpandedAtom,
+  );
+  const expandStartupProgressEl = useAtomValue(expandStartupProgressElAtom);
+
+  const containerEl = useAtomValue(bootProgressContainerElAtom);
+  const onClick = useCallback(() => {
+    if (!expandStartupProgressEl || !containerEl) return;
+
+    const { bottom, left, width, height } =
+      expandStartupProgressEl.getBoundingClientRect();
+
+    containerEl.style.setProperty(
+      "--transform-origin",
+      `${Math.round(left + width / 2)}px ${Math.round(bottom - height / 2)}px`,
+    );
+    setIsStartupProgressExpanded(false);
+  }, [containerEl, expandStartupProgressEl, setIsStartupProgressExpanded]);
+
+  if (!showStartupProgress) return null;
+
+  return (
+    <IconButton variant="ghost" color="gray" onClick={onClick}>
+      <Cross1Icon color="white" />
     </IconButton>
   );
 }
