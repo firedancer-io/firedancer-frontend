@@ -5,7 +5,6 @@ import {
   tipsColor,
   feesColor,
   incomePerCuToggleControlColor,
-  slotDetailsStatsPrimary,
 } from "../../../../colors";
 import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
@@ -13,6 +12,8 @@ import { getPaidTxnFees, getPaidTxnTips } from "../../../../utils";
 import { formatNumberLamports } from "../../../Overview/ValidatorsCard/formatAmt";
 import { solDecimals } from "../../../../consts";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
+import styles from "../detailedSlotStats.module.css";
+import { gridGapX, gridGapY } from "../consts";
 
 export const defaultMaxValue = 100_000_000;
 
@@ -53,7 +54,7 @@ export default function FeeBreakdownStats() {
 
   return (
     <SlotDetailsSubSection title="Fee Breakdown">
-      <Grid columns="repeat(3, auto)" gapX="2" gapY="1">
+      <Grid columns="repeat(3, auto)" gapX={gridGapX} gapY={gridGapY}>
         <TipsRow label="Tips" value={tips} total={maxValue} color={tipsColor} />
         <Row label="Fees" value={fees} total={maxValue} color={feesColor} />
         <TotalIncomeRow tips={tips} fees={fees} />
@@ -76,10 +77,8 @@ function TipsRow({ label, value, total, color }: TipsRowProps) {
 
   return (
     <>
-      <Text wrap="nowrap" style={{ color: "var(--gray-11)" }}>
-        {label}
-      </Text>
-      <Text wrap="nowrap" style={{ color }} align="right">
+      <Text className={styles.label}>{label}</Text>
+      <Text className={styles.value} style={{ color }} align="right">
         {`${formatNumberLamports(value ?? 0n, solDecimals, {
           decimals: solDecimals,
           trailingZeroes: true,
@@ -107,13 +106,10 @@ function TipsRow({ label, value, total, color }: TipsRowProps) {
             fill="#FFC53D"
           />
         </svg>
-        <Text
-          wrap="nowrap"
-          style={{ color: "var(--gray-11)", marginLeft: "4px" }}
-        >
+        <Text className={styles.label} style={{ marginLeft: gridGapX }}>
           Commission&nbsp;
         </Text>
-        <Text wrap="nowrap" style={{ color: "#FFC53D" }}>
+        <Text className={styles.value} style={{ color: "#FFC53D" }}>
           -
           {`${formatNumberLamports(commission ?? 0n, solDecimals, {
             decimals: solDecimals,
@@ -137,10 +133,8 @@ function Row({ label, value, total, color }: RowProps) {
 
   return (
     <>
-      <Text wrap="nowrap" style={{ color: slotDetailsStatsPrimary }}>
-        {label}
-      </Text>
-      <Text wrap="nowrap" style={{ color }} align="right">
+      <Text className={styles.label}>{label}</Text>
+      <Text className={styles.value} style={{ color }} align="right">
         {`${formatNumberLamports(value ?? 0n, solDecimals, {
           decimals: solDecimals,
           trailingZeroes: true,
@@ -173,11 +167,9 @@ function TotalIncomeRow({ tips, fees }: TotalIncomeRowProps) {
 
   return (
     <>
-      <Text wrap="nowrap" style={{ color: slotDetailsStatsPrimary }}>
-        Income
-      </Text>
+      <Text className={styles.label}>Income</Text>
       <Text
-        wrap="nowrap"
+        className={styles.value}
         style={{ color: incomePerCuToggleControlColor }}
         align="right"
       >

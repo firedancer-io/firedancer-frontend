@@ -2,6 +2,15 @@
   color: var(--dropdown-button-text-color);
 }
 
+.full-width {
+  width: 100%;
+}
+
+.dark {
+  background: #171b24;
+  border-color: transparent;
+}
+
 .subHeader {
   color: var(--tile-sub-header-color);
   font-size: 12px;

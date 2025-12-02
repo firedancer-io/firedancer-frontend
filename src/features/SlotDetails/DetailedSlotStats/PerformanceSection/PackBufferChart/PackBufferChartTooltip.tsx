@@ -3,11 +3,11 @@ import UplotTooltip from "../../../../../uplotReact/UplotTooltip";
 import type { SchedulerCounts } from "../../../../../api/types";
 import {
   nonVoteColor,
-  slotDetailsStatsSecondary,
   slotStatusRed,
   tipsColor,
   votesColor,
 } from "../../../../../colors";
+import styles from "../../detailedSlotStats.module.css";
 
 interface PackBufferChartProps {
   data?: SchedulerCounts;
@@ -41,8 +41,10 @@ interface RowProps {
 function Row({ label, value, color }: RowProps) {
   return (
     <>
-      <Text style={{ color: slotDetailsStatsSecondary }}>{label}</Text>
-      <Text style={{ color }}>{value.toLocaleString()}</Text>
+      <Text className={styles.label}>{label}</Text>
+      <Text className={styles.value} style={{ color }}>
+        {value.toLocaleString()}
+      </Text>
     </>
   );
 }

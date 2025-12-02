@@ -11,6 +11,7 @@ import TileSparkLineExpandedContainer from "./TileSparkLineExpandedContainer";
 import { useMeasure } from "react-use";
 import type React from "react";
 import { useLastDefinedValue, useTileSparkline } from "./useTileSparkline";
+import clsx from "clsx";
 
 interface TileCardProps {
   header: string;
@@ -23,7 +24,8 @@ interface TileCardProps {
   sparklineHeight?: number;
   isExpanded?: boolean;
   setIsExpanded?: (isExpanded: boolean) => void;
-  includeBg?: boolean;
+  isDark?: boolean;
+  isNarrow?: boolean;
 }
 
 export default function TileCard({
@@ -37,7 +39,8 @@ export default function TileCard({
   sparklineHeight,
   isExpanded = false,
   setIsExpanded = () => {},
-  includeBg = true,
+  isDark = false,
+  isNarrow,
 }: TileCardProps) {
   const [ref, { width }] = useMeasure<HTMLDivElement>();
 
@@ -60,7 +63,10 @@ export default function TileCard({
 
   return (
     <Flex ref={ref}>
-      <Card includeBg={includeBg} style={{ width: "100%" }}>
+      <Card
+        className={clsx(styles.fullWidth, isDark && styles.dark)}
+        isNarrow={isNarrow}
+      >
         <Flex direction="column" justify="between" height="100%" gap="1">
           <TileHeader
             header={header}
@@ -73,7 +79,7 @@ export default function TileCard({
             value={avgBusy}
             queryBusy={aggQueryBusyPerTs}
             height={sparklineHeight}
-            includeBg={includeBg}
+            background={isDark ? "#0000001F" : undefined}
           />
           <TileSparkLineExpandedContainer
             tileCountArr={tileCountArr}
@@ -100,7 +106,7 @@ export default function TileCard({
                       key={i}
                       className={styles.tile}
                       style={{
-                        background: `gray`,
+                        background: isDark ? "#232A38" : "gray",
                       }}
                     />
                   );

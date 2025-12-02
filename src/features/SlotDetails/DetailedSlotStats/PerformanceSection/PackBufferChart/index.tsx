@@ -54,6 +54,7 @@ export default function PackBufferChart() {
     return {
       width: 0,
       height: 0,
+      padding: [0, 0, 0, 0],
       drawOrder: ["axes", "series"] as uPlot.DrawOrderKey[],
       cursor: {},
       scales: {
@@ -78,11 +79,12 @@ export default function PackBufferChart() {
             stroke: chartAxisColor,
             size: 5,
           },
-          size: 30,
           values: (self, ticks) => {
             return ticks.map((rawValue) => rawValue / 1_000_000 + "ms");
           },
           space: 100,
+          size: 20,
+          font: "8px Inter Tight",
         },
         {
           scale: yScaleKey,
@@ -101,6 +103,7 @@ export default function PackBufferChart() {
             size: 5,
           },
           space: 50,
+          font: "8px Inter Tight",
           size(self, values, axisIdx, cycleNum) {
             const axis = self.axes[axisIdx];
             // bail out, force convergence
@@ -173,8 +176,13 @@ export default function PackBufferChart() {
       : undefined;
 
   return (
-    <SlotDetailsSubSection title="Pack Txns Buffer Utilization">
-      <Box height="100%" minHeight="200px" minWidth="300px">
+    <SlotDetailsSubSection
+      title="Pack Txns Buffer Utilization"
+      flexGrow="1"
+      minWidth="150px"
+      minHeight="150px"
+    >
+      <Box height="100%">
         <AutoSizer>
           {({ height, width }) => {
             options.width = width;

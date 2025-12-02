@@ -23,14 +23,14 @@ interface TileParkLineProps {
   value?: number;
   queryBusy?: number[];
   height?: number;
-  includeBg?: boolean;
+  background?: string;
 }
 
 export default function TileSparkLine({
   value,
   queryBusy,
   height = 24,
-  includeBg = true,
+  background,
 }: TileParkLineProps) {
   const [svgRef, { width }] = useMeasure<SVGSVGElement>();
 
@@ -50,7 +50,7 @@ export default function TileSparkLine({
       scaledDataPoints={scaledDataPoints}
       range={range}
       height={height}
-      background={includeBg ? undefined : "unset"}
+      background={background}
       pxPerTick={pxPerTick}
       tickMs={chartTickMs}
       isLive={isLive}

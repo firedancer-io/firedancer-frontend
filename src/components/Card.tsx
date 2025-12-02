@@ -4,17 +4,20 @@ import type { PropsWithChildren, HTMLAttributes } from "react";
 
 interface CardProps {
   hideChildren?: boolean;
-  includeBg?: boolean;
+  isNarrow?: boolean;
 }
 
 export default function Card({
   children,
   hideChildren,
-  includeBg = true,
+  isNarrow = false,
   ...props
 }: PropsWithChildren<CardProps & HTMLAttributes<HTMLDivElement>>) {
   return (
-    <div className={clsx(styles.card, { [styles.bg]: includeBg })} {...props}>
+    <div
+      {...props}
+      className={clsx(styles.card, isNarrow && styles.narrow, props.className)}
+    >
       {!hideChildren && children}
     </div>
   );

@@ -8,6 +8,7 @@ import { getTxnIncome } from "../../../../../utils.ts";
 import { useMemo } from "react";
 import IncomeScatterChart from "./IncomeScatterChart.tsx";
 import type uPlot from "uplot";
+import { subsectionGapX } from "../../consts.ts";
 
 function getCuChartData(transactions?: SlotTransactions | null) {
   return transactions?.txn_compute_units_consumed
@@ -102,7 +103,7 @@ export default function IncomeScatterCharts() {
     return;
 
   return (
-    <Flex flexGrow="1" direction="column">
+    <Flex flexGrow="1" minWidth="300px" minHeight="150px" gap={subsectionGapX}>
       <SlotDetailsSubSection title="Compute Units vs Income" flexGrow="1">
         <IncomeScatterChart
           id="cuIncomeScatterChart"

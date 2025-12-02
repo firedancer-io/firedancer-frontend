@@ -7,10 +7,9 @@ import { getDurationText, getSlotGroupLeader } from "../../../../utils";
 import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
 import { slotsPerLeader } from "../../../../consts";
 import { useSlotQueryResponseDetailed } from "../../../../hooks/useSlotQuery";
-import {
-  slotDetailsStatsPrimary,
-  slotDetailsStatsSecondary,
-} from "../../../../colors";
+import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
+import styles from "../detailedSlotStats.module.css";
+import { gridGapX, gridGapY } from "../consts";
 
 export function TimeSinceLastLeaderStats() {
   const slotDuration = useAtomValue(slotDurationAtom);
@@ -39,23 +38,19 @@ export function TimeSinceLastLeaderStats() {
     : undefined;
 
   return (
-    <Flex direction="column" gap="1">
-      <Flex gap="2">
-        <Text style={{ color: slotDetailsStatsSecondary }}>
-          Time Since Last Leader Group
-        </Text>
-        <Text style={{ color: slotDetailsStatsPrimary }}>
-          {getDurationText(timeTill)}
-        </Text>
+    <SlotDetailsSubSection title="Scheduler">
+      <Flex direction="column" gap={gridGapY}>
+        <Flex gap={gridGapX}>
+          <Text className={styles.label}>Time Since Last Leader Group</Text>
+          <Text className={styles.value}>{getDurationText(timeTill)}</Text>
+        </Flex>
+        <Flex gap={gridGapX}>
+          <Text className={styles.label}>End slot reason</Text>
+          <Text className={styles.value}>
+            {schedulerStats?.end_slot_reason}
+          </Text>
+        </Flex>
       </Flex>
-      <Flex gap="2">
-        <Text style={{ color: slotDetailsStatsSecondary }}>
-          End slot reason
-        </Text>
-        <Text style={{ color: slotDetailsStatsPrimary }}>
-          {schedulerStats?.end_slot_reason}
-        </Text>
-      </Flex>
-    </Flex>
+    </SlotDetailsSubSection>
   );
 }

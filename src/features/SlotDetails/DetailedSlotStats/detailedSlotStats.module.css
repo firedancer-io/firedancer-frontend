@@ -1,0 +1,59 @@
+.header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--slot-details-stats-tertiary);
+}
+
+.subheader {
+  font-size: 12px;
+  color: var(--slot-details-stats-tertiary);
+}
+
+.label {
+  font-size: 10px;
+  color: var(--slot-details-stats-secondary);
+  text-wrap: nowrap;
+}
+
+.value {
+  font-size: 10px;
+  color: var(--slot-details-stats-primary);
+  text-wrap: nowrap;
+}
+
+.table-header {
+  font-size: 10px;
+  color: var(--slot-details-stats-primary);
+  text-wrap: nowrap;
+}
+
+.table-row-label {
+  font-size: 10px;
+  color: var(--slot-details-stats-primary);
+  text-wrap: nowrap;
+
+  &.total {
+    color: var(--slot-details-stats-tertiary);
+  }
+}
+
+.table-cell-value {
+  font-size: 10px;
+  color: var(--slot-details-stats-secondary);
+  text-wrap: nowrap;
+
+  &.total {
+    color: var(--slot-details-stats-primary);
+  }
+}
+
+.name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ccc;
+}
+
+.pubkey {
+  font-size: 8px;
+  color: var(--gray-11);
+}

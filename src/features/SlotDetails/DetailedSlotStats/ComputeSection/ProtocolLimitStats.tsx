@@ -5,6 +5,7 @@ import { useSlotQueryResponseDetailed } from "../../../../hooks/useSlotQuery";
 import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
 import PctBarRow from "../PctBarRow";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
+import { gridGapX, gridGapY } from "../consts";
 
 export default function ProtocolLimitStats() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
@@ -15,7 +16,11 @@ export default function ProtocolLimitStats() {
 
   return (
     <SlotDetailsSubSection title="Protocol Limit Utilization">
-      <Grid columns="repeat(5, auto) minmax(80px, 250px)" gapX="2" gapY="1">
+      <Grid
+        columns="repeat(5, auto) minmax(80px, 100%)"
+        gapX={gridGapX}
+        gapY={gridGapY}
+      >
         <PctBarRow
           label="Block cost"
           value={limits.used_total_block_cost ?? 0}

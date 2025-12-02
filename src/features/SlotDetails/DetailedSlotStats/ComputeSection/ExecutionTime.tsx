@@ -3,14 +3,12 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
-import {
-  nonVoteColor,
-  slotDetailsStatsSecondary,
-  votesColor,
-} from "../../../../colors";
+import { nonVoteColor, votesColor } from "../../../../colors";
 import { getDurationWithUnits } from "../../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import MonoText from "../../../../components/MonoText";
+import styles from "../detailedSlotStats.module.css";
+import { gridGapX, gridGapY } from "../consts";
 import {
   getTxnBundleStats,
   getTxnStateDurations,
@@ -91,7 +89,7 @@ export default function ExecutionTime() {
 
   return (
     <SlotDetailsSubSection title="Execution Time (min / avg / max)">
-      <Grid columns="repeat(7, auto)" gapX="3" gapY="1">
+      <Grid columns="repeat(7, auto)" gapX={gridGapX} gapY={gridGapY}>
         <Row
           label="Vote"
           value={durations.vote}
@@ -148,25 +146,23 @@ function Row({ label, value, max, minValue, maxValue }: RowProps) {
 
   return (
     <>
-      <Text wrap="nowrap" style={{ color: slotDetailsStatsSecondary }}>
-        {label}
-      </Text>
-      <Text wrap="nowrap" style={{ color: "#6E56CF" }} align="right">
+      <Text className={styles.label}>{label}</Text>
+      <Text className={styles.value} style={{ color: "#6E56CF" }} align="right">
         {minFormatted.value}
         <MonoText>{minFormatted.unit}</MonoText>
       </Text>
-      <Text>/</Text>
-      <Text wrap="nowrap" style={{ color: "#BAA7FF" }} align="right">
+      <Text className={styles.value}>/</Text>
+      <Text className={styles.value} style={{ color: "#BAA7FF" }} align="right">
         {formatted.value}
         <MonoText>{formatted.unit}</MonoText>
       </Text>
-      <Text>/</Text>
-      <Text wrap="nowrap" style={{ color: "#6E56CF" }} align="right">
+      <Text className={styles.value}>/</Text>
+      <Text className={styles.value} style={{ color: "#6E56CF" }} align="right">
         {maxFormatted.value}
         <MonoText>{maxFormatted.unit}</MonoText>
       </Text>
       <svg
-        height="16"
+        height="13"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         style={{ alignSelf: "center", width: "100%" }}
