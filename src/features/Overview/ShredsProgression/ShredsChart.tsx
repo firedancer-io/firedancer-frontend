@@ -133,7 +133,6 @@ export default function ShredsChart({
         },
         {
           size: 0,
-          values: () => [],
           grid: {
             filter: () => [0],
             stroke: gridTicksColor,
