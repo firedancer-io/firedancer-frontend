@@ -1,13 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import SlotDetails from "../features/SlotDetails";
 
 const searchParamsSchema = z.object({
-  slot: fallback(z.number().optional(), undefined),
+  slot: z.number().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/slotDetails")({
-  validateSearch: zodValidator(searchParamsSchema),
+  validateSearch: searchParamsSchema,
   component: SlotDetails,
 });
