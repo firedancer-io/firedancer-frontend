@@ -3,3 +3,7 @@
   padding-bottom: 0;
   vertical-align: middle;
 }
+
+.total-row {
+  border-top: 1px solid rgba(250, 250, 250, 0.5);
+}
