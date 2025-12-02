@@ -27,8 +27,9 @@ import { slotsPerLeader } from "../../../consts";
 const store = getDefaultStore();
 export const shredsXScaleKey = "shredsXScaleKey";
 
+type Coordinates = [x: number, y: number, width?: number];
 type EventsByFillStyle = {
-  [fillStyle: string]: Array<[x: number, y: number, width: number]>;
+  [fillStyle: string]: Array<Coordinates>;
 };
 export type Position = [xPos: number, cssWidth: number | undefined];
 export type LabelPositions = {
@@ -125,6 +126,8 @@ export function shredsProgressionPlugin(
           const rowPxHeight = clamp(canvasHeight / maxShreds, 1, 10);
           const gapPxHeight = 1;
 
+          const dotSize = Math.max(rowPxHeight, 3);
+
           // n rows, n-1 gaps
           const rowsCount = Math.trunc(
             (canvasHeight + gapPxHeight) / (rowPxHeight + gapPxHeight),
@@ -135,7 +138,7 @@ export function shredsProgressionPlugin(
             const eventsByFillStyle: EventsByFillStyle = {};
             const addEventPosition = (
               fillStyle: string,
-              position: [x: number, y: number, width: number],
+              position: Coordinates,
             ) => {
               eventsByFillStyle[fillStyle] ??= [];
               eventsByFillStyle[fillStyle].push(position);
@@ -168,7 +171,6 @@ export function shredsProgressionPlugin(
                 tsXValueOffset,
                 y: (rowPxHeight + gapPxHeight) * rowIdx + u.bbox.top,
                 getYOffset,
-                dotWidth: rowPxHeight,
                 scaleX: u.scales[shredsXScaleKey],
                 getXPos,
               });
@@ -179,7 +181,12 @@ export function shredsProgressionPlugin(
               u.ctx.beginPath();
               u.ctx.fillStyle = fillStyle;
               for (const [x, y, width] of eventsByFillStyle[fillStyle]) {
-                u.ctx.rect(x, y, width, rowPxHeight);
+                if (width == null) {
+                  // dot
+                  u.ctx.rect(x, y, dotSize, dotSize);
+                } else {
+                  u.ctx.rect(x, y, width, rowPxHeight);
+                }
               }
               u.ctx.fill();
             }
@@ -256,10 +263,7 @@ const getDrawInfo = (
 };
 
 interface AddEventsForRowArgs {
-  addEventPosition: (
-    fillStyle: string,
-    position: [x: number, y: number, width: number],
-  ) => void;
+  addEventPosition: (fillStyle: string, position: Coordinates) => void;
   u: uPlot;
   firstShredIdx: number;
   lastShredIdx: number;
@@ -272,7 +276,6 @@ interface AddEventsForRowArgs {
   getYOffset?: (
     eventType: Exclude<ShredEvent, ShredEvent.slot_complete>,
   ) => number;
-  dotWidth: number;
   scaleX: uPlot.Scale;
   getXPos: (xVal: number) => number;
 }
@@ -292,7 +295,6 @@ function addEventsForRow({
   isSlotSkipped,
   y,
   getYOffset,
-  dotWidth,
   scaleX,
   getXPos,
 }: AddEventsForRowArgs) {
@@ -316,7 +318,7 @@ function addEventsForRow({
 
   const eventPositions = new Map<
     Exclude<ShredEvent, ShredEvent.slot_complete>,
-    [x: number, y: number, width: number]
+    Coordinates
   >();
 
   // draw events from highest to lowest priority
@@ -335,7 +337,7 @@ function addEventsForRow({
     eventPositions.set(
       eventType,
       drawOnlyDots || isSlotSkipped
-        ? [startXPos, y + yOffset, dotWidth]
+        ? [startXPos, y + yOffset]
         : [startXPos, y + yOffset, endXPos - startXPos],
     );
     endXPos = startXPos;
