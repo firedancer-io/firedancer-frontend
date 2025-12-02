@@ -3,7 +3,7 @@ import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery
 import { selectedSlotAtom, tileCountAtom } from "../atoms";
 import Card from "../../../../components/Card";
 import CardHeader from "../../../../components/CardHeader";
-import { Flex } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import styles from "./computeUnits.module.css";
 import CuChart from "./CuChart";
 import CuChartTooltip from "./CuChartTooltip";
@@ -13,6 +13,8 @@ import { useCallback, useRef } from "react";
 import { defaultMaxComputeUnits } from "../../../../consts";
 import CuChartInfoIcon from "./CuChartStartLineIcon";
 import CuChartProjectionsToggle from "./CuChartRefAreaToggle";
+
+const height = "500px";
 
 export default function ComputeUnitsCard() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -31,12 +33,13 @@ export default function ComputeUnitsCard() {
     [],
   );
 
-  if (!slot || !query.response?.transactions) return null;
+  if (!slot || !query.response?.transactions)
+    return <ComputeUnitCardPlaceholder />;
 
   return (
     <>
       <Card>
-        <Flex direction="column" height="100%" gap="2">
+        <Flex direction="column" height={height} gap="2">
           <Flex gap="3">
             <CardHeader text="Slot Progression" />
             <CuChartActions onUplot={onUplot} />
@@ -58,5 +61,21 @@ export default function ComputeUnitsCard() {
       </Card>
       <CuChartTooltip />
     </>
+  );
+}
+
+function ComputeUnitCardPlaceholder() {
+  return (
+    <Card
+      style={{
+        display: "flex",
+        flexGrow: "1",
+        height,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <Text>Loading Slot Progress...</Text>
+    </Card>
   );
 }
