@@ -18,12 +18,11 @@ import {
   shredReplayStartedColor,
   shredSkippedColor,
 } from "../../../colors";
-import { skippedClusterSlotsAtom } from "../../../atoms";
+import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
 import { clamp } from "lodash";
 import { ShredEvent } from "../../../api/entities";
 import { getSlotGroupLabelId, getSlotLabelId } from "./utils";
-import { nsPerMs, slotsPerLeader } from "../../../consts";
-import { serverTimeNanosAtom } from "../../../api/atoms";
+import { slotsPerLeader } from "../../../consts";
 
 const store = getDefaultStore();
 export const shredsXScaleKey = "shredsXScaleKey";
@@ -56,7 +55,7 @@ export function shredsProgressionPlugin(
           const minCompletedSlot = store.get(atoms.minCompletedSlot);
           const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
           const rangeAfterStartup = store.get(atoms.rangeAfterStartup);
-          const serverTimeNanos = store.get(serverTimeNanosAtom);
+          const serverTimeMs = store.get(serverTimeMsAtom);
 
           const maxX = u.scales[shredsXScaleKey].max;
 
@@ -64,7 +63,7 @@ export function shredsProgressionPlugin(
             !liveShreds ||
             !slotRange ||
             maxX == null ||
-            serverTimeNanos == null
+            serverTimeMs == null
           ) {
             return;
           }
@@ -81,7 +80,7 @@ export function shredsProgressionPlugin(
           }
 
           // Offset to convert shred event delta to chart x value
-          const delayedNow = Math.trunc(serverTimeNanos / nsPerMs) - delayMs;
+          const delayedNow = serverTimeMs - delayMs;
 
           const tsXValueOffset = delayedNow - liveShreds.referenceTs;
 
