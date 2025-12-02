@@ -1,10 +1,11 @@
 import { atom } from "jotai";
-import { slotsPerLeader } from "./consts";
+import { nsPerMs, slotsPerLeader } from "./consts";
 import { atomWithImmer } from "jotai-immer";
 import {
   bootProgressAtom,
   estimatedSlotDurationAtom,
   identityKeyAtom,
+  serverTimeNanosAtom,
   skippedSlotsAtom,
   startupProgressAtom,
 } from "./api/atoms";
@@ -695,3 +696,9 @@ export const [
     }),
   ];
 })();
+
+export const serverTimeMsAtom = atom((get) => {
+  const serverTimeNanos = get(serverTimeNanosAtom);
+  if (serverTimeNanos == null) return undefined;
+  return Math.round(serverTimeNanos / nsPerMs);
+});
