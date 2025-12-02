@@ -257,20 +257,20 @@ export function SlotsPlaceholder({
       width={`${width - 1}px`}
       height={`${height}px`}
       overflow="hidden"
+      className={styles.scrollSlotsPlaceholder}
     >
-      {Array.from({ length: items }, (_, index) => (
-        <MScrollPlaceholderItem key={index} />
-      ))}
+      <div className={clsx(styles.absoluteFullSize, styles.shimmer)} />
+      <div className={styles.absoluteFullSize}>
+        {Array.from({ length: items }, (_, index) => (
+          <MScrollPlaceholderItem key={index} />
+        ))}
+      </div>
     </Box>
   );
 }
 
 export const MScrollPlaceholderItem = memo(function ScrollPlaceholderItem() {
-  return (
-    <Box height="46px" className={styles.slotGroupContainer}>
-      <div className={clsx(styles.slotGroup, styles.scrollPlaceholderItem)} />
-    </Box>
-  );
+  return <div className={styles.scrollPlaceholderItem} />;
 });
 
 function SlotIconName({
