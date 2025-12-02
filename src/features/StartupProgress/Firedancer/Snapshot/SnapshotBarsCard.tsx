@@ -87,9 +87,11 @@ export function AccountsRate({ cumulativeAccounts }: AccountsRateProps) {
   }, [phase, reset]);
 
   const value = useMemo(() => {
+    // Possible to have no rate due to only having a single point
+    if (cumulativeAccounts != null && accountsPerSecond == null) return "0";
     if (accountsPerSecond == null) return;
     return compactSingleDecimalFormatter.format(accountsPerSecond);
-  }, [accountsPerSecond]);
+  }, [accountsPerSecond, cumulativeAccounts]);
 
   return (
     <div className={styles.accountsRate}>
