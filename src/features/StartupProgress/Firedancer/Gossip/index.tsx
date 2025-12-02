@@ -1,5 +1,5 @@
 import { Card, Flex, Text } from "@radix-ui/themes";
-
+import bodyStyles from "../body.module.css";
 import styles from "./gossip.module.css";
 import { gossipNetworkStatsAtom } from "../../../../api/atoms";
 import { useAtomValue } from "jotai";
@@ -46,7 +46,14 @@ export default function Gossip() {
         remainingSeconds={remainingSeconds}
       />
 
-      <Flex mt="52px" direction="column" gap="20px" flexGrow="1" flexBasis="1">
+      <Flex
+        mt="52px"
+        direction="column"
+        gap="20px"
+        flexGrow="1"
+        flexBasis="1"
+        className={bodyStyles.startupContentIndentation}
+      >
         <Flex justify="between" gap="20px" align="stretch" wrap="wrap">
           <GossipCard
             title="Staked Peers"
