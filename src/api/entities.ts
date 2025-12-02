@@ -121,6 +121,8 @@ export const catchUpHistorySchema = z.object({
   turbine: z.number().array(),
 });
 
+export const serverTimeNanosSchema = z.coerce.number();
+
 export const estimatedSlotSchema = z.number();
 export const resetSlotSchema = z.number().nullable();
 export const storageSlotSchema = z.number().nullable();
@@ -564,6 +566,10 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("catch_up_history"),
     value: catchUpHistorySchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("server_time_nanos"),
+    value: serverTimeNanosSchema,
   }),
 ]);
 

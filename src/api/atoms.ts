@@ -29,6 +29,7 @@ import type {
   GossipPeersSize,
   GossipPeersRowsUpdate,
   GossipPeersCellUpdate,
+  ServerTimeNanos,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 
@@ -61,6 +62,7 @@ export const optimisticallyConfirmedSlotAtom = atom<
 >(undefined);
 
 export const completedSlotAtom = atom<CompletedSlot | undefined>(undefined);
+export const serverTimeNanosAtom = atom<ServerTimeNanos | undefined>(undefined);
 
 export const estimatedSlotAtom = atom<EstimatedSlot | undefined>(undefined);
 
