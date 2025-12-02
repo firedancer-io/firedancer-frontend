@@ -27,6 +27,7 @@ import {
   gossipPeersSizeAtom,
   gossipPeersRowsUpdateAtom,
   gossipPeersCellUpdateAtom,
+  serverTimeNanosAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
@@ -196,6 +197,7 @@ export function useSetAtomWsData() {
   const setBlockEngine = useSetAtom(blockEngineAtom);
 
   const setCompletedSlot = useSetAtom(completedSlotAtom);
+  const setServerTimeNanos = useSetAtom(serverTimeNanosAtom);
 
   const addSkippedClusterSlots = useSetAtom(addSkippedClusterSlotsAtom);
   const deleteSkippedClusterSlot = useSetAtom(deleteSkippedClusterSlotAtom);
@@ -381,6 +383,10 @@ export function useSetAtomWsData() {
           case "catch_up_history": {
             addTurbineSlots(value.turbine);
             addRepairSlots(value.repair);
+            break;
+          }
+          case "server_time_nanos": {
+            setServerTimeNanos(value);
             break;
           }
           case "root_slot":
