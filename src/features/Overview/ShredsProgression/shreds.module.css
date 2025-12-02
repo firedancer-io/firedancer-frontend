@@ -2,9 +2,11 @@
   --group-x: -100000px;
   --group-name-opacity: 0;
 
+  opacity: 0.8;
   background-color: #080b13;
   border-radius: 2px;
   border: 1px solid #3c4652;
+  border-top-width: 0;
   will-change: transform;
   transform: translate(var(--group-x));
 
@@ -14,7 +16,7 @@
 
   .slot-group-top-container {
     width: 100%;
-    background-color: #15181e;
+    background-color: #101318;
 
     &.skipped {
       background-color: var(--red-2);
@@ -26,9 +28,9 @@
       will-change: opacity;
 
       .name {
-        font-size: 14px;
+        font-size: 10px;
         line-height: normal;
-        color: #ccc;
+        color: #949494;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
