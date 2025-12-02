@@ -217,12 +217,12 @@ export const liveTilePrimaryMetricSchema = z.object({
 });
 
 export const tileMetricsSchema = z.object({
-  timers: z.array(z.array(z.number())),
-  in_backp: z.array(z.boolean()),
-  backp_msgs: z.array(z.number()),
-  alive: z.array(z.number()),
-  nvcsw: z.array(z.number()),
-  nivcsw: z.array(z.number()),
+  timers: z.array(z.array(z.number()).nullable()),
+  in_backp: z.array(z.boolean().nullable()),
+  backp_msgs: z.array(z.number().nullable()),
+  alive: z.array(z.number().nullable()),
+  nvcsw: z.array(z.number().nullable()),
+  nivcsw: z.array(z.number().nullable()),
 });
 
 export const tileTimerSchema = z.object({

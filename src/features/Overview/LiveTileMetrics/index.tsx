@@ -13,10 +13,15 @@ import TileSparkLine from "../SlotPerformance/TileSparkLine";
 import { headerGap } from "../../Gossip/consts";
 import type { Tile, TileMetrics } from "../../../api/types";
 import clsx from "clsx";
-import { useHarmonicIntervalFn, usePrevious } from "react-use";
+import {
+  useHarmonicIntervalFn,
+  usePrevious,
+  usePreviousDistinct,
+} from "react-use";
 import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { CellProps } from "@radix-ui/themes/components/table";
 import { tileChartDarkBackground } from "../../../colors";
+import { isEqual } from "lodash";
 
 const chartHeight = 18;
 
@@ -102,11 +107,31 @@ interface TableRowProps {
 }
 
 function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
-  const alive = liveTileMetrics.alive[idx];
-  const nivcsw = liveTileMetrics.nivcsw[idx];
-  const nvcsw = liveTileMetrics.nvcsw[idx];
-  const inBackpressure = liveTileMetrics.in_backp[idx];
-  const backPressureCount = liveTileMetrics.backp_msgs[idx];
+  const prevLiveTileMetricsIdx = usePreviousDistinct(
+    liveTileMetrics,
+    (prev, next) => {
+      if (!prev) return false;
+      if (!next) return true;
+
+      return Object.keys(next).every((key) => {
+        return isEqual(
+          prev[key as keyof typeof prev]?.[idx],
+          next[key as keyof typeof next]?.[idx],
+        );
+      });
+    },
+  );
+
+  const alive =
+    liveTileMetrics.alive[idx] ?? prevLiveTileMetricsIdx?.alive[idx];
+  const nivcsw =
+    liveTileMetrics.nivcsw[idx] ?? prevLiveTileMetricsIdx?.nivcsw[idx];
+  const nvcsw =
+    liveTileMetrics.nvcsw[idx] ?? prevLiveTileMetricsIdx?.nvcsw[idx];
+  const inBackpressure =
+    liveTileMetrics.in_backp[idx] ?? prevLiveTileMetricsIdx?.in_backp[idx];
+  const backPressureCount =
+    liveTileMetrics.backp_msgs[idx] ?? prevLiveTileMetricsIdx?.backp_msgs[idx];
 
   const prevNivcsw = usePrevious(nivcsw);
   const prevNvcsw = usePrevious(nvcsw);
@@ -115,7 +140,11 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
   // Meaning tile has shut down, no need to list it in the table
   if (alive === 2) return;
 
-  const timers = liveTileMetrics.timers[idx];
+  const timers =
+    liveTileMetrics.timers[idx] || prevLiveTileMetricsIdx?.timers[idx];
+
+  if (!timers) return;
+
   for (let i = 0; i < timers.length; i++) {
     if (timers[i] === -1) timers[i] = 0;
   }
@@ -136,25 +165,35 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
         {alive ? "Live" : "Dead"}
       </Table.Cell>
       <Table.Cell align="right">
-        {nivcsw.toLocaleString()} |
-        <IncrementText value={nivcsw - (prevNivcsw ?? 0)} />
+        {nivcsw?.toLocaleString() ?? "0"} |
+        <IncrementText
+          value={nivcsw != null && prevNivcsw != null ? nivcsw - prevNivcsw : 0}
+        />
       </Table.Cell>
       <Table.Cell align="right">
-        {nvcsw.toLocaleString()} |
-        <IncrementText value={nvcsw - (prevNvcsw ?? 0)} />
+        {nvcsw?.toLocaleString() ?? "0"} |
+        <IncrementText
+          value={nvcsw != null && prevNvcsw != null ? nvcsw - prevNvcsw : 0}
+        />
       </Table.Cell>
       <Table.Cell className={clsx({ [styles.red]: inBackpressure })}>
         {inBackpressure ? "Yes" : "-"}
       </Table.Cell>
       <Table.Cell align="right">
-        {backPressureCount.toLocaleString()} |
+        {backPressureCount?.toLocaleString() ?? "0"} |
         <Text
           className={clsx(styles.incrementText, {
             [styles.highIncrement]:
-              backPressureCount - (prevBackPressureCount ?? 0),
+              backPressureCount != null && prevBackPressureCount != null
+                ? backPressureCount - prevBackPressureCount
+                : 0,
           })}
         >
-          +{(backPressureCount - (prevBackPressureCount ?? 0)).toLocaleString()}
+          +
+          {(backPressureCount != null && prevBackPressureCount != null
+            ? backPressureCount - prevBackPressureCount
+            : 0
+          ).toLocaleString()}
         </Text>
       </Table.Cell>
       <MUtilization idx={idx} />
@@ -218,13 +257,29 @@ const updateIntervalMs = 300;
 
 const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
   const tileTimers = useAtomValue(tileTimerAtom);
-  const pct = 1 - Math.max(0, tileTimers?.[idx] ?? 0);
+  const pct =
+    tileTimers?.[idx] && tileTimers[idx] >= 0
+      ? 1 - Math.max(0, tileTimers[idx])
+      : -1;
+  const prevPct = usePreviousDistinct(
+    pct,
+    (prev, next) =>
+      !(
+        next != null &&
+        prev != null &&
+        next >= 0 &&
+        prev >= 0 &&
+        next !== prev
+      ),
+  );
   const rollingSum = useRef({ count: 0, sum: 0 });
   const [avgValue, setAvgValue] = useState(pct);
 
   useEffect(() => {
-    rollingSum.current.count++;
-    rollingSum.current.sum += pct;
+    if (pct >= 0) {
+      rollingSum.current.count++;
+      rollingSum.current.sum += pct;
+    }
   }, [pct]);
 
   useHarmonicIntervalFn(() => {
@@ -238,7 +293,7 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
     <>
       <Table.Cell className={styles.noPadding}>
         <Flex align="center">
-          <Bars value={pct} max={1} barWidth={2} />
+          <Bars value={pct >= 0 ? pct : (prevPct ?? 0)} max={1} barWidth={2} />
         </Flex>
       </Table.Cell>
       <Table.Cell className={styles.noPadding}>
