@@ -55,16 +55,11 @@ export function shredsProgressionPlugin(
           const minCompletedSlot = store.get(atoms.minCompletedSlot);
           const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
           const rangeAfterStartup = store.get(atoms.rangeAfterStartup);
-          const serverTimeMs = store.get(serverTimeMsAtom);
+          const serverTimeMs = store.get(serverTimeMsAtom) ?? Date.now();
 
           const maxX = u.scales[shredsXScaleKey].max;
 
-          if (
-            !liveShreds ||
-            !slotRange ||
-            maxX == null ||
-            serverTimeMs == null
-          ) {
+          if (!liveShreds || !slotRange || maxX == null) {
             return;
           }
 
