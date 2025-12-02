@@ -162,7 +162,12 @@ export default function ShredsChart({
   return (
     <Flex direction="column" gap="2px" height="100%">
       {!isOnStartupScreen && <ShredsSlotLabels />}
-      <Box flexGrow="1" mx={`-${chartXPadding}px`} ref={measureRef}>
+      <Box
+        flexGrow="1"
+        minHeight="0"
+        mx={`-${chartXPadding}px`}
+        ref={measureRef}
+      >
         <UplotReact
           id={chartId}
           options={options}
