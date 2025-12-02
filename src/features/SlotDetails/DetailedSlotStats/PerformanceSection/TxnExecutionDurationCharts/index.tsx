@@ -1,4 +1,4 @@
-import { Box, Flex } from "@radix-ui/themes";
+import { Box } from "@radix-ui/themes";
 import { useMemo } from "react";
 import AutoSizer from "react-virtualized-auto-sizer";
 import uPlot, { type AlignedData, type Options } from "uplot";
@@ -19,14 +19,24 @@ export default function TxnExecutionDurationCharts() {
   if (!transactions) return;
 
   return (
-    <Flex direction="column" flexGrow="1">
-      <SlotDetailsSubSection title="Count vs Txn Duration" flexGrow="1">
-        <CountChart transactions={transactions} />
-      </SlotDetailsSubSection>
-      <SlotDetailsSubSection title="Cus vs Txn Duration" flexGrow="1">
+    <>
+      <SlotDetailsSubSection
+        title="CUs vs Txn Execution Duration"
+        minWidth="200px"
+        minHeight="100px"
+        flexGrow="1"
+      >
         <CuChart transactions={transactions} />
       </SlotDetailsSubSection>
-    </Flex>
+      <SlotDetailsSubSection
+        title="Transaction Count vs Txn Execution Duration"
+        minWidth="200px"
+        minHeight="100px"
+        flexGrow="1"
+      >
+        <CountChart transactions={transactions} />
+      </SlotDetailsSubSection>
+    </>
   );
 }
 
@@ -69,17 +79,25 @@ function Chart({ data, log, id }: ChartProps) {
       axes: [
         {
           scale: "duration",
-          splits: [0, data[0].length],
+          splits: [0, data[0].length - 1],
           values: xValues,
           label: "Txn Execution Duration",
-          stroke: "gray",
+          stroke: "#B4B4B4",
           grid: { show: false },
+          size: 10,
+          gap: 0,
+          font: "8px Inter Tight",
+          labelFont: "8px Inter Tight",
+          labelGap: 0,
+          labelSize: 10,
         },
         {
-          stroke: "gray",
+          stroke: "#B4B4B4",
           values: (u, splits) => {
             return log ? splits.map((v) => Math.trunc(Math.exp(v))) : splits;
           },
+          gap: 0,
+          font: "8px Inter Tight",
           size(self, values, axisIdx, cycleNum) {
             const axis = self.axes[axisIdx];
             // bail out, force convergence
@@ -94,7 +112,7 @@ function Chart({ data, log, id }: ChartProps) {
               "",
             );
             if (longestVal !== "") {
-              self.ctx.font = axis.font?.[0] ?? "Inter Tight";
+              self.ctx.font = axis.font?.[0] ?? "8px Inter Tight";
               axisSize +=
                 self.ctx.measureText(longestVal).width / devicePixelRatio;
             }

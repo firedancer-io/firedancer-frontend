@@ -3,10 +3,8 @@ import { useAtomValue } from "jotai";
 import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
 import { useSlotQueryPublish } from "../../../../hooks/useSlotQuery";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
-import {
-  slotDetailsStatsPrimary,
-  slotDetailsStatsSecondary,
-} from "../../../../colors";
+import styles from "../detailedSlotStats.module.css";
+import { gridGapX } from "../consts";
 
 export function SlotDurationStats() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
@@ -15,11 +13,11 @@ export function SlotDurationStats() {
 
   return (
     <SlotDetailsSubSection title="Slot Duration">
-      <Flex gap="2">
-        <Text style={{ color: slotDetailsStatsSecondary }}>Actual</Text>
+      <Flex gap={gridGapX}>
+        <Text className={styles.label}>Actual</Text>
         {durationNanos != null && (
-          <Text style={{ color: slotDetailsStatsPrimary }}>
-            {`${(durationNanos / 1_000_000).toFixed(2)} ms`}
+          <Text className={styles.value}>
+            {`${(durationNanos / 1_000_000).toFixed(2)}ms`}
           </Text>
         )}
       </Flex>

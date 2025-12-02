@@ -1,4 +1,3 @@
-import { Flex } from "@radix-ui/themes";
 import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { useAtomValue } from "jotai";
 import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
@@ -15,11 +14,11 @@ export default function IncomeDistributionCharts() {
   if (!transactions) return;
 
   return (
-    <Flex direction="column" gap="2">
+    <>
       <IncomeByPctTxns transactions={transactions} />
       <IncomeByBundle transactions={transactions} />
       <IncomeByTxn transactions={transactions} />
       <IncomeByIp transactions={transactions} />
-    </Flex>
+    </>
   );
 }

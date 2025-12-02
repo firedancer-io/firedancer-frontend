@@ -11,16 +11,13 @@ import {
 import { epochAtom } from "../../../atoms";
 import { useMemo } from "react";
 import { DateTime } from "luxon";
-import {
-  slotDetailsStatsPrimary,
-  slotDetailsStatsSecondary,
-} from "../../../colors";
+
+import styles from "./detailedSlotStats.module.css";
 
 export default function SlotDetailsHeader() {
   const slot = useAtomValue(selectedSlotAtom);
-  const { peer, isLeader, name, countryCode, countryFlag } = useSlotInfo(
-    slot ?? 0,
-  );
+  const { peer, isLeader, name, pubkey, countryCode, countryFlag } =
+    useSlotInfo(slot ?? 0);
   const epoch = useAtomValue(epochAtom);
   const slotPublish = useSlotQueryPublish(slot).publish;
   const schedulerStats =
@@ -42,20 +39,11 @@ export default function SlotDetailsHeader() {
   if (slot === undefined) return;
 
   return (
-    // TODO: Fix to a better layout
-    <Flex gapX="clamp(8px, 1vw, 80px)" gapY="1" wrap="wrap" align="center">
-      <Flex gap="1" align="center" minWidth="0">
+    <Flex gapX="4" gapY="2" wrap="wrap" justify="start" align="center">
+      <Flex gap="5px" align="center">
         <PeerIcon url={peer?.info?.icon_url} size={16} isYou={isLeader} />
-        <Text
-          weight="bold"
-          truncate
-          style={{
-            fontWeight: 600,
-            color: "#CCC",
-          }}
-        >
-          {name}
-        </Text>
+        <Text className={styles.name}>{name}</Text>
+        <Text className={styles.pubkey}>{pubkey}</Text>
         <SlotClient slot={slot} size="large" />
       </Flex>
       {countryCode && (
@@ -103,14 +91,10 @@ function HorizontalLabelValue({
   icon,
 }: HorizontalLabelValueProps) {
   return (
-    <Flex flexGrow="1" gap="1">
-      <Text size="1" style={{ color: slotDetailsStatsSecondary }}>
-        {label}
-      </Text>
-      <Text size="1" style={{ color: slotDetailsStatsPrimary }}>
-        {value}
-      </Text>
-      {icon && <Text size="1">{icon}</Text>}
+    <Flex gap="1">
+      <Text className={styles.label}>{label}</Text>
+      <Text className={styles.value}>{value}</Text>
+      {icon && <Text className={styles.value}>{icon}</Text>}
     </Flex>
   );
 }

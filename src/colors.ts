@@ -262,6 +262,7 @@ export const slotDetailsSelectedColor = "#e3efff";
 export const slotDetailsDisabledSlotBorderColor = "#484D53B2";
 export const slotDetailsStatsPrimary = "var(--gray-11)";
 export const slotDetailsStatsSecondary = "var(--gray-10)";
+export const slotDetailsStatsTertiary = "var(--gray-12)";
 
 // slots list
 export const slotsListSlotBackgroundColor = "#070A13";

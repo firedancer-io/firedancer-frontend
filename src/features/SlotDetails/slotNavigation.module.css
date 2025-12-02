@@ -2,15 +2,17 @@
   gap: 4px;
   padding: 2px;
   border-radius: 5px;
-  border-top-width: 3px;
   border: 1px solid var(--slot-details-my-slots-not-selected-color);
+  border-top-width: 3px;
 
   &.disabled {
     border: 1px solid var(--slot-details-disabled-slot-border-color);
+    border-top-width: 3px;
   }
 
   &.is-selected {
     border: 1px solid var(--slots-list-my-slots-selected-border-color);
+    border-top-width: 3px;
   }
 }
 

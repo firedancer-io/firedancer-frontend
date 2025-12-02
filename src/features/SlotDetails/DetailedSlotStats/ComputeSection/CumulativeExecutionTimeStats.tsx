@@ -6,7 +6,10 @@ import { useMemo } from "react";
 import { getDurationWithUnits } from "../../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
 import PctBar from "../PctBar";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
-import { slotDetailsStatsPrimary } from "../../../../colors";
+import styles from "../detailedSlotStats.module.css";
+import clsx from "clsx";
+import MonoText from "../../../../components/MonoText";
+import { gridGapX, gridGapY } from "../consts";
 import {
   getTxnBundleStats,
   getTxnStateDurations,
@@ -85,15 +88,15 @@ export default function CumulativeExecutionTimeStats() {
 
   return (
     <SlotDetailsSubSection title="Cumulative Execution Time">
-      <Grid columns="repeat(7, auto)" gapX="2" gapY="1">
+      <Grid columns="repeat(7, auto)" gapX={gridGapX} gapY={gridGapY}>
         <div />
-        <Text style={{ color: slotDetailsStatsPrimary, gridColumn: "span 2" }}>
+        <Text className={styles.tableHeader} style={{ gridColumn: "span 2" }}>
           Success+Landed
         </Text>
-        <Text style={{ color: slotDetailsStatsPrimary, gridColumn: "span 2" }}>
+        <Text className={styles.tableHeader} style={{ gridColumn: "span 2" }}>
           Failed+Landed
         </Text>
-        <Text style={{ color: slotDetailsStatsPrimary, gridColumn: "span 2" }}>
+        <Text className={styles.tableHeader} style={{ gridColumn: "span 2" }}>
           Unlanded
         </Text>
         <Row
@@ -161,8 +164,6 @@ function Row({
   max,
   isTotal,
 }: RowProps) {
-  const labelColor = isTotal ? "var(--gray-12)" : "var(--gray-11)";
-  const valueColor = isTotal ? "var(--gray-11)" : "var(--gray-10)";
   const landedSuccessColor = isTotal ? "#28684A" : "#174933";
   const landedFailedColor = isTotal ? "#8C333A" : "#611623";
   const unlandedColor = isTotal ? "#12677E" : "#004558";
@@ -173,23 +174,35 @@ function Row({
 
   return (
     <>
-      <Text wrap="nowrap" style={{ color: labelColor }}>
+      <Text className={clsx(styles.tableRowLabel, isTotal && styles.total)}>
         {label}
       </Text>
-      <Text wrap="nowrap" style={{ color: valueColor }} align="right">
-        {`${landedSuccessUnits.value} ${landedSuccessUnits.unit}`}
+      <Text
+        className={clsx(styles.tableCellValue, isTotal && styles.total)}
+        align="right"
+      >
+        {landedSuccessUnits.value}
+        <MonoText>{landedSuccessUnits.unit}</MonoText>
       </Text>
       <PctBar
         value={landedSuccess}
         total={max}
         valueColor={landedSuccessColor}
       />
-      <Text wrap="nowrap" style={{ color: valueColor }} align="right">
-        {`${landedFailedUnits.value} ${landedFailedUnits.unit}`}
+      <Text
+        className={clsx(styles.tableCellValue, isTotal && styles.total)}
+        align="right"
+      >
+        {landedFailedUnits.value}
+        <MonoText>{landedFailedUnits.unit}</MonoText>
       </Text>
       <PctBar value={landedFailed} total={max} valueColor={landedFailedColor} />
-      <Text wrap="nowrap" style={{ color: valueColor }} align="right">
-        {`${unlandedUnits.value} ${unlandedUnits.unit}`}
+      <Text
+        className={clsx(styles.tableCellValue, isTotal && styles.total)}
+        align="right"
+      >
+        {unlandedUnits.value}
+        <MonoText>{unlandedUnits.unit}</MonoText>
       </Text>
       <PctBar value={unlanded} total={max} valueColor={unlandedColor} />
     </>

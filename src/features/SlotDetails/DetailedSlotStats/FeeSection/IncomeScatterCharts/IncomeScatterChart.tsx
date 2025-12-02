@@ -35,7 +35,7 @@ export default function IncomeScatterChart({
     return {
       width: 0,
       height: 0,
-      padding: [30, 30, 0, 30],
+      padding: [10, 15, 0, 15],
       scales: {
         [xScaleKey]: {
           time: false,
@@ -73,7 +73,9 @@ export default function IncomeScatterChart({
                 : rawValue;
             });
           },
-          size: 35,
+          size: 20,
+          gap: 0,
+          font: "8px Inter Tight",
         },
         {
           scale: lamportsScaleKey,

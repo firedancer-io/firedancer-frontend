@@ -1,4 +1,3 @@
-import { Flex } from "@radix-ui/themes";
 import { SlotDetailsSection } from "../SlotDetailsSection";
 import ComputeUnitStats from "./ComputeUnitStats";
 import ProtocolLimitStats from "./ProtocolLimitStats";
@@ -8,14 +7,12 @@ import ExecutionTime from "./ExecutionTime";
 
 export default function ComputeSection() {
   return (
-    <SlotDetailsSection title="Compute">
-      <Flex direction="column" gap="3">
-        <ComputeUnitStats />
-        <ProtocolLimitStats />
-        <BusyAccounts />
-        <CumulativeExecutionTimeStats />
-        <ExecutionTime />
-      </Flex>
+    <SlotDetailsSection title="Compute" flexGrow="2">
+      <ProtocolLimitStats />
+      <ComputeUnitStats />
+      <BusyAccounts />
+      <CumulativeExecutionTimeStats />
+      <ExecutionTime />
     </SlotDetailsSection>
   );
 }

@@ -5,19 +5,24 @@ import { TimeSinceLastLeaderStats } from "./TimeSinceLastLeaderStats";
 import CpuSparklines from "./CpuSparklines";
 import PackBufferChart from "./PackBufferChart";
 import { SlotDurationStats } from "./SlotDurationStats";
-import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
-import ScheduleOutcomes from "./ScheduleOutcomes";
+import ScheduleStats from "./ScheduleStats";
+import { sectionGapX, sectionGapY } from "../consts";
 
 export default function PerformanceSection() {
   return (
-    <SlotDetailsSection title="Performance" flexGrow="1.5">
-      <Flex gap="2">
-        <SlotDetailsSubSection title="Scheduler" gap="3" flexGrow="1">
+    <SlotDetailsSection title="Performance" flexGrow="3">
+      <Flex
+        direction={{ xs: "row", initial: "column" }}
+        gapX={sectionGapX}
+        gapY={sectionGapY}
+        flexGrow="1"
+      >
+        <Flex direction="column" gap={sectionGapY} flexBasis="0" flexGrow="1">
           <TimeSinceLastLeaderStats />
-          <ScheduleOutcomes />
+          <ScheduleStats />
           <PackBufferChart />
-        </SlotDetailsSubSection>
-        <Flex direction="column" gap="3" flexGrow="1">
+        </Flex>
+        <Flex direction="column" gap={sectionGapY} flexBasis="0" flexGrow="1">
           <SlotDurationStats />
           <TxnExecutionDurationCharts />
           <CpuSparklines />

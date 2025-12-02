@@ -4,13 +4,14 @@ import ComputeSection from "./ComputeSection";
 import FeeSection from "./FeeSection";
 import PerformanceSection from "./PerformanceSection";
 import SlotDetailsHeader from "./SlotDetailsHeader";
+import { sectionGapX } from "./consts";
 
 export default function DetailedSlotStats() {
   return (
     <Card>
       <Flex gap="3" direction="column" flexBasis="0">
         <SlotDetailsHeader />
-        <Flex gap="5" wrap="wrap" justify="between">
+        <Flex gap={sectionGapX} wrap="wrap">
           <ComputeSection />
           <FeeSection />
           <PerformanceSection />
