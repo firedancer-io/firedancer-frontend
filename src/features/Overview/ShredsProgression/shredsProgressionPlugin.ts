@@ -8,6 +8,7 @@ import {
 import { delayMs, shredEventDescPriorities } from "./const";
 import { showStartupProgressAtom } from "../../StartupProgress/atoms";
 import {
+  gridLineColor,
   shredPublishedColor,
   shredReceivedRepairColor,
   shredReceivedTurbineColor,
@@ -47,6 +48,26 @@ export function shredsProgressionPlugin(
     hooks: {
       draw: [
         (u) => {
+          u.ctx.save();
+          u.ctx.rect(u.bbox.left, u.bbox.top, u.bbox.width, u.bbox.height);
+          u.ctx.clip();
+
+          if (isOnStartupScreen) {
+            // draw grid lines to split y axis into thirds
+            u.ctx.strokeStyle = gridLineColor;
+            u.ctx.lineWidth = 1;
+            u.ctx.beginPath();
+
+            const left = u.bbox.left;
+            const right = u.bbox.left + u.bbox.width;
+
+            for (let i = 0; i < 3; i++) {
+              u.ctx.moveTo(left, u.bbox.top + (u.bbox.height * i) / 3);
+              u.ctx.lineTo(right, u.bbox.top + (u.bbox.height * i) / 3);
+            }
+            u.ctx.stroke();
+          }
+
           const atoms = shredsAtoms;
 
           const liveShreds = store.get(atoms.slotsShreds);
@@ -82,10 +103,6 @@ export function shredsProgressionPlugin(
             ? slotRange.min
             : Math.max(slotRange.min, minCompletedSlot ?? slotRange.min);
           const maxSlot = slotRange.max;
-
-          u.ctx.save();
-          u.ctx.rect(u.bbox.left, u.bbox.top, u.bbox.width, u.bbox.height);
-          u.ctx.clip();
 
           // helper to get x pos
           const getXPos = (xVal: number) =>
