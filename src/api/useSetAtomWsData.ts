@@ -501,16 +501,14 @@ export function useSetAtomWsData() {
       }
     } catch (e) {
       if (e instanceof ZodError) {
-        if (
-          e.errors.every(({ code }) => code === "invalid_union_discriminator")
-        ) {
+        if (e.issues.every(({ code }) => code === "invalid_union")) {
           console.debug(msg);
           console.debug(e.message);
-          console.debug(e.errors);
+          console.debug(e.issues);
         } else {
           console.error(msg);
           console.error(e.message);
-          console.error(e.errors);
+          console.error(e.issues);
         }
       } else {
         console.error(msg);

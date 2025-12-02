@@ -5,7 +5,6 @@ import {
 } from "@tanstack/react-router";
 import { LeaderSchedule } from "../features/LeaderSchedule";
 import { z } from "zod";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 
 const SearchTypeSchema = z.enum(["mySlots", "skippedSlots", "text"]);
 export const SearchTypeEnum = SearchTypeSchema.enum;
@@ -17,15 +16,15 @@ const defaultValues = {
 };
 
 const searchParamsSchema = z.object({
-  searchType: fallback(SearchTypeSchema, SearchTypeEnum.text).default(
+  searchType: SearchTypeSchema.default(SearchTypeEnum.text).catch(
     SearchTypeEnum.text,
   ),
-  searchText: fallback(z.string(), "").default(""),
+  searchText: z.string().default("").catch(""),
 });
 
 export const Route = createFileRoute("/leaderSchedule")({
   component: LeaderSchedule,
-  validateSearch: zodValidator(searchParamsSchema),
+  validateSearch: searchParamsSchema,
   search: {
     middlewares: [
       stripSearchParams(defaultValues),
