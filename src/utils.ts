@@ -289,7 +289,7 @@ export function formatBytesAsBits(bytes: number): {
   unit: string;
 } {
   const bits = bytes * 8;
-  if (bits < 1_000) return { value: bits, unit: "b" };
+  if (bits < 1_000) return { value: getRoundedBitsValue(bits), unit: "b" };
   if (bits < 1_000_000)
     return { value: getRoundedBitsValue(bits / 1_000), unit: "Kb" };
   if (bits < 1_000_000_000) {

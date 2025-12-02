@@ -30,6 +30,8 @@ import type {
   GossipPeersRowsUpdate,
   GossipPeersCellUpdate,
   ServerTimeNanos,
+  LiveNetworkMetrics,
+  TileMetrics,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 
@@ -72,6 +74,10 @@ export const estimatedSlotDurationAtom = atom<
 
 export const estimatedTpsAtom = atom<EstimatedTps | undefined>(undefined);
 
+export const liveNetworkMetricsAtom = atom<LiveNetworkMetrics | undefined>(
+  undefined,
+);
+
 export const liveTxnWaterfallAtom = rafAtom<LiveTxnWaterfall | undefined>(
   undefined,
 );
@@ -79,6 +85,8 @@ export const liveTxnWaterfallAtom = rafAtom<LiveTxnWaterfall | undefined>(
 export const liveTilePrimaryMetricAtom = atom<
   LiveTilePrimaryMetric | undefined
 >(undefined);
+
+export const liveTileMetricsAtom = atom<TileMetrics | undefined>(undefined);
 
 export const tileTimerAtom = atom<number[] | undefined>(undefined);
 

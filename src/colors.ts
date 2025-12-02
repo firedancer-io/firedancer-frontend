@@ -283,3 +283,6 @@ export const slotsListFutureSlotColor = "#878787";
 export const slotsListCurrentSlotBoxShadowColor = "rgba(191, 135, 253, 0.13)";
 export const slotsListCurrentSlotNumberBackgroundColor = "#283551";
 export const slotsListNextLeaderProgressBarColor = "#37a4bc";
+
+// Tile charts
+export const tileChartDarkBackground = "#0000001F";

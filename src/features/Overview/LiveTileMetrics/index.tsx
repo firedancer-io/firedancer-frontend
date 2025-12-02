@@ -1,0 +1,238 @@
+import { useAtomValue } from "jotai";
+import {
+  liveTileMetricsAtom,
+  tilesAtom,
+  tileTimerAtom,
+} from "../../../api/atoms";
+import Card from "../../../components/Card";
+import { Flex, Table, Text } from "@radix-ui/themes";
+import tableStyles from "../../Gossip/table.module.css";
+import styles from "./liveTileMetrics.module.css";
+import { Bars } from "../../StartupProgress/Firedancer/Bars";
+import TileSparkLine from "../SlotPerformance/TileSparkLine";
+import { headerGap } from "../../Gossip/consts";
+import type { Tile, TileMetrics } from "../../../api/types";
+import clsx from "clsx";
+import { useHarmonicIntervalFn, usePrevious } from "react-use";
+import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
+import type { CellProps } from "@radix-ui/themes/components/table";
+import { tileChartDarkBackground } from "../../../colors";
+
+const chartHeight = 18;
+
+export default function LiveTileMetrics() {
+  return (
+    <Card>
+      <Flex direction="column" gap={headerGap} width="100%">
+        <Text className={tableStyles.headerText}>Tiles</Text>
+        <MLiveMetricTable />
+      </Flex>
+    </Card>
+  );
+}
+
+const MLiveMetricTable = memo(function LiveMetricsTable() {
+  const tiles = useAtomValue(tilesAtom);
+  const liveTileMetrics = useAtomValue(liveTileMetricsAtom);
+
+  if (!tiles || !liveTileMetrics) return;
+
+  return (
+    <Table.Root
+      variant="ghost"
+      className={clsx(tableStyles.root, styles.table)}
+      size="1"
+      style={
+        {
+          "--bar-height": `${chartHeight}px`,
+        } as CSSProperties
+      }
+    >
+      <colgroup>
+        <col style={{ width: "100px" }} />
+        <col style={{ width: "70px" }} />
+        <col style={{ width: "160px" }} />
+        <col style={{ width: "160px" }} />
+        <col style={{ width: "70px" }} />
+        <col style={{ width: "160px" }} />
+        <col style={{ width: "200px" }} />
+        <col style={{ width: "200px" }} />
+        <col style={{ width: "80px" }} />
+        <col style={{ width: "80px" }} />
+        <col style={{ width: "80px" }} />
+        <col style={{ width: "80px" }} />
+      </colgroup>
+      <Table.Header className={styles.header}>
+        <Table.Row>
+          <Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell>Heartbeat</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell align="right">Nivcsw</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell align="right">Nvcsw</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell>Backp</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell align="right">
+            Backp Count
+          </Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell>Utilization</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell>History (1m)</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell align="right">% Hkeep</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell align="right">% Wait</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell align="right">% Backp</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell align="right">% Work</Table.ColumnHeaderCell>
+        </Table.Row>
+      </Table.Header>
+
+      <Table.Body>
+        {tiles.map((tile, i) => (
+          <TableRow
+            key={`${tile.kind}${tile.kind_id}`}
+            tile={tile}
+            liveTileMetrics={liveTileMetrics}
+            idx={i}
+          />
+        ))}
+      </Table.Body>
+    </Table.Root>
+  );
+});
+
+interface TableRowProps {
+  tile: Tile;
+  liveTileMetrics: TileMetrics;
+  idx: number;
+}
+
+function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
+  const alive = liveTileMetrics.alive[idx];
+  const nivcsw = liveTileMetrics.nivcsw[idx];
+  const nvcsw = liveTileMetrics.nvcsw[idx];
+  const inBackpressure = liveTileMetrics.in_backp[idx];
+  const backPressureCount = liveTileMetrics.backp_msgs[idx];
+
+  const prevNivcsw = usePrevious(nivcsw);
+  const prevNvcsw = usePrevious(nvcsw);
+  const prevBackPressureCount = usePrevious(backPressureCount);
+
+  const timers = liveTileMetrics.timers[idx];
+  for (let i = 0; i < timers.length; i++) {
+    if (timers[i] === -1) timers[i] = 0;
+  }
+
+  const hKeepPct = timers[0] + timers[1] + timers[2];
+  const waitPct = timers[3] + timers[6];
+  const backpPct = timers[5];
+  const workPct = timers[1] + timers[7];
+
+  return (
+    <Table.Row className={styles.row}>
+      <Table.Cell>
+        {tile.kind}:{tile.kind_id}
+      </Table.Cell>
+      <Table.Cell
+        className={clsx({ [styles.green]: alive, [styles.red]: !alive })}
+      >
+        {alive ? "Live" : "Dead"}
+      </Table.Cell>
+      <Table.Cell align="right">
+        {nivcsw.toLocaleString()} |
+        <Text className={styles.incrementText}>
+          +{(nivcsw - (prevNivcsw ?? 0)).toLocaleString()}
+        </Text>
+      </Table.Cell>
+      <Table.Cell align="right">
+        {nvcsw.toLocaleString()} |
+        <Text className={styles.incrementText}>
+          +{(nvcsw - (prevNvcsw ?? 0)).toLocaleString()}
+        </Text>
+      </Table.Cell>
+      <Table.Cell className={clsx({ [styles.red]: inBackpressure })}>
+        {inBackpressure ? "Yes" : "-"}
+      </Table.Cell>
+      <Table.Cell align="right">
+        {backPressureCount.toLocaleString()} |
+        <Text
+          className={clsx(styles.incrementText, {
+            [styles.red]: backPressureCount - (prevBackPressureCount ?? 0),
+          })}
+        >
+          +{(backPressureCount - (prevBackPressureCount ?? 0)).toLocaleString()}
+        </Text>
+      </Table.Cell>
+      <MUtilization idx={idx} />
+      <PctCell
+        pct={hKeepPct}
+        className={clsx({ [styles.red]: hKeepPct > 1 })}
+      />
+      <PctCell pct={waitPct} />
+      <PctCell
+        pct={backpPct}
+        className={clsx({ [styles.red]: backpPct > 0 })}
+      />
+      <PctCell
+        pct={workPct}
+        className={styles.pctGradient}
+        style={
+          {
+            "--pct": `${workPct}%`,
+          } as React.CSSProperties
+        }
+      />
+    </Table.Row>
+  );
+}
+
+interface PctCellProps {
+  pct: number;
+}
+
+function PctCell({ pct, ...props }: PctCellProps & CellProps) {
+  return (
+    <Table.Cell align="right" {...props}>
+      {pct.toFixed(2)}%
+    </Table.Cell>
+  );
+}
+
+interface UtilizationProps {
+  idx: number;
+}
+
+const updateIntervalMs = 300;
+
+const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
+  const tileTimers = useAtomValue(tileTimerAtom);
+  const pct = 1 - Math.max(0, tileTimers?.[idx] ?? 0);
+  const rollingSum = useRef({ count: 0, sum: 0 });
+  const [avgValue, setAvgValue] = useState(pct);
+
+  useEffect(() => {
+    rollingSum.current.count++;
+    rollingSum.current.sum += pct;
+  }, [pct]);
+
+  useHarmonicIntervalFn(() => {
+    if (rollingSum.current.count === 0) return;
+
+    setAvgValue(rollingSum.current.sum / rollingSum.current.count);
+    rollingSum.current = { count: 0, sum: 0 };
+  }, updateIntervalMs);
+
+  return (
+    <>
+      <Table.Cell className={styles.noPadding}>
+        <Flex align="center">
+          <Bars value={pct} max={1} barWidth={2} />
+        </Flex>
+      </Table.Cell>
+      <Table.Cell className={styles.noPadding}>
+        <TileSparkLine
+          value={avgValue}
+          background={tileChartDarkBackground}
+          windowMs={60_000}
+          height={chartHeight}
+          updateIntervalMs={updateIntervalMs}
+          tickMs={1_000}
+        />
+      </Table.Cell>
+    </>
+  );
+});

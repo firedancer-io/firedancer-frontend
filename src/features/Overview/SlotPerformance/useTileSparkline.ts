@@ -74,11 +74,12 @@ interface PointSample {
   ts: number;
 }
 
-const tickMs = 150;
+const defaultTickMs = 150;
 /** How many ticks of extra buffer data is drawn for the transform to slide over */
 const tickBufferCount = 3;
 
-const clock = clockSub(tickMs);
+const clocks = new Map<number, ReturnType<typeof clockSub>>();
+clocks.set(defaultTickMs, clockSub(defaultTickMs));
 
 function setDataWindow(
   data: (PointSample | undefined)[],
@@ -105,6 +106,7 @@ interface UseScaledDataPointsProps {
   width: number;
   updateIntervalMs: number;
   stopShifting?: boolean;
+  tickMs?: number;
 }
 
 export function useScaledDataPoints({
@@ -115,6 +117,7 @@ export function useScaledDataPoints({
   width: _width,
   updateIntervalMs,
   stopShifting,
+  tickMs = defaultTickMs,
 }: UseScaledDataPointsProps) {
   const [scaledDataPoints, setScaledDataPoints] = useState<
     { x: number; y: number }[]
@@ -134,7 +137,7 @@ export function useScaledDataPoints({
       width,
       windowMs,
     };
-  }, [_width, _windowMs, queryBusy]);
+  }, [_width, _windowMs, queryBusy, tickMs]);
 
   const busyDataRef = useRef([
     { value: undefined, ts: performance.now() - windowMs },
@@ -212,13 +215,19 @@ export function useScaledDataPoints({
     }
     // live
     else {
-      const unsub = clock.subscribeClock((tEnd) => {
-        tick(busyDataRef.current, tEnd);
-      });
+      if (!clocks.has(tickMs)) {
+        clocks.set(tickMs, clockSub(tickMs));
+      }
+      const clock = clocks.get(tickMs);
+      if (clock) {
+        const unsub = clock.subscribeClock((tEnd) => {
+          tick(busyDataRef.current, tEnd);
+        });
 
-      return unsub;
+        return unsub;
+      }
     }
-  }, [height, queryBusy, width, windowMs]);
+  }, [height, queryBusy, tickMs, width, windowMs]);
 
   return {
     scaledDataPoints,

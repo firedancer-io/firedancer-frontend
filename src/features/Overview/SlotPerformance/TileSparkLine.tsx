@@ -16,14 +16,18 @@ import styles from "./tileSparkline.module.css";
 import clsx from "clsx";
 
 // 4 slots worth
-const windowMs = 400 * 4;
-const updateIntervalMs = 80;
+const leaderGroupWindowMs = 400 * 4;
+const _updateIntervalMs = 80;
 
 interface TileParkLineProps {
   value?: number;
   queryBusy?: number[];
   height?: number;
   background?: string;
+  windowMs?: number;
+  strokeWidth?: number;
+  updateIntervalMs?: number;
+  tickMs?: number;
 }
 
 export default function TileSparkLine({
@@ -31,6 +35,10 @@ export default function TileSparkLine({
   queryBusy,
   height = 24,
   background,
+  windowMs = leaderGroupWindowMs,
+  strokeWidth = strokeLineWidth,
+  updateIntervalMs = _updateIntervalMs,
+  tickMs,
 }: TileParkLineProps) {
   const [svgRef, { width }] = useMeasure<SVGSVGElement>();
 
@@ -42,6 +50,7 @@ export default function TileSparkLine({
       height,
       width,
       updateIntervalMs,
+      tickMs,
     });
 
   return (
@@ -54,6 +63,7 @@ export default function TileSparkLine({
       pxPerTick={pxPerTick}
       tickMs={chartTickMs}
       isLive={isLive}
+      strokeWidth={strokeWidth}
     />
   );
 }
@@ -71,6 +81,7 @@ interface SparklineProps {
   pxPerTick: number;
   tickMs: number;
   isLive: boolean;
+  strokeWidth?: number;
 }
 export function Sparkline({
   svgRef,
@@ -82,6 +93,7 @@ export function Sparkline({
   pxPerTick,
   tickMs,
   isLive,
+  strokeWidth = strokeLineWidth,
 }: SparklineProps) {
   const gRef = useRef<SVGGElement | null>(null);
   const polyRef = useRef<SVGPolylineElement | null>(null);
@@ -90,11 +102,11 @@ export function Sparkline({
   // where the gradient colors start / end, given y scale and offset
   const gradientRange: SparklineRange = useMemo(() => {
     const scale = range[1] - range[0];
-    const gradientHeight = (height - strokeLineWidth * 2) / scale;
+    const gradientHeight = (height - strokeWidth * 2) / scale;
     const top = gradientHeight * (range[1] - 1);
     const bottom = top + gradientHeight;
     return [bottom, top];
-  }, [height, range]);
+  }, [height, range, strokeWidth]);
 
   const points = useMemo(
     () => scaledDataPoints.map(({ x, y }) => `${x},${y}`).join(" "),
@@ -156,7 +168,7 @@ export function Sparkline({
           <polyline
             ref={polyRef}
             stroke="url(#paint0_linear_2971_11300)"
-            strokeWidth={strokeLineWidth}
+            strokeWidth={strokeWidth}
             strokeLinecap="butt"
             vectorEffect="non-scaling-stroke"
             pointerEvents="none"

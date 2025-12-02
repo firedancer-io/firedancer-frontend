@@ -5,6 +5,7 @@ import { delayMs, xRangeMs } from "./const";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
 import { getSlotGroupLeader } from "../../../utils";
 import { startupFinalTurbineHeadAtom } from "../../StartupProgress/atoms";
+import { serverTimeMsAtom } from "../../../atoms";
 
 type ShredEventTsDeltaMs = number | undefined;
 /**
@@ -169,10 +170,9 @@ export function createLiveShredsAtoms() {
 
         set(_liveShredsAtom, (prev) => {
           const slotRange = get(_slotRangeAtom);
+          const now = get(serverTimeMsAtom) ?? Date.now();
 
           if (!prev || !slotRange) return prev;
-
-          const now = Date.now();
 
           if (isStartup) {
             // During startup, we only show event dots, not spans. Delete slots without events in chart view

@@ -28,6 +28,8 @@ import {
   gossipPeersRowsUpdateAtom,
   gossipPeersCellUpdateAtom,
   serverTimeNanosAtom,
+  liveNetworkMetricsAtom,
+  liveTileMetricsAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
@@ -58,12 +60,14 @@ import type {
   EstimatedTps,
   GossipNetworkStats,
   GossipPeersSize,
+  LiveNetworkMetrics,
   LiveTilePrimaryMetric,
   LiveTxnWaterfall,
   Peer,
   PeerRemove,
   RepairSlot,
   SlotResponse,
+  TileMetrics,
   TurbineSlot,
 } from "./types";
 import { useDebouncedCallback, useThrottledCallback } from "use-debounce";
@@ -72,7 +76,11 @@ import { useServerMessages } from "./ws/utils";
 import { DateTime } from "luxon";
 import {
   estimatedTpsDebounceMs,
+  gossipNetworkDebounceMs,
+  gossipPeerSizeDebounceMs,
   liveMetricsDebounceMs,
+  liveNetworkMetricsDebounceMs,
+  liveTileMetricsDebounceMs,
   tileTimerDebounceMs,
   waterfallDebounceMs,
 } from "./consts";
@@ -133,6 +141,19 @@ export function useSetAtomWsData() {
     setEstimatedTps(value);
   }, estimatedTpsDebounceMs);
 
+  const setLiveNetworkMetrics = useSetAtom(liveNetworkMetricsAtom);
+  const setDbLiveNetworkMetrics = useThrottledCallback(
+    (value?: LiveNetworkMetrics) => {
+      setLiveNetworkMetrics(value);
+    },
+    liveNetworkMetricsDebounceMs,
+  );
+
+  const setLiveTileMetrics = useSetAtom(liveTileMetricsAtom);
+  const setDbLiveTileMetrics = useThrottledCallback((value?: TileMetrics) => {
+    setLiveTileMetrics(value);
+  }, liveTileMetricsDebounceMs);
+
   const setLivePrimaryMetrics = useSetAtom(liveTilePrimaryMetricAtom);
   const setDbLivePrimaryMetrics = useThrottledCallback(
     (value?: LiveTilePrimaryMetric) => {
@@ -178,7 +199,7 @@ export function useSetAtomWsData() {
     (value?: GossipNetworkStats) => {
       setGossipNetworkStats(value);
     },
-    300,
+    gossipNetworkDebounceMs,
   );
 
   const setGossipPeersSize = useSetAtom(gossipPeersSizeAtom);
@@ -186,7 +207,7 @@ export function useSetAtomWsData() {
     (value?: GossipPeersSize) => {
       setGossipPeersSize(value);
     },
-    1_000,
+    gossipPeerSizeDebounceMs,
   );
   const setGossipPeersRows = useSetAtom(gossipPeersRowsUpdateAtom);
   const setGossipPeersCells = useSetAtom(gossipPeersCellUpdateAtom);
@@ -389,6 +410,13 @@ export function useSetAtomWsData() {
             setServerTimeNanos(value);
             break;
           }
+          case "live_network_metrics": {
+            setDbLiveNetworkMetrics(value);
+            break;
+          }
+          case "live_tile_metrics":
+            setDbLiveTileMetrics(value);
+            break;
           case "root_slot":
           case "optimistically_confirmed_slot":
           case "estimated_slot":
@@ -398,8 +426,7 @@ export function useSetAtomWsData() {
           case "storage_slot":
           case "vote_slot":
           case "slot_caught_up":
-          case "live_network_metrics":
-          case "live_tile_metrics":
+          case "active_fork_count":
             break;
         }
       } else if (topic === "epoch") {
