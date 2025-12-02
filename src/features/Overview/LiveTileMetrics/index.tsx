@@ -120,7 +120,7 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
   const hKeepPct = timers[0] + timers[1] + timers[2];
   const waitPct = timers[3] + timers[6];
   const backpPct = timers[5];
-  const workPct = timers[1] + timers[7];
+  const workPct = timers[4] + timers[7];
 
   return (
     <Table.Row className={styles.row}>
