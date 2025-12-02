@@ -11,6 +11,7 @@ import {
 } from "./atoms";
 import ShredsChart from "../../../Overview/ShredsProgression/ShredsChart";
 import styles from "./catchingUp.module.css";
+import bodyStyles from "../body.module.css";
 import CatchingUpTiles from "./CatchingUpTiles";
 import PhaseHeader from "../PhaseHeader";
 import useEstimateTotalSlots from "./useCatchingUpRates";
@@ -50,7 +51,13 @@ export default function CatchingUp() {
         phaseCompletePct={phaseCompletePct}
         remainingSeconds={catchingUpRatesRef.current.remainingSeconds}
       />
-      <Flex direction="column" height="100%" mt="8px" gap="8px">
+      <Flex
+        direction="column"
+        height="100%"
+        mt="8px"
+        gap="8px"
+        className={bodyStyles.startupContentIndentation}
+      >
         {hasCatchingUpData && (
           <Flex ref={setContainerEl} direction="column" gap="5px">
             <BarsLabels />

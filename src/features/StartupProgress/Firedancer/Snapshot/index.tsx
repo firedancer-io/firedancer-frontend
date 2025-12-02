@@ -1,5 +1,5 @@
 import { Flex } from "@radix-ui/themes";
-
+import bodyStyles from "../body.module.css";
 import styles from "./snapshot.module.css";
 import { useMedia } from "react-use";
 import { useAtomValue } from "jotai";
@@ -145,7 +145,12 @@ export default function Snapshot() {
         phaseCompletePct={phaseCompletePct}
         remainingSeconds={remainingSeconds}
       />
-      <Flex mt="52px" direction="column" gap={columnGap}>
+      <Flex
+        mt="52px"
+        direction="column"
+        gap={columnGap}
+        className={bodyStyles.startupContentIndentation}
+      >
         <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
           <SnapshotReadingCard
             compressedCompleted={readCompressedBytes}

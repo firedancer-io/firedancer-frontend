@@ -41,3 +41,10 @@
     background-color: var(--boot-progress-catchup-background-color);
   }
 }
+
+@media (min-width: 800px) {
+  .startup-content-indentation {
+    margin-left: 67px;
+    margin-right: 67px;
+  }
+}
