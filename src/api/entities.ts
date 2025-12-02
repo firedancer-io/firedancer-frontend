@@ -122,8 +122,8 @@ export const catchUpHistorySchema = z.object({
 });
 
 export const estimatedSlotSchema = z.number();
-export const resetSlotSchema = z.number();
-export const storageSlotSchema = z.number();
+export const resetSlotSchema = z.number().nullable();
+export const storageSlotSchema = z.number().nullable();
 export const voteSlotSchema = z.number();
 export const slotCaughtUpSchema = z.number().nullable();
 
