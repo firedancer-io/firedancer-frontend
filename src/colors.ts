@@ -81,7 +81,7 @@ export const snapshotAreaChartGridLineColor = "#ffffff1a";
 export const firstTurbineSlotColor = "#3972C9";
 export const latestTurbineSlotColor = "#74AFEA";
 export const missingSlotColor = "#0F1313";
-export const replayedSlotColor = "#1CE7C2";
+export const replayedSlotColor = "#118B74";
 export const replayedMissingSlotColor = "#871616";
 export const needsReplaySlotColor = "#163454";
 export const repairedNeedsReplaySlotColor = "#89603E";
@@ -143,14 +143,14 @@ export const nextSlotValueColor = "#CACACA";
 export const gridTicksColor = "#858585";
 export const gridLineColor = "#312D42";
 
-export const shredRepairRequestedColor = "#855247";
-export const shredReceivedTurbineColor = "#476685";
-export const shredReceivedRepairColor = "#856647";
-export const shredReplayStartedColor = "#477A85";
-export const shredReplayedTurbineColor = "#478575";
-export const shredReplayedRepairColor = "#5F8547";
-export const shredReplayedNothingColor = "#626A68";
-export const shredSkippedColor = "#854747";
+export const shredRepairRequestedColor = "#A66759";
+export const shredReceivedTurbineColor = "#597FA6";
+export const shredReceivedRepairColor = "#A67F59";
+export const shredReplayStartedColor = "#5998A6";
+export const shredReplayedTurbineColor = "#366357";
+export const shredReplayedRepairColor = "#B2904D";
+export const shredReplayedNothingColor = "#2F3842";
+export const shredSkippedColor = "#B23232";
 export const shredPublishedColor = "#82738C";
 
 // epoch bar

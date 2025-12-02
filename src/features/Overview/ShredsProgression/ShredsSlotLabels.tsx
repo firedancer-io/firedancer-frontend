@@ -23,13 +23,7 @@ export default function ShredsSlotLabels() {
   if (isStartup) return;
 
   return (
-    <Flex
-      flexShrink="0"
-      overflowX="hidden"
-      position="relative"
-      height="30px"
-      style={{ opacity: 0.8 }}
-    >
+    <Flex flexShrink="0" overflowX="hidden" position="relative" height="15px">
       {groupLeaderSlots.map((slot) => (
         <SlotGroupLabel key={slot} firstSlot={slot} />
       ))}
@@ -60,6 +54,7 @@ function SlotGroupLabel({ firstSlot }: SlotGroupLabelProps) {
   return (
     <Flex
       height="100%"
+      minHeight="0"
       direction="column"
       gap="2px"
       position="absolute"
@@ -71,6 +66,7 @@ function SlotGroupLabel({ firstSlot }: SlotGroupLabelProps) {
       <Flex
         justify="center"
         flexGrow="1"
+        minHeight="0"
         minWidth="0"
         px="2px"
         className={clsx(styles.slotGroupTopContainer, {
@@ -85,7 +81,7 @@ function SlotGroupLabel({ firstSlot }: SlotGroupLabelProps) {
         >
           <PeerIcon
             url={peer?.info?.icon_url}
-            size={17}
+            size={10}
             isYou={isLeader}
             hideTooltip
           />
@@ -94,7 +90,7 @@ function SlotGroupLabel({ firstSlot }: SlotGroupLabelProps) {
       </Flex>
 
       <Flex
-        height="3px"
+        height="2px"
         position="relative"
         className={styles.slotBarsContainer}
       >
