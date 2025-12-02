@@ -112,6 +112,9 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
   const prevNvcsw = usePrevious(nvcsw);
   const prevBackPressureCount = usePrevious(backPressureCount);
 
+  // Meaning tile has shut down, no need to list it in the table
+  if (alive === 2) return;
+
   const timers = liveTileMetrics.timers[idx];
   for (let i = 0; i < timers.length; i++) {
     if (timers[i] === -1) timers[i] = 0;
