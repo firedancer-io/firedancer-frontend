@@ -8,7 +8,7 @@ import {
 } from "../atoms";
 import { Box, Flex } from "@radix-ui/themes";
 import clsx from "clsx";
-import { Header } from "./PhaseHeader/Header";
+import Header from "../../Header/index";
 import { BootPhaseEnum } from "../../../api/entities";
 import { bootProgressContainerElAtom } from "../../../atoms";
 import Gossip from "./Gossip";
@@ -63,16 +63,15 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
         [styles.collapsed]: !showStartupProgress || !isStartupProgressExpanded,
       })}
     >
+      <Header isStartup />
+
       <Flex
         direction="column"
-        height="100%"
         width="100%"
         maxWidth={appMaxWidth}
         mx="auto"
         px={isNarrow ? "20px" : "89px"}
       >
-        <Header />
-
         {phase === BootPhaseEnum.joining_gossip && <Gossip />}
         {(phase === BootPhaseEnum.loading_full_snapshot ||
           phase === BootPhaseEnum.loading_incremental_snapshot) && <Snapshot />}
