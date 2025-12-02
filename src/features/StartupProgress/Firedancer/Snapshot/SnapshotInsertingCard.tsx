@@ -43,6 +43,7 @@ export function SnapshotInsertingCard({
         </>
       }
       throughput={decompressedThroughput}
+      maxThroughput={3_500_000_000}
     />
   );
 }

@@ -10,19 +10,19 @@ import StorageIcon from "@material-design-icons/svg/filled/storage.svg?react";
 import { compactSingleDecimalFormatter } from "../../../../numUtils";
 import type { FormattedBytes } from "../../../../utils";
 
-const MAX_THROUGHPUT_BYTES_PER_S = 300_000_000;
-
 interface SnapshotBarsCardProps {
   headerContent: JSX.Element;
   footer?: JSX.Element;
   throughput: number | null | undefined;
   containerClassName: string;
+  maxThroughput: number;
 }
 export function SnapshotBarsCard({
   headerContent,
   footer,
   throughput,
   containerClassName,
+  maxThroughput,
 }: SnapshotBarsCardProps) {
   return (
     <Card className={clsx(styles.card, styles.barsCard, containerClassName)}>
@@ -36,7 +36,7 @@ export function SnapshotBarsCard({
         {headerContent}
       </Flex>
 
-      <Bars value={throughput ?? 0} max={MAX_THROUGHPUT_BYTES_PER_S} />
+      <Bars value={throughput ?? 0} max={maxThroughput} />
 
       {footer}
     </Card>

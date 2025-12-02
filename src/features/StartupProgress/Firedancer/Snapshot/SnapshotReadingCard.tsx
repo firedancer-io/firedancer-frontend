@@ -51,6 +51,7 @@ export function SnapshotReadingCard({
       }
       footer={footer}
       throughput={throughput}
+      maxThroughput={800_000_000}
     />
   );
 }
