@@ -7,10 +7,12 @@ import EpochCard from "./EpochCard";
 import ShredsProgression from "./ShredsProgression";
 import LiveNetworkMetrics from "./LiveNetworkMetrics";
 import LiveTileMetrics from "./LiveTileMetrics";
+import SlotTimeline from "./SlotTimeline";
 
 export default function Overview() {
   return (
     <Flex direction="column" gap="4" flexGrow="1">
+      <SlotTimeline />
       <Flex gap="16px" align="stretch" wrap="wrap">
         <EpochCard />
         <SlotStatusCard />

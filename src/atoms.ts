@@ -620,7 +620,7 @@ export const getIsSkippedAtom = (slot?: number) =>
 
 export const slotDurationAtom = atom((get) => {
   const durationNanos = get(estimatedSlotDurationAtom);
-  if (!durationNanos) return 450;
+  if (!durationNanos) return 400;
 
   const durationMs = Math.trunc(durationNanos / 1_000_000);
 

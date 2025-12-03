@@ -30,6 +30,13 @@ import {
   serverTimeNanosAtom,
   liveNetworkMetricsAtom,
   liveTileMetricsAtom,
+  turbineSlotAtom,
+  repairSlotAtom,
+  resetSlotAtom,
+  storageSlotAtom,
+  voteSlotAtom,
+  rootSlotAtom,
+  optimisticallyConfirmedSlotAtom,
 } from "./atoms";
 import {
   blockEngineSchema,
@@ -252,17 +259,29 @@ export function useSetAtomWsData() {
     }
   };
 
+  const setTurbineSlot = useSetAtom(turbineSlotAtom);
   const addTurbineSlots = useSetAtom(addTurbineSlotsAtom);
   const addTurbineSlot = (slot: TurbineSlot) => {
+    setTurbineSlot(slot);
     if (slot == null) return;
     addTurbineSlots([slot]);
   };
 
+  const setRepairSlot = useSetAtom(repairSlotAtom);
   const addRepairSlots = useSetAtom(addRepairSlotsAtom);
   const addRepairSlot = (slot: RepairSlot) => {
+    setRepairSlot(slot);
     if (slot == null) return;
     addRepairSlots([slot]);
   };
+
+  const setResetSlot = useSetAtom(resetSlotAtom);
+  const setStorageSlot = useSetAtom(storageSlotAtom);
+  const setVoteSlot = useSetAtom(voteSlotAtom);
+  const setRootSlot = useSetAtom(rootSlotAtom);
+  const setOptimisticallyConfirmedSlot = useSetAtom(
+    optimisticallyConfirmedSlotAtom,
+  );
 
   const addLiveShreds = useSetAtom(shredsAtoms.addShredEvents);
 
@@ -401,6 +420,26 @@ export function useSetAtomWsData() {
             addRepairSlot(value);
             break;
           }
+          case "reset_slot": {
+            setResetSlot(value);
+            break;
+          }
+          case "storage_slot": {
+            setStorageSlot(value);
+            break;
+          }
+          case "vote_slot": {
+            setVoteSlot(value);
+            break;
+          }
+          case "root_slot": {
+            setRootSlot(value);
+            break;
+          }
+          case "optimistically_confirmed_slot": {
+            setOptimisticallyConfirmedSlot(value);
+            break;
+          }
           case "catch_up_history": {
             addTurbineSlots(value.turbine);
             addRepairSlots(value.repair);
@@ -417,15 +456,10 @@ export function useSetAtomWsData() {
           case "live_tile_metrics":
             setDbLiveTileMetrics(value);
             break;
-          case "root_slot":
-          case "optimistically_confirmed_slot":
+          case "slot_caught_up":
           case "estimated_slot":
           case "ping":
           case "vote_key":
-          case "reset_slot":
-          case "storage_slot":
-          case "vote_slot":
-          case "slot_caught_up":
           case "active_fork_count":
             break;
         }

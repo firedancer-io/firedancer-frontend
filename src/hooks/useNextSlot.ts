@@ -11,7 +11,7 @@ import {
 } from "../atoms";
 import type { DurationOptions } from "../utils";
 import { getDurationText } from "../utils";
-import { useInterval } from "react-use";
+import { useHarmonicIntervalFn } from "react-use";
 
 export default function useNextSlot({
   showNowIfCurrent,
@@ -30,7 +30,7 @@ export default function useNextSlot({
 
   const [estimatedSlot, setEstimatedSlot] = useState(currentSlot);
 
-  useInterval(() => {
+  useHarmonicIntervalFn(() => {
     setEstimatedSlot((prevEstimated) => {
       if (!currentSlot) return prevEstimated;
 

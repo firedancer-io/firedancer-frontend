@@ -333,11 +333,22 @@ function getRoundedBitsValue(value: number) {
   return Math.round(value * 10) / 10;
 }
 
-export function getMax(arr: number[]) {
+export function getMax(arr: (number | undefined | null)[]) {
   let max = -Infinity;
   for (let i = 0; i < arr.length; i++) {
     const value = arr[i];
+    if (value == null) continue;
     if (value > max) max = value;
+  }
+  return max;
+}
+
+export function getMin(arr: (number | undefined | null)[]) {
+  let max = Infinity;
+  for (let i = 0; i < arr.length; i++) {
+    const value = arr[i];
+    if (value == null) continue;
+    if (value < max) max = value;
   }
   return max;
 }

@@ -32,6 +32,11 @@ import type {
   ServerTimeNanos,
   LiveNetworkMetrics,
   TileMetrics,
+  TurbineSlot,
+  VoteSlot,
+  StorageSlot,
+  ResetSlot,
+  RepairSlot,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 
@@ -59,6 +64,10 @@ export const voteBalanceAtom = atom<VoteBalance | undefined>(undefined);
 
 export const rootSlotAtom = atom<RootSlot | undefined>(undefined);
 
+export const OptimisticallyConfirmedSlotAtom = atom<
+  OptimisticallyConfirmedSlot | undefined
+>(undefined);
+
 export const optimisticallyConfirmedSlotAtom = atom<
   OptimisticallyConfirmedSlot | undefined
 >(undefined);
@@ -67,6 +76,16 @@ export const completedSlotAtom = atom<CompletedSlot | undefined>(undefined);
 export const serverTimeNanosAtom = atom<ServerTimeNanos | undefined>(undefined);
 
 export const estimatedSlotAtom = atom<EstimatedSlot | undefined>(undefined);
+
+export const resetSlotAtom = atom<ResetSlot | undefined>(undefined);
+
+export const storageSlotAtom = atom<StorageSlot | undefined>(undefined);
+
+export const voteSlotAtom = atom<VoteSlot | undefined>(undefined);
+
+export const repairSlotAtom = atom<RepairSlot | undefined>(undefined);
+
+export const turbineSlotAtom = atom<TurbineSlot | undefined>(undefined);
 
 export const estimatedSlotDurationAtom = atom<
   EstimatedSlotDuration | undefined

@@ -20,6 +20,7 @@ import AutoSizer from "react-virtualized-auto-sizer";
 import { headerGap } from "./consts";
 import styles from "./trafficTreeMap.module.css";
 import { formatBytesAsBits } from "../../utils";
+import { measureTextWidth } from "../../measureUtils";
 
 const colorsList = [
   "#00F0FF",
@@ -166,20 +167,6 @@ interface TrafficNode {
   value: number;
   color?: string;
 }
-
-// Text measurement utilities
-// Use a cached canvas for measuring text widths to drive truncation.
-const measureTextWidth = (() => {
-  let canvas: HTMLCanvasElement | null = null;
-  let ctx: CanvasRenderingContext2D | null = null;
-  return (text: string, font: string) => {
-    if (!canvas) canvas = document.createElement("canvas");
-    if (!ctx) ctx = canvas.getContext("2d");
-    if (!ctx) return text.length * 7;
-    ctx.font = font;
-    return ctx.measureText(text).width;
-  };
-})();
 
 function truncateToWidth(text: string, font: string, maxWidth: number) {
   const w = measureTextWidth(text, font);

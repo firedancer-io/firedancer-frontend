@@ -60,6 +60,9 @@ import type {
   serverTimeNanosSchema,
   liveNetworkMetricsSchema,
   tileMetricsSchema,
+  resetSlotSchema,
+  storageSlotSchema,
+  voteSlotSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -84,24 +87,19 @@ export type VoteBalance = z.infer<typeof voteBalanceSchema>;
 
 export type RootSlot = z.infer<typeof rootSlotSchema>;
 
-// export type SlotRooted = z.infer<typeof slotRootedSchema>;
-
 export type OptimisticallyConfirmedSlot = z.infer<
   typeof optimisticallyConfirmedSlotSchema
 >;
-
-// export type SlotOptimisticallyConfirmed = z.infer<
-//   typeof slotOptimisticallyConfirmedSchema
-// >;
 
 export type CompletedSlot = z.infer<typeof completedSlotSchema>;
 export type CatchUpHistory = z.infer<typeof catchUpHistorySchema>;
 
 export type ServerTimeNanos = z.infer<typeof serverTimeNanosSchema>;
 
-// export type SlotCompleted = z.infer<typeof slotCompletedSchema>;
-
 export type EstimatedSlot = z.infer<typeof estimatedSlotSchema>;
+export type ResetSlot = z.infer<typeof resetSlotSchema>;
+export type StorageSlot = z.infer<typeof storageSlotSchema>;
+export type VoteSlot = z.infer<typeof voteSlotSchema>;
 
 export type EstimatedSlotDuration = z.infer<typeof estimatedSlotDurationSchema>;
 
