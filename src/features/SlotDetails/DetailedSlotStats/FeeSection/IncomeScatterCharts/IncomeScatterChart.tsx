@@ -116,7 +116,7 @@ export default function IncomeScatterChart({
             u.ctx.textAlign = "left";
 
             u.ctx.fillText(
-              `${(u.scales[lamportsScaleKey]?.max ?? 0) / lamportsPerSol} Sol`,
+              `${(u.scales[lamportsScaleKey]?.max ?? 0) / lamportsPerSol} SOL`,
               0,
               0,
             );

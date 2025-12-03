@@ -1,0 +1,42 @@
+.slot-label-card {
+  border-radius: 3px;
+  padding: 2px;
+
+  :global(.rt-Text) {
+    color: #000;
+  }
+}
+
+.slot-bar {
+  border-radius: 2px;
+  background: var(--bar-color, #2a2d33);
+  pointer-events: none;
+
+  &.dim {
+    background: #1c1f25;
+  }
+}
+
+.slot-bar-track {
+  height: 90px;
+}
+
+.progress {
+  height: 2px;
+  background: #303134;
+
+  div {
+    background: #37a4bc;
+  }
+}
+
+.next-leader-container {
+  container-type: inline-size;
+  container-name: next-leader-container;
+}
+
+@container next-leader-container (width < 300px) {
+  .next-leader-timer-label {
+    display: none;
+  }
+}
