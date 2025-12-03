@@ -100,13 +100,17 @@ interface TableRowProps {
   label?: string;
 }
 
+const emaOptions = {
+  halfLifeMs: 1_000,
+};
+
 function TableRow({
   value,
   idx,
   label,
   ...props
 }: TableRowProps & Table.RootProps) {
-  const emaValue = useEmaValue(value);
+  const emaValue = useEmaValue(value, emaOptions);
   const formattedValue = formatBytesAsBits(emaValue);
 
   return (
