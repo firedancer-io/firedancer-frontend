@@ -1,7 +1,6 @@
 import { Box, Flex } from "@radix-ui/themes";
 import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
-import ShredsTiles from "./ShredsTiles";
 import { useAtomValue } from "jotai";
 import { ClientEnum } from "../../../api/entities";
 import { clientAtom } from "../../../atoms";
@@ -14,7 +13,8 @@ export default function ShredsProgression() {
   if (client !== ClientEnum.Firedancer) return;
 
   return (
-    <Card>
+    // extra right padding for x axis label
+    <Card style={{ padding: "10px 13px 10px 10px" }}>
       <Flex direction="column" gap="4">
         <Flex gap="15px" align="center" wrap="wrap">
           <CardHeader text="Shreds" />
@@ -26,7 +26,6 @@ export default function ShredsProgression() {
             isOnStartupScreen={false}
           />
         </Box>
-        <ShredsTiles />
       </Flex>
     </Card>
   );

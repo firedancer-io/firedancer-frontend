@@ -753,7 +753,7 @@ function moveLabelPosition(
   const [xPos, width] = position;
   el.style.setProperty(
     xPosProp,
-    `${xPos + (isGroup ? groupBorderOffset : 0)}px`,
+    `${xPos - (isGroup ? groupBorderOffset : 0)}px`,
   );
 
   // If missing width, extend to max width (with extra px to hide right border)
