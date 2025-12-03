@@ -105,6 +105,10 @@ interface TableRowProps {
   label?: NetworkMetricsTableRowLabel;
 }
 
+const emaOptions = {
+  halfLifeMs: 1_000,
+};
+
 function TableRow({
   type,
   value,
@@ -112,7 +116,7 @@ function TableRow({
   label,
   ...props
 }: TableRowProps & Table.RootProps) {
-  const emaValue = useEmaValue(value);
+  const emaValue = useEmaValue(value, emaOptions);
   const formattedValue = formatBytesAsBits(emaValue);
   const rowLabel = label ?? networkProtocols[idx ?? -1];
   const maxValue = networkMaxByteValues[type][rowLabel] ?? 100_000_000;
