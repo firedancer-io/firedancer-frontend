@@ -4,7 +4,12 @@ import Card from "../../../components/Card";
 import { Flex, Table, Text } from "@radix-ui/themes";
 import tableStyles from "../../Gossip/table.module.css";
 import { useEmaValue } from "../../../hooks/useEma";
-import { networkProtocols } from "./consts";
+import {
+  networkMaxByteValues,
+  networkProtocols,
+  type NetworkMetricsCardType,
+  type NetworkMetricsTableRowLabel,
+} from "./consts";
 import { formatBytesAsBits } from "../../../utils";
 import { Bars } from "../../StartupProgress/Firedancer/Bars";
 import TileSparkLine from "../SlotPerformance/TileSparkLine";
@@ -30,7 +35,7 @@ export default function LiveNetworkMetrics() {
 
 interface NetworkMetricsCardProps {
   metrics: number[];
-  type: "Ingress" | "Egress";
+  type: NetworkMetricsCardType;
 }
 
 function NetworkMetricsCard({ metrics, type }: NetworkMetricsCardProps) {
@@ -78,9 +83,10 @@ function NetworkMetricsCard({ metrics, type }: NetworkMetricsCardProps) {
 
           <Table.Body>
             {metrics.map((value, i) => (
-              <TableRow key={i} value={value} idx={i} />
+              <TableRow key={i} type={type} value={value} idx={i} />
             ))}
             <TableRow
+              type={type}
               value={sum(metrics)}
               label="Total"
               className={styles.totalRow}
@@ -92,15 +98,15 @@ function NetworkMetricsCard({ metrics, type }: NetworkMetricsCardProps) {
   );
 }
 
-const maxValue = 100_000_000;
-
 interface TableRowProps {
+  type: NetworkMetricsCardType;
   value: number;
   idx?: number;
-  label?: string;
+  label?: NetworkMetricsTableRowLabel;
 }
 
 function TableRow({
+  type,
   value,
   idx,
   label,
@@ -108,12 +114,12 @@ function TableRow({
 }: TableRowProps & Table.RootProps) {
   const emaValue = useEmaValue(value);
   const formattedValue = formatBytesAsBits(emaValue);
+  const rowLabel = label ?? networkProtocols[idx ?? -1];
+  const maxValue = networkMaxByteValues[type][rowLabel] ?? 100_000_000;
 
   return (
     <Table.Row {...props}>
-      <Table.RowHeaderCell>
-        {label ?? networkProtocols[idx ?? -1]}
-      </Table.RowHeaderCell>
+      <Table.RowHeaderCell>{rowLabel}</Table.RowHeaderCell>
       <Table.Cell align="right">
         {formattedValue.value} {formattedValue.unit}
       </Table.Cell>
