@@ -49,8 +49,6 @@ export function shredsProgressionPlugin(
       draw: [
         (u) => {
           u.ctx.save();
-          u.ctx.rect(u.bbox.left, u.bbox.top, u.bbox.width, u.bbox.height);
-          u.ctx.clip();
 
           if (isOnStartupScreen) {
             // draw grid lines to split y axis into thirds
@@ -66,6 +64,7 @@ export function shredsProgressionPlugin(
               u.ctx.lineTo(right, u.bbox.top + (u.bbox.height * i) / 3);
             }
             u.ctx.stroke();
+            u.ctx.restore();
           }
 
           const atoms = shredsAtoms;
@@ -103,6 +102,9 @@ export function shredsProgressionPlugin(
             ? slotRange.min
             : Math.max(slotRange.min, minCompletedSlot ?? slotRange.min);
           const maxSlot = slotRange.max;
+
+          u.ctx.rect(u.bbox.left, u.bbox.top, u.bbox.width, u.bbox.height);
+          u.ctx.clip();
 
           // helper to get x pos
           const getXPos = (xVal: number) =>
