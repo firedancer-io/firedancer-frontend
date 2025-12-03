@@ -128,8 +128,8 @@ export const transactionFailedPathColor = "#743F4D";
 export const transactionAxisTextColor = "#919191";
 
 // overview stats
-export const lowIncrementTextColor = "#13864E";
-export const midIncrementTextColor = "#866913";
+export const lowIncrementTextColor = "#E5B319";
+export const midIncrementTextColor = "#E55A19";
 export const highIncrementTextColor = "#E5484D"; // radix red.9
 
 // slot performance
