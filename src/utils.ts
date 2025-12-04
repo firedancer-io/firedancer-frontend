@@ -1,7 +1,7 @@
 import type { Duration } from "luxon";
 import { DateTime } from "luxon";
 import type { Cluster, Epoch, Peer, SlotTransactions } from "./api/types";
-import { lamportsPerSol, slotsPerLeader } from "./consts";
+import { ClientName, lamportsPerSol, slotsPerLeader } from "./consts";
 import {
   clusterMainnetBetaColor,
   clusterTestnetColor,
@@ -371,7 +371,17 @@ export const getCountryFlagEmoji = memoize(
   },
   { maxSize: 100 },
 );
+
 export function roundToDPR(x: number) {
   const dpr = window.devicePixelRatio || 1;
   return Math.round(x * dpr) / dpr;
+}
+
+export function isAgave(client: ClientName) {
+  return (
+    client === ClientName.Agave ||
+    client === ClientName.AgaveJito ||
+    client === ClientName.AgavePaladin ||
+    client === ClientName.AgaveBam
+  );
 }

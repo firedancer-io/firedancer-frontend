@@ -7,7 +7,7 @@ import {
   getFmtStake,
   isDefined,
   removePortFromIp,
-  getCountryFlagEmoji,
+  isAgave,
 } from "../../../utils";
 import { useAtomValue } from "jotai";
 import PeerIcon from "../../../components/PeerIcon";
@@ -20,6 +20,8 @@ import clsx from "clsx";
 import ArrowDropdown from "../../../components/ArrowDropdown";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import { useTimeAgo } from "../../../hooks/useTimeAgo";
+import { usePeerInfo } from "../../../hooks/usePeerInfo";
+import type { ClientName } from "../../../consts";
 
 interface CardValidatorSummaryProps {
   slot: number;
@@ -131,13 +133,7 @@ interface ValidatorInfoProps {
 function ValidatorInfo({ peer }: ValidatorInfoProps) {
   const peerStats = useAtomValue(peerStatsAtom);
 
-  const validator = peer?.gossip?.version
-    ? `${peer.gossip.version[0] === "0" ? "Frankendancer" : "Agave"} v${peer.gossip.version}`
-    : undefined;
-
-  const countryCode = peer?.gossip?.country_code;
-  const countryFlag = getCountryFlagEmoji(countryCode);
-
+  const { client, version, countryCode, countryFlag } = usePeerInfo(peer);
   const stakeMsg = getStakeMsg(
     peer,
     peerStats?.activeStake,
@@ -145,15 +141,16 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
   );
   const ipWithoutPort = removePortFromIp(peer?.gossip?.sockets["tvu"] ?? "");
 
-  const message = [validator, stakeMsg, ipWithoutPort]
+  const message = [client, stakeMsg, ipWithoutPort]
     .filter(isDefined)
     .join(" - ");
 
   if (!message) return null;
 
-  const isFd = validator?.startsWith("Frankendancer");
-  const isAgave = validator && !isFd;
-  const validatorText = validator || "Unknown";
+  const versionText = version == null ? "" : ` v${version}`;
+  const validatorText = client
+    ? `${client}${versionText}`
+    : `Unknown${versionText}`;
   const stakeText = stakeMsg ?? "";
   const ipText = ipWithoutPort || "Offline";
   const textLength = (validatorText + stakeText + ipText).length;
@@ -164,15 +161,7 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
 
   return (
     <Flex gap="1" className={styles.secondaryText}>
-      <Text
-        className={clsx({
-          [styles.fdText]: isFd,
-          [styles.agaveText]: isAgave,
-        })}
-        {...textProps}
-      >
-        {validatorText}
-      </Text>
+      <ValidatorText {...textProps} client={client} versionText={versionText} />
 
       {countryCode && (
         <>
@@ -187,6 +176,48 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
       <Text className={styles.divider}>&bull;</Text>
       <Text>{ipText}</Text>
     </Flex>
+  );
+}
+
+function ValidatorText({
+  client,
+  versionText,
+  ...textProps
+}: {
+  client?: ClientName;
+  versionText: string;
+  textProps?: TextProps;
+}) {
+  if (!client)
+    return (
+      <Text {...textProps}>
+        <Text>Unknown</Text>
+        {versionText && <Text>{versionText}</Text>}
+      </Text>
+    );
+
+  if (isAgave(client)) {
+    const secondaryClient = client.split(" ")?.[1];
+    if (secondaryClient) {
+      return (
+        <Text {...textProps}>
+          <Text wrap="nowrap">
+            <Text className={styles.agave}>Agave </Text>
+            <Text className={styles[secondaryClient.toLowerCase()]}>
+              {secondaryClient}
+            </Text>
+          </Text>
+          {versionText && <Text className={styles.agave}>{versionText}</Text>}
+        </Text>
+      );
+    }
+  }
+
+  return (
+    <Text {...textProps} className={styles[client.toLowerCase()]}>
+      <Text wrap="nowrap">{client}</Text>
+      {versionText && <Text>{versionText}</Text>}
+    </Text>
   );
 }
 

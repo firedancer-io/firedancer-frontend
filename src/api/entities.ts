@@ -689,6 +689,7 @@ export const gossipSchema = z.discriminatedUnion("key", [
 ]);
 
 const peerUpdateGossipSchema = z.object({
+  client_id: z.number().nullable().optional(),
   wallclock: z.number(),
   shred_version: z.number(),
   version: z.string().nullable(),

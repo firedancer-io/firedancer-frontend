@@ -210,8 +210,13 @@ export const transactionPostExecuteTextColor = "#0090FF";
 
 // leader schedule
 export const summaryMySlotsColor = "#41B9D3";
-export const summaryFdTextColor = "#008970";
-export const summaryAgaveTextColor = "#a94dde";
+export const summaryFrankendancerTextColor = "#C46BF0";
+export const summaryFiredancerTextColor = "#6BEFD7";
+export const summaryAgaveTextColor = "#C6F06A";
+export const summaryJitoTextColor = "#71EF9B";
+export const summaryPaladinTextColor = "#6AC4F0";
+export const summaryBamTextColor = "#DDD";
+export const summarySigTextColor = "#8FB6FC";
 
 export const searchIconColor = "#AFB2C2";
 export const searchLabelColor = "#717171";

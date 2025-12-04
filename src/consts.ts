@@ -84,3 +84,23 @@ export const narrowNavMedia = "(max-width: 768px)";
 export const maxZIndex = 110;
 
 export const appMaxWidth = "1920px";
+
+export enum ClientName {
+  AgaveJito = "Agave Jito",
+  Frankendancer = "Frankendancer",
+  Agave = "Agave",
+  AgavePaladin = "Agave Paladin",
+  Firedancer = "Firedancer",
+  AgaveBam = "Agave BAM",
+  Sig = "Sig",
+}
+
+export const clientIdToClientName: Record<number, ClientName> = {
+  1: ClientName.AgaveJito,
+  2: ClientName.Frankendancer,
+  3: ClientName.Agave,
+  4: ClientName.AgavePaladin,
+  5: ClientName.Firedancer,
+  6: ClientName.AgaveBam,
+  7: ClientName.Sig,
+};

@@ -53,12 +53,32 @@
   color: var(--primary-text-color);
 }
 
-.fd-text {
-  color: var(--summary-fd-text-color);
+.firedancer {
+  color: var(--summary-firedancer-text-color);
 }
 
-.agave-text {
+.frankendancer {
+  color: var(--summary-frankendancer-text-color);
+}
+
+.agave {
   color: var(--summary-agave-text-color);
+}
+
+.jito {
+  color: var(--summary-jito-text-color);
+}
+
+.paladin {
+  color: var(--summary-paladin-text-color);
+}
+
+.bam {
+  color: var(--summary-bam-text-color);
+}
+
+.sig {
+  color: var(--summary-sig-text-color);
 }
 
 .container-mobile {
