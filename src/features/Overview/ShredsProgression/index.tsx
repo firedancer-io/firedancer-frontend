@@ -1,4 +1,4 @@
-import { Box, Flex } from "@radix-ui/themes";
+import { Flex } from "@radix-ui/themes";
 import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
 import { useAtomValue } from "jotai";
@@ -20,12 +20,11 @@ export default function ShredsProgression() {
           <CardHeader text="Shreds" />
           <ShredsChartLegend />
         </Flex>
-        <Box height="400px">
-          <ShredsChart
-            chartId="overview-shreds-chart"
-            isOnStartupScreen={false}
-          />
-        </Box>
+        <ShredsChart
+          height="400px"
+          chartId="overview-shreds-chart"
+          isOnStartupScreen={false}
+        />
       </Flex>
     </Card>
   );

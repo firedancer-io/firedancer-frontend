@@ -1,4 +1,4 @@
-import { Box, Flex, Text } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import { CatchingUpBars } from "./CatchingUpBars";
 import { BarsFooter } from "./BarsFooter";
 import BarsLabels from "./BarsLabels";
@@ -72,9 +72,12 @@ export default function CatchingUp() {
             <Text className={styles.title}>Shreds</Text>
             <ShredsChartLegend />
           </Flex>
-          <Box flexGrow="1" minHeight="280px">
-            <ShredsChart chartId="catching-up-shreds" isOnStartupScreen />
-          </Box>
+          <ShredsChart
+            flexGrow="1"
+            minHeight="280px"
+            chartId="catching-up-shreds"
+            isOnStartupScreen
+          />
         </Flex>
 
         <CatchingUpTiles />
