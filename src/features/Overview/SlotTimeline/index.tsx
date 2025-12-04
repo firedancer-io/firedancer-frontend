@@ -43,14 +43,23 @@ const _minCurrentSlots = 32;
 // Make sure it's evenly divisilbe by 2 since the next slots section is half the width
 const minCurrentSlots = _minCurrentSlots - (_minCurrentSlots % 2);
 
-const storageColor = "#374453";
-const rootColor = "#1E5A4F";
-const voteColor = "#414676";
-const replayColor = "#075329";
-const repairColor = "#4F2B11";
-const turbineColor = "#004263";
-const confirmedColor = "#4E2F63";
-const nextLeaderColor = "#02335A";
+const storageLabelBgColor = "#374453";
+const rootLabelBgColor = "#1E5A4F";
+const voteLabelBgColor = "#414676";
+const replayLabelBgColor = "#075329";
+const repairLabelBgColor = "#4F2B11";
+const turbineLabelBgColor = "#004263";
+const confirmedLabelBgColor = "#4E2F63";
+const nextLeaderLabelBgColor = "#02335A";
+
+const storageBarColor = "#3A6CAA";
+const rootBarColor = "#3F9283";
+const voteBarColor = "#3E49AD";
+const replayBarColor = "#1A7041";
+const repairBarColor = "#724321";
+const turbineBarColor = "#097FBA";
+const confirmedBarColor = "#6B2997";
+const nextLeaderBarColor = "#096DB9";
 
 export default function SlotTimeline() {
   const isStartupRunning = useAtomValue(showStartupProgressAtom);
@@ -85,13 +94,15 @@ function getSlotBarInfo(
   label: string,
   dtSlot: number | null | undefined,
   referenceSlot: number | null | undefined,
-  color: string,
+  labelBgColor: string,
+  barColor: string,
 ): SlotBarInfo {
   return {
     label,
     slot: dtSlot,
     slotDt: getSlotDt(dtSlot, referenceSlot),
-    color,
+    labelBgColor,
+    barColor,
   };
 }
 
@@ -132,44 +143,57 @@ function SlotBars() {
       "Storage",
       storageSlot,
       replaySlot,
-      storageColor,
+      storageLabelBgColor,
+      storageBarColor,
     );
-    const rootSlotBar = getSlotBarInfo("Root", rootSlot, replaySlot, rootColor);
+    const rootSlotBar = getSlotBarInfo(
+      "Root",
+      rootSlot,
+      replaySlot,
+      rootLabelBgColor,
+      rootBarColor,
+    );
     const voteSlotBar = getSlotBarInfo(
       "Voted",
       voteSlot,
       replaySlot,
-      voteColor,
+      voteLabelBgColor,
+      voteBarColor,
     );
     const repairSlotBar = getSlotBarInfo(
       "Repair",
       repairSlot,
       replaySlot,
-      repairColor,
+      repairLabelBgColor,
+      repairBarColor,
     );
     const turbineSlotBar = getSlotBarInfo(
       "Turbine",
       turbineSlot,
       replaySlot,
-      turbineColor,
+      turbineLabelBgColor,
+      turbineBarColor,
     );
     const replaySlotBar = getSlotBarInfo(
       "Processed",
       replaySlot,
       replaySlot,
-      replayColor,
+      replayLabelBgColor,
+      replayBarColor,
     );
     const optimisticallyConfirmedBar = getSlotBarInfo(
       "Confirmed",
       optimisticallyConfirmedSlot,
       replaySlot,
-      confirmedColor,
+      confirmedLabelBgColor,
+      confirmedBarColor,
     );
     const nextLeaderSlotBar = getSlotBarInfo(
       "Next Leader",
       nextLeaderSlot,
       replaySlot,
-      nextLeaderColor,
+      nextLeaderLabelBgColor,
+      nextLeaderBarColor,
     );
 
     return {
@@ -349,7 +373,7 @@ function PrevSlots({
             return (
               <HighlightedSlotBar
                 key={slot}
-                colors={slotBars.map(({ color }) => color)}
+                colors={slotBars.map(({ barColor }) => barColor)}
                 barWidth={slotBarWidth}
               />
             );
@@ -444,7 +468,7 @@ function CurrentSlots({
             return (
               <HighlightedSlotBar
                 key={slot}
-                colors={slotBars.map(({ color }) => color)}
+                colors={slotBars.map(({ barColor }) => barColor)}
               />
             );
           }
@@ -504,7 +528,7 @@ function NextSlots({ nextLeaderSlotBar, minSlot }: NextSlotsProps) {
         <MFillerBars count={fillerSlotCount} />
         {nextLeaderSlotBar.slot && (
           <HighlightedSlotBar
-            colors={[nextLeaderSlotBar.color]}
+            colors={[nextLeaderSlotBar.barColor]}
             barWidth={barWidth / 2}
           />
         )}
@@ -554,7 +578,7 @@ interface SlotLabelProps {
 
 const MSlotLabel = memo(function SlotLabel({ slotBarInfo }: SlotLabelProps) {
   const { shrinkSlotsLabel } = useContext(SlotBarsContext);
-  const { slot, slotDt, color, label } = slotBarInfo;
+  const { slot, slotDt, labelBgColor, label } = slotBarInfo;
   if (slot == null || slotDt == null) return;
 
   const formattedLabel = `${label}${shrinkSlotsLabel ? "" : " Slot"}`;
@@ -566,7 +590,7 @@ const MSlotLabel = memo(function SlotLabel({ slotBarInfo }: SlotLabelProps) {
       align="stretch"
       className={styles.slotLabelCard}
       style={{
-        background: color,
+        background: labelBgColor,
       }}
       minWidth="50px"
     >
