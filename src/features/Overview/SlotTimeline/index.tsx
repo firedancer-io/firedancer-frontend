@@ -52,14 +52,14 @@ const turbineLabelBgColor = "#004263";
 const confirmedLabelBgColor = "#4E2F63";
 const nextLeaderLabelBgColor = "#02335A";
 
-const storageBarColor = "#3A6CAA";
-const rootBarColor = "#3F9283";
-const voteBarColor = "#3E49AD";
-const replayBarColor = "#1A7041";
-const repairBarColor = "#724321";
-const turbineBarColor = "#097FBA";
-const confirmedBarColor = "#6B2997";
-const nextLeaderBarColor = "#096DB9";
+const storageBarColor = "#374453";
+const rootBarColor = "#1E5A4F";
+const voteBarColor = "#414676";
+const replayBarColor = "#075329";
+const repairBarColor = "#4F2B11";
+const turbineBarColor = "#004263";
+const confirmedBarColor = "#4E2F63";
+const nextLeaderBarColor = "#02335A";
 
 export default function SlotTimeline() {
   const isStartupRunning = useAtomValue(showStartupProgressAtom);
