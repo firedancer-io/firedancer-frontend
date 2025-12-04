@@ -55,3 +55,9 @@
     display: none;
   }
 }
+
+@container next-leader-container (width < 130px) {
+  .next-leader-timer-container {
+    display: none;
+  }
+}

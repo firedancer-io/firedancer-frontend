@@ -550,6 +550,7 @@ function NextLeaderTimer() {
       align="stretch"
       justify="between"
       minWidth="70px"
+      className={styles.nextLeaderTimerContainer}
     >
       <Text align="center" wrap="nowrap">
         <Text
