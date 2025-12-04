@@ -1,8 +1,7 @@
 .slot-label-card {
   border-radius: 3px;
   padding: 2px 3px;
-
-  color: #ebecee;
+  background-color: var(--gray-3);
 
   :global(.rt-Text) {
     font-size: 12px;
@@ -15,7 +14,6 @@
 }
 .slot-label-dt {
   display: flex;
-  font-weight: 600;
   white-space: pre;
   .dt-sign {
     line-height: 14px;
@@ -24,11 +22,11 @@
 
 .slot-bar {
   border-radius: 2px;
-  background: var(--bar-color, #2a2d33);
+  background: var(--bar-color, #3f434b);
   pointer-events: none;
 
   &.dim {
-    background: #1c1f25;
+    background: #2d3138;
   }
 }
 
