@@ -87,8 +87,10 @@ export function LoadingIcon({ size }: { size: IconSize }) {
         styles={buildStyles({
           trailColor: circularProgressTrailColor,
           pathColor: circularProgressPathColor,
+          pathTransitionDuration: 0.05,
         })}
         strokeWidth={25}
+        maxValue={100}
       />
     </Flex>
   );
