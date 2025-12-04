@@ -16,7 +16,7 @@ export default function ShredsProgression() {
     // extra right padding for x axis label
     <Card style={{ padding: "10px 13px 10px 10px" }}>
       <Flex direction="column" gap="4">
-        <Flex gap="15px" align="center" wrap="wrap">
+        <Flex gapX="15px" gapY="2" align="center" wrap="wrap">
           <CardHeader text="Shreds" />
           <ShredsChartLegend />
         </Flex>

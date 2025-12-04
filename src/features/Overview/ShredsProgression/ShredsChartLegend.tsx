@@ -4,7 +4,7 @@ import styles from "./shreds.module.css";
 
 export function ShredsChartLegend() {
   return (
-    <Flex gap="15px" wrap="wrap">
+    <Flex gapX="15px" gapY="5px" wrap="wrap">
       {Object.entries(legend).map(([label, color]) => {
         return (
           <Flex key={label} gap="5px" flexShrink="0">

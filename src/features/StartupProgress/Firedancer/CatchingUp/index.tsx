@@ -68,7 +68,7 @@ export default function CatchingUp() {
         )}
 
         <Flex direction="column" className={styles.card} mb="14px">
-          <Flex gap="15px" align="center" wrap="wrap">
+          <Flex gapX="15px" gapY="2" align="center" wrap="wrap">
             <Text className={styles.title}>Shreds</Text>
             <ShredsChartLegend />
           </Flex>
