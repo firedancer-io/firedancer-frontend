@@ -28,6 +28,22 @@ export const shredEventDescPriorities: Exclude<
   ShredEvent.shred_repair_request,
 ];
 
+/**
+ * Each row may represent multiple shreds.
+ * When choosing the single shred to represent the entire row,
+ * use the shred with the highest priority event.
+ */
+export const rowShredEventDescPriorities: Exclude<
+  ShredEvent,
+  ShredEvent.slot_complete
+>[] = [
+  ShredEvent.shred_received_repair,
+  ShredEvent.shred_published,
+  ShredEvent.shred_replayed,
+  ShredEvent.shred_received_turbine,
+  ShredEvent.shred_repair_request,
+];
+
 export const legend = {
   "Repair Requested": shredRepairRequestedColor,
   "Received Turbine": shredReceivedTurbineColor,

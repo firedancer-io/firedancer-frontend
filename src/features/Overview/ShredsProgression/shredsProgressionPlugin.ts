@@ -5,7 +5,11 @@ import {
   type ShredEventTsDeltas,
   type SlotsShreds,
 } from "./atoms";
-import { delayMs, shredEventDescPriorities } from "./const";
+import {
+  delayMs,
+  rowShredEventDescPriorities,
+  shredEventDescPriorities,
+} from "./const";
 import { showStartupProgressAtom } from "../../StartupProgress/atoms";
 import {
   gridLineColor,
@@ -299,7 +303,8 @@ interface AddEventsForRowArgs {
 }
 /**
  * Draw rows for shreds, with rectangles or dots for events.
- * Each row may represent partial or multiple shreds. Use the most completed shred.
+ * Each row may represent partial or multiple shreds. Use the row shred priorities to determine
+ * which shred to draw.
  */
 function addEventsForRow({
   addEventPosition,
@@ -318,11 +323,7 @@ function addEventsForRow({
 }: AddEventsForRowArgs) {
   if (scaleX.max == null || scaleX.min == null) return;
 
-  const shredIdx = getMostCompletedShredIdx(
-    firstShredIdx,
-    lastShredIdx,
-    shreds,
-  );
+  const shredIdx = getShredIdxToDrawForRow(firstShredIdx, lastShredIdx, shreds);
 
   const eventTsDeltas = shreds[shredIdx];
   if (!eventTsDeltas) return;
@@ -396,12 +397,12 @@ function addEventsForRow({
   }
 }
 
-function getMostCompletedShredIdx(
+function getShredIdxToDrawForRow(
   firstShredIdx: number,
   lastShredIdx: number,
   shreds: (ShredEventTsDeltas | undefined)[],
 ): number {
-  for (const shredEvent of shredEventDescPriorities) {
+  for (const shredEvent of rowShredEventDescPriorities) {
     const shredIdx = findShredIdx(
       firstShredIdx,
       lastShredIdx,
