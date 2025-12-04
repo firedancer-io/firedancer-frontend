@@ -24,7 +24,7 @@
 
     .slot-group-name-container {
       opacity: var(--group-name-opacity);
-      transition: opacity 0.8s;
+      transition: opacity 0.6s;
       will-change: opacity;
 
       .name {
