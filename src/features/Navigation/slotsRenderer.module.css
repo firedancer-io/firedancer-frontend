@@ -43,6 +43,10 @@
     font-size: 18px;
   }
 
+  .flag {
+    font-size: 10px;
+  }
+
   &.skipped {
     background: var(--slots-list-skipped-background-color);
   }

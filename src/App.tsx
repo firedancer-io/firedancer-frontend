@@ -13,6 +13,7 @@ import FiredancerLogo from "./assets/firedancer_logo.svg";
 import FrankendancerLogo from "./assets/frankendancer_logo.svg";
 import { ClientEnum } from "./api/entities";
 import { enableMapSet } from "immer";
+import { useMount } from "react-use";
 
 const router = createRouter({ routeTree });
 
@@ -48,6 +49,23 @@ export default function App() {
     },
     [setContainerEl],
   );
+
+  useMount(() => {
+    if ("fonts" in document) {
+      const notoFlagsOnly = new FontFace(
+        "NotoFlagsOnly",
+        "url(assets/NotoFlagsOnly.woff2)",
+        { weight: "normal", style: "normal", display: "swap" },
+      );
+
+      notoFlagsOnly
+        .load()
+        .then((loadedFont) => {
+          document.fonts.add(loadedFont);
+        })
+        .catch(console.error);
+    }
+  });
 
   return (
     <Theme id="app" appearance="dark" ref={setRefAndColors} scaling="90%">
