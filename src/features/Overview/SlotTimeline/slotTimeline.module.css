@@ -1,17 +1,25 @@
 .slot-label-card {
   border-radius: 3px;
-  padding: 2px;
+  padding: 2px 3px;
+
+  color: #ebecee;
 
   :global(.rt-Text) {
-    color: #000;
+    font-size: 12px;
+    line-height: normal;
   }
 }
 
 .slot-label-name {
-  align-self: flex-start;
+  flex-shrink: 100000000;
 }
 .slot-label-dt {
-  align-self: flex-end;
+  display: flex;
+  font-weight: 600;
+  white-space: pre;
+  .dt-sign {
+    line-height: 14px;
+  }
 }
 
 .slot-bar {

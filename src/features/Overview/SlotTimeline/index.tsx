@@ -43,14 +43,14 @@ const _minCurrentSlots = 32;
 // Make sure it's evenly divisilbe by 2 since the next slots section is half the width
 const minCurrentSlots = _minCurrentSlots - (_minCurrentSlots % 2);
 
-const storageColor = "#7170EF";
-const rootColor = "#DE64B1";
-const voteColor = "#388DCF";
-const replayColor = "#219C8E";
-const repairColor = "#B87745";
-const turbineColor = "#6684FF";
-const confirmedColor = "#eee";
-const nextLeaderColor = "#488EDF";
+const storageColor = "#374453";
+const rootColor = "#1E5A4F";
+const voteColor = "#414676";
+const replayColor = "#075329";
+const repairColor = "#4F2B11";
+const turbineColor = "#004263";
+const confirmedColor = "#4E2F63";
+const nextLeaderColor = "#02335A";
 
 export default function SlotTimeline() {
   const isStartupRunning = useAtomValue(showStartupProgressAtom);
@@ -570,37 +570,23 @@ const MSlotLabel = memo(function SlotLabel({ slotBarInfo }: SlotLabelProps) {
       }}
       minWidth="50px"
     >
-      <Flex gap="5px" justify="between">
-        <Text
-          className={styles.slotLabelName}
-          weight="bold"
-          wrap="nowrap"
-          truncate
-          dir="rtl"
-        >
+      <Flex gap="5px" justify="between" align="stretch">
+        <Text className={styles.slotLabelName} wrap="nowrap" truncate dir="rtl">
           {formattedLabel}
         </Text>
 
         {slotBarInfo.label !== "Processed" && (
-          <Text
-            weight="bold"
-            className={styles.slotLabelDt}
-            style={{
-              whiteSpace: "pre",
-            }}
-          >
-            <MonoText>{slotDt >= 0 ? "+" : "-"}</MonoText>
-            {formattedDt}
+          <Text truncate className={styles.slotLabelDt}>
+            {slotBarInfo.label !== "Next Leader" && (
+              <MonoText className={styles.dtSign}>
+                {slotDt === 0 ? " " : slotDt > 0 ? "+" : "-"}
+              </MonoText>
+            )}
+            <Text truncate>{formattedDt}</Text>
           </Text>
         )}
       </Flex>
-      <FlashText
-        align="center"
-        truncate
-        style={{ width: "100%" }}
-        dir="rtl"
-        value={slot}
-      />
+      <FlashText align="center" truncate dir="rtl" value={slot} />
     </Flex>
   );
 });

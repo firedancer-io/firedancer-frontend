@@ -10,3 +10,7 @@
 .flash {
   animation: flash 0.2s ease;
 }
+
+.flash-text {
+  color: #b1b1b1;
+}
