@@ -10,6 +10,7 @@ import {
   shredsXScaleKey,
 } from "./shredsProgressionPlugin";
 import { Box, Flex } from "@radix-ui/themes";
+import type { FlexProps } from "@radix-ui/themes";
 import ShredsSlotLabels from "./ShredsSlotLabels";
 
 const REDRAW_INTERVAL_MS = 40;
@@ -38,6 +39,8 @@ const getXIncrs = (scale: number) => {
   return incrs;
 };
 
+type FlexPropsSubset = Pick<FlexProps, "height" | "minHeight" | "flexGrow">;
+
 interface ShredsChartProps {
   chartId: string;
   isOnStartupScreen: boolean;
@@ -45,7 +48,8 @@ interface ShredsChartProps {
 export default function ShredsChart({
   chartId,
   isOnStartupScreen,
-}: ShredsChartProps) {
+  ...flexProps
+}: ShredsChartProps & FlexPropsSubset) {
   const isXL = useMedia("(max-width: 2100px)");
   const isL = useMedia("(max-width: 1800px)");
   const isM = useMedia("(max-width: 1500px)");
@@ -159,7 +163,7 @@ export default function ShredsChart({
   });
 
   return (
-    <Flex direction="column" gap="2px" height="100%">
+    <Flex direction="column" gap="2px" {...flexProps}>
       {!isOnStartupScreen && <ShredsSlotLabels />}
       <Box
         flexGrow="1"
