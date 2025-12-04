@@ -5,6 +5,8 @@ import FrankendancerLogo from "../assets/frankendancer_logo_circle.svg";
 import { memo } from "react";
 import styles from "./slotClient.module.css";
 import clsx from "clsx";
+import { ClientName } from "../consts";
+import { isAgave } from "../utils";
 
 export default memo(function SlotClient({
   slot,
@@ -17,13 +19,13 @@ export default memo(function SlotClient({
   const className = clsx(styles[`${size}Icon`]);
   if (!client) return <div className={className} />;
 
-  if (client === "Firedancer") {
+  if (client === ClientName.Firedancer) {
     return (
       <img src={FiredancerLogo} alt="Firedancer Logo" className={className} />
     );
   }
 
-  if (client === "Frankendancer") {
+  if (client === ClientName.Frankendancer) {
     return (
       <img
         src={FrankendancerLogo}
@@ -33,5 +35,9 @@ export default memo(function SlotClient({
     );
   }
 
-  return <img src={AnzaLogo} alt="Anza Logo" className={className} />;
+  if (isAgave(client)) {
+    return <img src={AnzaLogo} alt="Anza Logo" className={className} />;
+  }
+
+  return <div className={className} />;
 });
