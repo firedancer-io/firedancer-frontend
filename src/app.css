@@ -2,7 +2,7 @@
   /* radix tokens */
   --color-background: #070b14;
   --default-font-family: "Inter Tight", sans-serif;
-  font-family: "Inter Tight", sans-serif;
+  font-family: "Inter Tight", "NotoFlagsOnly", sans-serif;
   font-display: optional;
   --scaling: 0.875;
   --cursor-button: pointer;

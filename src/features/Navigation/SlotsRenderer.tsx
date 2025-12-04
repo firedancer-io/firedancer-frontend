@@ -162,7 +162,7 @@ function CurrentLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
         <Flex gap="1" align="center" className={styles.currentSlotRow}>
           <SlotClient slot={firstSlot} size="small" />
           <Text size="2">{currentSlot}</Text>
-          {countryFlag && <Text>{countryFlag}</Text>}
+          {countryFlag && <Text className={styles.flag}>{countryFlag}</Text>}
         </Flex>
       </Flex>
 
