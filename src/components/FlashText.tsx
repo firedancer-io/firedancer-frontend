@@ -7,7 +7,10 @@ interface FlashTextProps {
   value: string | number;
 }
 
-export default function FlashText({ value }: FlashTextProps & TextProps) {
+export default function FlashText({
+  value,
+  ...props
+}: FlashTextProps & TextProps) {
   const [flashing, setFlashing] = useState(false);
 
   useEffect(() => {
@@ -20,5 +23,9 @@ export default function FlashText({ value }: FlashTextProps & TextProps) {
     return () => cancelAnimationFrame(raf);
   }, [value]);
 
-  return <Text className={clsx({ [styles.flash]: flashing })}>{value}</Text>;
+  return (
+    <Text {...props} className={clsx({ [styles.flash]: flashing })}>
+      {value}
+    </Text>
+  );
 }

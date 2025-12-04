@@ -7,6 +7,13 @@
   }
 }
 
+.slot-label-name {
+  align-self: flex-start;
+}
+.slot-label-dt {
+  align-self: flex-end;
+}
+
 .slot-bar {
   border-radius: 2px;
   background: var(--bar-color, #2a2d33);

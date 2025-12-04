@@ -558,39 +558,49 @@ const MSlotLabel = memo(function SlotLabel({ slotBarInfo }: SlotLabelProps) {
   if (slot == null || slotDt == null) return;
 
   const formattedLabel = `${label}${shrinkSlotsLabel ? "" : " Slot"}`;
-  const formattedDt = `${Math.abs(slotDt)}`.padStart(3);
+  const formattedDt = `${Math.abs(slotDt)}`;
 
   return (
     <Flex
       direction="column"
-      align="end"
+      align="stretch"
       className={styles.slotLabelCard}
       style={{
         background: color,
       }}
       minWidth="50px"
     >
-      <Text
-        weight="bold"
-        wrap="nowrap"
-        truncate
-        style={{ width: "100%" }}
-        dir="rtl"
-      >
-        {formattedLabel}
+      <Flex gap="5px" justify="between">
+        <Text
+          className={styles.slotLabelName}
+          weight="bold"
+          wrap="nowrap"
+          truncate
+          dir="rtl"
+        >
+          {formattedLabel}
+        </Text>
+
         {slotBarInfo.label !== "Processed" && (
           <Text
+            weight="bold"
+            className={styles.slotLabelDt}
             style={{
               whiteSpace: "pre",
             }}
           >
-            &nbsp;(
             <MonoText>{slotDt >= 0 ? "+" : "-"}</MonoText>
-            {formattedDt})
+            {formattedDt}
           </Text>
         )}
-      </Text>
-      <FlashText truncate style={{ width: "100%" }} dir="rtl" value={slot} />
+      </Flex>
+      <FlashText
+        align="center"
+        truncate
+        style={{ width: "100%" }}
+        dir="rtl"
+        value={slot}
+      />
     </Flex>
   );
 });
