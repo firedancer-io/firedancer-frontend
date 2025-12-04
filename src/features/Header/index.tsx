@@ -1,4 +1,4 @@
-import { Box, Flex, IconButton } from "@radix-ui/themes";
+import { Box, Flex, IconButton, Text } from "@radix-ui/themes";
 import IdentityKey from "./IdentityKey";
 import { DropdownNav, NavHandler, NavLinks } from "./Nav";
 import { useMedia } from "react-use";
@@ -24,9 +24,10 @@ import {
   isStartupProgressExpandedAtom,
   showStartupProgressAtom,
 } from "../StartupProgress/atoms";
-import { Cross1Icon, TimerIcon } from "@radix-ui/react-icons";
+import { Cross1Icon, InfoCircledIcon, TimerIcon } from "@radix-ui/react-icons";
 import { bootProgressContainerElAtom } from "../../atoms";
 import { useCallback } from "react";
+import PopoverDropdown from "../../components/PopoverDropdown";
 
 export default function Header({ isStartup }: { isStartup?: boolean }) {
   const showDropdownNav = useMedia("(max-width: 900px)");
@@ -94,18 +95,23 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
             )}
 
             <Flex
-              gap="3"
+              gap={isXNarrow ? "1" : "3"}
               justify="end"
               align="center"
               minWidth="0"
               flexGrow="1"
             >
               <IdentityKey />
-              {isStartup ? (
-                <CollapseStartupProgressButton />
-              ) : (
-                <ExpandStartupProgressButton />
-              )}
+
+              <Flex gap="1" direction={isXNarrow ? "column" : "row"}>
+                <Attribution />
+
+                {isStartup ? (
+                  <CollapseStartupProgressButton />
+                ) : (
+                  <ExpandStartupProgressButton />
+                )}
+              </Flex>
             </Flex>
 
             {blurBackground && <NavBlur />}
@@ -131,6 +137,24 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
         )}
       </Box>
     </div>
+  );
+}
+
+function Attribution() {
+  return (
+    <PopoverDropdown
+      content={
+        <Flex maxWidth="100vw" p="2" className={styles.attributeContainer}>
+          <Text wrap="wrap">
+            Attribution: The IP address data in src/disco/gui/ipinfo.bin is
+            powered by IPinfo Inc.{" "}
+            <a href="https://ipinfo.io/">https://ipinfo.io/</a>
+          </Text>
+        </Flex>
+      }
+    >
+      <InfoCircledIcon color="var(--gray-11)" />
+    </PopoverDropdown>
   );
 }
 
