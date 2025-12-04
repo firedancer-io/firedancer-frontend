@@ -87,7 +87,7 @@ export function LoadingIcon({ size }: { size: IconSize }) {
         styles={buildStyles({
           trailColor: circularProgressTrailColor,
           pathColor: circularProgressPathColor,
-          pathTransitionDuration: 0.05,
+          pathTransition: "none",
         })}
         strokeWidth={25}
         maxValue={100}
