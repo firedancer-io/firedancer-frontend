@@ -24,7 +24,10 @@ export default function FlashText({
   }, [value]);
 
   return (
-    <Text {...props} className={clsx({ [styles.flash]: flashing })}>
+    <Text
+      {...props}
+      className={clsx(styles.flashText, { [styles.flash]: flashing })}
+    >
       {value}
     </Text>
   );
