@@ -23,7 +23,7 @@ import {
   shredSkippedColor,
 } from "../../../colors";
 import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
-import { clamp } from "lodash";
+import { clamp, sum } from "lodash";
 import { ShredEvent } from "../../../api/entities";
 import { getSlotGroupLabelId, getSlotLabelId } from "./utils";
 import { slotsPerLeader } from "../../../consts";
@@ -48,6 +48,7 @@ export type LabelPositions = {
 export function shredsProgressionPlugin(
   isOnStartupScreen: boolean,
 ): uPlot.Plugin {
+  const prevTimeDiffs: number[] = [];
   return {
     hooks: {
       draw: [
@@ -78,7 +79,27 @@ export function shredsProgressionPlugin(
           const minCompletedSlot = store.get(atoms.minCompletedSlot);
           const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
           const rangeAfterStartup = store.get(atoms.rangeAfterStartup);
-          const serverTimeMs = store.get(serverTimeMsAtom) ?? Date.now();
+
+          // Use server time for chart axis
+          // Use a rolling avg of the server time and client now diff.
+          // If we get ws messages buffered and it results in a temporary high
+          // diff, shred still move smoothly by using the avg
+          const now = Date.now();
+          const serverTimeMs = store.get(serverTimeMsAtom);
+
+          if (serverTimeMs) {
+            const timeDiff = now - serverTimeMs;
+            prevTimeDiffs.push(timeDiff);
+            while (prevTimeDiffs.length > 20) {
+              prevTimeDiffs.shift();
+            }
+          }
+
+          const timeDiffAvg = prevTimeDiffs.length
+            ? sum(prevTimeDiffs) / prevTimeDiffs.length
+            : undefined;
+          const adjustedTimeMs =
+            timeDiffAvg == null ? (serverTimeMs ?? now) : now - timeDiffAvg;
 
           const maxX = u.scales[shredsXScaleKey].max;
 
@@ -98,7 +119,7 @@ export function shredsProgressionPlugin(
           }
 
           // Offset to convert shred event delta to chart x value
-          const delayedNow = serverTimeMs - delayMs;
+          const delayedNow = adjustedTimeMs - delayMs;
 
           const tsXValueOffset = delayedNow - liveShreds.referenceTs;
 
