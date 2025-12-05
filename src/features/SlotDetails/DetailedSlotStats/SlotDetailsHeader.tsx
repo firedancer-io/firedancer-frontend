@@ -1,4 +1,4 @@
-import { Flex, Text } from "@radix-ui/themes";
+import { Flex, Text, Tooltip } from "@radix-ui/themes";
 import PeerIcon from "../../../components/PeerIcon";
 import SlotClient from "../../../components/SlotClient";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
@@ -10,9 +10,9 @@ import {
 } from "../../../hooks/useSlotQuery";
 import { epochAtom } from "../../../atoms";
 import { useMemo } from "react";
-import { DateTime } from "luxon";
 
 import styles from "./detailedSlotStats.module.css";
+import { formatTimeNanos } from "../../../utils";
 
 export default function SlotDetailsHeader() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -25,15 +25,7 @@ export default function SlotDetailsHeader() {
 
   const slotTime = useMemo(() => {
     if (!slotPublish?.completed_time_nanos) return;
-    const seconds = Number(slotPublish.completed_time_nanos / 1_000_000_000n);
-    return DateTime.fromSeconds(seconds).toLocaleString({
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
-      timeZoneName: "short",
-    });
+    return formatTimeNanos(slotPublish.completed_time_nanos);
   }, [slotPublish]);
 
   if (slot === undefined) return;
@@ -53,7 +45,11 @@ export default function SlotDetailsHeader() {
           icon={countryFlag}
         />
       )}
-      <HorizontalLabelValue label="Slot Time" value={slotTime} />
+      <HorizontalLabelValue
+        label="Slot Time"
+        value={slotTime?.inMillis}
+        valueTooltip={slotTime?.inNanos}
+      />
       <HorizontalLabelValue
         label="Block Hash"
         value={schedulerStats?.block_hash}
@@ -82,18 +78,26 @@ export default function SlotDetailsHeader() {
 interface HorizontalLabelValueProps {
   label: string;
   value?: string | number;
+  valueTooltip?: string | number;
   icon?: string;
 }
 
 function HorizontalLabelValue({
   label,
   value,
+  valueTooltip,
   icon,
 }: HorizontalLabelValueProps) {
   return (
     <Flex gap="1">
       <Text className={styles.label}>{label}</Text>
-      <Text className={styles.value}>{value}</Text>
+      {valueTooltip ? (
+        <Tooltip content={valueTooltip}>
+          <Text className={styles.value}>{value}</Text>
+        </Tooltip>
+      ) : (
+        <Text className={styles.value}>{value}</Text>
+      )}
       {icon && <Text className={styles.value}>{icon}</Text>}
     </Flex>
   );
