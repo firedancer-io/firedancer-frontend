@@ -80,6 +80,7 @@ export const slotNavWidth =
   slotNavWithoutListWidth + slotsListWidth + slotsNavSpacing;
 
 export const narrowNavMedia = "(max-width: 768px)";
+export const identityIconOnlyWidth = "473px";
 
 export const maxZIndex = 110;
 
