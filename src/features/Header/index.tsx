@@ -6,6 +6,7 @@ import {
   epochThumbPadding,
   headerHeight,
   headerSpacing,
+  identityIconOnlyWidth,
   logoRightSpacing,
   maxZIndex,
   slotsNavSpacing,
@@ -32,6 +33,10 @@ import PopoverDropdown from "../../components/PopoverDropdown";
 export default function Header({ isStartup }: { isStartup?: boolean }) {
   const showDropdownNav = useMedia("(max-width: 900px)");
   const isXNarrow = useMedia("(max-width: 401px)");
+
+  const showIdentityIconOnly = useMedia(
+    `(max-width: ${identityIconOnlyWidth})`,
+  );
 
   const { isNarrowScreen, blurBackground, showNav, showOnlyEpochBar } =
     useSlotsNavigation();
@@ -88,22 +93,25 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
             minWidth="0"
           >
             {!isStartup && (
-              <Flex flexShrink="0">
+              <Flex
+                flexShrink={showIdentityIconOnly ? "1" : "0"}
+                minWidth="100px"
+              >
                 <NavHandler />
                 {showDropdownNav ? <DropdownNav /> : <NavLinks />}
               </Flex>
             )}
 
             <Flex
-              gap={isXNarrow ? "1" : "3"}
+              gap={isNarrowScreen ? "1" : "3"}
               justify="end"
               align="center"
-              minWidth="0"
+              minWidth="50px"
               flexGrow="1"
             >
               <IdentityKey />
 
-              <Flex gap="1" direction={isXNarrow ? "column" : "row"}>
+              <Flex gap="1" direction={isNarrowScreen ? "column" : "row"}>
                 <Attribution />
 
                 {isStartup ? (
@@ -145,9 +153,8 @@ function Attribution() {
     <PopoverDropdown
       content={
         <Flex maxWidth="100vw" p="2" className={styles.attributeContainer}>
-          <Text wrap="wrap">
-            Attribution: The IP address data in src/disco/gui/ipinfo.bin is
-            powered by IPinfo Inc.{" "}
+          <Text size="2" wrap="wrap">
+            Attribution: The IP address data is powered by IPinfo Inc.{" "}
             <a href="https://ipinfo.io/">https://ipinfo.io/</a>
           </Text>
         </Flex>

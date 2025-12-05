@@ -3,7 +3,7 @@
   background: var(--popover-background-color);
   max-width: 100vw;
   border: 1px solid var(--container-border-color);
-  min-width: 0;
+  min-width: 28px;
 
   &.dropdown-menu {
     padding: 4px;

@@ -1,7 +1,7 @@
 import { DropdownMenu } from "radix-ui";
 import styles from "./nav.module.css";
 import type { ButtonProps } from "@radix-ui/themes";
-import { Button, Flex } from "@radix-ui/themes";
+import { Button, Flex, Text } from "@radix-ui/themes";
 import SsidChartIcon from "@material-design-icons/svg/filled/ssid_chart.svg?react";
 import AssessmentIcon from "@material-design-icons/svg/filled/assessment.svg?react";
 import CalendarMonthIcon from "@material-design-icons/svg/filled/calendar_month.svg?react";
@@ -57,7 +57,7 @@ const NavButton = forwardRef<HTMLButtonElement, NavLinkProps>(
       return (
         <>
           <Icon className={styles.icon} fill={iconFill} />
-          {label}
+          <Text truncate>{label}</Text>
           {showDropdownIcon && (
             <KeyboardArrowDownIcon
               className={styles.dropdownIcon}

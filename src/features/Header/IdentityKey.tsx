@@ -12,13 +12,13 @@ import { useMedia } from "react-use";
 import clsx from "clsx";
 import { useIdentityPeer } from "../../hooks/useIdentityPeer";
 import PopoverDropdown from "../../components/PopoverDropdown";
-import { maxZIndex } from "../../consts";
+import { identityIconOnlyWidth, maxZIndex } from "../../consts";
 import { useUptimeDuration } from "../../hooks/useUptime";
 
 export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
 
-  const isXXNarrowScreen = useMedia("(min-width: 473px)");
+  const isXXNarrowScreen = useMedia(`(min-width: ${identityIconOnlyWidth})`);
   const isXNarrowScreen = useMedia("(min-width: 620px)");
   const isNarrowScreen = useMedia("(min-width: 1100px)");
 
