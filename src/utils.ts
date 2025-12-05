@@ -385,3 +385,35 @@ export function isAgave(client: ClientName) {
     client === ClientName.AgaveBam
   );
 }
+
+const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  timeZoneName: "short",
+  timeZone: "UTC",
+  fractionalSecondDigits: 3,
+});
+
+export function formatTimeNanos(time: bigint) {
+  const millis = Number(time / 1_000_000n);
+  const remainderNanos = Number(time % 1_000_000n);
+  const date = new Date(millis);
+  const formattedParts = dateTimeFormatter.formatToParts(date);
+  const zeroPrefixedNanos = remainderNanos.toString().padStart(6, "0");
+
+  let inMillis = "";
+  let inNanos = "";
+
+  for (const part of formattedParts) {
+    inMillis += part.value;
+    inNanos += part.value;
+    if (part.type === "fractionalSecond") {
+      inNanos += zeroPrefixedNanos;
+    }
+  }
+
+  return { inMillis, inNanos };
+}
