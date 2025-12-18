@@ -14,7 +14,11 @@ import { Cross2Icon, CopyIcon, CheckIcon } from "@radix-ui/react-icons";
 import { useDebouncedCallback } from "use-debounce";
 import RowSeparator from "../../../../components/RowSeparator";
 import { getDurationWithUnits } from "./chartUtils";
-import { copyToClipboard, removePortFromIp } from "../../../../utils";
+import {
+  copyToClipboard,
+  formatTimeNanos,
+  removePortFromIp,
+} from "../../../../utils";
 import {
   chartAxisColor,
   computeUnitsColor,
@@ -49,83 +53,97 @@ export default function ChartTooltip() {
     return getTxnBundleStats(transactions, txnIdx);
   }, [transactions, txnIdx]);
 
+  if (transactions?.txn_bank_idx[txnIdx] == null) {
+    return <UplotTooltip elId="txn-bars-tooltip"></UplotTooltip>;
+  }
+
+  const formattedArrivalTime = formatTimeNanos(
+    transactions.txn_arrival_timestamps_nanos[txnIdx],
+  );
+
   return (
     <UplotTooltip elId="txn-bars-tooltip">
-      {transactions?.txn_bank_idx[txnIdx] != null && (
-        <Flex direction="column">
-          <Flex justify="between">
-            <Text
-              className={styles.state}
-              style={{ color: stateTextColors[txnState] }}
-            >
-              {txnState}
-            </Text>
-            <Button variant="ghost" size="1" id="txn-bars-tooltip-close">
-              <Cross2Icon color={chartAxisColor} />
-            </Button>
-          </Flex>
-          <RowSeparator />
-          <Flex direction="column">
-            <SuccessErrorDisplay txnIdx={txnIdx} transactions={transactions} />
-            <BooleanLabelValueDisplay
-              label="Bundle"
-              value={transactions.txn_from_bundle[txnIdx]}
-              append={
-                bundleStats
-                  ? `(${bundleStats.order} of ${bundleStats.totalCount})`
-                  : undefined
-              }
-            />
-            <BooleanLabelValueDisplay
-              label="Vote"
-              value={transactions.txn_is_simple_vote[txnIdx]}
-            />
-            <BooleanLabelValueDisplay
-              label="Landed"
-              value={transactions.txn_landed[txnIdx]}
-            />
-            <RowSeparator />
-            <LabelValueDisplay
-              label="Fees"
-              value={`${(transactions.txn_priority_fee[txnIdx] + transactions.txn_transaction_fee[txnIdx])?.toLocaleString()}`}
-              color={feesColor}
-            />
-            <LabelValueDisplay
-              label="Tips"
-              value={`${transactions.txn_tips[txnIdx]?.toLocaleString()}`}
-              color={tipsColor}
-            />
-            <RowSeparator />
-            <CuDisplay transactions={transactions} txnIdx={txnIdx} />
-            <RowSeparator />
-            <LabelValueDisplay label="Txn Index" value={`${txnIdx}`} />
-            <LabelValueDisplay
-              label="Microblock ID"
-              value={`${transactions.txn_microblock_id[txnIdx]}`}
-            />
-            <LabelValueDisplay
-              label="Bank ID"
-              value={`${transactions.txn_bank_idx[txnIdx]}`}
-            />
-            <LabelValueDisplay
-              label="Age since slot start"
-              value={`${(Number(transactions.txn_arrival_timestamps_nanos[txnIdx] - transactions.start_timestamp_nanos) / 1_000_000).toLocaleString()}ms`}
-            />
-            <IpDisplay transactions={transactions} txnIdx={txnIdx} />
-            <StateDurationDisplay
-              transactions={transactions}
-              txnIdx={txnIdx}
-              bundleTxnIdx={bundleStats?.bundleTxnIdx}
-            />
-            <RowSeparator />
-            <LabelValueDisplay
-              label="Txn Sig"
-              value={`${transactions.txn_signature[txnIdx]?.substring(0, 8)}...`}
-              copyValue={transactions.txn_signature[txnIdx]}
-            />
-          </Flex>
+      <Flex direction="column">
+        <Flex justify="between">
+          <Text
+            className={styles.state}
+            style={{ color: stateTextColors[txnState] }}
+          >
+            {txnState}
+          </Text>
+          <Button variant="ghost" size="1" id="txn-bars-tooltip-close">
+            <Cross2Icon color={chartAxisColor} />
+          </Button>
         </Flex>
-      )}
+        <RowSeparator />
+        <Flex direction="column">
+          <SuccessErrorDisplay txnIdx={txnIdx} transactions={transactions} />
+          <BooleanLabelValueDisplay
+            label="Bundle"
+            value={transactions.txn_from_bundle[txnIdx]}
+            append={
+              bundleStats
+                ? `(${bundleStats.order} of ${bundleStats.totalCount})`
+                : undefined
+            }
+          />
+          <BooleanLabelValueDisplay
+            label="Vote"
+            value={transactions.txn_is_simple_vote[txnIdx]}
+          />
+          <BooleanLabelValueDisplay
+            label="Landed"
+            value={transactions.txn_landed[txnIdx]}
+          />
+          <RowSeparator />
+          <LabelValueDisplay
+            label="Fees"
+            value={`${(transactions.txn_priority_fee[txnIdx] + transactions.txn_transaction_fee[txnIdx])?.toLocaleString()}`}
+            color={feesColor}
+          />
+          <LabelValueDisplay
+            label="Tips"
+            value={`${transactions.txn_tips[txnIdx]?.toLocaleString()}`}
+            color={tipsColor}
+          />
+          <RowSeparator />
+          <CuDisplay transactions={transactions} txnIdx={txnIdx} />
+          <RowSeparator />
+          <LabelValueDisplay label="Txn Index" value={`${txnIdx}`} />
+          <LabelValueDisplay
+            label="Microblock ID"
+            value={`${transactions.txn_microblock_id[txnIdx]}`}
+          />
+          <LabelValueDisplay
+            label="Bank ID"
+            value={`${transactions.txn_bank_idx[txnIdx]}`}
+          />
+          <LabelValueDisplay
+            label="Age since slot start"
+            value={`${(Number(transactions.txn_arrival_timestamps_nanos[txnIdx] - transactions.start_timestamp_nanos) / 1_000_000).toLocaleString()}ms`}
+          />
+          <LabelValueDisplay
+            label="Arrival Time (ms)"
+            value={formattedArrivalTime.inMillis}
+          />
+          <LabelValueDisplay
+            label="Arrival Time (nano)"
+            value={formattedArrivalTime.inNanos}
+          />
+          <IpDisplay transactions={transactions} txnIdx={txnIdx} />
+          <StateDurationDisplay
+            transactions={transactions}
+            txnIdx={txnIdx}
+            bundleTxnIdx={bundleStats?.bundleTxnIdx}
+          />
+          <RowSeparator />
+          <LabelValueDisplay
+            label="Txn Sig"
+            value={`${transactions.txn_signature[txnIdx]?.substring(0, 8)}...`}
+            copyValue={transactions.txn_signature[txnIdx]}
+          />
+        </Flex>
+      </Flex>
     </UplotTooltip>
   );
 }
