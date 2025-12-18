@@ -148,15 +148,15 @@ describe("getDurationText", () => {
 describe("formatTimeNanos", () => {
   it("formats millis and nanos correctly", () => {
     expect(formatTimeNanos(1764892025356640223n)).toEqual({
-      inMillis: "Dec 4, 11:47:05.356 PM UTC",
-      inNanos: "Dec 4, 11:47:05.356640223 PM UTC",
+      inMillis: "Dec 4, 5:47:05.356 PM CST",
+      inNanos: "Dec 4, 5:47:05.356640223 PM CST",
     });
   });
 
   it("zero prefixes nanos correctly", () => {
     expect(formatTimeNanos(1764921600000000123n)).toEqual({
-      inMillis: "Dec 5, 8:00:00.000 AM UTC",
-      inNanos: "Dec 5, 8:00:00.000000123 AM UTC",
+      inMillis: "Dec 5, 2:00:00.000 AM CST",
+      inNanos: "Dec 5, 2:00:00.000000123 AM CST",
     });
   });
 });
