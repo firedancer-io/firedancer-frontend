@@ -2,50 +2,35 @@ import { Flex } from "@radix-ui/themes";
 import SlotPerformance from "../Overview/SlotPerformance";
 import ComputeUnitsCard from "../Overview/SlotPerformance/ComputeUnitsCard";
 import TransactionBarsCard from "../Overview/SlotPerformance/TransactionBarsCard";
-import { useSlotSearchParam } from "./useSearchParams";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import {
+  baseSelectedSlotAtoms,
   selectedSlotAtom,
-  baseSelectedSlotAtom,
+  SelectedSlotValidityState,
 } from "../Overview/SlotPerformance/atoms";
-import { useEffect } from "react";
-import { useUnmount } from "react-use";
-import { epochAtom } from "../../atoms";
 import { SlotSearch } from "./SlotSearch";
 import SlotNavigation from "./SlotNavigation";
 import DetailedSlotStats from "./DetailedSlotStats";
+import { useEffect, useState } from "react";
 
 export default function SlotDetails() {
-  const baseSelectedSlot = useAtomValue(baseSelectedSlotAtom);
   const selectedSlot = useAtomValue(selectedSlotAtom);
+  const [waitedForDependencies, setWaitedForDependencies] = useState(false);
+  const isNotReady =
+    useAtomValue(baseSelectedSlotAtoms.state) ===
+    SelectedSlotValidityState.NotReady;
 
-  return (
-    <>
-      <Setup />
-      {!baseSelectedSlot.isInitialized ? null : selectedSlot === undefined ? (
-        <SlotSearch />
-      ) : (
-        <SlotContent />
-      )}
-    </>
-  );
-}
-
-function Setup() {
-  const { selectedSlot } = useSlotSearchParam();
-  const epoch = useAtomValue(epochAtom);
-  const setBaseSelectedSlot = useSetAtom(baseSelectedSlotAtom);
-
-  // To sync atom to search param
   useEffect(() => {
-    setBaseSelectedSlot(selectedSlot, epoch);
-  }, [selectedSlot, setBaseSelectedSlot, epoch]);
+    if (isNotReady && !waitedForDependencies) {
+      const timeout = setTimeout(() => setWaitedForDependencies(true), 2_500);
+      return () => clearTimeout(timeout);
+    }
+  }, [isNotReady, setWaitedForDependencies, waitedForDependencies]);
 
-  useUnmount(() => {
-    setBaseSelectedSlot(undefined);
-  });
+  // wait a bit for dependencies to load before showing SlotSearch with Not Ready error
+  if (isNotReady && !waitedForDependencies) return null;
 
-  return null;
+  return selectedSlot === undefined ? <SlotSearch /> : <SlotContent />;
 }
 
 function SlotContent() {

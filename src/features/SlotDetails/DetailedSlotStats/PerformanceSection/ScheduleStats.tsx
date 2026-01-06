@@ -6,6 +6,7 @@ import byteSize from "byte-size";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import { gridGapX, gridGapY } from "../consts";
 import styles from "../detailedSlotStats.module.css";
+import { Fragment } from "react/jsx-runtime";
 
 const scheduleOutcomes = [
   "success",
@@ -44,17 +45,20 @@ export default function SchedulerStats() {
             Txn Count (End)
           </Text>
 
-          {slot_schedule_counts.map((scheduleCount, i) => (
-            <>
-              <Text className={styles.label}>{scheduleOutcomes[i]}</Text>
-              <Text className={styles.value} align="right">
-                {scheduleCount.toLocaleString()}
-              </Text>
-              <Text className={styles.value} align="right">
-                {end_slot_schedule_counts[i].toLocaleString()}
-              </Text>
-            </>
-          ))}
+          {slot_schedule_counts.map((scheduleCount, i) => {
+            const label = scheduleOutcomes[i];
+            return (
+              <Fragment key={label}>
+                <Text className={styles.label}>{label}</Text>
+                <Text className={styles.value} align="right">
+                  {scheduleCount.toLocaleString()}
+                </Text>
+                <Text className={styles.value} align="right">
+                  {end_slot_schedule_counts[i].toLocaleString()}
+                </Text>
+              </Fragment>
+            );
+          })}
         </Grid>
       </SlotDetailsSubSection>
       <SlotDetailsSubSection title="Smallest Pending Txn">
