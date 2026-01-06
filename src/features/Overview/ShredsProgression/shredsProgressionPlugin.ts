@@ -524,13 +524,14 @@ interface IncompleteBlock {
   startTsDelta: number;
   endTsDelta: number | undefined;
   slotNumbers: number[];
+  firstSlotMaxEventTsDelta?: number;
 }
 /**
  * Group ordered slots into blocks that are complete / incomplete.
  * Each block has a slot or array of slots sharing the same
  * start and end ts
  */
-function getSlotBlocks(
+export function getSlotBlocks(
   slotRange: {
     min: number;
     max: number;
@@ -549,8 +550,10 @@ function getSlotBlocks(
 
     if (slot?.minEventTsDelta == null) {
       // We don't want incomplete blocks with unknown start ts, so
-      // don't collect incomplete blocks until we have at least one block stored
-      if (blocks.length === 0) continue;
+      // don't collect incomplete blocks until we have at least one block started
+      if (blocks.length === 0 && incompleteBlockSlotNumbers.length === 0) {
+        continue;
+      }
 
       // add missing slot to incomplete block
       incompleteBlockSlotNumbers.push(slotNumber);
@@ -564,12 +567,14 @@ function getSlotBlocks(
         slots,
         blocks[blocks.length - 1],
       );
-      if (!blockStart) break;
+      if (blockStart == null) break;
 
       blocks.push({
         type: "incomplete",
         startTsDelta: blockStart,
         endTsDelta: slot.minEventTsDelta,
+        firstSlotMaxEventTsDelta: slots.get(incompleteBlockSlotNumbers[0])
+          ?.maxEventTsDelta,
         slotNumbers: incompleteBlockSlotNumbers,
       });
 
@@ -603,6 +608,8 @@ function getSlotBlocks(
       type: "incomplete",
       startTsDelta: blockStart,
       endTsDelta: undefined,
+      firstSlotMaxEventTsDelta: slots.get(incompleteBlockSlotNumbers[0])
+        ?.maxEventTsDelta,
       slotNumbers: incompleteBlockSlotNumbers,
     });
   }
@@ -636,23 +643,27 @@ function getIncompleteBlockStart(
 }
 
 type TsDeltaRange = [startTsDelta: number, endTsDelta: number | undefined];
+export type TsDeltasBySlot = {
+  [slotNumber: number]: TsDeltaRange | undefined;
+};
 
 /**
  * Get each slot's start and end ts deltas.
  * Some slots will not have end ts deltas, and would extend to the max X axis value
  * Incomplete blocks:
  *   - split the range (incomplete block start ts to next start ts) equally among the slots
+ *     - if the split range is < the first slot's max event range, use the max event range and
+ *       split the remaining time among other slots
+ *   - if the range is negative (caused by overlapping slots), give it undefined range
  *   - skipped slots will have the above range, offset by its index in the incomplete block
  *   - non-skipped slots will extend from the incomplete block start to the max X axis value
  *   - if there is no next start ts, only include the first slot in the block, ending at max X ts
  */
-function estimateSlotTsDeltas(
+export function estimateSlotTsDeltas(
   slotBlocks: Array<CompleteBlock | IncompleteBlock>,
   skippedSlotsCluster: Set<number>,
 ) {
-  const slotTsDeltas: {
-    [slotNumber: number]: TsDeltaRange;
-  } = {};
+  let slotTsDeltas: TsDeltasBySlot = {};
 
   for (const block of slotBlocks) {
     if (block.type === "complete") {
@@ -660,26 +671,75 @@ function estimateSlotTsDeltas(
       continue;
     }
 
+    const firstSlotNumber = block.slotNumbers[0];
     if (block.endTsDelta == null) {
       // unknown incomplete block end time
       // only include first slot, because we don't have a good estimate for when the others would have started
-      slotTsDeltas[block.slotNumbers[0]] = [block.startTsDelta, undefined];
+      slotTsDeltas[firstSlotNumber] = [block.startTsDelta, undefined];
       continue;
     }
 
     // known block end time
-    // split block range equally to determine slot start ts
+
     const singleSlotTsRange =
       (block.endTsDelta - block.startTsDelta) / block.slotNumbers.length;
-    for (let i = 0; i < block.slotNumbers.length; i++) {
-      const slotNumber = block.slotNumbers[i];
-      const slotStart = block.startTsDelta + i * singleSlotTsRange;
-
-      const slotEnd = skippedSlotsCluster.has(slotNumber)
-        ? slotStart + singleSlotTsRange
-        : undefined;
-      slotTsDeltas[slotNumber] = [slotStart, slotEnd];
+    if (
+      skippedSlotsCluster.has(firstSlotNumber) &&
+      block.firstSlotMaxEventTsDelta != null &&
+      singleSlotTsRange < block.firstSlotMaxEventTsDelta - block.startTsDelta
+    ) {
+      // first slot should extend to its max event ts delta
+      // other slots will occupy remaining space
+      slotTsDeltas = {
+        ...slotTsDeltas,
+        [firstSlotNumber]: [block.startTsDelta, block.firstSlotMaxEventTsDelta],
+        ...splitRangeAmongSlots(
+          block.slotNumbers.slice(1),
+          block.firstSlotMaxEventTsDelta,
+          block.endTsDelta,
+          skippedSlotsCluster,
+        ),
+      };
+    } else {
+      // all skipped slots get equal width
+      slotTsDeltas = {
+        ...slotTsDeltas,
+        ...splitRangeAmongSlots(
+          block.slotNumbers,
+          block.startTsDelta,
+          block.endTsDelta,
+          skippedSlotsCluster,
+        ),
+      };
     }
+  }
+
+  return slotTsDeltas;
+}
+
+function splitRangeAmongSlots(
+  slotNumbers: number[],
+  startTsDelta: number,
+  endTsDelta: number,
+  skippedSlotsCluster: Set<number>,
+) {
+  const slotTsDeltas: TsDeltasBySlot = {};
+
+  const singleSlotTsRange = (endTsDelta - startTsDelta) / slotNumbers.length;
+  for (let i = 0; i < slotNumbers.length; i++) {
+    const slotNumber = slotNumbers[i];
+    if (singleSlotTsRange <= 0) {
+      // undefined range for slot with non-positive range caused by overlapping slots
+      slotTsDeltas[slotNumber] = undefined;
+      continue;
+    }
+
+    const slotStart = startTsDelta + i * singleSlotTsRange;
+
+    const slotEnd = skippedSlotsCluster.has(slotNumber)
+      ? slotStart + singleSlotTsRange
+      : undefined;
+    slotTsDeltas[slotNumber] = [slotStart, slotEnd];
   }
 
   return slotTsDeltas;
@@ -687,47 +747,59 @@ function estimateSlotTsDeltas(
 
 /**
  * Get start and end ts deltas for group, from its slots ts deltas
- * Undefined end indicates the group extends to max X
+ * Ignore slots with undefined range (they will have no width due to slot overlaps)
+ * For missing slots, return undefined end to indicate the group extends to max X
  */
-function getGroupTsDeltas(
-  slotTsDeltas: {
-    [slotNumber: number]: TsDeltaRange;
-  },
+export function getGroupTsDeltas(
+  slotTsDeltas: TsDeltasBySlot,
   groupLeaderSlots: number[],
 ) {
-  const tsDeltasByGroup: {
-    [leaderSlotNumber: number]: TsDeltaRange;
-  } = {};
+  const tsDeltasByGroup: TsDeltasBySlot = {};
 
   for (const leaderSlot of groupLeaderSlots) {
-    let minStart = Infinity;
-    let maxEnd = -Infinity;
-    for (let slot = leaderSlot; slot < leaderSlot + slotsPerLeader; slot++) {
-      const slotStart = slotTsDeltas[slot]?.[0];
-      const slotEnd = slotTsDeltas[slot]?.[1];
-
-      if (slotStart !== undefined) {
-        minStart = Math.min(slotStart, minStart);
+    // filter to relevant slots
+    const slotsWithWidths = Array.from(
+      { length: slotsPerLeader },
+      (_, i) => i + leaderSlot,
+    ).reduce<number[]>((acc, slotNumber) => {
+      // ignore missing slots at start of group
+      if (acc.length === 0 && !(slotNumber in slotTsDeltas)) {
+        return acc;
       }
+      // ignore slots with undefined range
+      if (
+        slotNumber in slotTsDeltas &&
+        slotTsDeltas[slotNumber] === undefined
+      ) {
+        return acc;
+      }
+      acc.push(slotNumber);
+      return acc;
+    }, []);
 
-      // don't track end times for initial undefined slots
-      const hasSeenDefinedSlot = minStart !== Infinity;
-      if (!hasSeenDefinedSlot) continue;
-
-      // undefind slotEnd means the slot extends to the max X
-      maxEnd = Math.max(slotEnd ?? Infinity, maxEnd);
-    }
-
-    // no defined slots
-    if (minStart === Infinity || maxEnd === -Infinity) {
+    if (slotsWithWidths.length === 0) {
+      // ignore groups with no slots with widths
       continue;
     }
 
-    tsDeltasByGroup[leaderSlot] = [
-      minStart,
-      // convert back to undefined
-      maxEnd === Infinity ? undefined : maxEnd,
-    ];
+    const groupTsDelta = slotsWithWidths.reduce<TsDeltaRange>(
+      (acc, slotNumber) => {
+        const slotStart = slotTsDeltas[slotNumber]?.[0];
+        const slotEnd = slotTsDeltas[slotNumber]?.[1];
+        if (slotStart != null) {
+          acc[0] = Math.min(acc[0], slotStart);
+        }
+
+        // undefined slotEnd (missing end slots, or incomplete non-skipped slot) means the slot extends to the max X
+        acc[1] =
+          acc[1] === undefined || slotEnd === undefined
+            ? undefined
+            : Math.max(slotEnd, acc[1]);
+        return acc;
+      },
+      [Infinity, -Infinity],
+    );
+    tsDeltasByGroup[leaderSlot] = groupTsDelta;
   }
   return tsDeltasByGroup;
 }
@@ -736,7 +808,7 @@ function getGroupTsDeltas(
  * If missing range end, set width as undefined
  */
 function getPosFromTsDeltaRange(
-  tsDeltaRange: TsDeltaRange,
+  tsDeltaRange: TsDeltaRange | undefined,
   tsXValueOffset: number,
   valToCssPos: (val: number) => number,
 ): Position | undefined {
