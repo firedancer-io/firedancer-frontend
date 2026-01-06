@@ -1,10 +1,5 @@
-.header-container {
-  top: 0;
-  background-color: var(--color-background);
-
-  .nav-background {
-    background-color: var(--slot-nav-background-color);
-  }
+.nav-background {
+  background-color: var(--slot-nav-background-color);
 }
 
 .attribute-container {
