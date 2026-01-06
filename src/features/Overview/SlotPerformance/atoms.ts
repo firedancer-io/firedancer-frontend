@@ -14,7 +14,6 @@ import {
   epochAtom,
   firstProcessedSlotAtom,
   leaderSlotsAtom,
-  slotOverrideAtom,
 } from "../../../atoms";
 import { getSlotGroupLeader } from "../../../utils";
 
@@ -52,67 +51,44 @@ function getSlotState(
   return SelectedSlotValidityState.Valid;
 }
 
-export const baseSelectedSlotAtom = (function () {
+/**
+ * atoms for query parameter selected slot state
+ */
+export const baseSelectedSlotAtoms = (function () {
   const _baseSelectedSlotAtom = atom<number>();
-  const _isInitializedAtom = atom(false);
 
-  return atom(
-    (get) => {
-      const epoch = get(epochAtom);
-      const slot = get(_baseSelectedSlotAtom);
-      const leaderSlots = get(leaderSlotsAtom);
-      const firstProcessedSlot = get(firstProcessedSlotAtom);
-      const currentSlot = get(currentSlotAtom);
-      const state = getSlotState(
-        slot,
-        epoch,
-        leaderSlots,
-        firstProcessedSlot,
-        currentSlot,
-      );
-      return {
-        slot,
-        state,
-        isValid: state === SelectedSlotValidityState.Valid,
-        isInitialized: get(_isInitializedAtom),
-      };
-    },
-    (get, set, slot?: number, epoch?: Epoch) => {
-      const leaderSlots = get(leaderSlotsAtom);
-      const firstProcessedSlot = get(firstProcessedSlotAtom);
-      const currentSlot = get(currentSlotAtom);
-      if (
-        !epoch ||
-        !leaderSlots ||
-        firstProcessedSlot === undefined ||
-        currentSlot === undefined
-      ) {
-        set(_baseSelectedSlotAtom, undefined);
-        return;
-      }
+  const _stateAtom = atom((get) => {
+    const epoch = get(epochAtom);
+    const slot = get(_baseSelectedSlotAtom);
+    const leaderSlots = get(leaderSlotsAtom);
+    const firstProcessedSlot = get(firstProcessedSlotAtom);
+    const currentSlot = get(currentSlotAtom);
+    return getSlotState(
+      slot,
+      epoch,
+      leaderSlots,
+      firstProcessedSlot,
+      currentSlot,
+    );
+  });
 
-      set(_baseSelectedSlotAtom, slot);
-      set(_isInitializedAtom, true);
-      const isValid =
-        getSlotState(
-          slot,
-          epoch,
-          leaderSlots,
-          firstProcessedSlot,
-          currentSlot,
-        ) === SelectedSlotValidityState.Valid;
-
-      if (isValid && slot !== undefined) {
-        // Scroll to selected slot if new selection is defined
-        set(slotOverrideAtom, slot);
-      }
-    },
-  );
+  return {
+    slot: _baseSelectedSlotAtom,
+    state: _stateAtom,
+    isValid: atom((get) => {
+      const state = get(_stateAtom);
+      return state === SelectedSlotValidityState.Valid;
+    }),
+  };
 })();
 
+/**
+ * valid selected slot
+ */
 export const selectedSlotAtom = atom<number | undefined>((get) => {
-  const { slot, isValid } = get(baseSelectedSlotAtom);
-  return isValid ? slot : undefined;
+  return get(baseSelectedSlotAtoms.isValid)
+    ? get(baseSelectedSlotAtoms.slot)
+    : undefined;
 });
 
 export enum DisplayType {

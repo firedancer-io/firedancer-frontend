@@ -17,11 +17,9 @@ import { throttle } from "lodash";
 import SlotsRenderer, { SlotsPlaceholder } from "./SlotsRenderer";
 import type { ScrollSeekConfiguration, VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
-import { baseSelectedSlotAtom } from "../Overview/SlotPerformance/atoms";
 import ResetLive from "./ResetLive";
 import type { DebouncedState } from "use-debounce";
 import { useDebouncedCallback } from "use-debounce";
-import { useCurrentRoute } from "../../hooks/useCurrentRoute";
 import { getSlotGroupLeader } from "../../utils";
 import clsx from "clsx";
 
@@ -36,15 +34,10 @@ interface SlotsListProps {
 }
 
 export default function SlotsList({ width, height }: SlotsListProps) {
-  const currentRoute = useCurrentRoute();
   const navFilter = useAtomValue(slotNavFilterAtom);
   const epoch = useAtomValue(epochAtom);
-  const isSelectionInitialized =
-    useAtomValue(baseSelectedSlotAtom).isInitialized;
 
-  if (!epoch || (currentRoute === "Slot Details" && !isSelectionInitialized)) {
-    return null;
-  }
+  if (!epoch) return null;
 
   return navFilter === SlotNavFilter.MySlots ? (
     <MySlotsList key={epoch.epoch} width={width} height={height} />

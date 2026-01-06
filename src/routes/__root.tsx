@@ -9,8 +9,9 @@ import { headerSpacing, slotsNavSpacing } from "../consts";
 import NavBlur from "../features/Navigation/NavBlur";
 import { useCurrentRoute } from "../hooks/useCurrentRoute";
 import { useSlotsNavigation } from "../hooks/useSlotsNavigation";
-import { useAtomValue } from "jotai";
+import { getDefaultStore, useAtomValue } from "jotai";
 import { isStartupProgressVisibleAtom } from "../features/StartupProgress/atoms";
+import { baseSelectedSlotAtoms } from "../features/Overview/SlotPerformance/atoms";
 
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
@@ -27,7 +28,12 @@ const TanStackRouterDevtools =
         })),
       );
 
-export const Route = createRootRoute({ component: Root });
+const store = getDefaultStore();
+
+export const Route = createRootRoute({
+  component: Root,
+  beforeLoad: () => store.set(baseSelectedSlotAtoms.slot, undefined),
+});
 
 function Root() {
   const isStartupProgressVisible = useAtomValue(isStartupProgressVisibleAtom);

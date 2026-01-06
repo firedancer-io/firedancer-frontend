@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState, type CSSProperties } from "react";
-import { useSlotSearchParam } from "./useSearchParams";
 import {
   epochAtom,
   firstProcessedLeaderIndexAtom,
@@ -8,7 +7,7 @@ import {
 } from "../../atoms";
 import { useAtomValue } from "jotai";
 import {
-  baseSelectedSlotAtom,
+  baseSelectedSlotAtoms,
   SelectedSlotValidityState,
 } from "../Overview/SlotPerformance/atoms";
 import { Label } from "radix-ui";
@@ -37,6 +36,7 @@ import {
 } from "../../colors";
 import clsx from "clsx";
 import { useTimeAgo } from "../../hooks/useTimeAgo";
+import { useNavigateToSlot } from "./useNavigateToSlot";
 
 const numQuickSearchCardsPerRow = 3;
 const quickSearchCardWidth = 226;
@@ -48,17 +48,17 @@ const slotSearchMaxWidth =
   (numQuickSearchCardsPerRow - 1) * slotSearchGap;
 
 export function SlotSearch() {
-  const { selectedSlot, setSelectedSlot } = useSlotSearchParam();
+  const baseSelectedSlot = useAtomValue(baseSelectedSlotAtoms.slot);
+  const navigateToSlot = useNavigateToSlot();
   const [searchSlot, setSearchSlot] = useState(
-    selectedSlot === undefined ? "" : String(selectedSlot),
+    baseSelectedSlot === undefined ? "" : String(baseSelectedSlot),
   );
   const epoch = useAtomValue(epochAtom);
-  const { isValid } = useAtomValue(baseSelectedSlotAtom);
+  const isValid = useAtomValue(baseSelectedSlotAtoms.isValid);
 
   const submitSearch = useCallback(() => {
-    if (searchSlot === "") setSelectedSlot(undefined);
-    else setSelectedSlot(Number(searchSlot));
-  }, [searchSlot, setSelectedSlot]);
+    navigateToSlot(searchSlot === "" ? undefined : Number(searchSlot));
+  }, [searchSlot, navigateToSlot]);
 
   return (
     <Grid
@@ -234,7 +234,7 @@ function QuickSearchSlots<T extends number | bigint>({
   slots?: number[];
   metricOptions?: MetricOptions<T>;
 }) {
-  const { setSelectedSlot } = useSlotSearchParam();
+  const navigateToSlot = useNavigateToSlot();
 
   return (
     <Flex direction="column" gap="5px">
@@ -247,7 +247,7 @@ function QuickSearchSlots<T extends number | bigint>({
             ) : (
               <Text
                 className={clsx(styles.quickSearchSlot, styles.clickable)}
-                onClick={() => setSelectedSlot(slot)}
+                onClick={() => navigateToSlot(slot)}
               >
                 {slot}
               </Text>
@@ -290,7 +290,8 @@ function TimeAgo({ slot }: { slot: number }) {
 }
 
 function Errors() {
-  const { slot, state } = useAtomValue(baseSelectedSlotAtom);
+  const slot = useAtomValue(baseSelectedSlotAtoms.slot);
+  const state = useAtomValue(baseSelectedSlotAtoms.state);
 
   const epoch = useAtomValue(epochAtom);
   const message = useMemo(() => {
