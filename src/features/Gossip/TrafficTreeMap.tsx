@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { useCallback, useMemo } from "react";
@@ -8,10 +7,7 @@ import { hierarchy, Treemap, treemapSquarify } from "@visx/hierarchy";
 import { Group } from "@visx/group";
 
 import { scaleOrdinal } from "d3-scale";
-import type {
-  HierarchyNode,
-  HierarchyRectangularNode,
-} from "@visx/hierarchy/lib/types";
+import type { HierarchyRectangularNode } from "@visx/hierarchy/lib/types";
 import { useAtomValue } from "jotai";
 import { peersAtom } from "../../atoms";
 import { formatNumberLamports } from "../Overview/ValidatorsCard/formatAmt";
@@ -22,19 +18,9 @@ import styles from "./trafficTreeMap.module.css";
 import { formatBytesAsBits } from "../../utils";
 import { measureTextWidth } from "../../measureUtils";
 
-const colorsList = [
-  "#00F0FF",
-  "#00B5FF",
-  "#5BFFFF",
-  "#00FFD1",
-  "#0EEAD5",
-  "#D9F8FF",
-];
-
 interface TrafficeNetworkChartProps {
   networkTraffic: GossipNetworkTraffic;
   label: string;
-  includeAll?: boolean;
 }
 
 type GetPeerValues = (
@@ -44,13 +30,10 @@ type GetPeerValues = (
 export function TrafficTreeMap({
   networkTraffic,
   label,
-  includeAll = false,
 }: TrafficeNetworkChartProps) {
   const peers = useAtomValue(peersAtom);
 
   const data = useMemo(() => {
-    if (!networkTraffic.peer_throughput) return;
-
     const threshold = 0.7;
     let currentTotal = 0;
     let i = 0;
@@ -59,17 +42,9 @@ export function TrafficTreeMap({
       i < networkTraffic.peer_throughput.length &&
       currentTotal * threshold < (networkTraffic.total_throughput ?? 0)
     ) {
-      const id =
-        networkTraffic.peer_names?.[i] ||
-        networkTraffic.peer_identities?.[i] ||
-        "";
-
-      const color = colorsList[Math.trunc(Math.random() * colorsList.length)];
-
       children.push({
-        id,
+        id: networkTraffic.peer_identities[i],
         value: networkTraffic.peer_throughput[i],
-        color,
       });
       currentTotal += networkTraffic.peer_throughput[i];
       i++;
@@ -82,19 +57,15 @@ export function TrafficTreeMap({
 
     children.push({
       id: "rest",
-      value: includeAll
-        ? (networkTraffic.total_throughput ?? 0) - currentTotal
-        : restOfThroughput,
-      color: "#1CE7C2",
+      value: restOfThroughput,
     });
 
     return {
       id: "peers",
-      children: children,
-      color: undefined,
-      value: networkTraffic.total_throughput,
+      children,
+      value: currentTotal + restOfThroughput,
     };
-  }, [includeAll, networkTraffic]);
+  }, [networkTraffic]);
 
   const getPeerValues = useCallback<GetPeerValues>(
     (id: string) => {
@@ -165,7 +136,7 @@ export function TrafficTreeMap({
 interface TrafficNode {
   id: string;
   value: number;
-  color?: string;
+  children?: TrafficNode[];
 }
 
 function truncateToWidth(text: string, font: string, maxWidth: number) {
@@ -191,7 +162,6 @@ type Props = {
   data: TrafficNode & { children: TrafficNode[] };
   width: number;
   height: number;
-  colors?: string[];
   getPeerValues: GetPeerValues;
 };
 
@@ -200,53 +170,35 @@ const minLabelHeight = 40;
 const labelPadding = 8;
 const lineGap = 2;
 
+const colors = [
+  "#48295C",
+  "#562800",
+  "#132D21",
+  "#331E0B",
+  "#0D2847",
+  "#292929",
+];
+
+// Increase ratio to bias more width; decrease toward 1.0 for more square
+const squarifyTile = treemapSquarify.ratio(1.1);
+
 export default function TreemapTwoLevel({
   data,
   width,
   height,
-  colors,
   getPeerValues,
 }: Props) {
-  const total = useMemo(
-    () => data.children.reduce((sum, c) => sum + (c.value || 0), 0),
-    [data],
-  );
-
-  const root = useMemo(() => {
-    const h = hierarchy({
-      name: data.id,
-      children: data.children.map((c) => ({ name: c.id, value: c.value })),
-      // TODO: fix typing and reconcile name/id
-    } as any)
-      .sum((d: any) => {
-        return d.value || 0;
-      })
-      // sorting helps squarify produce nicer aspect ratios
-      .sort(
-        (a: HierarchyNode<any>, b: HierarchyNode<any>) =>
-          (b.value || 0) - (a.value || 0),
-      );
-    return h;
-  }, [data]);
+  // use sorted children to help squarify produce nicer aspect ratios
+  const root = useMemo(() => hierarchy<TrafficNode>(data), [data]);
 
   // Color scale per leaf id
-  const color = useMemo(() => {
-    const palette = colors ?? [
-      "#48295C",
-      "#562800",
-      "#132D21",
-      "#331E0B",
-      "#0D2847",
-      "#292929",
-    ];
-
-    return scaleOrdinal<string, string>()
-      .domain(data.children.map((c) => c.id))
-      .range(palette);
-  }, [data, colors]);
-
-  // Increase ratio to bias more width; decrease toward 1.0 for more square
-  const squarifyTile = useMemo(() => treemapSquarify.ratio(1.1), []);
+  const getColor = useMemo(
+    () =>
+      scaleOrdinal<string, string>()
+        .domain(data.children.map((c) => c.id))
+        .range(colors),
+    [data],
+  );
 
   return (
     <svg width={width} height={height}>
@@ -257,37 +209,34 @@ export default function TreemapTwoLevel({
         round
         paddingInner={2}
       >
-        {(treemap) => (
-          <Group>
-            {treemap.leaves().map((leaf) => {
-              const x = leaf.x0;
-              const y = leaf.y0;
-              const rectWidth = leaf.x1 - leaf.x0;
-              const rectHeight = leaf.y1 - leaf.y0;
+        {(treemap) =>
+          treemap.leaves().map((leaf) => {
+            const x = leaf.x0;
+            const y = leaf.y0;
+            const rectWidth = leaf.x1 - leaf.x0;
+            const rectHeight = leaf.y1 - leaf.y0;
+            const id = leaf.data.id;
 
-              const id = String(leaf.data.name);
-
-              return (
-                <Group key={id}>
-                  <rect
-                    x={x}
-                    y={y}
-                    width={rectWidth}
-                    height={rectHeight}
-                    rx={1}
-                    ry={1}
-                    fill={color(id)}
-                  />
-                  <NodeText
-                    leaf={leaf}
-                    total={total}
-                    getPeerValues={getPeerValues}
-                  />
-                </Group>
-              );
-            })}
-          </Group>
-        )}
+            return (
+              <Group key={id}>
+                <rect
+                  x={x}
+                  y={y}
+                  width={rectWidth}
+                  height={rectHeight}
+                  rx={1}
+                  ry={1}
+                  fill={getColor(id)}
+                />
+                <NodeText
+                  leaf={leaf}
+                  total={data.value}
+                  getPeerValues={getPeerValues}
+                />
+              </Group>
+            );
+          })
+        }
       </Treemap>
     </svg>
   );
@@ -305,7 +254,7 @@ function NodeText({ leaf, total, getPeerValues }: NodeTextProps) {
   const rectWidth = leaf.x1 - leaf.x0;
   const rectHeight = leaf.y1 - leaf.y0;
 
-  const id = String(leaf.data.name);
+  const id = String(leaf.data.id);
   const pct = total > 0 ? (100 * (leaf.value || 0)) / total : 0;
 
   const showLabel = rectWidth >= minLabelWidth && rectHeight >= minLabelHeight;
@@ -330,10 +279,6 @@ function NodeText({ leaf, total, getPeerValues }: NodeTextProps) {
     idFont,
     availableWidth,
   );
-  const idTextWidth = measureTextWidth(idText, idFont);
-
-  const firstLineBlockWidth = (iconSize ? iconSize + iconGap : 0) + idTextWidth;
-  const blockStartX = centerX - firstLineBlockWidth / 2;
 
   // const firstLineTop = y + labelPadding;
   const firstBaselineY = textY; // firstLineTop + idFontSize;
@@ -351,70 +296,39 @@ function NodeText({ leaf, total, getPeerValues }: NodeTextProps) {
 
   return (
     <>
-      {peerValues?.iconUrl ? (
-        <>
-          (
-          <image
-            href={peerValues.iconUrl}
-            x={blockStartX}
-            y={firstBaselineY}
-            width={iconSize}
-            height={iconSize}
-            preserveAspectRatio="xMidYMid meet"
-            crossOrigin="anonymous"
-          />
-          <text
-            x={blockStartX + iconSize + iconGap}
-            y={firstBaselineY}
-            fontSize={fontSize}
-            alignmentBaseline="text-before-edge"
-            fontFamily="Inter Tight"
-            fontWeight={600}
-            fill="#CCCCCC"
-            textAnchor="start"
-            pointerEvents="none"
-          >
-            {idText}
-          </text>
-          )
-        </>
-      ) : (
+      <text
+        x={centerX}
+        y={firstBaselineY}
+        fontSize={fontSize}
+        fontFamily="Inter Tight"
+        fontWeight={600}
+        fill="#CCCCCC"
+        alignmentBaseline="text-before-edge"
+        textAnchor="middle"
+        pointerEvents="none"
+      >
+        {idText}
+      </text>
+      {showLabel && (
         <text
           x={centerX}
-          y={firstBaselineY}
+          y={firstBaselineY + 12}
           fontSize={fontSize}
           fontFamily="Inter Tight"
-          fontWeight={600}
           fill="#CCCCCC"
+          pointerEvents="none"
           alignmentBaseline="text-before-edge"
           textAnchor="middle"
-          pointerEvents="none"
         >
-          {idText}
-        </text>
-      )}
-      {showLabel && (
-        <>
-          <text
-            x={centerX}
-            y={firstBaselineY + 12}
-            fontSize={fontSize}
-            fontFamily="Inter Tight"
-            fill="#CCCCCC"
-            pointerEvents="none"
-            alignmentBaseline="text-before-edge"
-            textAnchor="middle"
-          >
+          <tspan x={centerX} dy={lineDy} fill="#8A8A8A">
+            {throughputLine}
+          </tspan>
+          {showThirdLine && (
             <tspan x={centerX} dy={lineDy} fill="#8A8A8A">
-              {throughputLine}
+              {peerValues?.stake}
             </tspan>
-            {showThirdLine && (
-              <tspan x={centerX} dy={lineDy} fill="#8A8A8A">
-                {peerValues?.stake}
-              </tspan>
-            )}
-          </text>
-        </>
+          )}
+        </text>
       )}
     </>
   );
