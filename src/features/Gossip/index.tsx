@@ -33,7 +33,7 @@ export default function Gossip() {
       justify="center"
       height="100%"
     >
-      <Flex gapX="50px" gapY={rowGap} wrap="wrap">
+      <Flex gapX="30px" gapY={rowGap} wrap="wrap">
         <TrafficTreeMap
           networkTraffic={dbNetworkStats.ingress}
           label="Ingress"
