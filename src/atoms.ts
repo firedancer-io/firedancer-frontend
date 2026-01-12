@@ -507,6 +507,13 @@ export const peerStatsAtom = atom((get) => {
   };
 });
 
+export const totalActivePeersStakeAtom = atom((get) => {
+  const peerStats = get(peerStatsAtom);
+  if (!peerStats) return;
+  if (!(peerStats.activeStake + peerStats.delinquentStake)) return;
+  return peerStats.activeStake + peerStats.delinquentStake;
+});
+
 export const myStakeAmountAtom = atom((get) => {
   const peers = get(peersAtom);
   const idKey = get(identityKeyAtom);
@@ -521,17 +528,12 @@ export const myStakeAmountAtom = atom((get) => {
 });
 
 export const myStakePctAtom = atom((get) => {
-  const peerStats = get(peerStatsAtom);
+  const totalActivePeersStake = get(totalActivePeersStakeAtom);
   const stake = get(myStakeAmountAtom);
 
-  if (stake === undefined || !peerStats) return;
-  if (!(peerStats.activeStake + peerStats.delinquentStake)) return;
+  if (stake === undefined || !totalActivePeersStake) return;
 
-  return (
-    (Number(stake) /
-      Number(peerStats.activeStake + peerStats.delinquentStake)) *
-    100
-  );
+  return (Number(stake) / Number(totalActivePeersStake)) * 100;
 });
 
 export const allLeaderNamesAtom = atom((get) => {

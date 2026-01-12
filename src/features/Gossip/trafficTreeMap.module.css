@@ -12,3 +12,21 @@
   color: var(--gray-10);
   font-size: 18px;
 }
+
+.leaf {
+  border-radius: 2px;
+  .leaf-content {
+    font-size: 10px;
+
+    .name {
+      color: #ccc;
+      align-self: stretch;
+      &.large {
+        font-size: 12px;
+      }
+    }
+    .stats {
+      color: #8a8a8a;
+    }
+  }
+}
