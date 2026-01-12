@@ -59,6 +59,12 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
         }}
       >
         <Text
+          className={clsx(styles.headerText, styles.voteLatencyHeader)}
+          align="right"
+        >
+          Vote&nbsp;Latency
+        </Text>
+        <Text
           className={clsx(styles.headerText, styles.votesHeader)}
           align="right"
         >
@@ -208,6 +214,7 @@ interface RowValues {
   durationText: string;
   computeUnits: number;
   computeUnitsPct: number;
+  voteLatencyText: string;
 }
 
 interface SlotCardRowProps {
@@ -265,6 +272,9 @@ function getRowValues(publish: SlotPublish): RowValues {
         100
       : 0;
 
+  const voteLatencyText =
+    publish.vote_latency != null ? publish.vote_latency.toLocaleString() : "-";
+
   return {
     voteTxns: (voteTxnsSuccess + voteTxnsFailure).toLocaleString(),
     nonVoteTxns: (nonVoteTxnsSuccess + nonVoteTxnsFailure).toLocaleString(),
@@ -276,6 +286,7 @@ function getRowValues(publish: SlotPublish): RowValues {
     durationText,
     computeUnits,
     computeUnitsPct,
+    voteLatencyText,
   };
 }
 
@@ -334,6 +345,9 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
 
   return (
     <>
+      <Text className={valueClassName} align="right">
+        {getText(values?.voteLatencyText)}
+      </Text>
       <Text className={valueClassName} align="right">
         {getText(values?.voteTxns)}
       </Text>
