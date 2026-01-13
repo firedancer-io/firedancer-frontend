@@ -1,5 +1,11 @@
-import { useCallback, useMemo } from "react";
-import { Box, Flex, Text } from "@radix-ui/themes";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { Box, Flex, Text, Tooltip } from "@radix-ui/themes";
 import type { GossipNetworkTraffic } from "../../api/types";
 import { treemap, hierarchy, treemapSquarify } from "d3-hierarchy";
 import type { HierarchyRectangularNode } from "d3-hierarchy";
@@ -9,11 +15,13 @@ import { shuffle, sum } from "lodash";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { headerGap } from "./consts";
 import styles from "./trafficTreeMap.module.css";
-import { formatBytesAsBits } from "../../utils";
+import { copyToClipboard, formatBytesAsBits } from "../../utils";
 import PeerIcon from "../../components/PeerIcon";
 import { PieChartIcon } from "@radix-ui/react-icons";
 
 import clsx from "clsx";
+import { useUnmount } from "react-use";
+import { needsTouchScreenSupport } from "../../consts";
 
 const colors = [
   "#202248",
@@ -164,6 +172,42 @@ export default function TreemapTwoLevel({
   totalActivePeersStake,
   getPeerValues,
 }: TreemapTwoLevelProps) {
+  const [tooltipIdPosition, _setTooltipIdPosition] = useState<string>();
+  const [hasCopied, setHasCopied] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
+  const setTooltipIdPosition = useCallback((id: string | undefined) => {
+    _setTooltipIdPosition((prev) => {
+      if (id !== prev) {
+        // reset copied text when tooltip position is changed
+        setHasCopied(false);
+      }
+      return id;
+    });
+  }, []);
+
+  const copy = useCallback(
+    (id: string) => {
+      copyToClipboard(id);
+      setHasCopied(true);
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setHasCopied(false), 1_000);
+    },
+    [setHasCopied],
+  );
+
+  useUnmount(() => {
+    clearTimeout(timeoutRef.current);
+  });
+
+  const tooltipText = useMemo(
+    () =>
+      needsTouchScreenSupport || hasCopied
+        ? "ID copied to clipboard"
+        : "Click to copy ID",
+    [hasCopied],
+  );
+
   const leaves = useMemo(() => {
     const hierarchyData = hierarchy<TrafficNode>(sortedData).sum(
       (d) => d.value ?? 0,
@@ -197,34 +241,93 @@ export default function TreemapTwoLevel({
   }, [sortedData]);
 
   return (
-    <Box width={`${width}px`} height={`${height}px`} position="relative">
+    <Box
+      width={`${width}px`}
+      height={`${height}px`}
+      position="relative"
+      onMouseLeave={() => setTooltipIdPosition(undefined)}
+    >
       {leaves.map((leaf, i) => {
-        const id = leaf.data.id;
-        const leafWidth = leaf.x1 - leaf.x0;
-        const leafHeight = leaf.y1 - leaf.y0;
+        const idPositionKey = `${leaf.data.id}-${leaf.x0}-${leaf.x1}-${leaf.y0}-${leaf.y1}`;
+        const isTooltipOpen = tooltipIdPosition === idPositionKey;
         return (
-          <Box
-            key={id}
-            className={styles.leaf}
-            position="absolute"
-            width={`${leafWidth}px`}
-            height={`${leafHeight}px`}
-            style={{
-              transform: `translate(${leaf.x0}px, ${leaf.y0}px)`,
-              backgroundColor: colorsByIdx[i],
-            }}
-          >
-            <LeafContent
-              width={leafWidth}
-              height={leafHeight}
-              leaf={leaf}
-              totalActivePeersStake={totalActivePeersStake}
-              getPeerValues={getPeerValues}
-            />
-          </Box>
+          <Leaf
+            key={leaf.data.id}
+            leaf={leaf}
+            color={colorsByIdx[i]}
+            totalActivePeersStake={totalActivePeersStake}
+            getPeerValues={getPeerValues}
+            tooltipText={isTooltipOpen ? tooltipText : undefined}
+            openTooltip={() => setTooltipIdPosition(idPositionKey)}
+            copyId={() => copy(leaf.data.id)}
+          />
         );
       })}
     </Box>
+  );
+}
+
+interface LeafProps {
+  leaf: HierarchyRectangularNode<TrafficNode>;
+  color: string;
+  totalActivePeersStake: bigint | undefined;
+  getPeerValues: GetPeerValues;
+  tooltipText: string | undefined;
+  openTooltip: () => void;
+  copyId: () => void;
+}
+
+function Leaf({
+  leaf,
+  color,
+  totalActivePeersStake,
+  getPeerValues,
+  tooltipText,
+  openTooltip,
+  copyId,
+}: LeafProps) {
+  const leafWidth = leaf.x1 - leaf.x0;
+  const leafHeight = leaf.y1 - leaf.y0;
+
+  return (
+    <Tooltip
+      open={!!tooltipText}
+      className={styles.tooltip}
+      content={tooltipText}
+      disableHoverableContent
+      side="bottom"
+      onOpenChange={(isOpen) => {
+        if (isOpen) {
+          openTooltip();
+        }
+      }}
+    >
+      <Box
+        onClick={copyId}
+        onMouseEnter={() => {
+          // for open on re-renders (desktop), and open on click (mobile)
+          openTooltip();
+        }}
+        className={styles.leaf}
+        position="absolute"
+        width={`${leafWidth}px`}
+        height={`${leafHeight}px`}
+        style={
+          {
+            transform: `translate(${leaf.x0}px, ${leaf.y0}px)`,
+            "--leaf-color": color,
+          } as CSSProperties
+        }
+      >
+        <LeafContent
+          width={leafWidth}
+          height={leafHeight}
+          leaf={leaf}
+          totalActivePeersStake={totalActivePeersStake}
+          getPeerValues={getPeerValues}
+        />
+      </Box>
+    </Tooltip>
   );
 }
 
