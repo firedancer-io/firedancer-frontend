@@ -16,6 +16,7 @@ export default function Gossip() {
   const client = useAtomValue(clientAtom);
   const networkStats = useAtomValue(gossipNetworkStatsAtom);
   const [dbNetworkStats] = useDebounce(networkStats, 5_000, {
+    leading: true,
     maxWait: 5_000,
   });
 

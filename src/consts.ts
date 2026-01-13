@@ -105,3 +105,15 @@ export const clientIdToClientName: Record<number, ClientName> = {
   6: ClientName.AgaveBam,
   7: ClientName.Sig,
 };
+
+function checkNeedsTouchScreenSupport() {
+  const ua = navigator.userAgent.toLowerCase();
+  const isPhoneOrTablet =
+    /iphone|android|windows phone|ipad|android|tablet/.test(ua);
+
+  return (
+    isPhoneOrTablet ||
+    ("ontouchstart" in window && !!matchMedia?.("(hover: none)").matches)
+  );
+}
+export const needsTouchScreenSupport = checkNeedsTouchScreenSupport();
