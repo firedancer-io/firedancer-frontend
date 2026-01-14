@@ -704,3 +704,44 @@ export const serverTimeMsAtom = atom((get) => {
   if (serverTimeNanos == null) return undefined;
   return Math.round(serverTimeNanos / nsPerMs);
 });
+
+export const [
+  lateVoteSlotsAtom,
+  addLateVoteSlotsAtom,
+  deleteLateVoteSlotAtom,
+  clearLateVoteSlotsAtom,
+] = (function getLateVoteSlotsAtom() {
+  const _lateVoteSlotsAtom = atomWithImmer(new Set<number>());
+  return [
+    atom((get) => get(_lateVoteSlotsAtom)),
+
+    atom(null, (_get, set, startSlot: number, endSlot?: number) => {
+      set(_lateVoteSlotsAtom, (draft) => {
+        endSlot ??= startSlot;
+        for (let slot = startSlot; slot <= endSlot; slot++) {
+          draft.add(slot);
+        }
+      });
+    }),
+
+    atom(null, (_get, set, slot: number) => {
+      set(_lateVoteSlotsAtom, (draft) => {
+        draft.delete(slot);
+      });
+    }),
+
+    atom(null, (_get, set, keep?: { startSlot: number; endSlot: number }) => {
+      set(_lateVoteSlotsAtom, (draft) => {
+        if (!keep) return new Set<number>();
+
+        const toKeep = new Set<number>();
+        for (const slot of draft) {
+          if (keep.startSlot <= slot && slot <= keep.endSlot) {
+            toKeep.add(slot);
+          }
+        }
+        return toKeep;
+      });
+    }),
+  ];
+})();

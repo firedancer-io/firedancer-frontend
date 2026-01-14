@@ -6,7 +6,12 @@ import {
 import { LeaderSchedule } from "../features/LeaderSchedule";
 import { z } from "zod";
 
-const SearchTypeSchema = z.enum(["mySlots", "skippedSlots", "text"]);
+const SearchTypeSchema = z.enum([
+  "mySlots",
+  "skippedSlots",
+  "lateVoteSlots",
+  "text",
+]);
 export const SearchTypeEnum = SearchTypeSchema.enum;
 export type SearchType = z.infer<typeof SearchTypeSchema>;
 

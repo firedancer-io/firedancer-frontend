@@ -25,7 +25,7 @@ function getPreloadSlots({
     const endIx = searchLeaderSlots.indexOf(topCardSlotLeader);
 
     if (startIx > 0) {
-      for (let i = 1; i <= preloadCardCount; i++) {
+      for (let i = 1; i <= preloadCardCount && startIx - i >= 0; i++) {
         const slotIx = searchLeaderSlots[startIx - i];
         for (let j = 0; j < slotsPerLeader; j++) {
           preloadCardSlots.push(slotIx + j);
@@ -34,7 +34,11 @@ function getPreloadSlots({
     }
 
     if (endIx > 0) {
-      for (let i = 1; i <= preloadCardCount; i++) {
+      for (
+        let i = 1;
+        i <= preloadCardCount && endIx + i < searchLeaderSlots.length;
+        i++
+      ) {
         const slotIx = searchLeaderSlots[endIx + i];
         for (let j = 0; j < slotsPerLeader; j++) {
           preloadCardSlots.push(slotIx + j);

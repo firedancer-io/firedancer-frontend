@@ -61,6 +61,9 @@ import {
   addSkippedClusterSlotsAtom,
   deleteSkippedClusterSlotAtom,
   deleteSkippedClusterSlotsRangeAtom,
+  deleteLateVoteSlotAtom,
+  addLateVoteSlotsAtom,
+  clearLateVoteSlotsAtom,
 } from "../atoms";
 import type {
   EstimatedSlotDuration,
@@ -230,6 +233,10 @@ export function useSetAtomWsData() {
   const addSkippedClusterSlots = useSetAtom(addSkippedClusterSlotsAtom);
   const deleteSkippedClusterSlot = useSetAtom(deleteSkippedClusterSlotAtom);
 
+  const addLateVoteSlots = useSetAtom(addLateVoteSlotsAtom);
+  const deleteLateVoteSlot = useSetAtom(deleteLateVoteSlotAtom);
+  const clearLateVoteSlots = useSetAtom(clearLateVoteSlotsAtom);
+
   const handleSlotUpdate = (value: SlotResponse) => {
     setSlotStatus(value.publish.slot, value.publish.level);
 
@@ -237,6 +244,19 @@ export function useSetAtomWsData() {
       addSkippedClusterSlots([value.publish.slot]);
     } else {
       deleteSkippedClusterSlot(value.publish.slot);
+    }
+
+    if (value.publish.level === "rooted") {
+      if (value.publish.vote_latency && value.publish.vote_latency > 1) {
+        addLateVoteSlots(value.publish.slot);
+      } else if (
+        value.publish.vote_latency === null &&
+        !value.publish.skipped
+      ) {
+        addLateVoteSlots(value.publish.slot);
+      } else {
+        deleteLateVoteSlot(value.publish.slot);
+      }
     }
 
     if (value.publish.mine) {
@@ -521,6 +541,13 @@ export function useSetAtomWsData() {
             addLiveShreds(value);
             break;
           }
+          case "vote_latency_history": {
+            clearLateVoteSlots();
+            for (let i = 0; i < value.length; i += 2) {
+              addLateVoteSlots(value[i], value[i + 1]);
+            }
+            break;
+          }
         }
       } else if (topic === "block_engine") {
         const { key, value } = blockEngineSchema.parse(msg);
@@ -574,6 +601,14 @@ export function useSetAtomWsData() {
     if (!epoch) return;
     deleteSkippedClusterSlotsRange(epoch.start_slot, epoch.end_slot);
   }, [deleteSkippedClusterSlotsRange, epoch]);
+
+  useEffect(() => {
+    if (!epoch) return;
+    clearLateVoteSlots({
+      startSlot: epoch.start_slot,
+      endSlot: epoch.end_slot,
+    });
+  }, [clearLateVoteSlots, epoch]);
 
   const isStartup = useAtomValue(showStartupProgressAtom);
   const isSocketDisconnected =
