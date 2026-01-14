@@ -13,6 +13,7 @@ import { setSearchLeaderSlotsAtom, searchLeaderSlotsAtom } from "./atoms";
 import { useMount } from "react-use";
 import {
   currentLeaderSlotAtom,
+  lateVoteSlotsAtom,
   leaderSlotsAtom,
   skipRateAtom,
   slotOverrideAtom,
@@ -21,7 +22,7 @@ import { useDebouncedCallback } from "use-debounce";
 import NextSlotStatus from "../Overview/SlotPerformance/NextSlotStatus";
 import styles from "./search.module.css";
 import { skippedSlotsAtom } from "../../api/atoms";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import * as Toggle from "@radix-ui/react-toggle";
 import { SearchTypeEnum } from "../../routes/leaderSchedule";
 import {
@@ -29,6 +30,8 @@ import {
   useSearchTypeSearchParam,
 } from "./useSearchParams";
 import { searchIconColor } from "../../colors";
+import clsx from "clsx";
+import { getSlotGroupLeader } from "../../utils";
 
 const isVisibleAtom = atom((get) => !!get(currentLeaderSlotAtom));
 
@@ -103,6 +106,7 @@ export default function Search() {
       </Box>
 
       <MySlots resetSearchText={reset} />
+      <LateVoteSlots resetSearchText={reset} />
       <SkippedSlots resetSearchText={reset} />
       <SkipRate />
       <Box flexGrow="1" />
@@ -181,7 +185,7 @@ function MySlots({ resetSearchText }: MySlotsProps) {
       <div>
         <Reset>
           <Toggle.Root
-            className={`${styles.mySlots}`}
+            className={clsx(styles.searchButton, styles.mySlots)}
             onClick={handleClick}
             aria-label="Toggle my slots"
             pressed={isSelected}
@@ -243,7 +247,11 @@ function SkippedSlots({ resetSearchText }: SkippedSlotsProps) {
       <div>
         <Reset>
           <Toggle.Root
-            className={`${styles.skippedSlots} ${isDisabled ? styles.disabled : ""}`}
+            className={clsx(
+              styles.searchButton,
+              styles.skippedSlots,
+              isDisabled && styles.disabled,
+            )}
             onClick={handleClick}
             aria-label="Toggle skipped slots"
             pressed={isSelected}
@@ -251,6 +259,77 @@ function SkippedSlots({ resetSearchText }: SkippedSlotsProps) {
           >
             <Text className={styles.label}>My Skipped Slots</Text>
             <Text>{skippedCount}</Text>
+          </Toggle.Root>
+        </Reset>
+      </div>
+    </Tooltip>
+  );
+}
+
+interface LateVoteSlotsProps {
+  resetSearchText: () => void;
+}
+
+function LateVoteSlots({ resetSearchText }: LateVoteSlotsProps) {
+  const lateVoteSlots = useAtomValue(lateVoteSlotsAtom);
+  const setSearch = useSetAtom(searchLeaderSlotsAtom);
+  const setSlotOverride = useSetAtom(slotOverrideAtom);
+
+  const { searchType, setSearchType } = useSearchTypeSearchParam();
+
+  const slotCount = lateVoteSlots.size;
+
+  const lateVoteLeaderSlots = useMemo(() => {
+    return Array.from(
+      new Set([...lateVoteSlots].map((slot) => getSlotGroupLeader(slot))),
+    );
+  }, [lateVoteSlots]);
+
+  const setLateVoteSlots = useCallback(() => {
+    setSearch(lateVoteLeaderSlots);
+  }, [setSearch, lateVoteLeaderSlots]);
+
+  useEffect(() => {
+    if (searchType === SearchTypeEnum.lateVoteSlots) {
+      setSearch(lateVoteLeaderSlots);
+    }
+    // On mount / data load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lateVoteLeaderSlots, setSearch]);
+
+  const handleClick = () => {
+    resetSearchText();
+
+    setSlotOverride(undefined);
+
+    if (searchType === SearchTypeEnum.lateVoteSlots) {
+      setSearchType(SearchTypeEnum.text);
+    } else {
+      setSearchType(SearchTypeEnum.lateVoteSlots);
+      setLateVoteSlots();
+    }
+  };
+
+  const isSelected = searchType === SearchTypeEnum.lateVoteSlots;
+  const isDisabled = !lateVoteSlots.size;
+
+  return (
+    <Tooltip content="Number of slots this validator has voted late in the current epoch. Toggle to filter">
+      <div>
+        <Reset>
+          <Toggle.Root
+            className={clsx(
+              styles.searchButton,
+              styles.lateVoteSlots,
+              isDisabled && styles.disabled,
+            )}
+            onClick={handleClick}
+            aria-label="Toggle late vote slots"
+            pressed={isSelected}
+            disabled={isDisabled}
+          >
+            <Text className={styles.label}>My Late Votes</Text>
+            <Text>{slotCount}</Text>
           </Toggle.Root>
         </Reset>
       </div>

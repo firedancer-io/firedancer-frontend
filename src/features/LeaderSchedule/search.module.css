@@ -30,21 +30,26 @@
   color: var(--search-label-color);
 }
 
-.my-slots {
+.search-button {
   display: flex;
   padding: 4px 10px;
   align-items: center;
   gap: 8px;
   align-self: stretch;
   border-radius: 8px;
+}
 
+.search-button:focus {
+  box-shadow: 0 0 0 2px black;
+}
+
+.my-slots {
   border: 1px solid rgba(103, 192, 255, 0.12);
   background: rgba(62, 98, 189, 0.15);
   color: var(--my-slots-color);
-}
-
-.my-slots:hover {
-  background: rgba(62, 98, 189, 0.32);
+  &:hover {
+    background: rgba(62, 98, 189, 0.32);
+  }
 }
 
 .my-slots[data-state="on"] {
@@ -56,25 +61,31 @@
   }
 }
 
-.my-slots:focus {
-  box-shadow: 0 0 0 2px black;
+.late-vote-slots {
+  border: 1px solid rgba(196, 134, 255, 0.12);
+  background: rgba(71, 34, 106, 0.15);
+  color: var(--votes-color);
+  &:hover {
+    background: rgba(71, 34, 106, 0.32);
+  }
+}
+
+.late-vote-slots[data-state="on"] {
+  background: rgba(71, 34, 106, 0.72);
+  color: var(--votes-color);
+
+  .label {
+    color: var(--search-slots-on-label-color);
+  }
 }
 
 .skipped-slots {
-  display: flex;
-  padding: 4px 10px;
-  align-items: center;
-  gap: 8px;
-  align-self: stretch;
-  border-radius: 8px;
-
   background: rgba(189, 62, 62, 0.15);
   color: var(--failure-color);
   border: 1px solid rgba(255, 103, 103, 0.12);
-}
-
-.skipped-slots:hover {
-  background: rgba(189, 62, 62, 0.32);
+  &:hover {
+    background: rgba(189, 62, 62, 0.32);
+  }
 }
 
 .skipped-slots[data-state="on"] {
@@ -84,10 +95,6 @@
   .label {
     color: var(--search-slots-on-label-color);
   }
-}
-
-.skipped-slots:focus {
-  box-shadow: 0 0 0 2px black;
 }
 
 .disabled {

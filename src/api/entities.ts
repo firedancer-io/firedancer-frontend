@@ -403,8 +403,7 @@ export const slotPublishSchema = z.object({
   compute_units: z.number().nullable(),
   duration_nanos: z.number().nullable(),
   completed_time_nanos: z.coerce.bigint().nullable(),
-  vote_slot: z.number().nullable().optional(),
-  vote_latency: z.number().nullable().optional(),
+  vote_latency: z.number().nullable(),
 });
 
 export const tpsHistorySchema = z.array(
@@ -866,6 +865,10 @@ export const slotSchema = z.discriminatedUnion("key", [
   slotTopicSchema.extend({
     key: z.literal("live_shreds"),
     value: liveShredsSchema,
+  }),
+  slotTopicSchema.extend({
+    key: z.literal("vote_latency_history"),
+    value: z.number().array(),
   }),
 ]);
 
