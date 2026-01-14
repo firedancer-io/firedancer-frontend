@@ -696,7 +696,7 @@ const peerUpdateGossipSchema = z.object({
   version: z.string().nullable(),
   feature_set: z.number().nullable(),
   sockets: z.record(z.string(), z.string()),
-  country_code: z.string().nullable(),
+  country_code: z.string().nullable().optional(), // undefined for Frankendancer client
 });
 
 const peerUpdateVoteAccountSchema = z.object({
@@ -773,8 +773,8 @@ const slotLimitsSchema = z.object({
 });
 
 const slotScheduleStatsSchema = z.object({
-  block_hash: z.string(),
-  end_slot_reason: z.string(),
+  block_hash: z.string().optional(), // undefined for Frankendancer client
+  end_slot_reason: z.string().optional(), // undefined for Frankendancer client
   slot_schedule_counts: z.number().array(),
   end_slot_schedule_counts: z.number().array(),
   pending_smallest_cost: z.number().nullable(),
