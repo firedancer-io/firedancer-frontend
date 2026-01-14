@@ -12,6 +12,7 @@ import { atom, useAtomValue, useSetAtom } from "jotai";
 import { setSearchLeaderSlotsAtom, searchLeaderSlotsAtom } from "./atoms";
 import { useMount } from "react-use";
 import {
+  clientAtom,
   currentLeaderSlotAtom,
   lateVoteSlotsAtom,
   leaderSlotsAtom,
@@ -32,10 +33,13 @@ import {
 import { searchIconColor } from "../../colors";
 import clsx from "clsx";
 import { getSlotGroupLeader } from "../../utils";
+import { ClientEnum } from "../../api/entities";
 
 const isVisibleAtom = atom((get) => !!get(currentLeaderSlotAtom));
 
 export default function Search() {
+  const client = useAtomValue(clientAtom);
+
   const isVisible = useAtomValue(isVisibleAtom);
   const setSearch = useSetAtom(setSearchLeaderSlotsAtom);
 
@@ -106,7 +110,9 @@ export default function Search() {
       </Box>
 
       <MySlots resetSearchText={reset} />
-      <LateVoteSlots resetSearchText={reset} />
+      {client === ClientEnum.Firedancer && (
+        <LateVoteSlots resetSearchText={reset} />
+      )}
       <SkippedSlots resetSearchText={reset} />
       <SkipRate />
       <Box flexGrow="1" />

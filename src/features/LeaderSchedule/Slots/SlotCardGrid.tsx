@@ -1,7 +1,11 @@
 import { Flex, Grid, Text, Tooltip } from "@radix-ui/themes";
 import styles from "./slotCardGrid.module.css";
 import { useAtomValue, useSetAtom } from "jotai";
-import { currentSlotAtom, firstProcessedSlotAtom } from "../../../atoms";
+import {
+  clientAtom,
+  currentSlotAtom,
+  firstProcessedSlotAtom,
+} from "../../../atoms";
 import { useEffect, useRef, useState } from "react";
 import "react-circular-progressbar/dist/styles.css";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
@@ -29,6 +33,7 @@ import {
   SkippedIcon,
   StatusIcon,
 } from "../../../components/StatusIcon";
+import { ClientEnum } from "../../../api/entities";
 
 interface SlotCardGridProps {
   slot: number;
@@ -36,6 +41,8 @@ interface SlotCardGridProps {
 }
 
 export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
+  const client = useAtomValue(clientAtom);
+
   const ref = useRef<HTMLDivElement | null>(null);
   const setScroll = useSetAtom(setScrollFuncsAtom);
   const deleteScroll = useSetAtom(deleteScrollFuncsAtom);
@@ -52,18 +59,23 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
     <Flex minWidth="0" flexGrow="1">
       <SlotColumn slot={slot} currentSlot={currentSlot} />
       <div
-        className={styles.grid}
+        className={clsx(
+          styles.grid,
+          client === ClientEnum.Firedancer && styles.firedancerGrid,
+        )}
         ref={ref}
         onScroll={(e) => {
           scrollAll(slot, e.currentTarget.scrollLeft);
         }}
       >
-        <Text
-          className={clsx(styles.headerText, styles.voteLatencyHeader)}
-          align="right"
-        >
-          Vote&nbsp;Latency
-        </Text>
+        {client === ClientEnum.Firedancer && (
+          <Text
+            className={clsx(styles.headerText, styles.voteLatencyHeader)}
+            align="right"
+          >
+            Vote&nbsp;Latency
+          </Text>
+        )}
         <Text
           className={clsx(styles.headerText, styles.votesHeader)}
           align="right"
@@ -291,6 +303,7 @@ function getRowValues(publish: SlotPublish): RowValues {
 }
 
 function SlotCardRow({ slot, active }: SlotCardRowProps) {
+  const client = useAtomValue(clientAtom);
   const firstProcessedSlot = useAtomValue(firstProcessedSlotAtom);
   const currentSlot = useAtomValue(currentSlotAtom);
   const queryPublish = useSlotQueryPublish(slot);
@@ -345,9 +358,11 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
 
   return (
     <>
-      <Text className={valueClassName} align="right">
-        {getText(values?.voteLatencyText)}
-      </Text>
+      {client === ClientEnum.Firedancer && (
+        <Text className={valueClassName} align="right">
+          {getText(values?.voteLatencyText)}
+        </Text>
+      )}
       <Text className={valueClassName} align="right">
         {getText(values?.voteTxns)}
       </Text>
