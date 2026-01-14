@@ -1,9 +1,8 @@
 .grid {
   display: grid;
   grid:
-    auto-flow / minMax(80px, auto) minMax(70px, auto) minMax(80px, auto)
-    minMax(70px, auto) minMax(70px, auto) minMax(80px, auto)
-    minMax(149px, auto);
+    auto-flow / minMax(70px, auto) minMax(80px, auto) minMax(70px, auto)
+    minMax(70px, auto) minMax(80px, auto) minMax(149px, auto);
   row-gap: 1px;
   overflow-x: auto;
   min-width: 80px;
@@ -14,6 +13,13 @@
   scrollbar-width: thin;
   scrollbar-color: #cbcbcb20 #cbcbcb01;
   width: 100%;
+
+  &.firedancer-grid {
+    grid:
+      auto-flow / minMax(80px, auto) minMax(70px, auto) minMax(80px, auto)
+      minMax(70px, auto) minMax(70px, auto) minMax(80px, auto)
+      minMax(149px, auto);
+  }
 }
 
 .header-text {
