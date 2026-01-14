@@ -25,7 +25,6 @@ import {
   scrollAllFuncsAtom,
 } from "./atoms";
 import clsx from "clsx";
-import { Link } from "@tanstack/react-router";
 import { identityKeyAtom } from "../../../api/atoms";
 import { usePubKey } from "../../../hooks/usePubKey";
 import {
@@ -34,6 +33,7 @@ import {
   StatusIcon,
 } from "../../../components/StatusIcon";
 import { ClientEnum } from "../../../api/entities";
+import LinkedSlotText from "./SlotText";
 
 interface SlotCardGridProps {
   slot: number;
@@ -157,25 +157,6 @@ function SlotColumn({ slot, currentSlot }: SlotCardGridProps) {
   );
 }
 
-interface LinkedSlotTextProps {
-  slot: number;
-  isLeader: boolean;
-}
-
-function LinkedSlotText({ slot, isLeader }: LinkedSlotTextProps) {
-  if (!isLeader) {
-    return <Text className={styles.slotText}>{slot}</Text>;
-  }
-
-  return (
-    <div className={styles.slotText}>
-      <Link to="/slotDetails" search={{ slot }}>
-        <Text>{slot}</Text>
-      </Link>
-    </div>
-  );
-}
-
 interface SlotTextProps {
   slot: number;
   isCurrent: boolean;
@@ -193,17 +174,14 @@ function SlotText({
 
   return (
     <Flex
-      className={clsx(styles.rowText, {
-        [styles.active]: isCurrent,
-        [styles.narrowScreen]: !isWideScreen,
-      })}
+      className={clsx(styles.rowText, isCurrent && styles.active)}
       align="center"
       gap={isWideScreen ? "2" : "0"}
     >
       {isWideScreen ? (
         <LinkedSlotText slot={slot} isLeader={isLeader} />
       ) : (
-        <Text className={styles.slotText}>&nbsp;</Text>
+        <Text>&nbsp;</Text>
       )}
       <StatusIcon slot={slot} isCurrent={isCurrent} size="small" />
       {queryPublish.publish?.skipped ? (

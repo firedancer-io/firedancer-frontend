@@ -26,11 +26,6 @@
   font-size: 12px;
   color: var(--slot-card-header-text-color);
   padding: 0 6px;
-
-  /* matching padding of slot-text */
-  &.slot-header-text {
-    margin-left: 10px;
-  }
 }
 
 .votes-header {
@@ -55,29 +50,6 @@
   display: inline-block;
 }
 
-.slot-text {
-  /* Slight padding to make it easier to text select the slot # */
-  padding-left: 10px;
-  padding-right: 2px;
-  user-select: text;
-  a:link {
-    text-decoration: none;
-    color: var(--slot-text-link-color);
-  }
-  a:visited {
-    text-decoration: none;
-    color: var(--slot-text-visited-link-color);
-  }
-  a:active {
-    text-decoration: none;
-    color: var(--slot-text-active-link-color);
-  }
-  a:hover {
-    text-decoration: none;
-    color: var(--slot-text-active-link-color);
-  }
-}
-
 .row-text {
   white-space: nowrap;
   color: var(--slot-card-section-color);
@@ -87,9 +59,5 @@
   &.active {
     background: var(--container-background-color);
     color: var(--primary-text-color);
-  }
-
-  &.narrow-screen {
-    padding-left: 0;
   }
 }

@@ -22,6 +22,7 @@ import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import { useTimeAgo } from "../../../hooks/useTimeAgo";
 import { usePeerInfo } from "../../../hooks/usePeerInfo";
 import type { ClientName } from "../../../consts";
+import LinkedSlotText from "./SlotText";
 
 interface CardValidatorSummaryProps {
   slot: number;
@@ -76,7 +77,11 @@ export function CardValidatorSummaryMobile({
           </>
         ) : (
           <>
-            <Text className={styles.text}>{slot}</Text>
+            <LinkedSlotText
+              className={styles.text}
+              slot={slot}
+              isLeader={isLeader}
+            />
             <Box flexGrow="1" />
             <PeerIcon url={peer?.info?.icon_url} size={16} isYou={isLeader} />
             <Text className={styles.text}>{name}</Text>

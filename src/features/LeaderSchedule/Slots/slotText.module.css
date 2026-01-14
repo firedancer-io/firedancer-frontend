@@ -1,0 +1,16 @@
+.slot-text {
+  user-select: text;
+  a:link {
+    text-decoration: none;
+    color: var(--slot-text-link-color);
+  }
+  a:visited {
+    text-decoration: none;
+    color: var(--slot-text-visited-link-color);
+  }
+  a:active,
+  a:hover {
+    text-decoration: none;
+    color: var(--slot-text-active-link-color);
+  }
+}
