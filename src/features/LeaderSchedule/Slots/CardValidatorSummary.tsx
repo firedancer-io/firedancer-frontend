@@ -156,10 +156,13 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
   const validatorText = client
     ? `${client}${versionText}`
     : `Unknown${versionText}`;
+  // represent country flag as 2 spaces because it is composed of multiple chars
+  // but renders as ~2 chars worth of space
+  const countryText = countryCode ? `${countryCode}  ` : "";
   const stakeText = stakeMsg ?? "";
   const ipText = ipWithoutPort || "Offline";
-  const textLength = (validatorText + stakeText + ipText).length;
-  const shouldWrap = textLength > 54;
+  const textLength = (validatorText + countryText + stakeText + ipText).length;
+  const shouldWrap = textLength > 58;
   const textProps: TextProps = shouldWrap
     ? { style: { flexBasis: 0 } }
     : { wrap: "nowrap" };
