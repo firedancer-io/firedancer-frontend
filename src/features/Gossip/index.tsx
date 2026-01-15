@@ -11,6 +11,7 @@ import GossipHealth from "./GossipHealth/index.tsx";
 import { TrafficTreeMap } from "./TrafficTreeMap.tsx";
 import { useDebounce } from "use-debounce";
 import { rowGap, tableMinWidth } from "./consts.ts";
+import { ClientEnum } from "../../api/entities.ts";
 
 export default function Gossip() {
   const client = useAtomValue(clientAtom);
@@ -23,7 +24,7 @@ export default function Gossip() {
   const health = networkStats?.health;
   const storage = networkStats?.storage;
 
-  if (client !== "Firedancer") return;
+  if (client === ClientEnum.Frankendancer) return;
   if (!health || !storage || !dbNetworkStats) return;
 
   return (

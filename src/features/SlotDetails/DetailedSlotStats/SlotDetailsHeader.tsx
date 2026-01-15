@@ -8,13 +8,15 @@ import {
   useSlotQueryPublish,
   useSlotQueryResponseDetailed,
 } from "../../../hooks/useSlotQuery";
-import { epochAtom } from "../../../atoms";
+import { clientAtom, epochAtom } from "../../../atoms";
 import { useMemo } from "react";
 
 import styles from "./detailedSlotStats.module.css";
 import { formatTimeNanos } from "../../../utils";
+import { ClientEnum } from "../../../api/entities";
 
 export default function SlotDetailsHeader() {
+  const client = useAtomValue(clientAtom);
   const slot = useAtomValue(selectedSlotAtom);
   const { peer, isLeader, name, pubkey, countryCode, countryFlag } =
     useSlotInfo(slot ?? 0);
@@ -50,10 +52,12 @@ export default function SlotDetailsHeader() {
         value={slotTime?.inMillis}
         valueTooltip={slotTime?.inNanos}
       />
-      <HorizontalLabelValue
-        label="Block Hash"
-        value={schedulerStats?.block_hash}
-      />
+      {client !== ClientEnum.Frankendancer && (
+        <HorizontalLabelValue
+          label="Block Hash"
+          value={schedulerStats?.block_hash}
+        />
+      )}
       <HorizontalLabelValue
         label="Votes"
         value={slotPublish?.success_vote_transaction_cnt?.toLocaleString()}
