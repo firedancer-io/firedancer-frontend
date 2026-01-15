@@ -20,6 +20,7 @@ import { maxZIndex, slotsNavSpacing } from "../../consts";
 import { clusterAtom } from "../../api/atoms";
 import { getClusterColor } from "../../utils";
 import { navButtonInactiveTextColor } from "../../colors";
+import { ClientEnum } from "../../api/entities";
 
 interface NavLinkProps {
   label: RouteLabel;
@@ -91,11 +92,15 @@ NavButton.displayName = "NavButton";
 
 export function NavLinks() {
   const currentRoute = useCurrentRoute();
+  const client = useAtomValue(clientAtom);
 
   return (
     <Flex gap={`${slotsNavSpacing}px`}>
       {Object.keys(RouteLabelToPath).map((label) => {
         const routeLabel = label as RouteLabel;
+        if (routeLabel === "Gossip" && client === ClientEnum.Frankendancer)
+          return;
+
         return (
           <NavButton
             key={routeLabel}
@@ -135,7 +140,8 @@ export function DropdownNav() {
         >
           {Object.keys(RouteLabelToPath).map((label) => {
             const routeLabel = label as RouteLabel;
-            if (routeLabel === "Gossip" && client !== "Firedancer") return;
+            if (routeLabel === "Gossip" && client === ClientEnum.Frankendancer)
+              return;
 
             return (
               <DropdownMenu.Item key={routeLabel} asChild>

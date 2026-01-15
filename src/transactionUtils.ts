@@ -1,6 +1,7 @@
 import { max } from "lodash";
 import type { Client, SlotTransactions } from "./api/types";
 import { TxnState } from "./features/Overview/SlotPerformance/TransactionBarsCard/consts";
+import { ClientEnum } from "./api/entities";
 
 export const chartBufferMs = 2_000_000;
 
@@ -62,7 +63,7 @@ export function getTxnStateDurations(
   let execute;
   let postExecute;
   if (
-    client === "Frankendancer" ||
+    client === ClientEnum.Frankendancer ||
     !transactions.txn_from_bundle[txnIdx] ||
     !bundleTxnIdx?.length
   ) {
@@ -156,7 +157,7 @@ export function getTxnState(
   const isBundled =
     transactions.txn_from_bundle[txnIdx] && bundleTxnIdx?.length;
 
-  if (!isBundled || client === "Frankendancer") {
+  if (!isBundled || client === ClientEnum.Frankendancer) {
     if (ts < relativeTime(transactions.txn_end_timestamps_nanos[txnIdx])) {
       return TxnState.EXECUTE;
     }
