@@ -1,0 +1,25 @@
+.copy-button {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  --button-ghost-padding-x: 2px;
+  --button-ghost-padding-y: 2px;
+
+  &.hide-icon-until-hover {
+    .icon {
+      display: none;
+    }
+
+    &:hover .icon {
+      display: inherit;
+      position: absolute;
+      right: 0;
+      background: rgb(27, 49, 80, 0.75);
+      padding: 4px 2px;
+      border-radius: 2px;
+      box-shadow:
+        -4px 0 8px rgba(30, 58, 95, 0.8),
+        0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+  }
+}

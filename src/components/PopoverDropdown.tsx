@@ -34,6 +34,7 @@ export default function PopoverDropdown({
           }}
           sideOffset={5}
           tabIndex={undefined}
+          onOpenAutoFocus={(e) => e.preventDefault()}
         >
           {content}
         </Popover.Content>

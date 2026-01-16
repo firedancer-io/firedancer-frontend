@@ -5,20 +5,15 @@ import type { SlotTransactions } from "../../../../api/types";
 import { Button, Flex, Text } from "@radix-ui/themes";
 import { stateTextColors, TxnState } from "./consts";
 import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { selectedSlotAtom } from "../atoms";
 import UplotTooltip from "../../../../uplotReact/UplotTooltip";
 import { calcTxnIncome, getCuIncomeRankings } from "./txnBarsPluginUtils";
-import { Cross2Icon, CopyIcon, CheckIcon } from "@radix-ui/react-icons";
-import { useDebouncedCallback } from "use-debounce";
+import { Cross2Icon } from "@radix-ui/react-icons";
 import RowSeparator from "../../../../components/RowSeparator";
 import { getDurationWithUnits } from "./chartUtils";
-import {
-  copyToClipboard,
-  formatTimeNanos,
-  removePortFromIp,
-} from "../../../../utils";
+import { formatTimeNanos, removePortFromIp } from "../../../../utils";
 import {
   chartAxisColor,
   computeUnitsColor,
@@ -37,6 +32,7 @@ import {
   getTxnStateDurations,
 } from "../../../../transactionUtils";
 import { sum, values } from "lodash";
+import CopyButton from "../../../../components/CopyButton";
 
 export default function ChartTooltip() {
   const slot = useAtomValue(selectedSlotAtom);
@@ -463,9 +459,6 @@ function LabelValueDisplay({
   const formattedValue =
     typeof value === "number" ? value.toLocaleString() : value;
 
-  const [hasCopied, setHasCopied] = useState(false);
-  const resetHasCopied = useDebouncedCallback(() => setHasCopied(false), 1_000);
-
   return (
     <Flex
       justify="between"
@@ -476,34 +469,15 @@ function LabelValueDisplay({
         } as CSSProperties
       }
     >
+      <Text>{label}</Text>
       <Flex gap="2" align="center">
-        <Text>{label}</Text>
-        {copyValue && (
-          <Button
-            variant="ghost"
-            size="1"
-            onClick={(e) => {
-              copyToClipboard(copyValue);
-              setHasCopied(true);
-              resetHasCopied();
-              // Seems to be caught sometimes by the outside tooltip click handler?
-              // Not sure why since it's within the tooltip
-              e.stopPropagation();
-            }}
-          >
-            {hasCopied ? (
-              <CheckIcon color="green" height="14px" />
-            ) : (
-              <CopyIcon color={iconButtonColor} height="14px" />
-            )}
-          </Button>
-        )}
+        <CopyButton value={copyValue} color={iconButtonColor} size="14px">
+          <span>
+            <Text>{formattedValue}</Text>
+            {unit && <Text className={styles.unit}>{unit}</Text>}
+          </span>
+        </CopyButton>
       </Flex>
-
-      <span>
-        <Text>{formattedValue}</Text>
-        {unit && <Text className={styles.unit}>{unit}</Text>}
-      </span>
     </Flex>
   );
 }
