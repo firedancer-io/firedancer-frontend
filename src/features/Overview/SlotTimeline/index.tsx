@@ -412,10 +412,10 @@ function CurrentSlots({
 
   const slotBarsArr = useMemo(
     () => [
-      repairSlotBar,
-      confirmedSlotBar,
       voteSlotBar,
+      confirmedSlotBar,
       replaySlotBar,
+      repairSlotBar,
       turbineSlotBar,
     ],
     [
@@ -704,10 +704,10 @@ function LabelsGrid({
     <Grid columns={{ xs: "4", initial: "2" }} gap={labelTrackGap}>
       <MSlotLabel slotBarInfo={storageSlotBar} />
       <MSlotLabel slotBarInfo={rootSlotBar} />
-      <MSlotLabel slotBarInfo={repairSlotBar} />
-      <MSlotLabel slotBarInfo={confirmedSlotBar} />
       <MSlotLabel slotBarInfo={voteSlotBar} />
+      <MSlotLabel slotBarInfo={confirmedSlotBar} />
       <MSlotLabel slotBarInfo={replaySlotBar} />
+      <MSlotLabel slotBarInfo={repairSlotBar} />
       <MSlotLabel slotBarInfo={turbineSlotBar} />
       <MSlotLabel slotBarInfo={nextLeaderSlotBar} />
       <Box gridColumn={{ xs: "span 4", initial: "span 2" }}>
