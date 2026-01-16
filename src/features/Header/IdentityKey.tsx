@@ -14,6 +14,7 @@ import { useIdentityPeer } from "../../hooks/useIdentityPeer";
 import PopoverDropdown from "../../components/PopoverDropdown";
 import { identityIconOnlyWidth, maxZIndex } from "../../consts";
 import { useUptimeDuration } from "../../hooks/useUptime";
+import CopyButton from "../../components/CopyButton";
 
 export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
@@ -44,6 +45,7 @@ export default function IdentityKey() {
           <Label
             label="Validator Name"
             tooltip="The validators identity public key"
+            copyValue={identityKey}
             shouldShrink
           >
             {identityKey}
@@ -100,6 +102,7 @@ function DropdownMenu() {
         <Label
           label="Validator Name"
           tooltip="The validators identity public key"
+          copyValue={identityKey}
         >
           {identityKey}
         </Label>
@@ -244,21 +247,35 @@ interface LabelProps {
   label: string;
   tooltip?: string;
   shouldShrink?: boolean;
+  copyValue?: string;
 }
 function Label({
   label,
   tooltip,
   shouldShrink = false,
   children,
+  copyValue,
 }: PropsWithChildren<LabelProps>) {
   if (!children) return null;
-  const content = <div className={styles.value}>{children}</div>;
 
   return (
-    <Flex direction="column" minWidth="0" flexShrink={shouldShrink ? "1" : "0"}>
-      <Text className={styles.label}>{label}</Text>
-      {tooltip ? <Tooltip content={tooltip}>{content}</Tooltip> : content}
-    </Flex>
+    <Tooltip content={tooltip}>
+      <Flex
+        direction="column"
+        minWidth="0"
+        flexShrink={shouldShrink ? "1" : "0"}
+      >
+        <Text className={styles.label}>{label}</Text>
+        <CopyButton
+          value={copyValue}
+          color="white"
+          size="10px"
+          hideIconUntilHover
+        >
+          <div className={styles.value}>{children}</div>
+        </CopyButton>
+      </Flex>
+    </Tooltip>
   );
 }
 
