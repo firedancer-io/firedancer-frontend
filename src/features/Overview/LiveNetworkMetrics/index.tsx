@@ -18,6 +18,8 @@ import type { CSSProperties } from "react";
 import styles from "./liveNetworkMetrics.module.css";
 import { sum } from "lodash";
 import { tileChartDarkBackground } from "../../../colors";
+import { clientAtom } from "../../../atoms";
+import { ClientEnum } from "../../../api/entities";
 
 const chartHeight = 18;
 
@@ -39,6 +41,8 @@ interface NetworkMetricsCardProps {
 }
 
 function NetworkMetricsCard({ metrics, type }: NetworkMetricsCardProps) {
+  const client = useAtomValue(clientAtom);
+
   return (
     <Card style={{ flexGrow: 1 }}>
       <Flex direction="column" height="100%" gap={headerGap}>
@@ -82,9 +86,16 @@ function NetworkMetricsCard({ metrics, type }: NetworkMetricsCardProps) {
           </Table.Header>
 
           <Table.Body>
-            {metrics.map((value, i) => (
-              <TableRow key={i} type={type} value={value} idx={i} />
-            ))}
+            {metrics.map((value, i) => {
+              const protocol = networkProtocols[i];
+              if (
+                client === ClientEnum.Frankendancer &&
+                (protocol === "gossip" || protocol === "repair")
+              ) {
+                return;
+              }
+              return <TableRow key={i} type={type} value={value} idx={i} />;
+            })}
             <TableRow
               type={type}
               value={sum(metrics)}
