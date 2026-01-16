@@ -123,23 +123,23 @@ export default function Search() {
 
 function SkipRate() {
   const skipRate = useAtomValue(skipRateAtom);
-
-  let value = "-";
-
-  if (skipRate !== undefined) {
-    value = (skipRate.skip_rate * 100).toLocaleString(undefined, {
+  const skipValue = useMemo(() => {
+    if (!skipRate) return "-";
+    return `${(skipRate.skip_rate * 100).toLocaleString(undefined, {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
-    });
-
-    value += "%";
-  }
+    })}%`;
+  }, [skipRate]);
 
   return (
     <Flex justify="center" align="center" gap="1">
       <Text className={styles.skipRateLabel}>Skip Rate</Text>
-      <Text className={skipRate ? styles.skipRateValue : styles.skipRateLabel}>
-        {value}
+      <Text
+        className={
+          skipRate?.skip_rate ? styles.skipRateValue : styles.skipRateLabel
+        }
+      >
+        {skipValue}
       </Text>
     </Flex>
   );
