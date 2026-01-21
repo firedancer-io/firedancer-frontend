@@ -11,7 +11,6 @@ import clsx from "clsx";
 import Header from "../../Header/index";
 import { BootPhaseEnum } from "../../../api/entities";
 import { bootProgressContainerElAtom } from "../../../atoms";
-import Gossip from "./Gossip";
 import type { BootPhase } from "../../../api/types";
 import Logo from "./Logo";
 import { appMaxWidth } from "../../../consts";
@@ -72,7 +71,6 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
         mx="auto"
         px={isNarrow ? "20px" : "89px"}
       >
-        {phase === BootPhaseEnum.joining_gossip && <Gossip />}
         {(phase === BootPhaseEnum.loading_full_snapshot ||
           phase === BootPhaseEnum.loading_incremental_snapshot) && <Snapshot />}
         {phase === BootPhaseEnum.catching_up && <CatchingUp />}
