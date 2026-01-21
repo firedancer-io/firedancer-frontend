@@ -19,7 +19,7 @@ import { getSlotCards } from "./slotCards";
 import {
   primaryTextColor,
   slotCardSectionBackgroundColor,
-  slotCardSectionColor,
+  tableBodyColor,
 } from "../../../colors";
 
 const initSlotCardCount = 10;
@@ -180,7 +180,7 @@ function SlotCardSection({
             style={{
               transform: "rotate(180deg)",
               writingMode: "vertical-rl",
-              color: slotCardSectionColor,
+              color: tableBodyColor,
             }}
             size="2"
           >
