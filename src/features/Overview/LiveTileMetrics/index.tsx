@@ -19,9 +19,11 @@ import {
   usePreviousDistinct,
 } from "react-use";
 import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
-import type { CellProps } from "@radix-ui/themes/components/table";
 import { tileChartDarkBackground } from "../../../colors";
 import { isEqual } from "lodash";
+import type { CellProps } from "@radix-ui/themes/components/table";
+import TableDescriptionDialog from "./TableDescriptionDialog";
+import { metrics } from "./consts";
 
 const chartHeight = 18;
 
@@ -29,7 +31,10 @@ export default function LiveTileMetrics() {
   return (
     <Card>
       <Flex direction="column" gap={headerGap} width="100%">
-        <Text className={tableStyles.headerText}>Tiles</Text>
+        <Flex align="center" gap="2">
+          <Text className={tableStyles.headerText}>Tiles</Text>
+          <TableDescriptionDialog />
+        </Flex>
         <MLiveMetricTable />
       </Flex>
     </Card>
@@ -54,38 +59,22 @@ const MLiveMetricTable = memo(function LiveMetricsTable() {
       }
     >
       <colgroup>
-        <col style={{ width: "100px" }} />
-        <col style={{ width: "70px" }} />
-        <col style={{ width: "160px" }} />
-        <col style={{ width: "160px" }} />
-        <col style={{ width: "70px" }} />
-        <col style={{ width: "160px" }} />
-        <col style={{ width: "200px" }} />
-        <col style={{ width: "200px" }} />
-        <col style={{ width: "80px" }} />
-        <col style={{ width: "80px" }} />
-        <col style={{ width: "80px" }} />
-        <col style={{ width: "80px" }} />
+        {metrics.map((metric) => (
+          <col key={metric.name} style={{ width: metric.headerColWidth }} />
+        ))}
       </colgroup>
       <Table.Header className={styles.header}>
         <Table.Row>
-          <Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell>Heartbeat</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell align="right">Nivcsw</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell align="right">Nvcsw</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell>Backp</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell align="right">
-            Backp Count
-          </Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell>Utilization</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell>History (1m)</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell align="right">% Hkeep</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell align="right">% Wait</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell align="right">% Backp</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell align="right">% Work</Table.ColumnHeaderCell>
+          {metrics.map((metric) => (
+            <Table.ColumnHeaderCell
+              key={metric.name}
+              align={metric.headerColAlign}
+            >
+              {metric.name}
+            </Table.ColumnHeaderCell>
+          ))}
         </Table.Row>
       </Table.Header>
-
       <Table.Body>
         {tiles.map((tile, i) => (
           <TableRow
@@ -105,7 +94,6 @@ interface TableRowProps {
   liveTileMetrics: TileMetrics;
   idx: number;
 }
-
 function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
   const prevLiveTileMetricsIdx = usePreviousDistinct(
     liveTileMetrics,
@@ -212,7 +200,7 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
         style={
           {
             "--pct": `${workPct}%`,
-          } as React.CSSProperties
+          } as CSSProperties
         }
       />
     </Table.Row>

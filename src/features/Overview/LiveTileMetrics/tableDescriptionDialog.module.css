@@ -1,0 +1,31 @@
+.table-description-dialog {
+  overflow-y: auto;
+
+  .table {
+    padding: var(--space-3) 8px;
+    --table-cell-padding: 5px;
+
+    .th {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--table-header-color);
+    }
+
+    .tr {
+      font-size: 14px;
+      color: var(--table-body-color);
+
+      &:last-child td {
+        box-shadow: none;
+      }
+
+      .name {
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .close-button {
+    cursor: pointer;
+  }
+}

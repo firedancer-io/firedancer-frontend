@@ -4,6 +4,9 @@ export const nextColor = "#C567EA";
 export const mySlotsColor = "#2A7EDF";
 export const appTeal = "#1CE7C2";
 
+export const tableHeaderColor = "#CBCBCB";
+export const tableBodyColor = "#8A8A8A";
+
 export const primaryTextColor = "#B2BCC9";
 export const secondaryTextColor = "#67696A";
 export const regularTextColor = "#8E909D";
@@ -226,16 +229,9 @@ export const searchDisabledBackgroundColor = "rgba(114, 114, 114, 0.15)";
 
 export const skipRateLabelColor = "#646464";
 export const slotCardSectionBackgroundColor = "#676767";
-export const slotCardSectionColor = "#8A8A8A";
-export const slotCardHeaderTextColor = "#CBCBCB";
 export const slotTextLinkColor = "#1190CF";
 export const slotTextActiveLinkColor = "#6CB1D3";
 export const slotTextVisitedLinkColor = "#967DC8";
-
-// gossip
-export const gossipDelinquentPubkeyColor = "#6D6F71";
-export const gossipTableHeaderColor = "#CBCBCB";
-export const gossipTableBodyColor = "#8A8A8A";
 
 // slot status
 export const slotStatusRed = "#871616";
