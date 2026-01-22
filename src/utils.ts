@@ -1,6 +1,12 @@
 import type { Duration } from "luxon";
 import { DateTime } from "luxon";
-import type { Cluster, Epoch, Peer, SlotTransactions } from "./api/types";
+import type {
+  Cluster,
+  Epoch,
+  Peer,
+  SlotPublish,
+  SlotTransactions,
+} from "./api/types";
 import { ClientName, lamportsPerSol, slotsPerLeader } from "./consts";
 import {
   clusterMainnetBetaColor,
@@ -415,4 +421,12 @@ export function formatTimeNanos(time: bigint) {
   }
 
   return { inMillis, inNanos };
+}
+
+export function hasLateVote(publish?: SlotPublish) {
+  return (
+    publish?.level === "rooted" &&
+    ((publish.vote_latency && publish.vote_latency > 1) ||
+      (publish.vote_latency === null && !publish.skipped))
+  );
 }

@@ -27,83 +27,103 @@
 }
 
 .label {
-  color: var(--search-label-color);
+  color: "#766A6A";
 }
 
 .search-button {
   display: flex;
+  height: 100%;
   padding: 4px 10px;
   align-items: center;
   gap: 8px;
   align-self: stretch;
   border-radius: 8px;
-}
 
-.search-button:focus {
-  box-shadow: 0 0 0 2px black;
-}
+  &:focus {
+    box-shadow: 0 0 0 2px black;
+  }
 
-.my-slots {
-  border: 1px solid rgba(103, 192, 255, 0.12);
-  background: rgba(62, 98, 189, 0.15);
-  color: var(--my-slots-color);
-  &:hover {
-    background: rgba(62, 98, 189, 0.32);
+  .label {
+    color: #717171;
+  }
+
+  &:hover,
+  &[data-state="on"] {
+    .label {
+      color: #a1a1a1;
+    }
+
+    &.disabled {
+      .label {
+        color: #717171;
+      }
+    }
   }
 }
 
-.my-slots[data-state="on"] {
-  background: rgba(62, 98, 189, 0.72);
-  color: var(--my-slots-on-color);
+.my-slots {
+  border-radius: 8px;
+  border: 1px solid #1c4f8f;
+  border-top-width: 3px;
+  background: #0d1c36;
+  color: #4497f7;
 
-  .label {
-    color: var(--search-slots-on-label-color);
+  &:hover {
+    border-color: #2a7edf;
+    background: #0d3059;
+    color: #2a7edf;
+  }
+
+  &[data-state="on"] {
+    border-color: #2a7edf;
+    background: #073c7b;
+    color: #2a7edf;
   }
 }
 
 .late-vote-slots {
-  border: 1px solid rgba(196, 134, 255, 0.12);
-  background: rgba(71, 34, 106, 0.15);
-  color: var(--votes-color);
+  border: 1px solid #2f1e7c;
+  background: #130f33;
+  color: #896fec;
+
   &:hover {
-    background: rgba(71, 34, 106, 0.32);
+    border-color: #341f92;
+    background: #1b1450;
+    color: #896fec;
   }
-}
 
-.late-vote-slots[data-state="on"] {
-  background: rgba(71, 34, 106, 0.72);
-  color: var(--votes-color);
-
-  .label {
-    color: var(--search-slots-on-label-color);
+  &[data-state="on"] {
+    border-color: #5530e4;
+    background: #38218f;
+    color: #896fec;
   }
 }
 
 .skipped-slots {
-  background: rgba(189, 62, 62, 0.15);
+  border: 1px solid #461e1f;
+  background: #1f0a0b;
   color: var(--failure-color);
-  border: 1px solid rgba(255, 103, 103, 0.12);
+
   &:hover {
-    background: rgba(189, 62, 62, 0.32);
+    border-color: #752626;
+    background: #321112;
   }
-}
 
-.skipped-slots[data-state="on"] {
-  background: rgba(189, 62, 62, 0.72);
-  color: var(--skipped-slots-on-color);
-
-  .label {
-    color: var(--search-slots-on-label-color);
+  &[data-state="on"] {
+    border-color: #823737;
+    background: #501717;
   }
 }
 
 .disabled {
-  border: 1px rgba(178, 178, 178, 0.12);
+  border-color: var(--search-disabled-border-color);
   background: var(--search-disabled-background-color);
   color: var(--search-disabled-text-color);
 
   &:hover {
+    border-color: var(--search-disabled-border-color);
     background: var(--search-disabled-background-color);
+    color: var(--search-disabled-text-color);
   }
 }
 
