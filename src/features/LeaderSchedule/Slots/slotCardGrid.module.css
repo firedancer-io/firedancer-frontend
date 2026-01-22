@@ -28,6 +28,9 @@
   padding: 0 6px;
 }
 
+.vote-latency-header {
+  color: var(--vote-latency-color);
+}
 .votes-header {
   color: var(--votes-color);
 }

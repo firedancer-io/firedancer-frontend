@@ -9,6 +9,7 @@ import { useMedia } from "react-use";
 import clsx from "clsx";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
+import { hasLateVote } from "../../../utils";
 
 interface PastSlotCardProps {
   slot: number;
@@ -21,6 +22,11 @@ export function PastSlotCard({ slot }: PastSlotCardProps) {
   const query1 = useSlotQueryPublish(slot + 1);
   const query2 = useSlotQueryPublish(slot + 2);
   const query3 = useSlotQueryPublish(slot + 3);
+  const isLateVote =
+    hasLateVote(query.publish) ||
+    hasLateVote(query1.publish) ||
+    hasLateVote(query2.publish) ||
+    hasLateVote(query3.publish);
   const isSkipped =
     query.publish?.skipped ||
     query1.publish?.skipped ||
@@ -33,6 +39,7 @@ export function PastSlotCard({ slot }: PastSlotCardProps) {
     <div
       className={clsx(styles.card, {
         [sharedStyles.mySlots]: isLeader,
+        [styles.lateVote]: isLateVote,
         [styles.skipped]: isSkipped,
       })}
     >

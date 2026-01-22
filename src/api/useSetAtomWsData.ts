@@ -95,7 +95,7 @@ import {
   waterfallDebounceMs,
 } from "./consts";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
-import { slowDateTimeNow } from "../utils";
+import { hasLateVote, slowDateTimeNow } from "../utils";
 import {
   addTurbineSlotsAtom,
   addRepairSlotsAtom,
@@ -247,12 +247,7 @@ export function useSetAtomWsData() {
     }
 
     if (value.publish.level === "rooted") {
-      if (value.publish.vote_latency && value.publish.vote_latency > 1) {
-        addLateVoteSlots(value.publish.slot);
-      } else if (
-        value.publish.vote_latency === null &&
-        !value.publish.skipped
-      ) {
+      if (hasLateVote(value.publish)) {
         addLateVoteSlots(value.publish.slot);
       } else {
         deleteLateVoteSlot(value.publish.slot);

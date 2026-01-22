@@ -22,6 +22,7 @@ export const navButtonInactiveTextColor = headerLabelTextColor;
 
 export const votesColor = "#557AE0";
 export const nonVoteColor = successColor;
+export const voteLatencyColor = "#9982f0";
 
 // slot navigation
 export const slotNavFilterBackgroundColor = "#00205F";
@@ -219,13 +220,9 @@ export const summaryBamTextColor = "#DDD";
 export const summarySigTextColor = "#8FB6FC";
 
 export const searchIconColor = "#AFB2C2";
-export const searchLabelColor = "#717171";
-export const searchSlotsOnLabelColor = "#B6ADAD";
+export const searchDisabledBorderColor = "rgba(178, 178, 178, 0.12)";
 export const searchDisabledTextColor = "#424242";
 export const searchDisabledBackgroundColor = "rgba(114, 114, 114, 0.15)";
-
-export const mySlotsOnColor = "#6AAFFF";
-export const skippedSlotsOnColor = "#FF7072";
 
 export const skipRateLabelColor = "#646464";
 export const slotCardSectionBackgroundColor = "#676767";

@@ -191,7 +191,11 @@ function MySlots({ resetSearchText }: MySlotsProps) {
       <div>
         <Reset>
           <Toggle.Root
-            className={clsx(styles.searchButton, styles.mySlots)}
+            className={clsx(
+              styles.searchButton,
+              styles.mySlots,
+              isDisabled && styles.disabled,
+            )}
             onClick={handleClick}
             aria-label="Toggle my slots"
             pressed={isSelected}
