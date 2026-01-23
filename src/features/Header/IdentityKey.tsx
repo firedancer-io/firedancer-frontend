@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 import { identityBalanceAtom, voteBalanceAtom } from "../../api/atoms";
-import { Text, Flex, Tooltip } from "@radix-ui/themes";
+import { Text, Flex } from "@radix-ui/themes";
 import styles from "./identityKey.module.css";
 import PeerIcon from "../../components/PeerIcon";
 import { myStakePctAtom, myStakeAmountAtom } from "../../atoms";
@@ -15,6 +15,7 @@ import PopoverDropdown from "../../components/PopoverDropdown";
 import { identityIconOnlyWidth, maxZIndex } from "../../consts";
 import { useUptimeDuration } from "../../hooks/useUptime";
 import CopyButton from "../../components/CopyButton";
+import ConditionalTooltip from "../../components/ConditionalTooltip";
 
 export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
@@ -259,7 +260,7 @@ function Label({
   if (!children) return null;
 
   return (
-    <Tooltip content={tooltip}>
+    <ConditionalTooltip content={tooltip}>
       <Flex
         direction="column"
         minWidth="0"
@@ -275,7 +276,7 @@ function Label({
           <div className={styles.value}>{children}</div>
         </CopyButton>
       </Flex>
-    </Tooltip>
+    </ConditionalTooltip>
   );
 }
 

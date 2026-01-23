@@ -1,4 +1,4 @@
-import { Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import PeerIcon from "../../../components/PeerIcon";
 import SlotClient from "../../../components/SlotClient";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
@@ -14,6 +14,7 @@ import { useMemo } from "react";
 import styles from "./detailedSlotStats.module.css";
 import { formatTimeNanos } from "../../../utils";
 import { ClientEnum } from "../../../api/entities";
+import ConditionalTooltip from "../../../components/ConditionalTooltip";
 
 export default function SlotDetailsHeader() {
   const client = useAtomValue(clientAtom);
@@ -95,13 +96,9 @@ function HorizontalLabelValue({
   return (
     <Flex gap="1">
       <Text className={styles.label}>{label}</Text>
-      {valueTooltip ? (
-        <Tooltip content={valueTooltip}>
-          <Text className={styles.value}>{value}</Text>
-        </Tooltip>
-      ) : (
+      <ConditionalTooltip content={valueTooltip}>
         <Text className={styles.value}>{value}</Text>
-      )}
+      </ConditionalTooltip>
       {icon && <Text className={styles.value}>{icon}</Text>}
     </Flex>
   );
