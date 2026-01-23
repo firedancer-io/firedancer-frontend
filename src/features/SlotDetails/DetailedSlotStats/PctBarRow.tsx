@@ -1,7 +1,7 @@
-import { Text, Tooltip } from "@radix-ui/themes";
+import { Text } from "@radix-ui/themes";
 import PctBar from "./PctBar";
 import styles from "./detailedSlotStats.module.css";
-import { useMemo } from "react";
+import ConditionalTooltip from "../../../components/ConditionalTooltip";
 
 interface PctBarRowProps {
   label: string;
@@ -23,18 +23,14 @@ export default function PctBarRow({
   pctColor = false,
 }: PctBarRowProps) {
   const pct = Math.round(total ? (value / total) * 100 : 0);
-  const labelEl = useMemo(
-    () => (
-      <Text className={styles.label} truncate style={{ width: labelWidth }}>
-        {label}
-      </Text>
-    ),
-    [label, labelWidth],
-  );
 
   return (
     <>
-      {labelWidth ? <Tooltip content={label}>{labelEl}</Tooltip> : labelEl}
+      <ConditionalTooltip content={labelWidth ? label : undefined}>
+        <Text className={styles.label} truncate style={{ width: labelWidth }}>
+          {label}
+        </Text>
+      </ConditionalTooltip>
       <Text
         className={styles.value}
         style={{ color: numeratorColor ? valueColor : undefined }}
