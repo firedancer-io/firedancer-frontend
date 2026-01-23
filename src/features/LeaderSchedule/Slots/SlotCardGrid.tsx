@@ -204,7 +204,7 @@ interface RowValues {
   durationText: string;
   computeUnits: number;
   computeUnitsPct: number;
-  voteLatencyText: string;
+  voteLatency: { text: string; color?: string };
 }
 
 interface SlotCardRowProps {
@@ -262,8 +262,14 @@ function getRowValues(publish: SlotPublish): RowValues {
         100
       : 0;
 
-  const voteLatencyText =
-    publish.vote_latency != null ? publish.vote_latency.toLocaleString() : "-";
+  const voteLatency =
+    publish.vote_latency != null
+      ? { text: publish.vote_latency.toLocaleString() }
+      : publish.skipped
+        ? { text: "" }
+        : publish.level === "rooted"
+          ? { text: "✕", color: "#FF3C3C" }
+          : { text: "-" };
 
   return {
     voteTxns: (voteTxnsSuccess + voteTxnsFailure).toLocaleString(),
@@ -276,7 +282,7 @@ function getRowValues(publish: SlotPublish): RowValues {
     durationText,
     computeUnits,
     computeUnitsPct,
-    voteLatencyText,
+    voteLatency,
   };
 }
 
@@ -337,8 +343,12 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
   return (
     <>
       {client === ClientEnum.Firedancer && (
-        <Text className={valueClassName} align="right">
-          {getText(values?.voteLatencyText)}
+        <Text
+          className={valueClassName}
+          align="right"
+          style={{ color: values?.voteLatency?.color }}
+        >
+          {getText(values?.voteLatency.text)}
         </Text>
       )}
       <Text className={valueClassName} align="right">
