@@ -120,6 +120,123 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
     });
   });
 
+  it("keeps track of min completed slot number when multiple slots are completed in one received ws message", () => {
+    const atoms = createLiveShredsAtoms();
+
+    const { result } = renderHook(
+      () => {
+        const slotsShreds = useAtomValue(atoms.slotsShreds);
+        const range = useAtomValue(atoms.range);
+        const addShredEvents = useSetAtom(atoms.addShredEvents);
+        const minCompletedSlot = useAtomValue(atoms.minCompletedSlot);
+        return { slotsShreds, range, addShredEvents, minCompletedSlot };
+      },
+      { wrapper: emptyStoreWrapper },
+    );
+
+    // initial state
+    expect(result.current.slotsShreds).toBeUndefined();
+    expect(result.current.range).toBeUndefined();
+    expect(result.current.minCompletedSlot).toBeUndefined();
+
+    // add initial shreds
+    act(() => {
+      result.current.addShredEvents({
+        reference_slot: 2000,
+        reference_ts: 123_000_000n,
+        slot_delta: [3, 3, 4, 4],
+        shred_idx: [2, null, 1, null],
+        event: [
+          ShredEvent.shred_received_turbine,
+          ShredEvent.slot_complete,
+          ShredEvent.shred_received_turbine,
+          ShredEvent.slot_complete,
+        ],
+        event_ts_delta: [2_000_030, 4_123_456, 5_678_234, 8_000_000],
+      });
+    });
+
+    expect(result.current.slotsShreds).toEqual({
+      referenceTs: 123,
+      slots: new Map([
+        [
+          2003,
+          {
+            minEventTsDelta: 2,
+            maxEventTsDelta: 4,
+            completionTsDelta: 4,
+            shreds: [undefined, undefined, [undefined, 2]],
+          },
+        ],
+        [
+          2004,
+          {
+            minEventTsDelta: 6,
+            maxEventTsDelta: 8,
+            completionTsDelta: 8,
+            shreds: [undefined, [undefined, 6]],
+          },
+        ],
+      ]),
+    });
+    expect(result.current.range).toEqual({
+      min: 2003,
+      max: 2004,
+    });
+
+    expect(result.current.minCompletedSlot).toBe(2003);
+
+    act(() => {
+      result.current.addShredEvents({
+        reference_slot: 2002,
+        reference_ts: 124_100_000n,
+        slot_delta: [0, 0],
+        shred_idx: [0, null],
+        event: [ShredEvent.shred_received_turbine, ShredEvent.slot_complete],
+        event_ts_delta: [1_000_030, 2_123_345],
+      });
+    });
+
+    expect(result.current.slotsShreds).toEqual({
+      referenceTs: 123,
+      slots: new Map([
+        [
+          2002,
+          {
+            minEventTsDelta: 2,
+            maxEventTsDelta: 3,
+            completionTsDelta: 3,
+            shreds: [[undefined, 2]],
+          },
+        ],
+        [
+          2003,
+          {
+            minEventTsDelta: 2,
+            maxEventTsDelta: 4,
+            completionTsDelta: 4,
+            shreds: [undefined, undefined, [undefined, 2]],
+          },
+        ],
+        [
+          2004,
+          {
+            minEventTsDelta: 6,
+            maxEventTsDelta: 8,
+            completionTsDelta: 8,
+            shreds: [undefined, [undefined, 6]],
+          },
+        ],
+      ]),
+    });
+    expect(result.current.range).toEqual({
+      min: 2002,
+      max: 2004,
+    });
+
+    expect(result.current.minCompletedSlot).toBe(2002);
+  });
+
   it("for non-startup: deletes slot numbers before max completed slot number that was completed before chart min X", () => {
     vi.useFakeTimers({
       toFake: ["Date"],

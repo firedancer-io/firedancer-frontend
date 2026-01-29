@@ -139,7 +139,7 @@ export function createLiveShredsAtoms() {
             if (ev === ShredEvent.slot_complete) {
               newMinCompletedSlot = Math.min(
                 slotNumber,
-                minCompletedSlot ?? slotNumber,
+                newMinCompletedSlot ?? slotNumber,
               );
             }
 
