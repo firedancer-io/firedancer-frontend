@@ -18,7 +18,7 @@ import { ClientEnum } from "../../../api/entities";
 export default function SlotDetailsHeader() {
   const client = useAtomValue(clientAtom);
   const slot = useAtomValue(selectedSlotAtom);
-  const { peer, isLeader, name, pubkey, countryCode, countryFlag } =
+  const { peer, isLeader, name, pubkey, countryCode, countryFlag, cityName } =
     useSlotInfo(slot ?? 0);
   const epoch = useAtomValue(epochAtom);
   const slotPublish = useSlotQueryPublish(slot).publish;
@@ -40,10 +40,10 @@ export default function SlotDetailsHeader() {
         <Text className={styles.pubkey}>{pubkey}</Text>
         <SlotClient slot={slot} size="large" />
       </Flex>
-      {countryCode && (
+      {cityName && countryCode && (
         <HorizontalLabelValue
-          label="Country"
-          value={countryCode}
+          label="City"
+          value={`${cityName}, ${countryCode}`}
           icon={countryFlag}
         />
       )}

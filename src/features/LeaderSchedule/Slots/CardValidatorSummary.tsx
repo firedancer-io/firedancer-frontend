@@ -138,7 +138,8 @@ interface ValidatorInfoProps {
 function ValidatorInfo({ peer }: ValidatorInfoProps) {
   const peerStats = useAtomValue(peerStatsAtom);
 
-  const { client, version, countryCode, countryFlag } = usePeerInfo(peer);
+  const { client, version, countryCode, countryFlag, cityName } =
+    usePeerInfo(peer);
   const stakeMsg = getStakeMsg(
     peer,
     peerStats?.activeStake,
@@ -156,12 +157,19 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
   const validatorText = client
     ? `${client}${versionText}`
     : `Unknown${versionText}`;
-  // represent country flag as 2 spaces because it is composed of multiple chars
-  // but renders as ~2 chars worth of space
-  const countryText = countryCode ? `${countryCode}  ` : "";
+
+  const cityText = cityName && countryCode ? `${cityName}, ${countryCode}` : "";
   const stakeText = stakeMsg ?? "";
   const ipText = ipWithoutPort || "Offline";
-  const textLength = (validatorText + countryText + stakeText + ipText).length;
+  // represent country flag as 2 chars because it is composed of multiple chars
+  // but renders as ~2 chars worth of space
+  const textLength = (
+    validatorText +
+    cityText +
+    (countryFlag ? 2 : 0) +
+    stakeText +
+    ipText
+  ).length;
   const shouldWrap = textLength > 58;
   const textProps: TextProps = shouldWrap
     ? { style: { flexBasis: 0 } }
@@ -171,10 +179,10 @@ function ValidatorInfo({ peer }: ValidatorInfoProps) {
     <Flex gap="1" className={styles.secondaryText}>
       <ValidatorText {...textProps} client={client} versionText={versionText} />
 
-      {countryCode && (
+      {cityText && (
         <>
           <Text className={styles.divider}>&bull;</Text>
-          <Text>{countryCode}</Text>
+          <Text>{cityText}</Text>
           <Text>{countryFlag}</Text>
         </>
       )}
