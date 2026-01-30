@@ -696,6 +696,7 @@ const peerUpdateGossipSchema = z.object({
   feature_set: z.number().nullable(),
   sockets: z.record(z.string(), z.string()),
   country_code: z.string().nullable().optional(), // undefined for Frankendancer client
+  city_name: z.string().nullable().optional(), // undefined for Frankendancer client
 });
 
 const peerUpdateVoteAccountSchema = z.object({

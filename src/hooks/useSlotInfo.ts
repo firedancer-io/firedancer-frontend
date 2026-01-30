@@ -11,7 +11,8 @@ export function useSlotInfo(slot: number) {
 
   const isLeader = myPubkey === pubkey;
   const name = isLeader ? "You" : (peer?.info?.name ?? "Private");
-  const { version, client, countryCode, countryFlag } = usePeerInfo(peer);
+  const { version, client, countryCode, countryFlag, cityName } =
+    usePeerInfo(peer);
 
   return {
     pubkey,
@@ -22,5 +23,6 @@ export function useSlotInfo(slot: number) {
     version,
     countryCode,
     countryFlag,
+    cityName,
   };
 }

@@ -16,6 +16,7 @@ export function usePeerInfo(peer?: Peer) {
       : undefined);
   const countryCode = peer?.gossip?.country_code;
   const countryFlag = getCountryFlagEmoji(countryCode);
+  const cityName = peer?.gossip?.city_name;
 
   const info = useMemo(
     () => ({
@@ -23,8 +24,9 @@ export function usePeerInfo(peer?: Peer) {
       version,
       countryCode,
       countryFlag,
+      cityName,
     }),
-    [client, countryCode, countryFlag, version],
+    [cityName, client, countryCode, countryFlag, version],
   );
 
   return info;
