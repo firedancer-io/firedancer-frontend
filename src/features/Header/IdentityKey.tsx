@@ -41,27 +41,18 @@ export default function IdentityKey() {
       >
         <PeerIcon url={peer?.info?.icon_url} size={28} isYou />
 
-        {isXXNarrowScreen && (
-          <Label
-            label="Validator Name"
-            tooltip="The validators identity public key"
-            copyValue={identityKey}
-            shouldShrink
-          >
-            {identityKey}
-          </Label>
-        )}
+        {isXXNarrowScreen && <ValidatorName shouldShrink />}
         {isXNarrowScreen && (
           <>
-            <StakeValue />
-            <StakePct />
+            <StakeValue showTooltip />
+            <StakePct showTooltip />
           </>
         )}
         {isNarrowScreen && (
           <>
             <StartupTime />
             <Commission />
-            <IdentityBalance />
+            <IdentityBalance showTooltip />
           </>
         )}
       </div>
@@ -87,7 +78,7 @@ function DropdownContainer({
 }
 
 function DropdownMenu() {
-  const { peer, identityKey } = useIdentityPeer();
+  const { peer } = useIdentityPeer();
 
   return (
     <Flex
@@ -99,13 +90,7 @@ function DropdownMenu() {
     >
       <Flex gap="2">
         <PeerIcon url={peer?.info?.icon_url} size={24} isYou />
-        <Label
-          label="Validator Name"
-          tooltip="The validators identity public key"
-          copyValue={identityKey}
-        >
-          {identityKey}
-        </Label>
+        <ValidatorName />
       </Flex>
       <StakeValue />
       <StakePct />
@@ -118,17 +103,28 @@ function DropdownMenu() {
   );
 }
 
-function VotePubkey() {
-  const { peer } = useIdentityPeer();
+interface TooltipProps {
+  showTooltip?: boolean;
+}
+
+function ValidatorName({ shouldShrink }: { shouldShrink?: boolean }) {
+  const { identityKey } = useIdentityPeer();
 
   return (
     <Label
-      label="Vote Pubkey"
-      tooltip="The public key of vote account, encoded in base58"
+      label="Validator Name"
+      copyValue={identityKey}
+      shouldShrink={shouldShrink}
     >
-      {peer?.vote[0]?.vote_account}
+      {identityKey}
     </Label>
   );
+}
+
+function VotePubkey() {
+  const { peer } = useIdentityPeer();
+
+  return <Label label="Vote Pubkey">{peer?.vote[0]?.vote_account}</Label>;
 }
 
 function VoteBalance() {
@@ -136,30 +132,31 @@ function VoteBalance() {
   const solString = getSolString(voteBalance);
 
   return (
-    <Label
-      label="Vote Balance"
-      tooltip="Account balance of this validators vote account. The balance is on the highest slot of the currently active fork of the validator."
-    >
+    <Label label="Vote Balance">
       <ValueWithSuffix value={solString} suffix="SOL" />
     </Label>
   );
 }
 
-function IdentityBalance() {
+function IdentityBalance({ showTooltip }: TooltipProps) {
   const identityBalance = useAtomValue(identityBalanceAtom);
   const solString = getSolString(identityBalance);
 
   return (
     <Label
       label="Identity Balance"
-      tooltip="Account balance of this validators identity account. The balance is on the highest slot of the currently active fork of the validator."
+      tooltip={
+        showTooltip
+          ? "Account balance of this validators identity account. The balance is on the highest slot of the currently active fork of the validator."
+          : undefined
+      }
     >
       <ValueWithSuffix value={solString} suffix="SOL" />
     </Label>
   );
 }
 
-function StakePct() {
+function StakePct({ showTooltip }: TooltipProps) {
   const stakePct = useAtomValue(myStakePctAtom);
 
   const value =
@@ -173,21 +170,29 @@ function StakePct() {
   return (
     <Label
       label="Stake %"
-      tooltip="What percentage of total stake is delegated to this validator"
+      tooltip={
+        showTooltip
+          ? "What percentage of total stake is delegated to this validator"
+          : undefined
+      }
     >
       <ValueWithSuffix value={value} suffix="%" />
     </Label>
   );
 }
 
-function StakeValue() {
+function StakeValue({ showTooltip }: TooltipProps) {
   const stake = useAtomValue(myStakeAmountAtom);
   const solString = getSolString(stake);
 
   return (
     <Label
       label="Stake Amount"
-      tooltip="Amount of total stake that is delegated to this validator"
+      tooltip={
+        showTooltip
+          ? "Amount of total stake that is delegated to this validator"
+          : undefined
+      }
     >
       <ValueWithSuffix value={solString} suffix="SOL" />
     </Label>
