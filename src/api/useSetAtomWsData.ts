@@ -64,6 +64,7 @@ import {
   deleteLateVoteSlotAtom,
   addLateVoteSlotsAtom,
   clearLateVoteSlotsAtom,
+  deletePreviousEpochsAtom,
 } from "../atoms";
 import type {
   EstimatedSlotDuration,
@@ -578,6 +579,7 @@ export function useSetAtomWsData() {
   const deleteSkippedClusterSlotsRange = useSetAtom(
     deleteSkippedClusterSlotsRangeAtom,
   );
+  const deletePreviousEpochs = useSetAtom(deletePreviousEpochsAtom);
 
   useInterval(() => {
     deleteSlotStatusBounds();
@@ -594,16 +596,19 @@ export function useSetAtomWsData() {
 
   useEffect(() => {
     if (!epoch) return;
-    deleteSkippedClusterSlotsRange(epoch.start_slot, epoch.end_slot);
-  }, [deleteSkippedClusterSlotsRange, epoch]);
 
-  useEffect(() => {
-    if (!epoch) return;
+    deleteSkippedClusterSlotsRange(epoch.start_slot, epoch.end_slot);
     clearLateVoteSlots({
       startSlot: epoch.start_slot,
       endSlot: epoch.end_slot,
     });
-  }, [clearLateVoteSlots, epoch]);
+    deletePreviousEpochs(epoch.epoch);
+  }, [
+    clearLateVoteSlots,
+    deletePreviousEpochs,
+    deleteSkippedClusterSlotsRange,
+    epoch,
+  ]);
 
   const isStartup = useAtomValue(showStartupProgressAtom);
   const isSocketDisconnected =

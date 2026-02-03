@@ -60,9 +60,22 @@ export const epochAtom = atom(
 
     return epoch;
   },
-  (get, set, epoch: Epoch) => {
+  (_get, set, epoch: Epoch) => {
     set(_epochsAtom, (draft) => {
+      const isDuplicate =
+        draft.findIndex((e) => e.epoch === epoch.epoch) !== -1;
+      if (isDuplicate) return;
+
       draft.push(epoch);
+    });
+  },
+);
+
+export const deletePreviousEpochsAtom = atom(
+  null,
+  (_get, set, currentEpoch: number) => {
+    set(_epochsAtom, (draft) => {
+      draft = draft?.filter(({ epoch }) => epoch >= currentEpoch);
     });
   },
 );
