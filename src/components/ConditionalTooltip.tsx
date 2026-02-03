@@ -1,21 +1,13 @@
-import * as React from "react";
 import { Tooltip, type TooltipProps } from "@radix-ui/themes";
+import type { PropsWithChildren } from "react";
 
-const ConditionalTooltip = React.forwardRef<
-  React.ElementRef<typeof Tooltip>,
-  TooltipProps
->(({ children, ...props }, ref) => {
+export default function ConditionalTooltip({
+  children,
+  ...props
+}: PropsWithChildren<TooltipProps>) {
   if (!props.content) {
     return <>{children}</>;
   }
 
-  return (
-    <Tooltip ref={ref} {...props}>
-      {children}
-    </Tooltip>
-  );
-});
-
-ConditionalTooltip.displayName = "ConditionalTooltip";
-
-export default ConditionalTooltip;
+  return <Tooltip {...props}>{children}</Tooltip>;
+}
