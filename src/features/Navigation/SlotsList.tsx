@@ -12,7 +12,7 @@ import { Box, Flex, Text } from "@radix-ui/themes";
 import type { RefObject } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./slotsList.module.css";
-import { slotsListPinnedSlotOffset, slotsPerLeader } from "../../consts";
+import { slotsListPinnedSlotOffset } from "../../consts";
 import { throttle } from "lodash";
 import SlotsRenderer, { SlotsPlaceholder } from "./SlotsRenderer";
 import type { ScrollSeekConfiguration, VirtuosoHandle } from "react-virtuoso";
@@ -20,8 +20,12 @@ import { Virtuoso } from "react-virtuoso";
 import ResetLive from "./ResetLive";
 import type { DebouncedState } from "use-debounce";
 import { useDebouncedCallback } from "use-debounce";
-import { getSlotGroupLeader } from "../../utils";
 import clsx from "clsx";
+import {
+  getAllSlotsListProps,
+  getMySlotsListProps,
+  type SlotsIndexProps,
+} from "./utils";
 
 const computeItemKey = (slot: number) => slot;
 
@@ -46,20 +50,13 @@ export default function SlotsList({ width, height }: SlotsListProps) {
   );
 }
 
-interface InnerSlotsListProps {
-  width: number;
-  height: number;
-  slotGroupsDescending: number[];
-  getSlotAtIndex: (index: number) => number;
-  getIndexForSlot: (slot: number) => number;
-}
 function InnerSlotsList({
   width,
   height,
-  slotGroupsDescending,
+  itemsCount,
   getSlotAtIndex,
   getIndexForSlot,
-}: InnerSlotsListProps) {
+}: SlotsIndexProps & SlotsListProps) {
   const listContainerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<VirtuosoHandle>(null);
   const visibleStartIndexRef = useRef<number | null>(null);
@@ -77,7 +74,6 @@ function InnerSlotsList({
   }, []);
 
   const setSlotOverride = useSetAtom(slotOverrideAtom);
-  const slotsCount = slotGroupsDescending.length;
 
   const debouncedScroll = useDebouncedCallback(() => {}, 100);
 
@@ -108,7 +104,7 @@ function InnerSlotsList({
 
         const slotIndex = Math.min(
           visibleStartIndexRef.current + slotsListPinnedSlotOffset,
-          slotsCount - 1,
+          itemsCount - 1,
         );
 
         const slot = getSlotAtIndex(slotIndex);
@@ -133,9 +129,18 @@ function InnerSlotsList({
     getSlotAtIndex,
     debouncedScroll,
     setSlotOverride,
-    slotsCount,
+    itemsCount,
     visibleStartIndexRef,
   ]);
+
+  const getItemContent = useCallback(
+    (index: number) => {
+      const leader = getSlotAtIndex(index);
+      if (leader == null) return null;
+      return <SlotsRenderer leaderSlotForGroup={leader} />;
+    },
+    [getSlotAtIndex],
+  );
 
   return (
     <Box
@@ -161,14 +166,13 @@ function InnerSlotsList({
         className={clsx(styles.slotsList, { [styles.hidden]: hideList })}
         width={width}
         height={height}
-        data={slotGroupsDescending}
-        totalCount={slotsCount}
+        totalCount={itemsCount}
         increaseViewportBy={increaseViewportBy}
         // height of past slots that the user is most likely to scroll through
         defaultItemHeight={42}
         skipAnimationFrameInResizeObserver
         computeItemKey={computeItemKey}
-        itemContent={(_, data) => <SlotsRenderer leaderSlotForGroup={data} />}
+        itemContent={getItemContent}
         rangeChanged={rangeChanged}
         components={{ ScrollSeekPlaceholder: MScrollSeekPlaceHolder }}
         scrollSeekConfiguration={scrollSeekConfiguration}
@@ -185,7 +189,7 @@ const MScrollSeekPlaceHolder = memo(function ScrollSeekPlaceholder() {
 
 interface RTAutoScrollProps {
   listRef: RefObject<VirtuosoHandle>;
-  getIndexForSlot: (slot: number) => number;
+  getIndexForSlot: (slot: number) => number | undefined;
 }
 function RTAutoScroll({ listRef, getIndexForSlot }: RTAutoScrollProps) {
   const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
@@ -197,10 +201,12 @@ function RTAutoScroll({ listRef, getIndexForSlot }: RTAutoScrollProps) {
 
     // scroll to new current leader slot
     const slotIndex = getIndexForSlot(currentLeaderSlot);
-    const visibleStartIndex = slotIndex - slotsListPinnedSlotOffset;
+    const visibleStartIndex = slotIndex
+      ? Math.max(0, slotIndex - slotsListPinnedSlotOffset)
+      : 0;
 
     listRef.current.scrollToIndex({
-      index: visibleStartIndex > 0 ? visibleStartIndex : 0,
+      index: visibleStartIndex,
       align: "start",
     });
   }, [autoScroll, currentLeaderSlot, getIndexForSlot, listRef]);
@@ -210,7 +216,7 @@ function RTAutoScroll({ listRef, getIndexForSlot }: RTAutoScrollProps) {
 
 interface SlotOverrideScrollProps {
   listRef: RefObject<VirtuosoHandle>;
-  getIndexForSlot: (slot: number) => number;
+  getIndexForSlot: (slot: number) => number | undefined;
   debouncedScroll: DebouncedState<() => void>;
 }
 function SlotOverrideScroll({
@@ -226,13 +232,14 @@ function SlotOverrideScroll({
       slotOverride === undefined ||
       !listRef.current ||
       debouncedScroll.isPending()
-    )
+    ) {
       return;
+    }
 
-    const targetIndex = Math.max(
-      0,
-      getIndexForSlot(slotOverride) - slotsListPinnedSlotOffset,
-    );
+    const slotIndex = getIndexForSlot(slotOverride);
+    const targetIndex = slotIndex
+      ? Math.max(0, slotIndex - slotsListPinnedSlotOffset)
+      : 0;
 
     const prevRafId = rafIdRef.current;
     rafIdRef.current = requestAnimationFrame(() => {
@@ -260,82 +267,21 @@ function SlotOverrideScroll({
 function AllSlotsList({ width, height }: SlotsListProps) {
   const epoch = useAtomValue(epochAtom);
 
-  const slotGroupsDescending = useMemo(() => {
-    if (!epoch) return [];
+  const slotsListProps = useMemo(() => getAllSlotsListProps(epoch), [epoch]);
 
-    const numSlotsInEpoch = epoch.end_slot - epoch.start_slot + 1;
-    return Array.from(
-      { length: Math.ceil(numSlotsInEpoch / slotsPerLeader) },
-      (_, i) => epoch.end_slot - i * slotsPerLeader - (slotsPerLeader - 1),
-    );
-  }, [epoch]);
+  if (!slotsListProps) return null;
 
-  const getSlotAtIndex = useCallback(
-    (index: number) => slotGroupsDescending[index],
-    [slotGroupsDescending],
-  );
-
-  const getIndexForSlot = useCallback(
-    (slot: number) => {
-      if (!epoch || slot < epoch.start_slot || slot > epoch.end_slot) return -1;
-      return Math.trunc((epoch.end_slot - slot) / slotsPerLeader);
-    },
-    [epoch],
-  );
-
-  return (
-    <InnerSlotsList
-      width={width}
-      height={height}
-      slotGroupsDescending={slotGroupsDescending}
-      getSlotAtIndex={getSlotAtIndex}
-      getIndexForSlot={getIndexForSlot}
-    />
-  );
+  return <InnerSlotsList width={width} height={height} {...slotsListProps} />;
 }
 
 function MySlotsList({ width, height }: SlotsListProps) {
   const mySlots = useAtomValue(leaderSlotsAtom);
 
-  const slotGroupsDescending = useMemo(
-    () => mySlots?.toReversed() ?? [],
-    [mySlots],
-  );
+  const slotsListProps = useMemo(() => getMySlotsListProps(mySlots), [mySlots]);
 
-  const slotToIndexMapping = useMemo(() => {
-    return slotGroupsDescending.reduce<{ [slot: number]: number }>(
-      (acc, slot, index) => {
-        acc[slot] = index;
-        return acc;
-      },
-      {},
-    );
-  }, [slotGroupsDescending]);
+  if (!slotsListProps) return null;
 
-  const getSlotAtIndex = useCallback(
-    (index: number) => slotGroupsDescending[index],
-    [slotGroupsDescending],
-  );
-
-  // Get the slot index, or if unavailable, the closest past index
-  const getClosestIndexForSlot = useCallback(
-    (slot: number) => {
-      if (!slotGroupsDescending.length) return 0;
-      if (slot >= slotGroupsDescending[0]) return 0;
-      if (slot <= slotGroupsDescending[slotGroupsDescending.length - 1])
-        return slotGroupsDescending.length - 1;
-
-      return (
-        slotToIndexMapping[getSlotGroupLeader(slot)] ??
-        slotGroupsDescending.findIndex((s) => s <= slot)
-      );
-    },
-    [slotGroupsDescending, slotToIndexMapping],
-  );
-
-  if (!mySlots) return null;
-
-  if (mySlots.length === 0) {
+  if (slotsListProps.itemsCount === 0) {
     return (
       <Flex
         width={`${width}px`}
@@ -352,13 +298,5 @@ function MySlotsList({ width, height }: SlotsListProps) {
     );
   }
 
-  return (
-    <InnerSlotsList
-      width={width}
-      height={height}
-      slotGroupsDescending={slotGroupsDescending}
-      getSlotAtIndex={getSlotAtIndex}
-      getIndexForSlot={getClosestIndexForSlot}
-    />
-  );
+  return <InnerSlotsList width={width} height={height} {...slotsListProps} />;
 }
