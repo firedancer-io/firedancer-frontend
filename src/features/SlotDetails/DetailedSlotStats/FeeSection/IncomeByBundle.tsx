@@ -1,14 +1,13 @@
-import type { SlotTransactions } from "../../../../api/types";
 import DistributionBar from "./DistributionBars";
-import { useMemo } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import { getTxnIncome } from "../../../../utils";
 import { groupBy, sum } from "lodash";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
+import { ChartControlsContext } from "../../ChartControlsContext";
 
-interface IncomeByTxnProps {
-  transactions: SlotTransactions;
-}
-export default function IncomeByBundle({ transactions }: IncomeByTxnProps) {
+export default function IncomeByBundle() {
+  const { transactions, updateBundleFilter } = useContext(ChartControlsContext);
+
   const data = useMemo(() => {
     const bundleValues = transactions.txn_from_bundle.map((fromBundle, i) => {
       return {
@@ -25,9 +24,15 @@ export default function IncomeByBundle({ transactions }: IncomeByTxnProps) {
       .sort((a, b) => (a.label === "Bundle" ? -1 : 1));
   }, [transactions]);
 
+  const onItemClick = useCallback(
+    ({ label }: { label: string; value: number }) =>
+      updateBundleFilter(label === "Bundle" ? "Yes" : "No", true),
+    [updateBundleFilter],
+  );
+
   return (
     <SlotDetailsSubSection title="Income Distribution by Bundle">
-      <DistributionBar data={data} showPct />
+      <DistributionBar data={data} showPct onItemClick={onItemClick} />
     </SlotDetailsSubSection>
   );
 }

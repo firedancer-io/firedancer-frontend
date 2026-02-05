@@ -13,6 +13,7 @@ interface DistributionBarProps {
   data: DistributionBarData[];
   showPct?: boolean;
   sort?: boolean;
+  onItemClick?: (item: { label: string; value: number }) => void;
 }
 
 const nodeLimit = 5_000;
@@ -21,6 +22,7 @@ export default function DistributionBar({
   data,
   showPct,
   sort,
+  onItemClick,
 }: DistributionBarProps) {
   const total = data.reduce((sum, { value }) => sum + value, 0);
   let barData = sort ? data.toSorted((a, b) => b.value - a.value) : data;
@@ -54,6 +56,9 @@ export default function DistributionBar({
                       background: color,
                       flexGrow: value,
                     }}
+                    onClick={
+                      onItemClick && (() => onItemClick({ label, value }))
+                    }
                   >
                     {showLabel && (
                       <Text mx="2" className={styles.label} truncate>

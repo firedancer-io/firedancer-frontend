@@ -1,27 +1,28 @@
 import { Command } from "cmdk";
 import type { ReactNode } from "react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import styles from "./searchCommand.module.css";
-import type { SlotTransactions } from "../../../../../api/types";
 import { Button, DropdownMenu, Flex, IconButton, Text } from "@radix-ui/themes";
 import { Popover } from "radix-ui";
 import { useDebounce } from "use-debounce";
-import { getUplotId } from "../chartUtils";
 import { txnBarsUplotActionAtom } from "../uplotAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { banksXScaleKey } from "../../ComputeUnitsCard/consts";
-import { highlightTxnIdx } from "../txnBarsPlugin";
 import {
   ChevronUpIcon,
   ChevronDownIcon,
   Cross1Icon,
 } from "@radix-ui/react-icons";
 import clsx from "clsx";
-import {
-  getTxnIncome,
-  isElementFullyInView,
-  removePortFromIp,
-} from "../../../../../utils";
+import { getTxnIncome, removePortFromIp } from "../../../../../utils";
 import { filteredTxnIdxAtom } from "../atoms";
 import { txnErrorCodeMap } from "../../../../../consts";
 import { containerElAtom, peersListAtom } from "../../../../../atoms";
@@ -30,20 +31,8 @@ import {
   getIpLabelFn,
   findIpMatch,
 } from "./searchCommandUtils";
-import { focusedBorderColor } from "../../../../../colors";
-import { txnBarsControlsStickyTop } from "../BarsChartContainer";
-
-/** Multiplier to determine the desired scale zoom range for the txn (ex. scale range of 30x txn duration length) */
-const desiredScaleRangeMultiplierMax = 30;
-const desiredScaleRangeMultiplierMin = 20;
-
-enum SearchMode {
-  TxnSignature = "Txn Sig",
-  Error = "Error",
-  Income = "Income",
-  Ip = "IPv4",
-  Tpu = "TPU",
-}
+import { SearchMode } from "../consts";
+import { ChartControlsContext } from "../../../../SlotDetails/ChartControlsContext";
 
 const queryModes = [SearchMode.TxnSignature, SearchMode.Ip];
 const rankModes = [SearchMode.Income];
@@ -84,24 +73,20 @@ interface IpCommandOption extends SimpleCommandOption {
 }
 
 interface SearchCommandProps {
-  transactions: SlotTransactions;
   size?: "sm" | "lg";
 }
 
-export default function SearchCommand({
-  transactions,
-  size = "lg",
-}: SearchCommandProps) {
+export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCurrentlySelected, setIsCurrentlySelected] = useState(false);
-  const [inputValue, setInputValue] = useState("");
-  const [dInputValue, setDInputValue] = useDebounce(inputValue, 500);
+  const { transactions, search, updateSearch, focusTxn, resetTxnFocus } =
+    useContext(ChartControlsContext);
+  const [dInputValue, setDInputValue] = useDebounce(search.text, 500);
   const [searchIdx, setSearchIdx] = useState<{
     current: number;
     total: number;
     txnIdxs: number[];
   }>();
-  const [searchMode, setSearchMode] = useState(SearchMode.TxnSignature);
   const filteredTxnIdx = useAtomValue(filteredTxnIdxAtom);
   const peersList = useAtomValue(peersListAtom);
   const containerEl = useAtomValue(containerElAtom);
@@ -109,22 +94,17 @@ export default function SearchCommand({
 
   const commandRef = useRef<HTMLDivElement>(null);
   const commandListRef = useRef<HTMLDivElement>(null);
-  const focusedChartElRef = useRef<HTMLElement>();
 
   // For resetting focus when user starts typing in input
   const resetChartElFocus = useCallback(() => {
-    if (focusedChartElRef.current) {
-      focusedChartElRef.current.style.border = "";
-      focusedChartElRef.current = undefined;
-    }
-    highlightTxnIdx(undefined);
+    resetTxnFocus();
     setSearchIdx(undefined);
     setIsCurrentlySelected(false);
-  }, []);
+  }, [resetTxnFocus]);
 
   const resetFocus = useCallback(() => {
     resetChartElFocus();
-    setInputValue("");
+    updateSearch({ text: "" });
     setDInputValue("");
     uplotAction((u, _bankIdx) => {
       u.setScale(banksXScaleKey, {
@@ -132,7 +112,7 @@ export default function SearchCommand({
         max: u.data[0][u.data[0].length - 1],
       });
     });
-  }, [resetChartElFocus, setDInputValue, uplotAction]);
+  }, [resetChartElFocus, setDInputValue, updateSearch, uplotAction]);
 
   useEffect(() => {
     if (
@@ -144,10 +124,10 @@ export default function SearchCommand({
   }, [filteredTxnIdx, resetFocus, searchIdx?.txnIdxs]);
 
   useEffect(() => {
-    if (searchIdx === undefined && rankModes.includes(searchMode)) {
-      setSearchMode(dropdownModes[0]);
+    if (searchIdx === undefined && rankModes.includes(search.mode)) {
+      updateSearch({ mode: dropdownModes[0] });
     }
-  }, [searchIdx, searchMode]);
+  }, [searchIdx, search.mode, updateSearch]);
 
   const getOptionMap = useCallback(
     <T extends string | number, Option extends BaseOption>(
@@ -264,115 +244,9 @@ export default function SearchCommand({
     );
   }, [filteredTxnIdx, transactions]);
 
-  const focusTxn = useCallback(
-    (txnIdx: number) => {
-      const bankIdx = transactions.txn_bank_idx[txnIdx];
-
-      const chartEl = document.getElementById(getUplotId(bankIdx));
-      const chartBorderEl = chartEl?.getElementsByClassName("u-over")?.[0] as
-        | HTMLElement
-        | undefined;
-      const canvasEl = chartEl?.getElementsByTagName("canvas")?.[0] as
-        | HTMLElement
-        | undefined;
-      if (chartEl && chartBorderEl && canvasEl) {
-        if (!isElementFullyInView(canvasEl)) {
-          canvasEl.scrollIntoView({ block: "nearest" });
-          const canvasRect = canvasEl.getBoundingClientRect();
-          const headerRect = document
-            .getElementById("transaction-bars-controls")
-            ?.getBoundingClientRect();
-          if (
-            headerRect &&
-            // Check if header is stickied
-            headerRect.top - txnBarsControlsStickyTop <= 0 &&
-            // Check if the element is hidden behind the sticky header
-            canvasRect.top < headerRect.bottom
-          ) {
-            document.getElementById("scroll-container")?.scrollBy({
-              top: -headerRect.bottom - canvasRect.top,
-            });
-          }
-        }
-
-        if (focusedChartElRef.current) {
-          focusedChartElRef.current.style.border = "";
-        }
-        chartBorderEl.style.border = `1px solid ${focusedBorderColor}`;
-        focusedChartElRef.current = chartBorderEl;
-      }
-
-      uplotAction((u, _bankIdx) => {
-        if (bankIdx !== _bankIdx) {
-          // To redraw non-focused banks without focus
-          u.redraw();
-          return;
-        }
-
-        const scale = u.scales[banksXScaleKey];
-        const scaleMin = scale.min ?? -Infinity;
-        const scaleMax = scale.max ?? Infinity;
-        const currentScaleRange = scaleMax - scaleMin;
-
-        const isFirstTxnInBundle =
-          transactions.txn_from_bundle[txnIdx] &&
-          transactions.txn_microblock_id[txnIdx - 1] !==
-            transactions.txn_microblock_id[txnIdx];
-        const isLastTxnInBundle =
-          transactions.txn_from_bundle[txnIdx] &&
-          transactions.txn_microblock_id[txnIdx + 1] !==
-            transactions.txn_microblock_id[txnIdx];
-
-        const startTs = Number(
-          (isFirstTxnInBundle || !transactions.txn_from_bundle[txnIdx]
-            ? transactions.txn_mb_start_timestamps_nanos[txnIdx]
-            : transactions.txn_preload_end_timestamps_nanos[txnIdx]) -
-            transactions.start_timestamp_nanos,
-        );
-        const endTs = Number(
-          (isLastTxnInBundle || !transactions.txn_from_bundle[txnIdx]
-            ? transactions.txn_mb_end_timestamps_nanos[txnIdx]
-            : transactions.txn_end_timestamps_nanos[txnIdx]) -
-            transactions.start_timestamp_nanos,
-        );
-        const desiredScaleRangeMax =
-          (endTs - startTs) * desiredScaleRangeMultiplierMax;
-        const desiredScaleRangeMin =
-          (endTs - startTs) * desiredScaleRangeMultiplierMin;
-
-        // If txn is already fully out of view, adjust the scale to include it
-        const notWithinScale = endTs < scaleMin || startTs > scaleMax;
-        // If the current scale is too large, zoom in to the desired scale
-        const scaleRangeTooLarge = currentScaleRange > desiredScaleRangeMax;
-        // If the current scale is too small, zoom out to the desired scale
-        const scaleRangeTooSmall = currentScaleRange < desiredScaleRangeMin;
-
-        // Zooms the charts into the desired scale, taking into account min/max range bounds of the data
-        // Then sets the color highlighting for that txn
-        u.batch(() => {
-          if (notWithinScale || scaleRangeTooLarge || scaleRangeTooSmall) {
-            let min = Math.max(
-              u.data[0][0],
-              startTs - desiredScaleRangeMax / 2,
-            );
-            const max = min + desiredScaleRangeMax;
-            if (max > u.data[0][u.data[0].length - 1]) {
-              min = max - desiredScaleRangeMax;
-            }
-
-            u.setScale(banksXScaleKey, { min, max });
-          }
-
-          highlightTxnIdx(txnIdx);
-        });
-      });
-    },
-    [transactions, uplotAction],
-  );
-
   const handleItemSelect = useCallback(
     (inputValue: string, optionValue?: number | string) => {
-      setInputValue(inputValue);
+      updateSearch({ text: inputValue });
       setDInputValue(inputValue);
       setIsOpen(false);
       setIsCurrentlySelected(true);
@@ -389,7 +263,7 @@ export default function SearchCommand({
         focusTxn(txnIdx);
       };
 
-      switch (searchMode) {
+      switch (search.mode) {
         case SearchMode.TxnSignature: {
           const txnIdxs = signatureOptionMap[inputValue].txnIdxs;
           setSearchAndFocus(txnIdxs);
@@ -424,10 +298,11 @@ export default function SearchCommand({
       }
     },
     [
+      updateSearch,
       setDInputValue,
-      searchMode,
-      signatureOptionMap,
+      search.mode,
       focusTxn,
+      signatureOptionMap,
       errorOptionMap,
       ipOptionMap,
       tpuOptionMap,
@@ -456,7 +331,7 @@ export default function SearchCommand({
   };
 
   const handleDropdownSelect = (mode: SearchMode) => () => {
-    setSearchMode(mode);
+    updateSearch({ mode });
     resetFocus();
 
     switch (mode) {
@@ -486,12 +361,12 @@ export default function SearchCommand({
     }
   };
 
-  const isQueryMode = queryModes.includes(searchMode);
-  const isLoading = isQueryMode && inputValue !== dInputValue;
+  const isQueryMode = queryModes.includes(search.mode);
+  const isLoading = isQueryMode && search.text !== dInputValue;
   const showList = (isOpen && !isQueryMode) || !isLoading;
   const showSearchArrows = searchIdx && searchIdx.total > 0;
-  const showResetButton = inputValue || rankModes.includes(searchMode);
-  const isInputDisabled = !queryModes.includes(searchMode);
+  const showResetButton = search.text || rankModes.includes(search.mode);
+  const isInputDisabled = !queryModes.includes(search.mode);
   const isInputDisabledRef = useRef(isInputDisabled);
   isInputDisabledRef.current = isInputDisabled;
 
@@ -510,7 +385,7 @@ export default function SearchCommand({
               e.preventDefault();
             }}
           >
-            {searchMode}
+            {search.mode}
             <DropdownMenu.TriggerIcon />
           </Button>
         </DropdownMenu.Trigger>
@@ -527,12 +402,7 @@ export default function SearchCommand({
           })}
         </DropdownMenu.Content>
       </DropdownMenu.Root>
-      <Command
-        loop
-        className={styles.root}
-        shouldFilter={false}
-        ref={commandRef}
-      >
+      <Command loop shouldFilter={false} ref={commandRef}>
         <Popover.Root
           open={isOpen}
           onOpenChange={(open) => {
@@ -550,13 +420,13 @@ export default function SearchCommand({
               )}
             >
               <Command.Input
-                placeholder={dropdownPlaceholderText[searchMode]}
+                placeholder={dropdownPlaceholderText[search.mode]}
                 onFocus={(e) => {
                   setIsOpen(true);
                 }}
-                value={inputValue}
+                value={search.text}
                 onValueChange={(value) => {
-                  setInputValue(value);
+                  updateSearch({ text: value });
                   resetChartElFocus();
                   // To re-open dialog after selection if input stays focused
                   setIsOpen(true);
@@ -657,7 +527,7 @@ export default function SearchCommand({
               >
                 {
                   // Check inputValue to hide loading state when input is empty
-                  inputValue.length > 1 && isLoading && (
+                  search.text.length > 1 && isLoading && (
                     <Command.Loading>
                       <Text>Loading...</Text>
                     </Command.Loading>
@@ -665,7 +535,7 @@ export default function SearchCommand({
                 }
                 {showList && (
                   <>
-                    {searchMode === SearchMode.TxnSignature && (
+                    {search.mode === SearchMode.TxnSignature && (
                       <TxnSigCommandItems
                         optionMap={signatureOptionMap}
                         inputValue={dInputValue}
@@ -673,13 +543,13 @@ export default function SearchCommand({
                         showAllOptions={isCurrentlySelected}
                       />
                     )}
-                    {searchMode === SearchMode.Error && (
+                    {search.mode === SearchMode.Error && (
                       <SimpleCommandItems
                         onSelect={handleItemSelect}
                         optionMap={errorOptionMap}
                       />
                     )}
-                    {searchMode === SearchMode.Ip && (
+                    {search.mode === SearchMode.Ip && (
                       <IpCommandItems
                         onSelect={handleItemSelect}
                         optionMap={ipOptionMap}
@@ -687,7 +557,7 @@ export default function SearchCommand({
                         showAllOptions={isCurrentlySelected}
                       />
                     )}
-                    {searchMode === SearchMode.Tpu && (
+                    {search.mode === SearchMode.Tpu && (
                       <SimpleCommandItems
                         onSelect={handleItemSelect}
                         optionMap={tpuOptionMap}

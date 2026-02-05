@@ -13,7 +13,6 @@ import {
   highlightErrorCode,
   highlightTpu,
 } from "../txnBarsPlugin";
-import type { SlotTransactions } from "../../../../../api/types";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   addCuRequestedSeriesAtom,
@@ -21,7 +20,6 @@ import {
   addMinCuSeriesAtom,
   addFeeSeriesAtom,
   addMinTipsSeriesAtom,
-  filterBundleDataAtom,
   filterLandedDataAtom,
   filterSimpleDataAtom,
   removeSeriesAtom,
@@ -36,7 +34,7 @@ import {
 } from "../atoms";
 import { groupBy, max } from "lodash";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import ToggleGroupControl from "./ToggleGroupControl";
 import { useMeasure, useMedia, useUnmount } from "react-use";
 import { FilterEnum, TxnState } from "../consts";
@@ -63,13 +61,12 @@ import {
 import { uplotActionAtom } from "../../../../../uplotReact/uplotAtoms";
 import { txnErrorCodeMap } from "../../../../../consts";
 import { useThrottledCallback } from "use-debounce";
+import {
+  ChartControlsContext,
+  type InclusionFilterOptions,
+} from "../../../../SlotDetails/ChartControlsContext";
 
-interface ChartControlsProps {
-  transactions: SlotTransactions;
-  maxTs: number;
-}
-
-export default function ChartControls(props: ChartControlsProps) {
+export default function ChartControls() {
   const [isMinimized, setIsMinimized] = useState(false);
 
   return (
@@ -82,13 +79,12 @@ export default function ChartControls(props: ChartControlsProps) {
           {isMinimized ? <CaretDownIcon /> : <CaretUpIcon />}
         </IconButton>
       </div>
-      {!isMinimized && <ChartControlsContent {...props} />}
+      {!isMinimized && <ChartControlsContent />}
     </>
   );
 }
 
-function ChartControlsContent(props: ChartControlsProps) {
-  const { transactions, maxTs } = props;
+function ChartControlsContent() {
   const setChartFilters = useSetAtom(chartFiltersAtom);
   const setBarCount = useSetAtom(barCountAtom);
   const setSelectedBank = useSetAtom(selectedBankAtom);
@@ -106,58 +102,57 @@ function ChartControlsContent(props: ChartControlsProps) {
   });
 
   if (useMedia("(max-width: 500px)")) {
-    return <MobileViewChartControls {...props} />;
+    return <MobileViewChartControls />;
   }
 
   return (
     <Flex gap="2" align="center" wrap="wrap">
       <Separator orientation="vertical" size="2" />
-      <ErrorControl transactions={transactions} maxTs={maxTs} />
+      <ErrorControl />
       <Separator orientation="vertical" size="2" />
-      <BundleControl transactions={transactions} maxTs={maxTs} />
+      <BundleControl />
       <Separator orientation="vertical" size="2" />
-      <LandedControl transactions={transactions} maxTs={maxTs} />
+      <LandedControl />
       <Separator orientation="vertical" size="2" />
-      <SimpleControl transactions={transactions} maxTs={maxTs} />
+      <SimpleControl />
       <Separator orientation="vertical" size="2" />
-      <ToggleSeriesControls transactions={transactions} />
+      <ToggleSeriesControls />
       <Separator orientation="vertical" size="2" />
-      <CuControls transactions={transactions} />
+      <CuControls />
       <Separator orientation="vertical" size="2" />
-      <ArrivalControl transactions={transactions} />
+      <ArrivalControl />
       <Separator orientation="vertical" size="2" />
-      <TpuControl transactions={transactions} maxTs={maxTs} />
+      <TpuControl />
       <Separator orientation="vertical" size="2" />
-      <SearchCommand transactions={transactions} />
+      <SearchCommand />
     </Flex>
   );
 }
 
-function MobileViewChartControls({ transactions, maxTs }: ChartControlsProps) {
+function MobileViewChartControls() {
   return (
     <Flex direction="column" gap="3">
-      <ErrorControl transactions={transactions} maxTs={maxTs} />
-      <BundleControl transactions={transactions} maxTs={maxTs} isMobileView />
-      <LandedControl transactions={transactions} maxTs={maxTs} isMobileView />
-      <SimpleControl transactions={transactions} maxTs={maxTs} isMobileView />
-      <ToggleSeriesControls transactions={transactions} />
-      <CuControls transactions={transactions} />
+      <ErrorControl />
+      <BundleControl isMobileView />
+      <LandedControl isMobileView />
+      <SimpleControl isMobileView />
+      <ToggleSeriesControls />
+      <CuControls />
       <div style={{ marginBottom: "8px" }}>
-        <ArrivalControl transactions={transactions} />
+        <ArrivalControl />
       </div>
-      <TpuControl transactions={transactions} maxTs={maxTs} />
-      <SearchCommand transactions={transactions} size="sm" />
+      <TpuControl />
+      <SearchCommand size="sm" />
     </Flex>
   );
 }
 
 interface ToggleGroupControlProps {
-  transactions: SlotTransactions;
-  maxTs: number;
   isMobileView?: boolean;
 }
 
-function ErrorControl({ transactions, maxTs }: ToggleGroupControlProps) {
+function ErrorControl() {
+  const { transactions, maxTs } = useContext(ChartControlsContext);
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterError = useSetAtom(filterErrorDataAtom);
   const [value, setValue] = useState<"All" | "Success" | "Errors">("All");
@@ -167,10 +162,9 @@ function ErrorControl({ transactions, maxTs }: ToggleGroupControlProps) {
       <ToggleGroupControl
         options={["All", "Success", "Errors"]}
         optionColors={{ Success: successToggleColor, Errors: errorToggleColor }}
-        defaultValue={value}
+        value={value}
         onChange={(value) => {
           if (!value) return;
-
           setValue(value);
           const filterValue =
             value === "Success" ? "No" : value === "Errors" ? "Yes" : "All";
@@ -179,23 +173,18 @@ function ErrorControl({ transactions, maxTs }: ToggleGroupControlProps) {
           );
         }}
       />
-      <HighlightErrorControl
-        transactions={transactions}
-        isDisabled={value === "Success"}
-      />
+      <HighlightErrorControl isDisabled={value === "Success"} />
     </Flex>
   );
 }
 
 interface HighlightErrorControlProps {
-  transactions: SlotTransactions;
   isDisabled: boolean;
 }
 
-function HighlightErrorControl({
-  transactions,
-  isDisabled,
-}: HighlightErrorControlProps) {
+function HighlightErrorControl({ isDisabled }: HighlightErrorControlProps) {
+  const { transactions } = useContext(ChartControlsContext);
+
   const uplotAction = useSetAtom(uplotActionAtom);
   const filteredTxnIdx = useAtomValue(filteredTxnIdxAtom);
   const [value, setValue] = useState("0");
@@ -253,7 +242,8 @@ function HighlightErrorControl({
 
 const noneValue = "none";
 
-function TpuControl({ transactions, maxTs }: ToggleGroupControlProps) {
+function TpuControl() {
+  const { transactions } = useContext(ChartControlsContext);
   const uplotAction = useSetAtom(uplotActionAtom);
   const filteredTxnIdx = useAtomValue(filteredTxnIdxAtom);
   const [value, setValue] = useState(noneValue);
@@ -309,93 +299,79 @@ function TpuControl({ transactions, maxTs }: ToggleGroupControlProps) {
   );
 }
 
-function BundleControl({
-  transactions,
-  maxTs,
-  isMobileView,
-}: ToggleGroupControlProps) {
-  const uplotAction = useSetAtom(txnBarsUplotActionAtom);
-  const filterBundle = useSetAtom(filterBundleDataAtom);
+function BundleControl({ isMobileView }: ToggleGroupControlProps) {
+  const { bundleFilter, updateBundleFilter } = useContext(ChartControlsContext);
 
   return (
     <ToggleGroupControl
       label="Bundle"
       options={["All", "Yes", "No"]}
-      defaultValue="All"
-      onChange={(value) =>
-        value &&
-        uplotAction((u, bankIdx) =>
-          filterBundle(u, transactions, bankIdx, maxTs, value),
-        )
-      }
+      value={bundleFilter}
+      onChange={(value) => value && updateBundleFilter(value)}
       hasMinTextWidth={isMobileView}
     />
   );
 }
 
-function LandedControl({
-  transactions,
-  maxTs,
-  isMobileView,
-}: ToggleGroupControlProps) {
+function LandedControl({ isMobileView }: ToggleGroupControlProps) {
+  const { transactions, maxTs } = useContext(ChartControlsContext);
+
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterLanded = useSetAtom(filterLandedDataAtom);
+  const [value, setValue] = useState<InclusionFilterOptions>("All");
 
   return (
     <ToggleGroupControl
       label="Landed"
       options={["All", "Yes", "No"]}
-      defaultValue="All"
-      onChange={(value) =>
-        value &&
+      value={value}
+      onChange={(value) => {
+        if (!value) return;
+        setValue(value);
         uplotAction((u, bankIdx) =>
           filterLanded(u, transactions, bankIdx, maxTs, value),
-        )
-      }
+        );
+      }}
       hasMinTextWidth={isMobileView}
     />
   );
 }
 
-function SimpleControl({
-  transactions,
-  maxTs,
-  isMobileView,
-}: ToggleGroupControlProps) {
+function SimpleControl({ isMobileView }: ToggleGroupControlProps) {
+  const { transactions, maxTs } = useContext(ChartControlsContext);
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterSimple = useSetAtom(filterSimpleDataAtom);
+  const [value, setValue] = useState<InclusionFilterOptions>("All");
 
   return (
     <ToggleGroupControl
       label="Vote"
       options={["All", "Yes", "No"]}
-      defaultValue="All"
-      onChange={(value) =>
-        value &&
+      value={value}
+      onChange={(value) => {
+        if (!value) return;
+        setValue(value);
         uplotAction((u, bankIdx) =>
           filterSimple(u, transactions, bankIdx, maxTs, value),
-        )
-      }
+        );
+      }}
       hasMinTextWidth={isMobileView}
     />
   );
 }
 
-interface WithTransactionsProps {
-  transactions: SlotTransactions;
-}
-
-function ToggleSeriesControls({ transactions }: WithTransactionsProps) {
+function ToggleSeriesControls() {
   return (
     <Flex gap="2">
-      <FeeControl transactions={transactions} />
-      <TipsControl transactions={transactions} />
-      <IncomeControl transactions={transactions} />
+      <FeeControl />
+      <TipsControl />
+      <IncomeControl />
     </Flex>
   );
 }
 
-function FeeControl({ transactions }: WithTransactionsProps) {
+function FeeControl() {
+  const { transactions } = useContext(ChartControlsContext);
   const [isEnabled, setIsEnabled] = useState(false);
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const addMinFeeSeries = useSetAtom(addFeeSeriesAtom);
@@ -420,7 +396,8 @@ function FeeControl({ transactions }: WithTransactionsProps) {
   );
 }
 
-function TipsControl({ transactions }: WithTransactionsProps) {
+function TipsControl() {
+  const { transactions } = useContext(ChartControlsContext);
   const [isEnabled, setIsEnabled] = useState(false);
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const addMinTipsSeries = useSetAtom(addMinTipsSeriesAtom);
@@ -445,17 +422,18 @@ function TipsControl({ transactions }: WithTransactionsProps) {
   );
 }
 
-function CuControls({ transactions }: WithTransactionsProps) {
+function CuControls() {
   return (
     <Flex gap="2">
       <Text className={toggleControlStyles.label}>CU</Text>
-      <CuConsumedControl transactions={transactions} />
-      <CuRequestedControl transactions={transactions} />
+      <CuConsumedControl />
+      <CuRequestedControl />
     </Flex>
   );
 }
 
-function CuConsumedControl({ transactions }: WithTransactionsProps) {
+function CuConsumedControl() {
+  const { transactions } = useContext(ChartControlsContext);
   const [isEnabled, setIsEnabled] = useState(false);
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const addMinCusSeries = useSetAtom(addMinCuSeriesAtom);
@@ -481,7 +459,8 @@ function CuConsumedControl({ transactions }: WithTransactionsProps) {
   );
 }
 
-function CuRequestedControl({ transactions }: WithTransactionsProps) {
+function CuRequestedControl() {
+  const { transactions } = useContext(ChartControlsContext);
   const [isEnabled, setIsEnabled] = useState(false);
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const addCuRequestedSeries = useSetAtom(addCuRequestedSeriesAtom);
@@ -507,7 +486,8 @@ function CuRequestedControl({ transactions }: WithTransactionsProps) {
   );
 }
 
-function IncomeControl({ transactions }: WithTransactionsProps) {
+function IncomeControl() {
+  const { transactions } = useContext(ChartControlsContext);
   const [isEnabled, setIsEnabled] = useState(false);
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const addMinCusSeries = useSetAtom(addIncomeCuSeriesAtom);
@@ -537,17 +517,18 @@ const bboxHeight = 12;
 const bucketCount = 100;
 
 function ArrivalSvgChart({
-  transactions,
   sliderMin,
   sliderMax,
   beforeZeroMulti,
   bboxWidth,
-}: WithTransactionsProps & {
+}: {
   sliderMin: number;
   sliderMax: number;
   beforeZeroMulti: number;
   bboxWidth: number;
 }) {
+  const { transactions } = useContext(ChartControlsContext);
+
   const points = useMemo(() => {
     if (sliderMin >= sliderMax) return;
     if (!transactions.txn_arrival_timestamps_nanos.length) return;
@@ -621,7 +602,9 @@ const beforeZeroMinToMaxRatio = 0.3;
 /** Percent range of when to snap slider to 0 */
 const snapToZeroRangePct = 0.025;
 
-function ArrivalControl({ transactions }: WithTransactionsProps) {
+function ArrivalControl() {
+  const { transactions } = useContext(ChartControlsContext);
+
   // Max value includes the chart buffer to have the entire chart range be represented
   const sliderMaxValue = useMemo(
     () => getMaxTsWithBuffer(transactions) - chartBufferMs,
@@ -715,7 +698,6 @@ function ArrivalControl({ transactions }: WithTransactionsProps) {
         }
       >
         <ArrivalSvgChart
-          transactions={transactions}
           sliderMin={sliderMinValue}
           sliderMax={sliderMaxValue}
           beforeZeroMulti={beforeZeroSliderMulti}

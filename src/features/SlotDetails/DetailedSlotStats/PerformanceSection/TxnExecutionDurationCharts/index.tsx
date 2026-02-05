@@ -1,15 +1,15 @@
 import { Box } from "@radix-ui/themes";
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
 import AutoSizer from "react-virtualized-auto-sizer";
 import uPlot, { type AlignedData, type Options } from "uplot";
 import UplotReact from "../../../../../uplotReact/UplotReact";
 import { useAtomValue } from "jotai";
 import { selectedSlotAtom } from "../../../../Overview/SlotPerformance/atoms";
 import { useSlotQueryResponseTransactions } from "../../../../../hooks/useSlotQuery";
-import type { SlotTransactions } from "../../../../../api/types";
 import { getMax, isDefined } from "../../../../../utils";
 import { getDurationWithUnits } from "../../../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
 import { SlotDetailsSubSection } from "../../SlotDetailsSubSection";
+import { ChartControlsContext } from "../../../ChartControlsContext";
 
 export default function TxnExecutionDurationCharts() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
@@ -26,7 +26,7 @@ export default function TxnExecutionDurationCharts() {
         minHeight="100px"
         flexGrow="1"
       >
-        <CuChart transactions={transactions} />
+        <CuChart />
       </SlotDetailsSubSection>
       <SlotDetailsSubSection
         title="Transaction Count vs Txn Execution Duration"
@@ -34,7 +34,7 @@ export default function TxnExecutionDurationCharts() {
         minHeight="100px"
         flexGrow="1"
       >
-        <CountChart transactions={transactions} />
+        <CountChart />
       </SlotDetailsSubSection>
     </>
   );
@@ -138,11 +138,9 @@ function Chart({ data, log, id }: ChartProps) {
   );
 }
 
-interface ChartContainerProps {
-  transactions: SlotTransactions;
-}
+function CountChart() {
+  const { transactions } = useContext(ChartControlsContext);
 
-function CountChart({ transactions }: ChartContainerProps) {
   //   TODO fix for bundles
   const data = useMemo<AlignedData>(() => {
     const txnDurations = transactions.txn_landed
@@ -171,7 +169,9 @@ function CountChart({ transactions }: ChartContainerProps) {
   return <Chart data={data} id="txnExecutionDurationCount" log />;
 }
 
-function CuChart({ transactions }: ChartContainerProps) {
+function CuChart() {
+  const { transactions } = useContext(ChartControlsContext);
+
   const data = useMemo<AlignedData>(() => {
     const txnDurations = transactions.txn_landed
       .map((isLanded, i) => {

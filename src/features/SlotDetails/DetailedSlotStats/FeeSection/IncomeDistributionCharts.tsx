@@ -15,10 +15,10 @@ export default function IncomeDistributionCharts() {
 
   return (
     <>
-      <IncomeByPctTxns transactions={transactions} />
-      <IncomeByBundle transactions={transactions} />
-      <IncomeByTxn transactions={transactions} />
-      <IncomeByIp transactions={transactions} />
+      <IncomeByPctTxns />
+      <IncomeByBundle />
+      <IncomeByTxn />
+      <IncomeByIp />
     </>
   );
 }

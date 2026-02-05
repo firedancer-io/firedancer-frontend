@@ -1,68 +1,49 @@
-import { useMemo, useRef } from "react";
+import { useContext, useMemo } from "react";
 import type uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { selectedSlotAtom, tileCountAtom } from "../atoms";
-import type { SlotTransactions } from "../../../../api/types";
+import { tileCountAtom } from "../atoms";
 import ChartControls from "./ChartControls";
 import { Flex } from "@radix-ui/themes";
 import BarsChart from "./BarsChart";
-import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { baseChartDataAtom, selectedBankAtom } from "./atoms";
 import { getChartData } from "./chartUtils";
 import BarChartFloatingAction from "./BarChartFloatingAction";
 import CardHeader from "../../../../components/CardHeader";
-import { getMaxTsWithBuffer } from "../../../../transactionUtils";
 import { cardBackgroundColor } from "../../../../colors";
 import {
   clusterIndicatorHeight,
   headerHeight,
   slotNavHeight,
 } from "../../../../consts";
+import { ChartControlsContext } from "../../../SlotDetails/ChartControlsContext";
 
 const navigationTop = clusterIndicatorHeight + headerHeight;
 export const txnBarsControlsStickyTop = navigationTop + slotNavHeight;
 
 export default function BarsChartContainer() {
-  const slot = useAtomValue(selectedSlotAtom);
-
-  const query = useSlotQueryResponseTransactions(slot);
-  const queryTxsRef = useRef<SlotTransactions | null | undefined>(
-    query.response?.transactions,
-  );
-  queryTxsRef.current = query.response?.transactions;
+  const { hasData, transactions, maxTs } = useContext(ChartControlsContext);
 
   const tileCount = useAtomValue(tileCountAtom);
   const bankTileCount = tileCount["execle"];
 
   const setBaseChartDataAtom = useSetAtom(baseChartDataAtom);
 
-  const maxTs = useMemo(() => {
-    if (!query.response?.transactions) return 0;
-
-    return getMaxTsWithBuffer(query.response.transactions);
-  }, [query.response?.transactions]);
-
   useMemo(() => {
-    if (!query.response?.transactions) return;
+    if (!hasData) return;
     const chartData: uPlot.AlignedData[] = [];
     for (let i = 0; i < bankTileCount; i++) {
-      chartData.push(getChartData(query.response.transactions, i, maxTs));
+      chartData.push(getChartData(transactions, i, maxTs));
     }
     setBaseChartDataAtom(chartData);
-  }, [
-    bankTileCount,
-    maxTs,
-    query.response?.transactions,
-    setBaseChartDataAtom,
-  ]);
+  }, [hasData, setBaseChartDataAtom, bankTileCount, transactions, maxTs]);
 
   const [selected, setSelected] = useAtom(selectedBankAtom);
 
-  if (!query.response?.transactions) return null;
+  if (!hasData) return null;
 
   return (
-    <Flex direction="column" height="100%" key={slot}>
+    <Flex direction="column" height="100%">
       <Flex
         id="transaction-bars-controls"
         gap="2"
@@ -78,13 +59,10 @@ export default function BarsChartContainer() {
         }}
       >
         <CardHeader text="Banks" />
-        <ChartControls
-          transactions={query.response.transactions}
-          maxTs={maxTs}
-        />
+        <ChartControls />
       </Flex>
       {new Array(bankTileCount).fill(0).map((_, bankIdx) => {
-        if (!query.response?.transactions) return;
+        if (!hasData) return;
         if (selected !== undefined && selected !== bankIdx) return;
 
         return (
@@ -103,8 +81,6 @@ export default function BarsChartContainer() {
             <BarsChart
               key={`${bankIdx}`}
               bankIdx={bankIdx}
-              transactions={query.response.transactions}
-              maxTs={maxTs}
               isFirstChart={bankIdx === 0 && bankTileCount > 1}
               isLastChart={
                 bankIdx === bankTileCount - 1 || selected !== undefined

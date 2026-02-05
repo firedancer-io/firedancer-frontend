@@ -1,5 +1,5 @@
 import styles from "./barsChart.module.css";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useContext, useMemo, useRef } from "react";
 import type uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { txnBarsPlugin } from "./txnBarsPlugin";
@@ -21,14 +21,14 @@ import { chartAxisColor, chartGridStrokeColor } from "../../../../colors";
 import { banksXScaleKey } from "../ComputeUnitsCard/consts";
 import { clientAtom } from "../../../../atoms";
 import { getTxnBundleStats } from "../../../../transactionUtils";
+import clsx from "clsx";
+import { ChartControlsContext } from "../../../SlotDetails/ChartControlsContext";
 
 /** Buffer of the canvas past the axes of the chart to prevent the first and last tick labels from being cut off */
 const xBuffer = 20;
 
 interface BarsChartProps {
   bankIdx: number;
-  transactions: SlotTransactions;
-  maxTs: number;
   isFirstChart?: boolean;
   isLastChart?: boolean;
   hide?: boolean;
@@ -37,13 +37,13 @@ interface BarsChartProps {
 
 export default function BarsChart({
   bankIdx,
-  transactions,
-  maxTs,
   isFirstChart,
   isLastChart,
   hide,
   isSelected,
 }: BarsChartProps) {
+  const { transactions, maxTs, focusedBankIdx } =
+    useContext(ChartControlsContext);
   const isFirstOrLastChart = isFirstChart || isLastChart;
   const leftAxisSize = useAtomValue(leftAxisSizeAtom) - xBuffer;
   const rightAxisSize = useAtomValue(rightAxisSizeAtom) - xBuffer;
@@ -196,6 +196,7 @@ export default function BarsChart({
             <>
               <UplotReact
                 id={getUplotId(bankIdx)}
+                className={clsx(bankIdx === focusedBankIdx && styles.focused)}
                 options={options}
                 data={chartData}
                 onCreate={handleCreate}
