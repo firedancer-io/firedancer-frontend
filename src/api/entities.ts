@@ -67,7 +67,7 @@ export const tileTypeSchema = z.enum([
   "dedup",
   "resolv",
   "pack",
-  "bank",
+  "execle",
   "poh",
   "shred",
   "store",
@@ -86,9 +86,9 @@ export const tileTypeSchema = z.enum([
   "gossip",
   "repair",
   "replay",
-  "exec",
+  "execrp",
   "tower",
-  "send",
+  "txsend",
   "sign",
   "rpc",
   "gui",
@@ -98,6 +98,8 @@ export const tileTypeSchema = z.enum([
   "plugin",
   "cswtch",
   "genesi",
+  "diag",
+  "event",
 ]);
 
 export const tileSchema = z.object({

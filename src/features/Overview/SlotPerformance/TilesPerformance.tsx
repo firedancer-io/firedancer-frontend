@@ -97,10 +97,10 @@ export default function TilesPerformance() {
         setIsExpanded={setIsExpanded}
       />
       <TileCard
-        header="bank"
-        tileCount={tileCounts["bank"]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.["bank"]}
-        queryIdlePerTile={showLive ? undefined : queryIdleData?.["bank"]}
+        header="execle"
+        tileCount={tileCounts["execle"]}
+        liveIdlePerTile={groupedLiveIdlePerTile?.["execle"]}
+        queryIdlePerTile={showLive ? undefined : queryIdleData?.["execle"]}
         statLabel="TPS"
         metricType="bank"
         isExpanded={isExpanded}
