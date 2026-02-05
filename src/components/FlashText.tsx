@@ -14,13 +14,16 @@ export default function FlashText({
   const [flashing, setFlashing] = useState(false);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     setFlashing(false);
     const raf = requestAnimationFrame(() => {
       setFlashing(true);
-      const timer = setTimeout(() => setFlashing(false), 200); // match css duration
-      return () => clearTimeout(timer);
+      timer = setTimeout(() => setFlashing(false), 200); // match css duration
     });
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(raf);
+    };
   }, [value]);
 
   return (
