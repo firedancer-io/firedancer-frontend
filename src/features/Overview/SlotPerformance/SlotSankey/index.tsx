@@ -305,31 +305,31 @@ function getSharedLinks(
     },
     {
       source: SlotNode.Pack,
-      target: SlotNode.Bank,
+      target: SlotNode.Execle,
       value: getValue(bankCount),
     },
     {
-      source: SlotNode.Bank,
+      source: SlotNode.Execle,
       target: SlotNode.BankInvalid,
       value: getValue(waterfall.out.bank_invalid),
     },
     {
-      source: SlotNode.Bank,
+      source: SlotNode.Execle,
       target: SlotNode.BankNonceAlreadyAdvanced,
       value: getValue(waterfall.out.bank_nonce_already_advanced),
     },
     {
-      source: SlotNode.Bank,
+      source: SlotNode.Execle,
       target: SlotNode.BankNonceAdvanceFailed,
       value: getValue(waterfall.out.bank_nonce_advance_failed),
     },
     {
-      source: SlotNode.Bank,
+      source: SlotNode.Execle,
       target: SlotNode.BankNonceWrongBlockhash,
       value: getValue(waterfall.out.bank_nonce_wrong_blockhash),
     },
     {
-      source: SlotNode.Bank,
+      source: SlotNode.Execle,
       target: SlotNode.End,
       value: getValue(blockCount),
     },

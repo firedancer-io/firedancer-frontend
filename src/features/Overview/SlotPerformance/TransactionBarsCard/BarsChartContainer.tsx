@@ -33,7 +33,7 @@ export default function BarsChartContainer() {
   queryTxsRef.current = query.response?.transactions;
 
   const tileCount = useAtomValue(tileCountAtom);
-  const bankTileCount = tileCount["bank"];
+  const bankTileCount = tileCount["execle"];
 
   const setBaseChartDataAtom = useSetAtom(baseChartDataAtom);
 

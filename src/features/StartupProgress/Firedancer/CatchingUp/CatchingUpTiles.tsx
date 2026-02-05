@@ -8,7 +8,7 @@ import { useAtomValue } from "jotai";
 import { isStartupProgressVisibleAtom } from "../../atoms";
 
 const sparklineHeight = 30;
-const tiles: TileType[] = ["shred", "repair", "replay", "exec"];
+const tiles: TileType[] = ["shred", "repair", "replay", "execrp"];
 
 export default function CatchingUpTiles() {
   const [_isExpanded, setIsExpanded] = useState(false);

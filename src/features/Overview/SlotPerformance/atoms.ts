@@ -251,7 +251,16 @@ export const rateLiveWaterfallAtom = atom(
   },
 );
 
-export const tileCountAtom = atom((get) => {
+/**
+ * Returns counts only for tile types defined in tileTypeSchema, ignoring any
+ * unknown types (e.g. new server-side tiles not yet added to the schema).
+ * This ensures type-safe access to tile counts and catches errors at compile
+ * time when tile types are renamed or removed.
+ * */
+export const tileCountAtom = atom<Record<TileType, number>>((get) => {
   const tiles = get(tilesAtom);
-  return countBy(tiles, (t) => t.kind);
+  const counts = countBy(tiles, (t) => t.kind);
+  return Object.fromEntries(
+    tileTypeSchema.options.map((kind) => [kind, counts[kind] ?? 0]),
+  ) as Record<TileType, number>;
 });

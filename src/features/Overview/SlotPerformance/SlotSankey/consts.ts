@@ -17,7 +17,7 @@ export const enum SlotNode {
   Dedup = "dedup:tile",
   Resolv = "resolv:tile",
   Pack = "pack:tile",
-  Bank = "bank:tile",
+  Execle = "execle:tile",
 
   NetOverrun = "Too slow:net",
   QUICOverrun = "Too slow:quic",
@@ -62,7 +62,7 @@ export const tileNodes: SlotNode[] = [
   SlotNode.Dedup,
   SlotNode.Resolv,
   SlotNode.Pack,
-  SlotNode.Bank,
+  SlotNode.Execle,
 ];
 
 export const droppedSlotNodes: SlotNode[] = [
@@ -191,7 +191,7 @@ export const slotNodes = [
     alignLabelBottom: true,
   },
   {
-    id: SlotNode.Bank,
+    id: SlotNode.Execle,
     alignLabelBottom: true,
   },
   {

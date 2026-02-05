@@ -22,9 +22,9 @@ export default function CpuSparklines() {
           isNarrow
         />
         <TileCard
-          header="bank"
-          tileCount={tileCounts["bank"]}
-          queryIdlePerTile={queryIdleData?.["bank"]}
+          header="execle"
+          tileCount={tileCounts["execle"]}
+          queryIdlePerTile={queryIdleData?.["execle"]}
           statLabel="TPS"
           metricType="bank"
           isDark

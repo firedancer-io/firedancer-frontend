@@ -22,7 +22,7 @@ export default function ComputeUnitsCard() {
   const uplotRef = useRef<uPlot>();
 
   const tileCount = useAtomValue(tileCountAtom);
-  const bankTileCount = tileCount["bank"];
+  const bankTileCount = tileCount["execle"];
 
   const handleCreate = useCallback((u: uPlot) => {
     uplotRef.current = u;
