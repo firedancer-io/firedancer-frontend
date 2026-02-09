@@ -1,20 +1,11 @@
 type Sub = (now: number, dt: number) => void;
 
-export function clockSub(_intervalMs: number) {
+export function createClock(intervalMs: number) {
   const subs = new Set<Sub>();
   let id: number | null = null;
   let last = performance.now();
-  let intervalMs = _intervalMs;
 
-  function startChartClock(newIntervalMs?: number) {
-    if (id == null) {
-      stopChartClock();
-    }
-    if (newIntervalMs !== undefined) {
-      stopChartClock();
-      intervalMs = newIntervalMs;
-    }
-
+  function startChartClock() {
     const loop = () => {
       const now = performance.now();
       if (now - last >= intervalMs) {
@@ -35,12 +26,17 @@ export function clockSub(_intervalMs: number) {
 
   function subscribeClock(fn: Sub) {
     subs.add(fn);
+    if (id == null) {
+      startChartClock();
+    }
+
     return () => {
       subs.delete(fn);
+      if (!subs.size) {
+        stopChartClock();
+      }
     };
   }
 
-  startChartClock();
-
-  return { subscribeClock, stopChartClock, startChartClock };
+  return { subscribeClock };
 }
