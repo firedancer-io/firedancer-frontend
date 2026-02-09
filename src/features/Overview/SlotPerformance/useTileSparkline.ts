@@ -1,7 +1,7 @@
 import { mean } from "lodash";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useInterval } from "react-use";
-import { clockSub } from "../../../clockUtils";
+import { createClock } from "../../../clockUtils";
 
 export const strokeLineWidth = 2;
 
@@ -78,8 +78,7 @@ const defaultTickMs = 150;
 /** How many ticks of extra buffer data is drawn for the transform to slide over */
 const tickBufferCount = 3;
 
-const clocks = new Map<number, ReturnType<typeof clockSub>>();
-clocks.set(defaultTickMs, clockSub(defaultTickMs));
+const clocks = new Map<number, ReturnType<typeof createClock>>();
 
 function setDataWindow(
   data: (PointSample | undefined)[],
@@ -216,7 +215,7 @@ export function useScaledDataPoints({
     // live
     else {
       if (!clocks.has(tickMs)) {
-        clocks.set(tickMs, clockSub(tickMs));
+        clocks.set(tickMs, createClock(tickMs));
       }
       const clock = clocks.get(tickMs);
       if (clock) {
