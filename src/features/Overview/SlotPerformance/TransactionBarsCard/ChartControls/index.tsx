@@ -300,7 +300,12 @@ function TpuControl() {
 }
 
 function BundleControl({ isMobileView }: ToggleGroupControlProps) {
-  const { bundleFilter, updateBundleFilter } = useContext(ChartControlsContext);
+  const {
+    bundleFilter,
+    updateBundleFilter,
+    triggeredChartControl,
+    setTriggeredChartControl,
+  } = useContext(ChartControlsContext);
 
   return (
     <ToggleGroupControl
@@ -308,6 +313,8 @@ function BundleControl({ isMobileView }: ToggleGroupControlProps) {
       options={["All", "Yes", "No"]}
       value={bundleFilter}
       onChange={(value) => value && updateBundleFilter(value)}
+      triggered={triggeredChartControl === "Bundle"}
+      onBlur={() => setTriggeredChartControl(undefined)}
       hasMinTextWidth={isMobileView}
     />
   );

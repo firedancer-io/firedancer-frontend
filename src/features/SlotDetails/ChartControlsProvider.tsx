@@ -40,6 +40,8 @@ export default function ChartControlsProvider({
     text: "",
   });
   const [focusedBankIdx, setFocusedBankIdx] = useState<number | undefined>();
+  const [triggeredChartControl, setTriggeredChartControl] =
+    useState<ChartControls["triggeredChartControl"]>();
 
   const maxTs = useMemo(
     () => (transactions ? getMaxTsWithBuffer(transactions) : 0),
@@ -47,7 +49,11 @@ export default function ChartControlsProvider({
   );
 
   const updateBundleFilter = useCallback(
-    (value: ChartControls["bundleFilter"], scroll?: boolean) => {
+    (
+      value: ChartControls["bundleFilter"],
+      scroll?: boolean,
+      externalTrigger?: boolean,
+    ) => {
       setBundleFilter(value);
       if (!transactions) return;
       uplotAction((u, bankIdx) => {
@@ -58,6 +64,13 @@ export default function ChartControlsProvider({
         document
           .getElementById(getUplotId(0))
           ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      if (externalTrigger) {
+        const bundleFilterItemEl = document
+          .getElementById("bundle-toggle-group")
+          ?.querySelector<HTMLElement>(`button[aria-label="${value}"]`);
+        bundleFilterItemEl?.focus();
+        setTriggeredChartControl("Bundle");
       }
     },
     [filterBundle, maxTs, transactions, uplotAction],
@@ -184,7 +197,10 @@ export default function ChartControlsProvider({
   );
 
   const updateSearch = useCallback(
-    (value: { mode?: SearchMode; text?: string }) => {
+    (
+      value: { mode?: SearchMode; text?: string },
+      externalTrigger?: boolean,
+    ) => {
       setSearch((prev) => {
         const newSearch = { ...prev, ...value };
 
@@ -194,7 +210,16 @@ export default function ChartControlsProvider({
         } else if (newSearch.mode === SearchMode.Ip) {
           txnIdx = ipToTxnIdx(newSearch.text);
         }
-        if (txnIdx !== -1) focusTxn(txnIdx);
+        if (txnIdx !== -1) {
+          focusTxn(txnIdx);
+          if (externalTrigger) {
+            const searchInputEl = document
+              .getElementById("search-command-text-field")
+              ?.querySelector<HTMLElement>("input");
+            searchInputEl?.focus();
+            setTriggeredChartControl("Search");
+          }
+        }
 
         return newSearch;
       });
@@ -217,6 +242,8 @@ export default function ChartControlsProvider({
               focusTxn,
               resetTxnFocus,
               focusedBankIdx,
+              triggeredChartControl,
+              setTriggeredChartControl,
             }
           : DEFAULT_CHART_CONTROLS_CONTEXT
       }

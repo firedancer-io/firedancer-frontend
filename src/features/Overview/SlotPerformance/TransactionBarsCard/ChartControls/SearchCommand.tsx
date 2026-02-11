@@ -10,7 +10,15 @@ import {
   useState,
 } from "react";
 import styles from "./searchCommand.module.css";
-import { Button, DropdownMenu, Flex, IconButton, Text } from "@radix-ui/themes";
+import chartControlStyles from "./chartControl.module.css";
+import {
+  Button,
+  DropdownMenu,
+  Flex,
+  IconButton,
+  Text,
+  Tooltip,
+} from "@radix-ui/themes";
 import { Popover } from "radix-ui";
 import { useDebounce } from "use-debounce";
 import { txnBarsUplotActionAtom } from "../uplotAtoms";
@@ -79,8 +87,15 @@ interface SearchCommandProps {
 export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCurrentlySelected, setIsCurrentlySelected] = useState(false);
-  const { transactions, search, updateSearch, focusTxn, resetTxnFocus } =
-    useContext(ChartControlsContext);
+  const {
+    transactions,
+    search,
+    updateSearch,
+    focusTxn,
+    resetTxnFocus,
+    triggeredChartControl,
+    setTriggeredChartControl,
+  } = useContext(ChartControlsContext);
   const [dInputValue, setDInputValue] = useDebounce(search.text, 500);
   const [searchIdx, setSearchIdx] = useState<{
     current: number;
@@ -403,92 +418,102 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
         </DropdownMenu.Content>
       </DropdownMenu.Root>
       <Command loop shouldFilter={false} ref={commandRef}>
-        <Popover.Root
-          open={isOpen}
-          onOpenChange={(open) => {
-            setIsOpen(open);
-          }}
-        >
+        <Popover.Root open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
           <Popover.Anchor asChild>
-            <Flex
-              align="center"
-              className={clsx(
-                styles.inputContainer,
-                "rt-TextFieldRoot",
-                "rt-variant-surface",
-                { [styles.sm]: size === "sm" },
-              )}
-            >
-              <Command.Input
-                placeholder={dropdownPlaceholderText[search.mode]}
-                onFocus={(e) => {
-                  setIsOpen(true);
-                }}
-                value={search.text}
-                onValueChange={(value) => {
-                  updateSearch({ text: value });
-                  resetChartElFocus();
-                  // To re-open dialog after selection if input stays focused
-                  setIsOpen(true);
-                }}
-                readOnly={isInputDisabled}
-                ref={inputRef}
-              />
-              {(showSearchArrows || showResetButton) && (
-                <Flex align="center">
-                  {showSearchArrows && (
-                    <>
-                      <Text
-                        style={{
-                          paddingRight: "var(--space-2)",
-                          cursor: "default",
-                        }}
-                      >
-                        {searchIdx.current + 1}&nbsp;of&nbsp;
-                        {searchIdx.total + 1}
-                      </Text>
-                      <IconButton
-                        onClick={focusNextTxn("prev")}
-                        variant="ghost"
-                        // enter onClick does not work within Command
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            focusNextTxn("prev")();
-                          }
-                        }}
-                      >
-                        <ChevronUpIcon />
-                      </IconButton>
-                      <IconButton
-                        onClick={focusNextTxn("next")}
-                        variant="ghost"
-                        // enter onClick does not work within Command
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            focusNextTxn("next")();
-                          }
-                        }}
-                      >
-                        <ChevronDownIcon />
-                      </IconButton>
-                    </>
+            <Flex>
+              <Tooltip
+                className={chartControlStyles.chartControlTooltip}
+                content={`Applied: ${search.mode}`}
+                open={triggeredChartControl === "Search"}
+                side="bottom"
+              >
+                <Flex
+                  id="search-command-text-field"
+                  align="center"
+                  className={clsx(
+                    styles.inputContainer,
+                    "rt-TextFieldRoot",
+                    "rt-variant-surface",
+                    size === "sm" && styles.sm,
+                    triggeredChartControl === "Search" && styles.triggered,
                   )}
-                  {showResetButton && (
-                    <IconButton
-                      onClick={resetFocus}
-                      variant="ghost"
-                      // enter onClick does not work within Command
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          resetFocus();
-                        }
-                      }}
-                    >
-                      <Cross1Icon />
-                    </IconButton>
+                >
+                  <Command.Input
+                    placeholder={dropdownPlaceholderText[search.mode]}
+                    onClick={() => setIsOpen(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setIsOpen(true);
+                      }
+                    }}
+                    value={search.text}
+                    onValueChange={(value) => {
+                      updateSearch({ text: value });
+                      resetChartElFocus();
+                      // To re-open dialog after selection if input stays focused
+                      setIsOpen(true);
+                    }}
+                    onBlur={() => setTriggeredChartControl(undefined)}
+                    readOnly={isInputDisabled}
+                    ref={inputRef}
+                  />
+                  {(showSearchArrows || showResetButton) && (
+                    <Flex align="center">
+                      {showSearchArrows && (
+                        <>
+                          <Text
+                            style={{
+                              paddingRight: "var(--space-2)",
+                              cursor: "default",
+                            }}
+                          >
+                            {searchIdx.current + 1}&nbsp;of&nbsp;
+                            {searchIdx.total + 1}
+                          </Text>
+                          <IconButton
+                            onClick={focusNextTxn("prev")}
+                            variant="ghost"
+                            // enter onClick does not work within Command
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                focusNextTxn("prev")();
+                              }
+                            }}
+                          >
+                            <ChevronUpIcon />
+                          </IconButton>
+                          <IconButton
+                            onClick={focusNextTxn("next")}
+                            variant="ghost"
+                            // enter onClick does not work within Command
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                focusNextTxn("next")();
+                              }
+                            }}
+                          >
+                            <ChevronDownIcon />
+                          </IconButton>
+                        </>
+                      )}
+                      {showResetButton && (
+                        <IconButton
+                          onClick={resetFocus}
+                          variant="ghost"
+                          // enter onClick does not work within Command
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              resetFocus();
+                            }
+                          }}
+                        >
+                          <Cross1Icon />
+                        </IconButton>
+                      )}
+                    </Flex>
                   )}
                 </Flex>
-              )}
+              </Tooltip>
             </Flex>
           </Popover.Anchor>
 

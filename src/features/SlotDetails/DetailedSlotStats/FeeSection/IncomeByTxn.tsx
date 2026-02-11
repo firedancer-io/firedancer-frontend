@@ -27,7 +27,7 @@ export default function IncomeByTxn() {
 
   const onItemClick = useCallback(
     ({ label }: { label: string; value: number }) => {
-      updateSearch({ mode: SearchMode.TxnSignature, text: label });
+      updateSearch({ mode: SearchMode.TxnSignature, text: label }, true);
     },
     [updateSearch],
   );

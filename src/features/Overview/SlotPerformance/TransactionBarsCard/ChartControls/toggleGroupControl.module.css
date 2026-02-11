@@ -11,6 +11,14 @@
   background-color: var(--mauve-6);
   border-radius: 4px;
   box-shadow: 0 2px 10px var(--black-a7);
+
+  &.triggered {
+    box-shadow: 0 0 0 2px var(--slot-details-chart-controls-triggered);
+
+    .item:focus-visible {
+      box-shadow: unset;
+    }
+  }
 }
 
 .item {
@@ -49,9 +57,9 @@
     font-weight: 510;
   }
 
-  &:focus {
+  &:focus-visible {
     position: relative;
-    box-shadow: 0 0 0 2px black;
+    box-shadow: 0 0 0 2px var(--focus-8);
   }
 
   .item-color {

@@ -12,15 +12,20 @@ export type ChartControls = {
   updateBundleFilter: (
     value: ChartControls["bundleFilter"],
     scroll?: boolean,
+    externalTrigger?: boolean,
   ) => void;
   search: { mode: SearchMode; text: string };
   updateSearch: (
     value: { mode?: SearchMode; text?: string },
-    bankIdx?: number,
+    externalTrigger?: boolean,
   ) => void;
   focusTxn: (txnIdx: number) => void;
   resetTxnFocus: () => void;
   focusedBankIdx?: number;
+  triggeredChartControl?: "Bundle" | "Search";
+  setTriggeredChartControl: (
+    value: ChartControls["triggeredChartControl"],
+  ) => void;
 };
 
 export const DEFAULT_CHART_CONTROLS_CONTEXT: ChartControls = {
@@ -57,6 +62,7 @@ export const DEFAULT_CHART_CONTROLS_CONTEXT: ChartControls = {
   updateSearch: () => {},
   focusTxn: () => {},
   resetTxnFocus: () => {},
+  setTriggeredChartControl: () => {},
 };
 
 export const ChartControlsContext = createContext<ChartControls>(

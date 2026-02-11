@@ -26,7 +26,7 @@ export default function IncomeByIp() {
 
   const onItemClick = useCallback(
     ({ label }: { label: string; value: number }) => {
-      updateSearch({ mode: SearchMode.Ip, text: label });
+      updateSearch({ mode: SearchMode.Ip, text: label }, true);
     },
     [updateSearch],
   );
