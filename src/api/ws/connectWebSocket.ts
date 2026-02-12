@@ -5,6 +5,10 @@ import type { ZstdDec } from "@oneidentity/zstd-js/decompress";
 
 const RECONNECT_DELAY = 3_000;
 
+const VITE_WEBSOCKET_COMPRESS = (
+  import.meta.env.VITE_WEBSOCKET_COMPRESS as string
+)?.trim();
+
 let reconnectTimer: ReturnType<typeof setTimeout>;
 
 export default function connectWebSocket(
@@ -19,7 +23,10 @@ export default function connectWebSocket(
   function connect() {
     logDebug("WS", `Connecting to API WebSocket ${url.toString()}`);
     onConnectionStatusChanged({ socketState: SocketState.Connecting });
-    ws = new WebSocket(url, ["compress-zstd"]);
+    ws = new WebSocket(
+      url,
+      VITE_WEBSOCKET_COMPRESS === "false" ? undefined : ["compress-zstd"],
+    );
     ws.binaryType = "arraybuffer";
 
     ws.onopen = function onopen() {
