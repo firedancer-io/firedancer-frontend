@@ -11,6 +11,7 @@ interface CopyButtonProps {
   color?: string;
   size?: string | number;
   hideIconUntilHover?: boolean;
+  className?: string;
 }
 
 export default function CopyButton({
@@ -18,6 +19,7 @@ export default function CopyButton({
   color,
   size,
   hideIconUntilHover,
+  className,
   children,
 }: PropsWithChildren<CopyButtonProps>) {
   const [hasCopied, setHasCopied] = useState(false);
@@ -28,6 +30,7 @@ export default function CopyButton({
   return (
     <Button
       className={clsx(
+        className,
         styles.copyButton,
         hideIconUntilHover && styles.hideIconUntilHover,
       )}

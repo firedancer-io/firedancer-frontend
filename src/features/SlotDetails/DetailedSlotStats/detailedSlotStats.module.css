@@ -47,13 +47,32 @@
   }
 }
 
-.name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #ccc;
+.grid {
+  padding: 5px 10px;
+  border-radius: 8px;
+  border-bottom: 1px solid rgba(250, 250, 250, 0.12);
+  background: linear-gradient(
+    0deg,
+    rgba(250, 250, 250, 0.05) 0%,
+    rgba(250, 250, 250, 0) 100%
+  );
+
+  .label,
+  .value {
+    font-size: 14px;
+  }
+
+  .name {
+    font-weight: 600;
+    color: #ccc;
+    &.lg {
+      font-size: 18px;
+    }
+  }
 }
 
-.pubkey {
-  font-size: 8px;
-  color: var(--gray-11);
+.copy-button {
+  flex-shrink: 1;
+  min-width: 0;
+  color: var(--slot-details-stats-primary);
 }
