@@ -154,8 +154,7 @@ function Attribution() {
       content={
         <Flex maxWidth="100vw" p="2" className={styles.attributeContainer}>
           <Text size="2" wrap="wrap">
-            Attribution: The IP address data is powered by IPinfo Inc.{" "}
-            <a href="https://ipinfo.io/">https://ipinfo.io/</a>
+            <a href="https://db-ip.com">IP Geolocation by DB-IP</a>
           </Text>
         </Flex>
       }
