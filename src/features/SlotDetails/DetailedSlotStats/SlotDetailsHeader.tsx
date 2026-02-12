@@ -1,4 +1,4 @@
-import { Flex, Text } from "@radix-ui/themes";
+import { Flex, Grid, Text } from "@radix-ui/themes";
 import PeerIcon from "../../../components/PeerIcon";
 import SlotClient from "../../../components/SlotClient";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
@@ -15,6 +15,12 @@ import styles from "./detailedSlotStats.module.css";
 import { formatTimeNanos } from "../../../utils";
 import { ClientEnum } from "../../../api/entities";
 import ConditionalTooltip from "../../../components/ConditionalTooltip";
+import { useMedia } from "react-use";
+import clsx from "clsx";
+
+const gapX = 5;
+const gapXPx = `${gapX}px`;
+const gapYPx = "10px";
 
 export default function SlotDetailsHeader() {
   const client = useAtomValue(clientAtom);
@@ -31,75 +37,163 @@ export default function SlotDetailsHeader() {
     return formatTimeNanos(slotPublish.completed_time_nanos);
   }, [slotPublish]);
 
+  const isLgScreen = useMedia("(min-width: 1420px)");
+  const isNarrowScreen = useMedia("(min-width: 600px)") && !isLgScreen;
+
+  const { iconSize, columns } = useMemo(() => {
+    if (isLgScreen) {
+      return {
+        iconSize: 30,
+        columns:
+          "minmax(300px, max-content) minmax(228px, max-content) minmax(200px, max-content) minmax(150px, max-content) minmax(160px, max-content)",
+      };
+    }
+    if (isNarrowScreen) {
+      return {
+        iconSize: 15,
+        columns: "2",
+      };
+    }
+    return {
+      iconSize: 15,
+      columns: "1",
+    };
+  }, [isLgScreen, isNarrowScreen]);
+
   if (slot === undefined) return;
 
-  return (
-    <Flex gapX="4" gapY="2" wrap="wrap" justify="start" align="center">
-      <Flex gap="5px" align="center">
-        <PeerIcon url={peer?.info?.icon_url} size={16} isYou={isLeader} />
-        <Text className={styles.name}>{name}</Text>
-        <Text className={styles.pubkey}>{pubkey}</Text>
-        <SlotClient slot={slot} size="large" />
-      </Flex>
-      {cityName && countryCode && (
-        <HorizontalLabelValue
-          label="City"
-          value={`${cityName}, ${countryCode}`}
-          icon={countryFlag}
-        />
-      )}
-      <HorizontalLabelValue
+  const slotTimeBlockHash = (
+    <>
+      <LabelValue
         label="Slot Time"
         value={slotTime?.inMillis}
         valueTooltip={slotTime?.inNanos}
+        isVertical={!isLgScreen}
       />
-      {client !== ClientEnum.Frankendancer && (
-        <HorizontalLabelValue
-          label="Block Hash"
-          value={schedulerStats?.block_hash}
+      <LabelValue
+        label="Block Hash"
+        value={
+          client === ClientEnum.Frankendancer
+            ? "Not available for Frankendancer"
+            : schedulerStats?.block_hash
+        }
+        isVertical={!isLgScreen}
+      />
+    </>
+  );
+
+  return (
+    <Grid
+      className={styles.grid}
+      align="center"
+      justify="between"
+      columns={columns}
+      gapX="12px"
+      gapY={gapYPx}
+    >
+      <Flex
+        direction="column"
+        style={{ alignSelf: isLgScreen ? "center" : "flex-start" }}
+      >
+        <Flex gapX={gapXPx} align="center">
+          <PeerIcon
+            url={peer?.info?.icon_url}
+            size={iconSize}
+            isYou={isLeader}
+          />
+          <Text
+            className={clsx(styles.name, {
+              [styles.lg]: isLgScreen,
+            })}
+          >
+            {name}
+          </Text>
+        </Flex>
+        <Flex
+          ml={isLgScreen ? `${iconSize + gapX}px` : "0"}
+          gapX={gapXPx}
+          align="center"
+        >
+          <Text truncate className={styles.pubkey}>
+            {pubkey}
+          </Text>
+          <SlotClient slot={slot} size="medium" />
+        </Flex>
+      </Flex>
+
+      <Flex direction="column" gapX={gapXPx} gapY={gapYPx}>
+        <LabelValue
+          label="City"
+          value={
+            cityName && countryCode ? `${cityName}, ${countryCode}` : "Unknown"
+          }
+          icon={countryFlag}
+          isVertical={!isLgScreen}
         />
+        <LabelValue
+          label="Epoch"
+          value={epoch?.epoch}
+          isVertical={!isLgScreen}
+        />
+      </Flex>
+
+      {isLgScreen ? (
+        <Flex direction="column" gapX={gapXPx} gapY={gapYPx}>
+          {slotTimeBlockHash}
+        </Flex>
+      ) : (
+        slotTimeBlockHash
       )}
-      <HorizontalLabelValue
-        label="Votes"
-        value={slotPublish?.success_vote_transaction_cnt?.toLocaleString()}
-      />
-      <HorizontalLabelValue
-        label="Vote Failures"
-        value={slotPublish?.failed_vote_transaction_cnt?.toLocaleString()}
-      />
-      <HorizontalLabelValue
-        label="Non-votes"
-        value={slotPublish?.failed_nonvote_transaction_cnt?.toLocaleString()}
-      />
-      <HorizontalLabelValue
-        label="Non-vote Failures"
-        value={slotPublish?.failed_nonvote_transaction_cnt?.toLocaleString()}
-      />
-      <HorizontalLabelValue label="Epoch" value={epoch?.epoch} />
-    </Flex>
+
+      <Flex direction="column" gapX={gapXPx} gapY={gapYPx}>
+        <LabelValue
+          label="Votes"
+          value={slotPublish?.success_vote_transaction_cnt?.toLocaleString()}
+        />
+        <LabelValue
+          label="Vote Failures"
+          value={slotPublish?.failed_vote_transaction_cnt?.toLocaleString()}
+        />
+      </Flex>
+
+      <Flex direction="column" gapX={gapXPx} gapY={gapYPx}>
+        <LabelValue
+          label="Non-votes"
+          value={slotPublish?.failed_nonvote_transaction_cnt?.toLocaleString()}
+        />
+        <LabelValue
+          label="Non-vote Failures"
+          value={slotPublish?.failed_nonvote_transaction_cnt?.toLocaleString()}
+        />
+      </Flex>
+    </Grid>
   );
 }
 
-interface HorizontalLabelValueProps {
+interface LabelValueProps {
   label: string;
   value?: string | number;
   valueTooltip?: string | number;
   icon?: string;
+  isVertical?: boolean;
 }
 
-function HorizontalLabelValue({
+function LabelValue({
   label,
   value,
   valueTooltip,
   icon,
-}: HorizontalLabelValueProps) {
+  isVertical = false,
+}: LabelValueProps) {
   return (
-    <Flex gap="1">
+    <Flex gapX="2" direction={isVertical ? "column" : "row"}>
       <Text className={styles.label}>{label}</Text>
       <ConditionalTooltip content={valueTooltip}>
-        <Text className={styles.value}>{value}</Text>
+        <Text truncate className={styles.value}>
+          {value}
+          {icon && ` ${icon}`}
+        </Text>
       </ConditionalTooltip>
-      {icon && <Text className={styles.value}>{icon}</Text>}
     </Flex>
   );
 }

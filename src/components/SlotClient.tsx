@@ -13,7 +13,7 @@ export default memo(function SlotClient({
   size,
 }: {
   slot: number;
-  size: "small" | "large";
+  size: "small" | "medium" | "large";
 }) {
   const { client } = useSlotInfo(slot);
   const className = clsx(styles[`${size}Icon`]);

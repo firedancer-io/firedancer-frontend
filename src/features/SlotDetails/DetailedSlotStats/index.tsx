@@ -3,11 +3,11 @@ import Card from "../../../components/Card";
 import ComputeSection from "./ComputeSection";
 import FeeSection from "./FeeSection";
 import PerformanceSection from "./PerformanceSection";
-import SlotDetailsHeader from "./SlotDetailsHeader";
 import { sectionGapX } from "./consts";
 import { useAtomValue } from "jotai";
 import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";
 import { selectedSlotAtom } from "../../Overview/SlotPerformance/atoms";
+import SlotDetailsHeader from "./SlotDetailsHeader";
 
 export default function DetailedSlotStats() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
@@ -15,16 +15,16 @@ export default function DetailedSlotStats() {
   if (!queryResponse?.limits) return <DetailedSlotStatsPlaceholder />;
 
   return (
-    <Card>
-      <Flex gap="3" direction="column" flexBasis="0">
-        <SlotDetailsHeader />
-        <Flex gap={sectionGapX} wrap="wrap">
+    <>
+      <SlotDetailsHeader />
+      <Card>
+        <Flex gap={sectionGapX} wrap="wrap" flexBasis="0">
           <ComputeSection />
           <FeeSection />
           <PerformanceSection />
         </Flex>
-      </Flex>
-    </Card>
+      </Card>
+    </>
   );
 }
 
