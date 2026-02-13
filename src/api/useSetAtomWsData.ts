@@ -62,7 +62,7 @@ import {
   deleteSkippedClusterSlotAtom,
   deleteSkippedClusterSlotsRangeAtom,
   deleteLateVoteSlotAtom,
-  addLateVoteSlotsAtom,
+  addLateVoteSlotAtom,
   clearLateVoteSlotsAtom,
   deletePreviousEpochsAtom,
 } from "../atoms";
@@ -234,7 +234,7 @@ export function useSetAtomWsData() {
   const addSkippedClusterSlots = useSetAtom(addSkippedClusterSlotsAtom);
   const deleteSkippedClusterSlot = useSetAtom(deleteSkippedClusterSlotAtom);
 
-  const addLateVoteSlots = useSetAtom(addLateVoteSlotsAtom);
+  const addLateVoteSlots = useSetAtom(addLateVoteSlotAtom);
   const deleteLateVoteSlot = useSetAtom(deleteLateVoteSlotAtom);
   const clearLateVoteSlots = useSetAtom(clearLateVoteSlotsAtom);
 
@@ -249,7 +249,7 @@ export function useSetAtomWsData() {
 
     if (value.publish.level === "rooted") {
       if (hasLateVote(value.publish)) {
-        addLateVoteSlots(value.publish.slot);
+        addLateVoteSlots(value.publish.slot, value.publish.vote_latency);
       } else {
         deleteLateVoteSlot(value.publish.slot);
       }
@@ -537,10 +537,18 @@ export function useSetAtomWsData() {
             addLiveShreds(value);
             break;
           }
-          case "vote_latency_history": {
+          case "late_votes_history": {
             clearLateVoteSlots();
-            for (let i = 0; i < value.length; i += 2) {
-              addLateVoteSlots(value[i], value[i + 1]);
+            let latencyIdx = 0;
+            for (let i = 0; i < value.slot.length; i += 2) {
+              for (
+                let slot = value.slot[i];
+                slot <= value.slot[i + 1];
+                slot++
+              ) {
+                addLateVoteSlots(slot, value.latency[latencyIdx]);
+                latencyIdx++;
+              }
             }
             break;
           }

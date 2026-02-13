@@ -423,10 +423,39 @@ export function formatTimeNanos(time: bigint) {
   return { inMillis, inNanos };
 }
 
-export function hasLateVote(publish?: SlotPublish) {
+export function hasLateVote(publish: SlotPublish) {
   return (
     publish?.level === "rooted" &&
     ((publish.vote_latency && publish.vote_latency > 1) ||
       (publish.vote_latency === null && !publish.skipped))
+  );
+}
+
+export function getDiscountedVoteLatency(
+  slot: number,
+  latency: number,
+  skippedClusterSlots: Set<number>,
+) {
+  let discount = 0;
+  for (let i = slot; i < slot + latency; i++) {
+    if (skippedClusterSlots.has(i)) {
+      discount++;
+    }
+  }
+  return latency - discount;
+}
+
+export function hasDiscountedLateVote(
+  skippedClusterSlots: Set<number>,
+  publish?: SlotPublish,
+) {
+  if (!publish || !hasLateVote(publish)) return false;
+  return (
+    publish.vote_latency === null ||
+    getDiscountedVoteLatency(
+      publish.slot,
+      publish.vote_latency,
+      skippedClusterSlots,
+    ) > 1
   );
 }

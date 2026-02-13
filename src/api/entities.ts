@@ -870,8 +870,11 @@ export const slotSchema = z.discriminatedUnion("key", [
     value: liveShredsSchema,
   }),
   slotTopicSchema.extend({
-    key: z.literal("vote_latency_history"),
-    value: z.number().array(),
+    key: z.literal("late_votes_history"),
+    value: z.object({
+      slot: z.number().array(),
+      latency: z.number().nullable().array(),
+    }),
   }),
 ]);
 
