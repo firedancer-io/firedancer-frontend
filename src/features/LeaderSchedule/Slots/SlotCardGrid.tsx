@@ -5,12 +5,13 @@ import {
   clientAtom,
   currentSlotAtom,
   firstProcessedSlotAtom,
+  skippedClusterSlotsAtom,
 } from "../../../atoms";
 import { useEffect, useRef, useState } from "react";
 import "react-circular-progressbar/dist/styles.css";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import type { SlotPublish } from "../../../api/types";
-import { fixValue } from "../../../utils";
+import { fixValue, getDiscountedVoteLatency } from "../../../utils";
 import { useMedia, usePrevious, useUnmount } from "react-use";
 import {
   defaultMaxComputeUnits,
@@ -212,7 +213,10 @@ interface SlotCardRowProps {
   active?: boolean;
 }
 
-function getRowValues(publish: SlotPublish): RowValues {
+function getRowValues(
+  publish: SlotPublish,
+  skippedClusterSlots: Set<number>,
+): RowValues {
   const voteTxnsSuccess = fixValue(publish.success_vote_transaction_cnt ?? 0);
   const nonVoteTxnsSuccess = fixValue(
     publish.success_nonvote_transaction_cnt ?? 0,
@@ -264,7 +268,13 @@ function getRowValues(publish: SlotPublish): RowValues {
 
   const voteLatency =
     publish.vote_latency != null
-      ? { text: publish.vote_latency.toLocaleString() }
+      ? {
+          text: getDiscountedVoteLatency(
+            publish.slot,
+            publish.vote_latency,
+            skippedClusterSlots,
+          ).toLocaleString(),
+        }
       : publish.skipped
         ? { text: "" }
         : publish.level === "rooted"
@@ -290,18 +300,20 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
   const client = useAtomValue(clientAtom);
   const firstProcessedSlot = useAtomValue(firstProcessedSlotAtom);
   const currentSlot = useAtomValue(currentSlotAtom);
+  const skippedClusterSlots = useAtomValue(skippedClusterSlotsAtom);
+
   const queryPublish = useSlotQueryPublish(slot);
 
   const [values, setValues] = useState<RowValues | undefined>(() => {
     if (!queryPublish.publish) return;
-    return getRowValues(queryPublish.publish);
+    return getRowValues(queryPublish.publish, skippedClusterSlots);
   });
 
   useEffect(() => {
     if (queryPublish.publish) {
-      setValues(getRowValues(queryPublish.publish));
+      setValues(getRowValues(queryPublish.publish, skippedClusterSlots));
     }
-  }, [queryPublish.publish, slot]);
+  }, [queryPublish.publish, skippedClusterSlots, slot]);
 
   const isFuture = slot > (currentSlot ?? Infinity);
   const isCurrent = slot === currentSlot;

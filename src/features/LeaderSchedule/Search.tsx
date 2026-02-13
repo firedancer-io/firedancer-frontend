@@ -14,7 +14,7 @@ import { useMount } from "react-use";
 import {
   clientAtom,
   currentLeaderSlotAtom,
-  lateVoteSlotsAtom,
+  discountedLateVoteSlotsAtom,
   leaderSlotsAtom,
   skipRateAtom,
   slotOverrideAtom,
@@ -281,19 +281,21 @@ interface LateVoteSlotsProps {
 }
 
 function LateVoteSlots({ resetSearchText }: LateVoteSlotsProps) {
-  const lateVoteSlots = useAtomValue(lateVoteSlotsAtom);
+  const discountedLateVoteSlots = useAtomValue(discountedLateVoteSlotsAtom);
   const setSearch = useSetAtom(searchLeaderSlotsAtom);
   const setSlotOverride = useSetAtom(slotOverrideAtom);
 
   const { searchType, setSearchType } = useSearchTypeSearchParam();
 
-  const slotCount = lateVoteSlots.size;
+  const slotCount = discountedLateVoteSlots.size;
 
   const lateVoteLeaderSlots = useMemo(() => {
     return Array.from(
-      new Set([...lateVoteSlots].map((slot) => getSlotGroupLeader(slot))),
+      new Set(
+        [...discountedLateVoteSlots].map((slot) => getSlotGroupLeader(slot)),
+      ),
     );
-  }, [lateVoteSlots]);
+  }, [discountedLateVoteSlots]);
 
   const setLateVoteSlots = useCallback(() => {
     setSearch(lateVoteLeaderSlots);
@@ -321,7 +323,7 @@ function LateVoteSlots({ resetSearchText }: LateVoteSlotsProps) {
   };
 
   const isSelected = searchType === SearchTypeEnum.lateVoteSlots;
-  const isDisabled = !lateVoteSlots.size;
+  const isDisabled = !discountedLateVoteSlots.size;
 
   return (
     <Tooltip content="Number of slots this validator has voted late in the current epoch. Toggle to filter">
