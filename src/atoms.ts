@@ -18,7 +18,12 @@ import type {
   SlotResponse,
 } from "./api/types";
 import { clamp, merge } from "lodash";
-import { getLeaderSlots, getSlotGroupLeader, getStake } from "./utils";
+import {
+  getDiscountedVoteLatency,
+  getLeaderSlots,
+  getSlotGroupLeader,
+  getStake,
+} from "./utils";
 import { searchLeaderSlotsAtom } from "./features/LeaderSchedule/atoms";
 import { selectedSlotAtom } from "./features/Overview/SlotPerformance/atoms";
 import { ClientEnum, clientSchema } from "./api/entities";
@@ -719,41 +724,64 @@ export const serverTimeMsAtom = atom((get) => {
 });
 
 export const [
-  lateVoteSlotsAtom,
-  addLateVoteSlotsAtom,
+  discountedLateVoteSlotsAtom,
+  addLateVoteSlotAtom,
   deleteLateVoteSlotAtom,
   clearLateVoteSlotsAtom,
 ] = (function getLateVoteSlotsAtom() {
-  const _lateVoteSlotsAtom = atomWithImmer(new Set<number>());
+  const _lateVotesMapAtom = atomWithImmer(new Map<number, number | null>());
   return [
-    atom((get) => get(_lateVoteSlotsAtom)),
+    atom((get) => {
+      const lateVotesMap = get(_lateVotesMapAtom);
+      const skippedClusterSlots = get(skippedClusterSlotsAtom);
 
-    atom(null, (_get, set, startSlot: number, endSlot?: number) => {
-      set(_lateVoteSlotsAtom, (draft) => {
-        endSlot ??= startSlot;
-        for (let slot = startSlot; slot <= endSlot; slot++) {
-          draft.add(slot);
+      const discountedLateVoteSlots = new Set<number>();
+
+      for (const [slot, latency] of lateVotesMap) {
+        if (latency === null) {
+          discountedLateVoteSlots.add(slot);
+          continue;
         }
+
+        const discountedLatency = getDiscountedVoteLatency(
+          slot,
+          latency,
+          skippedClusterSlots,
+        );
+        if (discountedLatency > 1) {
+          discountedLateVoteSlots.add(slot);
+        }
+      }
+
+      return discountedLateVoteSlots;
+    }),
+
+    atom(null, (_get, set, slot: number, latency: number | null) => {
+      set(_lateVotesMapAtom, (draft) => {
+        draft.set(slot, latency);
       });
     }),
 
     atom(null, (_get, set, slot: number) => {
-      set(_lateVoteSlotsAtom, (draft) => {
+      set(_lateVotesMapAtom, (draft) => {
         draft.delete(slot);
       });
     }),
 
     atom(null, (_get, set, keep?: { startSlot: number; endSlot: number }) => {
-      set(_lateVoteSlotsAtom, (draft) => {
-        if (!keep) return new Set<number>();
-
-        const toKeep = new Set<number>();
-        for (const slot of draft) {
-          if (keep.startSlot <= slot && slot <= keep.endSlot) {
-            toKeep.add(slot);
-          }
+      set(_lateVotesMapAtom, (draft) => {
+        if (!keep) {
+          draft.clear();
+          return;
         }
-        return toKeep;
+
+        const slotsToClear: number[] = [];
+        draft.forEach((_, slot) => {
+          if (slot < keep.startSlot || keep.endSlot < slot) {
+            slotsToClear.push(slot);
+          }
+        });
+        slotsToClear.forEach((slot) => draft.delete(slot));
       });
     }),
   ];

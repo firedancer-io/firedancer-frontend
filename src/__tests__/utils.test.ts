@@ -1,6 +1,12 @@
 import { expect, describe, it } from "vitest";
-import { formatTimeNanos, getDurationText } from "../utils";
+import {
+  formatTimeNanos,
+  getDiscountedVoteLatency,
+  getDurationText,
+  hasLateVote,
+} from "../utils";
 import { Duration } from "luxon";
+import type { SlotPublish } from "../api/types";
 
 describe("getDurationText", () => {
   it("shows Never if duration is not defined", () => {
@@ -158,5 +164,180 @@ describe("formatTimeNanos", () => {
       inMillis: "Dec 5, 2:00:00.000 AM CST",
       inNanos: "Dec 5, 2:00:00.000000123 AM CST",
     });
+  });
+});
+
+describe("hasLateVote and getDiscountedVoteLatency", () => {
+  it("slot is not rooted", () => {
+    const skippedClusterSlots = new Set<number>();
+    const publish: SlotPublish = {
+      slot: 1,
+      mine: false,
+      skipped: false,
+      level: "optimistically_confirmed",
+      success_nonvote_transaction_cnt: null,
+      failed_nonvote_transaction_cnt: null,
+      success_vote_transaction_cnt: null,
+      failed_vote_transaction_cnt: null,
+      priority_fee: null,
+      transaction_fee: null,
+      tips: null,
+      max_compute_units: null,
+      compute_units: null,
+      duration_nanos: null,
+      completed_time_nanos: null,
+      vote_latency: 2,
+    };
+    expect(hasLateVote(publish)).toBeFalsy();
+    expect(
+      getDiscountedVoteLatency(
+        publish.slot,
+        publish.vote_latency!,
+        skippedClusterSlots,
+      ),
+    ).toBe(2);
+  });
+
+  it("slot has null vote latency", () => {
+    const publish: SlotPublish = {
+      slot: 1,
+      mine: false,
+      skipped: false,
+      level: "rooted",
+      success_nonvote_transaction_cnt: null,
+      failed_nonvote_transaction_cnt: null,
+      success_vote_transaction_cnt: null,
+      failed_vote_transaction_cnt: null,
+      priority_fee: null,
+      transaction_fee: null,
+      tips: null,
+      max_compute_units: null,
+      compute_units: null,
+      duration_nanos: null,
+      completed_time_nanos: null,
+      vote_latency: null,
+    };
+    expect(hasLateVote(publish)).toBeTruthy();
+    expect(hasLateVote({ ...publish, skipped: true })).toBeFalsy();
+  });
+
+  it("slot has > 1 vote latency", () => {
+    const skippedClusterSlots = new Set<number>();
+    const publish: SlotPublish = {
+      slot: 1,
+      mine: false,
+      skipped: false,
+      level: "rooted",
+      success_nonvote_transaction_cnt: null,
+      failed_nonvote_transaction_cnt: null,
+      success_vote_transaction_cnt: null,
+      failed_vote_transaction_cnt: null,
+      priority_fee: null,
+      transaction_fee: null,
+      tips: null,
+      max_compute_units: null,
+      compute_units: null,
+      duration_nanos: null,
+      completed_time_nanos: null,
+      vote_latency: 2,
+    };
+    expect(hasLateVote(publish)).toBeTruthy();
+    expect(
+      getDiscountedVoteLatency(
+        publish.slot,
+        publish.vote_latency!,
+        skippedClusterSlots,
+      ),
+    ).toBe(2);
+  });
+
+  it("no skipped slots within latency range", () => {
+    const skippedClusterSlots = new Set<number>([6, 7]);
+    const publish: SlotPublish = {
+      slot: 1,
+      mine: false,
+      skipped: false,
+      level: "rooted",
+      success_nonvote_transaction_cnt: null,
+      failed_nonvote_transaction_cnt: null,
+      success_vote_transaction_cnt: null,
+      failed_vote_transaction_cnt: null,
+      priority_fee: null,
+      transaction_fee: null,
+      tips: null,
+      max_compute_units: null,
+      compute_units: null,
+      duration_nanos: null,
+      completed_time_nanos: null,
+      vote_latency: 5,
+    };
+    expect(hasLateVote(publish)).toBeTruthy();
+    expect(
+      getDiscountedVoteLatency(
+        publish.slot,
+        publish.vote_latency!,
+        skippedClusterSlots,
+      ),
+    ).toBe(5);
+  });
+
+  it("has some skipped slots within latency range", () => {
+    const skippedClusterSlots = new Set<number>([3, 5]);
+    const publish: SlotPublish = {
+      slot: 1,
+      mine: false,
+      skipped: false,
+      level: "rooted",
+      success_nonvote_transaction_cnt: null,
+      failed_nonvote_transaction_cnt: null,
+      success_vote_transaction_cnt: null,
+      failed_vote_transaction_cnt: null,
+      priority_fee: null,
+      transaction_fee: null,
+      tips: null,
+      max_compute_units: null,
+      compute_units: null,
+      duration_nanos: null,
+      completed_time_nanos: null,
+      vote_latency: 5,
+    };
+    expect(hasLateVote(publish)).toBeTruthy();
+    expect(
+      getDiscountedVoteLatency(
+        publish.slot,
+        publish.vote_latency!,
+        skippedClusterSlots,
+      ),
+    ).toBe(3);
+  });
+
+  it("all slots within latency range are skipped", () => {
+    const skippedClusterSlots = new Set<number>([2, 3, 4, 5]);
+    const publish: SlotPublish = {
+      slot: 1,
+      mine: false,
+      skipped: false,
+      level: "rooted",
+      success_nonvote_transaction_cnt: null,
+      failed_nonvote_transaction_cnt: null,
+      success_vote_transaction_cnt: null,
+      failed_vote_transaction_cnt: null,
+      priority_fee: null,
+      transaction_fee: null,
+      tips: null,
+      max_compute_units: null,
+      compute_units: null,
+      duration_nanos: null,
+      completed_time_nanos: null,
+      vote_latency: 5,
+    };
+    expect(hasLateVote(publish)).toBeTruthy();
+    expect(
+      getDiscountedVoteLatency(
+        publish.slot,
+        publish.vote_latency!,
+        skippedClusterSlots,
+      ),
+    ).toBe(1);
   });
 });
