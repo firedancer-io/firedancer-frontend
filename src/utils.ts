@@ -425,7 +425,7 @@ export function formatTimeNanos(time: bigint) {
 
 export function hasLateVote(publish: SlotPublish) {
   return (
-    publish?.level === "rooted" &&
+    publish.level === "rooted" &&
     ((publish.vote_latency && publish.vote_latency > 1) ||
       (publish.vote_latency === null && !publish.skipped))
   );
@@ -443,19 +443,4 @@ export function getDiscountedVoteLatency(
     }
   }
   return latency - discount;
-}
-
-export function hasDiscountedLateVote(
-  skippedClusterSlots: Set<number>,
-  publish?: SlotPublish,
-) {
-  if (!publish || !hasLateVote(publish)) return false;
-  return (
-    publish.vote_latency === null ||
-    getDiscountedVoteLatency(
-      publish.slot,
-      publish.vote_latency,
-      skippedClusterSlots,
-    ) > 1
-  );
 }

@@ -748,7 +748,7 @@ export const [
           latency,
           skippedClusterSlots,
         );
-        if (discountedLatency === null || discountedLatency > 1) {
+        if (discountedLatency > 1) {
           discountedLateVoteSlots.add(slot);
         }
       }

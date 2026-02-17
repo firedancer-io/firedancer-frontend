@@ -3,7 +3,6 @@ import {
   formatTimeNanos,
   getDiscountedVoteLatency,
   getDurationText,
-  hasDiscountedLateVote,
   hasLateVote,
 } from "../utils";
 import { Duration } from "luxon";
@@ -168,7 +167,7 @@ describe("formatTimeNanos", () => {
   });
 });
 
-describe("hasDiscountedLateVote", () => {
+describe("hasLateVote and getDiscountedVoteLatency", () => {
   it("slot is not rooted", () => {
     const skippedClusterSlots = new Set<number>();
     const publish: SlotPublish = {
@@ -197,11 +196,9 @@ describe("hasDiscountedLateVote", () => {
         skippedClusterSlots,
       ),
     ).toBe(2);
-    expect(hasDiscountedLateVote(skippedClusterSlots, publish)).toBeFalsy();
   });
 
   it("slot has null vote latency", () => {
-    const skippedClusterSlots = new Set<number>();
     const publish: SlotPublish = {
       slot: 1,
       mine: false,
@@ -222,11 +219,6 @@ describe("hasDiscountedLateVote", () => {
     };
     expect(hasLateVote(publish)).toBeTruthy();
     expect(hasLateVote({ ...publish, skipped: true })).toBeFalsy();
-
-    expect(hasDiscountedLateVote(skippedClusterSlots, publish)).toBeTruthy();
-    expect(
-      hasDiscountedLateVote(skippedClusterSlots, { ...publish, skipped: true }),
-    ).toBeFalsy();
   });
 
   it("slot has > 1 vote latency", () => {
@@ -257,7 +249,6 @@ describe("hasDiscountedLateVote", () => {
         skippedClusterSlots,
       ),
     ).toBe(2);
-    expect(hasDiscountedLateVote(skippedClusterSlots, publish)).toBeTruthy();
   });
 
   it("no skipped slots within latency range", () => {
@@ -288,7 +279,6 @@ describe("hasDiscountedLateVote", () => {
         skippedClusterSlots,
       ),
     ).toBe(5);
-    expect(hasDiscountedLateVote(skippedClusterSlots, publish)).toBeTruthy();
   });
 
   it("has some skipped slots within latency range", () => {
@@ -319,7 +309,6 @@ describe("hasDiscountedLateVote", () => {
         skippedClusterSlots,
       ),
     ).toBe(3);
-    expect(hasDiscountedLateVote(skippedClusterSlots, publish)).toBeTruthy();
   });
 
   it("all slots within latency range are skipped", () => {
@@ -350,6 +339,5 @@ describe("hasDiscountedLateVote", () => {
         skippedClusterSlots,
       ),
     ).toBe(1);
-    expect(hasDiscountedLateVote(skippedClusterSlots, publish)).toBeFalsy();
   });
 });
