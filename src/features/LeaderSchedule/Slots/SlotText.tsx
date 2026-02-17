@@ -20,10 +20,10 @@ export default function LinkedSlotText({
   }
 
   return (
-    <div className={clsxName}>
+    <Text className={clsxName}>
       <Link to="/slotDetails" search={{ slot }}>
-        <Text>{slot}</Text>
+        {slot}
       </Link>
-    </div>
+    </Text>
   );
 }
