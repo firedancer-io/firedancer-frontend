@@ -9,6 +9,7 @@ import {
   ChartControlsContext,
   DEFAULT_CHART_CONTROLS_CONTEXT,
   type ChartControls,
+  type InclusionFilterOptions,
 } from "./ChartControlsContext";
 import { SearchMode } from "../Overview/SlotPerformance/TransactionBarsCard/consts";
 import { getUplotId } from "../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
@@ -27,8 +28,8 @@ import { txnBarsControlsStickyTop } from "../Overview/SlotPerformance/Transactio
 const desiredScaleRangeMultiplierMax = 30;
 const desiredScaleRangeMultiplierMin = 20;
 
-const DEFAULT_BUNDLE_FILTER = "All";
-const DEFAULT_SEARCH = {
+const DEFAULT_BUNDLE_FILTER: InclusionFilterOptions = "All";
+const DEFAULT_SEARCH: ChartControls["search"] = {
   mode: SearchMode.TxnSignature,
   text: "",
 };
@@ -45,10 +46,10 @@ export default function ChartControlsProvider({
     selectedSlotTransactions ?? DEFAULT_CHART_CONTROLS_CONTEXT.transactions;
   const filterBundle = useSetAtom(filterBundleDataAtom);
 
-  const [bundleFilter, setBundleFilter] = useState<
-    ChartControls["bundleFilter"]
-  >(DEFAULT_BUNDLE_FILTER);
-  const [search, setSearch] = useState<ChartControls["search"]>(DEFAULT_SEARCH);
+  const [bundleFilter, setBundleFilter] = useState<InclusionFilterOptions>(
+    DEFAULT_BUNDLE_FILTER,
+  );
+  const [search, setSearch] = useState(DEFAULT_SEARCH);
   const [focusedBankIdx, setFocusedBankIdx] = useState<number | undefined>();
   const [triggeredChartControl, setTriggeredChartControl] =
     useState<ChartControls["triggeredChartControl"]>();

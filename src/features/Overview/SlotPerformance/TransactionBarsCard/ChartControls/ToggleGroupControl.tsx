@@ -6,7 +6,7 @@ import clsx from "clsx";
 
 interface ToggleGroupControlProps<T extends string> {
   label?: string;
-  options: T[];
+  options: readonly T[];
   value: T;
   onChange: (value: T) => void;
   triggered?: boolean;

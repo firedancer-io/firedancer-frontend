@@ -63,6 +63,7 @@ import { txnErrorCodeMap } from "../../../../../consts";
 import { useThrottledCallback } from "use-debounce";
 import {
   ChartControlsContext,
+  INCLUSION_FILTER_OPTIONS,
   type InclusionFilterOptions,
 } from "../../../../SlotDetails/ChartControlsContext";
 
@@ -310,7 +311,7 @@ function BundleControl({ isMobileView }: ToggleGroupControlProps) {
   return (
     <ToggleGroupControl
       label="Bundle"
-      options={["All", "Yes", "No"]}
+      options={INCLUSION_FILTER_OPTIONS}
       value={bundleFilter}
       onChange={(value) => value && updateBundleFilter(value)}
       triggered={triggeredChartControl === "Bundle"}
@@ -330,7 +331,7 @@ function LandedControl({ isMobileView }: ToggleGroupControlProps) {
   return (
     <ToggleGroupControl
       label="Landed"
-      options={["All", "Yes", "No"]}
+      options={INCLUSION_FILTER_OPTIONS}
       value={value}
       onChange={(value) => {
         if (!value) return;
@@ -353,7 +354,7 @@ function SimpleControl({ isMobileView }: ToggleGroupControlProps) {
   return (
     <ToggleGroupControl
       label="Vote"
-      options={["All", "Yes", "No"]}
+      options={INCLUSION_FILTER_OPTIONS}
       value={value}
       onChange={(value) => {
         if (!value) return;

@@ -2,7 +2,8 @@ import { createContext } from "react";
 import { SearchMode } from "../Overview/SlotPerformance/TransactionBarsCard/consts";
 import type { SlotTransactions } from "../../api/types";
 
-export type InclusionFilterOptions = "All" | "Yes" | "No";
+export const INCLUSION_FILTER_OPTIONS = ["All", "Yes", "No"] as const;
+export type InclusionFilterOptions = (typeof INCLUSION_FILTER_OPTIONS)[number];
 
 export type ChartControls = {
   hasData: boolean;
