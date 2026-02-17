@@ -86,7 +86,7 @@
 
   :global(.rt-TooltipText) {
     font-size: 12px;
-    word-break: break-all;
+    overflow-wrap: break-word;
   }
 
   :global(.rt-TooltipArrow) {
