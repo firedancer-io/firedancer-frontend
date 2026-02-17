@@ -18,6 +18,7 @@
   transition: all 0.3s ease;
 
   &:hover {
+    height: 15px;
     transform: translateY(-2px);
     filter: brightness(1.2);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
