@@ -304,7 +304,7 @@ function BundleControl({ isMobileView }: ToggleGroupControlProps) {
     bundleFilter,
     updateBundleFilter,
     triggeredChartControl,
-    setTriggeredChartControl,
+    resetTriggeredChartControl,
   } = useContext(ChartControlsContext);
 
   return (
@@ -314,7 +314,7 @@ function BundleControl({ isMobileView }: ToggleGroupControlProps) {
       value={bundleFilter}
       onChange={(value) => value && updateBundleFilter(value)}
       triggered={triggeredChartControl === "Bundle"}
-      onBlur={() => setTriggeredChartControl(undefined)}
+      onBlur={resetTriggeredChartControl}
       hasMinTextWidth={isMobileView}
     />
   );

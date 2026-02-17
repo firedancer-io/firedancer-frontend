@@ -94,7 +94,7 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
     focusTxn,
     resetTxnFocus,
     triggeredChartControl,
-    setTriggeredChartControl,
+    resetTriggeredChartControl,
   } = useContext(ChartControlsContext);
   const [dInputValue, setDInputValue] = useDebounce(search.text, 500);
   const [searchIdx, setSearchIdx] = useState<{
@@ -453,7 +453,7 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
                       // To re-open dialog after selection if input stays focused
                       setIsOpen(true);
                     }}
-                    onBlur={() => setTriggeredChartControl(undefined)}
+                    onBlur={resetTriggeredChartControl}
                     readOnly={isInputDisabled}
                     ref={inputRef}
                   />

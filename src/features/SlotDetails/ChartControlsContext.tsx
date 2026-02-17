@@ -23,9 +23,7 @@ export type ChartControls = {
   resetTxnFocus: () => void;
   focusedBankIdx?: number;
   triggeredChartControl?: "Bundle" | "Search";
-  setTriggeredChartControl: (
-    value: ChartControls["triggeredChartControl"],
-  ) => void;
+  resetTriggeredChartControl: () => void;
 };
 
 export const DEFAULT_CHART_CONTROLS_CONTEXT: ChartControls = {
@@ -62,7 +60,7 @@ export const DEFAULT_CHART_CONTROLS_CONTEXT: ChartControls = {
   updateSearch: () => {},
   focusTxn: () => {},
   resetTxnFocus: () => {},
-  setTriggeredChartControl: () => {},
+  resetTriggeredChartControl: () => {},
 };
 
 export const ChartControlsContext = createContext<ChartControls>(

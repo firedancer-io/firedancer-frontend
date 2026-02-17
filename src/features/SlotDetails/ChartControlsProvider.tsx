@@ -1,4 +1,10 @@
-import { useCallback, useMemo, useState, type PropsWithChildren } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type PropsWithChildren,
+} from "react";
 import {
   ChartControlsContext,
   DEFAULT_CHART_CONTROLS_CONTEXT,
@@ -21,6 +27,12 @@ import { txnBarsControlsStickyTop } from "../Overview/SlotPerformance/Transactio
 const desiredScaleRangeMultiplierMax = 30;
 const desiredScaleRangeMultiplierMin = 20;
 
+const DEFAULT_BUNDLE_FILTER = "All";
+const DEFAULT_SEARCH = {
+  mode: SearchMode.TxnSignature,
+  text: "",
+};
+
 export default function ChartControlsProvider({
   children,
 }: PropsWithChildren<unknown>) {
@@ -33,12 +45,10 @@ export default function ChartControlsProvider({
     selectedSlotTransactions ?? DEFAULT_CHART_CONTROLS_CONTEXT.transactions;
   const filterBundle = useSetAtom(filterBundleDataAtom);
 
-  const [bundleFilter, setBundleFilter] =
-    useState<ChartControls["bundleFilter"]>("All");
-  const [search, setSearch] = useState<ChartControls["search"]>({
-    mode: SearchMode.TxnSignature,
-    text: "",
-  });
+  const [bundleFilter, setBundleFilter] = useState<
+    ChartControls["bundleFilter"]
+  >(DEFAULT_BUNDLE_FILTER);
+  const [search, setSearch] = useState<ChartControls["search"]>(DEFAULT_SEARCH);
   const [focusedBankIdx, setFocusedBankIdx] = useState<number | undefined>();
   const [triggeredChartControl, setTriggeredChartControl] =
     useState<ChartControls["triggeredChartControl"]>();
@@ -227,6 +237,18 @@ export default function ChartControlsProvider({
     [focusTxn, ipToTxnIdx, txnSigToTxnIdx],
   );
 
+  const resetTriggeredChartControl = useCallback(() => {
+    setTriggeredChartControl(undefined);
+  }, []);
+
+  // Reset state when navigating to a different slot
+  useEffect(() => {
+    setBundleFilter(DEFAULT_BUNDLE_FILTER);
+    setSearch(DEFAULT_SEARCH);
+    setFocusedBankIdx(undefined);
+    setTriggeredChartControl(undefined);
+  }, [selectedSlot]);
+
   return (
     <ChartControlsContext.Provider
       value={
@@ -243,7 +265,7 @@ export default function ChartControlsProvider({
               resetTxnFocus,
               focusedBankIdx,
               triggeredChartControl,
-              setTriggeredChartControl,
+              resetTriggeredChartControl,
             }
           : DEFAULT_CHART_CONTROLS_CONTEXT
       }
