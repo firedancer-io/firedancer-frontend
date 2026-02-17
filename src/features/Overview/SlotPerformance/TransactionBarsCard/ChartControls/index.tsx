@@ -66,6 +66,7 @@ import {
   INCLUSION_FILTER_OPTIONS,
   type InclusionFilterOptions,
 } from "../../../../SlotDetails/ChartControlsContext";
+import { bundleToggleGroupId } from "../../../../SlotDetails/DetailedSlotStats/consts";
 
 export default function ChartControls() {
   const [isMinimized, setIsMinimized] = useState(false);
@@ -310,6 +311,7 @@ function BundleControl({ isMobileView }: ToggleGroupControlProps) {
 
   return (
     <ToggleGroupControl
+      toggleGroupId={bundleToggleGroupId}
       label="Bundle"
       options={INCLUSION_FILTER_OPTIONS}
       value={bundleFilter}

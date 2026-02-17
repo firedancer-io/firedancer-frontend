@@ -5,6 +5,7 @@ import chartControlStyles from "./chartControl.module.css";
 import clsx from "clsx";
 
 interface ToggleGroupControlProps<T extends string> {
+  toggleGroupId?: string;
   label?: string;
   options: readonly T[];
   value: T;
@@ -16,6 +17,7 @@ interface ToggleGroupControlProps<T extends string> {
 }
 
 export default function ToggleGroupControl<T extends string>({
+  toggleGroupId,
   label,
   options,
   value,
@@ -43,7 +45,7 @@ export default function ToggleGroupControl<T extends string>({
         side="bottom"
       >
         <ToggleGroup.Root
-          id={`${label?.toLowerCase()}-toggle-group`}
+          id={toggleGroupId}
           className={clsx(styles.group, triggered && styles.triggered)}
           type="single"
           value={value}

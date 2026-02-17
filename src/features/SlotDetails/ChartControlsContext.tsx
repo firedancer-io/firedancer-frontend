@@ -12,13 +12,12 @@ export type ChartControls = {
   bundleFilter: InclusionFilterOptions;
   updateBundleFilter: (
     value: ChartControls["bundleFilter"],
-    scroll?: boolean,
-    externalTrigger?: boolean,
+    options?: { scroll?: boolean; externalTrigger?: boolean },
   ) => void;
   search: { mode: SearchMode; text: string };
   updateSearch: (
     value: { mode?: SearchMode; text?: string },
-    externalTrigger?: boolean,
+    options?: { externalTrigger?: boolean },
   ) => void;
   focusTxn: (txnIdx: number) => void;
   resetTxnFocus: () => void;

@@ -23,6 +23,7 @@ import { highlightTxnIdx } from "../Overview/SlotPerformance/TransactionBarsCard
 import { banksXScaleKey } from "../Overview/SlotPerformance/ComputeUnitsCard/consts";
 import { isElementFullyInView } from "../../utils";
 import { txnBarsControlsStickyTop } from "../Overview/SlotPerformance/TransactionBarsCard/BarsChartContainer";
+import { bundleToggleGroupId } from "./DetailedSlotStats/consts";
 
 /** Multiplier to determine the desired scale zoom range for the txn (ex. scale range of 30x txn duration length) */
 const desiredScaleRangeMultiplierMax = 30;
@@ -34,9 +35,7 @@ const DEFAULT_SEARCH: ChartControls["search"] = {
   text: "",
 };
 
-export default function ChartControlsProvider({
-  children,
-}: PropsWithChildren<unknown>) {
+export default function ChartControlsProvider({ children }: PropsWithChildren) {
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
 
   const selectedSlot = useAtomValue(selectedSlotAtom);
@@ -62,23 +61,25 @@ export default function ChartControlsProvider({
   const updateBundleFilter = useCallback(
     (
       value: ChartControls["bundleFilter"],
-      scroll?: boolean,
-      externalTrigger?: boolean,
+      options?: { scroll?: boolean; externalTrigger?: boolean },
     ) => {
       setBundleFilter(value);
       if (!transactions) return;
+
       uplotAction((u, bankIdx) => {
         filterBundle(u, transactions, bankIdx, maxTs, value);
       });
-      if (scroll) {
+
+      if (options?.scroll) {
         // Targets the first bank tile since bundle filter affects all tiles
         document
           .getElementById(getUplotId(0))
           ?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
-      if (externalTrigger) {
+
+      if (options?.externalTrigger) {
         const bundleFilterItemEl = document
-          .getElementById("bundle-toggle-group")
+          .getElementById(bundleToggleGroupId)
           ?.querySelector<HTMLElement>(`button[aria-label="${value}"]`);
         bundleFilterItemEl?.focus();
         setTriggeredChartControl("Bundle");
@@ -91,11 +92,11 @@ export default function ChartControlsProvider({
     (txnIdx: number) => {
       if (!transactions) return;
       const bankIdx = transactions.txn_bank_idx[txnIdx];
-
       const chartEl = document.getElementById(getUplotId(bankIdx));
       const canvasEl = chartEl?.getElementsByTagName("canvas")?.[0] as
         | HTMLElement
         | undefined;
+
       if (chartEl && canvasEl) {
         if (!isElementFullyInView(canvasEl)) {
           canvasEl.scrollIntoView({ block: "nearest" });
@@ -210,7 +211,7 @@ export default function ChartControlsProvider({
   const updateSearch = useCallback(
     (
       value: { mode?: SearchMode; text?: string },
-      externalTrigger?: boolean,
+      options?: { externalTrigger?: boolean },
     ) => {
       setSearch((prev) => {
         const newSearch = { ...prev, ...value };
@@ -221,9 +222,10 @@ export default function ChartControlsProvider({
         } else if (newSearch.mode === SearchMode.Ip) {
           txnIdx = ipToTxnIdx(newSearch.text);
         }
+
         if (txnIdx !== -1) {
           focusTxn(txnIdx);
-          if (externalTrigger) {
+          if (options?.externalTrigger) {
             const searchInputEl = document
               .getElementById("search-command-text-field")
               ?.querySelector<HTMLElement>("input");

@@ -26,7 +26,10 @@ export default function IncomeByBundle() {
 
   const onItemClick = useCallback(
     ({ label }: { label: string; value: number }) =>
-      updateBundleFilter(label === "Bundle" ? "Yes" : "No", true, true),
+      updateBundleFilter(label === "Bundle" ? "Yes" : "No", {
+        scroll: true,
+        externalTrigger: true,
+      }),
     [updateBundleFilter],
   );
 

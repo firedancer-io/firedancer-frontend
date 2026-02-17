@@ -434,8 +434,10 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
                     styles.inputContainer,
                     "rt-TextFieldRoot",
                     "rt-variant-surface",
-                    size === "sm" && styles.sm,
-                    triggeredChartControl === "Search" && styles.triggered,
+                    {
+                      [styles.sm]: size === "sm",
+                      [styles.triggered]: triggeredChartControl === "Search",
+                    },
                   )}
                 >
                   <Command.Input

@@ -55,7 +55,7 @@ export default function DistributionBar({
                       <>
                         <Text weight="bold">{label}</Text>
                         <br />
-                        <Text>{`Income: ${value} (${formattedPct})`}</Text>
+                        <Text>{`Income: ${value} SOL (${formattedPct})`}</Text>
                       </>
                     }
                     side="bottom"
@@ -71,9 +71,7 @@ export default function DistributionBar({
                         background: color,
                         flexGrow: value,
                       }}
-                      onClick={
-                        onItemClick && (() => onItemClick({ label, value }))
-                      }
+                      onClick={() => onItemClick?.({ label, value })}
                     >
                       {showLabel && (
                         <Text mx="2" className={styles.label} truncate>
