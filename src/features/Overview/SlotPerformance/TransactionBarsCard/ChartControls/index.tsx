@@ -31,10 +31,18 @@ import {
   selectedBankAtom,
   filterArrivalDataAtom,
   filteredTxnIdxAtom,
+  filterBundleDataAtom,
 } from "../atoms";
 import { groupBy, max } from "lodash";
 import type { CSSProperties } from "react";
-import { useContext, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ToggleGroupControl from "./ToggleGroupControl";
 import { useMeasure, useMedia, useUnmount } from "react-use";
 import { FilterEnum, TxnState } from "../consts";
@@ -66,7 +74,8 @@ import {
   INCLUSION_FILTER_OPTIONS,
   type InclusionFilterOptions,
 } from "../../../../SlotDetails/ChartControlsContext";
-import { bundleToggleGroupId } from "../../../../SlotDetails/DetailedSlotStats/consts";
+import useChartControl from "./useChartControl";
+import { getUplotId } from "../chartUtils";
 
 export default function ChartControls() {
   const [isMinimized, setIsMinimized] = useState(false);
@@ -302,22 +311,65 @@ function TpuControl() {
 }
 
 function BundleControl({ isMobileView }: ToggleGroupControlProps) {
-  const {
-    bundleFilter,
-    updateBundleFilter,
-    triggeredChartControl,
-    resetTriggeredChartControl,
-  } = useContext(ChartControlsContext);
+  const [value, setValue] = useState<InclusionFilterOptions>("All");
+  const { transactions, maxTs } = useContext(ChartControlsContext);
+  const uplotAction = useSetAtom(txnBarsUplotActionAtom);
+  const filterBundle = useSetAtom(filterBundleDataAtom);
+
+  const optionButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const registerOptionRef = useCallback(
+    (value: InclusionFilterOptions, el: HTMLButtonElement | null) => {
+      if (el) {
+        optionButtonRefs.current.set(value, el);
+      } else {
+        optionButtonRefs.current.delete(value);
+      }
+    },
+    [],
+  );
+
+  const updateBundleFilter = useCallback(
+    (value: InclusionFilterOptions) => {
+      if (!transactions) return;
+
+      setValue(value);
+
+      uplotAction((u, bankIdx) => {
+        filterBundle(u, transactions, bankIdx, maxTs, value);
+      });
+    },
+    [filterBundle, maxTs, transactions, uplotAction],
+  );
+
+  const handleExternalValueUpdate = useCallback(
+    (value: InclusionFilterOptions) => {
+      updateBundleFilter(value);
+      optionButtonRefs.current.get(value)?.focus();
+      // Targets the first bank tile since bundle filter affects all tiles
+      document
+        .getElementById(getUplotId(0))
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [updateBundleFilter],
+  );
+
+  const { isTooltipOpen, closeTooltip } = useChartControl({
+    chartControl: "Bundle",
+    handleExternalValueUpdate,
+  });
 
   return (
     <ToggleGroupControl
-      toggleGroupId={bundleToggleGroupId}
       label="Bundle"
       options={INCLUSION_FILTER_OPTIONS}
-      value={bundleFilter}
-      onChange={(value) => value && updateBundleFilter(value)}
-      triggered={triggeredChartControl === "Bundle"}
-      onBlur={resetTriggeredChartControl}
+      value={value}
+      onChange={(value) => {
+        if (!value) return;
+        updateBundleFilter(value);
+      }}
+      registerOptionRef={registerOptionRef}
+      isTooltipOpen={isTooltipOpen}
+      closeTooltip={closeTooltip}
       hasMinTextWidth={isMobileView}
     />
   );

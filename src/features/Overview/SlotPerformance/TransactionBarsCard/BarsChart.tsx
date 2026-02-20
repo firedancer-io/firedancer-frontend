@@ -33,6 +33,7 @@ interface BarsChartProps {
   isLastChart?: boolean;
   hide?: boolean;
   isSelected?: boolean;
+  isFocused?: boolean;
 }
 
 export default function BarsChart({
@@ -41,9 +42,10 @@ export default function BarsChart({
   isLastChart,
   hide,
   isSelected,
+  isFocused,
 }: BarsChartProps) {
-  const { transactions, maxTs, focusedBankIdx } =
-    useContext(ChartControlsContext);
+  const { transactions, maxTs } = useContext(ChartControlsContext);
+
   const isFirstOrLastChart = isFirstChart || isLastChart;
   const leftAxisSize = useAtomValue(leftAxisSizeAtom) - xBuffer;
   const rightAxisSize = useAtomValue(rightAxisSizeAtom) - xBuffer;
@@ -196,7 +198,7 @@ export default function BarsChart({
             <>
               <UplotReact
                 id={getUplotId(bankIdx)}
-                className={clsx(bankIdx === focusedBankIdx && styles.focused)}
+                className={clsx(isFocused && styles.focused)}
                 options={options}
                 data={chartData}
                 onCreate={handleCreate}

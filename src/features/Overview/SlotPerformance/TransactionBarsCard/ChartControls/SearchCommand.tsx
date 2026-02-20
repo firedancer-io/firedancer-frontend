@@ -30,7 +30,11 @@ import {
   Cross1Icon,
 } from "@radix-ui/react-icons";
 import clsx from "clsx";
-import { getTxnIncome, removePortFromIp } from "../../../../../utils";
+import {
+  getTxnIncome,
+  isElementFullyInView,
+  removePortFromIp,
+} from "../../../../../utils";
 import { filteredTxnIdxAtom } from "../atoms";
 import { txnErrorCodeMap } from "../../../../../consts";
 import { containerElAtom, peersListAtom } from "../../../../../atoms";
@@ -40,7 +44,14 @@ import {
   findIpMatch,
 } from "./searchCommandUtils";
 import { SearchMode } from "../consts";
-import { ChartControlsContext } from "../../../../SlotDetails/ChartControlsContext";
+import {
+  ChartControlsContext,
+  type Search,
+} from "../../../../SlotDetails/ChartControlsContext";
+import useChartControl from "./useChartControl";
+import { getUplotId } from "../chartUtils";
+import { txnBarsControlsStickyTop } from "../BarsChartContainer";
+import { highlightTxnIdx } from "../txnBarsPlugin";
 
 const queryModes = [SearchMode.TxnSignature, SearchMode.Ip];
 const rankModes = [SearchMode.Income];
@@ -84,18 +95,18 @@ interface SearchCommandProps {
   size?: "sm" | "lg";
 }
 
+/** Multiplier to determine the desired scale zoom range for the txn (ex. scale range of 30x txn duration length) */
+const desiredScaleRangeMultiplierMax = 30;
+const desiredScaleRangeMultiplierMin = 20;
+
 export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
+  const [search, setSearch] = useState<Search>({
+    mode: SearchMode.TxnSignature,
+    text: "",
+  });
+  const inputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isCurrentlySelected, setIsCurrentlySelected] = useState(false);
-  const {
-    transactions,
-    search,
-    updateSearch,
-    focusTxn,
-    resetTxnFocus,
-    triggeredChartControl,
-    resetTriggeredChartControl,
-  } = useContext(ChartControlsContext);
   const [dInputValue, setDInputValue] = useDebounce(search.text, 500);
   const [searchIdx, setSearchIdx] = useState<{
     current: number;
@@ -110,16 +121,169 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
   const commandRef = useRef<HTMLDivElement>(null);
   const commandListRef = useRef<HTMLDivElement>(null);
 
+  const { transactions, focusBank } = useContext(ChartControlsContext);
+
+  const txnSigToTxnIdx = useCallback(
+    (txnSig: string) => {
+      if (!transactions?.txn_signature) return -1;
+      return transactions.txn_signature.indexOf(txnSig);
+    },
+    [transactions?.txn_signature],
+  );
+
+  const ipToTxnIdx = useCallback(
+    (ip: string) => {
+      if (!transactions?.txn_source_ipv4) return -1;
+      return transactions.txn_source_ipv4.indexOf(ip);
+    },
+    [transactions?.txn_source_ipv4],
+  );
+
+  const getTxnIdx = useCallback(
+    (value: Search) => {
+      let txnIdx = -1;
+      if (value.mode === SearchMode.TxnSignature) {
+        txnIdx = txnSigToTxnIdx(value.text);
+      } else if (value.mode === SearchMode.Ip) {
+        txnIdx = ipToTxnIdx(value.text);
+      }
+      return txnIdx;
+    },
+    [ipToTxnIdx, txnSigToTxnIdx],
+  );
+
+  const focusTxn = useCallback(
+    (txnIdx: number) => {
+      if (!transactions) return;
+      const bankIdx = transactions.txn_bank_idx[txnIdx];
+      const chartEl = document.getElementById(getUplotId(bankIdx));
+      const canvasEl = chartEl?.getElementsByTagName("canvas")?.[0] as
+        | HTMLElement
+        | undefined;
+
+      if (chartEl && canvasEl) {
+        if (!isElementFullyInView(canvasEl)) {
+          canvasEl.scrollIntoView({ block: "nearest" });
+          const canvasRect = canvasEl.getBoundingClientRect();
+          const headerRect = document
+            .getElementById("transaction-bars-controls")
+            ?.getBoundingClientRect();
+          if (
+            headerRect &&
+            // Check if header is stickied
+            headerRect.top - txnBarsControlsStickyTop <= 0 &&
+            // Check if the element is hidden behind the sticky header
+            canvasRect.top < headerRect.bottom
+          ) {
+            document.getElementById("scroll-container")?.scrollBy({
+              top: -headerRect.bottom - canvasRect.top,
+            });
+          }
+        }
+
+        focusBank?.(bankIdx);
+      }
+
+      uplotAction((u, _bankIdx) => {
+        if (bankIdx !== _bankIdx) {
+          // To redraw non-focused banks without focus
+          u.redraw();
+          return;
+        }
+
+        const scale = u.scales[banksXScaleKey];
+        const scaleMin = scale.min ?? -Infinity;
+        const scaleMax = scale.max ?? Infinity;
+        const currentScaleRange = scaleMax - scaleMin;
+
+        const isFirstTxnInBundle =
+          transactions.txn_from_bundle[txnIdx] &&
+          transactions.txn_microblock_id[txnIdx - 1] !==
+            transactions.txn_microblock_id[txnIdx];
+        const isLastTxnInBundle =
+          transactions.txn_from_bundle[txnIdx] &&
+          transactions.txn_microblock_id[txnIdx + 1] !==
+            transactions.txn_microblock_id[txnIdx];
+
+        const startTs = Number(
+          (isFirstTxnInBundle || !transactions.txn_from_bundle[txnIdx]
+            ? transactions.txn_mb_start_timestamps_nanos[txnIdx]
+            : transactions.txn_preload_end_timestamps_nanos[txnIdx]) -
+            transactions.start_timestamp_nanos,
+        );
+        const endTs = Number(
+          (isLastTxnInBundle || !transactions.txn_from_bundle[txnIdx]
+            ? transactions.txn_mb_end_timestamps_nanos[txnIdx]
+            : transactions.txn_end_timestamps_nanos[txnIdx]) -
+            transactions.start_timestamp_nanos,
+        );
+        const desiredScaleRangeMax =
+          (endTs - startTs) * desiredScaleRangeMultiplierMax;
+        const desiredScaleRangeMin =
+          (endTs - startTs) * desiredScaleRangeMultiplierMin;
+
+        // If txn is already fully out of view, adjust the scale to include it
+        const notWithinScale = endTs < scaleMin || startTs > scaleMax;
+        // If the current scale is too large, zoom in to the desired scale
+        const scaleRangeTooLarge = currentScaleRange > desiredScaleRangeMax;
+        // If the current scale is too small, zoom out to the desired scale
+        const scaleRangeTooSmall = currentScaleRange < desiredScaleRangeMin;
+
+        // Zooms the charts into the desired scale, taking into account min/max range bounds of the data
+        // Then sets the color highlighting for that txn
+        u.batch(() => {
+          if (notWithinScale || scaleRangeTooLarge || scaleRangeTooSmall) {
+            let min = Math.max(
+              u.data[0][0],
+              startTs - desiredScaleRangeMax / 2,
+            );
+            const max = min + desiredScaleRangeMax;
+            if (max > u.data[0][u.data[0].length - 1]) {
+              min = max - desiredScaleRangeMax;
+            }
+
+            u.setScale(banksXScaleKey, { min, max });
+          }
+
+          highlightTxnIdx(txnIdx);
+        });
+      });
+    },
+    [focusBank, transactions, uplotAction],
+  );
+
+  const updateSearch = useCallback(
+    (value: Search) => {
+      const txnIdx = getTxnIdx(value);
+      setSearch(value);
+      if (txnIdx !== -1) focusTxn(txnIdx);
+    },
+    [focusTxn, getTxnIdx],
+  );
+
+  const handleExternalValueUpdate = useCallback(
+    (value: Search) => {
+      updateSearch(value);
+      inputRef.current?.focus();
+    },
+    [updateSearch],
+  );
+
+  const { isTooltipOpen, closeTooltip } = useChartControl({
+    chartControl: "Search",
+    handleExternalValueUpdate,
+  });
+
   // For resetting focus when user starts typing in input
   const resetChartElFocus = useCallback(() => {
-    resetTxnFocus();
+    focusBank?.(undefined);
     setSearchIdx(undefined);
     setIsCurrentlySelected(false);
-  }, [resetTxnFocus]);
+  }, [focusBank]);
 
   const resetFocus = useCallback(() => {
     resetChartElFocus();
-    updateSearch({ text: "" });
+    updateSearch({ ...search, text: "" });
     setDInputValue("");
     uplotAction((u, _bankIdx) => {
       u.setScale(banksXScaleKey, {
@@ -127,7 +291,7 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
         max: u.data[0][u.data[0].length - 1],
       });
     });
-  }, [resetChartElFocus, setDInputValue, updateSearch, uplotAction]);
+  }, [resetChartElFocus, search, setDInputValue, updateSearch, uplotAction]);
 
   useEffect(() => {
     if (
@@ -140,9 +304,9 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
 
   useEffect(() => {
     if (searchIdx === undefined && rankModes.includes(search.mode)) {
-      updateSearch({ mode: dropdownModes[0] });
+      updateSearch({ ...search, mode: dropdownModes[0] });
     }
-  }, [searchIdx, search.mode, updateSearch]);
+  }, [searchIdx, search, updateSearch]);
 
   const getOptionMap = useCallback(
     <T extends string | number, Option extends BaseOption>(
@@ -261,7 +425,7 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
 
   const handleItemSelect = useCallback(
     (inputValue: string, optionValue?: number | string) => {
-      updateSearch({ text: inputValue });
+      updateSearch({ ...search, text: inputValue });
       setDInputValue(inputValue);
       setIsOpen(false);
       setIsCurrentlySelected(true);
@@ -314,8 +478,8 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
     },
     [
       updateSearch,
+      search,
       setDInputValue,
-      search.mode,
       focusTxn,
       signatureOptionMap,
       errorOptionMap,
@@ -346,7 +510,7 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
   };
 
   const handleDropdownSelect = (mode: SearchMode) => () => {
-    updateSearch({ mode });
+    updateSearch({ ...search, mode });
     resetFocus();
 
     switch (mode) {
@@ -385,7 +549,6 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
   const isInputDisabledRef = useRef(isInputDisabled);
   isInputDisabledRef.current = isInputDisabled;
 
-  const inputRef = useRef<HTMLInputElement>(null);
   const pendingPopoverFocusRef = useRef(false);
 
   return (
@@ -424,7 +587,7 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
               <Tooltip
                 className={chartControlStyles.chartControlTooltip}
                 content={`Applied: ${search.mode}`}
-                open={triggeredChartControl === "Search"}
+                open={isTooltipOpen}
                 side="bottom"
               >
                 <Flex
@@ -436,7 +599,7 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
                     "rt-variant-surface",
                     {
                       [styles.sm]: size === "sm",
-                      [styles.triggered]: triggeredChartControl === "Search",
+                      [styles.tooltipOpen]: isTooltipOpen,
                     },
                   )}
                 >
@@ -450,12 +613,12 @@ export default function SearchCommand({ size = "lg" }: SearchCommandProps) {
                     }}
                     value={search.text}
                     onValueChange={(value) => {
-                      updateSearch({ text: value });
+                      updateSearch({ ...search, text: value });
                       resetChartElFocus();
                       // To re-open dialog after selection if input stays focused
                       setIsOpen(true);
                     }}
-                    onBlur={resetTriggeredChartControl}
+                    onBlur={closeTooltip}
                     readOnly={isInputDisabled}
                     ref={inputRef}
                   />

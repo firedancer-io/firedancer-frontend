@@ -1,29 +1,35 @@
 import { createContext } from "react";
-import { SearchMode } from "../Overview/SlotPerformance/TransactionBarsCard/consts";
+import type { SearchMode } from "../Overview/SlotPerformance/TransactionBarsCard/consts";
 import type { SlotTransactions } from "../../api/types";
 
 export const INCLUSION_FILTER_OPTIONS = ["All", "Yes", "No"] as const;
 export type InclusionFilterOptions = (typeof INCLUSION_FILTER_OPTIONS)[number];
 
+export type Search = { mode: SearchMode; text: string };
+
+export type FocusBankCallback = (bankIdx?: number) => void;
+export type UpdateBundleCallback = (value: InclusionFilterOptions) => void;
+export type UpdateSeachCallback = (value: Search) => void;
+
+export type ChartControlProps =
+  | {
+      chartControl: "Bundle";
+      handleExternalValueUpdate: UpdateBundleCallback;
+    }
+  | {
+      chartControl: "Search";
+      handleExternalValueUpdate: UpdateSeachCallback;
+    };
+
 export type ChartControls = {
   hasData: boolean;
   transactions: SlotTransactions;
   maxTs: number;
-  bundleFilter: InclusionFilterOptions;
-  updateBundleFilter: (
-    value: ChartControls["bundleFilter"],
-    options?: { scroll?: boolean; externalTrigger?: boolean },
-  ) => void;
-  search: { mode: SearchMode; text: string };
-  updateSearch: (
-    value: { mode?: SearchMode; text?: string },
-    options?: { externalTrigger?: boolean },
-  ) => void;
-  focusTxn: (txnIdx: number) => void;
-  resetTxnFocus: () => void;
-  focusedBankIdx?: number;
-  triggeredChartControl?: "Bundle" | "Search";
-  resetTriggeredChartControl: () => void;
+  updateBundleFilter: UpdateBundleCallback;
+  updateSearch: UpdateSeachCallback;
+  focusBank?: FocusBankCallback;
+  registerChartControl: (props: ChartControlProps) => void;
+  registerChart: (focusBank: FocusBankCallback) => void;
 };
 
 export const DEFAULT_CHART_CONTROLS_CONTEXT: ChartControls = {
@@ -54,13 +60,10 @@ export const DEFAULT_CHART_CONTROLS_CONTEXT: ChartControls = {
     txn_source_tpu: [],
   },
   maxTs: 0,
-  bundleFilter: "All",
   updateBundleFilter: () => {},
-  search: { mode: SearchMode.TxnSignature, text: "" },
   updateSearch: () => {},
-  focusTxn: () => {},
-  resetTxnFocus: () => {},
-  resetTriggeredChartControl: () => {},
+  registerChartControl: () => {},
+  registerChart: () => {},
 };
 
 export const ChartControlsContext = createContext<ChartControls>(

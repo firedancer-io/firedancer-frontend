@@ -1,4 +1,4 @@
-import { useContext, useMemo } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import type uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -22,7 +22,14 @@ const navigationTop = clusterIndicatorHeight + headerHeight;
 export const txnBarsControlsStickyTop = navigationTop + slotNavHeight;
 
 export default function BarsChartContainer() {
-  const { hasData, transactions, maxTs } = useContext(ChartControlsContext);
+  const [focusedBankIdx, setFocusedBankIdx] = useState<number>();
+
+  const { hasData, transactions, maxTs, registerChart } =
+    useContext(ChartControlsContext);
+
+  useEffect(() => {
+    registerChart((bankIdx?: number) => setFocusedBankIdx(bankIdx));
+  }, [registerChart]);
 
   const tileCount = useAtomValue(tileCountAtom);
   const bankTileCount = tileCount["execle"];
@@ -87,6 +94,7 @@ export default function BarsChartContainer() {
               }
               isSelected={selected === bankIdx}
               hide={selected !== undefined && selected !== bankIdx}
+              isFocused={focusedBankIdx === bankIdx}
             />
           </div>
         );
