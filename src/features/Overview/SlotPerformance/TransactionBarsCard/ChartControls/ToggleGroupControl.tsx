@@ -1,14 +1,17 @@
 import { ToggleGroup } from "radix-ui";
-import { Flex, Text } from "@radix-ui/themes";
+import { Flex, Text, Tooltip } from "@radix-ui/themes";
 import styles from "./toggleGroupControl.module.css";
-import { useState } from "react";
+import chartControlStyles from "./chartControl.module.css";
 import clsx from "clsx";
 
 interface ToggleGroupControlProps<T extends string> {
   label?: string;
-  options: T[];
-  defaultValue?: T;
+  options: readonly T[];
+  value: T;
   onChange: (value: T) => void;
+  registerOptionRef?: (value: T, element: HTMLButtonElement | null) => void;
+  isTooltipOpen?: boolean;
+  closeTooltip?: (e: React.FocusEvent) => void;
   optionColors?: Partial<Record<T, string>>;
   hasMinTextWidth?: boolean;
 }
@@ -16,13 +19,14 @@ interface ToggleGroupControlProps<T extends string> {
 export default function ToggleGroupControl<T extends string>({
   label,
   options,
-  defaultValue,
+  value,
   onChange,
+  registerOptionRef,
+  isTooltipOpen,
+  closeTooltip,
   optionColors,
   hasMinTextWidth,
 }: ToggleGroupControlProps<T>) {
-  const [value, setValue] = useState(defaultValue);
-
   return (
     <Flex align="center">
       {label && (
@@ -34,35 +38,39 @@ export default function ToggleGroupControl<T extends string>({
           {label}
         </Text>
       )}
-      <ToggleGroup.Root
-        className={styles.group}
-        type="single"
-        value={value}
-        aria-label={label}
-        onValueChange={(value) => {
-          if (value) {
-            setValue(value as T);
-            onChange(value as T);
-          }
-        }}
+      <Tooltip
+        className={chartControlStyles.chartControlTooltip}
+        content={`Applied "${value}"`}
+        open={!!isTooltipOpen}
+        side="bottom"
       >
-        {options.map((option) => (
-          <ToggleGroup.Item
-            key={option}
-            className={styles.item}
-            value={option}
-            aria-label={option}
-          >
-            {optionColors?.[option] && (
-              <div
-                className={styles.itemColor}
-                style={{ background: optionColors[option] }}
-              />
-            )}
-            {option}
-          </ToggleGroup.Item>
-        ))}
-      </ToggleGroup.Root>
+        <ToggleGroup.Root
+          className={clsx(styles.group, isTooltipOpen && styles.tooltipOpen)}
+          type="single"
+          value={value}
+          aria-label={label}
+          onValueChange={onChange}
+        >
+          {options.map((option) => (
+            <ToggleGroup.Item
+              key={option}
+              ref={(el) => registerOptionRef?.(option, el)}
+              className={styles.item}
+              value={option}
+              aria-label={option}
+              onBlur={closeTooltip}
+            >
+              {optionColors?.[option] && (
+                <div
+                  className={styles.itemColor}
+                  style={{ background: optionColors[option] }}
+                />
+              )}
+              {option}
+            </ToggleGroup.Item>
+          ))}
+        </ToggleGroup.Root>
+      </Tooltip>
     </Flex>
   );
 }

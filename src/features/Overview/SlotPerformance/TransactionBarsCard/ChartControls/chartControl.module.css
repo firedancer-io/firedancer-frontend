@@ -79,3 +79,17 @@
   top: 4px;
   right: 4px;
 }
+
+.chart-control-tooltip {
+  background: var(--blue-11);
+  color: #111113;
+
+  :global(.rt-TooltipText) {
+    font-size: 12px;
+    overflow-wrap: break-word;
+  }
+
+  :global(.rt-TooltipArrow) {
+    fill: var(--blue-11);
+  }
+}

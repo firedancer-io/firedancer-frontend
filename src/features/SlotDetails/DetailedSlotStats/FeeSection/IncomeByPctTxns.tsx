@@ -1,9 +1,10 @@
 import type { SlotTransactions } from "../../../../api/types";
 import DistributionBar from "./DistributionBars";
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
 import { getTxnIncome } from "../../../../utils";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import { clamp } from "lodash";
+import { ChartControlsContext } from "../../ChartControlsContext";
 
 function percentileSpread(values: number[], percentiles: number[] = [1, 10]) {
   const n = values.length;
@@ -63,10 +64,9 @@ function getIncomeChartData(transactions: SlotTransactions) {
   });
 }
 
-interface IncomeByTxnProps {
-  transactions: SlotTransactions;
-}
-export default function IncomeByPctTxns({ transactions }: IncomeByTxnProps) {
+export default function IncomeByPctTxns() {
+  const { transactions } = useContext(ChartControlsContext);
+
   const data = useMemo(() => getIncomeChartData(transactions), [transactions]);
 
   if (!data) return;

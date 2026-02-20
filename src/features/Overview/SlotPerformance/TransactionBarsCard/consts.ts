@@ -52,3 +52,11 @@ export const enum FilterEnum {
 }
 
 export const txnBarsUplotIdPrefix = "bank-";
+
+export const enum SearchMode {
+  TxnSignature = "Txn Sig",
+  Error = "Error",
+  Income = "Income",
+  Ip = "IPv4",
+  Tpu = "TPU",
+}
