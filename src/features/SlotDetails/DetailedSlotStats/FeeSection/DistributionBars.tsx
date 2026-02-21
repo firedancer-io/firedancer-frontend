@@ -1,6 +1,8 @@
-import { Flex, Text } from "@radix-ui/themes";
+import { Flex, Text, Tooltip } from "@radix-ui/themes";
 import AutoSizer from "react-virtualized-auto-sizer";
 import styles from "./distributionBars.module.css";
+import { formatNumberLamports } from "../../../Overview/ValidatorsCard/formatAmt";
+import { maxSolDecimals } from "../../../../consts";
 
 const barColors = ["#003362", "#113B29", "#3F2700", "#202248", "#33255B"];
 
@@ -13,6 +15,7 @@ interface DistributionBarProps {
   data: DistributionBarData[];
   showPct?: boolean;
   sort?: boolean;
+  onItemClick?: (item: { label: string; value: number }) => void;
 }
 
 const nodeLimit = 5_000;
@@ -21,6 +24,7 @@ export default function DistributionBar({
   data,
   showPct,
   sort,
+  onItemClick,
 }: DistributionBarProps) {
   const total = data.reduce((sum, { value }) => sum + value, 0);
   let barData = sort ? data.toSorted((a, b) => b.value - a.value) : data;
@@ -41,27 +45,65 @@ export default function DistributionBar({
             <Flex width={`${width}px`} height={`${height}px`}>
               {barData.map(({ value, label }, i) => {
                 const color = barColors[i % barColors.length];
-                const pct = value / total;
-                const showLabel = pct * width > 30;
+                const decimalPct = value / total;
+                const pct = decimalPct * 100;
+                const formattedPct =
+                  pct > 1 ? `${Math.round(pct)}%` : `${pct.toFixed(2)}%`;
+                const showLabel = decimalPct * width > 30;
                 return (
-                  <Flex
+                  <Tooltip
                     key={label}
-                    minWidth="0"
-                    align="center"
-                    justify="center"
-                    flexBasis="0"
-                    style={{
-                      background: color,
-                      flexGrow: value,
-                    }}
+                    content={
+                      <>
+                        <Text weight="bold">{label}</Text>
+                        <br />
+                        <Text>{`Income: ${formatNumberLamports(value, maxSolDecimals)} SOL (${formattedPct})`}</Text>
+                      </>
+                    }
+                    side="bottom"
+                    disableHoverableContent
                   >
-                    {showLabel && (
-                      <Text mx="2" className={styles.label} truncate>
-                        {label}
-                        {showPct && ` ${Math.round(pct * 100)}%`}
-                      </Text>
+                    {onItemClick ? (
+                      <Flex
+                        asChild
+                        className={styles.clickable}
+                        minWidth="0"
+                        align="center"
+                        justify="center"
+                        flexBasis="0"
+                        style={{ background: color, flexGrow: value }}
+                      >
+                        <button
+                          aria-label={`Filter by ${label} (${formattedPct})`}
+                          onClick={() => onItemClick({ label, value })}
+                        >
+                          {showLabel && (
+                            <Label
+                              label={label}
+                              showPct={showPct}
+                              formattedPct={formattedPct}
+                            />
+                          )}
+                        </button>
+                      </Flex>
+                    ) : (
+                      <Flex
+                        minWidth="0"
+                        align="center"
+                        justify="center"
+                        flexBasis="0"
+                        style={{ background: color, flexGrow: value }}
+                      >
+                        {showLabel && (
+                          <Label
+                            label={label}
+                            showPct={showPct}
+                            formattedPct={formattedPct}
+                          />
+                        )}
+                      </Flex>
                     )}
-                  </Flex>
+                  </Tooltip>
                 );
               })}
             </Flex>
@@ -69,5 +111,22 @@ export default function DistributionBar({
         }}
       </AutoSizer>
     </div>
+  );
+}
+
+function Label({
+  label,
+  showPct,
+  formattedPct,
+}: {
+  label: string;
+  showPct?: boolean;
+  formattedPct: string;
+}) {
+  return (
+    <Text mx="2" className={styles.label} truncate>
+      {label}
+      {showPct && ` ${formattedPct}`}
+    </Text>
   );
 }
