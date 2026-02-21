@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import type uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -21,11 +21,19 @@ import {
 } from "../../../../consts";
 import { clientAtom } from "../../../../atoms";
 import { getClientSpecificTileNames } from "../../../../utils";
+import useChartControl from "./ChartControls/useChartControl";
+import { FOCUS_BANK_KEY } from "../../../SlotDetails/ChartControlsContext";
 
 const navigationTop = clusterIndicatorHeight + headerHeight;
 export const txnBarsControlsStickyTop = navigationTop + slotNavHeight;
 
 export default function BarsChartContainer() {
+  const [focusedBankIdx, setFocusedBankIdx] = useState<number>();
+
+  useChartControl(FOCUS_BANK_KEY, (bankIdx?: number) =>
+    setFocusedBankIdx(bankIdx),
+  );
+
   const slot = useAtomValue(selectedSlotAtom);
 
   const query = useSlotQueryResponseTransactions(slot);
@@ -66,7 +74,7 @@ export default function BarsChartContainer() {
   if (!query.response?.transactions) return null;
 
   return (
-    <Flex direction="column" height="100%" key={slot}>
+    <Flex direction="column" height="100%">
       <Flex
         id="transaction-bars-controls"
         gap="2"
@@ -115,6 +123,7 @@ export default function BarsChartContainer() {
               }
               isSelected={selected === bankIdx}
               hide={selected !== undefined && selected !== bankIdx}
+              isFocused={focusedBankIdx === bankIdx}
             />
           </div>
         );
