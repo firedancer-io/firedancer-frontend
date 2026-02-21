@@ -15,7 +15,7 @@ export default function TransactionsBarsCard() {
   return (
     <>
       <Card id="txn-bars-card">
-        <BarsChartContainer />
+        <BarsChartContainer key={slot} />
       </Card>
       <ChartTooltip />
     </>

@@ -68,7 +68,7 @@ import { useThrottledCallback } from "use-debounce";
 import {
   BUNDLE_CONTROL_KEY,
   INCLUSION_FILTER_OPTIONS,
-  type InclusionFilterOptions,
+  type InclusionFilterOption,
 } from "../../../../SlotDetails/ChartControlsContext";
 import useChartControl from "./useChartControl";
 import { getUplotId } from "../chartUtils";
@@ -322,15 +322,15 @@ function BundleControl({
   maxTs,
   isMobileView,
 }: ToggleGroupControlProps) {
-  const [value, setValue] = useState<InclusionFilterOptions>("All");
+  const [value, setValue] = useState<InclusionFilterOption>("All");
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterBundle = useSetAtom(filterBundleDataAtom);
 
   const toggleGroupRef =
-    useRef<ToggleGroupControlRef<InclusionFilterOptions>>(null);
+    useRef<ToggleGroupControlRef<InclusionFilterOption>>(null);
 
   const updateBundleFilter = useCallback(
-    (value: InclusionFilterOptions) => {
+    (value: InclusionFilterOption) => {
       if (!transactions) return;
       setValue(value);
       uplotAction((u, bankIdx) => {
@@ -341,7 +341,7 @@ function BundleControl({
   );
 
   const handleUpdate = useCallback(
-    (value: InclusionFilterOptions) => {
+    (value: InclusionFilterOption) => {
       updateBundleFilter(value);
       toggleGroupRef.current?.focus(value);
       // Targets the first bank tile since bundle filter affects all tiles
@@ -378,7 +378,7 @@ function LandedControl({
 }: ToggleGroupControlProps) {
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterLanded = useSetAtom(filterLandedDataAtom);
-  const [value, setValue] = useState<InclusionFilterOptions>("All");
+  const [value, setValue] = useState<InclusionFilterOption>("All");
 
   return (
     <ToggleGroupControl
@@ -404,7 +404,7 @@ function SimpleControl({
 }: ToggleGroupControlProps) {
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterSimple = useSetAtom(filterSimpleDataAtom);
-  const [value, setValue] = useState<InclusionFilterOptions>("All");
+  const [value, setValue] = useState<InclusionFilterOption>("All");
 
   return (
     <ToggleGroupControl

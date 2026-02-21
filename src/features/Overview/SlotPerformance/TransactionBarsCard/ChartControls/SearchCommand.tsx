@@ -1,9 +1,25 @@
 import { Command } from "cmdk";
 import type { ReactNode } from "react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import styles from "./searchCommand.module.css";
+import chartControlStyles from "./chartControl.module.css";
 import type { SlotTransactions } from "../../../../../api/types";
-import { Button, DropdownMenu, Flex, IconButton, Text } from "@radix-ui/themes";
+import {
+  Button,
+  DropdownMenu,
+  Flex,
+  IconButton,
+  Text,
+  Tooltip,
+} from "@radix-ui/themes";
 import { Popover } from "radix-ui";
 import { useDebounce } from "use-debounce";
 import { getUplotId } from "../chartUtils";
@@ -30,20 +46,19 @@ import {
   getIpLabelFn,
   findIpMatch,
 } from "./searchCommandUtils";
-import { focusedBorderColor } from "../../../../../colors";
 import { txnBarsControlsStickyTop } from "../BarsChartContainer";
+import {
+  ChartControlsContext,
+  FOCUS_BANK_KEY,
+  SEARCH_KEY,
+  SearchMode,
+  type Search,
+} from "../../../../SlotDetails/ChartControlsContext";
+import useChartControl from "./useChartControl";
 
 /** Multiplier to determine the desired scale zoom range for the txn (ex. scale range of 30x txn duration length) */
 const desiredScaleRangeMultiplierMax = 30;
 const desiredScaleRangeMultiplierMin = 20;
-
-enum SearchMode {
-  TxnSignature = "Txn Sig",
-  Error = "Error",
-  Income = "Income",
-  Ip = "IPv4",
-  Tpu = "TPU",
-}
 
 const queryModes = [SearchMode.TxnSignature, SearchMode.Ip];
 const rankModes = [SearchMode.Income];
@@ -92,6 +107,7 @@ export default function SearchCommand({
   transactions,
   size = "lg",
 }: SearchCommandProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isCurrentlySelected, setIsCurrentlySelected] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -109,18 +125,171 @@ export default function SearchCommand({
 
   const commandRef = useRef<HTMLDivElement>(null);
   const commandListRef = useRef<HTMLDivElement>(null);
-  const focusedChartElRef = useRef<HTMLElement>();
+  const suppressOpenOnFocusRef = useRef<boolean>(false);
+
+  const { triggerControl } = useContext(ChartControlsContext);
+
+  const getTxnIdxs = useCallback(
+    (value: Search) => {
+      const txns =
+        value.mode === SearchMode.TxnSignature
+          ? transactions.txn_signature
+          : value.mode === SearchMode.Ip
+            ? transactions.txn_source_ipv4
+            : undefined;
+
+      if (!txns) return [];
+
+      return txns.reduce<number[]>((acc, val, idx) => {
+        if (val === value.text) acc.push(idx);
+        return acc;
+      }, []);
+    },
+    [transactions.txn_signature, transactions.txn_source_ipv4],
+  );
+
+  const focusTxn = useCallback(
+    (txnIdx: number) => {
+      const bankIdx = transactions.txn_bank_idx[txnIdx];
+
+      const chartEl = document.getElementById(getUplotId(bankIdx));
+      const canvasEl = chartEl?.getElementsByTagName("canvas")?.[0] as
+        | HTMLElement
+        | undefined;
+      if (chartEl && canvasEl) {
+        if (!isElementFullyInView(canvasEl)) {
+          canvasEl.scrollIntoView({ block: "nearest" });
+          const canvasRect = canvasEl.getBoundingClientRect();
+          const headerRect = document
+            .getElementById("transaction-bars-controls")
+            ?.getBoundingClientRect();
+          if (
+            headerRect &&
+            // Check if header is stickied
+            headerRect.top - txnBarsControlsStickyTop <= 0 &&
+            // Check if the element is hidden behind the sticky header
+            canvasRect.top < headerRect.bottom
+          ) {
+            document.getElementById("scroll-container")?.scrollBy({
+              top: -headerRect.bottom - canvasRect.top,
+            });
+          }
+        }
+
+        triggerControl(FOCUS_BANK_KEY, bankIdx);
+      }
+
+      uplotAction((u, _bankIdx) => {
+        if (bankIdx !== _bankIdx) {
+          // To redraw non-focused banks without focus
+          u.redraw();
+          return;
+        }
+
+        const scale = u.scales[banksXScaleKey];
+        const scaleMin = scale.min ?? -Infinity;
+        const scaleMax = scale.max ?? Infinity;
+        const currentScaleRange = scaleMax - scaleMin;
+
+        const isFirstTxnInBundle =
+          transactions.txn_from_bundle[txnIdx] &&
+          transactions.txn_microblock_id[txnIdx - 1] !==
+            transactions.txn_microblock_id[txnIdx];
+        const isLastTxnInBundle =
+          transactions.txn_from_bundle[txnIdx] &&
+          transactions.txn_microblock_id[txnIdx + 1] !==
+            transactions.txn_microblock_id[txnIdx];
+
+        const startTs = Number(
+          (isFirstTxnInBundle || !transactions.txn_from_bundle[txnIdx]
+            ? transactions.txn_mb_start_timestamps_nanos[txnIdx]
+            : transactions.txn_preload_end_timestamps_nanos[txnIdx]) -
+            transactions.start_timestamp_nanos,
+        );
+        const endTs = Number(
+          (isLastTxnInBundle || !transactions.txn_from_bundle[txnIdx]
+            ? transactions.txn_mb_end_timestamps_nanos[txnIdx]
+            : transactions.txn_end_timestamps_nanos[txnIdx]) -
+            transactions.start_timestamp_nanos,
+        );
+        const desiredScaleRangeMax =
+          (endTs - startTs) * desiredScaleRangeMultiplierMax;
+        const desiredScaleRangeMin =
+          (endTs - startTs) * desiredScaleRangeMultiplierMin;
+
+        // If txn is already fully out of view, adjust the scale to include it
+        const notWithinScale = endTs < scaleMin || startTs > scaleMax;
+        // If the current scale is too large, zoom in to the desired scale
+        const scaleRangeTooLarge = currentScaleRange > desiredScaleRangeMax;
+        // If the current scale is too small, zoom out to the desired scale
+        const scaleRangeTooSmall = currentScaleRange < desiredScaleRangeMin;
+
+        // Zooms the charts into the desired scale, taking into account min/max range bounds of the data
+        // Then sets the color highlighting for that txn
+        u.batch(() => {
+          if (notWithinScale || scaleRangeTooLarge || scaleRangeTooSmall) {
+            let min = Math.max(
+              u.data[0][0],
+              startTs - desiredScaleRangeMax / 2,
+            );
+            const max = min + desiredScaleRangeMax;
+            if (max > u.data[0][u.data[0].length - 1]) {
+              min = max - desiredScaleRangeMax;
+            }
+
+            u.setScale(banksXScaleKey, { min, max });
+          }
+
+          highlightTxnIdx(txnIdx);
+        });
+      });
+    },
+    [transactions, triggerControl, uplotAction],
+  );
+
+  const setSearchIdxAndFocus = useCallback(
+    (txnIdxs: number[]) => {
+      const searchIdx = {
+        current: 0,
+        total: txnIdxs.length - 1,
+        txnIdxs,
+      };
+      setSearchIdx(searchIdx);
+
+      const txnIdx = txnIdxs[searchIdx.current];
+      focusTxn(txnIdx);
+    },
+    [focusTxn],
+  );
+
+  const handleExternalValueUpdate = useCallback(
+    (value: Search) => {
+      const txnIdxs = getTxnIdxs(value);
+      if (!txnIdxs.length) return;
+      setInputValue(value.text);
+      setSearchMode(value.mode);
+      setSearchIdxAndFocus(txnIdxs);
+
+      /* Prevents the search options dropdown from opening
+       * on focus when focus is triggered externally */
+      suppressOpenOnFocusRef.current = true;
+      inputRef.current?.focus();
+    },
+    [getTxnIdxs, setSearchIdxAndFocus],
+  );
+
+  const { isTooltipOpen, closeTooltip } = useChartControl(
+    SEARCH_KEY,
+    handleExternalValueUpdate,
+  );
 
   // For resetting focus when user starts typing in input
   const resetChartElFocus = useCallback(() => {
-    if (focusedChartElRef.current) {
-      focusedChartElRef.current.style.border = "";
-      focusedChartElRef.current = undefined;
-    }
+    triggerControl(FOCUS_BANK_KEY, undefined);
     highlightTxnIdx(undefined);
     setSearchIdx(undefined);
     setIsCurrentlySelected(false);
-  }, []);
+  }, [triggerControl]);
 
   const resetFocus = useCallback(() => {
     resetChartElFocus();
@@ -264,112 +433,6 @@ export default function SearchCommand({
     );
   }, [filteredTxnIdx, transactions]);
 
-  const focusTxn = useCallback(
-    (txnIdx: number) => {
-      const bankIdx = transactions.txn_bank_idx[txnIdx];
-
-      const chartEl = document.getElementById(getUplotId(bankIdx));
-      const chartBorderEl = chartEl?.getElementsByClassName("u-over")?.[0] as
-        | HTMLElement
-        | undefined;
-      const canvasEl = chartEl?.getElementsByTagName("canvas")?.[0] as
-        | HTMLElement
-        | undefined;
-      if (chartEl && chartBorderEl && canvasEl) {
-        if (!isElementFullyInView(canvasEl)) {
-          canvasEl.scrollIntoView({ block: "nearest" });
-          const canvasRect = canvasEl.getBoundingClientRect();
-          const headerRect = document
-            .getElementById("transaction-bars-controls")
-            ?.getBoundingClientRect();
-          if (
-            headerRect &&
-            // Check if header is stickied
-            headerRect.top - txnBarsControlsStickyTop <= 0 &&
-            // Check if the element is hidden behind the sticky header
-            canvasRect.top < headerRect.bottom
-          ) {
-            document.getElementById("scroll-container")?.scrollBy({
-              top: -headerRect.bottom - canvasRect.top,
-            });
-          }
-        }
-
-        if (focusedChartElRef.current) {
-          focusedChartElRef.current.style.border = "";
-        }
-        chartBorderEl.style.border = `1px solid ${focusedBorderColor}`;
-        focusedChartElRef.current = chartBorderEl;
-      }
-
-      uplotAction((u, _bankIdx) => {
-        if (bankIdx !== _bankIdx) {
-          // To redraw non-focused banks without focus
-          u.redraw();
-          return;
-        }
-
-        const scale = u.scales[banksXScaleKey];
-        const scaleMin = scale.min ?? -Infinity;
-        const scaleMax = scale.max ?? Infinity;
-        const currentScaleRange = scaleMax - scaleMin;
-
-        const isFirstTxnInBundle =
-          transactions.txn_from_bundle[txnIdx] &&
-          transactions.txn_microblock_id[txnIdx - 1] !==
-            transactions.txn_microblock_id[txnIdx];
-        const isLastTxnInBundle =
-          transactions.txn_from_bundle[txnIdx] &&
-          transactions.txn_microblock_id[txnIdx + 1] !==
-            transactions.txn_microblock_id[txnIdx];
-
-        const startTs = Number(
-          (isFirstTxnInBundle || !transactions.txn_from_bundle[txnIdx]
-            ? transactions.txn_mb_start_timestamps_nanos[txnIdx]
-            : transactions.txn_preload_end_timestamps_nanos[txnIdx]) -
-            transactions.start_timestamp_nanos,
-        );
-        const endTs = Number(
-          (isLastTxnInBundle || !transactions.txn_from_bundle[txnIdx]
-            ? transactions.txn_mb_end_timestamps_nanos[txnIdx]
-            : transactions.txn_end_timestamps_nanos[txnIdx]) -
-            transactions.start_timestamp_nanos,
-        );
-        const desiredScaleRangeMax =
-          (endTs - startTs) * desiredScaleRangeMultiplierMax;
-        const desiredScaleRangeMin =
-          (endTs - startTs) * desiredScaleRangeMultiplierMin;
-
-        // If txn is already fully out of view, adjust the scale to include it
-        const notWithinScale = endTs < scaleMin || startTs > scaleMax;
-        // If the current scale is too large, zoom in to the desired scale
-        const scaleRangeTooLarge = currentScaleRange > desiredScaleRangeMax;
-        // If the current scale is too small, zoom out to the desired scale
-        const scaleRangeTooSmall = currentScaleRange < desiredScaleRangeMin;
-
-        // Zooms the charts into the desired scale, taking into account min/max range bounds of the data
-        // Then sets the color highlighting for that txn
-        u.batch(() => {
-          if (notWithinScale || scaleRangeTooLarge || scaleRangeTooSmall) {
-            let min = Math.max(
-              u.data[0][0],
-              startTs - desiredScaleRangeMax / 2,
-            );
-            const max = min + desiredScaleRangeMax;
-            if (max > u.data[0][u.data[0].length - 1]) {
-              min = max - desiredScaleRangeMax;
-            }
-
-            u.setScale(banksXScaleKey, { min, max });
-          }
-
-          highlightTxnIdx(txnIdx);
-        });
-      });
-    },
-    [transactions, uplotAction],
-  );
-
   const handleItemSelect = useCallback(
     (inputValue: string, optionValue?: number | string) => {
       setInputValue(inputValue);
@@ -377,28 +440,16 @@ export default function SearchCommand({
       setIsOpen(false);
       setIsCurrentlySelected(true);
 
-      const setSearchAndFocus = (txnIdxs: number[]) => {
-        const searchIdx = {
-          current: 0,
-          total: txnIdxs.length - 1,
-          txnIdxs,
-        };
-        setSearchIdx(searchIdx);
-
-        const txnIdx = txnIdxs[searchIdx.current];
-        focusTxn(txnIdx);
-      };
-
       switch (searchMode) {
         case SearchMode.TxnSignature: {
           const txnIdxs = signatureOptionMap[inputValue].txnIdxs;
-          setSearchAndFocus(txnIdxs);
+          setSearchIdxAndFocus(txnIdxs);
           break;
         }
         case SearchMode.Error: {
           if (optionValue !== undefined) {
             const txnIdxs = errorOptionMap[Number(optionValue)].txnIdxs;
-            setSearchAndFocus(txnIdxs);
+            setSearchIdxAndFocus(txnIdxs);
           }
           break;
         }
@@ -406,14 +457,14 @@ export default function SearchCommand({
           const option = ipOptionMap[optionValue ?? inputValue];
           if (option) {
             const txnIdxs = option.txnIdxs;
-            setSearchAndFocus(txnIdxs);
+            setSearchIdxAndFocus(txnIdxs);
           }
           break;
         }
         case SearchMode.Tpu: {
           if (optionValue !== undefined) {
             const txnIdxs = tpuOptionMap[optionValue].txnIdxs;
-            setSearchAndFocus(txnIdxs);
+            setSearchIdxAndFocus(txnIdxs);
           }
           break;
         }
@@ -427,7 +478,7 @@ export default function SearchCommand({
       setDInputValue,
       searchMode,
       signatureOptionMap,
-      focusTxn,
+      setSearchIdxAndFocus,
       errorOptionMap,
       ipOptionMap,
       tpuOptionMap,
@@ -495,7 +546,6 @@ export default function SearchCommand({
   const isInputDisabledRef = useRef(isInputDisabled);
   isInputDisabledRef.current = isInputDisabled;
 
-  const inputRef = useRef<HTMLInputElement>(null);
   const pendingPopoverFocusRef = useRef(false);
 
   return (
@@ -533,92 +583,110 @@ export default function SearchCommand({
         shouldFilter={false}
         ref={commandRef}
       >
-        <Popover.Root
-          open={isOpen}
-          onOpenChange={(open) => {
-            setIsOpen(open);
-          }}
-        >
+        <Popover.Root open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
           <Popover.Anchor asChild>
-            <Flex
-              align="center"
-              className={clsx(
-                styles.inputContainer,
-                "rt-TextFieldRoot",
-                "rt-variant-surface",
-                { [styles.sm]: size === "sm" },
-              )}
-            >
-              <Command.Input
-                placeholder={dropdownPlaceholderText[searchMode]}
-                onFocus={(e) => {
-                  setIsOpen(true);
-                }}
-                value={inputValue}
-                onValueChange={(value) => {
-                  setInputValue(value);
-                  resetChartElFocus();
-                  // To re-open dialog after selection if input stays focused
-                  setIsOpen(true);
-                }}
-                readOnly={isInputDisabled}
-                ref={inputRef}
-              />
-              {(showSearchArrows || showResetButton) && (
-                <Flex align="center">
-                  {showSearchArrows && (
-                    <>
-                      <Text
-                        style={{
-                          paddingRight: "var(--space-2)",
-                          cursor: "default",
-                        }}
-                      >
-                        {searchIdx.current + 1}&nbsp;of&nbsp;
-                        {searchIdx.total + 1}
-                      </Text>
-                      <IconButton
-                        onClick={focusNextTxn("prev")}
-                        variant="ghost"
-                        // enter onClick does not work within Command
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            focusNextTxn("prev")();
-                          }
-                        }}
-                      >
-                        <ChevronUpIcon />
-                      </IconButton>
-                      <IconButton
-                        onClick={focusNextTxn("next")}
-                        variant="ghost"
-                        // enter onClick does not work within Command
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            focusNextTxn("next")();
-                          }
-                        }}
-                      >
-                        <ChevronDownIcon />
-                      </IconButton>
-                    </>
+            <Flex>
+              <Tooltip
+                className={chartControlStyles.chartControlTooltip}
+                content={`Applied: ${searchMode}`}
+                open={isTooltipOpen}
+                side="bottom"
+              >
+                <Flex
+                  align="center"
+                  className={clsx(
+                    styles.inputContainer,
+                    "rt-TextFieldRoot",
+                    "rt-variant-surface",
+                    {
+                      [styles.sm]: size === "sm",
+                      [styles.tooltipOpen]: isTooltipOpen,
+                    },
                   )}
-                  {showResetButton && (
-                    <IconButton
-                      onClick={resetFocus}
-                      variant="ghost"
-                      // enter onClick does not work within Command
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          resetFocus();
-                        }
-                      }}
-                    >
-                      <Cross1Icon />
-                    </IconButton>
+                >
+                  <Command.Input
+                    placeholder={dropdownPlaceholderText[searchMode]}
+                    onFocus={() => {
+                      // To prevent opening options dropdown on certain focus triggers
+                      if (suppressOpenOnFocusRef.current) {
+                        suppressOpenOnFocusRef.current = false;
+                      } else {
+                        setIsOpen(true);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setIsOpen(true);
+                      }
+                    }}
+                    value={inputValue}
+                    onValueChange={(value) => {
+                      setInputValue(value);
+                      resetChartElFocus();
+                      // To re-open dialog after selection if input stays focused
+                      setIsOpen(true);
+                    }}
+                    onBlur={closeTooltip}
+                    readOnly={isInputDisabled}
+                    ref={inputRef}
+                  />
+                  {(showSearchArrows || showResetButton) && (
+                    <Flex align="center">
+                      {showSearchArrows && (
+                        <>
+                          <Text
+                            style={{
+                              paddingRight: "var(--space-2)",
+                              cursor: "default",
+                            }}
+                          >
+                            {searchIdx.current + 1}&nbsp;of&nbsp;
+                            {searchIdx.total + 1}
+                          </Text>
+                          <IconButton
+                            onClick={focusNextTxn("prev")}
+                            variant="ghost"
+                            // enter onClick does not work within Command
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                focusNextTxn("prev")();
+                              }
+                            }}
+                          >
+                            <ChevronUpIcon />
+                          </IconButton>
+                          <IconButton
+                            onClick={focusNextTxn("next")}
+                            variant="ghost"
+                            // enter onClick does not work within Command
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                focusNextTxn("next")();
+                              }
+                            }}
+                          >
+                            <ChevronDownIcon />
+                          </IconButton>
+                        </>
+                      )}
+                      {showResetButton && (
+                        <IconButton
+                          onClick={resetFocus}
+                          variant="ghost"
+                          // enter onClick does not work within Command
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              resetFocus();
+                            }
+                          }}
+                        >
+                          <Cross1Icon />
+                        </IconButton>
+                      )}
+                    </Flex>
                   )}
                 </Flex>
-              )}
+              </Tooltip>
             </Flex>
           </Popover.Anchor>
 
