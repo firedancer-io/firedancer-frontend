@@ -1,29 +1,41 @@
-import { useMemo, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import type uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedSlotAtom, tileCountAtom } from "../atoms";
-import type { SlotTransactions } from "../../../../api/types";
 import ChartControls from "./ChartControls";
 import { Flex } from "@radix-ui/themes";
 import BarsChart from "./BarsChart";
-import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { baseChartDataAtom, selectedBankAtom } from "./atoms";
 import { getChartData } from "./chartUtils";
 import BarChartFloatingAction from "./BarChartFloatingAction";
 import CardHeader from "../../../../components/CardHeader";
-import { getMaxTsWithBuffer } from "../../../../transactionUtils";
 import { cardBackgroundColor } from "../../../../colors";
 import {
   clusterIndicatorHeight,
   headerHeight,
   slotNavHeight,
 } from "../../../../consts";
+import { ChartControlsContext } from "../../../SlotDetails/ChartControlsContext";
+import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
+import type { SlotTransactions } from "../../../../api/types";
+import { getMaxTsWithBuffer } from "../../../../transactionUtils";
 
 const navigationTop = clusterIndicatorHeight + headerHeight;
 export const txnBarsControlsStickyTop = navigationTop + slotNavHeight;
 
 export default function BarsChartContainer() {
+  const [focusedBankIdx, setFocusedBankIdx] = useState<number>();
+
+  const { registerChart } = useContext(ChartControlsContext);
+
+  useEffect(() => {
+    const cleanup = registerChart((bankIdx?: number) =>
+      setFocusedBankIdx(bankIdx),
+    );
+    return cleanup;
+  }, [registerChart]);
+
   const slot = useAtomValue(selectedSlotAtom);
 
   const query = useSlotQueryResponseTransactions(slot);
@@ -62,7 +74,7 @@ export default function BarsChartContainer() {
   if (!query.response?.transactions) return null;
 
   return (
-    <Flex direction="column" height="100%" key={slot}>
+    <Flex direction="column" height="100%">
       <Flex
         id="transaction-bars-controls"
         gap="2"
@@ -111,6 +123,7 @@ export default function BarsChartContainer() {
               }
               isSelected={selected === bankIdx}
               hide={selected !== undefined && selected !== bankIdx}
+              isFocused={focusedBankIdx === bankIdx}
             />
           </div>
         );

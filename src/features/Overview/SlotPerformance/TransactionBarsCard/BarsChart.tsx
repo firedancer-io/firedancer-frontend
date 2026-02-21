@@ -21,6 +21,7 @@ import { chartAxisColor, chartGridStrokeColor } from "../../../../colors";
 import { banksXScaleKey } from "../ComputeUnitsCard/consts";
 import { clientAtom } from "../../../../atoms";
 import { getTxnBundleStats } from "../../../../transactionUtils";
+import clsx from "clsx";
 
 /** Buffer of the canvas past the axes of the chart to prevent the first and last tick labels from being cut off */
 const xBuffer = 20;
@@ -33,6 +34,7 @@ interface BarsChartProps {
   isLastChart?: boolean;
   hide?: boolean;
   isSelected?: boolean;
+  isFocused?: boolean;
 }
 
 export default function BarsChart({
@@ -43,6 +45,7 @@ export default function BarsChart({
   isLastChart,
   hide,
   isSelected,
+  isFocused,
 }: BarsChartProps) {
   const isFirstOrLastChart = isFirstChart || isLastChart;
   const leftAxisSize = useAtomValue(leftAxisSizeAtom) - xBuffer;
@@ -196,6 +199,7 @@ export default function BarsChart({
             <>
               <UplotReact
                 id={getUplotId(bankIdx)}
+                className={clsx(isFocused && styles.focused)}
                 options={options}
                 data={chartData}
                 onCreate={handleCreate}
