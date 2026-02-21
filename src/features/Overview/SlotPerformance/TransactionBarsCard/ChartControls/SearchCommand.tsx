@@ -111,6 +111,112 @@ export default function SearchCommand({
   const commandListRef = useRef<HTMLDivElement>(null);
   const focusedChartElRef = useRef<HTMLElement>();
 
+  const focusTxn = useCallback(
+    (txnIdx: number) => {
+      const bankIdx = transactions.txn_bank_idx[txnIdx];
+
+      const chartEl = document.getElementById(getUplotId(bankIdx));
+      const chartBorderEl = chartEl?.getElementsByClassName("u-over")?.[0] as
+        | HTMLElement
+        | undefined;
+      const canvasEl = chartEl?.getElementsByTagName("canvas")?.[0] as
+        | HTMLElement
+        | undefined;
+      if (chartEl && chartBorderEl && canvasEl) {
+        if (!isElementFullyInView(canvasEl)) {
+          canvasEl.scrollIntoView({ block: "nearest" });
+          const canvasRect = canvasEl.getBoundingClientRect();
+          const headerRect = document
+            .getElementById("transaction-bars-controls")
+            ?.getBoundingClientRect();
+          if (
+            headerRect &&
+            // Check if header is stickied
+            headerRect.top - txnBarsControlsStickyTop <= 0 &&
+            // Check if the element is hidden behind the sticky header
+            canvasRect.top < headerRect.bottom
+          ) {
+            document.getElementById("scroll-container")?.scrollBy({
+              top: -headerRect.bottom - canvasRect.top,
+            });
+          }
+        }
+
+        if (focusedChartElRef.current) {
+          focusedChartElRef.current.style.border = "";
+        }
+        chartBorderEl.style.border = `1px solid ${focusedBorderColor}`;
+        focusedChartElRef.current = chartBorderEl;
+      }
+
+      uplotAction((u, _bankIdx) => {
+        if (bankIdx !== _bankIdx) {
+          // To redraw non-focused banks without focus
+          u.redraw();
+          return;
+        }
+
+        const scale = u.scales[banksXScaleKey];
+        const scaleMin = scale.min ?? -Infinity;
+        const scaleMax = scale.max ?? Infinity;
+        const currentScaleRange = scaleMax - scaleMin;
+
+        const isFirstTxnInBundle =
+          transactions.txn_from_bundle[txnIdx] &&
+          transactions.txn_microblock_id[txnIdx - 1] !==
+            transactions.txn_microblock_id[txnIdx];
+        const isLastTxnInBundle =
+          transactions.txn_from_bundle[txnIdx] &&
+          transactions.txn_microblock_id[txnIdx + 1] !==
+            transactions.txn_microblock_id[txnIdx];
+
+        const startTs = Number(
+          (isFirstTxnInBundle || !transactions.txn_from_bundle[txnIdx]
+            ? transactions.txn_mb_start_timestamps_nanos[txnIdx]
+            : transactions.txn_preload_end_timestamps_nanos[txnIdx]) -
+            transactions.start_timestamp_nanos,
+        );
+        const endTs = Number(
+          (isLastTxnInBundle || !transactions.txn_from_bundle[txnIdx]
+            ? transactions.txn_mb_end_timestamps_nanos[txnIdx]
+            : transactions.txn_end_timestamps_nanos[txnIdx]) -
+            transactions.start_timestamp_nanos,
+        );
+        const desiredScaleRangeMax =
+          (endTs - startTs) * desiredScaleRangeMultiplierMax;
+        const desiredScaleRangeMin =
+          (endTs - startTs) * desiredScaleRangeMultiplierMin;
+
+        // If txn is already fully out of view, adjust the scale to include it
+        const notWithinScale = endTs < scaleMin || startTs > scaleMax;
+        // If the current scale is too large, zoom in to the desired scale
+        const scaleRangeTooLarge = currentScaleRange > desiredScaleRangeMax;
+        // If the current scale is too small, zoom out to the desired scale
+        const scaleRangeTooSmall = currentScaleRange < desiredScaleRangeMin;
+
+        // Zooms the charts into the desired scale, taking into account min/max range bounds of the data
+        // Then sets the color highlighting for that txn
+        u.batch(() => {
+          if (notWithinScale || scaleRangeTooLarge || scaleRangeTooSmall) {
+            let min = Math.max(
+              u.data[0][0],
+              startTs - desiredScaleRangeMax / 2,
+            );
+            const max = min + desiredScaleRangeMax;
+            if (max > u.data[0][u.data[0].length - 1]) {
+              min = max - desiredScaleRangeMax;
+            }
+
+            u.setScale(banksXScaleKey, { min, max });
+          }
+
+          highlightTxnIdx(txnIdx);
+        });
+      });
+    },
+    [transactions, uplotAction],
+  );
+
   // For resetting focus when user starts typing in input
   const resetChartElFocus = useCallback(() => {
     if (focusedChartElRef.current) {
@@ -263,112 +369,6 @@ export default function SearchCommand({
       ({ income: incomeA }, { income: incomeB }) => incomeB - incomeA,
     );
   }, [filteredTxnIdx, transactions]);
-
-  const focusTxn = useCallback(
-    (txnIdx: number) => {
-      const bankIdx = transactions.txn_bank_idx[txnIdx];
-
-      const chartEl = document.getElementById(getUplotId(bankIdx));
-      const chartBorderEl = chartEl?.getElementsByClassName("u-over")?.[0] as
-        | HTMLElement
-        | undefined;
-      const canvasEl = chartEl?.getElementsByTagName("canvas")?.[0] as
-        | HTMLElement
-        | undefined;
-      if (chartEl && chartBorderEl && canvasEl) {
-        if (!isElementFullyInView(canvasEl)) {
-          canvasEl.scrollIntoView({ block: "nearest" });
-          const canvasRect = canvasEl.getBoundingClientRect();
-          const headerRect = document
-            .getElementById("transaction-bars-controls")
-            ?.getBoundingClientRect();
-          if (
-            headerRect &&
-            // Check if header is stickied
-            headerRect.top - txnBarsControlsStickyTop <= 0 &&
-            // Check if the element is hidden behind the sticky header
-            canvasRect.top < headerRect.bottom
-          ) {
-            document.getElementById("scroll-container")?.scrollBy({
-              top: -headerRect.bottom - canvasRect.top,
-            });
-          }
-        }
-
-        if (focusedChartElRef.current) {
-          focusedChartElRef.current.style.border = "";
-        }
-        chartBorderEl.style.border = `1px solid ${focusedBorderColor}`;
-        focusedChartElRef.current = chartBorderEl;
-      }
-
-      uplotAction((u, _bankIdx) => {
-        if (bankIdx !== _bankIdx) {
-          // To redraw non-focused banks without focus
-          u.redraw();
-          return;
-        }
-
-        const scale = u.scales[banksXScaleKey];
-        const scaleMin = scale.min ?? -Infinity;
-        const scaleMax = scale.max ?? Infinity;
-        const currentScaleRange = scaleMax - scaleMin;
-
-        const isFirstTxnInBundle =
-          transactions.txn_from_bundle[txnIdx] &&
-          transactions.txn_microblock_id[txnIdx - 1] !==
-            transactions.txn_microblock_id[txnIdx];
-        const isLastTxnInBundle =
-          transactions.txn_from_bundle[txnIdx] &&
-          transactions.txn_microblock_id[txnIdx + 1] !==
-            transactions.txn_microblock_id[txnIdx];
-
-        const startTs = Number(
-          (isFirstTxnInBundle || !transactions.txn_from_bundle[txnIdx]
-            ? transactions.txn_mb_start_timestamps_nanos[txnIdx]
-            : transactions.txn_preload_end_timestamps_nanos[txnIdx]) -
-            transactions.start_timestamp_nanos,
-        );
-        const endTs = Number(
-          (isLastTxnInBundle || !transactions.txn_from_bundle[txnIdx]
-            ? transactions.txn_mb_end_timestamps_nanos[txnIdx]
-            : transactions.txn_end_timestamps_nanos[txnIdx]) -
-            transactions.start_timestamp_nanos,
-        );
-        const desiredScaleRangeMax =
-          (endTs - startTs) * desiredScaleRangeMultiplierMax;
-        const desiredScaleRangeMin =
-          (endTs - startTs) * desiredScaleRangeMultiplierMin;
-
-        // If txn is already fully out of view, adjust the scale to include it
-        const notWithinScale = endTs < scaleMin || startTs > scaleMax;
-        // If the current scale is too large, zoom in to the desired scale
-        const scaleRangeTooLarge = currentScaleRange > desiredScaleRangeMax;
-        // If the current scale is too small, zoom out to the desired scale
-        const scaleRangeTooSmall = currentScaleRange < desiredScaleRangeMin;
-
-        // Zooms the charts into the desired scale, taking into account min/max range bounds of the data
-        // Then sets the color highlighting for that txn
-        u.batch(() => {
-          if (notWithinScale || scaleRangeTooLarge || scaleRangeTooSmall) {
-            let min = Math.max(
-              u.data[0][0],
-              startTs - desiredScaleRangeMax / 2,
-            );
-            const max = min + desiredScaleRangeMax;
-            if (max > u.data[0][u.data[0].length - 1]) {
-              min = max - desiredScaleRangeMax;
-            }
-
-            u.setScale(banksXScaleKey, { min, max });
-          }
-
-          highlightTxnIdx(txnIdx);
-        });
-      });
-    },
-    [transactions, uplotAction],
-  );
 
   const handleItemSelect = useCallback(
     (inputValue: string, optionValue?: number | string) => {
