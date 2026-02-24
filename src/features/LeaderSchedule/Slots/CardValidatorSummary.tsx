@@ -23,6 +23,7 @@ import { useTimeAgo } from "../../../hooks/useTimeAgo";
 import { usePeerInfo } from "../../../hooks/usePeerInfo";
 import type { ClientName } from "../../../consts";
 import LinkedSlotText from "./SlotText";
+import { TimePopoverDropdown } from "../../../components/TimePopoverDropdown";
 
 interface CardValidatorSummaryProps {
   slot: number;
@@ -238,12 +239,16 @@ function ValidatorText({
 }
 
 function TimeAgo({ slot }: CardValidatorSummaryProps) {
-  const { slotDateTime, timeAgoText } = useTimeAgo(slot);
+  const { slotTimestampNanos, slotDateTime, timeAgoText } = useTimeAgo(slot);
+
+  if (slotTimestampNanos === undefined) return;
 
   return (
-    <Text className={styles.secondaryText}>
-      {slotDateTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}
-      {timeAgoText && ` (${timeAgoText})`}
-    </Text>
+    <TimePopoverDropdown nanoTs={slotTimestampNanos}>
+      <Text className={styles.secondaryText}>
+        {slotDateTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}
+        {timeAgoText && ` (${timeAgoText})`}
+      </Text>
+    </TimePopoverDropdown>
   );
 }
