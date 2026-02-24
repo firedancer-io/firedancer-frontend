@@ -84,3 +84,13 @@
 .container-mobile {
   padding: 0 6px;
 }
+
+.clickable {
+  cursor: pointer;
+  text-decoration: underline dotted var(--secondary-text-color);
+  transition: text-decoration-color 0.2s ease;
+
+  &:hover {
+    text-decoration-color: var(--primary-text-color);
+  }
+}

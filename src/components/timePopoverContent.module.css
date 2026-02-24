@@ -1,0 +1,16 @@
+.container {
+  border-radius: 5px;
+  background: var(--popover-background-color);
+  max-width: 100vw;
+  border: 1px solid var(--container-border-color);
+  padding: 4px;
+  font-size: 12px;
+}
+
+.label {
+  color: var(--gray-10);
+}
+
+.value {
+  color: var(--gray-11);
+}

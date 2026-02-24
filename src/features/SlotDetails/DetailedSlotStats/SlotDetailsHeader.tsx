@@ -14,7 +14,8 @@ import { useMemo } from "react";
 import styles from "./detailedSlotStats.module.css";
 import { formatTimeNanos } from "../../../utils";
 import { ClientEnum } from "../../../api/entities";
-import ConditionalTooltip from "../../../components/ConditionalTooltip";
+import { TimePopoverContent } from "../../../components/TimePopoverContent";
+import PopoverDropdown from "../../../components/PopoverDropdown";
 import { useMedia } from "react-use";
 import clsx from "clsx";
 import CopyButton from "../../../components/CopyButton";
@@ -109,7 +110,7 @@ export default function SlotDetailsHeader() {
 interface LabelValueProps {
   label: string;
   value?: string | number;
-  valueTooltip?: string | number;
+  valuePopover?: React.ReactNode;
   icon?: string;
   vertical?: boolean;
   allowCopy?: boolean;
@@ -118,7 +119,7 @@ interface LabelValueProps {
 function LabelValue({
   label,
   value,
-  valueTooltip,
+  valuePopover,
   icon,
   vertical = false,
   allowCopy = false,
@@ -127,19 +128,22 @@ function LabelValue({
     <Flex gapX="2" direction={vertical ? "column" : "row"}>
       <MonoText className={styles.label}>{label}</MonoText>
 
-      <ConditionalTooltip content={valueTooltip}>
+      <PopoverDropdown content={valuePopover} align="start">
         <CopyButton
           className={styles.copyButton}
           size={14}
           value={allowCopy ? value?.toString() : undefined}
           hideIconUntilHover
         >
-          <MonoText truncate className={styles.value}>
+          <MonoText
+            truncate
+            className={clsx(styles.value, valuePopover && styles.clickable)}
+          >
             {value}
             {icon && ` ${icon}`}
           </MonoText>
         </CopyButton>
-      </ConditionalTooltip>
+      </PopoverDropdown>
     </Flex>
   );
 }
@@ -216,7 +220,14 @@ function SlotTime({ vertical = false, slotCompletedTimeNanos }: SlotTimeProps) {
     <LabelValue
       label="Slot Time"
       value={formattedSlotTime?.inMillis}
-      valueTooltip={formattedSlotTime?.inNanos}
+      valuePopover={
+        slotCompletedTimeNanos ? (
+          <TimePopoverContent
+            nanoTs={slotCompletedTimeNanos}
+            units="nanoseconds"
+          />
+        ) : undefined
+      }
       vertical={vertical}
     />
   );

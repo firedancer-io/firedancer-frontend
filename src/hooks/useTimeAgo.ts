@@ -11,14 +11,17 @@ export function useTimeAgo(slot: number, options?: DurationOptions) {
 
   useHarmonicIntervalFn(update, 1_000);
 
+  const [slotTimestamp, setSlotTimestamp] = useState<bigint>();
   const [slotDateTime, setSlotDateTime] = useState<DateTime>();
 
   useEffect(() => {
     if (!query.publish?.completed_time_nanos) return;
 
+    setSlotTimestamp(query.publish.completed_time_nanos);
+
     setSlotDateTime(
       DateTime.fromMillis(
-        Math.trunc(Number(query.publish?.completed_time_nanos) / 1_000_000),
+        Math.trunc(Number(query.publish.completed_time_nanos / 1_000_000n)),
       ),
     );
   }, [query.publish]);
@@ -31,6 +34,7 @@ export function useTimeAgo(slot: number, options?: DurationOptions) {
   const diffDuration = getDiffDuration();
 
   return {
+    slotTimestamp,
     slotDateTime,
     timeAgoText: diffDuration
       ? `${getDurationText(diffDuration, options)} ago`

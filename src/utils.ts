@@ -392,21 +392,52 @@ export function isAgave(client: ClientName) {
   );
 }
 
-const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  second: "2-digit",
-  timeZoneName: "short",
-  fractionalSecondDigits: 3,
-});
+function makeDateTimeFormatters(options: Intl.DateTimeFormatOptions) {
+  const base: Intl.DateTimeFormatOptions = {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    ...options,
+  };
+  return {
+    millis: new Intl.DateTimeFormat(undefined, {
+      ...base,
+      fractionalSecondDigits: 3,
+    }),
+    seconds: new Intl.DateTimeFormat(undefined, base),
+  };
+}
 
-export function formatTimeNanos(time: bigint) {
+const dateTimeFormatters = {
+  local: makeDateTimeFormatters({ timeZoneName: "short" }),
+  localNoTz: makeDateTimeFormatters({}),
+  utc: makeDateTimeFormatters({ timeZone: "UTC", timeZoneName: "short" }),
+  utcNoTz: makeDateTimeFormatters({ timeZone: "UTC" }),
+};
+
+export function formatTimeNanos(
+  time: bigint,
+  formatOptions?: {
+    timezone?: "local" | "utc";
+    showTimezoneName?: boolean;
+  },
+) {
   const millis = Number(time / 1_000_000n);
   const remainderNanos = Number(time % 1_000_000n);
   const date = new Date(millis);
-  const formattedParts = dateTimeFormatter.formatToParts(date);
+  const key = formatOptions
+    ? formatOptions.timezone === "utc"
+      ? formatOptions.showTimezoneName
+        ? "utc"
+        : "utcNoTz"
+      : formatOptions.showTimezoneName
+        ? "local"
+        : "localNoTz"
+    : "local";
+  const formatters = dateTimeFormatters[key];
+  const formattedParts = formatters.millis.formatToParts(date);
   const zeroPrefixedNanos = remainderNanos.toString().padStart(6, "0");
 
   let inMillis = "";
@@ -415,12 +446,15 @@ export function formatTimeNanos(time: bigint) {
   for (const part of formattedParts) {
     inMillis += part.value;
     inNanos += part.value;
+
     if (part.type === "fractionalSecond") {
       inNanos += zeroPrefixedNanos;
     }
   }
 
-  return { inMillis, inNanos };
+  const inSeconds = formatters.seconds.format(date);
+
+  return { inSeconds, inMillis, inNanos };
 }
 
 export function hasLateVote(publish: SlotPublish) {

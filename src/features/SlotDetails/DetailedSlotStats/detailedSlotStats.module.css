@@ -76,3 +76,13 @@
   min-width: 0;
   color: var(--slot-details-stats-primary);
 }
+
+.clickable {
+  cursor: pointer;
+  text-decoration: underline dotted var(--slot-details-stats-secondary);
+  transition: text-decoration-color 0.2s ease;
+
+  &:hover {
+    text-decoration-color: var(--slot-details-stats-primary);
+  }
+}

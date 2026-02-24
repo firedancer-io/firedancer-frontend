@@ -15,6 +15,8 @@ import PeerIcon from "../../../components/PeerIcon";
 import { useHarmonicIntervalFn, useMedia } from "react-use";
 import clsx from "clsx";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
+import PopoverDropdown from "../../../components/PopoverDropdown";
+import { TimePopoverContent } from "../../../components/TimePopoverContent";
 
 interface UpcomingSlotCardProps {
   slot: number;
@@ -137,20 +139,32 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
     getDurationText(timeTill),
   );
 
+  const [tsNano, setTsNano] = useReducer(dtReducer, getTsNano(timeTill));
+
   useHarmonicIntervalFn(() => {
     setTimeTillText(timeTill);
     setDtText(timeTill);
+    setTsNano(timeTill);
   }, 1_000);
 
   return (
-    <Text
-      className={clsx(styles.timeTill, {
-        [styles.narrowScreen]: isNarrowScreen,
-      })}
+    <PopoverDropdown
+      content={<TimePopoverContent nanoTs={tsNano} units="seconds" />}
+      align="start"
     >
-      {dtText} ({timeTillText})
-    </Text>
+      <Text
+        className={clsx(styles.timeTill, styles.clickable, {
+          [styles.narrowScreen]: isNarrowScreen,
+        })}
+      >
+        {dtText} ({timeTillText})
+      </Text>
+    </PopoverDropdown>
   );
+}
+
+function dtReducer(_: bigint, timeTill: Duration | undefined) {
+  return getTsNano(timeTill);
 }
 
 function dtTextReducer(_: string, timeTill: Duration | undefined) {
@@ -159,6 +173,12 @@ function dtTextReducer(_: string, timeTill: Duration | undefined) {
 
 function timeTillTextReducer(_: string, timeTill: Duration | undefined) {
   return getDurationText(timeTill);
+}
+
+/* Millisecond-precision nanoseconds because DateTime only stores up to millis */
+function getTsNano(timeTill?: Duration): bigint {
+  const dt = timeTill ? slowDateTimeNow.plus(timeTill) : slowDateTimeNow;
+  return BigInt(Math.trunc(dt.toMillis())) * 1_000_000n;
 }
 
 function getDtText(timeTill?: Duration) {

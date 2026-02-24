@@ -10,6 +10,7 @@ interface PopoverDropdownProps {
   content: ReactNode;
   isOpen?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
+  align?: Popover.PopoverContentProps["align"];
 }
 
 export default function PopoverDropdown({
@@ -17,14 +18,16 @@ export default function PopoverDropdown({
   content,
   isOpen,
   onOpenChange,
+  align,
 }: PropsWithChildren<PopoverDropdownProps>) {
   const containerEl = useAtomValue(containerElAtom);
+
+  if (!content) return children;
 
   return (
     <Popover.Root open={isOpen} onOpenChange={onOpenChange}>
       <Flex minWidth="0">
         <Popover.Trigger asChild>{children}</Popover.Trigger>
-        <Popover.Anchor></Popover.Anchor>
       </Flex>
       <Popover.Portal container={containerEl}>
         <Popover.Content
@@ -33,6 +36,7 @@ export default function PopoverDropdown({
             zIndex: maxZIndex,
           }}
           sideOffset={5}
+          align={align}
           tabIndex={undefined}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >

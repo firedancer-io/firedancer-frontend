@@ -152,8 +152,9 @@ describe("getDurationText", () => {
 });
 
 describe("formatTimeNanos", () => {
-  it("formats millis and nanos correctly", () => {
+  it("formats times correctly", () => {
     expect(formatTimeNanos(1764892025356640223n)).toEqual({
+      inSeconds: "Dec 4, 5:47:05 PM CST",
       inMillis: "Dec 4, 5:47:05.356 PM CST",
       inNanos: "Dec 4, 5:47:05.356640223 PM CST",
     });
@@ -161,8 +162,33 @@ describe("formatTimeNanos", () => {
 
   it("zero prefixes nanos correctly", () => {
     expect(formatTimeNanos(1764921600000000123n)).toEqual({
+      inSeconds: "Dec 5, 2:00:00 AM CST",
       inMillis: "Dec 5, 2:00:00.000 AM CST",
       inNanos: "Dec 5, 2:00:00.000000123 AM CST",
+    });
+  });
+
+  it("custom format options", () => {
+    expect(
+      formatTimeNanos(1764892025356640223n, {
+        timezone: "local",
+        showTimezoneName: false,
+      }),
+    ).toEqual({
+      inSeconds: "Dec 4, 5:47:05 PM",
+      inMillis: "Dec 4, 5:47:05.356 PM",
+      inNanos: "Dec 4, 5:47:05.356640223 PM",
+    });
+
+    expect(
+      formatTimeNanos(1764892025356640223n, {
+        timezone: "utc",
+        showTimezoneName: true,
+      }),
+    ).toEqual({
+      inSeconds: "Dec 4, 11:47:05 PM UTC",
+      inMillis: "Dec 4, 11:47:05.356 PM UTC",
+      inNanos: "Dec 4, 11:47:05.356640223 PM UTC",
     });
   });
 });

@@ -23,6 +23,8 @@ import { useTimeAgo } from "../../../hooks/useTimeAgo";
 import { usePeerInfo } from "../../../hooks/usePeerInfo";
 import type { ClientName } from "../../../consts";
 import LinkedSlotText from "./SlotText";
+import PopoverDropdown from "../../../components/PopoverDropdown";
+import { TimePopoverContent } from "../../../components/TimePopoverContent";
 
 interface CardValidatorSummaryProps {
   slot: number;
@@ -238,12 +240,21 @@ function ValidatorText({
 }
 
 function TimeAgo({ slot }: CardValidatorSummaryProps) {
-  const { slotDateTime, timeAgoText } = useTimeAgo(slot);
+  const { slotTimestamp, slotDateTime, timeAgoText } = useTimeAgo(slot);
 
   return (
-    <Text className={styles.secondaryText}>
-      {slotDateTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}
-      {timeAgoText && ` (${timeAgoText})`}
-    </Text>
+    <PopoverDropdown
+      content={
+        slotTimestamp ? (
+          <TimePopoverContent nanoTs={slotTimestamp} units="seconds" />
+        ) : undefined
+      }
+      align="start"
+    >
+      <Text className={clsx(styles.secondaryText, styles.clickable)}>
+        {slotDateTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}
+        {timeAgoText && ` (${timeAgoText})`}
+      </Text>
+    </PopoverDropdown>
   );
 }
