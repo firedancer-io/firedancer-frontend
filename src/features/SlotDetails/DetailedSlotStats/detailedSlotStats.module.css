@@ -19,6 +19,8 @@
   font-size: 10px;
   color: var(--slot-details-stats-primary);
   text-wrap: nowrap;
+  --popover-trigger-color: var(--slot-details-stats-secondary);
+  --popover-trigger-hover-color: var(--slot-details-stats-primary);
 }
 
 .table-header {
