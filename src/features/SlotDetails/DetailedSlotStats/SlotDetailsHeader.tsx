@@ -17,7 +17,6 @@ import { ClientEnum } from "../../../api/entities";
 import { TimePopoverContent } from "../../../components/TimePopoverContent";
 import PopoverDropdown from "../../../components/PopoverDropdown";
 import { useMedia } from "react-use";
-import clsx from "clsx";
 import CopyButton from "../../../components/CopyButton";
 import MonoText from "../../../components/MonoText";
 
@@ -128,22 +127,23 @@ function LabelValue({
     <Flex gapX="2" direction={vertical ? "column" : "row"}>
       <MonoText className={styles.label}>{label}</MonoText>
 
-      <PopoverDropdown content={valuePopover} align="start">
-        <CopyButton
-          className={styles.copyButton}
-          size={14}
-          value={allowCopy ? value?.toString() : undefined}
-          hideIconUntilHover
-        >
-          <MonoText
-            truncate
-            className={clsx(styles.value, valuePopover && styles.clickable)}
+      {valuePopover === undefined ? (
+        <MonoText className={styles.value}>{value}</MonoText>
+      ) : (
+        <PopoverDropdown content={valuePopover} align="start">
+          <CopyButton
+            className={styles.copyButton}
+            size={14}
+            value={allowCopy ? value?.toString() : undefined}
+            hideIconUntilHover
           >
-            {value}
-            {icon && ` ${icon}`}
-          </MonoText>
-        </CopyButton>
-      </PopoverDropdown>
+            <MonoText truncate className={styles.value}>
+              <button className={styles.popoverTrigger}>{value}</button>
+              {icon && ` ${icon}`}
+            </MonoText>
+          </CopyButton>
+        </PopoverDropdown>
+      )}
     </Flex>
   );
 }
