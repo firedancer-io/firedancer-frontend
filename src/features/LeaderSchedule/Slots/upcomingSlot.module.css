@@ -43,13 +43,23 @@
     }
   }
 
-  .clickable {
+  .popover-trigger {
     cursor: pointer;
     text-decoration: underline dotted var(--secondary-text-color);
     transition: text-decoration-color 0.2s ease;
 
     &:hover {
       text-decoration-color: var(--primary-text-color);
+    }
+
+    /* reset browser button defaults when used as a popover trigger */
+    &:where(button) {
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      color: inherit;
+      text-align: start;
     }
   }
 }

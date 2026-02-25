@@ -8,7 +8,7 @@ import {
   currentSlotAtom,
   slotDurationAtom,
 } from "../../../atoms";
-import { useReducer } from "react";
+import { useState } from "react";
 import { DateTime, Duration } from "luxon";
 import { getDurationText, slowDateTimeNow } from "../../../utils";
 import PeerIcon from "../../../components/PeerIcon";
@@ -132,58 +132,55 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
     ? Duration.fromMillis(slotDuration * (slot - currentSlot)).rescale()
     : undefined;
 
-  const [dtText, setDtText] = useReducer(dtTextReducer, getDtText(timeTill));
-
-  const [timeTillText, setTimeTillText] = useReducer(
-    timeTillTextReducer,
-    getDurationText(timeTill),
-  );
-
-  const [tsNano, setTsNano] = useReducer(dtReducer, getTsNano(timeTill));
+  const [data, setData] = useState(() => {
+    if (timeTill === undefined) return;
+    return {
+      timeTillText: getDurationText(timeTill),
+      dtText: getDtText(timeTill),
+      tsNano: getTsNano(timeTill),
+    };
+  });
 
   useHarmonicIntervalFn(() => {
-    setTimeTillText(timeTill);
-    setDtText(timeTill);
-    setTsNano(timeTill);
+    if (timeTill === undefined) {
+      setData(undefined);
+    } else {
+      setData({
+        timeTillText: getDurationText(timeTill),
+        dtText: getDtText(timeTill),
+        tsNano: getTsNano(timeTill),
+      });
+    }
   }, 1_000);
+
+  if (data === undefined) return;
 
   return (
     <PopoverDropdown
-      content={<TimePopoverContent nanoTs={tsNano} units="seconds" />}
+      content={<TimePopoverContent nanoTs={data.tsNano} units="seconds" />}
       align="start"
     >
       <Text
-        className={clsx(styles.timeTill, styles.clickable, {
+        asChild
+        className={clsx(styles.timeTill, styles.popoverTrigger, {
           [styles.narrowScreen]: isNarrowScreen,
         })}
       >
-        {dtText} ({timeTillText})
+        <button>
+          {data.dtText} ({data.timeTillText})
+        </button>
       </Text>
     </PopoverDropdown>
   );
 }
 
-function dtReducer(_: bigint, timeTill: Duration | undefined) {
-  return getTsNano(timeTill);
-}
-
-function dtTextReducer(_: string, timeTill: Duration | undefined) {
-  return getDtText(timeTill);
-}
-
-function timeTillTextReducer(_: string, timeTill: Duration | undefined) {
-  return getDurationText(timeTill);
-}
-
 /* Millisecond-precision nanoseconds because DateTime only stores up to millis */
-function getTsNano(timeTill?: Duration): bigint {
-  const dt = timeTill ? slowDateTimeNow.plus(timeTill) : slowDateTimeNow;
+function getTsNano(timeTill: Duration) {
+  const dt = slowDateTimeNow.plus(timeTill);
   return BigInt(Math.trunc(dt.toMillis())) * 1_000_000n;
 }
 
-function getDtText(timeTill?: Duration) {
-  if (!timeTill) return "";
-
+function getDtText(timeTill: Duration) {
   const slotDt = slowDateTimeNow.plus(timeTill);
   return slotDt?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS);
 }
