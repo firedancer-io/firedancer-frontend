@@ -15,10 +15,13 @@ export function useTimeAgo(slot: number, options?: DurationOptions) {
   const [slotDateTime, setSlotDateTime] = useState<DateTime>();
 
   useEffect(() => {
-    if (!query.publish?.completed_time_nanos) return;
+    if (!query.publish?.completed_time_nanos) {
+      setSlotTimestamp(undefined);
+      setSlotDateTime(undefined);
+      return;
+    }
 
     setSlotTimestamp(query.publish.completed_time_nanos);
-
     setSlotDateTime(
       DateTime.fromMillis(
         Math.trunc(Number(query.publish.completed_time_nanos / 1_000_000n)),

@@ -242,18 +242,18 @@ function ValidatorText({
 function TimeAgo({ slot }: CardValidatorSummaryProps) {
   const { slotTimestamp, slotDateTime, timeAgoText } = useTimeAgo(slot);
 
+  if (slotTimestamp === undefined) return;
+
   return (
     <PopoverDropdown
-      content={
-        slotTimestamp ? (
-          <TimePopoverContent nanoTs={slotTimestamp} units="seconds" />
-        ) : undefined
-      }
+      content={<TimePopoverContent nanoTs={slotTimestamp} units="seconds" />}
       align="start"
     >
-      <Text className={clsx(styles.secondaryText, styles.clickable)}>
-        {slotDateTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}
-        {timeAgoText && ` (${timeAgoText})`}
+      <Text className={styles.secondaryText}>
+        <button className={styles.popoverTrigger}>
+          {slotDateTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}
+          {timeAgoText && ` (${timeAgoText})`}
+        </button>
       </Text>
     </PopoverDropdown>
   );
