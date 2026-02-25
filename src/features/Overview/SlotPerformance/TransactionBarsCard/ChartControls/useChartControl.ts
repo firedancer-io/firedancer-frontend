@@ -13,7 +13,7 @@ export default function useChartControl<K extends ChartControlKey>(
   const updateRef = useRef(update);
   useEffect(() => {
     updateRef.current = update;
-  });
+  }, [update]);
 
   const [isTooltipOpen, setIsTooltipOpen] = useState<boolean>(false);
   const closeTooltip = useCallback(() => setIsTooltipOpen(false), []);

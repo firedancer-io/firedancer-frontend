@@ -10,12 +10,16 @@
 }
 
 .clickable {
+  /* reset button styles */
+  appearance: none;
+  border: none;
+  padding: 0;
+
   cursor: pointer;
   transition: all 0.3s ease;
 
   &:hover {
-    height: 15px;
-    transform: translateY(-2px);
+    transform: translateY(-2px) scaleY(1.15);
     filter: brightness(1.2);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
     outline: 0.5px solid #e5e7eb;

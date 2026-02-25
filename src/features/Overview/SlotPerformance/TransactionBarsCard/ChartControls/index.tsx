@@ -347,7 +347,7 @@ function BundleControl({
       // Targets the first bank tile since bundle filter affects all tiles
       document
         .getElementById(getUplotId(0))
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     },
     [updateBundleFilter],
   );

@@ -1,7 +1,6 @@
 import { Flex, Text, Tooltip } from "@radix-ui/themes";
 import AutoSizer from "react-virtualized-auto-sizer";
 import styles from "./distributionBars.module.css";
-import clsx from "clsx";
 
 const barColors = ["#003362", "#113B29", "#3F2700", "#202248", "#33255B"];
 
@@ -60,25 +59,44 @@ export default function DistributionBar({
                     side="bottom"
                     disableHoverableContent
                   >
-                    <Flex
-                      className={clsx(onItemClick && styles.clickable)}
-                      minWidth="0"
-                      align="center"
-                      justify="center"
-                      flexBasis="0"
-                      style={{
-                        background: color,
-                        flexGrow: value,
-                      }}
-                      onClick={() => onItemClick?.({ label, value })}
-                    >
-                      {showLabel && (
-                        <Text mx="2" className={styles.label} truncate>
-                          {label}
-                          {showPct && ` ${formattedPct}`}
-                        </Text>
-                      )}
-                    </Flex>
+                    {onItemClick ? (
+                      <Flex
+                        asChild
+                        className={styles.clickable}
+                        minWidth="0"
+                        align="center"
+                        justify="center"
+                        flexBasis="0"
+                        style={{ background: color, flexGrow: value }}
+                      >
+                        <button
+                          aria-label={`Filter by ${label} (${formattedPct})`}
+                          onClick={() => onItemClick({ label, value })}
+                        >
+                          <Label
+                            showLabel={showLabel}
+                            label={label}
+                            showPct={showPct}
+                            formattedPct={formattedPct}
+                          />
+                        </button>
+                      </Flex>
+                    ) : (
+                      <Flex
+                        minWidth="0"
+                        align="center"
+                        justify="center"
+                        flexBasis="0"
+                        style={{ background: color, flexGrow: value }}
+                      >
+                        <Label
+                          showLabel={showLabel}
+                          label={label}
+                          showPct={showPct}
+                          formattedPct={formattedPct}
+                        />
+                      </Flex>
+                    )}
                   </Tooltip>
                 );
               })}
@@ -87,5 +105,25 @@ export default function DistributionBar({
         }}
       </AutoSizer>
     </div>
+  );
+}
+
+function Label({
+  showLabel,
+  label,
+  showPct,
+  formattedPct,
+}: {
+  showLabel?: boolean;
+  label: string;
+  showPct?: boolean;
+  formattedPct: string;
+}) {
+  if (!showLabel) return null;
+  return (
+    <Text mx="2" className={styles.label} truncate>
+      {label}
+      {showPct && ` ${formattedPct}`}
+    </Text>
   );
 }
