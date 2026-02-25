@@ -4,7 +4,10 @@ import { useCallback, useContext, useMemo } from "react";
 import { getTxnIncome } from "../../../../utils";
 import { groupBy, sum } from "lodash";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
-import { ChartControlsContext } from "../../ChartControlsContext";
+import {
+  BUNDLE_CONTROL_KEY,
+  ChartControlsContext,
+} from "../../ChartControlsContext";
 
 const bundleLabel = "Bundle";
 
@@ -12,7 +15,7 @@ interface IncomeByTxnProps {
   transactions: SlotTransactions;
 }
 export default function IncomeByBundle({ transactions }: IncomeByTxnProps) {
-  const { updateBundleFilter } = useContext(ChartControlsContext);
+  const { triggerControl } = useContext(ChartControlsContext);
 
   const data = useMemo(() => {
     const bundleValues = transactions.txn_from_bundle.map((fromBundle, i) => {
@@ -32,8 +35,8 @@ export default function IncomeByBundle({ transactions }: IncomeByTxnProps) {
 
   const onItemClick = useCallback(
     ({ label }: { label: string; value: number }) =>
-      updateBundleFilter(label === bundleLabel ? "Yes" : "No"),
-    [updateBundleFilter],
+      triggerControl(BUNDLE_CONTROL_KEY, label === bundleLabel ? "Yes" : "No"),
+    [triggerControl],
   );
 
   return (

@@ -66,6 +66,7 @@ import { uplotActionAtom } from "../../../../../uplotReact/uplotAtoms";
 import { txnErrorCodeMap } from "../../../../../consts";
 import { useThrottledCallback } from "use-debounce";
 import {
+  BUNDLE_CONTROL_KEY,
   INCLUSION_FILTER_OPTIONS,
   type InclusionFilterOptions,
 } from "../../../../SlotDetails/ChartControlsContext";
@@ -351,7 +352,10 @@ function BundleControl({
     [updateBundleFilter],
   );
 
-  const { isTooltipOpen, closeTooltip } = useChartControl(handleUpdate);
+  const { isTooltipOpen, closeTooltip } = useChartControl(
+    BUNDLE_CONTROL_KEY,
+    handleUpdate,
+  );
 
   return (
     <ToggleGroupControl

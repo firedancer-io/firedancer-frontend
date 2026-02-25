@@ -1,33 +1,33 @@
-import { useCallback, useMemo, useState, type PropsWithChildren } from "react";
+import { useCallback, useMemo, useRef, type PropsWithChildren } from "react";
 import {
   ChartControlsContext,
+  type ChartControlKey,
   type ChartControls,
-  type InclusionFilterOptions,
-  type UpdateBundleCallback,
 } from "./ChartControlsContext";
 
-export default function ChartControlsProvider({ children }: PropsWithChildren) {
-  const [updateBundleCallback, setUpdateBundleCallback] =
-    useState<UpdateBundleCallback>();
+type ChartControlCallback = (value: unknown) => void;
 
-  const updateBundleFilter: UpdateBundleCallback = useCallback(
-    (value: InclusionFilterOptions) => {
-      updateBundleCallback?.(value);
-    },
-    [updateBundleCallback],
+export default function ChartControlsProvider({ children }: PropsWithChildren) {
+  const callbacksRef = useRef<Map<ChartControlKey, ChartControlCallback>>(
+    new Map(),
   );
 
-  const registerChartControl = useCallback((callback: UpdateBundleCallback) => {
-    setUpdateBundleCallback(() => callback);
-    return () => setUpdateBundleCallback(undefined);
-  }, []);
+  const registerControl = useCallback(
+    (key: ChartControlKey, callback: ChartControlCallback) => {
+      callbacksRef.current.set(key, callback);
+      return () => callbacksRef.current.delete(key);
+    },
+    [],
+  ) as ChartControls["registerControl"];
 
-  const value: ChartControls = useMemo(() => {
-    return {
-      updateBundleFilter,
-      registerChartControl,
-    };
-  }, [updateBundleFilter, registerChartControl]);
+  const triggerControl = useCallback((key: ChartControlKey, value: unknown) => {
+    callbacksRef.current.get(key)?.(value);
+  }, []) as ChartControls["triggerControl"];
+
+  const value: ChartControls = useMemo(
+    () => ({ triggerControl, registerControl }),
+    [triggerControl, registerControl],
+  );
 
   return (
     <ChartControlsContext.Provider value={value}>

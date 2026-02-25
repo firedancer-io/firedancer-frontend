@@ -1,27 +1,30 @@
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   ChartControlsContext,
-  type UpdateBundleCallback,
+  type ChartControlCallback,
+  type ChartControlKey,
 } from "../../../../SlotDetails/ChartControlsContext";
 
-export default function useChartControl(update: UpdateBundleCallback) {
-  const { registerChartControl } = useContext(ChartControlsContext);
+export default function useChartControl<K extends ChartControlKey>(
+  key: K,
+  update: ChartControlCallback<K>,
+) {
+  const { registerControl } = useContext(ChartControlsContext);
+  const updateRef = useRef(update);
+  useEffect(() => {
+    updateRef.current = update;
+  });
 
   const [isTooltipOpen, setIsTooltipOpen] = useState<boolean>(false);
   const closeTooltip = useCallback(() => setIsTooltipOpen(false), []);
 
-  const handleUpdateAndShowTooltip: UpdateBundleCallback = useCallback(
-    (value) => {
-      update(value);
-      setIsTooltipOpen(true);
-    },
-    [update],
-  );
-
   useEffect(() => {
-    const cleanup = registerChartControl(handleUpdateAndShowTooltip);
+    const cleanup = registerControl(key, (value) => {
+      updateRef.current(value);
+      setIsTooltipOpen(true);
+    });
     return cleanup;
-  }, [registerChartControl, handleUpdateAndShowTooltip]);
+  }, [key, registerControl]);
 
   return { isTooltipOpen, closeTooltip };
 }
