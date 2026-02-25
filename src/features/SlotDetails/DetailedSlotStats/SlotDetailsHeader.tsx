@@ -69,7 +69,7 @@ export default function SlotDetailsHeader() {
       />
       <HorizontalLabelValue
         label="Non-votes"
-        value={slotPublish?.failed_nonvote_transaction_cnt?.toLocaleString()}
+        value={slotPublish?.success_nonvote_transaction_cnt?.toLocaleString()}
       />
       <HorizontalLabelValue
         label="Non-vote Failures"
