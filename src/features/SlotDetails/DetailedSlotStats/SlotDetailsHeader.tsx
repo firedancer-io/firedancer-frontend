@@ -12,6 +12,7 @@ import { clientAtom, epochAtom } from "../../../atoms";
 import { useMemo } from "react";
 
 import styles from "./detailedSlotStats.module.css";
+import popoverStyles from "../../../components/popoverTrigger.module.css";
 import { formatTimeNanos } from "../../../utils";
 import { ClientEnum } from "../../../api/entities";
 import { TimePopoverContent } from "../../../components/TimePopoverContent";
@@ -138,7 +139,7 @@ function LabelValue({
             hideIconUntilHover
           >
             <MonoText truncate className={styles.value}>
-              <button className={styles.popoverTrigger}>{value}</button>
+              <button className={popoverStyles.popoverTrigger}>{value}</button>
               {icon && ` ${icon}`}
             </MonoText>
           </CopyButton>

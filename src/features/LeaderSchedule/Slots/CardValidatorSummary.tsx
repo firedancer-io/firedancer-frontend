@@ -12,6 +12,7 @@ import {
 import { useAtomValue } from "jotai";
 import PeerIcon from "../../../components/PeerIcon";
 import styles from "./cardValidatorSummary.module.css";
+import popoverStyles from "../../../components/popoverTrigger.module.css";
 import { useMedia } from "react-use";
 import type { Peer } from "../../../api/types";
 import { peerStatsAtom } from "../../../atoms";
@@ -252,7 +253,7 @@ function TimeAgo({ slot }: CardValidatorSummaryProps) {
       align="start"
     >
       <Text className={styles.secondaryText}>
-        <button className={styles.popoverTrigger}>
+        <button className={popoverStyles.popoverTrigger}>
           {slotDateTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}
           {timeAgoText && ` (${timeAgoText})`}
         </button>

@@ -1,6 +1,7 @@
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { slotsPerLeader } from "../../../consts";
 import styles from "./upcomingSlot.module.css";
+import popoverStyles from "../../../components/popoverTrigger.module.css";
 import sharedStyles from "./slots.module.css";
 import { useAtomValue } from "jotai";
 import {
@@ -162,7 +163,7 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
     >
       <Text
         asChild
-        className={clsx(styles.timeTill, styles.popoverTrigger, {
+        className={clsx(styles.timeTill, popoverStyles.popoverTrigger, {
           [styles.narrowScreen]: isNarrowScreen,
         })}
       >
