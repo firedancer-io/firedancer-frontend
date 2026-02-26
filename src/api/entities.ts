@@ -65,10 +65,13 @@ export const tileTypeSchema = z.enum([
   "bundle",
   "verify",
   "dedup",
-  "resolv",
+  "resolv", // Firedancer
+  "resolh", // Frankendancer
   "pack",
-  "execle",
-  "poh",
+  "execle", // Firedancer
+  "bank", // Frankendancer
+  "poh", // Firedancer
+  "pohh", // Frankendancer
   "shred",
   "store",
 

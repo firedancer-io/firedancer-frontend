@@ -4,11 +4,16 @@ import { useTilesPerformance } from "./useTilesPerformance";
 import { useState } from "react";
 import { useAtomValue } from "jotai";
 import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
+import { getClientSpecificTileNames } from "../../../utils";
+import { clientAtom } from "../../../atoms";
 
 export default function TilesPerformance() {
   const [_isExpanded, setIsExpanded] = useState(false);
   const isStartupVisible = useAtomValue(isStartupProgressVisibleAtom);
   const isExpanded = _isExpanded && !isStartupVisible;
+
+  const client = useAtomValue(clientAtom);
+  const tileNames = getClientSpecificTileNames(client);
 
   const { tileCounts, groupedLiveIdlePerTile, showLive, queryIdleData } =
     useTilesPerformance();
@@ -78,10 +83,12 @@ export default function TilesPerformance() {
         setIsExpanded={setIsExpanded}
       />
       <TileCard
-        header="resolv"
-        tileCount={tileCounts["resolv"]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.["resolv"]}
-        queryIdlePerTile={showLive ? undefined : queryIdleData?.["resolv"]}
+        header={tileNames.resolv}
+        tileCount={tileCounts[tileNames.resolv]}
+        liveIdlePerTile={groupedLiveIdlePerTile?.[tileNames.resolv]}
+        queryIdlePerTile={
+          showLive ? undefined : queryIdleData?.[tileNames.resolv]
+        }
         statLabel="Resolv"
         isExpanded={isExpanded}
         setIsExpanded={setIsExpanded}
@@ -97,20 +104,22 @@ export default function TilesPerformance() {
         setIsExpanded={setIsExpanded}
       />
       <TileCard
-        header="execle"
-        tileCount={tileCounts["execle"]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.["execle"]}
-        queryIdlePerTile={showLive ? undefined : queryIdleData?.["execle"]}
+        header={tileNames.bank}
+        tileCount={tileCounts[tileNames.bank]}
+        liveIdlePerTile={groupedLiveIdlePerTile?.[tileNames.bank]}
+        queryIdlePerTile={
+          showLive ? undefined : queryIdleData?.[tileNames.bank]
+        }
         statLabel="TPS"
         metricType="bank"
         isExpanded={isExpanded}
         setIsExpanded={setIsExpanded}
       />
       <TileCard
-        header="poh"
-        tileCount={tileCounts["poh"]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.["poh"]}
-        queryIdlePerTile={showLive ? undefined : queryIdleData?.["poh"]}
+        header={tileNames.poh}
+        tileCount={tileCounts[tileNames.poh]}
+        liveIdlePerTile={groupedLiveIdlePerTile?.[tileNames.poh]}
+        queryIdlePerTile={showLive ? undefined : queryIdleData?.[tileNames.poh]}
         statLabel="Hash"
         // metricType="poh"
         isExpanded={isExpanded}
