@@ -138,7 +138,7 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
     return {
       timeTillText: getDurationText(timeTill),
       dtText: getDtText(timeTill),
-      tsNano: getTsNano(timeTill),
+      predictedTsNanos: getPredictedTimeInNanos(timeTill),
     };
   });
 
@@ -149,7 +149,7 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
       setData({
         timeTillText: getDurationText(timeTill),
         dtText: getDtText(timeTill),
-        tsNano: getTsNano(timeTill),
+        predictedTsNanos: getPredictedTimeInNanos(timeTill),
       });
     }
   }, 1_000);
@@ -158,7 +158,9 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
 
   return (
     <PopoverDropdown
-      content={<TimePopoverContent nanoTs={data.tsNano} units="seconds" />}
+      content={
+        <TimePopoverContent nanoTs={data.predictedTsNanos} units="seconds" />
+      }
       align="start"
     >
       <Text
@@ -175,8 +177,9 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
   );
 }
 
-/* Millisecond-precision nanoseconds because DateTime only stores up to millis */
-function getTsNano(timeTill: Duration) {
+/* Returns ns, but sub-ms digits are always 0 because DateTime has
+ * no sub-ms precision */
+function getPredictedTimeInNanos(timeTill: Duration) {
   const dt = slowDateTimeNow.plus(timeTill);
   return BigInt(Math.trunc(dt.toMillis())) * 1_000_000n;
 }
