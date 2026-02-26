@@ -240,13 +240,15 @@ function ValidatorText({
 }
 
 function TimeAgo({ slot }: CardValidatorSummaryProps) {
-  const { slotTimestamp, slotDateTime, timeAgoText } = useTimeAgo(slot);
+  const { slotTimestampNanos, slotDateTime, timeAgoText } = useTimeAgo(slot);
 
-  if (slotTimestamp === undefined) return;
+  if (slotTimestampNanos === undefined) return;
 
   return (
     <PopoverDropdown
-      content={<TimePopoverContent nanoTs={slotTimestamp} units="seconds" />}
+      content={
+        <TimePopoverContent nanoTs={slotTimestampNanos} units="seconds" />
+      }
       align="start"
     >
       <Text className={styles.secondaryText}>

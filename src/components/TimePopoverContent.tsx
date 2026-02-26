@@ -1,9 +1,8 @@
 import { Grid, Text } from "@radix-ui/themes";
 import styles from "./timePopoverContent.module.css";
-import { formatTimeNanos, getDurationText } from "../utils";
-import { DateTime } from "luxon";
-import { useHarmonicIntervalFn, useUpdate } from "react-use";
+import { formatTimeNanos, getDateTimeFromNanos } from "../utils";
 import { useMemo } from "react";
+import { useRelativeTime } from "../hooks/useRelativeTime";
 
 interface TimePopoverContentProps {
   nanoTs: bigint;
@@ -13,7 +12,8 @@ interface TimePopoverContentProps {
 const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export function TimePopoverContent({ nanoTs, units }: TimePopoverContentProps) {
-  const millisTimestamp = useMemo(() => Number(nanoTs / 1_000_000n), [nanoTs]);
+  const dateTime = useMemo(() => getDateTimeFromNanos(nanoTs), [nanoTs]);
+  const relativeTime = useRelativeTime(dateTime);
 
   const values = useMemo(() => {
     const localTime = formatTimeNanos(nanoTs, {
@@ -64,30 +64,10 @@ export function TimePopoverContent({ nanoTs, units }: TimePopoverContentProps) {
       <Text className={styles.value}>{values.utc}</Text>
 
       <Text className={styles.label}>Relative</Text>
-      <Text className={styles.value}>
-        <RelativeTime millisTs={millisTimestamp} />
-      </Text>
+      <Text className={styles.value}>{relativeTime}</Text>
 
       <Text className={styles.label}>Timestamp</Text>
       <Text className={styles.value}>{values.ts}</Text>
     </Grid>
   );
-}
-
-interface RelativeTimeProps {
-  millisTs: number;
-}
-
-function RelativeTime({ millisTs }: RelativeTimeProps) {
-  const update = useUpdate();
-  useHarmonicIntervalFn(update, 1_000);
-
-  const now = DateTime.now();
-  const target = DateTime.fromMillis(millisTs);
-  const isInPast = now >= target;
-  const diffDuration = (
-    isInPast ? now.diff(target) : target.diff(now)
-  ).rescale();
-  const durationText = getDurationText(diffDuration);
-  return isInPast ? `${durationText} ago` : durationText;
 }

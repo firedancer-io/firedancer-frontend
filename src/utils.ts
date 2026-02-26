@@ -148,6 +148,10 @@ setInterval(() => {
   slowDateTimeNow = DateTime.now();
 }, 1_000);
 
+export function getDateTimeFromNanos(nanos: bigint) {
+  return DateTime.fromMillis(Math.trunc(Number(nanos / 1_000_000n)));
+}
+
 export function isDefined<T>(item: T | undefined): item is T {
   return item !== undefined;
 }
