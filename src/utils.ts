@@ -1,12 +1,15 @@
 import type { Duration } from "luxon";
 import { DateTime } from "luxon";
 import type {
+  Client,
   Cluster,
   Epoch,
   Peer,
   SlotPublish,
   SlotTransactions,
+  TileType,
 } from "./api/types";
+import { ClientEnum } from "./api/entities";
 import { ClientName, lamportsPerSol, slotsPerLeader } from "./consts";
 import {
   clusterMainnetBetaColor,
@@ -443,4 +446,13 @@ export function getDiscountedVoteLatency(
     }
   }
   return latency - discount;
+}
+
+export function getClientSpecificTileNames(client: Client) {
+  const isFiredancer = client === ClientEnum.Firedancer;
+  return {
+    resolv: isFiredancer ? "resolv" : "resolh",
+    bank: isFiredancer ? "execle" : "bank",
+    poh: isFiredancer ? "poh" : "pohh",
+  } satisfies Record<string, TileType>;
 }

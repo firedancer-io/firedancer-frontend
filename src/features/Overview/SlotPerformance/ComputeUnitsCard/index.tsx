@@ -13,6 +13,8 @@ import { useCallback, useRef } from "react";
 import { defaultMaxComputeUnits } from "../../../../consts";
 import CuChartInfoIcon from "./CuChartStartLineIcon";
 import CuChartProjectionsToggle from "./CuChartRefAreaToggle";
+import { clientAtom } from "../../../../atoms";
+import { getClientSpecificTileNames } from "../../../../utils";
 
 const height = "500px";
 
@@ -21,8 +23,10 @@ export default function ComputeUnitsCard() {
   const query = useSlotQueryResponseTransactions(slot);
   const uplotRef = useRef<uPlot>();
 
+  const client = useAtomValue(clientAtom);
+  const tileNames = getClientSpecificTileNames(client);
   const tileCount = useAtomValue(tileCountAtom);
-  const bankTileCount = tileCount["execle"];
+  const bankTileCount = tileCount[tileNames.bank];
 
   const handleCreate = useCallback((u: uPlot) => {
     uplotRef.current = u;
