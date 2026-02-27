@@ -77,12 +77,13 @@ export default function DistributionBar({
                           aria-label={`Filter by ${label} (${formattedPct})`}
                           onClick={() => onItemClick({ label, value })}
                         >
-                          <Label
-                            showLabel={showLabel}
-                            label={label}
-                            showPct={showPct}
-                            formattedPct={formattedPct}
-                          />
+                          {showLabel && (
+                            <Label
+                              label={label}
+                              showPct={showPct}
+                              formattedPct={formattedPct}
+                            />
+                          )}
                         </button>
                       </Flex>
                     ) : (
@@ -93,12 +94,13 @@ export default function DistributionBar({
                         flexBasis="0"
                         style={{ background: color, flexGrow: value }}
                       >
-                        <Label
-                          showLabel={showLabel}
-                          label={label}
-                          showPct={showPct}
-                          formattedPct={formattedPct}
-                        />
+                        {showLabel && (
+                          <Label
+                            label={label}
+                            showPct={showPct}
+                            formattedPct={formattedPct}
+                          />
+                        )}
                       </Flex>
                     )}
                   </Tooltip>
@@ -113,17 +115,14 @@ export default function DistributionBar({
 }
 
 function Label({
-  showLabel,
   label,
   showPct,
   formattedPct,
 }: {
-  showLabel?: boolean;
   label: string;
   showPct?: boolean;
   formattedPct: string;
 }) {
-  if (!showLabel) return null;
   return (
     <Text mx="2" className={styles.label} truncate>
       {label}

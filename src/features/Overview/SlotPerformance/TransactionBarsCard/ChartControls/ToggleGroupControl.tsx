@@ -43,11 +43,15 @@ function ToggleGroupControlInner<T extends string>(
 ) {
   const optionButtonRefs = useRef<Map<T, HTMLButtonElement>>(new Map());
 
-  useImperativeHandle(ref, () => ({
-    focus: (option: T) => {
-      optionButtonRefs.current.get(option)?.focus();
-    },
-  }));
+  useImperativeHandle(
+    ref,
+    () => ({
+      focus: (option: T) => {
+        optionButtonRefs.current.get(option)?.focus();
+      },
+    }),
+    [],
+  );
 
   return (
     <Flex align="center">
