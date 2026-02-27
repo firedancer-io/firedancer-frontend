@@ -1,6 +1,8 @@
 import { Flex, Text, Tooltip } from "@radix-ui/themes";
 import AutoSizer from "react-virtualized-auto-sizer";
 import styles from "./distributionBars.module.css";
+import { formatNumberLamports } from "../../../Overview/ValidatorsCard/formatAmt";
+import { maxSolDecimals } from "../../../../consts";
 
 const barColors = ["#003362", "#113B29", "#3F2700", "#202248", "#33255B"];
 
@@ -43,9 +45,11 @@ export default function DistributionBar({
             <Flex width={`${width}px`} height={`${height}px`}>
               {barData.map(({ value, label }, i) => {
                 const color = barColors[i % barColors.length];
-                const pct = value / total;
-                const formattedPct = `${Math.round(pct * 100)}%`;
-                const showLabel = pct * width > 30;
+                const decimalPct = value / total;
+                const pct = decimalPct * 100;
+                const formattedPct =
+                  pct > 1 ? `${Math.round(pct)}%` : `${pct.toFixed(2)}%`;
+                const showLabel = decimalPct * width > 30;
                 return (
                   <Tooltip
                     key={label}
@@ -53,7 +57,7 @@ export default function DistributionBar({
                       <>
                         <Text weight="bold">{label}</Text>
                         <br />
-                        <Text>{`Income: ${value.toLocaleString()} SOL (${formattedPct})`}</Text>
+                        <Text>{`Income: ${formatNumberLamports(value, maxSolDecimals)} SOL (${formattedPct})`}</Text>
                       </>
                     }
                     side="bottom"
