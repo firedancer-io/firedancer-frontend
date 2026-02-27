@@ -36,8 +36,10 @@ import {
 } from "../atoms";
 import { groupBy, max } from "lodash";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
-import ToggleGroupControl from "./ToggleGroupControl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ToggleGroupControl, {
+  type ToggleGroupControlHandle,
+} from "./ToggleGroupControl";
 import { useMeasure, useMedia, useUnmount } from "react-use";
 import { FilterEnum, TxnState } from "../consts";
 import ToggleControl from "./ToggleControl";
@@ -63,6 +65,13 @@ import {
 import { uplotActionAtom } from "../../../../../uplotReact/uplotAtoms";
 import { txnErrorCodeMap } from "../../../../../consts";
 import { useThrottledCallback } from "use-debounce";
+import {
+  BUNDLE_CONTROL_KEY,
+  INCLUSION_FILTER_OPTIONS,
+  type InclusionFilterOptions,
+} from "../../../../SlotDetails/ChartControlsContext";
+import useChartControl from "./useChartControl";
+import { getUplotId } from "../chartUtils";
 
 interface ChartControlsProps {
   transactions: SlotTransactions;
@@ -167,10 +176,9 @@ function ErrorControl({ transactions, maxTs }: ToggleGroupControlProps) {
       <ToggleGroupControl
         options={["All", "Success", "Errors"]}
         optionColors={{ Success: successToggleColor, Errors: errorToggleColor }}
-        defaultValue={value}
+        value={value}
         onChange={(value) => {
           if (!value) return;
-
           setValue(value);
           const filterValue =
             value === "Success" ? "No" : value === "Errors" ? "Yes" : "All";
@@ -314,20 +322,50 @@ function BundleControl({
   maxTs,
   isMobileView,
 }: ToggleGroupControlProps) {
+  const [value, setValue] = useState<InclusionFilterOptions>("All");
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterBundle = useSetAtom(filterBundleDataAtom);
 
+  const toggleGroupRef =
+    useRef<ToggleGroupControlHandle<InclusionFilterOptions>>(null);
+
+  const updateBundleFilter = useCallback(
+    (value: InclusionFilterOptions) => {
+      if (!transactions) return;
+      setValue(value);
+      uplotAction((u, bankIdx) => {
+        filterBundle(u, transactions, bankIdx, maxTs, value);
+      });
+    },
+    [filterBundle, maxTs, transactions, uplotAction],
+  );
+
+  const handleUpdate = useCallback(
+    (value: InclusionFilterOptions) => {
+      updateBundleFilter(value);
+      toggleGroupRef.current?.focus(value);
+      // Targets the first bank tile since bundle filter affects all tiles
+      document
+        .getElementById(getUplotId(0))
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    },
+    [updateBundleFilter],
+  );
+
+  const { isTooltipOpen, closeTooltip } = useChartControl(
+    BUNDLE_CONTROL_KEY,
+    handleUpdate,
+  );
+
   return (
     <ToggleGroupControl
+      ref={toggleGroupRef}
       label="Bundle"
-      options={["All", "Yes", "No"]}
-      defaultValue="All"
-      onChange={(value) =>
-        value &&
-        uplotAction((u, bankIdx) =>
-          filterBundle(u, transactions, bankIdx, maxTs, value),
-        )
-      }
+      options={INCLUSION_FILTER_OPTIONS}
+      value={value}
+      onChange={(value) => value && updateBundleFilter(value)}
+      isTooltipOpen={isTooltipOpen}
+      closeTooltip={closeTooltip}
       hasMinTextWidth={isMobileView}
     />
   );
@@ -340,18 +378,20 @@ function LandedControl({
 }: ToggleGroupControlProps) {
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterLanded = useSetAtom(filterLandedDataAtom);
+  const [value, setValue] = useState<InclusionFilterOptions>("All");
 
   return (
     <ToggleGroupControl
       label="Landed"
-      options={["All", "Yes", "No"]}
-      defaultValue="All"
-      onChange={(value) =>
-        value &&
+      options={INCLUSION_FILTER_OPTIONS}
+      value={value}
+      onChange={(value) => {
+        if (!value) return;
+        setValue(value);
         uplotAction((u, bankIdx) =>
           filterLanded(u, transactions, bankIdx, maxTs, value),
-        )
-      }
+        );
+      }}
       hasMinTextWidth={isMobileView}
     />
   );
@@ -364,18 +404,20 @@ function SimpleControl({
 }: ToggleGroupControlProps) {
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterSimple = useSetAtom(filterSimpleDataAtom);
+  const [value, setValue] = useState<InclusionFilterOptions>("All");
 
   return (
     <ToggleGroupControl
       label="Vote"
-      options={["All", "Yes", "No"]}
-      defaultValue="All"
-      onChange={(value) =>
-        value &&
+      options={INCLUSION_FILTER_OPTIONS}
+      value={value}
+      onChange={(value) => {
+        if (!value) return;
+        setValue(value);
         uplotAction((u, bankIdx) =>
           filterSimple(u, transactions, bankIdx, maxTs, value),
-        )
-      }
+        );
+      }}
       hasMinTextWidth={isMobileView}
     />
   );

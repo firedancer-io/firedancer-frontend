@@ -1,12 +1,28 @@
 .container {
   height: 13px;
   border-radius: 4px;
-  /*  TODO: fix overflow that occurs on some chart's data */
-  overflow: hidden;
 
   .label {
     font-size: 10px;
     color: var(--slot-details-stats-primary);
     pointer-events: none;
+  }
+}
+
+.clickable {
+  /* reset button styles */
+  appearance: none;
+  border: none;
+  padding: 0;
+
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px) scaleY(1.15);
+    filter: brightness(1.2);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    outline: 0.5px solid #e5e7eb;
+    z-index: 1;
   }
 }
