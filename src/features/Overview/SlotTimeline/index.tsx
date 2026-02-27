@@ -38,9 +38,9 @@ const barTrackGapValue = 2;
 const barTrackGap = `${barTrackGapValue}px`;
 const labelTrackGap = "5px";
 const minBarWidth = 2;
-// the expected distance from storage slot to reset slot
-const _minCurrentSlots = 32;
-// Make sure it's evenly divisilbe by 2 since the next slots section is half the width
+// the expected distance from storage slot to turbine (right-most) slot
+const _minCurrentSlots = 34;
+// Make sure it's evenly divisible by 2 since the next slots section is half the width
 const minCurrentSlots = _minCurrentSlots - (_minCurrentSlots % 2);
 
 const storageLabelColor = "#A09000";
