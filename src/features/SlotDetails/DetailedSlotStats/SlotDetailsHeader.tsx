@@ -223,10 +223,7 @@ function SlotTime({ vertical = false, slotCompletedTimeNanos }: SlotTimeProps) {
       value={formattedSlotTime?.inMillis}
       valuePopover={
         slotCompletedTimeNanos ? (
-          <TimePopoverContent
-            nanoTs={slotCompletedTimeNanos}
-            units="nanoseconds"
-          />
+          <TimePopoverContent nanoTs={slotCompletedTimeNanos} />
         ) : undefined
       }
       vertical={vertical}

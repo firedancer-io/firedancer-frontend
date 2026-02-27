@@ -396,29 +396,29 @@ export function isAgave(client: ClientName) {
   );
 }
 
-function makeDateTimeFormatters(options: Intl.DateTimeFormatOptions) {
-  const base: Intl.DateTimeFormatOptions = {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    ...options,
-  };
-  return {
-    millis: new Intl.DateTimeFormat(undefined, {
-      ...base,
-      fractionalSecondDigits: 3,
-    }),
-    seconds: new Intl.DateTimeFormat(undefined, base),
-  };
-}
+const baseFormatOptions: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  fractionalSecondDigits: 3,
+};
 
 const dateTimeFormatters = {
-  local: makeDateTimeFormatters({ timeZoneName: "short" }),
-  localNoTz: makeDateTimeFormatters({}),
-  utc: makeDateTimeFormatters({ timeZone: "UTC", timeZoneName: "short" }),
-  utcNoTz: makeDateTimeFormatters({ timeZone: "UTC" }),
+  local: new Intl.DateTimeFormat(undefined, {
+    ...baseFormatOptions,
+    timeZoneName: "short",
+  }),
+  localNoTz: new Intl.DateTimeFormat(undefined, baseFormatOptions),
+  utc: new Intl.DateTimeFormat(undefined, {
+    ...baseFormatOptions,
+    timeZone: "UTC",
+    timeZoneName: "short",
+  }),
+  utcNoTz: new Intl.DateTimeFormat(undefined, {
+    ...baseFormatOptions,
+    timeZone: "UTC",
+  }),
 };
 
 export function formatTimeNanos(
@@ -431,17 +431,16 @@ export function formatTimeNanos(
   const millis = Number(time / 1_000_000n);
   const remainderNanos = Number(time % 1_000_000n);
   const date = new Date(millis);
-  const key = formatOptions
+  const formatter = formatOptions
     ? formatOptions.timezone === "utc"
       ? formatOptions.showTimezoneName
-        ? "utc"
-        : "utcNoTz"
+        ? dateTimeFormatters.utc
+        : dateTimeFormatters.utcNoTz
       : formatOptions.showTimezoneName
-        ? "local"
-        : "localNoTz"
-    : "local";
-  const formatters = dateTimeFormatters[key];
-  const formattedParts = formatters.millis.formatToParts(date);
+        ? dateTimeFormatters.local
+        : dateTimeFormatters.localNoTz
+    : dateTimeFormatters.local;
+  const formattedParts = formatter.formatToParts(date);
   const zeroPrefixedNanos = remainderNanos.toString().padStart(6, "0");
 
   let inMillis = "";
@@ -456,9 +455,7 @@ export function formatTimeNanos(
     }
   }
 
-  const inSeconds = formatters.seconds.format(date);
-
-  return { inSeconds, inMillis, inNanos };
+  return { inMillis, inNanos };
 }
 
 export function hasLateVote(publish: SlotPublish) {

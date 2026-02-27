@@ -6,12 +6,11 @@ import { useRelativeTime } from "../hooks/useRelativeTime";
 
 interface TimePopoverContentProps {
   nanoTs: bigint;
-  units: "seconds" | "milliseconds" | "nanoseconds";
 }
 
 const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-export function TimePopoverContent({ nanoTs, units }: TimePopoverContentProps) {
+export function TimePopoverContent({ nanoTs }: TimePopoverContentProps) {
   const dateTime = useMemo(() => getDateTimeFromNanos(nanoTs), [nanoTs]);
   const relativeTime = useRelativeTime(dateTime);
 
@@ -25,30 +24,12 @@ export function TimePopoverContent({ nanoTs, units }: TimePopoverContentProps) {
       showTimezoneName: false,
     });
 
-    switch (units) {
-      case "seconds": {
-        return {
-          local: localTime.inSeconds,
-          utc: utcTime.inSeconds,
-          ts: Number(nanoTs / 1_000_000_000n).toString(),
-        };
-      }
-      case "milliseconds": {
-        return {
-          local: localTime.inMillis,
-          utc: utcTime.inMillis,
-          ts: Number(nanoTs / 1_000_000n).toString(),
-        };
-      }
-      case "nanoseconds": {
-        return {
-          local: localTime.inNanos,
-          utc: utcTime.inNanos,
-          ts: nanoTs.toString(),
-        };
-      }
-    }
-  }, [nanoTs, units]);
+    return {
+      local: localTime.inNanos,
+      utc: utcTime.inNanos,
+      ts: nanoTs.toString(),
+    };
+  }, [nanoTs]);
 
   return (
     <Grid

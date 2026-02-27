@@ -247,9 +247,7 @@ function TimeAgo({ slot }: CardValidatorSummaryProps) {
 
   return (
     <PopoverDropdown
-      content={
-        <TimePopoverContent nanoTs={slotTimestampNanos} units="seconds" />
-      }
+      content={<TimePopoverContent nanoTs={slotTimestampNanos} />}
       align="start"
     >
       <Text className={styles.secondaryText}>

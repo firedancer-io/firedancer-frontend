@@ -158,9 +158,7 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
 
   return (
     <PopoverDropdown
-      content={
-        <TimePopoverContent nanoTs={data.predictedTsNanos} units="seconds" />
-      }
+      content={<TimePopoverContent nanoTs={data.predictedTsNanos} />}
       align="start"
     >
       <Text
@@ -177,11 +175,11 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
   );
 }
 
-/* Returns ns, but sub-ms digits are always 0 because DateTime has
- * no sub-ms precision */
+/* Returns ns for consistency, but sub-second digits are always 0 because
+ * sub-second granularity for predicted times are not stable */
 function getPredictedTimeInNanos(timeTill: Duration) {
   const dt = slowDateTimeNow.plus(timeTill);
-  return BigInt(Math.trunc(dt.toMillis())) * 1_000_000n;
+  return BigInt(Math.trunc(dt.toSeconds())) * 1_000_000_000n;
 }
 
 function getDtText(timeTill: Duration) {
