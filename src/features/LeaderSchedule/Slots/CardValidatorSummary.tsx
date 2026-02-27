@@ -12,7 +12,6 @@ import {
 import { useAtomValue } from "jotai";
 import PeerIcon from "../../../components/PeerIcon";
 import styles from "./cardValidatorSummary.module.css";
-import popoverStyles from "../../../components/popoverTrigger.module.css";
 import { useMedia } from "react-use";
 import type { Peer } from "../../../api/types";
 import { peerStatsAtom } from "../../../atoms";
@@ -24,8 +23,7 @@ import { useTimeAgo } from "../../../hooks/useTimeAgo";
 import { usePeerInfo } from "../../../hooks/usePeerInfo";
 import type { ClientName } from "../../../consts";
 import LinkedSlotText from "./SlotText";
-import PopoverDropdown from "../../../components/PopoverDropdown";
-import { TimePopoverContent } from "../../../components/TimePopoverContent";
+import { TimePopoverDropdown } from "../../../components/TimePopoverDropdown";
 
 interface CardValidatorSummaryProps {
   slot: number;
@@ -246,16 +244,11 @@ function TimeAgo({ slot }: CardValidatorSummaryProps) {
   if (slotTimestampNanos === undefined) return;
 
   return (
-    <PopoverDropdown
-      content={<TimePopoverContent nanoTs={slotTimestampNanos} />}
-      align="start"
-    >
+    <TimePopoverDropdown nanoTs={slotTimestampNanos}>
       <Text className={styles.secondaryText}>
-        <button className={popoverStyles.popoverTrigger}>
-          {slotDateTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}
-          {timeAgoText && ` (${timeAgoText})`}
-        </button>
+        {slotDateTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}
+        {timeAgoText && ` (${timeAgoText})`}
       </Text>
-    </PopoverDropdown>
+    </TimePopoverDropdown>
   );
 }

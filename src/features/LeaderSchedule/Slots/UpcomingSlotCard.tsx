@@ -1,7 +1,6 @@
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { slotsPerLeader } from "../../../consts";
 import styles from "./upcomingSlot.module.css";
-import popoverStyles from "../../../components/popoverTrigger.module.css";
 import sharedStyles from "./slots.module.css";
 import { useAtomValue } from "jotai";
 import {
@@ -16,8 +15,7 @@ import PeerIcon from "../../../components/PeerIcon";
 import { useHarmonicIntervalFn, useMedia } from "react-use";
 import clsx from "clsx";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
-import PopoverDropdown from "../../../components/PopoverDropdown";
-import { TimePopoverContent } from "../../../components/TimePopoverContent";
+import { TimePopoverDropdown } from "../../../components/TimePopoverDropdown";
 
 interface UpcomingSlotCardProps {
   slot: number;
@@ -157,21 +155,15 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
   if (data === undefined) return;
 
   return (
-    <PopoverDropdown
-      content={<TimePopoverContent nanoTs={data.predictedTsNanos} />}
-      align="start"
-    >
+    <TimePopoverDropdown nanoTs={data.predictedTsNanos}>
       <Text
-        asChild
-        className={clsx(styles.timeTill, popoverStyles.popoverTrigger, {
+        className={clsx(styles.timeTill, {
           [styles.narrowScreen]: isNarrowScreen,
         })}
       >
-        <button>
-          {data.dtText} ({data.timeTillText})
-        </button>
+        {data.dtText} ({data.timeTillText})
       </Text>
-    </PopoverDropdown>
+    </TimePopoverDropdown>
   );
 }
 

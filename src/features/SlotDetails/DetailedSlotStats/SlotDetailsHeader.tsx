@@ -12,14 +12,13 @@ import { clientAtom, epochAtom } from "../../../atoms";
 import { useMemo } from "react";
 
 import styles from "./detailedSlotStats.module.css";
-import popoverStyles from "../../../components/popoverTrigger.module.css";
 import { formatTimeNanos } from "../../../utils";
 import { ClientEnum } from "../../../api/entities";
-import { TimePopoverContent } from "../../../components/TimePopoverContent";
-import PopoverDropdown from "../../../components/PopoverDropdown";
+import { TimePopoverDropdown } from "../../../components/TimePopoverDropdown";
 import { useMedia } from "react-use";
 import CopyButton from "../../../components/CopyButton";
 import MonoText from "../../../components/MonoText";
+import clsx from "clsx";
 
 const gap = "5px";
 
@@ -110,7 +109,7 @@ export default function SlotDetailsHeader() {
 interface LabelValueProps {
   label: string;
   value?: string | number;
-  valuePopover?: React.ReactNode;
+  popoverDropdown?: React.ReactNode;
   icon?: string;
   vertical?: boolean;
   allowCopy?: boolean;
@@ -119,7 +118,7 @@ interface LabelValueProps {
 function LabelValue({
   label,
   value,
-  valuePopover,
+  popoverDropdown,
   icon,
   vertical = false,
   allowCopy = false,
@@ -128,22 +127,20 @@ function LabelValue({
     <Flex gapX="2" direction={vertical ? "column" : "row"}>
       <MonoText className={styles.label}>{label}</MonoText>
 
-      {valuePopover === undefined ? (
-        <MonoText className={styles.value}>{value}</MonoText>
+      {popoverDropdown === undefined ? (
+        <CopyButton
+          className={styles.copyButton}
+          size={14}
+          value={allowCopy ? value?.toString() : undefined}
+          hideIconUntilHover
+        >
+          <MonoText truncate className={styles.value}>
+            {value}
+            {icon && ` ${icon}`}
+          </MonoText>
+        </CopyButton>
       ) : (
-        <PopoverDropdown content={valuePopover} align="start">
-          <CopyButton
-            className={styles.copyButton}
-            size={14}
-            value={allowCopy ? value?.toString() : undefined}
-            hideIconUntilHover
-          >
-            <MonoText truncate className={styles.value}>
-              <button className={popoverStyles.popoverTrigger}>{value}</button>
-              {icon && ` ${icon}`}
-            </MonoText>
-          </CopyButton>
-        </PopoverDropdown>
+        popoverDropdown
       )}
     </Flex>
   );
@@ -221,9 +218,13 @@ function SlotTime({ vertical = false, slotCompletedTimeNanos }: SlotTimeProps) {
     <LabelValue
       label="Slot Time"
       value={formattedSlotTime?.inMillis}
-      valuePopover={
+      popoverDropdown={
         slotCompletedTimeNanos ? (
-          <TimePopoverContent nanoTs={slotCompletedTimeNanos} />
+          <TimePopoverDropdown nanoTs={slotCompletedTimeNanos}>
+            <MonoText className={styles.value}>
+              {formattedSlotTime?.inMillis}
+            </MonoText>
+          </TimePopoverDropdown>
         ) : undefined
       }
       vertical={vertical}
