@@ -74,7 +74,9 @@ function DropdownContainer({
   }
 
   return (
-    <PopoverDropdown content={<DropdownMenu />}>{children}</PopoverDropdown>
+    <PopoverDropdown content={<DropdownMenu />} align="end">
+      {children}
+    </PopoverDropdown>
   );
 }
 

@@ -148,6 +148,10 @@ setInterval(() => {
   slowDateTimeNow = DateTime.now();
 }, 1_000);
 
+export function getDateTimeFromNanos(nanos: bigint) {
+  return DateTime.fromMillis(Math.trunc(Number(nanos / 1_000_000n)));
+}
+
 export function isDefined<T>(item: T | undefined): item is T {
   return item !== undefined;
 }
@@ -392,21 +396,51 @@ export function isAgave(client: ClientName) {
   );
 }
 
-const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+const baseFormatOptions: Intl.DateTimeFormatOptions = {
   month: "short",
   day: "numeric",
   hour: "numeric",
   minute: "2-digit",
-  second: "2-digit",
-  timeZoneName: "short",
   fractionalSecondDigits: 3,
-});
+};
 
-export function formatTimeNanos(time: bigint) {
+const dateTimeFormatters = {
+  local: new Intl.DateTimeFormat(undefined, {
+    ...baseFormatOptions,
+    timeZoneName: "short",
+  }),
+  localNoTz: new Intl.DateTimeFormat(undefined, baseFormatOptions),
+  utc: new Intl.DateTimeFormat(undefined, {
+    ...baseFormatOptions,
+    timeZone: "UTC",
+    timeZoneName: "short",
+  }),
+  utcNoTz: new Intl.DateTimeFormat(undefined, {
+    ...baseFormatOptions,
+    timeZone: "UTC",
+  }),
+};
+
+export function formatTimeNanos(
+  time: bigint,
+  formatOptions?: {
+    timezone?: "local" | "utc";
+    showTimezoneName?: boolean;
+  },
+) {
   const millis = Number(time / 1_000_000n);
   const remainderNanos = Number(time % 1_000_000n);
   const date = new Date(millis);
-  const formattedParts = dateTimeFormatter.formatToParts(date);
+  const formatter = formatOptions
+    ? formatOptions.timezone === "utc"
+      ? formatOptions.showTimezoneName
+        ? dateTimeFormatters.utc
+        : dateTimeFormatters.utcNoTz
+      : formatOptions.showTimezoneName
+        ? dateTimeFormatters.local
+        : dateTimeFormatters.localNoTz
+    : dateTimeFormatters.local;
+  const formattedParts = formatter.formatToParts(date);
   const zeroPrefixedNanos = remainderNanos.toString().padStart(6, "0");
 
   let inMillis = "";
@@ -415,6 +449,7 @@ export function formatTimeNanos(time: bigint) {
   for (const part of formattedParts) {
     inMillis += part.value;
     inNanos += part.value;
+
     if (part.type === "fractionalSecond") {
       inNanos += zeroPrefixedNanos;
     }

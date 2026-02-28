@@ -14,11 +14,11 @@ import { useMemo } from "react";
 import styles from "./detailedSlotStats.module.css";
 import { formatTimeNanos } from "../../../utils";
 import { ClientEnum } from "../../../api/entities";
-import ConditionalTooltip from "../../../components/ConditionalTooltip";
+import { TimePopoverDropdown } from "../../../components/TimePopoverDropdown";
 import { useMedia } from "react-use";
-import clsx from "clsx";
 import CopyButton from "../../../components/CopyButton";
 import MonoText from "../../../components/MonoText";
+import clsx from "clsx";
 
 const gap = "5px";
 
@@ -109,7 +109,7 @@ export default function SlotDetailsHeader() {
 interface LabelValueProps {
   label: string;
   value?: string | number;
-  valueTooltip?: string | number;
+  popoverDropdown?: React.ReactNode;
   icon?: string;
   vertical?: boolean;
   allowCopy?: boolean;
@@ -118,7 +118,7 @@ interface LabelValueProps {
 function LabelValue({
   label,
   value,
-  valueTooltip,
+  popoverDropdown,
   icon,
   vertical = false,
   allowCopy = false,
@@ -127,7 +127,7 @@ function LabelValue({
     <Flex gapX="2" direction={vertical ? "column" : "row"}>
       <MonoText className={styles.label}>{label}</MonoText>
 
-      <ConditionalTooltip content={valueTooltip}>
+      {popoverDropdown === undefined ? (
         <CopyButton
           className={styles.copyButton}
           size={14}
@@ -139,7 +139,9 @@ function LabelValue({
             {icon && ` ${icon}`}
           </MonoText>
         </CopyButton>
-      </ConditionalTooltip>
+      ) : (
+        popoverDropdown
+      )}
     </Flex>
   );
 }
@@ -216,7 +218,15 @@ function SlotTime({ vertical = false, slotCompletedTimeNanos }: SlotTimeProps) {
     <LabelValue
       label="Slot Time"
       value={formattedSlotTime?.inMillis}
-      valueTooltip={formattedSlotTime?.inNanos}
+      popoverDropdown={
+        slotCompletedTimeNanos ? (
+          <TimePopoverDropdown nanoTs={slotCompletedTimeNanos}>
+            <MonoText className={styles.value}>
+              {formattedSlotTime?.inMillis}
+            </MonoText>
+          </TimePopoverDropdown>
+        ) : undefined
+      }
       vertical={vertical}
     />
   );

@@ -1,39 +1,30 @@
-import { useHarmonicIntervalFn, useUpdate } from "react-use";
 import { useSlotQueryPublish } from "./useSlotQuery";
-import { useEffect, useState } from "react";
-import { DateTime } from "luxon";
-import type { DurationOptions } from "../utils";
-import { getDurationText, slowDateTimeNow } from "../utils";
+import { useEffect, useMemo, useState } from "react";
+import { getDateTimeFromNanos, type DurationOptions } from "../utils";
+import { useRelativeTime } from "./useRelativeTime";
 
 export function useTimeAgo(slot: number, options?: DurationOptions) {
   const query = useSlotQueryPublish(slot);
-  const update = useUpdate();
 
-  useHarmonicIntervalFn(update, 1_000);
-
-  const [slotDateTime, setSlotDateTime] = useState<DateTime>();
+  const [slotTimestampNanos, setSlotTimestampNanos] = useState<bigint>();
+  const slotDateTime = useMemo(() => {
+    if (slotTimestampNanos === undefined) return;
+    return getDateTimeFromNanos(slotTimestampNanos);
+  }, [slotTimestampNanos]);
 
   useEffect(() => {
-    if (!query.publish?.completed_time_nanos) return;
-
-    setSlotDateTime(
-      DateTime.fromMillis(
-        Math.trunc(Number(query.publish?.completed_time_nanos) / 1_000_000),
-      ),
-    );
+    if (query.publish?.completed_time_nanos) {
+      setSlotTimestampNanos(query.publish.completed_time_nanos);
+    } else {
+      setSlotTimestampNanos(undefined);
+    }
   }, [query.publish]);
 
-  const getDiffDuration = () => {
-    if (!slotDateTime) return;
-    return slowDateTimeNow.diff(slotDateTime).rescale();
-  };
-
-  const diffDuration = getDiffDuration();
+  const timeAgoText = useRelativeTime(slotDateTime, options);
 
   return {
+    slotTimestampNanos,
     slotDateTime,
-    timeAgoText: diffDuration
-      ? `${getDurationText(diffDuration, options)} ago`
-      : undefined,
+    timeAgoText,
   };
 }

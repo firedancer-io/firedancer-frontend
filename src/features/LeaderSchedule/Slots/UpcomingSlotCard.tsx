@@ -8,13 +8,14 @@ import {
   currentSlotAtom,
   slotDurationAtom,
 } from "../../../atoms";
-import { useReducer } from "react";
+import { useState } from "react";
 import { DateTime, Duration } from "luxon";
 import { getDurationText, slowDateTimeNow } from "../../../utils";
 import PeerIcon from "../../../components/PeerIcon";
 import { useHarmonicIntervalFn, useMedia } from "react-use";
 import clsx from "clsx";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
+import { TimePopoverDropdown } from "../../../components/TimePopoverDropdown";
 
 interface UpcomingSlotCardProps {
   slot: number;
@@ -130,40 +131,50 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
     ? Duration.fromMillis(slotDuration * (slot - currentSlot)).rescale()
     : undefined;
 
-  const [dtText, setDtText] = useReducer(dtTextReducer, getDtText(timeTill));
-
-  const [timeTillText, setTimeTillText] = useReducer(
-    timeTillTextReducer,
-    getDurationText(timeTill),
-  );
+  const [data, setData] = useState(() => {
+    if (timeTill === undefined) return;
+    return {
+      timeTillText: getDurationText(timeTill),
+      dtText: getDtText(timeTill),
+      predictedTsNanos: getPredictedTimeInNanos(timeTill),
+    };
+  });
 
   useHarmonicIntervalFn(() => {
-    setTimeTillText(timeTill);
-    setDtText(timeTill);
+    if (timeTill === undefined) {
+      setData(undefined);
+    } else {
+      setData({
+        timeTillText: getDurationText(timeTill),
+        dtText: getDtText(timeTill),
+        predictedTsNanos: getPredictedTimeInNanos(timeTill),
+      });
+    }
   }, 1_000);
 
+  if (data === undefined) return;
+
   return (
-    <Text
-      className={clsx(styles.timeTill, {
-        [styles.narrowScreen]: isNarrowScreen,
-      })}
-    >
-      {dtText} ({timeTillText})
-    </Text>
+    <TimePopoverDropdown nanoTs={data.predictedTsNanos}>
+      <Text
+        className={clsx(styles.timeTill, {
+          [styles.narrowScreen]: isNarrowScreen,
+        })}
+      >
+        {data.dtText} ({data.timeTillText})
+      </Text>
+    </TimePopoverDropdown>
   );
 }
 
-function dtTextReducer(_: string, timeTill: Duration | undefined) {
-  return getDtText(timeTill);
+/* Returns ns for consistency, but sub-second digits are always 0 because
+ * sub-second granularity for predicted times are not stable */
+function getPredictedTimeInNanos(timeTill: Duration) {
+  const dt = slowDateTimeNow.plus(timeTill);
+  return BigInt(Math.trunc(dt.toSeconds())) * 1_000_000_000n;
 }
 
-function timeTillTextReducer(_: string, timeTill: Duration | undefined) {
-  return getDurationText(timeTill);
-}
-
-function getDtText(timeTill?: Duration) {
-  if (!timeTill) return "";
-
+function getDtText(timeTill: Duration) {
   const slotDt = slowDateTimeNow.plus(timeTill);
   return slotDt?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS);
 }
