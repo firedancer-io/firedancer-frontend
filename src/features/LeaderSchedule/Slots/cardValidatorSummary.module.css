@@ -81,6 +81,12 @@
   color: var(--summary-sig-text-color);
 }
 
+.rakurai {
+  background: var(--summary-rakurai-text-color);
+  background-clip: text;
+  color: transparent;
+}
+
 .container-mobile {
   padding: 0 6px;
 }
