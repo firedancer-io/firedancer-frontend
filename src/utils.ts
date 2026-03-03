@@ -388,7 +388,8 @@ export function isAgave(client: ClientName) {
     client === ClientName.Agave ||
     client === ClientName.AgaveJito ||
     client === ClientName.AgavePaladin ||
-    client === ClientName.AgaveBam
+    client === ClientName.AgaveBam ||
+    client === ClientName.AgaveRakurai
   );
 }
 

@@ -221,6 +221,8 @@ export const summaryJitoTextColor = "#71EF9B";
 export const summaryPaladinTextColor = "#6AC4F0";
 export const summaryBamTextColor = "#DDD";
 export const summarySigTextColor = "#8FB6FC";
+export const summaryRakuraiTextColor =
+  "linear-gradient(83.85deg, #024eff 0.22%, #3ce844 102.21%)";
 
 export const searchIconColor = "#AFB2C2";
 export const searchDisabledBorderColor = "rgba(178, 178, 178, 0.12)";
