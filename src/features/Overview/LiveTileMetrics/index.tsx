@@ -120,6 +120,12 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
     liveTileMetrics.in_backp[idx] ?? prevLiveTileMetricsIdx?.in_backp[idx];
   const backPressureCount =
     liveTileMetrics.backp_msgs[idx] ?? prevLiveTileMetricsIdx?.backp_msgs[idx];
+  const cpu =
+    liveTileMetrics.last_cpu[idx] ?? prevLiveTileMetricsIdx?.last_cpu[idx];
+  const minflt =
+    liveTileMetrics.minflt[idx] ?? prevLiveTileMetricsIdx?.minflt[idx];
+  const majflt =
+    liveTileMetrics.majflt[idx] ?? prevLiveTileMetricsIdx?.majflt[idx];
 
   const prevNivcsw = usePrevious(nivcsw);
   const prevNvcsw = usePrevious(nvcsw);
@@ -147,11 +153,17 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
       <Table.Cell>
         {tile.kind}:{tile.kind_id}
       </Table.Cell>
+      <Table.Cell align="right">{cpu}</Table.Cell>
       <Table.Cell
         className={clsx({ [styles.green]: alive, [styles.red]: !alive })}
+        align="right"
       >
         {alive ? "Live" : "Dead"}
       </Table.Cell>
+
+      <Table.Cell align="right">{minflt}</Table.Cell>
+      <Table.Cell align="right">{majflt}</Table.Cell>
+
       <Table.Cell align="right">
         {nivcsw?.toLocaleString() ?? "0"} |
         <IncrementText
