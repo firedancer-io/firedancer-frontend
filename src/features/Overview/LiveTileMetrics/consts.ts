@@ -35,13 +35,34 @@ export const metrics: MetricDefinition[] = [
     name: "Name",
     description:
       "The name and index of each tile. A tile represents a sandboxed process or individual thread that communicates with other tiles using message passing queues.",
-    headerColWidth: 100,
+    headerColWidth: 70,
+  },
+  {
+    name: "CPU",
+    description: "The CPU index on which the tile was last recorded executing.",
+    headerColWidth: 70,
+    headerColAlign: "right",
   },
   {
     name: "Heartbeat",
     description:
       "Liveness indicator based on a periodic heartbeat timestamp written by tiles to a chunk of shared memory.",
     headerColWidth: 70,
+    headerColAlign: "right",
+  },
+  {
+    name: "Minflt",
+    description:
+      "The number of cumulative minor page faults. Minor page faults occur for pages in RAM not indexed by the page table.",
+    headerColWidth: 80,
+    headerColAlign: "right",
+  },
+  {
+    name: "Majflt",
+    description:
+      "The number of cumulative major page faults. Major page faults occur for pages that are neither in RAM nor the page table.",
+    headerColWidth: 80,
+    headerColAlign: "right",
   },
   {
     name: "Nivcsw",
