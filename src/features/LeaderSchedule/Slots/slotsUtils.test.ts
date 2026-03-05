@@ -1,6 +1,6 @@
 import { expect, describe, it } from "vitest";
 import type { Epoch } from "../../../api/types";
-import { getSlotCards, getSlotType } from "./slotCards";
+import { getSlotCards, getSlotType } from "./slotsUtils";
 import { slotsPerLeader } from "../../../consts";
 import { SlotType } from "./types";
 

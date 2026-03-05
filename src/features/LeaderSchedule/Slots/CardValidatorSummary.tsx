@@ -1,6 +1,5 @@
 import type { TextProps } from "@radix-ui/themes";
 import { Box, Flex, Text } from "@radix-ui/themes";
-import { DateTime } from "luxon";
 import { useMemo } from "react";
 import {
   getStake,
@@ -24,6 +23,7 @@ import { usePeerInfo } from "../../../hooks/usePeerInfo";
 import type { ClientName } from "../../../consts";
 import LinkedSlotText from "./SlotText";
 import { TimePopoverDropdown } from "../../../components/TimePopoverDropdown";
+import { formatDateTime } from "./slotsUtils";
 
 interface CardValidatorSummaryProps {
   slot: number;
@@ -246,7 +246,7 @@ function TimeAgo({ slot }: CardValidatorSummaryProps) {
   return (
     <TimePopoverDropdown nanoTs={slotTimestampNanos}>
       <Text className={styles.secondaryText}>
-        {slotDateTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}
+        {slotDateTime && formatDateTime(slotDateTime)}
         {timeAgoText && ` (${timeAgoText})`}
       </Text>
     </TimePopoverDropdown>
