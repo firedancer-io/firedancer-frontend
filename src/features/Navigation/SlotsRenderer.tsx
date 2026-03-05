@@ -160,9 +160,9 @@ function CurrentLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
       <Flex direction="column" className={styles.leftColumn}>
         <SlotIconName slot={firstSlot} iconSize={22} />
         <Flex gap="1" align="center" className={styles.currentSlotRow}>
+          <SlotFlag flag={countryFlag} width="13px" />
+          <Text>{currentSlot}</Text>
           <SlotClient slot={firstSlot} size="small" />
-          <Text size="2">{currentSlot}</Text>
-          {countryFlag && <Text className={styles.flag}>{countryFlag}</Text>}
         </Flex>
       </Flex>
 
@@ -231,9 +231,9 @@ function SlotContent({ firstSlot }: SlotGroupProps) {
     <Flex className={styles.leftColumn} direction="column">
       <SlotIconName slot={firstSlot} />
       <Flex className={styles.slotItemContent}>
-        <SlotClient slot={firstSlot} size="small" />
+        <SlotFlag flag={countryFlag} width="15px" />
         <Text>{firstSlot}</Text>
-        {countryFlag && <Text>{countryFlag}</Text>}
+        <SlotClient slot={firstSlot} size="small" />
       </Flex>
     </Flex>
   );
@@ -292,6 +292,10 @@ function SlotIconName({
       <Text className={clsx(styles.slotName, styles.ellipsis)}>{name}</Text>
     </Flex>
   );
+}
+
+function SlotFlag({ flag, width }: { flag?: string; width: string }) {
+  return <Flex width={width}>{flag && <Text>{flag}</Text>}</Flex>;
 }
 
 interface SlotStatusesProps {

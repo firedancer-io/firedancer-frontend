@@ -8,6 +8,7 @@
   row-gap: 3px;
   border-radius: 5px;
   background: var(--slots-list-slot-background-color);
+  font-size: 10px;
 }
 
 .left-column {
@@ -43,10 +44,6 @@
     font-size: 18px;
   }
 
-  .flag {
-    font-size: 10px;
-  }
-
   &.skipped {
     background: var(--slots-list-skipped-background-color);
   }
@@ -60,7 +57,7 @@
 .current-slot-row {
   background-color: var(--slots-list-current-slot-number-background-color);
   border-radius: 5px;
-  padding: 3px 5px;
+  padding: 3px;
 }
 
 .past {
