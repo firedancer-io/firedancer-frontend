@@ -1,0 +1,20 @@
+.animated-integer {
+  height: var(--number-window-height);
+
+  .digit-window {
+    height: var(--number-window-height);
+    overflow-y: hidden;
+
+    .digit-slider {
+      & > * {
+        height: var(--number-window-height);
+        display: flex;
+        align-items: center;
+      }
+
+      .digit.hidden {
+        visibility: hidden;
+      }
+    }
+  }
+}

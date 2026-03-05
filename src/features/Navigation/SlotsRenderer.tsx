@@ -32,6 +32,7 @@ import { useIsLeaderGroupSkipped } from "../../hooks/useIsLeaderGroupSkipped";
 import { isScrollingAtom } from "./atoms";
 import useNextSlot from "../../hooks/useNextSlot";
 import type { SlotPublish } from "../../api/types";
+import AnimatedInteger from "../../components/AnimatedInteger";
 
 export default function SlotsRenderer(props: { leaderSlotForGroup: number }) {
   const isScrolling = useAtomValue(isScrollingAtom);
@@ -161,7 +162,14 @@ function CurrentLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
         <SlotIconName slot={firstSlot} iconSize={22} />
         <Flex gap="1" align="center" className={styles.currentSlotRow}>
           <SlotClient slot={firstSlot} size="small" />
-          <Text size="2">{currentSlot}</Text>
+          {currentSlot != null && (
+            <AnimatedInteger
+              value={currentSlot}
+              animationDurationMs={150}
+              height={17.5}
+              textClassName="rt-r-size-2"
+            />
+          )}
           {countryFlag && <Text className={styles.flag}>{countryFlag}</Text>}
         </Flex>
       </Flex>
