@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import type { Epoch } from "../../../api/types";
 import { slotsPerLeader } from "../../../consts";
 import { SlotType } from "./types";
@@ -100,4 +101,11 @@ export function getSlotCards({
   }
 
   return { upcoming, now, past };
+}
+
+export function formatDateTime(datetime: DateTime) {
+  return datetime.toLocaleString({
+    ...DateTime.DATETIME_MED_WITH_SECONDS,
+    timeZoneName: "short",
+  });
 }

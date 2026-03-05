@@ -9,13 +9,14 @@ import {
   slotDurationAtom,
 } from "../../../atoms";
 import { useReducer } from "react";
-import { DateTime, Duration } from "luxon";
+import { Duration } from "luxon";
 import { getDurationText, slowDateTimeNow } from "../../../utils";
 import PeerIcon from "../../../components/PeerIcon";
 import { useHarmonicIntervalFn, useMedia } from "react-use";
 import clsx from "clsx";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import { TimePopoverDropdown } from "../../../components/TimePopoverDropdown";
+import { formatDateTime } from "./slotsUtils";
 
 interface UpcomingSlotCardProps {
   slot: number;
@@ -179,5 +180,5 @@ function getPredictedTimeInNanos(timeTill: Duration) {
 
 function getDtText(timeTill: Duration) {
   const slotDt = slowDateTimeNow.plus(timeTill);
-  return slotDt?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS);
+  return formatDateTime(slotDt);
 }

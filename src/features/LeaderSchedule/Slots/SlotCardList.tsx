@@ -15,7 +15,7 @@ import {
 import { searchLeaderSlotsAtom } from "../atoms";
 import { useMedia } from "react-use";
 import PreloadCardList from "./PreloadCardList";
-import { getSlotCards } from "./slotCards";
+import { getSlotCards } from "./slotsUtils";
 import {
   primaryTextColor,
   slotCardSectionBackgroundColor,
