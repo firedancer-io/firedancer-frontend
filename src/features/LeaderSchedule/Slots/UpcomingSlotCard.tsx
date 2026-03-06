@@ -141,15 +141,16 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
   if (data === undefined) return;
 
   return (
-    <TimePopoverDropdown nanoTs={data.predictedTsNanos}>
-      <Text
-        className={clsx(styles.timeTill, {
-          [styles.narrowScreen]: isNarrowScreen,
-        })}
-      >
-        {data.dtText} ({data.timeTillText})
-      </Text>
-    </TimePopoverDropdown>
+    <Flex
+      className={clsx(styles.timeTill, {
+        [styles.narrowScreen]: isNarrowScreen,
+      })}
+    >
+      <TimePopoverDropdown
+        nanoTs={data.predictedTsNanos}
+        text={`${data.dtText} (${data.timeTillText})`}
+      />
+    </Flex>
   );
 }
 

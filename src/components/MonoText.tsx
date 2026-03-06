@@ -13,3 +13,5 @@ export default function MonoText({
     </Text>
   );
 }
+
+MonoText.monoClassName = styles.text;
