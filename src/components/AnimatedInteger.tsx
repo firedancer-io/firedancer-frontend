@@ -11,6 +11,25 @@ import styles from "./animatedInteger.module.css";
 import clsx from "clsx";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { useUnmount } from "react-use";
+import useIsDocumentVisible from "../hooks/useIsDocumentVisible";
+
+interface AnimatedIntegerProps {
+  value: number;
+  animationDurationMs: number;
+  height: number;
+  textClassName?: string;
+}
+
+/**
+ * Animate individual digits to reach the desired value.
+ * Animation occurs one step at a time, even if the value jumps by > 1.
+ */
+export default function AnimatedInteger(props: AnimatedIntegerProps) {
+  const isDocumentVisible = useIsDocumentVisible();
+
+  // re-mount when visible again, so there's no need to catch up
+  return isDocumentVisible ? <AnimatedIntegerInner {...props} /> : null;
+}
 
 const stepSize = 1;
 type Direction = "incr" | "decr";
@@ -20,6 +39,11 @@ type AnimationLeg = {
   target: number;
   maxDigitsSeen: number;
 };
+/**
+ * Update animation leg.
+ * Keep track of the longest number of digits we've seen for
+ * correct transitions as the front digits animate to / from null
+ */
 function animationLegReducer(
   prev: AnimationLeg,
   values: { start: number; target: number },
@@ -28,7 +52,6 @@ function animationLegReducer(
   return {
     start,
     target,
-    // Keep track of the longest number of digits we've seen
     maxDigitsSeen: Math.max(
       prev.maxDigitsSeen,
       getNumDigits(start),
@@ -37,13 +60,7 @@ function animationLegReducer(
   };
 }
 
-interface AnimatedIntegerProps {
-  value: number;
-  animationDurationMs: number;
-  height: number;
-  textClassName?: string;
-}
-export default function AnimatedInteger({
+function AnimatedIntegerInner({
   value,
   animationDurationMs,
   height,
@@ -154,37 +171,42 @@ export default function AnimatedInteger({
   }, [currentValidNumber, isDuringAnimation, nextState.number, target, value]);
 
   return (
-    <Flex
-      className={styles.animatedInteger}
-      align="center"
+    <div
+      className={styles.container}
       style={
         {
           "--number-window-height": `${height}px`,
         } as CSSProperties
       }
     >
-      {nextState.number < 0 && <Text className={textClassName}>-</Text>}
-      {nextState.paddedDigits.map((nextDigit, idx) => {
-        const idxFromBack = nextState.paddedDigits.length - 1 - idx;
-        return (
-          <DigitSlider
-            key={idxFromBack}
-            idxFromBack={idxFromBack}
-            currentDigit={reversedSliderStates.digits[idxFromBack]}
-            nextDigit={nextDigit}
-            direction={direction}
-            animation={reversedSliderStates.animations[idxFromBack]}
-            // pause animations so parent can update leg
-            pauseNextAnimation={target !== value}
-            animationDurationMs={stepDurationMs}
-            onAnimationStart={onAnimationStart}
-            onAnimationCompleted={onAnimationCompleted}
-            height={height}
-            textClassName={textClassName}
-          />
-        );
-      })}
-    </Flex>
+      <Flex className={styles.animatedInteger} inert="true">
+        {nextState.number < 0 && <Text className={textClassName}>-</Text>}
+        {nextState.paddedDigits.map((nextDigit, idx) => {
+          const idxFromBack = nextState.paddedDigits.length - 1 - idx;
+          return (
+            <DigitSlider
+              key={idxFromBack}
+              idxFromBack={idxFromBack}
+              currentDigit={reversedSliderStates.digits[idxFromBack]}
+              nextDigit={nextDigit}
+              direction={direction}
+              animation={reversedSliderStates.animations[idxFromBack]}
+              // pause animations so parent can update leg
+              pauseNextAnimation={target !== value}
+              animationDurationMs={stepDurationMs}
+              onAnimationStart={onAnimationStart}
+              onAnimationCompleted={onAnimationCompleted}
+              height={height}
+              textClassName={textClassName}
+            />
+          );
+        })}
+      </Flex>
+
+      <Text className={clsx(styles.selectionText, textClassName)}>
+        {currentValidNumber}
+      </Text>
+    </div>
   );
 }
 
@@ -203,9 +225,10 @@ interface DigitSliderProps {
 }
 
 /**
- * Slide single visible digit from currently visible value to digitValue.
- * If digitValue changes during animation, wait until previous animation is completed
- * and then begin transition to digitValue.
+ * Slide the single visible digit from current to next.
+ * Only runs one animation at a time.
+ * NOTE: Parent should update current and next digits only during animation gaps,
+ *   to prevent the digits from changing during animation.
  */
 function DigitSlider({
   idxFromBack,
@@ -302,6 +325,11 @@ interface DigitProps {
   digit: number | null;
   className?: string;
 }
+/**
+ * Display a single digit that will be in a slider.
+ * Use null for a leading 0. Hide on null, but have the component ready
+ * in the slider for animation to other values.
+ */
 function Digit({ digit, className }: DigitProps) {
   return (
     <Text
@@ -315,8 +343,8 @@ function Digit({ digit, className }: DigitProps) {
 }
 
 /**
- * Given an integer (which may be negative), return an array of its digits,
- * optionally padded with nulls to make it at least minLength long.
+ * Given an integer return an array of its digits. Ignore negative sign.
+ * Optionally pad output with nulls in front, to make it at least minLength long.
  */
 function getDigits(value: number, minLength?: number): (number | null)[] {
   const digits: (number | null)[] = Math.abs(value)
@@ -330,6 +358,9 @@ function getDigits(value: number, minLength?: number): (number | null)[] {
   return [...Array<null>(paddingSize).fill(null), ...digits];
 }
 
+/**
+ * Given an integer, return the number of digits it has. Ignore negative signs.
+ */
 function getNumDigits(value: number) {
   return Math.abs(value).toString().length;
 }

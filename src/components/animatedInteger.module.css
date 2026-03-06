@@ -1,20 +1,32 @@
-.animated-integer {
+.container {
+  position: relative;
   height: var(--number-window-height);
 
-  .digit-window {
+  .animated-integer {
     height: var(--number-window-height);
-    overflow-y: hidden;
+    .digit-window {
+      height: var(--number-window-height);
+      overflow-y: hidden;
 
-    .digit-slider {
-      & > * {
-        height: var(--number-window-height);
-        display: flex;
-        align-items: center;
-      }
+      .digit-slider {
+        & > * {
+          height: var(--number-window-height);
+          display: flex;
+          align-items: center;
+        }
 
-      .digit.hidden {
-        visibility: hidden;
+        .digit.hidden {
+          visibility: hidden;
+        }
       }
     }
+  }
+
+  .selection-text {
+    height: var(--number-window-height);
+    position: absolute;
+    top: 0;
+    color: transparent !important;
+    background: transparent !important;
   }
 }
