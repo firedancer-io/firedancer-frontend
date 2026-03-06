@@ -106,10 +106,6 @@ export const clusterPythnetColor = "#9D1CE7";
 export const clusterPythtestColor = "#E71C88";
 export const clusterUnknownColor = "#898989";
 
-// header
-export const connectedColor = "#3CFF73";
-export const connectingColor = "#FFA73C";
-
 // toast
 export const toastDisconnectedColor = "#FF7878";
 export const toastConnectingStartColor = "#FF9D0A";

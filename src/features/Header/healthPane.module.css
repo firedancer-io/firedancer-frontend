@@ -1,0 +1,83 @@
+.health-pane {
+  background: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  height: 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  row-gap: 2px;
+  column-gap: 3px;
+
+  &.vertical {
+    flex-direction: column;
+    max-width: 24px;
+    min-width: 24px;
+    &.narrow {
+      min-width: 14px;
+    }
+  }
+  .health-box {
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-width: 24px;
+    min-width: 14px;
+    background: var(--green-5);
+    border-radius: 3px;
+    border: 1px solid transparent;
+    cursor: pointer;
+
+    &.stacked {
+      max-height: 6px;
+      width: 100%;
+    }
+
+    svg {
+      fill: var(--green-11);
+    }
+
+    &.alerting {
+      background: var(--red-8);
+      border-color: var(--red-11);
+      svg {
+        fill: var(--red-12);
+      }
+    }
+
+    &:hover {
+      filter: brightness(1.2);
+    }
+  }
+}
+
+.popover {
+  max-width: 160px;
+  background-color: var(--gray-1);
+  padding: 6px;
+
+  .title {
+    font-size: 12px;
+    color: var(--gray-12);
+  }
+
+  .status {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--green-10);
+
+    &.alerting {
+      color: var(--red-10);
+    }
+  }
+
+  .content {
+    font-size: 10px;
+    color: var(--gray-9);
+  }
+}
