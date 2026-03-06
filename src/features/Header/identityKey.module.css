@@ -19,17 +19,11 @@
   .label {
     color: var(--header-label-text-color);
     font-size: 10px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .value {
     color: var(--dropdown-button-text-color);
     font-size: 12px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 
     .value-suffix {
       color: var(--header-label-text-color);
