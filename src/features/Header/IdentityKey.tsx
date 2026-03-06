@@ -273,14 +273,18 @@ function Label({
         minWidth="0"
         flexShrink={shouldShrink ? "1" : "0"}
       >
-        <Text className={styles.label}>{label}</Text>
+        <Text truncate className={styles.label}>
+          {label}
+        </Text>
         <CopyButton
           value={copyValue}
           color="white"
           size="10px"
           hideIconUntilHover
         >
-          <div className={styles.value}>{children}</div>
+          <Text truncate className={styles.value}>
+            {children}
+          </Text>
         </CopyButton>
       </Flex>
     </ConditionalTooltip>
