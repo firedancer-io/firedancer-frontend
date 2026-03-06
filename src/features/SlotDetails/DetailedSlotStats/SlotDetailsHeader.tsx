@@ -218,12 +218,13 @@ function SlotTime({ vertical = false, slotCompletedTimeNanos }: SlotTimeProps) {
     <LabelValue
       label="Slot Time"
       popoverDropdown={
-        slotCompletedTimeNanos ? (
-          <TimePopoverDropdown nanoTs={slotCompletedTimeNanos}>
-            <MonoText className={styles.value}>
-              {formattedSlotTime?.inMillis}
-            </MonoText>
-          </TimePopoverDropdown>
+        slotCompletedTimeNanos && formattedSlotTime ? (
+          <TimePopoverDropdown
+            nanoTs={slotCompletedTimeNanos}
+            text={formattedSlotTime.inMillis}
+            textClassName={clsx(MonoText.monoClassName, styles.value)}
+            triggerClassName={styles.timePopover}
+          />
         ) : undefined
       }
       vertical={vertical}
