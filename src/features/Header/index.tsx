@@ -29,9 +29,10 @@ import { Cross1Icon, InfoCircledIcon, TimerIcon } from "@radix-ui/react-icons";
 import { bootProgressContainerElAtom } from "../../atoms";
 import { useCallback } from "react";
 import PopoverDropdown from "../../components/PopoverDropdown";
+import HealthPane from "./HealthPane";
 
 export default function Header({ isStartup }: { isStartup?: boolean }) {
-  const showDropdownNav = useMedia("(max-width: 900px)");
+  const showDropdownNav = useMedia("(max-width: 1218px)");
   const isXNarrow = useMedia("(max-width: 401px)");
 
   const showIdentityIconOnly = useMedia(
@@ -91,6 +92,8 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
                   `${headerSpacing - slotsNavSpacing}px`
             }
             minWidth="0"
+            // shrink nav links before identity key and health pane
+            flexShrink="100"
           >
             {!isStartup && (
               <Flex
@@ -110,6 +113,8 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
               flexGrow="1"
             >
               <IdentityKey />
+
+              <HealthPane />
 
               <Flex gap="1" direction={isNarrowScreen ? "column" : "row"}>
                 <Attribution />

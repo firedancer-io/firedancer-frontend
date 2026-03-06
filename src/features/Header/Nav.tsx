@@ -76,7 +76,9 @@ const NavButton = forwardRef<HTMLButtonElement, NavLinkProps>(
         size="2"
         variant="soft"
         color="gray"
-        className={clsx(styles.navLink, { [styles.active]: isActive })}
+        className={clsx(styles.navLink, {
+          [styles.active]: isActive,
+        })}
         style={{
           color: isActive ? activeColor : undefined,
         }}
