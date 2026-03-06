@@ -4,12 +4,14 @@ import type { PropsWithChildren, ReactNode } from "react";
 import { containerElAtom } from "../atoms";
 import { useAtomValue } from "jotai";
 import { maxZIndex } from "../consts";
+import clsx from "clsx";
 
 interface PopoverDropdownProps {
   content: ReactNode;
   isOpen?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
   align?: Popover.PopoverContentProps["align"];
+  className?: string;
 }
 
 export default function PopoverDropdown({
@@ -18,6 +20,7 @@ export default function PopoverDropdown({
   isOpen,
   onOpenChange,
   align,
+  className,
 }: PropsWithChildren<PopoverDropdownProps>) {
   const containerEl = useAtomValue(containerElAtom);
 
@@ -28,7 +31,7 @@ export default function PopoverDropdown({
       <Popover.Trigger asChild>{children}</Popover.Trigger>
       <Popover.Portal container={containerEl}>
         <Popover.Content
-          className={styles.popoverContent}
+          className={clsx(className, styles.popoverContent)}
           style={{
             zIndex: maxZIndex,
           }}
