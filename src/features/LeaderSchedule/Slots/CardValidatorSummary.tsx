@@ -244,11 +244,14 @@ function TimeAgo({ slot }: CardValidatorSummaryProps) {
   if (slotTimestampNanos === undefined) return;
 
   return (
-    <TimePopoverDropdown nanoTs={slotTimestampNanos}>
-      <Text className={styles.secondaryText}>
-        {slotDateTime?.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}
-        {timeAgoText && ` (${timeAgoText})`}
-      </Text>
-    </TimePopoverDropdown>
+    <TimePopoverDropdown
+      nanoTs={slotTimestampNanos}
+      text={
+        slotDateTime
+          ? `${slotDateTime.toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS)}${timeAgoText ? ` (${timeAgoText})` : ""}`
+          : ""
+      }
+      textClassName={styles.secondaryText}
+    />
   );
 }

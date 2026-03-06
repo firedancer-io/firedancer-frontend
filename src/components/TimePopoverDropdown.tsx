@@ -1,20 +1,26 @@
-import { Button, Grid, Text } from "@radix-ui/themes";
+import { Button, Flex, Grid, Text } from "@radix-ui/themes";
 import styles from "./timePopoverDropdown.module.css";
 import { formatTimeNanos, getDateTimeFromNanos } from "../utils";
-import { useMemo, type PropsWithChildren } from "react";
+import { useMemo } from "react";
 import { useRelativeTime } from "../hooks/useRelativeTime";
 import PopoverDropdown from "./PopoverDropdown";
+import clsx from "clsx";
 
 interface TimePopoverContentProps {
   nanoTs: bigint;
+  text: string;
+  textClassName?: string;
+  triggerClassName?: string;
 }
 
 const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export function TimePopoverDropdown({
-  children,
   nanoTs,
-}: PropsWithChildren<TimePopoverContentProps>) {
+  text,
+  textClassName,
+  triggerClassName,
+}: TimePopoverContentProps) {
   const dateTime = useMemo(() => getDateTimeFromNanos(nanoTs), [nanoTs]);
   const relativeTime = useRelativeTime(dateTime);
 
@@ -59,8 +65,26 @@ export function TimePopoverDropdown({
       }
       align="start"
     >
-      <Button variant="ghost" className={styles.popoverTrigger}>
-        {children}
+      <Button
+        variant="ghost"
+        className={clsx(styles.popoverTrigger, triggerClassName)}
+      >
+        {/* text-decoration does not extend under "..." by default, leaving a gap.
+            The overlay below uses text-overflow: clip so the underline spans the
+            full visible width including where the ellipsis appears. */}
+        <Flex flexShrink="1" minWidth="0" position="relative">
+          <Text truncate className={textClassName}>
+            {text}
+          </Text>
+
+          <Text
+            truncate
+            aria-hidden="true"
+            className={clsx(textClassName, styles.popoverTextUnderline)}
+          >
+            {text}
+          </Text>
+        </Flex>
       </Button>
     </PopoverDropdown>
   );
