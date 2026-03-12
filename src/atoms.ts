@@ -79,9 +79,9 @@ export const epochAtom = atom(
 export const deletePreviousEpochsAtom = atom(
   null,
   (_get, set, currentEpoch: number) => {
-    set(_epochsAtom, (draft) => {
-      draft = draft?.filter(({ epoch }) => epoch >= currentEpoch);
-    });
+    set(_epochsAtom, (draft) =>
+      draft.filter(({ epoch }) => epoch >= currentEpoch),
+    );
   },
 );
 
