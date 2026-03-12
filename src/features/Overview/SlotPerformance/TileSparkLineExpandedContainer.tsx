@@ -77,7 +77,7 @@ export default function TileSparkLineExpandedContainer({
 
                 return (
                   <Flex key={i}>
-                    <TileSparkLine queryBusy={queryBusy} />
+                    <TileSparkLine history={queryBusy} />
                     <TileBusy busy={mean(queryBusy)} />
                   </Flex>
                 );

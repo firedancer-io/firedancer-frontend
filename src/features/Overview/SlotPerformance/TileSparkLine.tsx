@@ -21,7 +21,7 @@ const _updateIntervalMs = 80;
 
 interface TileParkLineProps {
   value?: number;
-  queryBusy?: number[];
+  history?: number[] | { ts: number; value: number }[];
   height?: number;
   background?: string;
   windowMs?: number;
@@ -32,7 +32,7 @@ interface TileParkLineProps {
 
 export default function TileSparkLine({
   value,
-  queryBusy,
+  history,
   height = 24,
   background,
   windowMs = leaderGroupWindowMs,
@@ -45,7 +45,7 @@ export default function TileSparkLine({
   const { scaledDataPoints, range, pxPerTick, chartTickMs, isLive } =
     useScaledDataPoints({
       value,
-      queryBusy,
+      history,
       windowMs,
       height,
       width,

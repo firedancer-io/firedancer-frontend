@@ -3,6 +3,7 @@ import {
   liveTileMetricsAtom,
   tilesAtom,
   tileTimerAtom,
+  tileTimerHistoryAtom,
 } from "../../../api/atoms";
 import Card from "../../../components/Card";
 import { Flex, Table, Text } from "@radix-ui/themes";
@@ -18,7 +19,14 @@ import {
   usePrevious,
   usePreviousDistinct,
 } from "react-use";
-import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { tileChartDarkBackground } from "../../../colors";
 import { isEqual } from "lodash";
 import type { CellProps } from "@radix-ui/themes/components/table";
@@ -273,6 +281,7 @@ const updateIntervalMs = 300;
 
 const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
   const tileTimers = useAtomValue(tileTimerAtom);
+  const tileTimerHistory = useAtomValue(tileTimerHistoryAtom);
   const pct =
     tileTimers?.[idx] && tileTimers[idx] >= 0
       ? 1 - Math.max(0, tileTimers[idx])
@@ -305,6 +314,18 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
     rollingSum.current = { count: 0, sum: 0 };
   }, updateIntervalMs);
 
+  const initialHistory = useMemo(
+    () =>
+      tileTimerHistory.history.map((h) => {
+        const idle = h.values[idx] ?? 0;
+        return {
+          ts: h.ts,
+          value: idle >= 0 ? 1 - Math.max(0, idle) : 0,
+        };
+      }),
+    [tileTimerHistory.history, idx],
+  );
+
   return (
     <>
       <Table.Cell className={styles.noPadding}>
@@ -315,6 +336,7 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
       <Table.Cell className={styles.noPadding}>
         <TileSparkLine
           value={avgValue}
+          history={initialHistory}
           background={tileChartDarkBackground}
           windowMs={60_000}
           height={chartHeight}

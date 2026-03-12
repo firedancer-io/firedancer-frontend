@@ -115,6 +115,8 @@ export const clientIdToClientName: Record<number, ClientName> = {
 };
 
 function checkNeedsTouchScreenSupport() {
+  if (typeof window === "undefined") return false;
+
   const ua = navigator.userAgent.toLowerCase();
   const isPhoneOrTablet =
     /iphone|android|windows phone|ipad|android|tablet/.test(ua);

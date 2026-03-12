@@ -1,22 +1,28 @@
 import { Card, Flex, Grid, Text } from "@radix-ui/themes";
-import type { GossipNetworkHealth } from "../../../api/types";
-import { useEmaValue } from "../../../hooks/useEma";
-import { type PropsWithChildren } from "react";
+import { type PropsWithChildren, useMemo, useRef } from "react";
 import { compactSingleDecimalFormatter } from "../../../numUtils";
 import GossipHealthSparklines from "./GossipHealthSparklines";
 import { clamp } from "lodash";
+import {
+  gossipHealthPublishIntervalMs,
+  gossipHealthRenderWindowMs,
+} from "../../../api/worker/cache/consts";
 import { headerGap } from "../consts";
+import { useAtomValue } from "jotai";
+import { gossipHealthEmaAtom, type GossipHealthEma } from "../../../api/atoms";
+import type { ObjectHistoryEntry } from "../../../api/worker/types";
 
 const pushColor = "#197CAE";
 const pullColor = "var(--amber-8)";
 const totalColor = "#CBD4D6";
 const sparklineColors = [pushColor, pullColor];
+const sparklineCapacity = Math.ceil(
+  gossipHealthRenderWindowMs / gossipHealthPublishIntervalMs,
+);
 
-interface GossipHealthProps {
-  health: GossipNetworkHealth;
-}
+export default function GossipHealth() {
+  const { value: health, history } = useAtomValue(gossipHealthEmaAtom);
 
-export default function GossipHealth({ health }: GossipHealthProps) {
   return (
     <Grid
       columns={{
@@ -27,12 +33,17 @@ export default function GossipHealth({ health }: GossipHealthProps) {
       gapY="3"
       gapX="7"
     >
-      <MessageFailureCard health={health} />
-      <EntryTotalCard health={health} />
-      <EntryDuplicateCard health={health} />
-      <EntryFailureCard health={health} />
+      <MessageFailureCard health={health} history={history} />
+      <EntryTotalCard health={health} history={history} />
+      <EntryDuplicateCard health={health} history={history} />
+      <EntryFailureCard health={health} history={history} />
     </Grid>
   );
+}
+
+interface GossipHealthProps {
+  health: GossipHealthEma;
+  history: ObjectHistoryEntry<GossipHealthEma>[];
 }
 
 interface SectionProps {
@@ -108,18 +119,27 @@ export function VerticalLabelValueDisplay({
   );
 }
 
-function EntryTotalCard({ health }: GossipHealthProps) {
-  const pushTotal = useEmaValue(
-    health.num_push_entries_rx_success + health.num_push_entries_rx_failure,
+function useDerivedHistory(
+  history: ObjectHistoryEntry<GossipHealthEma>[],
+  derive: (h: GossipHealthEma) => number[],
+): number[][] {
+  const derivedRef = useRef(derive);
+  derivedRef.current = derive;
+
+  return useMemo(
+    () => history.map((h) => derivedRef.current(h.value)),
+    [history],
   );
-  const pullTotal = useEmaValue(
+}
+
+function EntryTotalCard({ health, history }: GossipHealthProps) {
+  const pushTotal =
+    health.num_push_entries_rx_success + health.num_push_entries_rx_failure;
+  const pullTotal =
     health.num_pull_response_entries_rx_success +
-      health.num_pull_response_entries_rx_failure,
-  );
-
-  const pushSuccess = useEmaValue(health.num_push_entries_rx_success);
-  const pullSuccess = useEmaValue(health.num_pull_response_entries_rx_success);
-
+    health.num_pull_response_entries_rx_failure;
+  const pushSuccess = health.num_push_entries_rx_success;
+  const pullSuccess = health.num_pull_response_entries_rx_success;
   const totalSuccess = pushSuccess + pullSuccess;
   const maxValue = Math.max(pushTotal, pullTotal, totalSuccess);
 
@@ -127,6 +147,12 @@ function EntryTotalCard({ health }: GossipHealthProps) {
   const pullPct = clamp(pullSuccess / pullTotal, 0, 1);
 
   const colors = [totalColor, ...sparklineColors];
+
+  const derivedHistory = useDerivedHistory(history, (h) => [
+    h.num_push_entries_rx_success + h.num_pull_response_entries_rx_success,
+    h.num_push_entries_rx_success,
+    h.num_pull_response_entries_rx_success,
+  ]);
 
   return (
     <Section title="Entries Success /s">
@@ -154,16 +180,17 @@ function EntryTotalCard({ health }: GossipHealthProps) {
           </Flex>
         </Flex>
         <GossipHealthSparklines
-          values={[totalSuccess, pushSuccess, pullSuccess]}
           colors={colors}
           maxValue={maxValue}
+          history={derivedHistory}
+          capacity={sparklineCapacity}
         />
       </Flex>
     </Section>
   );
 }
 
-interface TwoValueCardProps {
+interface TwoValueGossipHealthProps {
   title: string;
   valueA: number;
   valueB: number;
@@ -171,6 +198,7 @@ interface TwoValueCardProps {
   totalB: number;
   labelA: string;
   labelB: string;
+  history: number[][];
 }
 
 function TwoValueCard({
@@ -181,7 +209,8 @@ function TwoValueCard({
   totalB,
   labelA,
   labelB,
-}: TwoValueCardProps) {
+  history,
+}: TwoValueGossipHealthProps) {
   const pctA = valueA / totalA;
   const pctB = valueB / totalB;
 
@@ -205,26 +234,29 @@ function TwoValueCard({
           />
         </Flex>
         <GossipHealthSparklines
-          values={[valueA, valueB]}
           colors={sparklineColors}
           maxValue={maxValue}
+          history={history}
+          capacity={sparklineCapacity}
         />
       </Flex>
     </Section>
   );
 }
 
-function MessageFailureCard({ health }: GossipHealthProps) {
-  const pushTotal = useEmaValue(
-    health.num_push_messages_rx_success + health.num_push_messages_rx_failure,
-  );
-  const pullTotal = useEmaValue(
+function MessageFailureCard({ health, history }: GossipHealthProps) {
+  const pushTotal =
+    health.num_push_messages_rx_success + health.num_push_messages_rx_failure;
+  const pullTotal =
     health.num_pull_response_messages_rx_success +
-      health.num_pull_response_messages_rx_failure,
-  );
+    health.num_pull_response_messages_rx_failure;
+  const pushFail = health.num_push_messages_rx_failure;
+  const pullFail = health.num_pull_response_messages_rx_failure;
 
-  const pushFail = useEmaValue(health.num_push_messages_rx_failure);
-  const pullFail = useEmaValue(health.num_pull_response_messages_rx_failure);
+  const derivedHistory = useDerivedHistory(history, (h) => [
+    h.num_push_messages_rx_failure,
+    h.num_pull_response_messages_rx_failure,
+  ]);
 
   return (
     <TwoValueCard
@@ -235,21 +267,24 @@ function MessageFailureCard({ health }: GossipHealthProps) {
       totalB={pullTotal}
       labelA="Push"
       labelB="Pull"
+      history={derivedHistory}
     />
   );
 }
 
-function EntryDuplicateCard({ health }: GossipHealthProps) {
-  const pushTotal = useEmaValue(
-    health.num_push_entries_rx_success + health.num_push_entries_rx_failure,
-  );
-  const pullTotal = useEmaValue(
+function EntryDuplicateCard({ health, history }: GossipHealthProps) {
+  const pushTotal =
+    health.num_push_entries_rx_success + health.num_push_entries_rx_failure;
+  const pullTotal =
     health.num_pull_response_entries_rx_success +
-      health.num_pull_response_entries_rx_failure,
-  );
+    health.num_pull_response_entries_rx_failure;
+  const pushDupe = health.num_push_entries_rx_duplicate;
+  const pullDupe = health.num_pull_response_entries_rx_duplicate;
 
-  const pushDupe = useEmaValue(health.num_push_entries_rx_duplicate);
-  const pullDupe = useEmaValue(health.num_pull_response_entries_rx_duplicate);
+  const derivedHistory = useDerivedHistory(history, (h) => [
+    h.num_push_entries_rx_duplicate,
+    h.num_pull_response_entries_rx_duplicate,
+  ]);
 
   return (
     <TwoValueCard
@@ -260,26 +295,28 @@ function EntryDuplicateCard({ health }: GossipHealthProps) {
       totalB={pullTotal}
       labelA="Push"
       labelB="Pull"
+      history={derivedHistory}
     />
   );
 }
 
-function EntryFailureCard({ health }: GossipHealthProps) {
-  const pushTotal = useEmaValue(
-    health.num_push_entries_rx_success + health.num_push_entries_rx_failure,
-  );
-  const pullTotal = useEmaValue(
+function EntryFailureCard({ health, history }: GossipHealthProps) {
+  const pushTotal =
+    health.num_push_entries_rx_success + health.num_push_entries_rx_failure;
+  const pullTotal =
     health.num_pull_response_entries_rx_success +
-      health.num_pull_response_entries_rx_failure,
-  );
-
-  const pushFail = useEmaValue(
-    health.num_push_entries_rx_failure - health.num_push_entries_rx_duplicate,
-  );
-  const pullFail = useEmaValue(
+    health.num_pull_response_entries_rx_failure;
+  const pushFail =
+    health.num_push_entries_rx_failure - health.num_push_entries_rx_duplicate;
+  const pullFail =
     health.num_pull_response_entries_rx_failure -
-      health.num_pull_response_entries_rx_duplicate,
-  );
+    health.num_pull_response_entries_rx_duplicate;
+
+  const derivedHistory = useDerivedHistory(history, (h) => [
+    h.num_push_entries_rx_failure - h.num_push_entries_rx_duplicate,
+    h.num_pull_response_entries_rx_failure -
+      h.num_pull_response_entries_rx_duplicate,
+  ]);
 
   return (
     <TwoValueCard
@@ -290,6 +327,7 @@ function EntryFailureCard({ health }: GossipHealthProps) {
       totalB={pullTotal}
       labelA="Push"
       labelB="Pull"
+      history={derivedHistory}
     />
   );
 }
