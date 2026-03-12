@@ -21,11 +21,10 @@ export default function Gossip() {
     maxWait: 5_000,
   });
 
-  const health = networkStats?.health;
   const storage = networkStats?.storage;
 
   if (client === ClientEnum.Frankendancer) return;
-  if (!health || !storage || !dbNetworkStats) return;
+  if (!storage || !dbNetworkStats) return;
 
   return (
     <Flex
@@ -66,7 +65,7 @@ export default function Gossip() {
         </Flex>
       </Flex>
 
-      <GossipHealth health={health} />
+      <GossipHealth />
       <PeerTable />
     </Flex>
   );

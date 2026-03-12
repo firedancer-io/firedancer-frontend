@@ -1,13 +1,7 @@
-export type ClientMessage = unknown;
-
-export type SendMessage = (message: ClientMessage) => void;
+export type SendMessage = (message: unknown) => void;
 
 export enum SocketState {
   Disconnected = "disconnected",
   Connecting = "connecting",
   Connected = "connected",
-}
-
-export interface ConnectionStatus {
-  socketState: SocketState;
 }
