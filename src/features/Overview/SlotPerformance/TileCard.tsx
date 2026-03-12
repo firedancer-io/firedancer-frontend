@@ -77,8 +77,8 @@ export default function TileCard({
           />
           <Box flexGrow="1" />
           <TileSparkLine
-            value={avgBusy}
-            queryBusy={aggQueryBusyPerTs}
+            value={aggQueryBusyPerTs === undefined ? avgBusy : undefined}
+            history={aggQueryBusyPerTs}
             height={sparklineHeight}
             background={isDark ? tileChartDarkBackground : undefined}
           />

@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2023",
     "useDefineForClassFields": true,
-    "lib": ["ES2023.Array", "ES2023", "DOM", "DOM.Iterable"],
+    "lib": ["ES2023.Array", "ES2023", "DOM", "DOM.Iterable", "WebWorker"],
     "module": "ES2022",
     "skipLibCheck": true,
 

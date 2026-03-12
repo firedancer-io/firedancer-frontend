@@ -1,5 +1,5 @@
 import { mean } from "lodash";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useInterval } from "react-use";
 import { createClock } from "../../../clockUtils";
 
@@ -97,9 +97,15 @@ function setDataWindow(
   return data;
 }
 
+function isNumberHistory(
+  history: number[] | { ts: number; value: number }[],
+): history is number[] {
+  return typeof history[0] === "number";
+}
+
 interface UseScaledDataPointsProps {
   value?: number;
-  queryBusy?: number[];
+  history?: number[] | { ts: number; value: number }[];
   windowMs: number;
   height: number;
   width: number;
@@ -110,7 +116,7 @@ interface UseScaledDataPointsProps {
 
 export function useScaledDataPoints({
   value,
-  queryBusy,
+  history,
   windowMs: _windowMs,
   height,
   width: _width,
@@ -122,12 +128,25 @@ export function useScaledDataPoints({
     { x: number; y: number }[]
   >([]);
 
+  const isStatic = !!(history?.length && value === undefined);
+
+  // Adds ts to history without defined ts and normalizes to current time window. Assumes evenly spaced values
+  const normalizedHistory = useMemo(() => {
+    if (!history?.length) return;
+    if (!isNumberHistory(history)) return history;
+
+    const now = performance.now();
+    const ratio = _windowMs / (history.length - 1);
+    const tStart = now - _windowMs;
+    return history.map((value, i) => ({ value, ts: tStart + i * ratio }));
+  }, [_windowMs, history]);
+
   const { pxPerTick, width, windowMs } = useMemo(() => {
     let windowMs = _windowMs;
     let width = _width;
     const pxPerTick = width / (windowMs / tickMs);
 
-    if (!queryBusy) {
+    if (!isStatic) {
       windowMs += tickMs * tickBufferCount;
       width += pxPerTick * tickBufferCount;
     }
@@ -136,29 +155,44 @@ export function useScaledDataPoints({
       width,
       windowMs,
     };
-  }, [_width, _windowMs, queryBusy, tickMs]);
+  }, [_width, _windowMs, isStatic, tickMs]);
 
-  const busyDataRef = useRef([
+  const dataRef = useRef<PointSample[]>([
     { value: undefined, ts: performance.now() - windowMs },
     { value: undefined, ts: performance.now() },
   ]);
 
-  useLayoutEffect(() => {
-    if (stopShifting || queryBusy?.length) return;
+  const isSeededRef = useRef(false);
 
-    setDataWindow(busyDataRef.current, windowMs, value);
-  }, [queryBusy?.length, windowMs, stopShifting, value]);
+  useEffect(() => {
+    if (isSeededRef.current || !normalizedHistory?.length) return;
+    isSeededRef.current = true;
+
+    const now = performance.now();
+    const newestTs = normalizedHistory[normalizedHistory.length - 1].ts;
+
+    dataRef.current = normalizedHistory.map(({ ts, value }) => ({
+      value,
+      ts: now - (newestTs - ts),
+    }));
+  }, [normalizedHistory]);
+
+  useEffect(() => {
+    if (stopShifting || isStatic) return;
+
+    setDataWindow(dataRef.current, windowMs, value);
+  }, [isStatic, windowMs, stopShifting, value]);
 
   useInterval(() => {
-    if (stopShifting || queryBusy?.length) return;
+    if (stopShifting || isStatic) return;
 
-    const lastTs = busyDataRef.current[busyDataRef.current.length - 1]?.ts;
+    const lastTs = dataRef.current[dataRef.current.length - 1]?.ts;
     // Don't add a artifical tick point if one was added within the specified update interval
     if (lastTs !== undefined && performance.now() - lastTs < updateIntervalMs) {
       return;
     }
 
-    setDataWindow(busyDataRef.current, windowMs, value);
+    setDataWindow(dataRef.current, windowMs, value);
   }, updateIntervalMs);
 
   useEffect(() => {
@@ -202,14 +236,16 @@ export function useScaledDataPoints({
       setScaledDataPoints(points);
     }
 
-    // historical query
-    if (queryBusy) {
+    if (isStatic) {
+      if (!normalizedHistory?.length) return;
+
       const tEnd = performance.now();
-      const ratio = windowMs / (queryBusy.length - 1);
-      const tStart = tEnd - windowMs;
-      const data = queryBusy.map((value, i) => {
-        return { value, ts: tStart + i * ratio };
-      });
+      const newestTs = normalizedHistory[normalizedHistory.length - 1].ts;
+      const data = normalizedHistory.map(({ ts, value }) => ({
+        value,
+        ts: tEnd - (newestTs - ts),
+      }));
+
       tick(data, tEnd);
     }
     // live
@@ -220,19 +256,19 @@ export function useScaledDataPoints({
       const clock = clocks.get(tickMs);
       if (clock) {
         const unsub = clock.subscribeClock((tEnd) => {
-          tick(busyDataRef.current, tEnd);
+          tick(dataRef.current, tEnd);
         });
 
         return unsub;
       }
     }
-  }, [height, queryBusy, tickMs, width, windowMs]);
+  }, [height, normalizedHistory, isStatic, tickMs, width, windowMs]);
 
   return {
     scaledDataPoints,
     range: sparkLineRange,
     pxPerTick,
     chartTickMs: tickMs,
-    isLive: !queryBusy,
+    isLive: !isStatic,
   };
 }

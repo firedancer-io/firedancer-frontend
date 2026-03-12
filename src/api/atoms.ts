@@ -26,6 +26,7 @@ import type {
   SlotRankings,
   BootProgress,
   GossipNetworkStats,
+  GossipNetworkHealth,
   GossipPeersSize,
   GossipPeersRowsUpdate,
   GossipPeersCellUpdate,
@@ -39,6 +40,9 @@ import type {
   RepairSlot,
 } from "./types";
 import { rafAtom } from "../atomUtils";
+import type { ValuesWithHistory } from "./worker/types";
+
+const emptyValuesWithHistory: ValuesWithHistory = { values: [], history: [] };
 
 export const versionAtom = atom<Version | undefined>(undefined);
 
@@ -63,10 +67,6 @@ export const identityBalanceAtom = atom<IdentityBalance | undefined>(undefined);
 export const voteBalanceAtom = atom<VoteBalance | undefined>(undefined);
 
 export const rootSlotAtom = atom<RootSlot | undefined>(undefined);
-
-export const OptimisticallyConfirmedSlotAtom = atom<
-  OptimisticallyConfirmedSlot | undefined
->(undefined);
 
 export const optimisticallyConfirmedSlotAtom = atom<
   OptimisticallyConfirmedSlot | undefined
@@ -97,6 +97,14 @@ export const liveNetworkMetricsAtom = atom<LiveNetworkMetrics | undefined>(
   undefined,
 );
 
+export const networkMetricsEmaIngressAtom = atom<ValuesWithHistory>(
+  emptyValuesWithHistory,
+);
+
+export const networkMetricsEmaEgressAtom = atom<ValuesWithHistory>(
+  emptyValuesWithHistory,
+);
+
 export const liveTxnWaterfallAtom = rafAtom<LiveTxnWaterfall | undefined>(
   undefined,
 );
@@ -109,12 +117,52 @@ export const liveTileMetricsAtom = atom<TileMetrics | undefined>(undefined);
 
 export const tileTimerAtom = atom<number[] | undefined>(undefined);
 
+export const tileTimerHistoryAtom = atom<ValuesWithHistory>(
+  emptyValuesWithHistory,
+);
+
 export const bootProgressAtom = atom<BootProgress | undefined>(undefined);
 export const startupProgressAtom = atom<StartupProgress | undefined>(undefined);
 
 export const gossipNetworkStatsAtom = rafAtom<GossipNetworkStats | undefined>(
   undefined,
 );
+
+type NumberKeys<T> = {
+  [K in keyof T]: T[K] extends number ? K : never;
+}[keyof T];
+
+export const gossipHealthEmaFields = [
+  "num_push_messages_rx_success",
+  "num_push_messages_rx_failure",
+  "num_push_entries_rx_success",
+  "num_push_entries_rx_failure",
+  "num_push_entries_rx_duplicate",
+  "num_pull_response_messages_rx_success",
+  "num_pull_response_messages_rx_failure",
+  "num_pull_response_entries_rx_success",
+  "num_pull_response_entries_rx_failure",
+  "num_pull_response_entries_rx_duplicate",
+] as const satisfies NumberKeys<GossipNetworkHealth>[];
+
+export type GossipHealthEma = Pick<
+  GossipNetworkHealth,
+  (typeof gossipHealthEmaFields)[number]
+>;
+
+const emptyGossipHealthEmaValue = Object.fromEntries(
+  gossipHealthEmaFields.map((f) => [f, 0]),
+) as GossipHealthEma;
+
+export type GossipHealthEmaState = {
+  value: GossipHealthEma;
+  history: { ts: number; value: GossipHealthEma }[];
+};
+
+export const gossipHealthEmaAtom = atom<GossipHealthEmaState>({
+  value: emptyGossipHealthEmaValue,
+  history: [],
+});
 
 export const gossipPeersSizeAtom = atom<GossipPeersSize | undefined>(undefined);
 export const gossipPeersRowsUpdateAtom = atom<
