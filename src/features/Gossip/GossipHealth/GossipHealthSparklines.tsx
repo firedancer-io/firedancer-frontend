@@ -1,88 +1,58 @@
 import { Box } from "@radix-ui/themes";
-import { useRef, useState, useEffect, useMemo } from "react";
-import { useHarmonicIntervalFn } from "react-use";
+import { useRef, useMemo } from "react";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { isDefined } from "../../../utils";
 
-const updateInterval = 150;
-const timeFrame = 30_000;
-const bufferMax = Math.trunc(timeFrame / updateInterval);
 const strokeLineWidth = 2;
 
 interface GossipHealthSparklinesProps {
   colors: string[];
-  values: number[];
   maxValue: number;
+  history: number[][];
+  capacity: number;
 }
 
 export default function GossipHealthSparklines({
-  values,
   colors,
   maxValue,
+  history,
+  capacity,
 }: GossipHealthSparklinesProps) {
   const sizeRefs = useRef<{ height: number; width: number }>();
-  // [xIdx][seriesIdx]
-  const [chartData, setChartData] = useState<(number | undefined)[][]>([]);
-  const seriesCount = values.length;
-  // Want to use the latest max but not update the paths when max changes
   const maxValueRef = useRef(maxValue);
   maxValueRef.current = maxValue;
-  const hasInitRef = useRef(false);
-
-  useEffect(() => {
-    // start with populating an empty array so path starts drawing from the right
-    setChartData(
-      Array.from({ length: bufferMax }).map((_, i) => {
-        return Array.from({ length: seriesCount });
-      }),
-    );
-  }, [seriesCount]);
-
-  useHarmonicIntervalFn(() => {
-    if (!hasInitRef.current && values.every((value) => !value)) {
-      return;
-    }
-    hasInitRef.current = true;
-    setChartData((prev) => {
-      let chartData = [...prev];
-      if (prev.length > bufferMax) {
-        chartData = chartData.slice(chartData.length - bufferMax);
-      }
-      chartData.push(values);
-      return chartData;
-    });
-  }, updateInterval);
 
   const scaledPoints = useMemo(() => {
     if (!sizeRefs.current) return;
-    if (!chartData.length) return;
+    if (!history.length) return;
 
     const { height, width } = sizeRefs.current;
     if (height < 0 || width < 0) return;
 
-    const maxLength = chartData.length;
-    const xRatio = width / maxLength;
+    const maxLength = capacity ?? history.length;
+    const xRatio = maxLength > 1 ? width / (maxLength - 1) : 0;
+    const xOffset = maxLength - history.length;
 
-    const maxValue = Math.max(
+    const computedMax = Math.max(
       maxValueRef.current,
-      Math.max(...chartData.flatMap((value) => value.filter(isDefined))),
+      Math.max(...history.flatMap((values) => values.filter(isDefined))),
     );
 
-    const seriesCount = chartData[0].length;
+    const seriesCount = history[history.length - 1].length;
 
     const points = Array.from({ length: seriesCount }).map(
       () => new Array<{ x: number; y: number }>(),
     );
 
-    for (let x = 0; x < chartData.length; x++) {
-      for (let seriesIdx = 0; seriesIdx < chartData[x].length; seriesIdx++) {
-        const value = chartData[x][seriesIdx];
+    for (let x = 0; x < history.length; x++) {
+      for (let seriesIdx = 0; seriesIdx < seriesCount; seriesIdx++) {
+        const value = history[x][seriesIdx];
         if (value === undefined) continue;
 
         points[seriesIdx].push({
-          x: x * xRatio,
+          x: (xOffset + x) * xRatio,
           y:
-            (1 - value / maxValue) * (height - strokeLineWidth) +
+            (1 - value / computedMax) * (height - strokeLineWidth) +
             strokeLineWidth / 2,
         });
       }
@@ -93,7 +63,7 @@ export default function GossipHealthSparklines({
     return points.map((seriesPoints) =>
       seriesPoints.map(({ x, y }) => `${x},${y}`).join(" "),
     );
-  }, [chartData]);
+  }, [history, capacity]);
 
   return (
     <Box flexGrow="1" minHeight="80px">
