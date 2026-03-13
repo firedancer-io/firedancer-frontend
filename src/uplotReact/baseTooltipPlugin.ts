@@ -9,22 +9,50 @@ function getScrollContainer() {
   return document.getElementById("scroll-container") ?? document.body;
 }
 
+interface BaseTooltipPluginProps {
+  elId: string;
+  showOnCursor: (u: uPlot, val: number, idx: number | null) => boolean;
+  showPointer?: boolean;
+  closeTooltipElId?: string;
+  getClosestIdx?: (u: uPlot) => number | null;
+}
+
 export function baseTooltipPlugin({
   elId,
   showOnCursor,
   showPointer,
   closeTooltipElId,
-}: {
-  elId: string;
-  showOnCursor: (u: uPlot, val: number, idx: number) => boolean;
-  showPointer?: boolean;
-  closeTooltipElId?: string;
-}): uPlot.Plugin {
+  getClosestIdx,
+}: BaseTooltipPluginProps): uPlot.Plugin {
   let over: HTMLDivElement;
   let bound: HTMLElement;
   let bLeft: number;
   let bTop: number;
   let isCurrentlyHovered = false;
+
+  let closestIdxCache: {
+    left: number;
+    top: number;
+    idx: number | null;
+  } | null = null;
+  const cachedGetClosestIdx = getClosestIdx
+    ? (u: uPlot): number | null => {
+        const { left, top } = u.cursor;
+        if (
+          left != null &&
+          top != null &&
+          closestIdxCache?.left === left &&
+          closestIdxCache?.top === top
+        ) {
+          return closestIdxCache.idx;
+        }
+        const idx = getClosestIdx(u);
+        if (left != null && top != null) {
+          closestIdxCache = { left, top, idx };
+        }
+        return idx;
+      }
+    : null;
 
   function syncBounds() {
     const bbox = over.getBoundingClientRect();
@@ -89,9 +117,17 @@ export function baseTooltipPlugin({
 
   let overlay: HTMLElement;
 
-  // setTimeout(() => syncBounds(), 10_000);
-
   return {
+    opts: (_u, opts) => {
+      if (!cachedGetClosestIdx) return;
+      opts.cursor ??= {};
+      opts.cursor.dataIdx = (u, seriesIdx, closestIdx) => {
+        /* uPlot's convention is for series 0 to be the x-axis
+         * and closestIdx is already calculated by closest x value */
+        if (seriesIdx === 0) return closestIdx;
+        return cachedGetClosestIdx(u);
+      };
+    },
     hooks: {
       init: (u) => {
         const tooltipEl = document.getElementById(elId);
@@ -135,6 +171,9 @@ export function baseTooltipPlugin({
           tClosePersistedTooltip,
         );
       },
+      setData: () => {
+        closestIdxCache = null;
+      },
       setSize: () => {
         syncBounds();
       },
@@ -147,16 +186,20 @@ export function baseTooltipPlugin({
         if (!isCurrentlyHovered) return;
         if (persistTooltip) return;
 
-        const { idx, left, top } = u.cursor;
+        const { left, top } = u.cursor;
+        /* idx is undefined when the cursor not yet initialized and
+         * null when no data is in range (and we should hide the tooltip) */
+        const idx = cachedGetClosestIdx ? cachedGetClosestIdx(u) : u.cursor.idx;
+        if (left === undefined || top === undefined || idx === undefined)
+          return;
 
-        if (left === undefined || top === undefined || idx == null) return;
-        const xVal = u.posToVal(left ?? 0, u.series[0].scale ?? "x");
-        const anchor = {
-          left: left + bLeft + 5,
-          top: top + bTop,
-        };
+        const xVal = u.posToVal(left, u.series[0].scale ?? "x");
         const showTooltip = showOnCursor(u, xVal, idx);
         if (showTooltip) {
+          const anchor = {
+            left: left + bLeft + 5,
+            top: top + bTop,
+          };
           overlay.style.display = "block";
           overlay.style.pointerEvents = "none";
           setCursorPointer();
