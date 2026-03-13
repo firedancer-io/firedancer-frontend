@@ -2,6 +2,8 @@ import type uPlot from "uplot";
 import placement from "../uplot/placement";
 import { throttle } from "lodash";
 
+const CLOSEST_IDX_SERIES = 1;
+
 // Persisted tooltip function should persist across charts, only 1 shown tooltip at a time
 let persistTooltip = false;
 
@@ -9,17 +11,21 @@ function getScrollContainer() {
   return document.getElementById("scroll-container") ?? document.body;
 }
 
+interface BaseTooltipPluginProps {
+  elId: string;
+  showOnCursor: (u: uPlot, val: number, idx: number) => boolean;
+  showPointer?: boolean;
+  closeTooltipElId?: string;
+  getClosestIdx?: (u: uPlot) => number | null;
+}
+
 export function baseTooltipPlugin({
   elId,
   showOnCursor,
   showPointer,
   closeTooltipElId,
-}: {
-  elId: string;
-  showOnCursor: (u: uPlot, val: number, idx: number) => boolean;
-  showPointer?: boolean;
-  closeTooltipElId?: string;
-}): uPlot.Plugin {
+  getClosestIdx,
+}: BaseTooltipPluginProps): uPlot.Plugin {
   let over: HTMLDivElement;
   let bound: HTMLElement;
   let bLeft: number;
@@ -89,9 +95,19 @@ export function baseTooltipPlugin({
 
   let overlay: HTMLElement;
 
-  // setTimeout(() => syncBounds(), 10_000);
-
   return {
+    opts: (_u, opts) => {
+      if (!getClosestIdx) return;
+      opts.cursor ??= {};
+      /* uPlot uses dataIdx to set the active index per series for highlighting.
+       * If multiple non-x series are added, getClosestIdx would need to accept
+       * seriesIdx and return a value based on the series.
+       */
+      opts.cursor.dataIdx = (u, seriesIdx, closestIdx) => {
+        if (seriesIdx === CLOSEST_IDX_SERIES) return getClosestIdx(u);
+        return closestIdx;
+      };
+    },
     hooks: {
       init: (u) => {
         const tooltipEl = document.getElementById(elId);
@@ -147,16 +163,26 @@ export function baseTooltipPlugin({
         if (!isCurrentlyHovered) return;
         if (persistTooltip) return;
 
-        const { idx, left, top } = u.cursor;
+        const { left, top } = u.cursor;
+        /* This idx is used to determine whether and what to show in the tooltip.
+         * uPlot's convention is for series 0 to be the x-axis and closestIdx
+         * to be calculated by closest x value.
+         * When getClosestIdx exists, we read from CLOSEST_IDX_SERIES instead,
+         * which has the custom idx set via dataIdx above. */
+        const idx = u.cursor.idxs?.[getClosestIdx ? CLOSEST_IDX_SERIES : 0];
 
-        if (left === undefined || top === undefined || idx == null) return;
-        const xVal = u.posToVal(left ?? 0, u.series[0].scale ?? "x");
-        const anchor = {
-          left: left + bLeft + 5,
-          top: top + bTop,
-        };
-        const showTooltip = showOnCursor(u, xVal, idx);
+        /* idx is undefined when the cursor not yet initialized and
+         * null when no data is in range (and we should hide the tooltip) */
+        if (left === undefined || top === undefined || idx === undefined)
+          return;
+
+        const xVal = u.posToVal(left, u.series[0].scale ?? "x");
+        const showTooltip = idx !== null && showOnCursor(u, xVal, idx);
         if (showTooltip) {
+          const anchor = {
+            left: left + bLeft + 5,
+            top: top + bTop,
+          };
           overlay.style.display = "block";
           overlay.style.pointerEvents = "none";
           setCursorPointer();
