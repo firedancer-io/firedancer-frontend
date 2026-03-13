@@ -32,6 +32,12 @@
   }
 }
 
+@media (max-width: 416px) {
+  .nav-link {
+    padding: 0 4px;
+  }
+}
+
 .nav-dropdown-content {
   display: flex;
   flex-direction: column;

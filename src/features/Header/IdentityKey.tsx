@@ -21,8 +21,8 @@ export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
 
   const isXXNarrowScreen = useMedia(`(min-width: ${identityIconOnlyWidth})`);
-  const isXNarrowScreen = useMedia("(min-width: 620px)");
-  const isNarrowScreen = useMedia("(min-width: 1100px)");
+  const isXNarrowScreen = useMedia("(min-width: 798px)");
+  const isNarrowScreen = useMedia("(min-width: 914px)");
 
   useEffect(() => {
     let title = document.title;
