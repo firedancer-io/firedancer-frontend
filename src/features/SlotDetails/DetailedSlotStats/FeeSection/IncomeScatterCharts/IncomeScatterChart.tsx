@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import AutoSizer from "react-virtualized-auto-sizer";
 import {
   chartAxisColor,
@@ -11,6 +11,9 @@ import { Box } from "@radix-ui/themes";
 import type uPlot from "uplot";
 import { compactZeroDecimalFormatter } from "../../../../../numUtils";
 import { lamportsPerSol } from "../../../../../consts";
+import { incomeScatterTooltipPlugin } from "./incomeScatterTooltipPlugin";
+import IncomeScatterChartTooltip from "./IncomeScatterChartTooltip";
+import { incomeChartPointRadius } from "../../consts";
 
 interface CuIncomeScatterChartProps {
   data: uPlot.AlignedData;
@@ -21,6 +24,9 @@ interface CuIncomeScatterChartProps {
     negMin: number;
     posMax: number;
   };
+  xLabel: string;
+  xColor?: string;
+  formatX: (x: number) => string;
 }
 
 const xScaleKey = "cuX";
@@ -30,7 +36,13 @@ export default function IncomeScatterChart({
   id,
   xLogScale = false,
   xScaleOptions,
+  xLabel,
+  xColor,
+  formatX,
 }: CuIncomeScatterChartProps) {
+  const tooltipElId = `${id}-tooltip`;
+  const [tooltipDataIdx, setTooltipDataIdx] = useState<number>();
+
   const options = useMemo(() => {
     return {
       width: 0,
@@ -100,7 +112,7 @@ export default function IncomeScatterChart({
           stroke: undefined,
           points: {
             show: true,
-            size: 5,
+            size: incomeChartPointRadius * 2,
             fill: hexToRgba(incomePerCuToggleControlColor, 0.3),
             space: 0,
           },
@@ -124,18 +136,39 @@ export default function IncomeScatterChart({
           },
         ],
       },
+      plugins: [
+        incomeScatterTooltipPlugin(
+          tooltipElId,
+          xScaleKey,
+          lamportsScaleKey,
+          setTooltipDataIdx,
+        ),
+      ],
     } satisfies uPlot.Options;
-  }, [xLogScale, xScaleOptions]);
+  }, [tooltipElId, xLogScale, xScaleOptions]);
+
+  const xVal = tooltipDataIdx != null ? data[0][tooltipDataIdx] : undefined;
+  const yVal = tooltipDataIdx != null ? data[1][tooltipDataIdx] : undefined;
 
   return (
-    <Box flexGrow="1">
-      <AutoSizer>
-        {({ height, width }) => {
-          options.width = width;
-          options.height = height;
-          return <UplotReact id={id} options={options} data={data} />;
-        }}
-      </AutoSizer>
-    </Box>
+    <>
+      <Box flexGrow="1">
+        <AutoSizer>
+          {({ height, width }) => {
+            options.width = width;
+            options.height = height;
+            return <UplotReact id={id} options={options} data={data} />;
+          }}
+        </AutoSizer>
+      </Box>
+      <IncomeScatterChartTooltip
+        elId={tooltipElId}
+        xVal={xVal}
+        yVal={yVal}
+        xLabel={xLabel}
+        xColor={xColor}
+        formatX={formatX}
+      />
+    </>
   );
 }

@@ -24,8 +24,10 @@ export function txnBarsTooltipPlugin({
   function showOnCursor(
     u: uPlot,
     xVal: number,
-    idx: number, // closest idx to cursor
+    idx: number | null, // closest idx to cursor
   ) {
+    if (idx === null) return false;
+
     let txnIdx = u.data[1][idx];
 
     // We are "closest" to the start of the next state, but we're actually mousing over the state before.
