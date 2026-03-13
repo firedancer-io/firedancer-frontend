@@ -78,3 +78,9 @@
   min-width: 0;
   color: var(--slot-details-stats-primary);
 }
+
+.time-popover {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: fit-content;
+}

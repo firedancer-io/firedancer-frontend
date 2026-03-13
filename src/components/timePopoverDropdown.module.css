@@ -16,17 +16,24 @@
 }
 
 .popover-trigger {
-  cursor: pointer;
-  text-decoration: underline dotted
-    var(--popover-trigger-color, var(--secondary-text-color));
-  transition: text-decoration-color 0.2s ease;
-
   /* overwrite radix ghost button styles */
   --button-ghost-padding-x: 2px;
   --button-ghost-padding-y: 2px;
   font: inherit;
   color: inherit;
-  text-align: start;
+}
+
+.popover-text-underline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+
+  color: transparent;
+  text-overflow: clip;
+
+  transition: text-decoration-color 0.2s ease;
+  text-decoration: underline dotted
+    var(--popover-trigger-color, var(--secondary-text-color));
 
   &:hover {
     text-decoration-color: var(

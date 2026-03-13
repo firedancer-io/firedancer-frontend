@@ -1,4 +1,4 @@
-import { Button, Text } from "@radix-ui/themes";
+import { Button } from "@radix-ui/themes";
 import { useState, type PropsWithChildren } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { copyToClipboard } from "../utils";
@@ -45,7 +45,7 @@ export default function CopyButton({
         e.stopPropagation();
       }}
     >
-      <Text truncate>{children}</Text>
+      {children}
       {hasCopied ? (
         <CheckIcon className={styles.icon} color="green" height={size} />
       ) : (
