@@ -1,4 +1,4 @@
-import { Grid, Text } from "@radix-ui/themes";
+import { Grid } from "@radix-ui/themes";
 import UplotTooltip from "../../../../../uplotReact/UplotTooltip";
 import type { SchedulerCounts } from "../../../../../api/types";
 import {
@@ -7,7 +7,7 @@ import {
   tipsColor,
   votesColor,
 } from "../../../../../colors";
-import styles from "../../detailedSlotStats.module.css";
+import { ChartTooltipRow } from "../../ChartTooltipRow";
 
 interface PackBufferChartProps {
   data?: SchedulerCounts;
@@ -18,33 +18,28 @@ export default function PackBufferChartTooltip({ data }: PackBufferChartProps) {
     <UplotTooltip elId="pack-buffer-chart-tooltip">
       {data && (
         <Grid columns="auto auto" gapX="2">
-          <Row label="Regular" value={data.regular} color={nonVoteColor} />
-          <Row label="Votes" value={data.votes} color={votesColor} />
-          <Row
+          <ChartTooltipRow
+            label="Regular"
+            value={data.regular}
+            color={nonVoteColor}
+          />
+          <ChartTooltipRow
+            label="Votes"
+            value={data.votes}
+            color={votesColor}
+          />
+          <ChartTooltipRow
             label="Conflicting"
             value={data.conflicting}
             color={slotStatusRed}
           />
-          <Row label="Bundles" value={data.bundles} color={tipsColor} />
+          <ChartTooltipRow
+            label="Bundles"
+            value={data.bundles}
+            color={tipsColor}
+          />
         </Grid>
       )}
     </UplotTooltip>
-  );
-}
-
-interface RowProps {
-  label: string;
-  value: number;
-  color: string;
-}
-
-function Row({ label, value, color }: RowProps) {
-  return (
-    <>
-      <Text className={styles.label}>{label}</Text>
-      <Text className={styles.value} style={{ color }}>
-        {value.toLocaleString()}
-      </Text>
-    </>
   );
 }

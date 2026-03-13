@@ -8,8 +8,10 @@ export function cuTooltipPlugin(
   function showOnCursor(
     u: uPlot,
     xVal: number,
-    idx: number, // closest idx to cursor
+    idx: number | null, // closest idx to cursor
   ) {
+    if (idx === null) return false;
+
     const dataIdx = xVal >= u.data[0][idx] ? idx : idx - 1;
     setTooltipData({
       elapsedTime: xVal,

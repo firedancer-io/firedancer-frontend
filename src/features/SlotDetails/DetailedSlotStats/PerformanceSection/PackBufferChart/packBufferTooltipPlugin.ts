@@ -7,8 +7,10 @@ export function packBufferTooltipPlugin(
   function showOnCursor(
     u: uPlot,
     xVal: number,
-    idx: number, // closest idx to cursor
+    idx: number | null, // closest idx to cursor
   ) {
+    if (idx === null) return false;
+
     setTooltipDataIdx(idx);
     return true;
   }
