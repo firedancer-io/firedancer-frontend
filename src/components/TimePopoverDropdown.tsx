@@ -72,7 +72,7 @@ export function TimePopoverDropdown({
         {/* text-decoration does not extend under "..." by default, leaving a gap.
             The overlay below uses text-overflow: clip so the underline spans the
             full visible width including where the ellipsis appears. */}
-        <Flex flexShrink="1" minWidth="0" position="relative">
+        <Flex minWidth="0" position="relative">
           <Text truncate className={textClassName}>
             {text}
           </Text>

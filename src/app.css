@@ -62,3 +62,9 @@
   font-size: 14px;
   font-family: Inter Tight;
 }
+
+.mono-text {
+  font-family:
+    Roboto Mono,
+    monospace;
+}
