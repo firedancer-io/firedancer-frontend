@@ -26,7 +26,6 @@
 .popover-text-underline {
   position: absolute;
   inset: 0;
-  width: 100%;
 
   color: transparent;
   text-overflow: clip;

@@ -222,7 +222,7 @@ function SlotTime({ vertical = false, slotCompletedTimeNanos }: SlotTimeProps) {
           <TimePopoverDropdown
             nanoTs={slotCompletedTimeNanos}
             text={formattedSlotTime.inMillis}
-            textClassName={clsx(MonoText.monoClassName, styles.value)}
+            textClassName={clsx("mono-text", styles.value)}
             triggerClassName={styles.timePopover}
           />
         ) : undefined
