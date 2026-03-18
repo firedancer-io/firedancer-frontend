@@ -20,22 +20,22 @@ export default function PackBufferChartTooltip({ data }: PackBufferChartProps) {
         <Grid columns="auto auto" gapX="2">
           <ChartTooltipRow
             label="Regular"
-            value={data.regular}
+            value={data.regular.toLocaleString()}
             color={nonVoteColor}
           />
           <ChartTooltipRow
             label="Votes"
-            value={data.votes}
+            value={data.votes.toLocaleString()}
             color={votesColor}
           />
           <ChartTooltipRow
             label="Conflicting"
-            value={data.conflicting}
+            value={data.conflicting.toLocaleString()}
             color={slotStatusRed}
           />
           <ChartTooltipRow
             label="Bundles"
-            value={data.bundles}
+            value={data.bundles.toLocaleString()}
             color={tipsColor}
           />
         </Grid>

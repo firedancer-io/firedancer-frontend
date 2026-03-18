@@ -3,17 +3,11 @@ import styles from "./detailedSlotStats.module.css";
 
 interface ChartTooltipRowProps {
   label: string;
-  value: number;
+  value: string;
   color?: string;
-  formatter?: (x: number) => string;
 }
 
-export function ChartTooltipRow({
-  label,
-  value,
-  color,
-  formatter,
-}: ChartTooltipRowProps) {
+export function ChartTooltipRow({ label, value, color }: ChartTooltipRowProps) {
   return (
     <>
       <Text wrap="nowrap" className={styles.label}>
@@ -25,7 +19,7 @@ export function ChartTooltipRow({
         align="right"
         style={{ color }}
       >
-        {formatter ? formatter(value) : value.toLocaleString()}
+        {value}
       </Text>
     </>
   );

@@ -76,3 +76,7 @@ export function clamp(
 
   return [nMin, nMax];
 }
+
+export const getAxisSize = (axis: uPlot.Axis): number =>
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+  (axis as any)._size ?? 0;
