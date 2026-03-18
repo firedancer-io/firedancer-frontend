@@ -121,36 +121,42 @@ export function getChartData(
 export function getDurationWithUnits(
   value: bigint | number,
   allowNegatives = true,
+  maximumFractionDigits?: number,
 ) {
+  const round = (n: number) =>
+    maximumFractionDigits !== undefined
+      ? parseFloat(n.toFixed(maximumFractionDigits))
+      : Math.round(n);
+
   let formatted = Number(value);
   if (!allowNegatives) {
     formatted = Math.abs(formatted);
   }
 
   if (Math.abs(formatted) < 1_000) {
-    return { value: Math.round(formatted), unit: "ns" };
+    return { value: round(formatted), unit: "ns" };
   }
 
   formatted /= 1_000;
   if (Math.abs(formatted) < 1_000) {
-    return { value: Math.round(formatted), unit: "µs" };
+    return { value: round(formatted), unit: "µs" };
   }
 
   formatted /= 1_000;
   if (Math.abs(formatted) < 100_000) {
-    return { value: Math.round(formatted), unit: "ms" };
+    return { value: round(formatted), unit: "ms" };
   }
 
   formatted /= 1_000;
   if (Math.abs(formatted) < 120) {
-    return { value: Math.round(formatted), unit: "s" };
+    return { value: round(formatted), unit: "s" };
   }
 
   formatted /= 60;
   if (Math.abs(formatted) < 120) {
-    return { value: Math.round(formatted), unit: "m" };
+    return { value: round(formatted), unit: "m" };
   }
 
   formatted /= 60;
-  return { value: Math.round(formatted), unit: "h" };
+  return { value: round(formatted), unit: "h" };
 }

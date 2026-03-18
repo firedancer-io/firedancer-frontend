@@ -5,7 +5,9 @@ import { getDefaultStore } from "jotai";
 const store = getDefaultStore();
 let syncInProgress = false;
 
-export function syncXScalePlugin(): uPlot.Plugin {
+export function syncXScalePlugin(opts?: { minRange?: number }): uPlot.Plugin {
+  const minRange = opts?.minRange ?? 100;
+
   return {
     hooks: {
       setScale: (u, scaleKey) => {
@@ -19,7 +21,7 @@ export function syncXScalePlugin(): uPlot.Plugin {
         syncInProgress = true;
         let min = xScale.min ?? 0;
         let max = xScale.max ?? 0;
-        if (max - min < 100) {
+        if (minRange > 0 && max - min < minRange) {
           const mid = Math.trunc((max + min) / 2);
           min = mid - 50;
           max = mid + 50;
