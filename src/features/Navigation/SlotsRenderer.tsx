@@ -163,11 +163,7 @@ function CurrentLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
         <Flex gap="1" align="center" className={styles.currentSlotRow}>
           <SlotFlag flag={countryFlag} width="13px" />
           {currentSlot != null && (
-            <AnimatedInteger
-              value={currentSlot}
-              animationDurationMs={150}
-              height={12}
-            />
+            <AnimatedInteger value={currentSlot} height={12} />
           )}
           <SlotClient slot={firstSlot} size="small" />
         </Flex>
