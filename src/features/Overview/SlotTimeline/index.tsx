@@ -628,7 +628,7 @@ const MSlotLabel = memo(function SlotLabel({ slotBarInfo }: SlotLabelProps) {
           </Text>
         )}
       </Flex>
-      <AnimatedInteger value={slot} height={15} containerRowJustify="center" />
+      <AnimatedInteger value={slot} containerRowJustify="center" />
     </Flex>
   );
 });
