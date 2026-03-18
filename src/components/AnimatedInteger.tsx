@@ -9,7 +9,13 @@ import {
 } from "react";
 import styles from "./animatedInteger.module.css";
 import clsx from "clsx";
-import { Box, Flex, Text, type TextProps } from "@radix-ui/themes";
+import {
+  Box,
+  Flex,
+  Text,
+  type FlexProps,
+  type TextProps,
+} from "@radix-ui/themes";
 import { useUnmount } from "react-use";
 import useIsDocumentVisible from "../hooks/useIsDocumentVisible";
 
@@ -17,9 +23,10 @@ const MIN_ANIMATION_DURATION_MS = 20;
 
 interface AnimatedIntegerProps {
   value: number;
-  animationDurationMs: number;
+  animationDurationMs?: number;
   height: number;
   textSize?: TextProps["size"];
+  containerRowJustify?: FlexProps["justify"];
 }
 
 /**
@@ -63,9 +70,10 @@ function animationLegReducer(
 
 function AnimatedIntegerInner({
   value,
-  animationDurationMs,
+  animationDurationMs = 150,
   height,
   textSize,
+  containerRowJustify,
 }: AnimatedIntegerProps) {
   const [leg, setLeg] = useReducer(animationLegReducer, {
     start: value,
@@ -190,8 +198,9 @@ function AnimatedIntegerInner({
   }, [currentValidNumber, isDuringAnimation, nextState.number, target, value]);
 
   return (
-    <div
+    <Flex
       className={styles.container}
+      justify={containerRowJustify}
       style={
         {
           "--number-window-height": `${height}px`,
@@ -226,7 +235,7 @@ function AnimatedIntegerInner({
       <Text size={textSize} className={styles.selectionText}>
         {currentValidNumber}
       </Text>
-    </div>
+    </Flex>
   );
 }
 

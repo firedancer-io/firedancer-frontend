@@ -125,6 +125,7 @@ export const nonDelinquentColor = "#6F77C0";
 export const nonDelinquentChartColor = "#363A63";
 export const totalValidatorsColor = "#20788C";
 export const progressBackgroundColor = "#167B91";
+export const slotTimelineTextColor = "#b1b1b1";
 
 export const transactionNonVotePathColor = "#006851";
 export const transactionVotePathColor = "#19307C";

@@ -2,6 +2,7 @@
   border-radius: 3px;
   padding: 2px 3px;
   background-color: var(--gray-3);
+  color: var(--slot-timeline-text-color);
 
   :global(.rt-Text) {
     font-size: 12px;

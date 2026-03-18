@@ -29,10 +29,10 @@ import clsx from "clsx";
 import type { SlotBarInfo } from "./types";
 import { useGroupedSlotBars } from "./useGroupHighlightedSlots";
 import useNextSlot from "../../../hooks/useNextSlot";
-import FlashText from "../../../components/FlashText";
 import { clamp } from "lodash";
 import { showStartupProgressAtom } from "../../StartupProgress/atoms";
 import MonoText from "../../../components/MonoText";
+import AnimatedInteger from "../../../components/AnimatedInteger";
 
 const barTrackGapValue = 2;
 const barTrackGap = `${barTrackGapValue}px`;
@@ -593,12 +593,16 @@ const MSlotLabel = memo(function SlotLabel({ slotBarInfo }: SlotLabelProps) {
       direction="column"
       align="stretch"
       className={styles.slotLabelCard}
-      style={{
-        color: labelColor,
-      }}
       minWidth="50px"
     >
-      <Flex gap="5px" justify="between" align="stretch">
+      <Flex
+        gap="5px"
+        justify="between"
+        align="stretch"
+        style={{
+          color: labelColor,
+        }}
+      >
         <Text
           className={styles.slotLabelName}
           weight="bold"
@@ -624,7 +628,7 @@ const MSlotLabel = memo(function SlotLabel({ slotBarInfo }: SlotLabelProps) {
           </Text>
         )}
       </Flex>
-      <FlashText align="center" truncate dir="rtl" value={slot} />
+      <AnimatedInteger value={slot} height={15} containerRowJustify="center" />
     </Flex>
   );
 });
