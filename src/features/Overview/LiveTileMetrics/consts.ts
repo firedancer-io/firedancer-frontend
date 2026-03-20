@@ -105,7 +105,7 @@ export const metrics: MetricDefinition[] = [
   {
     name: "% Hkeep",
     description:
-      "The percentage of cpu time spent on housekeeping tasks, which are meant to be infrequent and generally more expensive than tasks on the critical path.",
+      "The percentage of CPU time spent on housekeeping tasks, which are meant to be infrequent and generally more expensive than tasks on the critical path.",
     headerColWidth: 80,
     headerColAlign: "right",
   },
