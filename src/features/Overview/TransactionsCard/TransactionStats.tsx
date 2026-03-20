@@ -22,7 +22,7 @@ export default function TransactionStats() {
           }) ?? "-"
         }
         valueColor={headerColor}
-        large
+        valueSize="medium"
       />
       <Flex gap="4" wrap="wrap">
         <CardStat
@@ -34,6 +34,7 @@ export default function TransactionStats() {
             }) ?? "-"
           }
           valueColor={nonVoteColor}
+          valueSize="small"
         />
         <CardStat
           label="Non-vote TPS Fail"
@@ -44,6 +45,7 @@ export default function TransactionStats() {
             }) ?? "-"
           }
           valueColor={failureColor}
+          valueSize="small"
         />
         <CardStat
           label="Vote TPS"
@@ -54,6 +56,7 @@ export default function TransactionStats() {
             }) ?? "-"
           }
           valueColor={votesColor}
+          valueSize="small"
           style={{ minWidth: "90px" }}
         />
       </Flex>

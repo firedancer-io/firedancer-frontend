@@ -27,14 +27,14 @@ export default function ValidatorsStatsContent() {
             label="Total Validators"
             value={peerStats.validatorCount.toString()}
             valueColor={totalValidatorsColor}
-            large
+            valueSize="medium"
           />
           <CardStat
             label="Non-delinquent Stake"
             value={activeLabel}
             valueColor={nonDelinquentColor}
             appendValue="SOL"
-            large
+            valueSize="medium"
           />
         </div>
         <div className={styles.statRow}>
@@ -42,12 +42,14 @@ export default function ValidatorsStatsContent() {
             label="RPC Nodes"
             value={peerStats.rpcCount.toString()}
             valueColor={headerColor}
+            valueSize="small"
           />
           <CardStat
             label="Delinquent Stake"
             value={delinquentLabel}
             valueColor={failureColor}
             appendValue="SOL"
+            valueSize="small"
           />
         </div>
       </Flex>

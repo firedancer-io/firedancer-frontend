@@ -1,43 +1,50 @@
 import { Flex, Text } from "@radix-ui/themes";
 import styles from "./cardStat.module.css";
-import type { CSSProperties, PropsWithChildren } from "react";
+import { useMemo, type CSSProperties, type PropsWithChildren } from "react";
+import clsx from "clsx";
+import AnimatedInteger from "./AnimatedInteger";
 
 interface CardStatProps {
   label: string;
-  value: string;
+  value: string | number;
   valueColor: string;
   appendValue?: string;
-  large?: boolean;
+  valueSize: "small" | "medium" | "large";
   style?: CSSProperties;
-  valueStyle?: CSSProperties;
+  animateInteger?: boolean;
 }
-
 export default function CardStat({
   label,
   value,
   valueColor,
   appendValue,
-  large,
+  valueSize,
   style,
-  valueStyle,
+  animateInteger = false,
   children,
 }: PropsWithChildren<CardStatProps>) {
-  const valueStyles =
-    valueStyle ??
-    (large
-      ? ({ fontSize: "28px", letterSpacing: "-1.12px" } as const)
-      : { fontSize: "18px", fontWeight: 500 });
+  const valueClassName = useMemo(() => {
+    return clsx(styles.value, {
+      [styles.small]: valueSize === "small",
+      [styles.medium]: valueSize === "medium",
+      [styles.large]: valueSize === "large",
+    });
+  }, [valueSize]);
 
   return (
-    <Flex direction="column" align="start" style={{ ...style }}>
+    <Flex
+      direction="column"
+      align="start"
+      style={{ ...style, "--value-color": valueColor } as CSSProperties}
+    >
       <Text className={styles.label}>{label}</Text>
       <Flex align="baseline" gap="1">
-        <Text
-          className={styles.value}
-          style={{ color: valueColor, ...valueStyles }}
-        >
-          {value}
-        </Text>
+        {typeof value === "number" && animateInteger ? (
+          <AnimatedInteger value={value} className={valueClassName} />
+        ) : (
+          <Text className={valueClassName}>{value}</Text>
+        )}
+
         {appendValue && (
           <Text className={styles.appendValue}>{appendValue}</Text>
         )}
