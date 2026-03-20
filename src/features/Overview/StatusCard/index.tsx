@@ -41,9 +41,10 @@ function CurrentSlotText() {
     <Box>
       <CardStat
         label="Slot"
-        value={currentSlot?.toString() ?? ""}
+        value={currentSlot ?? ""}
         valueColor={headerColor}
         valueSize="medium"
+        animateInteger
       />
     </Box>
   );
