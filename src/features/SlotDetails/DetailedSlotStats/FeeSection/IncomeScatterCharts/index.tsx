@@ -9,6 +9,8 @@ import { useMemo } from "react";
 import IncomeScatterChart from "./IncomeScatterChart.tsx";
 import type uPlot from "uplot";
 import { subsectionGapX } from "../../consts.ts";
+import { compactZeroDecimalFormatter } from "../../../../../numUtils.ts";
+import { computeUnitsColor } from "../../../../../colors.ts";
 
 function getCuChartData(transactions?: SlotTransactions | null) {
   return transactions?.txn_compute_units_consumed
@@ -109,6 +111,9 @@ export default function IncomeScatterCharts() {
           id="cuIncomeScatterChart"
           data={cuChartData}
           xLogScale
+          xLabel="CU"
+          xColor={computeUnitsColor}
+          formatX={(x) => compactZeroDecimalFormatter.format(x)}
         />
       </SlotDetailsSubSection>
       <SlotDetailsSubSection title="Arrival Time vs Income" flexGrow="1">
@@ -116,6 +121,10 @@ export default function IncomeScatterCharts() {
           id="arrivalIncomeScatterChart"
           data={arrivalChartData.chartData}
           xScaleOptions={arrivalXScaleOptions}
+          xLabel="Arrival"
+          formatX={(x) =>
+            `${Math.round(scaledToX(x, arrivalChartData.min, arrivalChartData.max)).toLocaleString()}ms`
+          }
         />
       </SlotDetailsSubSection>
     </Flex>
