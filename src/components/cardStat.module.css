@@ -7,6 +7,18 @@
 
 .value {
   line-height: normal;
+  &.small {
+    font-size: 18px;
+    font-weight: 500;
+  }
+  &.medium {
+    font-size: 28px;
+    letter-spacing: -1.12px;
+  }
+  &.large {
+    font-size: 32px;
+    line-height: 16px;
+  }
 }
 
 .append-value {

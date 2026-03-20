@@ -27,14 +27,14 @@ export default function ValidatorsStatsContent() {
             label="Total Validators"
             value={peerStats.validatorCount.toString()}
             valueColor={totalValidatorsColor}
-            large
+            valueSize="medium"
           />
           <CardStat
             label="Non-delinquent Stake"
             value={activeLabel}
             valueColor={nonDelinquentColor}
             appendValue="SOL"
-            large
+            valueSize="medium"
           />
         </div>
         <div className={styles.statRow}>

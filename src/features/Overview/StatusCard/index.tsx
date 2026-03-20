@@ -43,7 +43,7 @@ function CurrentSlotText() {
         label="Slot"
         value={currentSlot?.toString() ?? ""}
         valueColor={headerColor}
-        large
+        valueSize="medium"
       />
     </Box>
   );
@@ -59,11 +59,7 @@ function UpcomingSlotText() {
       label="Next leader slot"
       value={nextLeaderSlot?.toString() ?? "∞"}
       valueColor={nextColor}
-      valueStyle={
-        nextLeaderSlot === undefined
-          ? { fontSize: "32px", lineHeight: "16px" }
-          : undefined
-      }
+      valueSize={nextLeaderSlot === undefined ? "large" : "small"}
     />
   );
 }
@@ -79,7 +75,7 @@ function NextSlotTimeText() {
         label="Time until leader"
         value={nextSlotText}
         valueColor={headerColor}
-        large
+        valueSize="medium"
       />
       <Progress
         value={progressSinceLastLeader}

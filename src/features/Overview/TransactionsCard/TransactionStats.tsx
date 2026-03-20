@@ -22,7 +22,7 @@ export default function TransactionStats() {
           }) ?? "-"
         }
         valueColor={headerColor}
-        large
+        valueSize="medium"
       />
       <Flex gap="4" wrap="wrap">
         <CardStat
