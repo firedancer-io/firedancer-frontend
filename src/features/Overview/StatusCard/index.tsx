@@ -41,9 +41,10 @@ function CurrentSlotText() {
     <Box>
       <CardStat
         label="Slot"
-        value={currentSlot?.toString() ?? ""}
+        value={currentSlot ?? ""}
         valueColor={headerColor}
-        large
+        valueSize="medium"
+        animateInteger
       />
     </Box>
   );
@@ -59,11 +60,7 @@ function UpcomingSlotText() {
       label="Next leader slot"
       value={nextLeaderSlot?.toString() ?? "∞"}
       valueColor={nextColor}
-      valueStyle={
-        nextLeaderSlot === undefined
-          ? { fontSize: "32px", lineHeight: "16px" }
-          : undefined
-      }
+      valueSize={nextLeaderSlot === undefined ? "large" : "small"}
     />
   );
 }
@@ -79,7 +76,7 @@ function NextSlotTimeText() {
         label="Time until leader"
         value={nextSlotText}
         valueColor={headerColor}
-        large
+        valueSize="medium"
       />
       <Progress
         value={progressSinceLastLeader}
@@ -107,6 +104,7 @@ function VotingStatusText() {
       label="Vote Status"
       value={voteState ?? "Unknown"}
       valueColor={voteColor}
+      valueSize="small"
     >
       <VoteDistanceText />
     </CardStat>

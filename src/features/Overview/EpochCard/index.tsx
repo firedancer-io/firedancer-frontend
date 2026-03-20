@@ -36,7 +36,7 @@ function CurrentSlotText() {
         label="Current Epoch"
         value={epoch?.epoch?.toString() ?? ""}
         valueColor={headerColor}
-        large
+        valueSize="medium"
       />
     </Box>
   );
@@ -71,7 +71,7 @@ function NextEpochTimeText() {
         label="Time to Next Epoch"
         value={nextEpochText}
         valueColor={headerColor}
-        large
+        valueSize="medium"
       />
       <Progress
         value={progressSinceLastEpoch}
