@@ -37,7 +37,7 @@
     background-color: var(--boot-progress-incr-snapshot-background-color);
   }
 
-  &.catchup {
+  &.catching-up {
     background-color: var(--boot-progress-catchup-background-color);
   }
 }
