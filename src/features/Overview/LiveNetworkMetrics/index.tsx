@@ -1,5 +1,9 @@
 import { useAtomValue } from "jotai";
-import { liveNetworkMetricsAtom } from "../../../api/atoms";
+import {
+  liveNetworkMetricsAtom,
+  networkMetricsEmaEgressAtom,
+  networkMetricsEmaIngressAtom,
+} from "../../../api/atoms";
 import Card from "../../../components/Card";
 import { Flex, Table, Text } from "@radix-ui/themes";
 import tableStyles from "../../Gossip/table.module.css";
@@ -8,39 +12,51 @@ import {
   networkMaxByteValues,
   networkProtocols,
   type NetworkMetricsCardType,
-  type NetworkMetricsTableRowLabel,
 } from "./consts";
 import { formatBytesAsBits } from "../../../utils";
 import { Bars } from "../../StartupProgress/Firedancer/Bars";
 import TileSparkLine from "../SlotPerformance/TileSparkLine";
 import { headerGap } from "../../Gossip/consts";
-import type { CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
 import styles from "./liveNetworkMetrics.module.css";
 import { sum } from "lodash";
 import { tileChartDarkBackground } from "../../../colors";
 import { clientAtom } from "../../../atoms";
 import { ClientEnum } from "../../../api/entities";
+import type { ValuesWithHistory } from "../../../api/worker/types";
 
 const chartHeight = 18;
 
 export default function LiveNetworkMetrics() {
   const liveNetworkMetrics = useAtomValue(liveNetworkMetricsAtom);
+  const ingressEma = useAtomValue(networkMetricsEmaIngressAtom);
+  const egressEma = useAtomValue(networkMetricsEmaEgressAtom);
+
   if (!liveNetworkMetrics) return;
 
   return (
     <Flex wrap="wrap" gap="4">
-      <NetworkMetricsCard metrics={liveNetworkMetrics.ingress} type="Ingress" />
-      <NetworkMetricsCard metrics={liveNetworkMetrics.egress} type="Egress" />
+      <NetworkMetricsCard
+        metrics={liveNetworkMetrics.ingress}
+        ema={ingressEma}
+        type="Ingress"
+      />
+      <NetworkMetricsCard
+        metrics={liveNetworkMetrics.egress}
+        ema={egressEma}
+        type="Egress"
+      />
     </Flex>
   );
 }
 
 interface NetworkMetricsCardProps {
   metrics: number[];
+  ema: ValuesWithHistory;
   type: NetworkMetricsCardType;
 }
 
-function NetworkMetricsCard({ metrics, type }: NetworkMetricsCardProps) {
+function NetworkMetricsCard({ metrics, ema, type }: NetworkMetricsCardProps) {
   const client = useAtomValue(clientAtom);
 
   return (
@@ -94,12 +110,23 @@ function NetworkMetricsCard({ metrics, type }: NetworkMetricsCardProps) {
               ) {
                 return;
               }
-              return <TableRow key={i} type={type} value={value} idx={i} />;
+              return (
+                <TableRow
+                  key={i}
+                  label={protocol}
+                  value={value}
+                  maxValue={networkMaxByteValues[type][protocol]}
+                  history={ema.history}
+                  mapValue={(values) => values[i] ?? 0}
+                />
+              );
             })}
             <TableRow
-              type={type}
-              value={sum(metrics)}
               label="Total"
+              value={sum(metrics)}
+              maxValue={networkMaxByteValues[type]["Total"]}
+              history={ema.history}
+              mapValue={sum}
               className={styles.totalRow}
             />
           </Table.Body>
@@ -109,11 +136,19 @@ function NetworkMetricsCard({ metrics, type }: NetworkMetricsCardProps) {
   );
 }
 
+const defaultMaxValue = 100_000_000;
+
+function toUtilization(value: number, maxValue: number) {
+  return Math.min(1, value / maxValue);
+}
+
 interface TableRowProps {
-  type: NetworkMetricsCardType;
+  label: string;
   value: number;
-  idx?: number;
-  label?: NetworkMetricsTableRowLabel;
+  maxValue?: number;
+  history: { ts: number; values: number[] }[];
+  mapValue: (values: number[]) => number;
+  className?: string;
 }
 
 const emaOptions = {
@@ -121,20 +156,29 @@ const emaOptions = {
 };
 
 function TableRow({
-  type,
-  value,
-  idx,
   label,
-  ...props
-}: TableRowProps & Table.RootProps) {
+  value,
+  maxValue = defaultMaxValue,
+  history,
+  mapValue,
+  className,
+}: TableRowProps) {
   const emaValue = useEmaValue(value, emaOptions);
   const formattedValue = formatBytesAsBits(emaValue);
-  const rowLabel = label ?? networkProtocols[idx ?? -1];
-  const maxValue = networkMaxByteValues[type][rowLabel] ?? 100_000_000;
+  const utilization = toUtilization(emaValue, maxValue);
+
+  const initialHistory = useMemo(
+    () =>
+      history.map((h) => ({
+        ts: h.ts,
+        value: toUtilization(mapValue(h.values), maxValue),
+      })),
+    [history, mapValue, maxValue],
+  );
 
   return (
-    <Table.Row {...props}>
-      <Table.RowHeaderCell>{rowLabel}</Table.RowHeaderCell>
+    <Table.Row className={className}>
+      <Table.RowHeaderCell>{label}</Table.RowHeaderCell>
       <Table.Cell align="right">
         {formattedValue.value} {formattedValue.unit}
       </Table.Cell>
@@ -145,7 +189,8 @@ function TableRow({
       </Table.Cell>
       <Table.Cell className={styles.chart}>
         <TileSparkLine
-          value={Math.min(1, emaValue / maxValue)}
+          value={utilization}
+          initialValues={initialHistory}
           background={tileChartDarkBackground}
           windowMs={60_000}
           height={chartHeight}

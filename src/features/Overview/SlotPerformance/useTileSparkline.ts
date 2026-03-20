@@ -1,5 +1,5 @@
 import { mean } from "lodash";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useInterval } from "react-use";
 import { createClock } from "../../../clockUtils";
 
@@ -100,6 +100,7 @@ function setDataWindow(
 interface UseScaledDataPointsProps {
   value?: number;
   queryBusy?: number[];
+  initialValues?: { ts: number; value: number }[];
   windowMs: number;
   height: number;
   width: number;
@@ -111,6 +112,7 @@ interface UseScaledDataPointsProps {
 export function useScaledDataPoints({
   value,
   queryBusy,
+  initialValues,
   windowMs: _windowMs,
   height,
   width: _width,
@@ -138,12 +140,24 @@ export function useScaledDataPoints({
     };
   }, [_width, _windowMs, queryBusy, tickMs]);
 
-  const busyDataRef = useRef([
+  const busyDataRef = useRef<PointSample[]>([
     { value: undefined, ts: performance.now() - windowMs },
     { value: undefined, ts: performance.now() },
   ]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
+    if (!initialValues?.length) return;
+
+    const now = performance.now();
+    const newestTs = initialValues[initialValues.length - 1].ts;
+
+    busyDataRef.current = initialValues.map(({ ts, value }) => ({
+      value: value,
+      ts: now - (newestTs - ts),
+    }));
+  }, [initialValues]);
+
+  useEffect(() => {
     if (stopShifting || queryBusy?.length) return;
 
     setDataWindow(busyDataRef.current, windowMs, value);
