@@ -19,6 +19,8 @@ import { BarsStats } from "./BarsStats";
 import { ShredsChartLegend } from "../../../Overview/ShredsProgression/ShredsChartLegend";
 import { completedSlotAtom } from "../../../../api/atoms";
 import { useMemo } from "react";
+import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
+import { clamp } from "lodash";
 
 export default function CatchingUp() {
   const setContainerEl = useSetAtom(catchingUpContainerElAtom);
@@ -29,7 +31,7 @@ export default function CatchingUp() {
   const latestTurbineSlot = useAtomValue(latestTurbineSlotAtom);
   const latestReplaySlot = useAtomValue(completedSlotAtom);
 
-  const phaseCompletePct = useMemo(() => {
+  const phaseCompleteFraction = useMemo(() => {
     if (
       startSlot == null ||
       latestTurbineSlot == null ||
@@ -42,13 +44,19 @@ export default function CatchingUp() {
     if (!totalSlotsToReplay) return 0;
 
     const replayedSlots = latestReplaySlot - startSlot + 1;
-    return (100 * replayedSlots) / totalSlotsToReplay;
+    return clamp(replayedSlots / totalSlotsToReplay, 0, 1);
   }, [latestReplaySlot, latestTurbineSlot, startSlot]);
+
+  const overallCompleteFraction = useOverallCompleteFraction(
+    phaseCompleteFraction,
+  );
+
   return (
     <>
       <PhaseHeader
         phase="catching_up"
-        phaseCompletePct={phaseCompletePct}
+        phaseCompleteFraction={phaseCompleteFraction}
+        overallCompleteFraction={overallCompleteFraction}
         remainingSeconds={catchingUpRatesRef.current.remainingSeconds}
       />
       <Flex

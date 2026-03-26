@@ -11,7 +11,7 @@
     border-bottom-right-radius: 10px;
   }
 
-  .current-step {
+  .current {
     height: 40px;
     border-width: 1px;
     border-style: solid;
@@ -28,5 +28,57 @@
 
   div {
     height: 25px;
+  }
+
+  .gossip {
+    background: var(--progress-bar-incomplete-gossip-color);
+    &.complete {
+      background: var(--progress-bar-complete-gossip-color);
+    }
+    &.current {
+      border-color: var(--progress-bar-in-progress-gossip-border);
+      .progressing-bar {
+        background: var(--progress-bar-in-progress-gossip-background);
+      }
+    }
+  }
+
+  .full-snapshot {
+    background: var(--progress-bar-incomplete-full-snapshot-color);
+    &.complete {
+      background: var(--progress-bar-complete-full-snapshot-color);
+    }
+    &.current {
+      border-color: var(--progress-bar-in-progress-full-snapshot-border);
+      .progressing-bar {
+        background: var(--progress-bar-in-progress-full-snapshot-background);
+      }
+    }
+  }
+
+  .incr-snapshot {
+    background: var(--progress-bar-incomplete-inc-snapshot-color);
+    &.complete {
+      background: var(--progress-bar-complete-inc-snapshot-color);
+    }
+    &.current {
+      border-color: var(--progress-bar-in-progress-inc-snapshot-border);
+      .progressing-bar {
+        background: var(--progress-bar-in-progress-inc-snapshot-background);
+      }
+    }
+  }
+
+  .catching-up {
+    background: var(--progress-bar-incomplete-catchup-color);
+    &.complete {
+      background: var(--progress-bar-complete-catchup-color);
+    }
+    &.current {
+      border-color: var(--progress-bar-in-progress-catchup-border);
+      .progressing-bar {
+        background: var(--progress-bar-in-progress-catchup-background);
+      }
+    }
   }
 }

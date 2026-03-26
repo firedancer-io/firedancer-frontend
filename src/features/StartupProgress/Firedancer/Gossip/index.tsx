@@ -11,13 +11,18 @@ import { lamportsPerSol } from "../../../../consts";
 import { compactZeroDecimalFormatter } from "../../../../numUtils";
 import { peersCountAtom } from "../../../../atoms";
 import { useEmaValue } from "../../../../hooks/useEma";
+import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
 
 const MAX_THROUGHPUT_BYTES = 1_8750_000; // 150Mbit
 const TOTAL_PEERS_COUNT = 5_000;
 
 export default function Gossip() {
   const peersCount = useAtomValue(peersCountAtom);
-  const phaseCompletePct = (peersCount / TOTAL_PEERS_COUNT) * 100;
+  const phaseCompleteFraction = Math.min(peersCount / TOTAL_PEERS_COUNT, 1);
+  const overallCompleteFraction = useOverallCompleteFraction(
+    phaseCompleteFraction,
+  );
+
   const peersCountRate = useEmaValue(peersCount);
   const remainingSeconds =
     peersCountRate === 0 ? undefined : TOTAL_PEERS_COUNT / peersCountRate;
@@ -42,7 +47,8 @@ export default function Gossip() {
     <>
       <PhaseHeader
         phase="joining_gossip"
-        phaseCompletePct={phaseCompletePct}
+        phaseCompleteFraction={phaseCompleteFraction}
+        overallCompleteFraction={overallCompleteFraction}
         remainingSeconds={remainingSeconds}
       />
 
