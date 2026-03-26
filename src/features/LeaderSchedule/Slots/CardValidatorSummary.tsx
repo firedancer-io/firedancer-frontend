@@ -6,7 +6,6 @@ import {
   getFmtStake,
   isDefined,
   removePortFromIp,
-  isAgave,
 } from "../../../utils";
 import { useAtomValue } from "jotai";
 import PeerIcon from "../../../components/PeerIcon";
@@ -213,21 +212,22 @@ function ValidatorText({
       </Text>
     );
 
-  if (isAgave(client)) {
-    const secondaryClient = client.split(" ")?.[1];
-    if (secondaryClient) {
-      return (
-        <Text {...textProps}>
-          <Text wrap="nowrap">
-            <Text className={styles.agave}>Agave </Text>
-            <Text className={styles[secondaryClient.toLowerCase()]}>
-              {secondaryClient}
-            </Text>
-          </Text>
-          {versionText && <Text className={styles.agave}>{versionText}</Text>}
+  const splitClient = client.split(" ");
+  const primaryClient = splitClient[0];
+  const secondaryClient = splitClient[1];
+
+  if (secondaryClient) {
+    const primaryClassName = styles[primaryClient.toLowerCase()];
+    const secondaryClassName = styles[secondaryClient.toLowerCase()];
+    return (
+      <Text {...textProps}>
+        <Text wrap="nowrap">
+          <Text className={primaryClassName}>{primaryClient}</Text>
+          <Text className={secondaryClassName}> {secondaryClient}</Text>
         </Text>
-      );
-    }
+        {versionText && <Text className={primaryClassName}>{versionText}</Text>}
+      </Text>
+    );
   }
 
   return (

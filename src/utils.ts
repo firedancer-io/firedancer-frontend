@@ -10,7 +10,7 @@ import type {
   TileType,
 } from "./api/types";
 import { ClientEnum } from "./api/entities";
-import { ClientName, lamportsPerSol, slotsPerLeader } from "./consts";
+import { lamportsPerSol, slotsPerLeader } from "./consts";
 import {
   clusterMainnetBetaColor,
   clusterTestnetColor,
@@ -388,16 +388,6 @@ export const getCountryFlagEmoji = memoize(
 export function roundToDPR(x: number) {
   const dpr = window.devicePixelRatio || 1;
   return Math.round(x * dpr) / dpr;
-}
-
-export function isAgave(client: ClientName) {
-  return (
-    client === ClientName.Agave ||
-    client === ClientName.AgaveJito ||
-    client === ClientName.AgavePaladin ||
-    client === ClientName.AgaveBam ||
-    client === ClientName.AgaveRakurai
-  );
 }
 
 const baseFormatOptions: Intl.DateTimeFormatOptions = {
