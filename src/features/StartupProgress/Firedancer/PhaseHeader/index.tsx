@@ -3,14 +3,21 @@ import { useEffect, useMemo, useState } from "react";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { ProgressBar } from "./ProgressBar";
 import { getDurationText, getTimeTillText } from "../../../../utils";
-
-import { steps } from "../consts";
 import type { BootPhase } from "../../../../api/types";
 
 import { useUptimeDuration } from "../../../../hooks/useUptime";
 import { Duration } from "luxon";
-import { clamp } from "lodash";
 import { useThrottledCallback } from "use-debounce";
+import { clamp } from "lodash";
+import { BootPhaseEnum } from "../../../../api/entities";
+
+const phaseNames: Record<BootPhase, string> = {
+  [BootPhaseEnum.joining_gossip]: "Joining Gossip",
+  [BootPhaseEnum.loading_full_snapshot]: "Loading Full Snapshot",
+  [BootPhaseEnum.loading_incremental_snapshot]: "Loading Incremental Snapshot",
+  [BootPhaseEnum.catching_up]: "Catching Up",
+  [BootPhaseEnum.running]: "Running",
+};
 
 function TotalDuration() {
   const uptimeDuration = useUptimeDuration(1_000);
@@ -24,20 +31,21 @@ function TotalDuration() {
 
 interface PhaseHeaderProps {
   phase: BootPhase;
-  phaseCompletePct: number;
+  phaseCompleteFraction: number;
+  overallCompleteFraction: number;
   remainingSeconds?: number;
 }
 export default function PhaseHeader({
   phase,
-  phaseCompletePct,
+  phaseCompleteFraction,
+  overallCompleteFraction,
   remainingSeconds,
 }: PhaseHeaderProps) {
   const [remaining, setRemaining] = useState<number>();
+
   const setRemainingThrottled = useThrottledCallback((value?: number) => {
     const updatedRemaining =
-      remainingSeconds == null
-        ? undefined
-        : Math.max(Math.round(remainingSeconds), 0);
+      value == null ? undefined : Math.max(Math.round(value), 0);
     setRemaining(updatedRemaining);
   }, 1_000);
 
@@ -56,39 +64,21 @@ export default function PhaseHeader({
     );
   }, [remaining]);
 
-  const step = steps[phase];
-
-  const prevPhasesPctSum = useMemo(() => {
-    return (
-      Object.values(steps).reduce((acc, { index, estimatedPct }) => {
-        if (index < step.index) {
-          acc += estimatedPct;
-        }
-        return acc;
-      }, 0) * 100
-    );
-  }, [step]);
-
-  const overallPct =
-    prevPhasesPctSum +
-    Math.round(step.estimatedPct * clamp(phaseCompletePct, 0, 100));
+  const overallCompletePct = clamp(
+    Math.round(overallCompleteFraction * 100),
+    0,
+    100,
+  );
 
   return (
-    <Box flexShrink="0">
-      <Flex
-        justify="between"
-        mt="7"
-        mb="2"
-        gapX="8px"
-        wrap="wrap"
-        className={styles.stepContainer}
-      >
+    <Box flexShrink="0" className={styles.phaseHeaderContainer}>
+      <Flex justify="between" mt="7" mb="2" gapX="8px" wrap="wrap">
         <span className={styles.noWrap}>
           <Text className={styles.secondaryText}>Elapsed </Text>
           <TotalDuration />
         </span>
         <span>
-          <Text className={styles.stepName}>{step.name}... </Text>
+          <Text className={styles.phaseName}>{phaseNames[phase]}... </Text>
           {formattedRemaining && (
             <span className={styles.noWrap}>
               <Text className={styles.secondaryText}>Remaining </Text>
@@ -100,11 +90,11 @@ export default function PhaseHeader({
         </span>
         <span className={styles.noWrap}>
           <Text className={styles.secondaryText}>Complete </Text>
-          <Text>{overallPct}%</Text>
+          <Text>{overallCompletePct}%</Text>
         </span>
       </Flex>
 
-      <ProgressBar stepIndex={step.index} phaseCompletePct={phaseCompletePct} />
+      <ProgressBar phaseCompleteFraction={phaseCompleteFraction} />
     </Box>
   );
 }

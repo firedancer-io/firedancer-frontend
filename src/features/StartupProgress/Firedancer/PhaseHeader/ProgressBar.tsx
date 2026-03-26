@@ -1,69 +1,61 @@
 import { Flex } from "@radix-ui/themes";
 import styles from "./progressBar.module.css";
 import { BootPhaseEnum } from "../../../../api/entities";
-import { steps } from "../consts";
+import { useAtomValue } from "jotai";
+import {
+  bootProgressCompletedPhasesAtom,
+  bootProgressPhaseAtom,
+  bootProgressPhasesAtom,
+} from "../../atoms";
+import { clamp } from "lodash";
+import clsx from "clsx";
+import type { BootPhase } from "../../../../api/types";
+
+const classNames: { [phase in BootPhase]?: string } = {
+  [BootPhaseEnum.joining_gossip]: styles.gossip,
+  [BootPhaseEnum.loading_full_snapshot]: styles.fullSnapshot,
+  [BootPhaseEnum.loading_incremental_snapshot]: styles.incrSnapshot,
+  [BootPhaseEnum.catching_up]: styles.catchingUp,
+};
 
 interface ProgressBarProps {
-  stepIndex: number;
-  phaseCompletePct: number;
+  phaseCompleteFraction: number;
 }
 
-export function ProgressBar({ stepIndex, phaseCompletePct }: ProgressBarProps) {
+export function ProgressBar({ phaseCompleteFraction }: ProgressBarProps) {
+  const currentPhase = useAtomValue(bootProgressPhaseAtom);
+  const phases = useAtomValue(bootProgressPhasesAtom);
+  const completedPhases = useAtomValue(bootProgressCompletedPhasesAtom);
+
   return (
     <Flex className={styles.progressBar}>
-      {Object.entries(steps).map(
-        (
-          [
-            phase,
-            {
-              name,
-              estimatedPct,
-              completeColor,
-              inProgressBackground,
-              incompleteColor,
-              borderColor,
-            },
-          ],
-          i,
-        ) => {
-          if (phase === BootPhaseEnum.running) return;
+      {phases.map(({ phase, barWidthFraction }) => {
+        if (phase === BootPhaseEnum.running) return;
 
-          const width = `${estimatedPct * 100}%`;
+        const isCurrent = phase === currentPhase;
 
-          if (i === stepIndex) {
-            return (
+        const width = `${barWidthFraction * 100}%`;
+
+        return (
+          <div
+            key={phase}
+            className={clsx(classNames[phase], {
+              [styles.current]: isCurrent,
+              [styles.complete]: completedPhases.has(phase),
+            })}
+            style={{ width }}
+          >
+            {isCurrent && (
               <div
-                className={styles.currentStep}
-                key={name}
+                className={styles.progressingBar}
                 style={{
-                  width,
-                  background: incompleteColor,
-                  borderColor,
+                  transform: `scaleX(${clamp(phaseCompleteFraction, 0, 1)})`,
                 }}
-              >
-                <div
-                  className={styles.progressingBar}
-                  style={{
-                    transform: `scaleX(${phaseCompletePct / 100})`,
-                    background: inProgressBackground,
-                  }}
-                />
-              </div>
-            );
-          }
-
-          const isComplete = i < stepIndex;
-          return (
-            <div
-              key={name}
-              style={{
-                width,
-                backgroundColor: isComplete ? completeColor : incompleteColor,
-              }}
-            />
-          );
-        },
-      )}
+              />
+            )}
+          </div>
+        );
+      })}
     </Flex>
   );
 }

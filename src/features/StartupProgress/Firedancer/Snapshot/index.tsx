@@ -13,6 +13,7 @@ import { SnapshotInsertingCard } from "./SnapshotInsertingCard";
 import PhaseHeader from "../PhaseHeader";
 import { useEffect } from "react";
 import { useEma } from "../../../../hooks/useEma";
+import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
 
 const rowGap = "5";
 const columnGap = "26px";
@@ -129,11 +130,15 @@ export default function Snapshot() {
             decompressedInputThroughput,
         );
 
-  const phaseCompletePct = Math.min(
+  const phaseCompleteFraction = Math.min(
     totalCompressedBytes && insertCompressedBytes
-      ? (insertCompressedBytes / totalCompressedBytes) * 100
+      ? insertCompressedBytes / totalCompressedBytes
       : 0,
-    100,
+    1,
+  );
+
+  const overallCompleteFraction = useOverallCompleteFraction(
+    phaseCompleteFraction,
   );
 
   if (!bootProgress || !snapshotValues) return;
@@ -142,7 +147,8 @@ export default function Snapshot() {
     <>
       <PhaseHeader
         phase={bootProgress.phase}
-        phaseCompletePct={phaseCompletePct}
+        phaseCompleteFraction={phaseCompleteFraction}
+        overallCompleteFraction={overallCompleteFraction}
         remainingSeconds={remainingSeconds}
       />
       <Flex
