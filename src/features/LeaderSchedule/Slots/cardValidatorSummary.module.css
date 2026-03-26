@@ -87,6 +87,10 @@
   color: transparent;
 }
 
+.harmonic {
+  color: var(--summary-harmonic-text-color);
+}
+
 .container-mobile {
   padding: 0 6px;
 }

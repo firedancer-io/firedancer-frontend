@@ -4,8 +4,11 @@ import AnzaJitoLogo from "../assets/anza_jito_circle_logo.svg";
 import AnzaBamLogo from "../assets/anza_jitobam_circle_logo.svg";
 import AnzaPaladinLogo from "../assets/anza_paladin_circle_logo.svg";
 import AnzaRakuraiLogo from "../assets/anza_rakurai_circle_logo.svg";
+import AnzaHarmonicLogo from "../assets/anza_harmonic_circle_logo.svg";
 import FiredancerLogo from "../assets/firedancer_circle_logo.svg";
+import FiredancerHarmonicLogo from "../assets/firedancer_harmonic_circle_logo.svg";
 import FrankendancerLogo from "../assets/frankendancer_circle_logo.svg";
+import FrankendancerHarmonicLogo from "../assets/frankendancer_harmonic_circle_logo.svg";
 import { memo } from "react";
 import styles from "./slotClient.module.css";
 import clsx from "clsx";
@@ -41,6 +44,18 @@ const ClientImgs: Record<ClientName, { src: string; alt: string } | null> = {
     alt: "Anza Rakurai Logo",
   },
   [ClientName.Sig]: null,
+  [ClientName.FiredancerHarmonic]: {
+    src: FiredancerHarmonicLogo,
+    alt: "Firedancer Harmonic Logo",
+  },
+  [ClientName.AgaveHarmonic]: {
+    src: AnzaHarmonicLogo,
+    alt: "Anza Harmonic Logo",
+  },
+  [ClientName.FrankendancerHarmonic]: {
+    src: FrankendancerHarmonicLogo,
+    alt: "Frankendancer Harmonic Logo",
+  },
 };
 
 export default memo(function SlotClient({
