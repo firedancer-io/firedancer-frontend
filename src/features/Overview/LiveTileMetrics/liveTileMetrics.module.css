@@ -49,6 +49,13 @@
   position: sticky;
   top: 0;
   background: rgb(19, 23, 32);
+
+  th {
+    vertical-align: bottom;
+    &.wrap {
+      white-space: normal;
+    }
+  }
 }
 
 .table {

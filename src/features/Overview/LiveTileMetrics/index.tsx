@@ -69,6 +69,9 @@ const MLiveMetricTable = memo(function LiveMetricsTable() {
             <Table.ColumnHeaderCell
               key={metric.name}
               align={metric.headerColAlign}
+              className={clsx({
+                [styles.wrap]: !!metric.wrap,
+              })}
             >
               {metric.name}
             </Table.ColumnHeaderCell>
@@ -109,6 +112,15 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
       });
     },
   );
+
+  const prevSchedTimers = usePreviousDistinct(
+    liveTileMetrics.sched_timers[idx],
+  );
+  const schedTimers =
+    liveTileMetrics.sched_timers[idx] || prevSchedTimers || [];
+
+  const [schedWaitPct, schedIdlePct, schedUserPct, schedSystemPct] =
+    schedTimers.map((v) => (v === -1 ? 0 : v));
 
   const alive =
     liveTileMetrics.alive[idx] ?? prevLiveTileMetricsIdx?.alive[idx];
@@ -215,6 +227,10 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
           } as CSSProperties
         }
       />
+      <PctCell pct={schedWaitPct} />
+      <PctCell pct={schedUserPct} />
+      <PctCell pct={schedSystemPct} />
+      <PctCell pct={schedIdlePct} />
     </Table.Row>
   );
 }
@@ -238,13 +254,13 @@ function IncrementText({ value }: IncrementTextProps) {
 }
 
 interface PctCellProps {
-  pct: number;
+  pct: number | undefined;
 }
 
 function PctCell({ pct, ...props }: PctCellProps & CellProps) {
   return (
     <Table.Cell align="right" {...props}>
-      {pct.toFixed(2)}%
+      {pct == null ? "--" : `${pct.toFixed(2)}%`}
     </Table.Cell>
   );
 }

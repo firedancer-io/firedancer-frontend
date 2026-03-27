@@ -28,6 +28,7 @@ interface MetricDefinition {
   description: string;
   headerColWidth: number;
   headerColAlign?: Table.ColumnHeaderCellProps["align"];
+  wrap?: boolean;
 }
 
 export const metrics: MetricDefinition[] = [
@@ -129,5 +130,35 @@ export const metrics: MetricDefinition[] = [
       "The percentage of CPU time spent performing useful work, excluding housekeeping and backpressured time.",
     headerColWidth: 80,
     headerColAlign: "right",
+  },
+  {
+    name: "% Wait (scheduler)",
+    description:
+      "The percentage of CPU time spent waiting in the runqueue before being dispatched.",
+    headerColWidth: 80,
+    headerColAlign: "right",
+    wrap: true,
+  },
+  {
+    name: "% User (scheduler)",
+    description: "The percentage of CPU time spent executing in user mode.",
+    headerColWidth: 80,
+    headerColAlign: "right",
+    wrap: true,
+  },
+  {
+    name: "% System (scheduler)",
+    description: "The percentage of CPU time spent executing in kernel mode.",
+    headerColWidth: 80,
+    headerColAlign: "right",
+    wrap: true,
+  },
+  {
+    name: "% Idle (scheduler)",
+    description:
+      "The percentage of CPU time unaccounted for by the other 3 regimes.",
+    headerColWidth: 80,
+    headerColAlign: "right",
+    wrap: true,
   },
 ];

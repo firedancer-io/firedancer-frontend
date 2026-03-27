@@ -223,6 +223,7 @@ export const liveTilePrimaryMetricSchema = z.object({
 
 export const tileMetricsSchema = z.object({
   timers: z.array(z.array(z.number()).nullable()),
+  sched_timers: z.array(z.array(z.number()).nullable()),
   in_backp: z.array(z.boolean().nullable()),
   backp_msgs: z.array(z.number().nullable()),
   alive: z.array(z.number().nullable()),
