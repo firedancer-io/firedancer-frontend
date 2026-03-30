@@ -1,0 +1,89 @@
+.secondary-color {
+  color: var(--supermajority-secondary-color);
+}
+
+.card {
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+@property --progress-pct {
+  syntax: "<percentage>";
+  initial-value: 0%;
+  inherits: false;
+}
+
+.pie-chart-title {
+  white-space: nowrap;
+  font-size: 28px;
+  color: var(--boot-progress-primary-text-color);
+}
+
+.pie-chart {
+  transition: --progress-pct 0.2s linear;
+  --progress-pct: 0%;
+  background:
+    conic-gradient(
+      transparent 0 var(--progress-pct),
+      #231f1f var(--progress-pct) 100%
+    ),
+    conic-gradient(#4d4d4d 0, #8b2e11 80%, #231f1f 80% 100%);
+  border-radius: 50%;
+
+  .threshold-marker {
+    transform: rotate(108deg);
+    transform-origin: center top;
+
+    .marker-line {
+      border-left: 1px solid #4c4c4c;
+    }
+
+    .marker-icon {
+      height: 11px;
+      width: 12px;
+    }
+  }
+
+  .pie-chart-content {
+    background: #120602;
+    border-radius: 50%;
+
+    font-size: 18px;
+    color: #cac4c4;
+
+    .lg {
+      font-size: 36px;
+    }
+
+    .eighty {
+      color: var(--progress-bar-in-progress-supermajority-border);
+    }
+  }
+}
+
+.details-card {
+  color: var(--table-body-color);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  row-gap: 10px;
+  min-width: 0;
+  max-width: 400px;
+
+  .label {
+    color: var(--table-header-color);
+  }
+
+  .copy-button {
+    color: var(--table-body-color);
+    text-align: start;
+  }
+
+  .snapshot-source {
+    color: var(--blue-8);
+    font-size: 12px;
+    word-break: break-all;
+  }
+}

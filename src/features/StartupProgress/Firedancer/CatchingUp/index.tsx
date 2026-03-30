@@ -54,14 +54,12 @@ export default function CatchingUp() {
   return (
     <>
       <PhaseHeader
-        phase="catching_up"
         phaseCompleteFraction={phaseCompleteFraction}
         overallCompleteFraction={overallCompleteFraction}
         remainingSeconds={catchingUpRatesRef.current.remainingSeconds}
       />
       <Flex
         direction="column"
-        height="100%"
         mt="8px"
         gap="8px"
         className={bodyStyles.startupContentIndentation}

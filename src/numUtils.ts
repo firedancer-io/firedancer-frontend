@@ -113,3 +113,14 @@ export const compactSingleDecimalFormatter = Intl.NumberFormat(undefined, {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 });
+
+export function formatFrequency(n: number) {
+  switch (n) {
+    case 1:
+      return "Once";
+    case 2:
+      return "Twice";
+    default:
+      return `${n} times`;
+  }
+}

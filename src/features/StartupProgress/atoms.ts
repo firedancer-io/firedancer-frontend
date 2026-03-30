@@ -23,35 +23,70 @@ export const bootProgressPhaseDetailsAtom = atom((get) => {
   return phases.find(({ phase }) => phase === currentPhase);
 });
 
-export const bootProgressPhasesAtom = atom((_get) => {
-  // TODO: update phases after supermajority check is added
-  const phases: PhaseDetails[] = [
-    {
-      phase: BootPhaseEnum.joining_gossip,
-      barWidthFraction: 0.1,
-      completionFraction: 0.1,
-    },
-    {
-      phase: BootPhaseEnum.loading_full_snapshot,
-      barWidthFraction: 0.6,
-      completionFraction: 0.6,
-    },
-    {
-      phase: BootPhaseEnum.loading_incremental_snapshot,
-      barWidthFraction: 0.05,
-      completionFraction: 0.05,
-    },
-    {
-      phase: BootPhaseEnum.catching_up,
-      barWidthFraction: 0.25,
-      completionFraction: 0.25,
-    },
-    {
-      phase: BootPhaseEnum.running,
-      barWidthFraction: 0,
-      completionFraction: 0,
-    },
-  ];
+export const bootProgressHasSupermajorityPhaseAtom = atom((get) => {
+  const bootProgress = get(bootProgressAtom);
+  return (
+    !!bootProgress?.wait_for_supermajority_bank_hash &&
+    !!bootProgress?.wait_for_supermajority_shred_version
+  );
+});
+
+export const bootProgressPhasesAtom = atom((get) => {
+  const phases: PhaseDetails[] = get(bootProgressHasSupermajorityPhaseAtom)
+    ? [
+        {
+          phase: BootPhaseEnum.joining_gossip,
+          barWidthFraction: 0.1,
+          completionFraction: 0.18,
+        },
+        {
+          phase: BootPhaseEnum.loading_full_snapshot,
+          barWidthFraction: 0.6,
+          completionFraction: 0.68,
+        },
+        {
+          phase: BootPhaseEnum.loading_incremental_snapshot,
+          barWidthFraction: 0.05,
+          completionFraction: 0.13,
+        },
+        {
+          phase: BootPhaseEnum.waiting_for_supermajority,
+          barWidthFraction: 0.25,
+          completionFraction: 0.01,
+        },
+        {
+          phase: BootPhaseEnum.running,
+          barWidthFraction: 0,
+          completionFraction: 0,
+        },
+      ]
+    : [
+        {
+          phase: BootPhaseEnum.joining_gossip,
+          barWidthFraction: 0.1,
+          completionFraction: 0.1,
+        },
+        {
+          phase: BootPhaseEnum.loading_full_snapshot,
+          barWidthFraction: 0.6,
+          completionFraction: 0.6,
+        },
+        {
+          phase: BootPhaseEnum.loading_incremental_snapshot,
+          barWidthFraction: 0.05,
+          completionFraction: 0.05,
+        },
+        {
+          phase: BootPhaseEnum.catching_up,
+          barWidthFraction: 0.25,
+          completionFraction: 0.25,
+        },
+        {
+          phase: BootPhaseEnum.running,
+          barWidthFraction: 0,
+          completionFraction: 0,
+        },
+      ];
 
   return phases;
 });
