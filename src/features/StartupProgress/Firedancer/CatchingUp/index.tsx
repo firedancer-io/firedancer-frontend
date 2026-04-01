@@ -5,7 +5,6 @@ import BarsLabels from "./BarsLabels";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   catchingUpContainerElAtom,
-  catchingUpStartSlotAtom,
   hasCatchingUpDataAtom,
   latestTurbineSlotAtom,
 } from "./atoms";
@@ -21,13 +20,14 @@ import { completedSlotAtom } from "../../../../api/atoms";
 import { useMemo } from "react";
 import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
 import { clamp } from "lodash";
+import { snapshotSlotAtom } from "../../atoms";
 
 export default function CatchingUp() {
   const setContainerEl = useSetAtom(catchingUpContainerElAtom);
   const hasCatchingUpData = useAtomValue(hasCatchingUpDataAtom);
   const catchingUpRatesRef = useEstimateTotalSlots();
 
-  const startSlot = useAtomValue(catchingUpStartSlotAtom);
+  const startSlot = useAtomValue(snapshotSlotAtom);
   const latestTurbineSlot = useAtomValue(latestTurbineSlotAtom);
   const latestReplaySlot = useAtomValue(completedSlotAtom);
 

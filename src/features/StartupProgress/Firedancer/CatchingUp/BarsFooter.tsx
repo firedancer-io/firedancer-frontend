@@ -2,10 +2,10 @@ import { Flex, Text } from "@radix-ui/themes";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import styles from "./catchingUp.module.css";
-import { catchingUpStartSlotAtom } from "./atoms";
+import { snapshotSlotAtom } from "../../atoms";
 
 export function BarsFooter() {
-  const startSlot = useAtomValue(catchingUpStartSlotAtom);
+  const startSlot = useAtomValue(snapshotSlotAtom);
   if (!startSlot) return;
 
   return (

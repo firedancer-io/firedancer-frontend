@@ -1,15 +1,16 @@
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
 import styles from "./catchingUp.module.css";
-import { catchingUpStartSlotAtom, latestTurbineSlotAtom } from "./atoms";
+import { latestTurbineSlotAtom } from "./atoms";
 import { completedSlotAtom } from "../../../../api/atoms";
 import type { CatchingUpRates } from "./useCatchingUpRates";
+import { snapshotSlotAtom } from "../../atoms";
 
 interface CatchingUpBarsProps {
   catchingUpRates: CatchingUpRates;
 }
 export function BarsStats({ catchingUpRates }: CatchingUpBarsProps) {
-  const startSlot = useAtomValue(catchingUpStartSlotAtom);
+  const startSlot = useAtomValue(snapshotSlotAtom);
   const latestTurbineSlot = useAtomValue(latestTurbineSlotAtom);
   const latestReplaySlot = useAtomValue(completedSlotAtom);
 

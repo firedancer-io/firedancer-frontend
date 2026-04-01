@@ -2,8 +2,9 @@ import { useAtomValue } from "jotai";
 import { useRef, useEffect } from "react";
 import { useInterval } from "react-use";
 import { completedSlotAtom } from "../../../../api/atoms";
-import { catchingUpStartSlotAtom, latestTurbineSlotAtom } from "./atoms";
+import { latestTurbineSlotAtom } from "./atoms";
 import { useEmaValue } from "../../../../hooks/useEma";
+import { snapshotSlotAtom } from "../../atoms";
 
 export interface CatchingUpRates {
   targetTotalSlotsEstimate?: number;
@@ -17,7 +18,7 @@ export interface CatchingUpRates {
  */
 export default function useCatchingUpRates() {
   const catchingUpRatesRef = useRef<CatchingUpRates>({});
-  const startSlot = useAtomValue(catchingUpStartSlotAtom);
+  const startSlot = useAtomValue(snapshotSlotAtom);
   const latestTurbineSlot = useAtomValue(latestTurbineSlotAtom);
   const latestReplaySlot = useAtomValue(completedSlotAtom);
 

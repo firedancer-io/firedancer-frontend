@@ -18,7 +18,7 @@ const phaseNames: Record<BootPhase, string> = {
   [BootPhaseEnum.loading_full_snapshot]: "Loading Full Snapshot",
   [BootPhaseEnum.loading_incremental_snapshot]: "Loading Incremental Snapshot",
   [BootPhaseEnum.catching_up]: "Catching Up",
-  [BootPhaseEnum.waiting_for_supermajority]: "Waiting for Supermajority.",
+  [BootPhaseEnum.waiting_for_supermajority]: "Waiting for Supermajority",
   [BootPhaseEnum.running]: "Running",
 };
 

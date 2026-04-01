@@ -5,9 +5,12 @@ import { useAtomValue } from "jotai";
 import { bootProgressAtom } from "../../../../api/atoms";
 import { formatFrequency } from "../../../../numUtils";
 import CopyButton from "../../../../components/CopyButton";
+import { snapshotSlotAtom } from "../../atoms";
 
 export default function SupermajorityDetailsCard() {
   const bootProgress = useAtomValue(bootProgressAtom);
+  const slot = useAtomValue(snapshotSlotAtom);
+
   if (!bootProgress) return null;
 
   const attempt = bootProgress.wait_for_supermajority_attempt;
@@ -18,7 +21,10 @@ export default function SupermajorityDetailsCard() {
   return (
     <Card className={clsx(styles.card, styles.detailsCard)}>
       <Flex align="center" justify="between">
-        <LabelValue label="Slot" value="275919495" />
+        <LabelValue
+          label="Slot"
+          value={slot == null ? undefined : slot.toString()}
+        />
         <LabelValue
           label="Shred Version"
           value={bootProgress.wait_for_supermajority_shred_version}
@@ -66,7 +72,7 @@ function LabelValue({
           className={styles.copyButton}
           value={value}
           color="white"
-          size="10px"
+          size="12px"
           hideIconUntilHover
         >
           <Text className={valueClassName} truncate={!wrap}>

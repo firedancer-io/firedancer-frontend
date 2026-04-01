@@ -1,7 +1,6 @@
 import { atom } from "jotai";
-import { bootProgressAtom } from "../../../../api/atoms";
 import { atomWithImmer } from "jotai-immer";
-import { showStartupProgressAtom } from "../../atoms";
+import { showStartupProgressAtom, snapshotSlotAtom } from "../../atoms";
 
 export const catchingUpContainerElAtom = atom<HTMLDivElement | null>(null);
 
@@ -14,17 +13,8 @@ export interface CatchingUpData {
   latestReplaySlot: number | undefined;
 }
 
-export const catchingUpStartSlotAtom = atom<number | null | undefined>(
-  (get) => {
-    return (
-      get(bootProgressAtom)?.loading_incremental_snapshot_slot ??
-      get(bootProgressAtom)?.loading_full_snapshot_slot
-    );
-  },
-);
-
 export const hasCatchingUpDataAtom = atom((get) => {
-  const startSlot = get(catchingUpStartSlotAtom);
+  const startSlot = get(snapshotSlotAtom);
   const turbineSlots = get(turbineSlotsAtom);
   return startSlot != null && !!turbineSlots.size;
 });

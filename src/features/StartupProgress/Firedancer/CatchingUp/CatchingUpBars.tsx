@@ -2,7 +2,6 @@ import { useRef, useMemo, useCallback, useEffect } from "react";
 import UplotReact from "../../../../uplotReact/UplotReact";
 import type { CatchingUpData } from "./atoms";
 import {
-  catchingUpStartSlotAtom,
   firstTurbineSlotAtom,
   latestTurbineSlotAtom,
   repairSlotsAtom,
@@ -15,6 +14,7 @@ import { useThrottledCallback } from "use-debounce";
 import { completedSlotAtom } from "../../../../api/atoms";
 import { useMeasure } from "react-use";
 import type { CatchingUpRates } from "./useCatchingUpRates";
+import { snapshotSlotAtom } from "../../atoms";
 
 const emptyChartData: uPlot.AlignedData = [[0], [null]];
 
@@ -23,7 +23,7 @@ interface CatchingUpBarsProps {
 }
 export function CatchingUpBars({ catchingUpRatesRef }: CatchingUpBarsProps) {
   const [measureRef, measureRect] = useMeasure<HTMLDivElement>();
-  const startSlot = useAtomValue(catchingUpStartSlotAtom);
+  const startSlot = useAtomValue(snapshotSlotAtom);
   const repairSlots = useAtomValue(repairSlotsAtom);
   const turbineSlots = useAtomValue(turbineSlotsAtom);
   const firstTurbineSlot = useAtomValue(firstTurbineSlotAtom);

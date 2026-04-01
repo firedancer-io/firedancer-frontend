@@ -138,3 +138,10 @@ export const isStartupProgressVisibleAtom = atom((get) => {
   }
   return true;
 });
+
+export const snapshotSlotAtom = atom<number | null | undefined>((get) => {
+  return (
+    get(bootProgressAtom)?.loading_incremental_snapshot_slot ??
+    get(bootProgressAtom)?.loading_full_snapshot_slot
+  );
+});

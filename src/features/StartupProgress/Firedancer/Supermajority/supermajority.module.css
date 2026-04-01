@@ -79,6 +79,7 @@
   .copy-button {
     color: var(--table-body-color);
     text-align: start;
+    font-size: 14px;
   }
 
   .snapshot-source {
