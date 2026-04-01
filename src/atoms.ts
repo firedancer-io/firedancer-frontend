@@ -728,6 +728,7 @@ export const [
   addLateVoteSlotAtom,
   deleteLateVoteSlotAtom,
   clearLateVoteSlotsAtom,
+  setLateVoteHistoryAtom,
 ] = (function getLateVoteSlotsAtom() {
   const _lateVotesMapAtom = atomWithImmer(new Map<number, number | null>());
   return [
@@ -784,5 +785,20 @@ export const [
         slotsToClear.forEach((slot) => draft.delete(slot));
       });
     }),
+
+    atom(
+      null,
+      (_get, set, value: { slot: number[]; latency: (number | null)[] }) => {
+        const newLateVotesMap = new Map<number, number | null>();
+        let latencyIdx = 0;
+        for (let i = 0; i < value.slot.length; i += 2) {
+          for (let slot = value.slot[i]; slot <= value.slot[i + 1]; slot++) {
+            newLateVotesMap.set(slot, value.latency[latencyIdx]);
+            latencyIdx++;
+          }
+        }
+        set(_lateVotesMapAtom, newLateVotesMap);
+      },
+    ),
   ];
 })();

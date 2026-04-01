@@ -64,6 +64,7 @@ import {
   deleteLateVoteSlotAtom,
   addLateVoteSlotAtom,
   clearLateVoteSlotsAtom,
+  setLateVoteHistoryAtom,
   deletePreviousEpochsAtom,
 } from "../atoms";
 import type {
@@ -237,6 +238,7 @@ export function useSetAtomWsData() {
   const addLateVoteSlots = useSetAtom(addLateVoteSlotAtom);
   const deleteLateVoteSlot = useSetAtom(deleteLateVoteSlotAtom);
   const clearLateVoteSlots = useSetAtom(clearLateVoteSlotsAtom);
+  const setLateVoteHistory = useSetAtom(setLateVoteHistoryAtom);
 
   const handleSlotUpdate = (value: SlotResponse) => {
     setSlotStatus(value.publish.slot, value.publish.level);
@@ -538,18 +540,7 @@ export function useSetAtomWsData() {
             break;
           }
           case "late_votes_history": {
-            clearLateVoteSlots();
-            let latencyIdx = 0;
-            for (let i = 0; i < value.slot.length; i += 2) {
-              for (
-                let slot = value.slot[i];
-                slot <= value.slot[i + 1];
-                slot++
-              ) {
-                addLateVoteSlots(slot, value.latency[latencyIdx]);
-                latencyIdx++;
-              }
-            }
+            setLateVoteHistory(value);
             break;
           }
         }
