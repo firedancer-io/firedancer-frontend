@@ -13,6 +13,7 @@ const scheduleOutcomes = [
   "fail_taken",
   "fail_fast_path",
   "fail_byte_limit",
+  "fail_alloc_limit",
   "fail_write_cost",
   "fail_slow_path",
   "fail_defer_skip",
