@@ -45,6 +45,7 @@ import {
   peersSchema,
   slotSchema,
   summarySchema,
+  supermajoritySchema,
   topicSchema,
 } from "./entities";
 import type { z } from "zod";
@@ -65,6 +66,8 @@ import {
   addLateVoteSlotAtom,
   clearLateVoteSlotsAtom,
   deletePreviousEpochsAtom,
+  updateSupermajorityOnlinePeersAtom,
+  supermajorityEpochAtom,
 } from "../atoms";
 import type {
   EstimatedSlotDuration,
@@ -190,6 +193,8 @@ export function useSetAtomWsData() {
 
   const setBootProgress = useSetAtom(bootProgressAtom);
   const setStartupProgress = useSetAtom(startupProgressAtom);
+
+  const setSupermajorityEpoch = useSetAtom(supermajorityEpochAtom);
 
   const setTpsHistory = useSetAtom(tpsHistoryAtom);
 
@@ -337,6 +342,43 @@ export function useSetAtomWsData() {
 
     dbFlushBuffer();
   };
+
+  const updateSupermajorityOnlinePeers = useSetAtom(
+    updateSupermajorityOnlinePeersAtom,
+  );
+  const supermajorityPeersBuffers = useRef({
+    toAdd: new Set<string>(),
+    toRemove: new Set<string>(),
+  });
+
+  const addToSupermajorityPeersBuffers = (isAdd: boolean, peers: string[]) => {
+    if (isAdd) {
+      for (const peer of peers) {
+        supermajorityPeersBuffers.current.toAdd.add(peer);
+        supermajorityPeersBuffers.current.toRemove.delete(peer);
+      }
+    } else {
+      for (const peer of peers) {
+        supermajorityPeersBuffers.current.toAdd.delete(peer);
+        supermajorityPeersBuffers.current.toRemove.add(peer);
+      }
+    }
+
+    dbFlushSupermajorityPeersBuffers();
+  };
+
+  const dbFlushSupermajorityPeersBuffers = useDebouncedCallback(
+    () => {
+      updateSupermajorityOnlinePeers(
+        [...supermajorityPeersBuffers.current.toAdd],
+        [...supermajorityPeersBuffers.current.toRemove],
+      );
+      supermajorityPeersBuffers.current.toAdd.clear();
+      supermajorityPeersBuffers.current.toRemove.clear();
+    },
+    1_000,
+    { maxWait: 1_000 },
+  );
 
   useServerMessages((msg) => {
     try {
@@ -558,6 +600,22 @@ export function useSetAtomWsData() {
         switch (key) {
           case "update": {
             setBlockEngine(value);
+            break;
+          }
+        }
+      } else if (topic === "wait_for_supermajority") {
+        const { key, value } = supermajoritySchema.parse(msg);
+        switch (key) {
+          case "stakes": {
+            setSupermajorityEpoch(value);
+            break;
+          }
+          case "peer_add": {
+            addToSupermajorityPeersBuffers(true, value);
+            break;
+          }
+          case "peer_remove": {
+            addToSupermajorityPeersBuffers(false, value);
             break;
           }
         }
