@@ -27,7 +27,7 @@ import {
 } from "../StartupProgress/atoms";
 import { Cross1Icon, InfoCircledIcon, TimerIcon } from "@radix-ui/react-icons";
 import { bootProgressContainerElAtom } from "../../atoms";
-import { useCallback, useMemo, type CSSProperties } from "react";
+import { useCallback } from "react";
 import PopoverDropdown from "../../components/PopoverDropdown";
 import HealthPane from "./HealthPane";
 
@@ -45,26 +45,15 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
   const useExtraNarrowGap = !showNav && isXNarrow;
   const extraNarrowGap = "3px";
 
-  const containerStyle: CSSProperties = useMemo(() => {
-    const style = {
-      top: 0,
-      backgroundColor: "var(--color-background)",
-      zIndex: maxZIndex,
-    } satisfies CSSProperties;
-
-    if (isStartup) {
-      return {
-        "--color-background": "transparent",
-        "--slot-nav-background-color": "transparent",
-        ...style,
-      };
-    }
-
-    return style;
-  }, [isStartup]);
-
   return (
-    <div className="sticky" style={containerStyle}>
+    <div
+      className="sticky"
+      style={{
+        top: 0,
+        backgroundColor: "var(--color-background)",
+        zIndex: maxZIndex,
+      }}
+    >
       <CluserIndicator />
 
       <Box px="2" className="app-width-container">

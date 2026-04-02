@@ -12,6 +12,8 @@
   z-index: 20;
 
   background-color: var(--startup-background-color);
+  --color-background: var(--startup-background-color);
+  --slot-nav-background-color: var(--startup-background-color);
 
   transform-origin: var(--transform-origin);
   transition:
@@ -26,19 +28,23 @@
   }
 
   &.gossip {
-    background-color: var(--boot-progress-gossip-background-color);
+    --startup-background-color: var(--boot-progress-gossip-background-color);
   }
 
   &.full-snapshot {
-    background-color: var(--boot-progress-full-snapshot-background-color);
+    --startup-background-color: var(
+      --boot-progress-full-snapshot-background-color
+    );
   }
 
   &.incr-snapshot {
-    background-color: var(--boot-progress-incr-snapshot-background-color);
+    --startup-background-color: var(
+      --boot-progress-incr-snapshot-background-color
+    );
   }
 
   &.catching-up {
-    background-color: var(--boot-progress-catchup-background-color);
+    --startup-background-color: var(--boot-progress-catchup-background-color);
   }
 }
 
