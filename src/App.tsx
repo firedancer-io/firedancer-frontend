@@ -31,10 +31,8 @@ const store = getDefaultStore();
 const client = store.get(clientAtom);
 if (client === ClientEnum.Firedancer) {
   document.getElementById("favicon")?.setAttribute("href", FiredancerLogo);
-  document.title = "Firedancer";
 } else {
   document.getElementById("favicon")?.setAttribute("href", FrankendancerLogo);
-  document.title = "Frankendancer";
 }
 
 export default function App() {
