@@ -15,21 +15,19 @@ export default function SupermajorityPieChart(
   props: SupermajorityPieChartProps,
 ) {
   return (
-    <Flex direction="column" align="center" justify="center" gapY="10px">
+    <Flex width="100%" direction="column" align="center" gapY="10px">
       <Text className={styles.pieChartTitle}>Stake Online</Text>
-      <PieChartSvg {...props} />
+      <Flex flexGrow="1" justify="center" width="100%">
+        <PieChart {...props} />
+      </Flex>
     </Flex>
   );
 }
 
 /**
- * Scalable SVG with correct size ratio of elements
+ * Pie chart that grows to fill container
  */
-function PieChartSvg({ stakeFraction }: SupermajorityPieChartProps) {
-  // make sure the marker doesn't get clipped
-  const leftBuffer = 5;
-  const unscaledSize = 412;
-
+function PieChart({ stakeFraction }: SupermajorityPieChartProps) {
   const bootProgress = useAtomValue(bootProgressAtom);
 
   const totalStake = useMemo(
@@ -44,98 +42,81 @@ function PieChartSvg({ stakeFraction }: SupermajorityPieChartProps) {
   if (!bootProgress) return null;
 
   return (
-    <svg
-      height="100%"
+    <Flex
+      maxHeight="100%"
       width="100%"
-      viewBox={`0 0 ${unscaledSize + leftBuffer} ${unscaledSize + leftBuffer}`}
-      xmlns="http://www.w3.org/2000/svg"
+      maxWidth="412px"
+      position="relative"
+      align="center"
+      justify="center"
+      className={styles.pieChart}
+      style={
+        {
+          "--progress-pct": `${Math.round(clamp(stakeFraction, 0, 1) * 100)}%`,
+        } as CSSProperties
+      }
     >
-      <foreignObject
-        x="0"
-        y="0"
-        width={unscaledSize + leftBuffer}
-        height={unscaledSize + leftBuffer}
+      <Flex
+        direction="column"
+        position="absolute"
+        height="50%"
+        width="0px"
+        bottom="0"
+        left="50%"
+        align="center"
+        className={styles.thresholdMarker}
+        gap="1px"
       >
-        <Flex
-          position="relative"
-          height={`${unscaledSize}px`}
-          width={`${unscaledSize}px`}
-          ml={`${leftBuffer}px`}
-          align="center"
-          justify="center"
-          className={styles.pieChart}
-          style={
-            {
-              "--progress-pct": `${Math.round(clamp(stakeFraction, 0, 1) * 100)}%`,
-            } as CSSProperties
-          }
-        >
-          <Flex
-            direction="column"
-            position="absolute"
-            height="50%"
-            width="0px"
-            bottom="0"
-            left="50%"
-            align="center"
-            className={styles.thresholdMarker}
-            gap="1px"
-          >
-            <Box className={styles.markerLine} height="100%" flexShrink="0" />
-            <img
-              className={styles.markerIcon}
-              src={supermajorityPointerIcon}
-              alt="80% supermajority pointer"
-            />
-          </Flex>
+        <Box className={styles.markerLine} height="100%" flexShrink="0" />
+        <img
+          className={styles.markerIcon}
+          src={supermajorityPointerIcon}
+          alt="80% supermajority pointer"
+        />
+      </Flex>
 
-          <Flex
-            direction="column"
-            position="relative"
-            height="70%"
-            width="70%"
-            align="center"
-            justify="center"
-            gapY="12px"
-            className={styles.pieChartContent}
-          >
-            <Text>
-              <Text weight="bold" className={styles.lg}>
-                {(stakeFraction * 100).toFixed(2)}
-              </Text>
-              <Text weight="bold" className={styles.secondaryColor}>
-                {" %"}
-              </Text>
-              <Text className={styles.lg}> / </Text>
-              <Text weight="bold" className={clsx(styles.lg, styles.eighty)}>
-                80
-              </Text>
-              <Text weight="bold" color="bronze">
-                {" %"}
-              </Text>
-            </Text>
+      <Flex
+        direction="column"
+        position="relative"
+        height="70%"
+        width="70%"
+        align="center"
+        justify="center"
+        gapY="4%"
+        className={styles.pieChartContent}
+      >
+        <Text>
+          <Text weight="bold" className={styles.lg}>
+            {(stakeFraction * 100).toFixed(2)}
+          </Text>
+          <Text weight="bold" className={styles.secondaryColor}>
+            {" %"}
+          </Text>
+          <Text className={styles.lg}> / </Text>
+          <Text weight="bold" className={clsx(styles.lg, styles.eighty)}>
+            80
+          </Text>
+          <Text weight="bold" color="bronze">
+            {" %"}
+          </Text>
+        </Text>
 
-            <Text>
-              {connectedStake?.formatted ?? "--"}
-              {connectedStake?.suffix && (
-                <Text className={styles.secondaryColor}>
-                  {" "}
-                  {connectedStake?.suffix}
-                </Text>
-              )}
-              {" / "}
-              <Text>{totalStake?.formatted ?? "--"}</Text>
-              {totalStake?.suffix && (
-                <Text className={styles.secondaryColor}>
-                  {" "}
-                  {totalStake?.suffix}
-                </Text>
-              )}
+        <Text>
+          {connectedStake?.formatted ?? "--"}
+          {connectedStake?.suffix && (
+            <Text className={styles.secondaryColor}>
+              {" "}
+              {connectedStake?.suffix}
             </Text>
-          </Flex>
-        </Flex>
-      </foreignObject>
-    </svg>
+          )}
+          {" / "}
+          <Text>{totalStake?.formatted ?? "--"}</Text>
+          {totalStake?.suffix && (
+            <Text className={styles.secondaryColor}> {totalStake?.suffix}</Text>
+          )}
+        </Text>
+      </Flex>
+    </Flex>
   );
 }
 

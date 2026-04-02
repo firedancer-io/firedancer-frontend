@@ -22,6 +22,8 @@
 }
 
 .pie-chart {
+  container-type: inline-size;
+  aspect-ratio: 1/1;
   transition: --progress-pct 0.2s linear;
   --progress-pct: 0%;
   background:
@@ -41,8 +43,8 @@
     }
 
     .marker-icon {
-      height: 11px;
-      width: 12px;
+      height: 5%;
+      aspect-ratio: 1/1;
     }
   }
 
@@ -50,11 +52,11 @@
     background: #120602;
     border-radius: 50%;
 
-    font-size: 18px;
+    font-size: 4.5cqi;
     color: #cac4c4;
 
     .lg {
-      font-size: 36px;
+      font-size: 9cqi;
     }
 
     .eighty {

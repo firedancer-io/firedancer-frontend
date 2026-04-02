@@ -9,7 +9,7 @@ import { clamp } from "lodash";
 import { bootProgressAtom } from "../../../../api/atoms";
 
 export default function Supermajority() {
-  // pin to sum of previous phases
+  // for supermajority phase, always show just the sum of the completed phases as a pct
   const overallCompleteFraction = useOverallCompleteFraction(0);
   const bootProgress = useAtomValue(bootProgressAtom);
 
@@ -37,8 +37,8 @@ export default function Supermajority() {
         mt="36px"
         direction="column"
         align="center"
-        justify="center"
         gapY="67px"
+        flexGrow="1"
         className={bodyStyles.startupContentIndentation}
       >
         <SupermajorityPieChart stakeFraction={stakeFraction} />

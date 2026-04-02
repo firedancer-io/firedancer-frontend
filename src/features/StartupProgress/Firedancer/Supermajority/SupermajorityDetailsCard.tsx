@@ -21,10 +21,7 @@ export default function SupermajorityDetailsCard() {
   return (
     <Card className={clsx(styles.card, styles.detailsCard)}>
       <Flex align="center" justify="between">
-        <LabelValue
-          label="Slot"
-          value={slot == null ? undefined : slot.toString()}
-        />
+        <LabelValue label="Slot" value={slot?.toString()} />
         <LabelValue
           label="Shred Version"
           value={bootProgress.wait_for_supermajority_shred_version}
@@ -67,23 +64,17 @@ function LabelValue({
   return (
     <Flex direction="column">
       <Text className={styles.label}>{label}</Text>
-      {allowCopy && value ? (
-        <CopyButton
-          className={styles.copyButton}
-          value={value}
-          color="white"
-          size="12px"
-          hideIconUntilHover
-        >
-          <Text className={valueClassName} truncate={!wrap}>
-            {value}
-          </Text>
-        </CopyButton>
-      ) : (
+      <CopyButton
+        className={styles.copyButton}
+        value={allowCopy && value ? value : undefined}
+        color="white"
+        size="12px"
+        hideIconUntilHover
+      >
         <Text className={valueClassName} truncate={!wrap}>
           {value ?? "--"}
         </Text>
-      )}
+      </CopyButton>
     </Flex>
   );
 }
