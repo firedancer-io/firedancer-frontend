@@ -2,6 +2,7 @@ import {
   useCallback,
   useLayoutEffect,
   useMemo,
+  memo,
   useReducer,
   useRef,
   useState,
@@ -19,6 +20,7 @@ import {
 } from "@radix-ui/themes";
 import { useUnmount } from "react-use";
 import useIsDocumentVisible from "../hooks/useIsDocumentVisible";
+import useIsVisible from "../hooks/useIsVisible";
 
 const MIN_ANIMATION_DURATION_MS = 20;
 const WINDOW_HEIGHT_CSS_VAR = "--number-window-height";
@@ -40,6 +42,8 @@ interface AnimatedIntegerProps {
  */
 export default function AnimatedInteger(props: AnimatedIntegerProps) {
   const isDocumentVisible = useIsDocumentVisible();
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const isInViewport = useIsVisible(containerRef);
 
   const measureHeightRef = useRef<ElementRef<typeof Text>>(null);
   const [measuredHeight, setMeasuredHeight] = useState<number>();
@@ -59,16 +63,31 @@ export default function AnimatedInteger(props: AnimatedIntegerProps) {
   // re-mount when visible again, so there's no need to catch up
   if (!isDocumentVisible) return null;
 
-  // measure height before paint
-  if (height == null) {
+  // render static text when off-screen to skip animations
+  if (!isInViewport) {
     return (
-      <Text ref={measureHeightRef} size={props.textSize}>
-        {props.value}
-      </Text>
+      <span ref={containerRef}>
+        <Text size={props.textSize}>{props.value}</Text>
+      </span>
     );
   }
 
-  return <AnimatedIntegerInner {...props} height={height} />;
+  // measure height before paint
+  if (height == null) {
+    return (
+      <span ref={containerRef}>
+        <Text ref={measureHeightRef} size={props.textSize}>
+          {props.value}
+        </Text>
+      </span>
+    );
+  }
+
+  return (
+    <span ref={containerRef}>
+      <AnimatedIntegerInner {...props} height={height} />
+    </span>
+  );
 }
 
 type Direction = "incr" | "decr";
@@ -291,7 +310,7 @@ interface DigitSliderProps {
  * NOTE: Parent should update current and next digits only during animation gaps,
  *   to prevent the digits from changing during animation.
  */
-function DigitSlider({
+const DigitSlider = memo(function DigitSlider({
   idxFromBack,
   currentDigit,
   nextDigit,
@@ -385,7 +404,7 @@ function DigitSlider({
       </Flex>
     </Box>
   );
-}
+});
 
 interface DigitProps {
   digit: number | null;
@@ -396,7 +415,7 @@ interface DigitProps {
  * Use null for a leading 0. Hide on null, but have the component ready
  * in the slider for animation to other values.
  */
-function Digit({ digit, textSize }: DigitProps) {
+const Digit = memo(function Digit({ digit, textSize }: DigitProps) {
   return (
     <Text
       size={textSize}
@@ -407,7 +426,7 @@ function Digit({ digit, textSize }: DigitProps) {
       {digit}
     </Text>
   );
-}
+});
 
 /**
  * Given an integer return an array of its digits. Ignore negative sign.

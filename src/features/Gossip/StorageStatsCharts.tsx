@@ -1,4 +1,5 @@
 import { useMemo, useRef } from "react";
+import useIsVisible from "../../hooks/useIsVisible";
 import {
   gridColumns,
   gridGap,
@@ -25,6 +26,8 @@ interface StorageStatsChartsProps {
 export default function StorageStatsCharts({
   storage,
 }: StorageStatsChartsProps) {
+  const visibilityRef = useRef<HTMLDivElement>(null);
+  const isVisible = useIsVisible(visibilityRef);
   const data = useMemo(() => {
     if (!storage?.count) return;
 
@@ -54,6 +57,7 @@ export default function StorageStatsCharts({
     });
   }, [storage.expired_count]);
   useHarmonicIntervalFn(() => {
+    if (!isVisible) return;
     const now = performance.now();
     while (
       expiredBuffer.current.length > 1 &&
@@ -66,9 +70,9 @@ export default function StorageStatsCharts({
   const expiredLastMin =
     storage.expired_count - (expiredBuffer.current[0]?.value ?? 0);
 
-  if (!data) return;
+  if (!data) return <div ref={visibilityRef} />;
   return (
-    <Flex direction="column" gap={headerGap}>
+    <Flex ref={visibilityRef} direction="column" gap={headerGap}>
       <Text className={styles.headerText}>Storage Stats</Text>
       <Flex gap={statsCardPieChartGap} wrap="wrap">
         <Grid

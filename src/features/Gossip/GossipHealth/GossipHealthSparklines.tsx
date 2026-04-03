@@ -3,6 +3,7 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import { useHarmonicIntervalFn } from "react-use";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { isDefined } from "../../../utils";
+import useIsVisible from "../../../hooks/useIsVisible";
 
 const updateInterval = 150;
 const timeFrame = 30_000;
@@ -20,6 +21,8 @@ export default function GossipHealthSparklines({
   colors,
   maxValue,
 }: GossipHealthSparklinesProps) {
+  const visibilityRef = useRef<HTMLDivElement>(null);
+  const isVisible = useIsVisible(visibilityRef);
   const sizeRefs = useRef<{ height: number; width: number }>();
   // [xIdx][seriesIdx]
   const [chartData, setChartData] = useState<(number | undefined)[][]>([]);
@@ -39,6 +42,7 @@ export default function GossipHealthSparklines({
   }, [seriesCount]);
 
   useHarmonicIntervalFn(() => {
+    if (!isVisible) return;
     if (!hasInitRef.current && values.every((value) => !value)) {
       return;
     }
@@ -96,7 +100,7 @@ export default function GossipHealthSparklines({
   }, [chartData]);
 
   return (
-    <Box flexGrow="1" minHeight="80px">
+    <Box ref={visibilityRef} flexGrow="1" minHeight="80px">
       <AutoSizer>
         {({ height, width }) => {
           sizeRefs.current = { height, width };

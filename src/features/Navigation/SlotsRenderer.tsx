@@ -1,4 +1,5 @@
 import { atom, useAtomValue } from "jotai";
+import { atomFamily } from "jotai/utils";
 import {
   currentLeaderSlotAtom,
   currentSlotAtom,
@@ -42,54 +43,59 @@ export default function SlotsRenderer(props: { leaderSlotForGroup: number }) {
   return <MSlotsRenderer {...props}></MSlotsRenderer>;
 }
 
-const getStatusAtom = atom((get) => {
-  const currentLeaderSlot = get(currentLeaderSlotAtom);
-  const firstProcessedSlot = get(firstProcessedSlotAtom);
-  const leaderSlots = get(leaderSlotsAtom);
+type SlotGroupStatus =
+  | "current"
+  | "yourNext"
+  | "future"
+  | "processed"
+  | "past"
+  | undefined;
 
-  if (
-    !leaderSlots ||
-    currentLeaderSlot === undefined ||
-    firstProcessedSlot === undefined
-  )
-    return;
+const slotStatusAtomFamily = atomFamily((slot: number) =>
+  atom<SlotGroupStatus>((get) => {
+    const currentLeaderSlot = get(currentLeaderSlotAtom);
+    const firstProcessedSlot = get(firstProcessedSlotAtom);
+    const leaderSlots = get(leaderSlotsAtom);
 
-  const nextLeaderSlot = get(nextLeaderSlotAtom);
+    if (
+      !leaderSlots ||
+      currentLeaderSlot === undefined ||
+      firstProcessedSlot === undefined
+    )
+      return undefined;
 
-  return function getStatus(slot: number) {
-    return {
-      isCurrentSlotGroup:
-        currentLeaderSlot <= slot && slot < currentLeaderSlot + slotsPerLeader,
-      isFutureSlotGroup: currentLeaderSlot + slotsPerLeader <= slot,
-      isProcessedSlotGroup:
-        firstProcessedSlot <= slot && slot <= currentLeaderSlot,
-      isYourNextLeaderGroup:
-        nextLeaderSlot &&
-        nextLeaderSlot <= slot &&
-        slot < nextLeaderSlot + slotsPerLeader,
-    };
-  };
-});
+    const nextLeaderSlot = get(nextLeaderSlotAtom);
+
+    if (currentLeaderSlot <= slot && slot < currentLeaderSlot + slotsPerLeader)
+      return "current";
+    if (
+      nextLeaderSlot &&
+      nextLeaderSlot <= slot &&
+      slot < nextLeaderSlot + slotsPerLeader
+    )
+      return "yourNext";
+    if (currentLeaderSlot + slotsPerLeader <= slot) return "future";
+    if (firstProcessedSlot <= slot && slot <= currentLeaderSlot)
+      return "processed";
+    return "past";
+  }),
+);
 
 const MSlotsRenderer = memo(function SlotsRenderer({
   leaderSlotForGroup,
 }: {
   leaderSlotForGroup: number;
 }) {
-  const getStatus = useAtomValue(getStatusAtom);
-  const status = getStatus?.(leaderSlotForGroup);
+  const status = useAtomValue(slotStatusAtomFamily(leaderSlotForGroup));
   if (!status) return <div className={styles.placeholder} />;
-
-  const { isFutureSlotGroup, isCurrentSlotGroup, isYourNextLeaderGroup } =
-    status;
 
   return (
     <div className={styles.slotGroupContainer}>
-      {isCurrentSlotGroup ? (
+      {status === "current" ? (
         <CurrentLeaderSlotGroup firstSlot={leaderSlotForGroup} />
-      ) : isYourNextLeaderGroup ? (
+      ) : status === "yourNext" ? (
         <YourNextLeaderSlotGroup firstSlot={leaderSlotForGroup} />
-      ) : isFutureSlotGroup ? (
+      ) : status === "future" ? (
         <FutureSlotGroup firstSlot={leaderSlotForGroup} />
       ) : (
         <PastSlotGroup firstSlot={leaderSlotForGroup} />
@@ -176,14 +182,12 @@ function CurrentLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
 
 function PastSlotGroup({ firstSlot }: SlotGroupProps) {
   const { isLeader: isYou } = useSlotInfo(firstSlot);
-  const getStatus = useAtomValue(getStatusAtom);
-  const status = getStatus?.(firstSlot);
+  const status = useAtomValue(slotStatusAtomFamily(firstSlot));
   const hasSkipped = useIsLeaderGroupSkipped(firstSlot);
 
   if (!status) return;
-  const { isProcessedSlotGroup } = status;
 
-  return isYou && isProcessedSlotGroup ? (
+  return isYou && status === "processed" ? (
     <YourProcessedSlotGroup firstSlot={firstSlot} />
   ) : (
     <Flex

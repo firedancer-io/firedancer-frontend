@@ -5,6 +5,8 @@ interface UseEmaOptions {
   halfLifeMs?: number;
   /** How many cumulative value changes need to happen before first initializing ema */
   initMinSamples?: number;
+  /** Skip force-update timer (e.g. when off-screen) */
+  paused?: boolean;
 }
 
 const defaultUseEmaOptions = {
@@ -17,7 +19,7 @@ export function useEma(
   cumulativeValue: number | null | undefined,
   _options?: UseEmaOptions,
 ) {
-  const { forceUpdateIntervalMs, halfLifeMs, initMinSamples } = {
+  const { forceUpdateIntervalMs, halfLifeMs, initMinSamples, paused } = {
     ...defaultUseEmaOptions,
     ..._options,
   };
@@ -120,23 +122,22 @@ export function useEma(
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
+  // Process new cumulative values as they arrive
   useEffect(() => {
-    if (timeoutRef.current !== undefined) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = undefined;
-    }
-
     tick(cumulativeValue);
+  }, [tick, cumulativeValue]);
 
-    if (forceUpdateIntervalMs !== undefined) {
-      function loop() {
-        timeoutRef.current = setTimeout(() => {
-          tick();
-          loop();
-        }, forceUpdateIntervalMs);
-      }
-      loop();
+  // Maintain a separate decay timer that doesn't restart on every value change
+  useEffect(() => {
+    if (forceUpdateIntervalMs === undefined || paused) return;
+
+    function loop() {
+      timeoutRef.current = setTimeout(() => {
+        tick();
+        loop();
+      }, forceUpdateIntervalMs);
     }
+    loop();
 
     return () => {
       if (timeoutRef.current !== undefined) {
@@ -144,7 +145,7 @@ export function useEma(
         timeoutRef.current = undefined;
       }
     };
-  }, [forceUpdateIntervalMs, tick, cumulativeValue]);
+  }, [forceUpdateIntervalMs, paused, tick]);
 
   return { ema, reset };
 }

@@ -109,7 +109,7 @@ import { xRangeMs } from "../features/Overview/ShredsProgression/const";
 import { showStartupProgressAtom } from "../features/StartupProgress/atoms";
 import { socketStateAtom } from "./ws/atoms";
 import { SocketState } from "./ws/types";
-import { useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 
 export function useSetAtomWsData() {
   const setVersion = useSetAtom(versionAtom);
@@ -306,16 +306,22 @@ export function useSetAtomWsData() {
   const peersBuffer = useRef(new Map<string, Peer>());
   const removePeersBuffer = useRef(new Map<string, PeerRemove>());
 
-  const dbFlushBuffer = useDebouncedCallback(
-    () => {
-      updatePeers([...peersBuffer.current.values()]);
-      removePeers([...removePeersBuffer.current.values()]);
-      peersBuffer.current.clear();
-      removePeersBuffer.current.clear();
-    },
-    1_000,
-    { maxWait: 1_000 },
-  );
+  const flushPeersBuffer = useCallback(() => {
+    if (peersBuffer.current.size === 0 && removePeersBuffer.current.size === 0)
+      return;
+    updatePeers([...peersBuffer.current.values()]);
+    removePeers([...removePeersBuffer.current.values()]);
+    peersBuffer.current.clear();
+    removePeersBuffer.current.clear();
+  }, [removePeers, updatePeers]);
+
+  const dbFlushFast = useDebouncedCallback(flushPeersBuffer, 1_000, {
+    maxWait: 1_000,
+  });
+
+  const dbFlushSlow = useDebouncedCallback(flushPeersBuffer, 5_000, {
+    maxWait: 5_000,
+  });
 
   const addToPeersBuffer = (value: z.infer<typeof peersSchema>["value"]) => {
     if (value.add) {
@@ -337,7 +343,11 @@ export function useSetAtomWsData() {
       }
     }
 
-    dbFlushBuffer();
+    if (window.location.pathname === "/gossip") {
+      dbFlushFast();
+    } else {
+      dbFlushSlow();
+    }
   };
 
   useServerMessages((msg) => {

@@ -9,8 +9,8 @@ function addNewValueAndShift(
   prev: [number, number][],
   newValue: number,
   windowMs: number,
+  now: number,
 ) {
-  const now = performance.now();
   const newValues = [...prev, [newValue, now]] satisfies [number, number][];
 
   while (
@@ -27,23 +27,32 @@ function addNewValueAndShift(
 export function useValuePerSecond(
   cumulativeValue?: number | null,
   windowMs = 500,
+  paused = false,
 ) {
   // array of [cumulative value, time]
   const [values, setValues] = useState<[number, number][]>([]);
 
   useEffect(() => {
     if (cumulativeValue == null) return;
-    setValues((prev) => addNewValueAndShift(prev, cumulativeValue, windowMs));
+    setValues((prev) =>
+      addNewValueAndShift(prev, cumulativeValue, windowMs, performance.now()),
+    );
   }, [cumulativeValue, windowMs]);
 
   // Handle unchanged cumulative values by
   // adding the unchanged value to the end of the array
   useInterval(() => {
+    if (paused) return;
+    const now = performance.now();
     setValues((prev) => {
-      const now = performance.now();
       const latestValue = prev[prev.length - 1];
       if (latestValue && latestValue[1] < now - windowMs) {
-        return addNewValueAndShift(prev, prev[prev.length - 1][0], windowMs);
+        return addNewValueAndShift(
+          prev,
+          prev[prev.length - 1][0],
+          windowMs,
+          now,
+        );
       } else {
         return prev;
       }

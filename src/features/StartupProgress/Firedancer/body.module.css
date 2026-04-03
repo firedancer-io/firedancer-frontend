@@ -1,3 +1,7 @@
+:export {
+  collapseDurationMs: 300;
+}
+
 .container {
   --collapse-duration: 0.3s;
   --collapse-location-time: 0.2s;

@@ -1,34 +1,59 @@
 .bars {
+  position: relative;
   width: 100%;
   height: var(--bar-height, 50px);
 
-  rect {
-    fill: var(--boot-progress-gossip-bars-color);
-    &.threshold {
-      fill: var(--app-teal);
-    }
-    &.filled {
-      fill: var(--boot-progress-gossip-filled-bar-color);
-    }
+  --step: calc(var(--bar-w) + var(--bar-gap));
 
-    &.mid {
-      fill: var(--boot-progress-gossip-mid-bar-color);
-      &.filled {
-        fill: var(--boot-progress-gossip-mid-filled-bar-color);
-      }
-      &.threshold {
-        fill: var(--boot-progress-gossip-mid-threshold-bar-color);
-      }
-    }
+  /* Bar pattern mask */
+  mask-image: repeating-linear-gradient(
+    to right,
+    black 0 var(--bar-w),
+    transparent var(--bar-w) var(--step)
+  );
+  mask-size: var(--used-w) 100%;
+  mask-repeat: no-repeat;
 
-    &.high {
-      fill: var(--boot-progress-gossip-high-bar-color);
-      &.filled {
-        fill: var(--boot-progress-gossip-high-filled-bar-color);
-      }
-      &.threshold {
-        fill: var(--boot-progress-gossip-high-threshold-bar-color);
-      }
-    }
+  /* Unfilled bars with zone colors */
+  background: linear-gradient(
+    to right,
+    var(--boot-progress-gossip-bars-color) 85%,
+    var(--boot-progress-gossip-mid-bar-color) 85% 95%,
+    var(--boot-progress-gossip-high-bar-color) 95%
+  );
+  background-size: var(--used-w) 100%;
+  background-repeat: no-repeat;
+
+  /* Filled bars overlay */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    clip-path: inset(0 calc(100% - var(--fill)) 0 0);
+    background: linear-gradient(
+      to right,
+      var(--boot-progress-gossip-filled-bar-color) 85%,
+      var(--boot-progress-gossip-mid-filled-bar-color) 85% 95%,
+      var(--boot-progress-gossip-high-filled-bar-color) 95%
+    );
+    background-size: var(--used-w) 100%;
+    background-repeat: no-repeat;
+  }
+
+  /* Threshold bar */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    clip-path: inset(0 calc(100% - var(--thresh-end)) 0 var(--thresh));
+    opacity: var(--thresh-vis, 0);
+    background: linear-gradient(
+      to right,
+      var(--app-teal) 85%,
+      var(--boot-progress-gossip-mid-threshold-bar-color) 85% 95%,
+      var(--boot-progress-gossip-high-threshold-bar-color) 95%
+    );
+    background-size: var(--used-w) 100%;
+    background-repeat: no-repeat;
   }
 }

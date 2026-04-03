@@ -1,6 +1,6 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import styles from "./body.module.css";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   bootProgressPhaseAtom,
   isStartupProgressExpandedAtom,
@@ -25,18 +25,30 @@ const classNames: { [phase in BootPhase]?: string } = {
   [BootPhaseEnum.catching_up]: styles.catchingUp,
 };
 
+const collapseDurationMs = Number(styles.collapseDurationMs);
+
 export default function Body() {
   const setShowStartupProgress = useSetAtom(showStartupProgressAtom);
   const phase = useAtomValue(bootProgressPhaseAtom);
+  const [mounted, setMounted] = useState(true);
 
   // close startup when running, reopen on restart
   useEffect(() => {
     setShowStartupProgress(phase !== "running");
   }, [setShowStartupProgress, phase]);
 
+  // umount startup after collapse animation finishes
+  useEffect(() => {
+    if (phase === BootPhaseEnum.running) {
+      const id = setTimeout(() => setMounted(false), collapseDurationMs);
+      return () => clearTimeout(id);
+    }
+    setMounted(true);
+  }, [phase]);
+
   return (
     <>
-      {phase && <BootProgressContent phase={phase} />}
+      {phase && mounted && <BootProgressContent phase={phase} />}
       <Logo />
     </>
   );

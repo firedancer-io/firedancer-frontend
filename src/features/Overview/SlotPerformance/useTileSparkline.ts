@@ -22,32 +22,48 @@ export function useTileSparkline({
     [tileCount],
   );
 
-  const liveBusyPerTile = liveIdlePerTile?.map((idle) =>
-    idle === -1 ? undefined : 1 - idle,
+  const liveBusyPerTile = useMemo(
+    () => liveIdlePerTile?.map((idle) => (idle === -1 ? undefined : 1 - idle)),
+    [liveIdlePerTile],
   );
 
-  const aggQueryBusyPerTs = queryIdlePerTile
-    ?.map((idlePerTile) => {
-      const filtered = idlePerTile.filter((idle) => idle !== -1);
-      if (!filtered.length) return;
-      return 1 - mean(filtered);
-    })
-    .filter((v) => v !== undefined);
-
-  const aggQueryBusyPerTile = tileCountArr.map((_, i) => {
-    const queryIdle = queryIdlePerTile
-      ?.map((idlePerTile) => 1 - idlePerTile[i])
-      .filter((b) => b !== undefined && b <= 1);
-
-    if (!queryIdle?.length) return;
-
-    return mean(queryIdle);
-  });
-
-  const busy = (isLive ? liveBusyPerTile : aggQueryBusyPerTile)?.filter(
-    (b) => b !== undefined && b <= 1,
+  const aggQueryBusyPerTs = useMemo(
+    () =>
+      queryIdlePerTile
+        ?.map((idlePerTile) => {
+          const filtered = idlePerTile.filter((idle) => idle !== -1);
+          if (!filtered.length) return;
+          return 1 - mean(filtered);
+        })
+        .filter((v) => v !== undefined),
+    [queryIdlePerTile],
   );
-  const avgBusy = busy?.length ? mean(busy) : undefined;
+
+  const aggQueryBusyPerTile = useMemo(
+    () =>
+      tileCountArr.map((_, i) => {
+        const queryIdle = queryIdlePerTile
+          ?.map((idlePerTile) => 1 - idlePerTile[i])
+          .filter((b) => b !== undefined && b <= 1);
+
+        if (!queryIdle?.length) return;
+
+        return mean(queryIdle);
+      }),
+    [tileCountArr, queryIdlePerTile],
+  );
+
+  const busy = useMemo(
+    () =>
+      (isLive ? liveBusyPerTile : aggQueryBusyPerTile)?.filter(
+        (b) => b !== undefined && b <= 1,
+      ),
+    [isLive, liveBusyPerTile, aggQueryBusyPerTile],
+  );
+  const avgBusy = useMemo(
+    () => (busy?.length ? mean(busy) : undefined),
+    [busy],
+  );
 
   return {
     avgBusy,
@@ -84,9 +100,8 @@ function setDataWindow(
   data: (PointSample | undefined)[],
   windowMs: number,
   value: number | undefined,
+  now: number,
 ) {
-  const now = performance.now();
-
   data.push({ value, ts: now });
 
   // keep 1 extra point past the window so window always has a value at left most axis
@@ -106,6 +121,8 @@ interface UseScaledDataPointsProps {
   updateIntervalMs: number;
   stopShifting?: boolean;
   tickMs?: number;
+  /** Skip clock subscription and intervals (e.g. when off-screen) */
+  paused?: boolean;
 }
 
 export function useScaledDataPoints({
@@ -117,6 +134,7 @@ export function useScaledDataPoints({
   updateIntervalMs,
   stopShifting,
   tickMs = defaultTickMs,
+  paused,
 }: UseScaledDataPointsProps) {
   const [scaledDataPoints, setScaledDataPoints] = useState<
     { x: number; y: number }[]
@@ -138,30 +156,39 @@ export function useScaledDataPoints({
     };
   }, [_width, _windowMs, queryBusy, tickMs]);
 
-  const busyDataRef = useRef([
-    { value: undefined, ts: performance.now() - windowMs },
-    { value: undefined, ts: performance.now() },
-  ]);
+  const busyDataRef = useRef<(PointSample | undefined)[]>(undefined!);
+  if (!busyDataRef.current) {
+    const now = performance.now();
+    busyDataRef.current = [
+      { value: undefined, ts: now - windowMs },
+      { value: undefined, ts: now },
+    ];
+  }
 
   useLayoutEffect(() => {
     if (stopShifting || queryBusy?.length) return;
 
-    setDataWindow(busyDataRef.current, windowMs, value);
+    setDataWindow(busyDataRef.current, windowMs, value, performance.now());
   }, [queryBusy?.length, windowMs, stopShifting, value]);
 
-  useInterval(() => {
-    if (stopShifting || queryBusy?.length) return;
+  useInterval(
+    () => {
+      if (stopShifting || queryBusy?.length) return;
 
-    const lastTs = busyDataRef.current[busyDataRef.current.length - 1]?.ts;
-    // Don't add a artifical tick point if one was added within the specified update interval
-    if (lastTs !== undefined && performance.now() - lastTs < updateIntervalMs) {
-      return;
-    }
+      const now = performance.now();
+      const lastTs = busyDataRef.current[busyDataRef.current.length - 1]?.ts;
+      // Don't add a artifical tick point if one was added within the specified update interval
+      if (lastTs !== undefined && now - lastTs < updateIntervalMs) {
+        return;
+      }
 
-    setDataWindow(busyDataRef.current, windowMs, value);
-  }, updateIntervalMs);
+      setDataWindow(busyDataRef.current, windowMs, value, now);
+    },
+    paused ? null : updateIntervalMs,
+  );
 
   useEffect(() => {
+    if (paused) return;
     function tick(data: (PointSample | undefined)[], tEnd: number) {
       const size = data.length;
       if (size === 0) {
@@ -172,7 +199,7 @@ export function useScaledDataPoints({
       const tStart = tEnd - windowMs;
       const scale = width / windowMs;
 
-      const points = new Array<{ x: number; y: number }>(size);
+      const points: { x: number; y: number }[] = [];
       for (let i = 0; i < size; i++) {
         const d = data[i];
         if (d === undefined && i === 0) {
@@ -186,7 +213,7 @@ export function useScaledDataPoints({
           dTs = (nextTs - prevTs) / 2;
         }
 
-        const prevPoint = points[i - 1];
+        const prevPoint = points[points.length - 1];
         if (prevPoint === undefined && d?.value === undefined) continue;
 
         const x = (dTs - tStart) * scale;
@@ -196,7 +223,7 @@ export function useScaledDataPoints({
               (1 - d.value) * (height - strokeLineWidth) + strokeLineWidth / 2
             : (prevPoint.y ?? 0);
 
-        points[i] = { x: x, y: y };
+        points.push({ x, y });
       }
 
       setScaledDataPoints(points);
@@ -226,7 +253,7 @@ export function useScaledDataPoints({
         return unsub;
       }
     }
-  }, [height, queryBusy, tickMs, width, windowMs]);
+  }, [height, paused, queryBusy, tickMs, width, windowMs]);
 
   return {
     scaledDataPoints,

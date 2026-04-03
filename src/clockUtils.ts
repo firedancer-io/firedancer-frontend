@@ -6,8 +6,7 @@ export function createClock(intervalMs: number) {
   let last = performance.now();
 
   function startChartClock() {
-    const loop = () => {
-      const now = performance.now();
+    const loop = (now: number) => {
       if (now - last >= intervalMs) {
         const dt = now - last;
         last = now;

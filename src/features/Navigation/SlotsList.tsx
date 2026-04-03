@@ -194,6 +194,7 @@ interface RTAutoScrollProps {
 function RTAutoScroll({ listRef, getIndexForSlot }: RTAutoScrollProps) {
   const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
   const autoScroll = useAtomValue(autoScrollAtom);
+  const prevIndexRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!autoScroll || currentLeaderSlot === undefined || !listRef.current)
@@ -204,6 +205,9 @@ function RTAutoScroll({ listRef, getIndexForSlot }: RTAutoScrollProps) {
     const visibleStartIndex = slotIndex
       ? Math.max(0, slotIndex - slotsListPinnedSlotOffset)
       : 0;
+
+    if (prevIndexRef.current === visibleStartIndex) return;
+    prevIndexRef.current = visibleStartIndex;
 
     listRef.current.scrollToIndex({
       index: visibleStartIndex,

@@ -1,5 +1,6 @@
 import UplotReact from "../../../uplotReact/UplotReact";
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import useIsVisible from "../../../hooks/useIsVisible";
 import type uPlot from "uplot";
 import { chartAxisColor, gridLineColor, gridTicksColor } from "../../../colors";
 import type { AlignedData } from "uplot";
@@ -73,6 +74,8 @@ export default function ShredsChart({
   const uplotRef = useRef<uPlot>();
   const lastRedrawRef = useRef(0);
   const [measureRef, measureRect] = useMeasure<HTMLDivElement>();
+  const visibilityRef = useRef<HTMLDivElement>(null);
+  const isVisible = useIsVisible(visibilityRef);
 
   const handleCreate = useCallback((u: uPlot) => {
     uplotRef.current = u;
@@ -151,7 +154,7 @@ export default function ShredsChart({
   options.width = measureRect.width;
   options.height = measureRect.height;
 
-  useRafLoop((time: number) => {
+  const [stopRaf, startRaf] = useRafLoop((time: number) => {
     if (!uplotRef) return;
     if (
       lastRedrawRef.current == null ||
@@ -162,8 +165,16 @@ export default function ShredsChart({
     }
   });
 
+  useEffect(() => {
+    if (isVisible) {
+      startRaf();
+    } else {
+      stopRaf();
+    }
+  }, [isVisible, startRaf, stopRaf]);
+
   return (
-    <Flex direction="column" gap="2px" {...flexProps}>
+    <Flex ref={visibilityRef} direction="column" gap="2px" {...flexProps}>
       {!isOnStartupScreen && <ShredsSlotLabels />}
       <Box
         flexGrow="1"

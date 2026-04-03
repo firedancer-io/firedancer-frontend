@@ -56,14 +56,19 @@ export const SankeyLinks = <N extends DefaultNode, L extends DefaultLink>({
     [layout],
   );
 
+  const linkPaths = useMemo(
+    () => links.map((link) => getLinkPath(link, linkContract)),
+    [links, getLinkPath, linkContract],
+  );
+
   return (
     <>
-      {links.map((link) => (
+      {links.map((link, i) => (
         <SankeyLinksItem<N, L>
           key={`${link.source.id}.${link.target.id}.${link.index}`}
           link={link}
           layout={layout}
-          path={getLinkPath(link, linkContract)}
+          path={linkPaths[i]}
           color={link.color}
           // opacity={getOpacity(link)}
           opacity={1}

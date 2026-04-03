@@ -25,7 +25,7 @@ import {
   secondaryTextColor,
   votesColor,
 } from "../colors";
-import type { SVGAttributes } from "react";
+import { memo, useMemo, type SVGAttributes } from "react";
 
 const store = getDefaultStore();
 
@@ -62,137 +62,151 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
   labelPadding,
   labelOrientation,
 }: SankeyLabelsProps<N, L>) => {
-  // const theme = useTheme();
-
   const labelRotation = labelOrientation === "vertical" ? -90 : 0;
-  const labels = nodes
-    .filter((n) => !n.hideLabel)
-    .map((node) => {
-      let x;
-      let y;
-      let textAnchor: SVGAttributes<SVGTextElement>["textAnchor"];
 
-      if (layout === "horizontal") {
-        y = node.y + node.height / 2 - 5;
-        if (node.alignLabelBottom) {
-          y = node.y1;
-        }
-        if (tileNodes.includes(node.id as SlotNode)) {
-          x = node.x0 + (node.x1 - node.x0) / 2;
-          y = y + 10;
-          textAnchor = "middle";
-        } else if (node.labelPositionOverride === "right") {
-          x = node.x1 + labelPadding;
-          textAnchor = labelOrientation === "vertical" ? "middle" : "start";
-        } else if (node.labelPositionOverride === "left") {
-          x = node.x - labelPadding;
-          textAnchor = labelOrientation === "vertical" ? "middle" : "end";
-        } else if (node.x < width / 2) {
-          if (labelPosition === "inside") {
+  const labels = useMemo(() => {
+    return nodes
+      .filter((n) => !n.hideLabel)
+      .map((node) => {
+        let x;
+        let y;
+        let textAnchor: SVGAttributes<SVGTextElement>["textAnchor"];
+
+        if (layout === "horizontal") {
+          y = node.y + node.height / 2 - 5;
+          if (node.alignLabelBottom) {
+            y = node.y1;
+          }
+          if (tileNodes.includes(node.id as SlotNode)) {
+            x = node.x0 + (node.x1 - node.x0) / 2;
+            y = y + 10;
+            textAnchor = "middle";
+          } else if (node.labelPositionOverride === "right") {
             x = node.x1 + labelPadding;
             textAnchor = labelOrientation === "vertical" ? "middle" : "start";
-          } else {
+          } else if (node.labelPositionOverride === "left") {
             x = node.x - labelPadding;
             textAnchor = labelOrientation === "vertical" ? "middle" : "end";
-          }
-        } else {
-          if (labelPosition === "inside") {
-            x = node.x - labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "middle" : "end";
+          } else if (node.x < width / 2) {
+            if (labelPosition === "inside") {
+              x = node.x1 + labelPadding;
+              textAnchor = labelOrientation === "vertical" ? "middle" : "start";
+            } else {
+              x = node.x - labelPadding;
+              textAnchor = labelOrientation === "vertical" ? "middle" : "end";
+            }
           } else {
-            x = node.x1 + labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "middle" : "start";
+            if (labelPosition === "inside") {
+              x = node.x - labelPadding;
+              textAnchor = labelOrientation === "vertical" ? "middle" : "end";
+            } else {
+              x = node.x1 + labelPadding;
+              textAnchor = labelOrientation === "vertical" ? "middle" : "start";
+            }
+          }
+        } else if (layout === "vertical") {
+          x = node.x + node.width / 2;
+          if (node.y < height / 2) {
+            if (labelPosition === "inside") {
+              y = node.y1 + labelPadding;
+              textAnchor = labelOrientation === "vertical" ? "end" : "middle";
+            } else {
+              y = node.y - labelPadding;
+              textAnchor = labelOrientation === "vertical" ? "start" : "middle";
+            }
+          } else {
+            if (labelPosition === "inside") {
+              y = node.y - labelPadding;
+              textAnchor = labelOrientation === "vertical" ? "start" : "middle";
+            } else {
+              y = node.y1 + labelPadding;
+              textAnchor = labelOrientation === "vertical" ? "end" : "middle";
+            }
           }
         }
-      } else if (layout === "vertical") {
-        x = node.x + node.width / 2;
-        if (node.y < height / 2) {
-          if (labelPosition === "inside") {
-            y = node.y1 + labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "end" : "middle";
-          } else {
-            y = node.y - labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "start" : "middle";
-          }
-        } else {
-          if (labelPosition === "inside") {
-            y = node.y - labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "start" : "middle";
-          } else {
-            y = node.y1 + labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "end" : "middle";
-          }
-        }
-      }
 
-      return {
-        id: node.id,
-        label: node.label,
-        value: node.value,
-        x,
-        y,
-        textAnchor,
-      };
-    });
-
-  // const { animate, config: springConfig } = useCustomMotionConfig();
-  // const springs = useSprings(
-  //   labels.length,
-  //   labels.map((label) => {
-  //     return {
-  //       transform: `translate(${label.x}, ${label.y}) rotate(${labelRotation})`,
-  //       config: springConfig,
-  //       immediate: !animate,
-  //     };
-  //   }),
-  // );
+        return {
+          id: node.id,
+          label: node.label,
+          value: node.value,
+          x,
+          y,
+          textAnchor,
+        };
+      });
+  }, [
+    nodes,
+    layout,
+    width,
+    height,
+    labelPosition,
+    labelPadding,
+    labelOrientation,
+  ]);
 
   return (
     <>
-      {labels.map((label) => {
-        const [labelFill, valueFill] = getLabelFill(
-          label.label as SlotNode,
-          label.value,
-        );
-
-        const labelText = label.label.split(":")[0]?.trim();
-
-        return (
-          <ShowNode
-            node={label.label as SlotNode}
-            value={label.value}
-            key={label.id}
-          >
-            <text
-              key={label.id}
-              dominantBaseline="central"
-              textAnchor={label.textAnchor}
-              transform={`translate(${label.x}, ${label.y}) rotate(${labelRotation})`}
-              className="sankey-label"
-            >
-              {getLabelParts(labelText).map((part, i) => {
-                return (
-                  <tspan
-                    key={part}
-                    x="0"
-                    dy={i === 0 ? "0em" : "1em"}
-                    style={{ fill: labelFill }}
-                  >
-                    {part}
-                  </tspan>
-                );
-              })}
-              <tspan x="0" dy="1em" style={{ fill: valueFill }}>
-                {label.value?.toLocaleString()}
-                {getSuffix()}
-              </tspan>
-            </text>
-          </ShowNode>
-        );
-      })}
+      {labels.map((label) => (
+        <SankeyLabelItem
+          key={label.id}
+          label={label}
+          labelRotation={labelRotation}
+        />
+      ))}
     </>
   );
 };
+
+interface LabelData {
+  id: string;
+  label: string;
+  value: number;
+  x: number | undefined;
+  y: number | undefined;
+  textAnchor: SVGAttributes<SVGTextElement>["textAnchor"];
+}
+
+const SankeyLabelItem = memo(function SankeyLabelItem({
+  label,
+  labelRotation,
+}: {
+  label: LabelData;
+  labelRotation: number;
+}) {
+  const [labelFill, valueFill] = getLabelFill(
+    label.label as SlotNode,
+    label.value,
+  );
+
+  const labelText = label.label.split(":")[0]?.trim();
+  const parts = getLabelParts(labelText);
+
+  return (
+    <ShowNode node={label.label as SlotNode} value={label.value}>
+      <text
+        dominantBaseline="central"
+        textAnchor={label.textAnchor}
+        transform={`translate(${label.x}, ${label.y}) rotate(${labelRotation})`}
+        className="sankey-label"
+      >
+        {parts.map((part, i) => (
+          <tspan
+            key={part}
+            x="0"
+            dy={i === 0 ? "0em" : "1em"}
+            style={{ fill: labelFill }}
+          >
+            {part}
+          </tspan>
+        ))}
+        <tspan x="0" dy="1em" style={{ fill: valueFill }}>
+          {label.value?.toLocaleString()}
+          {getSuffix()}
+        </tspan>
+      </text>
+    </ShowNode>
+  );
+});
 
 function getLabelFill(label: SlotNode, value: number) {
   if (!value) {

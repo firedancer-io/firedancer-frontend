@@ -1,5 +1,6 @@
 import { useMeasure } from "react-use";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { memo, useLayoutEffect, useMemo, useRef } from "react";
+import useIsVisible from "../../../hooks/useIsVisible";
 import {
   tileBusyGreenColor,
   tileBusyRedColor,
@@ -40,6 +41,8 @@ export default function TileSparkLine({
   updateIntervalMs = _updateIntervalMs,
   tickMs,
 }: TileParkLineProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isVisible = useIsVisible(containerRef);
   const [svgRef, { width }] = useMeasure<SVGSVGElement>();
 
   const { scaledDataPoints, range, pxPerTick, chartTickMs, isLive } =
@@ -51,20 +54,23 @@ export default function TileSparkLine({
       width,
       updateIntervalMs,
       tickMs,
+      paused: !isVisible,
     });
 
   return (
-    <Sparkline
-      svgRef={svgRef}
-      scaledDataPoints={scaledDataPoints}
-      range={range}
-      height={height}
-      background={background}
-      pxPerTick={pxPerTick}
-      tickMs={chartTickMs}
-      isLive={isLive}
-      strokeWidth={strokeWidth}
-    />
+    <div ref={containerRef}>
+      <Sparkline
+        svgRef={svgRef}
+        scaledDataPoints={scaledDataPoints}
+        range={range}
+        height={height}
+        background={background}
+        pxPerTick={pxPerTick}
+        tickMs={chartTickMs}
+        isLive={isLive}
+        strokeWidth={strokeWidth}
+      />
+    </div>
   );
 }
 
@@ -83,7 +89,7 @@ interface SparklineProps {
   isLive: boolean;
   strokeWidth?: number;
 }
-export function Sparkline({
+export const Sparkline = memo(function Sparkline({
   svgRef,
   scaledDataPoints,
   range = sparkLineRange,
@@ -202,4 +208,4 @@ export function Sparkline({
       )}
     </>
   );
-}
+});

@@ -13,31 +13,33 @@ import TileSparkLine from "../SlotPerformance/TileSparkLine";
 import { headerGap } from "../../Gossip/consts";
 import type { Tile, TileMetrics } from "../../../api/types";
 import clsx from "clsx";
-import {
-  useHarmonicIntervalFn,
-  usePrevious,
-  usePreviousDistinct,
-} from "react-use";
+import { useHarmonicIntervalFn, usePreviousDistinct } from "react-use";
 import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
+import useIsVisible from "../../../hooks/useIsVisible";
 import { tileChartDarkBackground } from "../../../colors";
-import { isEqual } from "lodash";
-import type { CellProps } from "@radix-ui/themes/components/table";
 import TableDescriptionDialog from "./TableDescriptionDialog";
 import { metrics } from "./consts";
+
+const numFmt = new Intl.NumberFormat();
 
 const chartHeight = 18;
 
 export default function LiveTileMetrics() {
+  const visibilityRef = useRef<HTMLDivElement>(null);
+  const isVisible = useIsVisible(visibilityRef);
+
   return (
-    <Card>
-      <Flex direction="column" gap={headerGap} width="100%">
-        <Flex align="center" gap="2">
-          <Text className={tableStyles.headerText}>Tiles</Text>
-          <TableDescriptionDialog />
+    <div ref={visibilityRef}>
+      <Card>
+        <Flex direction="column" gap={headerGap} width="100%">
+          <Flex align="center" gap="2">
+            <Text className={tableStyles.headerText}>Tiles</Text>
+            <TableDescriptionDialog />
+          </Flex>
+          {isVisible && <MLiveMetricTable />}
         </Flex>
-        <MLiveMetricTable />
-      </Flex>
-    </Card>
+      </Card>
+    </div>
   );
 }
 
@@ -97,171 +99,196 @@ interface TableRowProps {
   liveTileMetrics: TileMetrics;
   idx: number;
 }
+
+const R = "rt-TableCell";
+
+function incrClass(v: number): string {
+  if (v >= 101) return `${styles.incrementText} ${styles.highIncrement}`;
+  if (v >= 11) return `${styles.incrementText} ${styles.midIncrement}`;
+  if (v >= 1) return `${styles.incrementText} ${styles.lowIncrement}`;
+  return styles.incrementText;
+}
+
 function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
-  const prevLiveTileMetricsIdx = usePreviousDistinct(
-    liveTileMetrics,
-    (prev, next) => {
-      if (!prev) return false;
-      if (!next) return true;
+  const ref = useRef<{
+    alive?: number | null;
+    nivcsw?: number | null;
+    nvcsw?: number | null;
+    in_backp?: boolean | null;
+    backp_msgs?: number | null;
+    last_cpu?: number | null;
+    minflt?: number | null;
+    majflt?: number | null;
+    timers?: number[] | null;
+    sched_timers?: number[] | null;
+    pNivcsw?: number | null;
+    pNvcsw?: number | null;
+    pBackp?: number | null;
+  }>({});
+  const s = ref.current;
 
-      return Object.keys(next).every((key) => {
-        return isEqual(
-          prev[key as keyof typeof prev]?.[idx],
-          next[key as keyof typeof next]?.[idx],
-        );
-      });
-    },
-  );
+  const alive = liveTileMetrics.alive[idx] ?? s.alive;
+  const nivcsw = liveTileMetrics.nivcsw[idx] ?? s.nivcsw;
+  const nvcsw = liveTileMetrics.nvcsw[idx] ?? s.nvcsw;
+  const inBackpressure = liveTileMetrics.in_backp[idx] ?? s.in_backp;
+  const backPressureCount = liveTileMetrics.backp_msgs[idx] ?? s.backp_msgs;
+  const cpu = liveTileMetrics.last_cpu[idx] ?? s.last_cpu;
+  const minflt = liveTileMetrics.minflt[idx] ?? s.minflt;
+  const majflt = liveTileMetrics.majflt[idx] ?? s.majflt;
+  const rawTimers = liveTileMetrics.timers[idx] ?? s.timers;
+  const rawSchedTimers = liveTileMetrics.sched_timers[idx] ?? s.sched_timers;
 
-  const prevSchedTimers = usePreviousDistinct(
-    liveTileMetrics.sched_timers[idx],
-  );
-  const schedTimers =
-    liveTileMetrics.sched_timers[idx] || prevSchedTimers || [];
+  // Compute deltas from committed previous values
+  const nivcswDelta =
+    nivcsw != null && s.pNivcsw != null ? nivcsw - s.pNivcsw : 0;
+  const nvcswDelta = nvcsw != null && s.pNvcsw != null ? nvcsw - s.pNvcsw : 0;
+  const backpDelta =
+    backPressureCount != null && s.pBackp != null
+      ? backPressureCount - s.pBackp
+      : 0;
 
-  const [schedWaitPct, schedIdlePct, schedUserPct, schedSystemPct] =
-    schedTimers.map((v) => (v === -1 ? 0 : v));
+  // Update fallback values during render (idempotent, safe for StrictMode)
+  if (liveTileMetrics.alive[idx] != null) s.alive = liveTileMetrics.alive[idx];
+  if (liveTileMetrics.nivcsw[idx] != null)
+    s.nivcsw = liveTileMetrics.nivcsw[idx];
+  if (liveTileMetrics.nvcsw[idx] != null) s.nvcsw = liveTileMetrics.nvcsw[idx];
+  if (liveTileMetrics.in_backp[idx] != null)
+    s.in_backp = liveTileMetrics.in_backp[idx];
+  if (liveTileMetrics.backp_msgs[idx] != null)
+    s.backp_msgs = liveTileMetrics.backp_msgs[idx];
+  if (liveTileMetrics.last_cpu[idx] != null)
+    s.last_cpu = liveTileMetrics.last_cpu[idx];
+  if (liveTileMetrics.minflt[idx] != null)
+    s.minflt = liveTileMetrics.minflt[idx];
+  if (liveTileMetrics.majflt[idx] != null)
+    s.majflt = liveTileMetrics.majflt[idx];
+  if (liveTileMetrics.timers[idx] != null)
+    s.timers = liveTileMetrics.timers[idx];
+  if (liveTileMetrics.sched_timers[idx] != null)
+    s.sched_timers = liveTileMetrics.sched_timers[idx];
 
-  const alive =
-    liveTileMetrics.alive[idx] ?? prevLiveTileMetricsIdx?.alive[idx];
-  const nivcsw =
-    liveTileMetrics.nivcsw[idx] ?? prevLiveTileMetricsIdx?.nivcsw[idx];
-  const nvcsw =
-    liveTileMetrics.nvcsw[idx] ?? prevLiveTileMetricsIdx?.nvcsw[idx];
-  const inBackpressure =
-    liveTileMetrics.in_backp[idx] ?? prevLiveTileMetricsIdx?.in_backp[idx];
-  const backPressureCount =
-    liveTileMetrics.backp_msgs[idx] ?? prevLiveTileMetricsIdx?.backp_msgs[idx];
-  const cpu =
-    liveTileMetrics.last_cpu[idx] ?? prevLiveTileMetricsIdx?.last_cpu[idx];
-  const minflt =
-    liveTileMetrics.minflt[idx] ?? prevLiveTileMetricsIdx?.minflt[idx];
-  const majflt =
-    liveTileMetrics.majflt[idx] ?? prevLiveTileMetricsIdx?.majflt[idx];
+  // Update previous delta values after commit (not during render)
+  useEffect(() => {
+    s.pNivcsw = nivcsw;
+    s.pNvcsw = nvcsw;
+    s.pBackp = backPressureCount;
+  });
 
-  const prevNivcsw = usePrevious(nivcsw);
-  const prevNvcsw = usePrevious(nvcsw);
-  const prevBackPressureCount = usePrevious(backPressureCount);
+  if (alive === 2) return null;
+  if (!rawTimers) return null;
 
-  // Meaning tile has shut down, no need to list it in the table
-  if (alive === 2) return;
+  const t0 = rawTimers[0] === -1 ? 0 : rawTimers[0];
+  const t1 = rawTimers[1] === -1 ? 0 : rawTimers[1];
+  const t2 = rawTimers[2] === -1 ? 0 : rawTimers[2];
+  const t3 = rawTimers[3] === -1 ? 0 : rawTimers[3];
+  const t4 = rawTimers[4] === -1 ? 0 : rawTimers[4];
+  const t5 = rawTimers[5] === -1 ? 0 : rawTimers[5];
+  const t6 = rawTimers[6] === -1 ? 0 : rawTimers[6];
+  const t7 = rawTimers[7] === -1 ? 0 : rawTimers[7];
 
-  const timers =
-    liveTileMetrics.timers[idx] || prevLiveTileMetricsIdx?.timers[idx];
+  const hKeepPct = t0 + t1 + t2;
+  const backpPct = t5;
+  const waitPct = t6;
+  const workPct = t3 + t4 + t7;
 
-  if (!timers) return;
-
-  for (let i = 0; i < timers.length; i++) {
-    if (timers[i] === -1) timers[i] = 0;
-  }
-
-  const hKeepPct = timers[0] + timers[1] + timers[2];
-  const waitPct = timers[6];
-  const backpPct = timers[5];
-  const workPct = timers[3] + timers[4] + timers[7];
+  const sW = rawSchedTimers
+    ? rawSchedTimers[0] === -1
+      ? 0
+      : rawSchedTimers[0]
+    : 0;
+  const sI = rawSchedTimers
+    ? rawSchedTimers[1] === -1
+      ? 0
+      : rawSchedTimers[1]
+    : 0;
+  const sU = rawSchedTimers
+    ? rawSchedTimers[2] === -1
+      ? 0
+      : rawSchedTimers[2]
+    : 0;
+  const sS = rawSchedTimers
+    ? rawSchedTimers[3] === -1
+      ? 0
+      : rawSchedTimers[3]
+    : 0;
 
   return (
-    <Table.Row className={styles.row}>
-      <Table.Cell>
+    <tr className={`rt-TableRow ${styles.row}`}>
+      <td className={R}>
         {tile.kind}:{tile.kind_id}
-      </Table.Cell>
-      <Table.Cell align="right">{cpu}</Table.Cell>
-      <Table.Cell
-        className={clsx({ [styles.green]: alive, [styles.red]: !alive })}
+      </td>
+      <td className={R} align="right">
+        {cpu}
+      </td>
+      <td
+        className={alive ? `${R} ${styles.green}` : `${R} ${styles.red}`}
         align="right"
       >
         {alive ? "Live" : "Dead"}
-      </Table.Cell>
-
-      <Table.Cell align="right">{minflt}</Table.Cell>
-      <Table.Cell align="right">{majflt}</Table.Cell>
-
-      <Table.Cell align="right">
-        {nivcsw?.toLocaleString() ?? "0"} |
-        <IncrementText
-          value={nivcsw != null && prevNivcsw != null ? nivcsw - prevNivcsw : 0}
-        />
-      </Table.Cell>
-      <Table.Cell align="right">
-        {nvcsw?.toLocaleString() ?? "0"} |
-        <IncrementText
-          value={nvcsw != null && prevNvcsw != null ? nvcsw - prevNvcsw : 0}
-        />
-      </Table.Cell>
-      <Table.Cell className={clsx({ [styles.red]: inBackpressure })}>
+      </td>
+      <td className={R} align="right">
+        {minflt}
+      </td>
+      <td className={R} align="right">
+        {majflt}
+      </td>
+      <td className={R} align="right">
+        {nivcsw != null ? numFmt.format(nivcsw) : "0"} |
+        <span className={incrClass(nivcswDelta)}>
+          +{numFmt.format(nivcswDelta)}
+        </span>
+      </td>
+      <td className={R} align="right">
+        {nvcsw != null ? numFmt.format(nvcsw) : "0"} |
+        <span className={incrClass(nvcswDelta)}>
+          +{numFmt.format(nvcswDelta)}
+        </span>
+      </td>
+      <td className={inBackpressure ? `${R} ${styles.red}` : R}>
         {inBackpressure ? "Yes" : "-"}
-      </Table.Cell>
-      <Table.Cell align="right">
-        {backPressureCount?.toLocaleString() ?? "0"} |
-        <Text
-          className={clsx(styles.incrementText, {
-            [styles.highIncrement]:
-              backPressureCount != null && prevBackPressureCount != null
-                ? backPressureCount - prevBackPressureCount
-                : 0,
-          })}
+      </td>
+      <td className={R} align="right">
+        {backPressureCount != null ? numFmt.format(backPressureCount) : "0"} |
+        <span
+          className={
+            backpDelta
+              ? `${styles.incrementText} ${styles.highIncrement}`
+              : styles.incrementText
+          }
         >
-          +
-          {(backPressureCount != null && prevBackPressureCount != null
-            ? backPressureCount - prevBackPressureCount
-            : 0
-          ).toLocaleString()}
-        </Text>
-      </Table.Cell>
+          +{numFmt.format(backpDelta)}
+        </span>
+      </td>
       <MUtilization idx={idx} />
-      <PctCell
-        pct={hKeepPct}
-        className={clsx({ [styles.red]: hKeepPct > 1 })}
-      />
-      <PctCell pct={waitPct} />
-      <PctCell
-        pct={backpPct}
-        className={clsx({ [styles.red]: backpPct > 0 })}
-      />
-      <PctCell
-        pct={workPct}
-        className={styles.pctGradient}
-        style={
-          {
-            "--pct": `${workPct}%`,
-          } as CSSProperties
-        }
-      />
-      <PctCell pct={schedWaitPct} />
-      <PctCell pct={schedUserPct} />
-      <PctCell pct={schedSystemPct} />
-      <PctCell pct={schedIdlePct} />
-    </Table.Row>
-  );
-}
-
-interface IncrementTextProps {
-  value: number;
-}
-function IncrementText({ value }: IncrementTextProps) {
-  const formatted = value.toLocaleString();
-  return (
-    <Text
-      className={clsx(styles.incrementText, {
-        [styles.lowIncrement]: 1 <= value && value <= 10,
-        [styles.midIncrement]: 11 <= value && value <= 100,
-        [styles.highIncrement]: value >= 101,
-      })}
-    >
-      +{formatted}
-    </Text>
-  );
-}
-
-interface PctCellProps {
-  pct: number | undefined;
-}
-
-function PctCell({ pct, ...props }: PctCellProps & CellProps) {
-  return (
-    <Table.Cell align="right" {...props}>
-      {pct == null ? "--" : `${pct.toFixed(2)}%`}
-    </Table.Cell>
+      <td className={hKeepPct > 1 ? `${R} ${styles.red}` : R} align="right">
+        {hKeepPct.toFixed(2)}%
+      </td>
+      <td className={R} align="right">
+        {waitPct.toFixed(2)}%
+      </td>
+      <td className={backpPct > 0 ? `${R} ${styles.red}` : R} align="right">
+        {backpPct.toFixed(2)}%
+      </td>
+      <td
+        className={`${R} ${styles.pctGradient}`}
+        align="right"
+        style={{ "--pct": `${workPct}%` } as CSSProperties}
+      >
+        {workPct.toFixed(2)}%
+      </td>
+      <td className={R} align="right">
+        {sW.toFixed(2)}%
+      </td>
+      <td className={R} align="right">
+        {sU.toFixed(2)}%
+      </td>
+      <td className={R} align="right">
+        {sS.toFixed(2)}%
+      </td>
+      <td className={R} align="right">
+        {sI.toFixed(2)}%
+      </td>
+    </tr>
   );
 }
 
@@ -307,12 +334,12 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
 
   return (
     <>
-      <Table.Cell className={styles.noPadding}>
+      <td className={`${R} ${styles.noPadding}`}>
         <Flex align="center">
           <Bars value={pct >= 0 ? pct : (prevPct ?? 0)} max={1} barWidth={2} />
         </Flex>
-      </Table.Cell>
-      <Table.Cell className={styles.noPadding}>
+      </td>
+      <td className={`${R} ${styles.noPadding}`}>
         <TileSparkLine
           value={avgValue}
           background={tileChartDarkBackground}
@@ -321,7 +348,7 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
           updateIntervalMs={updateIntervalMs}
           tickMs={1_000}
         />
-      </Table.Cell>
+      </td>
     </>
   );
 });
