@@ -18,4 +18,4 @@
 - Run `cp .env.example .env.production`
 - Run `npm ci`
 - Run `npm run build`
-- Serve static assets in `./dist` with preferred tool. Ex. `npx run serve`
+- Serve static assets in `./dist` with preferred tool. Ex. `npx serve`
