@@ -55,7 +55,7 @@ export default function SupermajorityTable({
       if (stakeA == null && stakeB == null) return 0;
       if (stakeA == null) return 1;
       if (stakeB == null) return -1;
-      return stakeA < stakeB ? 1 : -1;
+      return Number(stakeB - stakeA);
     },
     [supermajorityEpoch],
   );
@@ -111,7 +111,7 @@ export default function SupermajorityTable({
           flexShrink="0"
           gapX="8px"
           align="center"
-          className={clsx(styles.cell, styles.toggleRow, styles.red)}
+          className={clsx(styles.toggleRow, styles.offline)}
           asChild
         >
           <button onClick={() => setIsOfflineExpanded((prev) => !prev)}>
@@ -121,9 +121,8 @@ export default function SupermajorityTable({
         </SizedRow>
 
         <Box
-          className={clsx(styles.rowsContainer, {
-            [styles.hidden]: !isOfflineExpanded,
-          })}
+          display={isOfflineExpanded ? undefined : "none"}
+          className={styles.rowsContainer}
         >
           {sortedOfflinePeers.map((pubkey) => {
             const [lamportsStake, info] = supermajorityEpoch?.get(pubkey) ?? [];
@@ -146,7 +145,7 @@ export default function SupermajorityTable({
           flexShrink="0"
           gapX="8px"
           align="center"
-          className={clsx(styles.toggleRow, styles.green)}
+          className={clsx(styles.toggleRow, styles.online)}
           asChild
         >
           <button onClick={() => setIsOnlineExpanded((prev) => !prev)}>
@@ -156,9 +155,8 @@ export default function SupermajorityTable({
         </SizedRow>
 
         <Box
-          className={clsx(styles.rowsContainer, {
-            [styles.hidden]: !isOnlineExpanded,
-          })}
+          display={isOnlineExpanded ? undefined : "none"}
+          className={styles.rowsContainer}
         >
           {sortedOnlinePeers.map((pubkey) => {
             const [lamportsStake, info] = supermajorityEpoch?.get(pubkey) ?? [];
@@ -335,7 +333,7 @@ function ClientVersionCell({ pubkey, size }: ClientVersionCellProps) {
   return (
     <Cell size={size} className={styles.version}>
       <Flex width="35px">
-        <ClientIcons client={client} size="xlarge" showEmptyIcon />
+        <ClientIcons client={client} size="xlarge" showPlaceholder />
       </Flex>
       {size !== "xnarrow" && (
         <Text truncate dir="rtl">

@@ -15,9 +15,16 @@ export default function SupermajorityPieChart(
   props: SupermajorityPieChartProps,
 ) {
   return (
-    <Flex width="100%" direction="column" align="center" gapY="10px">
+    <Flex
+      maxWidth="412px"
+      width="100%"
+      maxHeight="100%"
+      direction="column"
+      align="center"
+      gapY="10px"
+    >
       <Text className={styles.pieChartTitle}>Stake Online</Text>
-      <Flex flexGrow="1" justify="center" width="100%">
+      <Flex className={styles.pieChartSquareContainer} flexGrow="1">
         <PieChart {...props} />
       </Flex>
     </Flex>
@@ -43,9 +50,8 @@ function PieChart({ stakeFraction }: SupermajorityPieChartProps) {
 
   return (
     <Flex
-      maxHeight="100%"
+      height="100%"
       width="100%"
-      maxWidth="412px"
       position="relative"
       align="center"
       justify="center"

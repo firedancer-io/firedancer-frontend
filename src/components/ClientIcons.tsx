@@ -58,14 +58,16 @@ const ClientImgs: Record<ClientName, { src: string; alt: string } | null> = {
   },
 };
 
+export type ClientIconSize = "small" | "large" | "xlarge";
+
 export default memo(function Client({
   client,
   size,
-  showEmptyIcon,
+  showPlaceholder,
 }: {
   client: ClientName | undefined;
-  size: "small" | "large" | "xlarge";
-  showEmptyIcon?: boolean;
+  size: ClientIconSize;
+  showPlaceholder?: boolean;
 }) {
   const className = clsx(styles[`${size}Icon`]);
 
@@ -73,7 +75,7 @@ export default memo(function Client({
 
   if (image)
     return <img src={image.src} alt={image.alt} className={className} />;
-  if (showEmptyIcon)
+  if (showPlaceholder)
     return (
       <img
         src={EmptyClientsLogo}

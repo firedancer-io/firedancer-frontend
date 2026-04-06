@@ -42,7 +42,7 @@ export default function Supermajority() {
         flexGrow="1"
         mt="36px"
         direction={isStacked ? "column-reverse" : "row"}
-        align={isStacked ? "center" : "start"}
+        align="stretch"
         justify="center"
         gap={gap}
         minHeight="600px"
@@ -52,9 +52,11 @@ export default function Supermajority() {
         <Flex
           direction="column"
           align="center"
-          maxWidth="100%"
+          width={isStacked ? "100%" : undefined}
           minWidth="300px"
-          flexBasis="300px"
+          flexBasis="40%"
+          flexGrow="1"
+          flexShrink="1"
           gap={gap}
         >
           <SupermajorityPieChart stakeFraction={stakeFraction} />

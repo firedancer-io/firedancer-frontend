@@ -1,11 +1,10 @@
 .container {
-  --border-style: 0px solid rgba(250, 250, 250, 0.12);
   max-width: 100%;
   &.horizontal {
-    flex-basis: 475px;
-    min-width: 475px;
+    flex-basis: 60%;
     flex-grow: 1;
     flex-shrink: 1;
+    min-width: 475px;
     min-height: 152px;
     height: 100%;
   }
@@ -30,14 +29,10 @@
   overflow-y: auto;
   flex-basis: 50%;
   flex-grow: 1;
-
-  &.hidden {
-    display: none;
-  }
 }
 
 .row {
-  border: var(--border-style);
+  border: 0px solid var(--supermajority-table-border-color);
   column-gap: 20px;
   padding: 0 20px 0 5px;
 
@@ -76,11 +71,11 @@
     &:hover {
       filter: brightness(1.1);
     }
-    &.red {
+    &.offline {
       color: var(--red-9);
       background: rgba(229, 72, 77, 0.05);
     }
-    &.green {
+    &.online {
       color: var(--green-9);
       background: rgba(48, 164, 108, 0.05);
     }
