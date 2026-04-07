@@ -103,6 +103,14 @@
   box-shadow: 0 0 0 2px var(--gray-a8);
 }
 
+.tooltip {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
 .hide {
   opacity: 0;
   display: none;

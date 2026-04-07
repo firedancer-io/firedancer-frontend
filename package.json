@@ -25,7 +25,6 @@
     "@ag-grid-community/csv-export": "^32.2.0",
     "@ag-grid-community/react": "^32.2.0",
     "@ag-grid-community/styles": "^32.2.0",
-    "@floating-ui/react": "^0.27.15",
     "@fontsource/inter-tight": "^5.2.5",
     "@fontsource/roboto-mono": "^5.1.0",
     "@material-design-icons/svg": "^0.14.15",
