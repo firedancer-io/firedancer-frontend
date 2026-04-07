@@ -62,7 +62,7 @@ export default function Navigation() {
         <Flex
           // width transitions
           width={showNav ? `${width + thumbPadding}px` : "0"}
-          overflow="hidden"
+          overflow={showNav ? "visible" : "hidden"}
           className={clsx("sticky", styles.slotNavContainer, {
             [styles.navBackground]: !showOnlyEpochBar,
           })}

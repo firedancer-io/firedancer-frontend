@@ -23,15 +23,10 @@ import styles from "./epochSlider.module.css";
 import { useInterval, useMeasure } from "react-use";
 import clsx from "clsx";
 import { useThrottledCallback } from "use-debounce";
-import {
-  autoUpdate,
-  FloatingPortal,
-  offset,
-  useFloating,
-} from "@floating-ui/react";
 import { isScrollingAtom } from "./atoms";
 import { useEventListener } from "../../hooks/useEventListener";
 import { useSlotsNavigation } from "../../hooks/useSlotsNavigation";
+import { maxZIndex } from "../../consts";
 
 // 1 tick about 10 leaders or 40 slots
 const sliderMaxValue = 10_800;
@@ -189,6 +184,7 @@ function EpochSlider() {
         style={{
           // handle last slot of epoch, placed 100% from bottom
           marginTop: `${slotHeight}px`,
+          zIndex: maxZIndex,
         }}
         value={value}
         onValueChange={(newValue) => {
@@ -302,48 +298,26 @@ const MSliderEpochProgress = memo(SliderEpochProgress);
 
 function SliderThumbTooltip({ isOpen }: { isOpen: boolean }) {
   const slotOverride = useAtomValue(slotOverrideAtom);
-
   const { showNav } = useSlotsNavigation();
-  const { refs, elements, floatingStyles, update } = useFloating({
-    placement: "right",
-    middleware: [offset(5)],
-  });
-
-  useEffect(() => {
-    if (elements.reference && elements.floating) {
-      const cleanup = autoUpdate(
-        elements.reference,
-        elements.floating,
-        update,
-        { animationFrame: true },
-      );
-      return cleanup;
-    }
-  }, [elements, update]);
 
   return (
-    <>
-      <Slider.Thumb
-        ref={refs.setReference}
-        className={clsx(styles.sliderThumb, {
-          [styles.collapsed]: !showNav,
-        })}
-      />
-      <FloatingPortal id="app">
-        <Text
-          size="1"
-          ref={refs.setFloating}
-          style={floatingStyles}
-          className={clsx(
-            "rt-TooltipContent",
-            "rt-TooltipText",
-            isOpen ? styles.show : styles.hide,
-          )}
-        >
-          {slotOverride}
-        </Text>
-      </FloatingPortal>
-    </>
+    <Slider.Thumb
+      className={clsx(styles.sliderThumb, {
+        [styles.collapsed]: !showNav,
+      })}
+    >
+      <Text
+        size="1"
+        className={clsx(
+          "rt-TooltipContent",
+          "rt-TooltipText",
+          styles.tooltip,
+          isOpen ? styles.show : styles.hide,
+        )}
+      >
+        {slotOverride}
+      </Text>
+    </Slider.Thumb>
   );
 }
 
