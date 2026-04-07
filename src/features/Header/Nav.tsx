@@ -11,7 +11,7 @@ import { Link } from "@tanstack/react-router";
 import clsx from "clsx";
 import type { FC, SVGProps } from "react";
 import { forwardRef, useEffect, useMemo } from "react";
-import { clientAtom, containerElAtom } from "../../atoms";
+import { containerElAtom } from "../../atoms";
 import { useAtomValue } from "jotai";
 import type { RouteLabel } from "../../hooks/useCurrentRoute";
 import { RouteLabelToPath, useCurrentRoute } from "../../hooks/useCurrentRoute";
@@ -20,7 +20,7 @@ import { maxZIndex, slotsNavSpacing } from "../../consts";
 import { clusterAtom } from "../../api/atoms";
 import { getClusterColor } from "../../utils";
 import { navButtonInactiveTextColor } from "../../colors";
-import { ClientEnum } from "../../api/entities";
+import { isFrankendancer } from "../../client";
 
 interface NavLinkProps {
   label: RouteLabel;
@@ -92,14 +92,12 @@ NavButton.displayName = "NavButton";
 
 export function NavLinks() {
   const currentRoute = useCurrentRoute();
-  const client = useAtomValue(clientAtom);
 
   return (
     <Flex gap={`${slotsNavSpacing}px`}>
       {Object.keys(RouteLabelToPath).map((label) => {
         const routeLabel = label as RouteLabel;
-        if (routeLabel === "Gossip" && client === ClientEnum.Frankendancer)
-          return;
+        if (routeLabel === "Gossip" && isFrankendancer) return;
 
         return (
           <NavButton
@@ -117,7 +115,6 @@ export function NavLinks() {
 export function DropdownNav() {
   const containerEl = useAtomValue(containerElAtom);
   const currentRoute = useCurrentRoute();
-  const client = useAtomValue(clientAtom);
 
   return (
     <DropdownMenu.Root>
@@ -140,8 +137,7 @@ export function DropdownNav() {
         >
           {Object.keys(RouteLabelToPath).map((label) => {
             const routeLabel = label as RouteLabel;
-            if (routeLabel === "Gossip" && client === ClientEnum.Frankendancer)
-              return;
+            if (routeLabel === "Gossip" && isFrankendancer) return;
 
             return (
               <DropdownMenu.Item key={routeLabel} asChild>

@@ -19,10 +19,9 @@ import {
   headerHeight,
   slotNavHeight,
 } from "../../../../consts";
-import { clientAtom } from "../../../../atoms";
-import { getClientSpecificTileNames } from "../../../../utils";
 import useChartControl from "./ChartControls/useChartControl";
 import { FOCUS_BANK_KEY } from "../../../SlotDetails/ChartControlsContext";
+import { tileNames } from "../../../../utils";
 
 const navigationTop = clusterIndicatorHeight + headerHeight;
 export const txnBarsControlsStickyTop = navigationTop + slotNavHeight;
@@ -42,8 +41,6 @@ export default function BarsChartContainer() {
   );
   queryTxsRef.current = query.response?.transactions;
 
-  const client = useAtomValue(clientAtom);
-  const tileNames = getClientSpecificTileNames(client);
   const tileCount = useAtomValue(tileCountAtom);
   const bankTileCount = tileCount[tileNames.bank];
 

@@ -8,17 +8,17 @@ import {
   useSlotQueryPublish,
   useSlotQueryResponseDetailed,
 } from "../../../hooks/useSlotQuery";
-import { clientAtom, epochAtom } from "../../../atoms";
+import { epochAtom } from "../../../atoms";
 import { useMemo } from "react";
 
 import styles from "./detailedSlotStats.module.css";
 import { formatTimeNanos } from "../../../utils";
-import { ClientEnum } from "../../../api/entities";
 import { TimePopoverDropdown } from "../../../components/TimePopoverDropdown";
 import { useMedia } from "react-use";
 import CopyButton from "../../../components/CopyButton";
 import MonoText from "../../../components/MonoText";
 import clsx from "clsx";
+import { isFrankendancer } from "../../../client";
 
 const gap = "5px";
 
@@ -238,7 +238,6 @@ interface BlockHashProps {
 }
 
 function BlockHash({ slot, vertical = false }: BlockHashProps) {
-  const client = useAtomValue(clientAtom);
   const schedulerStats =
     useSlotQueryResponseDetailed(slot).response?.scheduler_stats;
 
@@ -246,15 +245,12 @@ function BlockHash({ slot, vertical = false }: BlockHashProps) {
     <LabelValue
       label="Block Hash"
       value={
-        client === ClientEnum.Frankendancer
+        isFrankendancer
           ? "Not available for Frankendancer"
           : schedulerStats?.block_hash
       }
       vertical={vertical}
-      allowCopy={
-        client !== ClientEnum.Frankendancer &&
-        schedulerStats?.block_hash != null
-      }
+      allowCopy={!isFrankendancer && schedulerStats?.block_hash != null}
     />
   );
 }

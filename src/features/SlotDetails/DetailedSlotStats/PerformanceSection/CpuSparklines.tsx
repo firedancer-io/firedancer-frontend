@@ -4,15 +4,11 @@ import TileCard from "../../../Overview/SlotPerformance/TileCard";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import { useTilesPerformance } from "../../../Overview/SlotPerformance/useTilesPerformance";
 import { Flex } from "@radix-ui/themes";
-import { clientAtom } from "../../../../atoms";
-import { getClientSpecificTileNames } from "../../../../utils";
+import { tileNames } from "../../../../utils";
 
 export default function CpuSparklines() {
   const tileCounts = useAtomValue(tileCountAtom);
   const { queryIdleData } = useTilesPerformance();
-
-  const client = useAtomValue(clientAtom);
-  const tileNames = getClientSpecificTileNames(client);
 
   return (
     <SlotDetailsSubSection title="CPU Utilization">

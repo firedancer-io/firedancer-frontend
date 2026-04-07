@@ -4,16 +4,12 @@ import { useTilesPerformance } from "./useTilesPerformance";
 import { useState } from "react";
 import { useAtomValue } from "jotai";
 import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
-import { getClientSpecificTileNames } from "../../../utils";
-import { clientAtom } from "../../../atoms";
+import { tileNames } from "../../../utils";
 
 export default function TilesPerformance() {
   const [_isExpanded, setIsExpanded] = useState(false);
   const isStartupVisible = useAtomValue(isStartupProgressVisibleAtom);
   const isExpanded = _isExpanded && !isStartupVisible;
-
-  const client = useAtomValue(clientAtom);
-  const tileNames = getClientSpecificTileNames(client);
 
   const { tileCounts, groupedLiveIdlePerTile, showLive, queryIdleData } =
     useTilesPerformance();

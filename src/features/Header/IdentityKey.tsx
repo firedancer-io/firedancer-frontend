@@ -3,7 +3,7 @@ import { identityBalanceAtom, voteBalanceAtom } from "../../api/atoms";
 import { Text, Flex } from "@radix-ui/themes";
 import styles from "./identityKey.module.css";
 import PeerIcon from "../../components/PeerIcon";
-import { clientAtom, myStakePctAtom, myStakeAmountAtom } from "../../atoms";
+import { myStakePctAtom, myStakeAmountAtom } from "../../atoms";
 import type { PropsWithChildren } from "react";
 import { Fragment, useEffect } from "react";
 import { getSolString, getDurationValues } from "../../utils";
@@ -16,6 +16,7 @@ import { identityIconOnlyWidth, maxZIndex } from "../../consts";
 import { useUptimeDuration } from "../../hooks/useUptime";
 import CopyButton from "../../components/CopyButton";
 import ConditionalTooltip from "../../components/ConditionalTooltip";
+import { client } from "../../client";
 
 export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
@@ -24,12 +25,10 @@ export default function IdentityKey() {
   const isXNarrowScreen = useMedia("(min-width: 798px)");
   const isNarrowScreen = useMedia("(min-width: 914px)");
 
-  const client = useAtomValue(clientAtom);
-
   useEffect(() => {
     const suffix = peer?.info?.name ?? identityKey;
     document.title = suffix ? `${client} | ${suffix}` : client;
-  }, [client, identityKey, peer]);
+  }, [identityKey, peer]);
 
   return (
     <DropdownContainer showDropdown>

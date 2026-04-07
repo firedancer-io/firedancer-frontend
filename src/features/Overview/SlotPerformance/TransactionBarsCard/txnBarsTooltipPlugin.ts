@@ -1,5 +1,5 @@
 import type uPlot from "uplot";
-import type { Client, SlotTransactions } from "../../../../api/types.js";
+import type { SlotTransactions } from "../../../../api/types.js";
 import type { MutableRefObject } from "react";
 import { baseTooltipPlugin } from "../../../../uplotReact/baseTooltipPlugin.js";
 import {
@@ -13,13 +13,11 @@ export function txnBarsTooltipPlugin({
   setTxnIdx,
   setTxnState,
   transactionsBundleStats,
-  client,
 }: {
   transactionsRef: MutableRefObject<SlotTransactions | null | undefined>;
   setTxnIdx: (txnIdx: number) => void;
   setTxnState: (state: TxnState) => void;
   transactionsBundleStats: (TxnBundleStats | undefined)[];
-  client: Client;
 }): uPlot.Plugin {
   function showOnCursor(
     u: uPlot,
@@ -50,7 +48,6 @@ export function txnBarsTooltipPlugin({
         transactionsRef.current,
         txnIdx,
         transactionsBundleStats[txnIdx]?.bundleTxnIdx,
-        client,
       );
       setTxnState(txnState);
       setTxnIdx(txnIdx);

@@ -26,7 +26,7 @@ import {
   iconButtonColor,
 } from "../../../../colors";
 import { solDecimals, txnErrorCodeMap } from "../../../../consts";
-import { clientAtom, peersListAtom } from "../../../../atoms";
+import { peersListAtom } from "../../../../atoms";
 import {
   getTxnBundleStats,
   getTxnStateDurations,
@@ -270,11 +270,9 @@ function StateDurationDisplay({
   txnIdx,
   bundleTxnIdx,
 }: StateDurationDisplayProps) {
-  const client = useAtomValue(clientAtom);
-
   const durations = useMemo(() => {
-    return getTxnStateDurations(transactions, txnIdx, bundleTxnIdx, client);
-  }, [bundleTxnIdx, transactions, txnIdx, client]);
+    return getTxnStateDurations(transactions, txnIdx, bundleTxnIdx);
+  }, [bundleTxnIdx, transactions, txnIdx]);
 
   const durationRatios = useMemo(() => {
     if (!durations) return;

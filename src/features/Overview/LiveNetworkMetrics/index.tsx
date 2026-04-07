@@ -18,8 +18,7 @@ import type { CSSProperties } from "react";
 import styles from "./liveNetworkMetrics.module.css";
 import { sum } from "lodash";
 import { tileChartDarkBackground } from "../../../colors";
-import { clientAtom } from "../../../atoms";
-import { ClientEnum } from "../../../api/entities";
+import { isFrankendancer } from "../../../client";
 
 const chartHeight = 18;
 
@@ -41,8 +40,6 @@ interface NetworkMetricsCardProps {
 }
 
 function NetworkMetricsCard({ metrics, type }: NetworkMetricsCardProps) {
-  const client = useAtomValue(clientAtom);
-
   return (
     <Card style={{ flexGrow: 1 }}>
       <Flex direction="column" height="100%" gap={headerGap}>
@@ -89,7 +86,7 @@ function NetworkMetricsCard({ metrics, type }: NetworkMetricsCardProps) {
             {metrics.map((value, i) => {
               const protocol = networkProtocols[i];
               if (
-                client === ClientEnum.Frankendancer &&
+                isFrankendancer &&
                 (protocol === "gossip" || protocol === "repair")
               ) {
                 return;

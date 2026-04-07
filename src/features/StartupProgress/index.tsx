@@ -3,17 +3,14 @@ import type { PropsWithChildren } from "react";
 import Body from "./Body";
 import styles from "./container.module.css";
 import clsx from "clsx";
-import { ClientEnum } from "../../api/entities";
 import FiredancerBody from "./Firedancer/Body";
-import { clientAtom } from "../../atoms";
 import { showStartupProgressAtom } from "./atoms";
+import { isFiredancer } from "../../client";
 
 export default function StartupProgress({ children }: PropsWithChildren) {
   const showStartupProgress = useAtomValue(showStartupProgressAtom);
-  const client = useAtomValue(clientAtom);
-  if (!client) return null;
 
-  return client === ClientEnum.Firedancer ? (
+  return isFiredancer ? (
     <>
       <FiredancerBody />
       <div>{children}</div>
