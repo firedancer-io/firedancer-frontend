@@ -19,7 +19,6 @@ import { leftAxisSizeAtom, rightAxisSizeAtom } from "../ComputeUnitsCard/atoms";
 import { touchPlugin } from "../../../../uplotReact/touchPlugin";
 import { chartAxisColor, chartGridStrokeColor } from "../../../../colors";
 import { banksXScaleKey } from "../ComputeUnitsCard/consts";
-import { clientAtom } from "../../../../atoms";
 import { getTxnBundleStats } from "../../../../transactionUtils";
 import clsx from "clsx";
 
@@ -50,7 +49,6 @@ export default function BarsChart({
   const isFirstOrLastChart = isFirstChart || isLastChart;
   const leftAxisSize = useAtomValue(leftAxisSizeAtom) - xBuffer;
   const rightAxisSize = useAtomValue(rightAxisSizeAtom) - xBuffer;
-  const client = useAtomValue(clientAtom);
 
   const setTxnIdx = useSetAtom(tooltipTxnIdxAtom);
   const setTxnState = useSetAtom(tooltipTxnStateAtom);
@@ -137,13 +135,12 @@ export default function BarsChart({
       padding: [0, xBuffer, 0, xBuffer],
       series: [{ scale: banksXScaleKey }, { label: `Bank ${bankIdx}` }, {}],
       plugins: [
-        txnBarsPlugin(transactionsRef, transactionsBundleStats, client),
+        txnBarsPlugin(transactionsRef, transactionsBundleStats),
         txnBarsTooltipPlugin({
           transactionsRef,
           setTxnIdx,
           setTxnState,
           transactionsBundleStats,
-          client,
         }),
         timeScaleDragPlugin(),
         wheelZoomPlugin({ factor: 0.75 }),
@@ -168,7 +165,6 @@ export default function BarsChart({
     setTxnIdx,
     setTxnState,
     transactionsBundleStats,
-    client,
   ]);
 
   const barCount = useAtomValue(barCountAtom);

@@ -18,9 +18,8 @@ import {
 } from "../../api/atoms";
 import PopoverDropdown from "../../components/PopoverDropdown";
 import { useEma, useEmaValue } from "../../hooks/useEma";
-import { clientAtom } from "../../atoms";
-import { ClientEnum } from "../../api/entities";
 import { networkProtocols } from "../Overview/LiveNetworkMetrics/consts";
+import { isFrankendancer } from "../../client";
 
 function getStatusText(isAlerting: boolean) {
   return isAlerting ? "Unhealthy" : "Healthy";
@@ -229,23 +228,19 @@ function useTurbineHealthData(): HealthData {
 const turbineIdx = networkProtocols.indexOf("turbine");
 const repairIdx = networkProtocols.indexOf("repair");
 
+const emaOptions = isFrankendancer
+  ? {
+      // no updates
+      forceUpdateIntervalMs: undefined,
+    }
+  : {
+      halfLifeMs: 1_000,
+    };
+
 /**
  * For non-Frankendancer, alert if turbine rate < replay rate
  */
 function useIsTurbineNetworkMetricsAlerting() {
-  const isFrankendancer = useAtomValue(clientAtom) === ClientEnum.Frankendancer;
-
-  const emaOptions = useMemo(() => {
-    return isFrankendancer
-      ? {
-          // no updates
-          forceUpdateIntervalMs: undefined,
-        }
-      : {
-          halfLifeMs: 1_000,
-        };
-  }, [isFrankendancer]);
-
   // network metrics check for non-Frankendancer
   const liveNetworkMetrics = useAtomValue(liveNetworkMetricsAtom);
   const turbineRate = useEmaValue(

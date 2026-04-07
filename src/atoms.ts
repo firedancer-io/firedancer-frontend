@@ -26,22 +26,9 @@ import {
 } from "./utils";
 import { searchLeaderSlotsAtom } from "./features/LeaderSchedule/atoms";
 import { selectedSlotAtom } from "./features/Overview/SlotPerformance/atoms";
-import { ClientEnum, clientSchema } from "./api/entities";
 import { atomFamily } from "jotai/utils";
 import memoize from "micro-memoize";
-
-export const clientAtom = atom(() => {
-  const parsedClient = clientSchema.safeParse(
-    (import.meta.env.VITE_VALIDATOR_CLIENT as string)?.trim(),
-  );
-
-  if (parsedClient.error) {
-    // default
-    return ClientEnum.Frankendancer;
-  }
-
-  return parsedClient.data;
-});
+import { isFrankendancer } from "./client";
 
 export const containerElAtom = atom<HTMLDivElement | null>();
 export const slotsListElAtom = atom<HTMLDivElement | null>();
@@ -307,8 +294,7 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
 });
 
 export const firstProcessedSlotAtom = atom((get) => {
-  const client = get(clientAtom);
-  if (client === ClientEnum.Frankendancer) {
+  if (isFrankendancer) {
     const startupProgress = get(startupProgressAtom);
     if (startupProgress?.ledger_max_slot == null) return;
 

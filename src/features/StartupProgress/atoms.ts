@@ -1,9 +1,9 @@
 import { atom } from "jotai";
 import { bootProgressAtom } from "../../api/atoms";
-import { BootPhaseEnum, ClientEnum } from "../../api/entities";
+import { BootPhaseEnum } from "../../api/entities";
 import type { BootPhase } from "../../api/types";
-import { clientAtom } from "../../atoms";
 import { latestTurbineSlotAtom } from "./Firedancer/CatchingUp/atoms";
+import { isFrankendancer } from "../../client";
 
 export const bootProgressPhaseAtom = atom(
   (get) => get(bootProgressAtom)?.phase,
@@ -95,11 +95,9 @@ export const isStartupProgressVisibleAtom = atom((get) => {
   const showStartupProgress = get(showStartupProgressAtom);
   if (!showStartupProgress) return false;
 
-  const client = get(clientAtom);
-  if (client === ClientEnum.Frankendancer) {
+  if (isFrankendancer) {
     return showStartupProgress;
-  } else if (client === ClientEnum.Firedancer) {
+  } else {
     return showStartupProgress && get(isStartupProgressExpandedAtom);
   }
-  return true;
 });

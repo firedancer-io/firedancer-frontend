@@ -14,7 +14,6 @@ import {
   getTxnBundleStats,
   getTxnStateDurations,
 } from "../../../../transactionUtils";
-import { clientAtom } from "../../../../atoms";
 
 const initDurations = {
   preLoading: 0,
@@ -30,7 +29,6 @@ function getTotal(durations: typeof initDurations) {
 }
 
 export default function CumulativeExecutionTimeStats() {
-  const client = useAtomValue(clientAtom);
   const selectedSlot = useAtomValue(selectedSlotAtom);
   const transactions =
     useSlotQueryResponseTransactions(selectedSlot).response?.transactions;
@@ -48,7 +46,6 @@ export default function CumulativeExecutionTimeStats() {
         transactions,
         i,
         bundleStats.bundleTxnIdx,
-        client,
       );
 
       const sumDurations = (
@@ -80,7 +77,7 @@ export default function CumulativeExecutionTimeStats() {
       landedFailed,
       max: Math.max(unlanded.total, landedSuccess.total, landedFailed.total),
     };
-  }, [transactions, client]);
+  }, [transactions]);
 
   if (!durations) return;
 

@@ -1,16 +1,12 @@
 import { Flex } from "@radix-ui/themes";
 import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
-import { useAtomValue } from "jotai";
-import { ClientEnum } from "../../../api/entities";
-import { clientAtom } from "../../../atoms";
 import ShredsChart from "./ShredsChart";
 import { ShredsChartLegend } from "./ShredsChartLegend";
+import { isFrankendancer } from "../../../client";
 
 export default function ShredsProgression() {
-  const client = useAtomValue(clientAtom);
-
-  if (client !== ClientEnum.Firedancer) return;
+  if (isFrankendancer) return;
 
   return (
     // extra right padding for x axis label

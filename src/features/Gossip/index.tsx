@@ -1,6 +1,5 @@
 import { Flex } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
-import { clientAtom } from "../../atoms.ts";
 import { gossipNetworkStatsAtom } from "../../api/atoms.ts";
 import StorageStatsTable from "./StorageStatsTable.tsx";
 import StorageStatsCharts from "./StorageStatsCharts.tsx";
@@ -11,10 +10,9 @@ import GossipHealth from "./GossipHealth/index.tsx";
 import { TrafficTreeMap } from "./TrafficTreeMap.tsx";
 import { useDebounce } from "use-debounce";
 import { rowGap, tableMinWidth } from "./consts.ts";
-import { ClientEnum } from "../../api/entities.ts";
+import { isFrankendancer } from "../../client.ts";
 
 export default function Gossip() {
-  const client = useAtomValue(clientAtom);
   const networkStats = useAtomValue(gossipNetworkStatsAtom);
   const [dbNetworkStats] = useDebounce(networkStats, 5_000, {
     leading: true,
@@ -24,7 +22,7 @@ export default function Gossip() {
   const health = networkStats?.health;
   const storage = networkStats?.storage;
 
-  if (client === ClientEnum.Frankendancer) return;
+  if (isFrankendancer) return;
   if (!health || !storage || !dbNetworkStats) return;
 
   return (

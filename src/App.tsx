@@ -4,16 +4,16 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import "./app.css";
 import { routeTree } from "./routeTree.gen";
 import { ConnectionProvider } from "./api/ws/ConnectionProvider";
-import { getDefaultStore, useSetAtom } from "jotai";
-import { clientAtom, containerElAtom } from "./atoms";
+import { useSetAtom } from "jotai";
+import { containerElAtom } from "./atoms";
 import { useCallback } from "react";
 import * as colors from "./colors";
 import { kebabCase } from "lodash";
 import FiredancerLogo from "./assets/firedancer_logo.svg";
 import FrankendancerLogo from "./assets/frankendancer_logo.svg";
-import { ClientEnum } from "./api/entities";
 import { enableMapSet } from "immer";
 import { useMount } from "react-use";
+import { isFiredancer } from "./client";
 
 const router = createRouter({ routeTree });
 
@@ -27,9 +27,7 @@ declare module "@tanstack/react-router" {
 }
 
 // set up favicon and title based on client
-const store = getDefaultStore();
-const client = store.get(clientAtom);
-if (client === ClientEnum.Firedancer) {
+if (isFiredancer) {
   document.getElementById("favicon")?.setAttribute("href", FiredancerLogo);
 } else {
   document.getElementById("favicon")?.setAttribute("href", FrankendancerLogo);

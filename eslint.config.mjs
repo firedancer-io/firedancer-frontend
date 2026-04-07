@@ -112,5 +112,5 @@ export default tseslint.config(
         { prefer: "type-imports" },
       ],
     },
-  }
+  },
 );

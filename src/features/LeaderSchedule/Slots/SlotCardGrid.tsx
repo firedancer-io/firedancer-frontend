@@ -2,7 +2,6 @@ import { Flex, Grid, Text, Tooltip } from "@radix-ui/themes";
 import styles from "./slotCardGrid.module.css";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
-  clientAtom,
   currentSlotAtom,
   firstProcessedSlotAtom,
   skippedClusterSlotsAtom,
@@ -33,8 +32,8 @@ import {
   SkippedIcon,
   StatusIcon,
 } from "../../../components/StatusIcon";
-import { ClientEnum } from "../../../api/entities";
 import LinkedSlotText from "./SlotText";
+import { isFiredancer } from "../../../client";
 
 interface SlotCardGridProps {
   slot: number;
@@ -42,8 +41,6 @@ interface SlotCardGridProps {
 }
 
 export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
-  const client = useAtomValue(clientAtom);
-
   const ref = useRef<HTMLDivElement | null>(null);
   const setScroll = useSetAtom(setScrollFuncsAtom);
   const deleteScroll = useSetAtom(deleteScrollFuncsAtom);
@@ -60,16 +57,13 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
     <Flex minWidth="0" flexGrow="1">
       <SlotColumn slot={slot} currentSlot={currentSlot} />
       <div
-        className={clsx(
-          styles.grid,
-          client === ClientEnum.Firedancer && styles.firedancerGrid,
-        )}
+        className={clsx(styles.grid, { [styles.firedancerGrid]: isFiredancer })}
         ref={ref}
         onScroll={(e) => {
           scrollAll(slot, e.currentTarget.scrollLeft);
         }}
       >
-        {client === ClientEnum.Firedancer && (
+        {isFiredancer && (
           <Text
             className={clsx(styles.headerText, styles.voteLatencyHeader)}
             align="right"
@@ -297,7 +291,6 @@ function getRowValues(
 }
 
 function SlotCardRow({ slot, active }: SlotCardRowProps) {
-  const client = useAtomValue(clientAtom);
   const firstProcessedSlot = useAtomValue(firstProcessedSlotAtom);
   const currentSlot = useAtomValue(currentSlotAtom);
   const skippedClusterSlots = useAtomValue(skippedClusterSlotsAtom);
@@ -354,7 +347,7 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
 
   return (
     <>
-      {client === ClientEnum.Firedancer && (
+      {isFiredancer && (
         <Text
           className={valueClassName}
           align="right"

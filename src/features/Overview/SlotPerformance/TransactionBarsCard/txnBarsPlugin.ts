@@ -4,7 +4,7 @@ import uPlot from "uplot";
 import { ceil, round } from "lodash";
 import { pointWithin, Quadtree } from "./quadTree";
 import type { MutableRefObject } from "react";
-import type { Client, SlotTransactions } from "../../../../api/types";
+import type { SlotTransactions } from "../../../../api/types";
 import { getDefaultStore } from "jotai";
 import { logRatio } from "../../../../mathUtils";
 import { barCountAtom } from "./atoms";
@@ -60,7 +60,6 @@ export const setPauseDrawing = (pause: boolean) => (pauseDrawing = pause);
 export function txnBarsPlugin(
   transactionsRef: MutableRefObject<SlotTransactions | null | undefined>,
   transactionsBundleStats: (TxnBundleStats | undefined)[],
-  client: Client,
 ): uPlot.Plugin {
   let maxFees = 0n;
   let maxTips = 0n;
@@ -107,7 +106,6 @@ export function txnBarsPlugin(
                   transactionsRef.current,
                   value,
                   transactionsBundleStats[value]?.bundleTxnIdx,
-                  client,
                 )
           ],
           brightness:

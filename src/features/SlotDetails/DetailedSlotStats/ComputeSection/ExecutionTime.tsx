@@ -13,11 +13,9 @@ import {
   getTxnBundleStats,
   getTxnStateDurations,
 } from "../../../../transactionUtils";
-import { clientAtom } from "../../../../atoms";
 import { sum, values } from "lodash";
 
 export default function ExecutionTime() {
-  const client = useAtomValue(clientAtom);
   const selectedSlot = useAtomValue(selectedSlotAtom);
   const query = useSlotQueryResponseTransactions(selectedSlot);
   const transactions = query.response?.transactions;
@@ -41,7 +39,6 @@ export default function ExecutionTime() {
         transactions,
         i,
         bundleStats.bundleTxnIdx,
-        client,
       );
 
       const totalNum = sum(values(duration).map((n) => Number(n)));
@@ -77,7 +74,7 @@ export default function ExecutionTime() {
       bundleMin: bundle.min,
       bundleMax: bundle.max,
     };
-  }, [transactions, client]);
+  }, [transactions]);
 
   if (!durations) return;
 

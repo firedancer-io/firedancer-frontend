@@ -1,7 +1,7 @@
 import { max } from "lodash";
-import type { Client, SlotTransactions } from "./api/types";
+import type { SlotTransactions } from "./api/types";
 import { TxnState } from "./features/Overview/SlotPerformance/TransactionBarsCard/consts";
-import { ClientEnum } from "./api/entities";
+import { isFrankendancer } from "./client";
 
 export const chartBufferMs = 2_000_000;
 
@@ -24,7 +24,6 @@ export function getTxnStateDurations(
   transactions: SlotTransactions,
   txnIdx: number,
   bundleTxnIdx: number[] | undefined,
-  client: Client,
 ) {
   if (txnIdx < 0)
     return {
@@ -63,7 +62,7 @@ export function getTxnStateDurations(
   let execute;
   let postExecute;
   if (
-    client === ClientEnum.Frankendancer ||
+    isFrankendancer ||
     !transactions.txn_from_bundle[txnIdx] ||
     !bundleTxnIdx?.length
   ) {
@@ -131,7 +130,6 @@ export function getTxnState(
   transactions: SlotTransactions,
   txnIdx: number,
   bundleTxnIdx: number[] | undefined,
-  client: Client,
 ): TxnState {
   // Helper function to calculate relative timestamp
   const relativeTime = (timestamp: bigint): number => {
@@ -157,7 +155,7 @@ export function getTxnState(
   const isBundled =
     transactions.txn_from_bundle[txnIdx] && bundleTxnIdx?.length;
 
-  if (!isBundled || client === ClientEnum.Frankendancer) {
+  if (!isBundled || isFrankendancer) {
     if (ts < relativeTime(transactions.txn_end_timestamps_nanos[txnIdx])) {
       return TxnState.EXECUTE;
     }
