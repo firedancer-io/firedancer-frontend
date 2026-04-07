@@ -311,15 +311,14 @@ function SliderThumbTooltip({ isOpen }: { isOpen: boolean }) {
 
   useEffect(() => {
     if (elements.reference && elements.floating) {
-      const cleanup = autoUpdate(
-        elements.reference,
-        elements.floating,
-        update,
-        { animationFrame: true },
-      );
+      const cleanup = autoUpdate(elements.reference, elements.floating, update);
       return cleanup;
     }
   }, [elements, update]);
+
+  useEffect(() => {
+    update();
+  }, [slotOverride, update]);
 
   return (
     <>
