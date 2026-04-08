@@ -20,7 +20,7 @@ import { Slider } from "radix-ui";
 import warning from "../../assets/warning_16dp_FF5353_FILL1_wght400_GRAD0_opsz20.svg";
 import green_flag from "../../assets/flag.svg";
 import styles from "./epochSlider.module.css";
-import { useInterval, useMeasure } from "react-use";
+import { useInterval, useMeasure, useUnmount } from "react-use";
 import clsx from "clsx";
 import { useThrottledCallback } from "use-debounce";
 import {
@@ -135,20 +135,15 @@ function EpochSlider() {
   const slotHeight = Math.trunc(height / 175);
 
   const [tooltipOpen, setTooltipOpen] = useState(false);
-  useEffect(() => {
-    if (tooltipOpen) {
-      const timeoutId = setTimeout(() => {
-        setTooltipOpen(false);
-      }, 100);
-      return () => {
-        clearTimeout(timeoutId);
-      };
-    }
-  }, [tooltipOpen]);
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout>();
+  useUnmount(() => clearTimeout(tooltipTimeoutRef.current));
+
   const updateSlot = useCallback(
     (slot: number | undefined) => {
       setSlotOverride(slot);
       setTooltipOpen(true);
+      clearTimeout(tooltipTimeoutRef.current);
+      tooltipTimeoutRef.current = setTimeout(() => setTooltipOpen(false), 100);
     },
     [setSlotOverride],
   );
