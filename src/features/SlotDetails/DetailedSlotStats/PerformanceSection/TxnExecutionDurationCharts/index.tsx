@@ -15,8 +15,10 @@ import { txnExecutionDurationTooltipPlugin } from "./txnExecutionDurationTooltip
 import { syncXScalePlugin } from "../../../../../uplotReact/syncXScalePlugin";
 import TxnExecutionDurationChartTooltip from "./TxnExecutionDurationChartTooltip";
 import type { MutableRefObject } from "react";
+import { txnExecutionDurationScaleKey } from "../../../../Overview/SlotPerformance/ComputeUnitsCard/consts";
 
 const bucketCount = 20;
+const bucketIndices = Array.from({ length: bucketCount }, (_, i) => i);
 
 const getBucketIndex = (duration: number, maxDuration: number) =>
   Math.trunc((duration / maxDuration) * bucketCount);
@@ -26,7 +28,6 @@ const getBucketDuration = (idx: number, maxDuration: number) =>
 
 const cuChartId = "txnExecutionDurationCu";
 const countChartId = "txnExecutionDurationCount";
-const tooltipElId = "txnExecutionDurationTooltip";
 const axisFont = "8px Inter Tight";
 const barFillColor = "#3C2E69";
 const ySeriesIdx = 1;
@@ -34,8 +35,6 @@ const ySeriesIdx = 1;
 const barsPaths =
   uPlot.paths?.bars?.({ size: [0.8] }) ??
   (() => ({ stroke: new Path2D(), fill: new Path2D() })); // fallback no-op
-
-const cursorSync = uPlot.sync("txnExecutionDuration");
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
 const getAxisSize = (axis: uPlot.Axis): number => (axis as any)._size ?? 0;
@@ -107,25 +106,25 @@ export default function TxnExecutionDurationCharts() {
 
       const maxDuration = getMax(items.map(({ duration }) => duration)) + 1;
 
-      const buckets = new Array(bucketCount).fill(0).map(() => ({
+      const buckets = Array.from({ length: bucketCount }, () => ({
         count: 0,
         cus: 0,
       }));
+
       for (const { duration, cu } of items) {
         const idx = getBucketIndex(duration, maxDuration);
         buckets[idx].count++;
         buckets[idx].cus += cu;
       }
 
-      const indices = buckets.map((_, i) => i);
       const bucketedCounts = buckets.map(({ count }) => count);
       const bucketedCUs = buckets.map(({ count, cus }) =>
         count ? cus / count : 0,
       );
 
       return {
-        countData: [indices, bucketedCounts],
-        cuData: [indices, bucketedCUs],
+        countData: [bucketIndices, bucketedCounts],
+        cuData: [bucketIndices, bucketedCUs],
         maxDuration,
       };
     }, [transactions]);
@@ -136,14 +135,17 @@ export default function TxnExecutionDurationCharts() {
     [maxDuration],
   );
 
-  const tooltipData =
-    tooltipDataIdx !== undefined
-      ? {
-          bucketIdx: tooltipDataIdx,
-          cuYVal: cuData[ySeriesIdx][tooltipDataIdx],
-          countYVal: countData[ySeriesIdx][tooltipDataIdx],
-        }
-      : undefined;
+  const tooltipData = useMemo(
+    () =>
+      tooltipDataIdx !== undefined
+        ? {
+            bucketIdx: tooltipDataIdx,
+            cuYVal: cuData[ySeriesIdx][tooltipDataIdx],
+            countYVal: countData[ySeriesIdx][tooltipDataIdx],
+          }
+        : undefined,
+    [countData, cuData, tooltipDataIdx],
+  );
 
   if (!transactions) return;
 
@@ -160,7 +162,6 @@ export default function TxnExecutionDurationCharts() {
           id={cuChartId}
           maxDuration={maxDuration}
           minYAxisSizeRef={minYAxisSizeRef}
-          tooltipElId={tooltipElId}
           setTooltipDataIdx={setTooltipDataIdx}
         />
       </SlotDetailsSubSection>
@@ -176,12 +177,10 @@ export default function TxnExecutionDurationCharts() {
           log
           maxDuration={maxDuration}
           minYAxisSizeRef={minYAxisSizeRef}
-          tooltipElId={tooltipElId}
           setTooltipDataIdx={setTooltipDataIdx}
         />
       </SlotDetailsSubSection>
       <TxnExecutionDurationChartTooltip
-        elId={tooltipElId}
         data={tooltipData}
         formatBucketRange={formatBucketRange}
       />
@@ -195,7 +194,6 @@ interface ChartProps {
   log?: boolean;
   maxDuration: number;
   minYAxisSizeRef: MutableRefObject<number>;
-  tooltipElId: string;
   setTooltipDataIdx: (idx: number) => void;
 }
 
@@ -205,7 +203,6 @@ function Chart({
   id,
   maxDuration,
   minYAxisSizeRef,
-  tooltipElId,
   setTooltipDataIdx,
 }: ChartProps) {
   const plotData = useMemo<AlignedData>(
@@ -225,7 +222,7 @@ function Chart({
     return {
       width: 0,
       height: 0,
-      cursor: { sync: { key: cursorSync.key } },
+      cursor: { sync: { key: txnExecutionDurationScaleKey } },
       scales: {
         duration: { time: false },
         y: {
@@ -280,7 +277,7 @@ function Chart({
           values: (_u, splits) => {
             const raw = log
               ? splits.map((v) => Math.round(Math.exp(v) - 1))
-              : splits;
+              : splits.map(Math.round);
             return raw.map((v) => v.toLocaleString());
           },
           gap: 0,
@@ -298,7 +295,7 @@ function Chart({
               "",
             );
 
-            if (longestVal === "") return axisSpacing;
+            if (longestVal === "") return Math.ceil(axisSpacing);
 
             self.ctx.font = axis.font?.[0] ?? axisFont;
             const axisValuesSize =
@@ -313,18 +310,11 @@ function Chart({
       ],
       legend: { show: false },
       plugins: [
-        txnExecutionDurationTooltipPlugin(tooltipElId, setTooltipDataIdx),
+        txnExecutionDurationTooltipPlugin(setTooltipDataIdx),
         syncXScalePlugin({ minRange: 0 }),
       ],
     };
-  }, [
-    lastXIdx,
-    tooltipElId,
-    setTooltipDataIdx,
-    maxDuration,
-    log,
-    minYAxisSizeRef,
-  ]);
+  }, [lastXIdx, setTooltipDataIdx, maxDuration, log, minYAxisSizeRef]);
 
   return (
     <Box flexGrow="1">

@@ -26,15 +26,13 @@ export default function IncomeScatterChartTooltip({
         <Grid columns="auto auto" gapX="2">
           <ChartTooltipRow
             label={xLabel}
-            value={data.x}
+            value={tooltipFormatX(data.x)}
             color={xColor}
-            formatter={tooltipFormatX}
           />
           <ChartTooltipRow
             label="Income"
-            value={data.y}
+            value={`${formatNumberLamports(data.y, maxSolDecimals)} SOL`}
             color={incomePerCuToggleControlColor}
-            formatter={(v) => `${formatNumberLamports(v, maxSolDecimals)} SOL`}
           />
         </Grid>
       )}

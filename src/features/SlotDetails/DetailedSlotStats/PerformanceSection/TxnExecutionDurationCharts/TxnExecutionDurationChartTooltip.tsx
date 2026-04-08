@@ -2,9 +2,9 @@ import { Grid } from "@radix-ui/themes";
 import UplotTooltip from "../../../../../uplotReact/UplotTooltip";
 import { ChartTooltipRow } from "../../ChartTooltipRow";
 import { computeUnitsColor } from "../../../../../colors";
+import { txnExecutionDurationTooltipElId } from "../../../../Overview/SlotPerformance/ComputeUnitsCard/consts";
 
 interface TxnExecutionDurationChartTooltipProps {
-  elId: string;
   data?: {
     bucketIdx: number;
     cuYVal: number | null | undefined;
@@ -14,29 +14,25 @@ interface TxnExecutionDurationChartTooltipProps {
 }
 
 export default function TxnExecutionDurationChartTooltip({
-  elId,
   data,
   formatBucketRange,
 }: TxnExecutionDurationChartTooltipProps) {
   return (
-    <UplotTooltip elId={elId}>
+    <UplotTooltip elId={txnExecutionDurationTooltipElId}>
       {data && (
         <Grid columns="auto auto" gapX="2">
           <ChartTooltipRow
             label="Duration"
-            value={data.bucketIdx}
-            formatter={formatBucketRange}
+            value={formatBucketRange(data.bucketIdx)}
           />
           <ChartTooltipRow
             label="Avg CUs"
-            value={data.cuYVal ?? 0}
+            value={data.cuYVal ? Math.round(data.cuYVal).toLocaleString() : "0"}
             color={computeUnitsColor}
-            formatter={(v) => Math.round(v).toLocaleString()}
           />
           <ChartTooltipRow
             label="Count"
-            value={data.countYVal ?? 0}
-            formatter={(v) => v.toLocaleString()}
+            value={data.countYVal ? data.countYVal.toLocaleString() : "0"}
           />
         </Grid>
       )}

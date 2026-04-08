@@ -1,8 +1,8 @@
 import type uPlot from "uplot";
 import { baseTooltipPlugin } from "../../../../../uplotReact/baseTooltipPlugin";
+import { txnExecutionDurationTooltipElId } from "../../../../Overview/SlotPerformance/ComputeUnitsCard/consts";
 
 export function txnExecutionDurationTooltipPlugin(
-  elId: string,
   setTooltipDataIdx: (idx: number) => void,
 ): uPlot.Plugin {
   function showOnCursor(_u: uPlot, _xVal: number, idx: number | null) {
@@ -10,5 +10,8 @@ export function txnExecutionDurationTooltipPlugin(
     setTooltipDataIdx(idx);
     return true;
   }
-  return baseTooltipPlugin({ elId, showOnCursor });
+  return baseTooltipPlugin({
+    elId: txnExecutionDurationTooltipElId,
+    showOnCursor,
+  });
 }
