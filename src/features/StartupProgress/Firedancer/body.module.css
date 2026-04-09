@@ -52,3 +52,12 @@
     margin-right: 67px;
   }
 }
+
+/* Min height for horizontal layout */
+@media (min-width: 1025px) {
+  .phase-container {
+    &.supermajority {
+      min-height: 820px;
+    }
+  }
+}

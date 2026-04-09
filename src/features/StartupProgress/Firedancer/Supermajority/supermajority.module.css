@@ -21,9 +21,14 @@
   color: var(--boot-progress-primary-text-color);
 }
 
+.pie-chart-square-container {
+  width: 100%;
+  max-height: 100%;
+  aspect-ratio: 1/1;
+}
+
 .pie-chart {
   container-type: inline-size;
-  aspect-ratio: 1/1;
   transition: --progress-pct 0.2s linear;
   --progress-pct: 0%;
   background:
@@ -39,7 +44,7 @@
     transform-origin: center top;
 
     .marker-line {
-      border-left: 1px solid #4c4c4c;
+      border-left: 3px solid #4c4c4c;
     }
 
     .marker-icon {
@@ -66,13 +71,12 @@
 }
 
 .details-card {
+  width: 100%;
   color: var(--table-body-color);
   font-size: 14px;
   display: flex;
   flex-direction: column;
   row-gap: 10px;
-  min-width: 0;
-  max-width: 400px;
 
   .label {
     color: var(--table-header-color);

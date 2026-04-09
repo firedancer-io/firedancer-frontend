@@ -8,17 +8,19 @@ import { bootProgressAtom } from "../../../../api/atoms";
 import { useAtomValue } from "jotai";
 import { lamportsPerSol } from "../../../../consts";
 
-interface SupermajorityPieChartProps {
-  stakeFraction: number;
-}
-export default function SupermajorityPieChart(
-  props: SupermajorityPieChartProps,
-) {
+export default function SupermajorityPieChart() {
   return (
-    <Flex width="100%" direction="column" align="center" gapY="10px">
+    <Flex
+      maxWidth="412px"
+      width="100%"
+      maxHeight="100%"
+      direction="column"
+      align="center"
+      gapY="10px"
+    >
       <Text className={styles.pieChartTitle}>Stake Online</Text>
-      <Flex flexGrow="1" justify="center" width="100%">
-        <PieChart {...props} />
+      <Flex className={styles.pieChartSquareContainer} flexGrow="1">
+        <PieChart />
       </Flex>
     </Flex>
   );
@@ -27,25 +29,26 @@ export default function SupermajorityPieChart(
 /**
  * Pie chart that grows to fill container
  */
-function PieChart({ stakeFraction }: SupermajorityPieChartProps) {
+function PieChart() {
   const bootProgress = useAtomValue(bootProgressAtom);
 
-  const totalStake = useMemo(
-    () => formatStake(bootProgress?.wait_for_supermajority_total_stake),
-    [bootProgress?.wait_for_supermajority_total_stake],
-  );
+  const totalStake = bootProgress?.wait_for_supermajority_total_stake;
+  const connectedStake = bootProgress?.wait_for_supermajority_connected_stake;
 
-  const connectedStake = formatStake(
-    bootProgress?.wait_for_supermajority_connected_stake,
-  );
+  const stakeFraction =
+    totalStake && connectedStake
+      ? clamp(Number(connectedStake) / Number(totalStake), 0, 1)
+      : 0;
+
+  const formattedTotal = useMemo(() => formatStake(totalStake), [totalStake]);
+  const formattedConnected = formatStake(connectedStake);
 
   if (!bootProgress) return null;
 
   return (
     <Flex
-      maxHeight="100%"
+      height="100%"
       width="100%"
-      maxWidth="412px"
       position="relative"
       align="center"
       justify="center"
@@ -102,17 +105,20 @@ function PieChart({ stakeFraction }: SupermajorityPieChartProps) {
         </Text>
 
         <Text>
-          {connectedStake?.formatted ?? "--"}
-          {connectedStake?.suffix && (
+          {formattedConnected?.formatted ?? "--"}
+          {formattedConnected?.suffix && (
             <Text className={styles.secondaryColor}>
               {" "}
-              {connectedStake?.suffix}
+              {formattedConnected?.suffix}
             </Text>
           )}
           {" / "}
-          <Text>{totalStake?.formatted ?? "--"}</Text>
-          {totalStake?.suffix && (
-            <Text className={styles.secondaryColor}> {totalStake?.suffix}</Text>
+          <Text>{formattedTotal?.formatted ?? "--"}</Text>
+          {formattedTotal?.suffix && (
+            <Text className={styles.secondaryColor}>
+              {" "}
+              {formattedTotal?.suffix}
+            </Text>
           )}
         </Text>
       </Flex>

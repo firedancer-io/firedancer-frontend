@@ -74,6 +74,7 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
         maxWidth={appMaxWidth}
         mx="auto"
         px={isNarrow ? "20px" : "89px"}
+        className={clsx(styles.phaseContainer, phaseClass)}
       >
         {(phase === BootPhaseEnum.loading_full_snapshot ||
           phase === BootPhaseEnum.loading_incremental_snapshot) && <Snapshot />}

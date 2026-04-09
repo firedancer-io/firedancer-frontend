@@ -88,6 +88,7 @@ export const snapshotAreaChartDark = "rgba(16, 129, 108, 0.53)";
 export const snapshotAreaChartGridLineColor = "#ffffff1a";
 
 export const supermajoritySecondaryColor = "#646464";
+export const supermajorityTableBorderColor = `rgba(250, 250, 250, 0.12)`;
 
 // catching up bars
 export const firstTurbineSlotColor = "#3972C9";
