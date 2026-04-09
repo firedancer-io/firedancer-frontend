@@ -869,6 +869,14 @@ export const slotSchema = z.discriminatedUnion("key", [
     value: slotResponseSchema.nullable(),
   }),
   slotTopicSchema.extend({
+    key: z.literal("query_detailed"),
+    value: slotResponseSchema.nullable(),
+  }),
+  slotTopicSchema.extend({
+    key: z.literal("query_transactions"),
+    value: slotResponseSchema.nullable(),
+  }),
+  slotTopicSchema.extend({
     key: z.literal("query_rankings"),
     value: slotRankingsSchema,
   }),
