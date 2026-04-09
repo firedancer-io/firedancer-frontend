@@ -643,7 +643,9 @@ function useUpdateAtoms() {
               break;
             }
             case "update":
-            case "query": {
+            case "query":
+            case "query_detailed":
+            case "query_transactions": {
               if (value) {
                 setSlotResponse(value);
                 handleSlotUpdate(value);
