@@ -1,40 +1,33 @@
 import bodyStyles from "../body.module.css";
 import { Flex } from "@radix-ui/themes";
 import PhaseHeader from "../PhaseHeader";
-import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
 import SupermajorityTable from "./SupermajorityTable";
 import SupermajorityPieChart from "./SupermajorityPieChart";
 import SupermajorityDetailsCard from "./SupermajorityDetailsCard";
 import { useAtomValue } from "jotai";
-import { clamp } from "lodash";
 import { bootProgressAtom } from "../../../../api/atoms";
 import { useMedia } from "react-use";
+import { bootProgressPhaseDetailsAtom } from "../../atoms";
 
 export default function Supermajority() {
   const isStacked = useMedia("(max-width: 1025px)");
-  // for supermajority phase, always show just the sum of the completed phases as a pct
-  const overallCompleteFraction = useOverallCompleteFraction(0);
   const bootProgress = useAtomValue(bootProgressAtom);
+  const phaseFraction = useAtomValue(
+    bootProgressPhaseDetailsAtom,
+  )?.completionFraction;
 
-  if (!bootProgress) return null;
+  if (!bootProgress || phaseFraction == null) return null;
 
-  const connectedStake = bootProgress.wait_for_supermajority_connected_stake;
-  const totalStake = bootProgress.wait_for_supermajority_total_stake;
-
-  const stakeFraction =
-    totalStake && connectedStake
-      ? clamp(Number(connectedStake) / Number(totalStake), 0, 1)
-      : 0;
-
-  // phase completes at 80% stake
-  const phaseCompletionFraction = stakeFraction / 0.8;
+  // for supermajority phase, pin the complete pct to 99%
+  const phaseCompleteFraction = 1 - 0.01 / phaseFraction;
+  const overallCompleteFraction = 0.99;
 
   const gap = isStacked ? "24px" : "67px";
 
   return (
     <>
       <PhaseHeader
-        phaseCompleteFraction={phaseCompletionFraction}
+        phaseCompleteFraction={phaseCompleteFraction}
         overallCompleteFraction={overallCompleteFraction}
         showLoadingIcon
       />
@@ -59,7 +52,7 @@ export default function Supermajority() {
           flexShrink="1"
           gap={gap}
         >
-          <SupermajorityPieChart stakeFraction={stakeFraction} />
+          <SupermajorityPieChart />
           <SupermajorityDetailsCard />
         </Flex>
       </Flex>

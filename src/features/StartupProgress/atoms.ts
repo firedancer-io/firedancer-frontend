@@ -11,9 +11,6 @@ export const bootProgressPhaseAtom = atom(
 
 type PhaseDetails = {
   phase: BootPhase;
-  /** used for progress bar section width */
-  barWidthFraction: number;
-  /* used for calculating overall completion pct */
   completionFraction: number;
 };
 
@@ -36,54 +33,44 @@ export const bootProgressPhasesAtom = atom((get) => {
     ? [
         {
           phase: BootPhaseEnum.joining_gossip,
-          barWidthFraction: 0.1,
-          completionFraction: 0.18,
+          completionFraction: 0.1,
         },
         {
           phase: BootPhaseEnum.loading_full_snapshot,
-          barWidthFraction: 0.6,
-          completionFraction: 0.68,
+          completionFraction: 0.6,
         },
         {
           phase: BootPhaseEnum.loading_incremental_snapshot,
-          barWidthFraction: 0.05,
-          completionFraction: 0.13,
+          completionFraction: 0.05,
         },
         {
           phase: BootPhaseEnum.waiting_for_supermajority,
-          barWidthFraction: 0.25,
-          completionFraction: 0.01,
+          completionFraction: 0.25,
         },
         {
           phase: BootPhaseEnum.running,
-          barWidthFraction: 0,
           completionFraction: 0,
         },
       ]
     : [
         {
           phase: BootPhaseEnum.joining_gossip,
-          barWidthFraction: 0.1,
           completionFraction: 0.1,
         },
         {
           phase: BootPhaseEnum.loading_full_snapshot,
-          barWidthFraction: 0.6,
           completionFraction: 0.6,
         },
         {
           phase: BootPhaseEnum.loading_incremental_snapshot,
-          barWidthFraction: 0.05,
           completionFraction: 0.05,
         },
         {
           phase: BootPhaseEnum.catching_up,
-          barWidthFraction: 0.25,
           completionFraction: 0.25,
         },
         {
           phase: BootPhaseEnum.running,
-          barWidthFraction: 0,
           completionFraction: 0,
         },
       ];
