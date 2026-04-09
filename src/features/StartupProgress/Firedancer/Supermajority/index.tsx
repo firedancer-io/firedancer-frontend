@@ -40,7 +40,7 @@ export default function Supermajority() {
       />
       <Flex
         flexGrow="1"
-        mt="36px"
+        mt={isStacked ? "18px" : "36px"}
         direction={isStacked ? "column-reverse" : "row"}
         align="stretch"
         justify="center"
@@ -55,7 +55,7 @@ export default function Supermajority() {
           width={isStacked ? "100%" : undefined}
           minWidth="300px"
           flexBasis="40%"
-          flexGrow="1"
+          flexGrow={isStacked ? "0" : "1"}
           flexShrink="1"
           gap={gap}
         >

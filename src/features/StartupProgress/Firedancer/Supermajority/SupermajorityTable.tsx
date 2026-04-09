@@ -283,7 +283,7 @@ function IconNameCell({
       className={clsx(styles.peer, { [styles.offline]: isOffline })}
     >
       <PeerIcon url={iconUrl} size={16} />
-      {size !== "xnarrow" && <Text truncate>{name ?? "-"}</Text>}
+      <Text truncate>{name ?? "-"}</Text>
     </Cell>
   );
 }
@@ -325,15 +325,29 @@ function PubkeyCell({ pubkey, size }: PubkeyCellProps) {
 interface ClientVersionCellProps {
   pubkey: string;
   size: Size;
+  isOffline?: boolean;
 }
-function ClientVersionCell({ pubkey, size }: ClientVersionCellProps) {
+function ClientVersionCell({
+  pubkey,
+  size,
+  isOffline,
+}: ClientVersionCellProps) {
   const peer = usePeer(pubkey);
   const { version, client } = usePeerInfo(peer);
 
   return (
-    <Cell size={size} className={styles.version}>
+    <Cell
+      size={size}
+      className={clsx(styles.version, { [styles.offline]: isOffline })}
+    >
       <Flex width="35px">
-        <ClientIcons client={client} size="xlarge" showPlaceholder />
+        <ClientIcons
+          client={client}
+          size="xlarge"
+          showPlaceholder
+          className={styles.clientIcon}
+          placeholderClassName={styles.clientIconPlaceholder}
+        />
       </Flex>
       {size !== "xnarrow" && (
         <Text truncate dir="rtl">
@@ -373,7 +387,7 @@ const stakeFormatter = Intl.NumberFormat(undefined, {
 function formatStake(lamport: bigint | null | undefined) {
   if (lamport == null) return;
 
-  const sol = Number(lamport / BigInt(lamportsPerSol));
+  const sol = Number(lamport) / lamportsPerSol;
   const parts = stakeFormatter.formatToParts(sol);
   let formatted = "";
   let suffix = undefined;
