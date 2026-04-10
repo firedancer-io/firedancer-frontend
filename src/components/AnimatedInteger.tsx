@@ -1,4 +1,5 @@
 import {
+  forwardRef,
   useCallback,
   useLayoutEffect,
   useMemo,
@@ -23,6 +24,11 @@ import useIsDocumentVisible from "../hooks/useIsDocumentVisible";
 const MIN_ANIMATION_DURATION_MS = 20;
 const WINDOW_HEIGHT_CSS_VAR = "--number-window-height";
 
+interface TextStyles {
+  size?: TextProps["size"];
+  className?: string;
+}
+
 interface AnimatedIntegerProps {
   value: number;
   animationDurationMs?: number;
@@ -30,10 +36,12 @@ interface AnimatedIntegerProps {
    * Explicitly set height of text container. If omitted, calculate the default text height
    */
   height?: number;
-  textSize?: TextProps["size"];
   containerRowJustify?: FlexProps["justify"];
+  /**
+   * Updates to text styles will trigger a re-measure of the height
+   */
+  textStyles?: TextStyles;
 }
-
 /**
  * Animate individual digits to reach the desired value.
  * Animation occurs one step at a time, even if the value jumps by > 1.
@@ -47,28 +55,30 @@ export default function AnimatedInteger(props: AnimatedIntegerProps) {
 
   useLayoutEffect(() => {
     if (props.height != null) return;
-    // re-measure height on text size change
+    // re-measure height on text styling change
     setMeasuredHeight(undefined);
-  }, [props.height, props.textSize]);
+  }, [props.height, props.textStyles?.size, props.textStyles?.className]);
 
   useLayoutEffect(() => {
     if (height != null || measureHeightRef.current == null) return;
+    // measure height before paint
     setMeasuredHeight(measureHeightRef.current.getBoundingClientRect().height);
   }, [height]);
 
   // re-mount when visible again, so there's no need to catch up
   if (!isDocumentVisible) return null;
 
-  // measure height before paint
-  if (height == null) {
-    return (
-      <Text ref={measureHeightRef} size={props.textSize}>
-        {props.value}
-      </Text>
-    );
-  }
-
-  return <AnimatedIntegerInner {...props} height={height} />;
+  return (
+    <>
+      {height == null && (
+        <StyledText ref={measureHeightRef} textStyles={props.textStyles}>
+          {props.value}
+        </StyledText>
+      )}
+      {/* continue animation during measures */}
+      <AnimatedIntegerInner {...props} height={height ?? 0} />
+    </>
+  );
 }
 
 type Direction = "incr" | "decr";
@@ -106,7 +116,7 @@ function AnimatedIntegerInner({
   value,
   animationDurationMs = 150,
   height,
-  textSize,
+  textStyles,
   containerRowJustify,
 }: AnimatedIntegerInnerProps) {
   const [leg, setLeg] = useReducer(animationLegReducer, {
@@ -242,7 +252,9 @@ function AnimatedIntegerInner({
       }
     >
       <Flex className={styles.animatedInteger} inert="true">
-        {nextState.number < 0 && <Text size={textSize}>-</Text>}
+        {nextState.number < 0 && (
+          <StyledText textStyles={textStyles}>-</StyledText>
+        )}
         {nextState.paddedDigits.map((nextDigit, idx) => {
           const idxFromBack = nextState.paddedDigits.length - 1 - idx;
           return (
@@ -258,16 +270,16 @@ function AnimatedIntegerInner({
               animationDurationMs={stepDurationMs}
               onAnimationStart={onAnimationStart}
               onAnimationCompleted={onAnimationCompleted}
-              textSize={textSize}
+              textStyles={textStyles}
             />
           );
         })}
       </Flex>
 
       {/* Add hidden Text to support selection / copy of the full number (digits components are not selectable). */}
-      <Text size={textSize} className={styles.selectionText}>
+      <StyledText textStyles={textStyles} className={styles.selectionText}>
         {currentValidNumber}
-      </Text>
+      </StyledText>
     </Flex>
   );
 }
@@ -282,7 +294,7 @@ interface DigitSliderProps {
   onAnimationStart: (animation: Animation, idxFromBack: number) => void;
   onAnimationCompleted: (digit: number | null, idxFromBack: number) => void;
   animationDurationMs: number;
-  textSize?: TextProps["size"];
+  textStyles?: TextStyles;
 }
 
 /**
@@ -301,7 +313,7 @@ function DigitSlider({
   onAnimationStart,
   onAnimationCompleted,
   animationDurationMs,
-  textSize,
+  textStyles,
 }: DigitSliderProps) {
   const digitSliderRef = useRef<HTMLDivElement>(null);
 
@@ -375,11 +387,11 @@ function DigitSlider({
         className={styles.digitSlider}
       >
         <Digit
-          textSize={textSize}
+          textStyles={textStyles}
           digit={direction === "incr" ? nextDigit : currentDigit}
         />
         <Digit
-          textSize={textSize}
+          textStyles={textStyles}
           digit={direction === "incr" ? currentDigit : nextDigit}
         />
       </Flex>
@@ -389,25 +401,41 @@ function DigitSlider({
 
 interface DigitProps {
   digit: number | null;
-  textSize?: TextProps["size"];
+  textStyles?: TextStyles;
 }
 /**
  * Display a single digit that will be in a slider.
  * Use null for a leading 0. Hide on null, but have the component ready
  * in the slider for animation to other values.
  */
-function Digit({ digit, textSize }: DigitProps) {
+function Digit({ digit, textStyles }: DigitProps) {
   return (
-    <Text
-      size={textSize}
+    <StyledText
+      textStyles={textStyles}
       className={clsx(styles.digit, {
         [styles.hidden]: digit == null,
       })}
     >
       {digit}
-    </Text>
+    </StyledText>
   );
 }
+
+type StyledTextProps = {
+  textStyles?: TextStyles;
+} & TextProps;
+const StyledText = forwardRef<ElementRef<typeof Text>, StyledTextProps>(
+  function StyledText({ textStyles, className, ...props }, ref) {
+    return (
+      <Text
+        ref={ref}
+        size={textStyles?.size}
+        className={clsx(textStyles?.className, className)}
+        {...props}
+      />
+    );
+  },
+);
 
 /**
  * Given an integer return an array of its digits. Ignore negative sign.
