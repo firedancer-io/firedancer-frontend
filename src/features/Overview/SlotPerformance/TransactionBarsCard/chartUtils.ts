@@ -2,6 +2,7 @@ import type { SlotTransactions } from "../../../../api/types";
 import type uPlot from "uplot";
 import { chartBufferMs } from "../../../../transactionUtils";
 import { txnBarsUplotIdPrefix } from "./consts";
+import { round } from "lodash";
 
 export function getUplotId(bankIdx: number) {
   return `${txnBarsUplotIdPrefix}${bankIdx}`;
@@ -121,36 +122,39 @@ export function getChartData(
 export function getDurationWithUnits(
   value: bigint | number,
   allowNegatives = true,
+  maximumFractionDigits = 0,
 ) {
+  const roundFn = (n: number) => round(n, maximumFractionDigits);
+
   let formatted = Number(value);
   if (!allowNegatives) {
     formatted = Math.abs(formatted);
   }
 
   if (Math.abs(formatted) < 1_000) {
-    return { value: Math.round(formatted), unit: "ns" };
+    return { value: roundFn(formatted), unit: "ns" };
   }
 
   formatted /= 1_000;
   if (Math.abs(formatted) < 1_000) {
-    return { value: Math.round(formatted), unit: "µs" };
+    return { value: roundFn(formatted), unit: "µs" };
   }
 
   formatted /= 1_000;
   if (Math.abs(formatted) < 100_000) {
-    return { value: Math.round(formatted), unit: "ms" };
+    return { value: roundFn(formatted), unit: "ms" };
   }
 
   formatted /= 1_000;
   if (Math.abs(formatted) < 120) {
-    return { value: Math.round(formatted), unit: "s" };
+    return { value: roundFn(formatted), unit: "s" };
   }
 
   formatted /= 60;
   if (Math.abs(formatted) < 120) {
-    return { value: Math.round(formatted), unit: "m" };
+    return { value: roundFn(formatted), unit: "m" };
   }
 
   formatted /= 60;
-  return { value: Math.round(formatted), unit: "h" };
+  return { value: roundFn(formatted), unit: "h" };
 }
