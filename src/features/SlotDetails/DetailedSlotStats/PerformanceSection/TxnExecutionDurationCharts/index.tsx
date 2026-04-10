@@ -1,5 +1,5 @@
 import { Box } from "@radix-ui/themes";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import AutoSizer from "react-virtualized-auto-sizer";
 import uPlot, { type AlignedData, type Options } from "uplot";
 import UplotReact from "../../../../../uplotReact/UplotReact";
@@ -10,11 +10,11 @@ import { getMax } from "../../../../../utils";
 import { getDurationWithUnits } from "../../../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
 import { SlotDetailsSubSection } from "../../SlotDetailsSubSection";
 import { chartAxisColor } from "../../../../../colors";
-import { uplotChartsAtom } from "../../../../../uplotReact/uplotAtoms";
 import { txnExecutionDurationTooltipPlugin } from "./txnExecutionDurationTooltipPlugin";
 import { syncXScalePlugin } from "../../../../../uplotReact/syncXScalePlugin";
+import { syncYAxisPlugin } from "../../../../../uplotReact/syncYAxisPlugin";
+import { getAxisSize } from "../../../../../uplotReact/utils";
 import TxnExecutionDurationChartTooltip from "./TxnExecutionDurationChartTooltip";
-import type { MutableRefObject } from "react";
 import { txnExecutionDurationScaleKey } from "../../../../Overview/SlotPerformance/ComputeUnitsCard/consts";
 
 const bucketCount = 20;
@@ -26,8 +26,6 @@ const getBucketIndex = (duration: number, maxDuration: number) =>
 const getBucketDuration = (idx: number, maxDuration: number) =>
   (idx / bucketCount) * maxDuration;
 
-const cuChartId = "txnExecutionDurationCu";
-const countChartId = "txnExecutionDurationCount";
 const axisFont = "8px Inter Tight";
 const barFillColor = "#3C2E69";
 const ySeriesIdx = 1;
@@ -35,9 +33,6 @@ const ySeriesIdx = 1;
 const barsPaths =
   uPlot.paths?.bars?.({ size: [0.8] }) ??
   (() => ({ stroke: new Path2D(), fill: new Path2D() })); // fallback no-op
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
-const getAxisSize = (axis: uPlot.Axis): number => (axis as any)._size ?? 0;
 
 interface TxnExecutionDurationChartData {
   cuData: AlignedData;
@@ -64,29 +59,7 @@ export default function TxnExecutionDurationCharts() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
   const transactions =
     useSlotQueryResponseTransactions(selectedSlot).response?.transactions;
-  const uplotCharts = useAtomValue(uplotChartsAtom);
   const [tooltipDataIdx, setTooltipDataIdx] = useState<number | undefined>();
-  const minYAxisSizeRef = useRef(0);
-
-  useEffect(() => {
-    const cu = uplotCharts[cuChartId];
-    const count = uplotCharts[countChartId];
-    if (!cu || !count) return;
-
-    /* Align the charts by syncing their y axis sizes.
-     * Reset the charts to their natural sizes, then sync
-     * minYAxisSizeRef to the larger of the two and redraw */
-    minYAxisSizeRef.current = 0;
-    cu.redraw(false, true);
-    count.redraw(false, true);
-
-    const cuSize: number = getAxisSize(cu.axes[ySeriesIdx]);
-    const countSize: number = getAxisSize(count.axes[ySeriesIdx]);
-    minYAxisSizeRef.current = Math.max(cuSize, countSize);
-
-    cu.redraw(false, true);
-    count.redraw(false, true);
-  }, [transactions, uplotCharts]);
 
   const { cuData, countData, maxDuration }: TxnExecutionDurationChartData =
     useMemo(() => {
@@ -159,9 +132,8 @@ export default function TxnExecutionDurationCharts() {
       >
         <Chart
           data={cuData}
-          id={cuChartId}
+          id="txnExecutionDurationCu"
           maxDuration={maxDuration}
-          minYAxisSizeRef={minYAxisSizeRef}
           setTooltipDataIdx={setTooltipDataIdx}
         />
       </SlotDetailsSubSection>
@@ -173,10 +145,9 @@ export default function TxnExecutionDurationCharts() {
       >
         <Chart
           data={countData}
-          id={countChartId}
+          id="txnExecutionDurationCount"
           log
           maxDuration={maxDuration}
-          minYAxisSizeRef={minYAxisSizeRef}
           setTooltipDataIdx={setTooltipDataIdx}
         />
       </SlotDetailsSubSection>
@@ -193,18 +164,10 @@ interface ChartProps {
   data: AlignedData;
   log?: boolean;
   maxDuration: number;
-  minYAxisSizeRef: MutableRefObject<number>;
   setTooltipDataIdx: (idx: number) => void;
 }
 
-function Chart({
-  data,
-  log,
-  id,
-  maxDuration,
-  minYAxisSizeRef,
-  setTooltipDataIdx,
-}: ChartProps) {
+function Chart({ data, log, id, maxDuration, setTooltipDataIdx }: ChartProps) {
   const plotData = useMemo<AlignedData>(
     () =>
       log
@@ -301,10 +264,7 @@ function Chart({
             const axisValuesSize =
               self.ctx.measureText(longestVal).width / devicePixelRatio;
 
-            return Math.max(
-              Math.ceil(axisSpacing + axisValuesSize),
-              minYAxisSizeRef.current,
-            );
+            return Math.ceil(axisSpacing + axisValuesSize);
           },
         },
       ],
@@ -312,9 +272,10 @@ function Chart({
       plugins: [
         txnExecutionDurationTooltipPlugin(setTooltipDataIdx),
         syncXScalePlugin({ minRange: 0 }),
+        syncYAxisPlugin(id, "txnExecutionDurationYAxis"),
       ],
     };
-  }, [lastXIdx, setTooltipDataIdx, maxDuration, log, minYAxisSizeRef]);
+  }, [lastXIdx, setTooltipDataIdx, id, log, maxDuration]);
 
   return (
     <Box flexGrow="1">
