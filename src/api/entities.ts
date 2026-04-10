@@ -291,6 +291,7 @@ export const bootPhaseSchema = z.enum([
   "loading_full_snapshot",
   "loading_incremental_snapshot",
   "catching_up",
+  "waiting_for_supermajority",
   "running",
 ]);
 
@@ -357,8 +358,18 @@ export const bootProgressSchema = z.object({
     .nullable()
     .optional(),
 
-  catching_up_elapsed_seconds: z.number().nullable().optional(),
+  wait_for_supermajority_bank_hash: z.string().nullable().optional(),
+  wait_for_supermajority_shred_version: z.string().nullable().optional(),
+  wait_for_supermajority_attempt: z.number().nullable().optional(),
+  wait_for_supermajority_total_stake: z.coerce.bigint().nullable().optional(),
+  wait_for_supermajority_connected_stake: z.coerce
+    .bigint()
+    .nullable()
+    .optional(),
+  wait_for_supermajority_total_peers: z.number().nullable().optional(),
+  wait_for_supermajority_connected_peers: z.number().nullable().optional(),
 
+  catching_up_elapsed_seconds: z.number().nullable().optional(),
   catching_up_first_replay_slot: z.number().nullable().optional(),
 });
 

@@ -5,14 +5,14 @@ import clsx from "clsx";
 import { useMeasure } from "react-use";
 import {
   catchingUpContainerElAtom,
-  catchingUpStartSlotAtom,
   firstTurbineSlotAtom,
   latestTurbineSlotAtom,
 } from "./atoms";
 import { useEffect } from "react";
+import { snapshotSlotAtom } from "../../atoms";
 
 export default function BarsLabels() {
-  const startSlot = useAtomValue(catchingUpStartSlotAtom);
+  const startSlot = useAtomValue(snapshotSlotAtom);
   const firstTurbineSlot = useAtomValue(firstTurbineSlotAtom);
   const latestTurbineSlot = useAtomValue(latestTurbineSlotAtom);
 

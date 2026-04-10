@@ -17,12 +17,14 @@ import { appMaxWidth } from "../../../consts";
 import Snapshot from "./Snapshot";
 import CatchingUp from "./CatchingUp";
 import { useMedia } from "react-use";
+import Supermajority from "./Supermajority";
 
 const classNames: { [phase in BootPhase]?: string } = {
   [BootPhaseEnum.joining_gossip]: styles.gossip,
   [BootPhaseEnum.loading_full_snapshot]: styles.fullSnapshot,
   [BootPhaseEnum.loading_incremental_snapshot]: styles.incrSnapshot,
   [BootPhaseEnum.catching_up]: styles.catchingUp,
+  [BootPhaseEnum.waiting_for_supermajority]: styles.supermajority,
 };
 
 export default function Body() {
@@ -55,7 +57,8 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
   const isNarrow = useMedia("(max-width: 750px)");
 
   return (
-    <Box
+    <Flex
+      direction="column"
       ref={(el: HTMLDivElement) => setBootProgressContainerEl(el)}
       overflowY="auto"
       className={clsx(styles.container, phaseClass, {
@@ -65,6 +68,7 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
       <Header isStartup />
 
       <Flex
+        flexGrow="1"
         direction="column"
         width="100%"
         maxWidth={appMaxWidth}
@@ -74,9 +78,10 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
         {(phase === BootPhaseEnum.loading_full_snapshot ||
           phase === BootPhaseEnum.loading_incremental_snapshot) && <Snapshot />}
         {phase === BootPhaseEnum.catching_up && <CatchingUp />}
+        {phase === BootPhaseEnum.waiting_for_supermajority && <Supermajority />}
 
         <Box pb="20px" />
       </Flex>
-    </Box>
+    </Flex>
   );
 }

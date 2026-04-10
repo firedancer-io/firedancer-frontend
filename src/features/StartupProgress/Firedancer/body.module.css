@@ -46,6 +46,10 @@
   &.catching-up {
     --startup-background-color: var(--boot-progress-catchup-background-color);
   }
+
+  &.supermajority {
+    background-color: var(--boot-progress-supermajority-background-color);
+  }
 }
 
 @media (min-width: 800px) {

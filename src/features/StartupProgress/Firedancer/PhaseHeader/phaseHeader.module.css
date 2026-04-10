@@ -15,4 +15,10 @@
   .no-wrap {
     white-space: nowrap;
   }
+
+  .complete-pct-container {
+    white-space: pre;
+    display: inline-flex;
+    align-items: center;
+  }
 }
