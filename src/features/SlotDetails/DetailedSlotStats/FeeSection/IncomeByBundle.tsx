@@ -8,6 +8,9 @@ import {
   BUNDLE_CONTROL_KEY,
   ChartControlsContext,
 } from "../../ChartControlsContext";
+import { useSetAtom } from "jotai";
+import { txnBarsUplotActionAtom } from "../../../Overview/SlotPerformance/TransactionBarsCard/uplotAtoms";
+import { banksXScaleKey } from "../../../Overview/SlotPerformance/ComputeUnitsCard/consts";
 
 const bundleLabel = "Bundle";
 
@@ -15,7 +18,8 @@ interface IncomeByTxnProps {
   transactions: SlotTransactions;
 }
 export default function IncomeByBundle({ transactions }: IncomeByTxnProps) {
-  const { triggerControl } = useContext(ChartControlsContext);
+  const { triggerControl, resetAllControls } = useContext(ChartControlsContext);
+  const uplotAction = useSetAtom(txnBarsUplotActionAtom);
 
   const data = useMemo(() => {
     const bundleValues = transactions.txn_from_bundle.map((fromBundle, i) => {
@@ -34,9 +38,18 @@ export default function IncomeByBundle({ transactions }: IncomeByTxnProps) {
   }, [transactions]);
 
   const onItemClick = useCallback(
-    ({ label }: { label: string; value: number }) =>
-      triggerControl(BUNDLE_CONTROL_KEY, label === bundleLabel ? "Yes" : "No"),
-    [triggerControl],
+    ({ label }: { label: string; value: number }) => {
+      resetAllControls([BUNDLE_CONTROL_KEY]);
+      triggerControl(BUNDLE_CONTROL_KEY, label === bundleLabel ? "Yes" : "No");
+      // Zoom out so all transactions are visible
+      uplotAction((u) => {
+        u.setScale(banksXScaleKey, {
+          min: u.data[0][0],
+          max: u.data[0][u.data[0].length - 1],
+        });
+      });
+    },
+    [resetAllControls, triggerControl, uplotAction],
   );
 
   return (

@@ -15,7 +15,7 @@ interface IncomeByTxnProps {
 }
 
 export default function IncomeByIp({ transactions }: IncomeByTxnProps) {
-  const { triggerControl } = useContext(ChartControlsContext);
+  const { triggerControl, resetAllControls } = useContext(ChartControlsContext);
 
   const data = useMemo(() => {
     const ipValues = transactions.txn_source_ipv4.map((ip, i) => {
@@ -34,9 +34,10 @@ export default function IncomeByIp({ transactions }: IncomeByTxnProps) {
 
   const onItemClick = useCallback(
     ({ label }: { label: string; value: number }) => {
+      resetAllControls([SEARCH_KEY]);
       triggerControl(SEARCH_KEY, { mode: SearchMode.Ip, text: label });
     },
-    [triggerControl],
+    [resetAllControls, triggerControl],
   );
 
   return (

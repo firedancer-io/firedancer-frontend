@@ -12,7 +12,7 @@ import { baseChartDataAtom, selectedBankAtom } from "./atoms";
 import { getChartData } from "./chartUtils";
 import BarChartFloatingAction from "./BarChartFloatingAction";
 import CardHeader from "../../../../components/CardHeader";
-import { getMaxTsWithBuffer } from "../../../../transactionUtils";
+import { getMaxTs } from "../../../../transactionUtils";
 import { cardBackgroundColor } from "../../../../colors";
 import {
   clusterIndicatorHeight,
@@ -29,8 +29,10 @@ export const txnBarsControlsStickyTop = navigationTop + slotNavHeight;
 export default function BarsChartContainer() {
   const [focusedBankIdx, setFocusedBankIdx] = useState<number>();
 
-  useChartControl(FOCUS_BANK_KEY, (bankIdx?: number) =>
-    setFocusedBankIdx(bankIdx),
+  useChartControl(
+    FOCUS_BANK_KEY,
+    (bankIdx) => setFocusedBankIdx(bankIdx),
+    () => setFocusedBankIdx(undefined),
   );
 
   const slot = useAtomValue(selectedSlotAtom);
@@ -49,7 +51,7 @@ export default function BarsChartContainer() {
   const maxTs = useMemo(() => {
     if (!query.response?.transactions) return 0;
 
-    return getMaxTsWithBuffer(query.response.transactions);
+    return getMaxTs(query.response.transactions, true);
   }, [query.response?.transactions]);
 
   useMemo(() => {
