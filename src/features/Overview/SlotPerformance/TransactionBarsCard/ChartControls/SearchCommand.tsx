@@ -48,6 +48,7 @@ import {
 } from "./searchCommandUtils";
 import { txnBarsControlsStickyTop } from "../BarsChartContainer";
 import {
+  ARRIVAL_CONTROL_KEY,
   ChartControlsContext,
   FOCUS_BANK_KEY,
   SEARCH_KEY,
@@ -281,6 +282,7 @@ export default function SearchCommand({
   // For resetting focus when user starts typing in input
   const resetChartElFocus = useCallback(() => {
     resetControl(FOCUS_BANK_KEY);
+    resetControl(ARRIVAL_CONTROL_KEY);
     highlightTxnIdx(undefined);
     setSearchIdx(undefined);
     setIsCurrentlySelected(false);

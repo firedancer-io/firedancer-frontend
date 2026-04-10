@@ -64,6 +64,7 @@ import { uplotActionAtom } from "../../../../../uplotReact/uplotAtoms";
 import { txnErrorCodeMap } from "../../../../../consts";
 import { useThrottledCallback } from "use-debounce";
 import {
+  ARRIVAL_CONTROL_KEY,
   BUNDLE_CONTROL_KEY,
   ERROR_STATE_CONTROL_KEY,
   ERROR_STATE_FILTER_OPTIONS,
@@ -74,6 +75,7 @@ import {
   type InclusionFilterOption,
 } from "../../../../SlotDetails/ChartControlsContext";
 import useToggleGroupChartControl from "./useToggleGroupChartControl";
+import useChartControl from "./useChartControl";
 
 interface ChartControlsProps {
   transactions: SlotTransactions;
@@ -697,31 +699,21 @@ function ArrivalControl({ transactions }: WithTransactionsProps) {
     () => getMaxTsWithBuffer(transactions) - chartBufferMs,
     [transactions],
   );
-  const [rangeValue, setRangeValue] = useState(() => {
-    const maxTs = getMaxTsWithBuffer(transactions);
-    const minValue = -Math.ceil(maxTs * beforeZeroMinToMaxRatio);
-    // default max value does not include chart buffer since there should be no actual transactions arriving past maxTs without buffer
-    const maxValue = maxTs - chartBufferMs;
-    return [minValue, maxValue];
-  });
+  // Scaled from ms value to slider value
+  const sliderMinValue = useMemo(
+    () => -Math.ceil(sliderMaxValue * beforeZeroMinToMaxRatio),
+    [sliderMaxValue],
+  );
+
+  const [rangeValue, setRangeValue] = useState<number[]>([
+    sliderMinValue,
+    sliderMaxValue,
+  ]);
 
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterArrival = useSetAtom(filterArrivalDataAtom);
 
   const [sliderMeasureRef, { width }] = useMeasure<HTMLDivElement>();
-
-  function getTsToSliderValue(tsNanos: number) {
-    return tsNanos < 0 ? beforeZeroSliderMulti * tsNanos : tsNanos;
-  }
-
-  function getRangeMinMaxValues(range: number[]) {
-    if (range.length < 2) return;
-
-    return {
-      min: getTsToSliderValue(range[0]),
-      max: getTsToSliderValue(range[1]),
-    };
-  }
 
   const zeroValueSliderPct = `${Math.ceil((beforeZeroMinToMaxRatio / (1 + beforeZeroMinToMaxRatio)) * 100)}%`;
 
@@ -738,11 +730,25 @@ function ArrivalControl({ transactions }: WithTransactionsProps) {
     return Number(minArrival - transactions.start_timestamp_nanos);
   }, [transactions]);
 
-  /** Scaled from ms value to slider value */
-  const scaledMinValue = Math.ceil(sliderMaxValue * beforeZeroMinToMaxRatio);
   const snapToZeroRange = Math.ceil(sliderMaxValue * snapToZeroRangePct);
-  const beforeZeroSliderMulti = Math.abs(minValueNanos / scaledMinValue);
-  const sliderMinValue = -scaledMinValue;
+  const beforeZeroSliderMulti = Math.abs(minValueNanos / sliderMinValue);
+
+  const getTsToSliderValue = useCallback(
+    (tsNanos: number) =>
+      tsNanos < 0 ? beforeZeroSliderMulti * tsNanos : tsNanos,
+    [beforeZeroSliderMulti],
+  );
+
+  const getRangeMinMaxValues = useCallback(
+    (range: number[]) => {
+      if (range.length < 2) return;
+      return {
+        min: getTsToSliderValue(range[0]),
+        max: getTsToSliderValue(range[1]),
+      };
+    },
+    [getTsToSliderValue],
+  );
 
   function getValueLabel(value: number) {
     return `${Math.round(getTsToSliderValue(value) / 1_000_000).toLocaleString()} ms`;
@@ -751,22 +757,46 @@ function ArrivalControl({ transactions }: WithTransactionsProps) {
   const minValueLabel = getValueLabel(rangeValue[0]);
   const maxValueLabel = getValueLabel(rangeValue[1]);
 
-  const filterChart = useThrottledCallback(
+  const filterChart = useCallback(
     (value: number[]) => {
-      requestAnimationFrame(() =>
-        uplotAction((u, bankIdx) =>
-          filterArrival(
-            u,
-            transactions,
-            bankIdx,
-            sliderMaxValue,
-            getRangeMinMaxValues(value),
-          ),
+      uplotAction((u, bankIdx) =>
+        filterArrival(
+          u,
+          transactions,
+          bankIdx,
+          sliderMaxValue,
+          getRangeMinMaxValues(value),
         ),
       );
     },
+    [
+      filterArrival,
+      getRangeMinMaxValues,
+      transactions,
+      sliderMaxValue,
+      uplotAction,
+    ],
+  );
+
+  // Throttled for slider drag performance
+  const filterChartThrottled = useThrottledCallback(
+    (value: number[]) => {
+      requestAnimationFrame(() => filterChart(value));
+    },
     100,
     { leading: false, trailing: true },
+  );
+
+  const updateArrivalRange = useCallback(
+    (value: number[]) => {
+      setRangeValue(value);
+      filterChart(value);
+    },
+    [filterChart],
+  );
+
+  useChartControl(ARRIVAL_CONTROL_KEY, updateArrivalRange, () =>
+    updateArrivalRange([sliderMinValue, sliderMaxValue]),
   );
 
   return (
@@ -809,7 +839,7 @@ function ArrivalControl({ transactions }: WithTransactionsProps) {
               u.setCursor({ left, top: 0 });
             });
 
-            filterChart(value);
+            filterChartThrottled(value);
           }}
         />
       </div>

@@ -25,6 +25,7 @@ export type ChartControlMap = {
   vote: InclusionFilterOption;
   focusBank: number | undefined;
   search: Search;
+  arrival: number[];
 };
 
 export type ChartControlKey = keyof ChartControlMap;
@@ -38,6 +39,7 @@ export const LANDED_CONTROL_KEY = "landed" satisfies ChartControlKey;
 export const VOTE_CONTROL_KEY = "vote" satisfies ChartControlKey;
 export const FOCUS_BANK_KEY = "focusBank" satisfies ChartControlKey;
 export const SEARCH_KEY = "search" satisfies ChartControlKey;
+export const ARRIVAL_CONTROL_KEY = "arrival" satisfies ChartControlKey;
 
 export type ChartControls = {
   triggerControl: <K extends ChartControlKey>(

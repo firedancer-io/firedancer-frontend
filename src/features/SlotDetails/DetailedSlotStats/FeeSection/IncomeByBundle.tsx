@@ -5,6 +5,7 @@ import { getTxnIncome } from "../../../../utils";
 import { groupBy, sum } from "lodash";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import {
+  ARRIVAL_CONTROL_KEY,
   BUNDLE_CONTROL_KEY,
   ChartControlsContext,
   ERROR_STATE_CONTROL_KEY,
@@ -43,6 +44,7 @@ export default function IncomeByBundle({ transactions }: IncomeByTxnProps) {
       resetControl(LANDED_CONTROL_KEY);
       resetControl(VOTE_CONTROL_KEY);
       resetControl(SEARCH_KEY);
+      resetControl(ARRIVAL_CONTROL_KEY);
       triggerControl(BUNDLE_CONTROL_KEY, label === bundleLabel ? "Yes" : "No");
     },
 

@@ -162,12 +162,13 @@ function filterChartDataAtom<T>(
         maxTs,
         Object.values(filters),
       );
-
-      set(chartFiltersAtom, filters);
-
+      // Update the data first to ensure chartFiltersAtom updates based on filteredData
       u.data.splice(1, 1, filteredData[1]);
       u.data.splice(2, 1, filteredData[2]);
       u.setData(u.data, false);
+
+      set(chartFiltersAtom, filters);
+
       u.redraw(true, true);
     },
   );

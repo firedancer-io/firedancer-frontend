@@ -5,6 +5,7 @@ import { getTxnIncome } from "../../../../utils";
 import { groupBy, sum } from "lodash";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import {
+  ARRIVAL_CONTROL_KEY,
   BUNDLE_CONTROL_KEY,
   ChartControlsContext,
   ERROR_STATE_CONTROL_KEY,
@@ -42,6 +43,7 @@ export default function IncomeByIp({ transactions }: IncomeByTxnProps) {
       resetControl(LANDED_CONTROL_KEY);
       resetControl(VOTE_CONTROL_KEY);
       resetControl(BUNDLE_CONTROL_KEY);
+      resetControl(ARRIVAL_CONTROL_KEY);
       triggerControl(SEARCH_KEY, { mode: SearchMode.Ip, text: label });
     },
     [resetControl, triggerControl],
