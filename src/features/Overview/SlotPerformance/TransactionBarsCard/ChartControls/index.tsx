@@ -36,10 +36,8 @@ import {
 } from "../atoms";
 import { groupBy, max } from "lodash";
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ToggleGroupControl, {
-  type ToggleGroupControlRef,
-} from "./ToggleGroupControl";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import ToggleGroupControl from "./ToggleGroupControl";
 import { useMeasure, useMedia, useUnmount } from "react-use";
 import { FilterEnum, TxnState } from "../consts";
 import ToggleControl from "./ToggleControl";
@@ -67,11 +65,15 @@ import { txnErrorCodeMap } from "../../../../../consts";
 import { useThrottledCallback } from "use-debounce";
 import {
   BUNDLE_CONTROL_KEY,
+  ERROR_STATE_CONTROL_KEY,
+  ERROR_STATE_FILTER_OPTIONS,
   INCLUSION_FILTER_OPTIONS,
+  LANDED_CONTROL_KEY,
+  VOTE_CONTROL_KEY,
+  type ErrorStateFilterOption,
   type InclusionFilterOption,
 } from "../../../../SlotDetails/ChartControlsContext";
-import useChartControl from "./useChartControl";
-import { getUplotId } from "../chartUtils";
+import useToggleGroupChartControl from "./useToggleGroupChartControl";
 
 interface ChartControlsProps {
   transactions: SlotTransactions;
@@ -169,23 +171,38 @@ interface ToggleGroupControlProps {
 function ErrorControl({ transactions, maxTs }: ToggleGroupControlProps) {
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterError = useSetAtom(filterErrorDataAtom);
-  const [value, setValue] = useState<"All" | "Success" | "Errors">("All");
+  const [value, setValue] = useState<ErrorStateFilterOption>("All");
+
+  const updateErrorStateFilter = useCallback(
+    (value: ErrorStateFilterOption) => {
+      if (!transactions) return;
+      setValue(value);
+      const filterValue =
+        value === "Success" ? "No" : value === "Errors" ? "Yes" : "All";
+      uplotAction((u, bankIdx) =>
+        filterError(u, transactions, bankIdx, maxTs, filterValue),
+      );
+    },
+    [filterError, maxTs, transactions, uplotAction],
+  );
+
+  const { isTooltipOpen, closeTooltip, toggleGroupRef } =
+    useToggleGroupChartControl(
+      ERROR_STATE_CONTROL_KEY,
+      updateErrorStateFilter,
+      () => updateErrorStateFilter("All"),
+    );
 
   return (
     <Flex gap="2">
       <ToggleGroupControl
-        options={["All", "Success", "Errors"]}
+        ref={toggleGroupRef}
+        options={ERROR_STATE_FILTER_OPTIONS}
         optionColors={{ Success: successToggleColor, Errors: errorToggleColor }}
         value={value}
-        onChange={(value) => {
-          if (!value) return;
-          setValue(value);
-          const filterValue =
-            value === "Success" ? "No" : value === "Errors" ? "Yes" : "All";
-          uplotAction((u, bankIdx) =>
-            filterError(u, transactions, bankIdx, maxTs, filterValue),
-          );
-        }}
+        onChange={(value) => value && updateErrorStateFilter(value)}
+        isTooltipOpen={isTooltipOpen}
+        closeTooltip={closeTooltip}
       />
       <HighlightErrorControl
         transactions={transactions}
@@ -326,36 +343,21 @@ function BundleControl({
   const uplotAction = useSetAtom(txnBarsUplotActionAtom);
   const filterBundle = useSetAtom(filterBundleDataAtom);
 
-  const toggleGroupRef =
-    useRef<ToggleGroupControlRef<InclusionFilterOption>>(null);
-
   const updateBundleFilter = useCallback(
     (value: InclusionFilterOption) => {
       if (!transactions) return;
       setValue(value);
-      uplotAction((u, bankIdx) => {
-        filterBundle(u, transactions, bankIdx, maxTs, value);
-      });
+      uplotAction((u, bankIdx) =>
+        filterBundle(u, transactions, bankIdx, maxTs, value),
+      );
     },
     [filterBundle, maxTs, transactions, uplotAction],
   );
 
-  const handleUpdate = useCallback(
-    (value: InclusionFilterOption) => {
-      updateBundleFilter(value);
-      toggleGroupRef.current?.focus(value);
-      // Targets the first bank tile since bundle filter affects all tiles
-      document
-        .getElementById(getUplotId(0))
-        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    },
-    [updateBundleFilter],
-  );
-
-  const { isTooltipOpen, closeTooltip } = useChartControl(
-    BUNDLE_CONTROL_KEY,
-    handleUpdate,
-  );
+  const { isTooltipOpen, closeTooltip, toggleGroupRef } =
+    useToggleGroupChartControl(BUNDLE_CONTROL_KEY, updateBundleFilter, () =>
+      updateBundleFilter("All"),
+    );
 
   return (
     <ToggleGroupControl
@@ -380,18 +382,31 @@ function LandedControl({
   const filterLanded = useSetAtom(filterLandedDataAtom);
   const [value, setValue] = useState<InclusionFilterOption>("All");
 
+  const updateLandedFilter = useCallback(
+    (value: InclusionFilterOption) => {
+      if (!transactions) return;
+      setValue(value);
+      uplotAction((u, bankIdx) =>
+        filterLanded(u, transactions, bankIdx, maxTs, value),
+      );
+    },
+    [filterLanded, maxTs, transactions, uplotAction],
+  );
+
+  const { isTooltipOpen, closeTooltip, toggleGroupRef } =
+    useToggleGroupChartControl(LANDED_CONTROL_KEY, updateLandedFilter, () =>
+      updateLandedFilter("All"),
+    );
+
   return (
     <ToggleGroupControl
+      ref={toggleGroupRef}
       label="Landed"
       options={INCLUSION_FILTER_OPTIONS}
       value={value}
-      onChange={(value) => {
-        if (!value) return;
-        setValue(value);
-        uplotAction((u, bankIdx) =>
-          filterLanded(u, transactions, bankIdx, maxTs, value),
-        );
-      }}
+      onChange={(value) => value && updateLandedFilter(value)}
+      isTooltipOpen={isTooltipOpen}
+      closeTooltip={closeTooltip}
       hasMinTextWidth={isMobileView}
     />
   );
@@ -406,18 +421,31 @@ function SimpleControl({
   const filterSimple = useSetAtom(filterSimpleDataAtom);
   const [value, setValue] = useState<InclusionFilterOption>("All");
 
+  const updateVoteFilter = useCallback(
+    (value: InclusionFilterOption) => {
+      if (!transactions) return;
+      setValue(value);
+      uplotAction((u, bankIdx) =>
+        filterSimple(u, transactions, bankIdx, maxTs, value),
+      );
+    },
+    [filterSimple, maxTs, transactions, uplotAction],
+  );
+
+  const { isTooltipOpen, closeTooltip, toggleGroupRef } =
+    useToggleGroupChartControl(VOTE_CONTROL_KEY, updateVoteFilter, () =>
+      updateVoteFilter("All"),
+    );
+
   return (
     <ToggleGroupControl
+      ref={toggleGroupRef}
       label="Vote"
       options={INCLUSION_FILTER_OPTIONS}
       value={value}
-      onChange={(value) => {
-        if (!value) return;
-        setValue(value);
-        uplotAction((u, bankIdx) =>
-          filterSimple(u, transactions, bankIdx, maxTs, value),
-        );
-      }}
+      onChange={(value) => value && updateVoteFilter(value)}
+      isTooltipOpen={isTooltipOpen}
+      closeTooltip={closeTooltip}
       hasMinTextWidth={isMobileView}
     />
   );

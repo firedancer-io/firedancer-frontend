@@ -5,9 +5,13 @@ import { getTxnIncome } from "../../../../utils";
 import { groupBy, sum } from "lodash";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import {
+  BUNDLE_CONTROL_KEY,
   ChartControlsContext,
+  ERROR_STATE_CONTROL_KEY,
+  LANDED_CONTROL_KEY,
   SEARCH_KEY,
   SearchMode,
+  VOTE_CONTROL_KEY,
 } from "../../ChartControlsContext";
 
 interface IncomeByTxnProps {
@@ -15,7 +19,7 @@ interface IncomeByTxnProps {
 }
 
 export default function IncomeByIp({ transactions }: IncomeByTxnProps) {
-  const { triggerControl } = useContext(ChartControlsContext);
+  const { triggerControl, resetControl } = useContext(ChartControlsContext);
 
   const data = useMemo(() => {
     const ipValues = transactions.txn_source_ipv4.map((ip, i) => {
@@ -34,9 +38,13 @@ export default function IncomeByIp({ transactions }: IncomeByTxnProps) {
 
   const onItemClick = useCallback(
     ({ label }: { label: string; value: number }) => {
+      resetControl(ERROR_STATE_CONTROL_KEY);
+      resetControl(LANDED_CONTROL_KEY);
+      resetControl(VOTE_CONTROL_KEY);
+      resetControl(BUNDLE_CONTROL_KEY);
       triggerControl(SEARCH_KEY, { mode: SearchMode.Ip, text: label });
     },
-    [triggerControl],
+    [resetControl, triggerControl],
   );
 
   return (

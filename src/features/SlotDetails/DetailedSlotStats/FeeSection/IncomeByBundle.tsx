@@ -7,6 +7,10 @@ import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import {
   BUNDLE_CONTROL_KEY,
   ChartControlsContext,
+  ERROR_STATE_CONTROL_KEY,
+  LANDED_CONTROL_KEY,
+  SEARCH_KEY,
+  VOTE_CONTROL_KEY,
 } from "../../ChartControlsContext";
 
 const bundleLabel = "Bundle";
@@ -15,7 +19,7 @@ interface IncomeByTxnProps {
   transactions: SlotTransactions;
 }
 export default function IncomeByBundle({ transactions }: IncomeByTxnProps) {
-  const { triggerControl } = useContext(ChartControlsContext);
+  const { triggerControl, resetControl } = useContext(ChartControlsContext);
 
   const data = useMemo(() => {
     const bundleValues = transactions.txn_from_bundle.map((fromBundle, i) => {
@@ -34,9 +38,15 @@ export default function IncomeByBundle({ transactions }: IncomeByTxnProps) {
   }, [transactions]);
 
   const onItemClick = useCallback(
-    ({ label }: { label: string; value: number }) =>
-      triggerControl(BUNDLE_CONTROL_KEY, label === bundleLabel ? "Yes" : "No"),
-    [triggerControl],
+    ({ label }: { label: string; value: number }) => {
+      resetControl(ERROR_STATE_CONTROL_KEY);
+      resetControl(LANDED_CONTROL_KEY);
+      resetControl(VOTE_CONTROL_KEY);
+      resetControl(SEARCH_KEY);
+      triggerControl(BUNDLE_CONTROL_KEY, label === bundleLabel ? "Yes" : "No");
+    },
+
+    [resetControl, triggerControl],
   );
 
   return (

@@ -5,16 +5,20 @@ import { getTxnIncome } from "../../../../utils";
 import { groupBy, sum } from "lodash";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import {
+  BUNDLE_CONTROL_KEY,
   ChartControlsContext,
+  ERROR_STATE_CONTROL_KEY,
+  LANDED_CONTROL_KEY,
   SEARCH_KEY,
   SearchMode,
+  VOTE_CONTROL_KEY,
 } from "../../ChartControlsContext";
 
 interface IncomeByTxnProps {
   transactions: SlotTransactions;
 }
 export default function IncomeByTxn({ transactions }: IncomeByTxnProps) {
-  const { triggerControl } = useContext(ChartControlsContext);
+  const { triggerControl, resetControl } = useContext(ChartControlsContext);
 
   const data = useMemo(() => {
     const signatureValues = transactions.txn_signature.map((signature, i) => {
@@ -34,12 +38,16 @@ export default function IncomeByTxn({ transactions }: IncomeByTxnProps) {
 
   const onItemClick = useCallback(
     ({ label }: { label: string; value: number }) => {
+      resetControl(ERROR_STATE_CONTROL_KEY);
+      resetControl(LANDED_CONTROL_KEY);
+      resetControl(VOTE_CONTROL_KEY);
+      resetControl(BUNDLE_CONTROL_KEY);
       triggerControl(SEARCH_KEY, {
         mode: SearchMode.TxnSignature,
         text: label,
       });
     },
-    [triggerControl],
+    [resetControl, triggerControl],
   );
 
   return (

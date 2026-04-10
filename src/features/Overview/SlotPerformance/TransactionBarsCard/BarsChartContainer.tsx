@@ -29,8 +29,10 @@ export const txnBarsControlsStickyTop = navigationTop + slotNavHeight;
 export default function BarsChartContainer() {
   const [focusedBankIdx, setFocusedBankIdx] = useState<number>();
 
-  useChartControl(FOCUS_BANK_KEY, (bankIdx?: number) =>
-    setFocusedBankIdx(bankIdx),
+  useChartControl(
+    FOCUS_BANK_KEY,
+    (bankIdx) => setFocusedBankIdx(bankIdx),
+    () => setFocusedBankIdx(undefined),
   );
 
   const slot = useAtomValue(selectedSlotAtom);
