@@ -5,7 +5,10 @@ import { isFrankendancer } from "./client";
 
 export const chartBufferMs = 2_000_000;
 
-export function getMaxTsWithBuffer(transactions: SlotTransactions) {
+export function getMaxTs(
+  transactions: SlotTransactions,
+  includeBuffer: boolean = false,
+) {
   if (!transactions) return 0;
 
   const txnTs = transactions.txn_mb_end_timestamps_nanos.map((ts) =>
@@ -17,7 +20,8 @@ export function getMaxTsWithBuffer(transactions: SlotTransactions) {
         transactions.start_timestamp_nanos,
     ),
   );
-  return (max(txnTs) ?? 0) + chartBufferMs;
+  const maxTxnTs = max(txnTs) ?? 0;
+  return includeBuffer ? maxTxnTs + chartBufferMs : maxTxnTs;
 }
 
 export function getTxnStateDurations(

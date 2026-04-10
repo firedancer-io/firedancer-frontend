@@ -23,10 +23,7 @@ import {
 import { cuTooltipPlugin } from "./cuTooltipPlugin";
 import { wheelZoomPlugin } from "../../../../uplotReact/wheelZoomPlugin";
 import { syncXScalePlugin } from "../../../../uplotReact/syncXScalePlugin";
-import {
-  chartBufferMs,
-  getMaxTsWithBuffer,
-} from "../../../../transactionUtils";
+import { chartBufferMs, getMaxTs } from "../../../../transactionUtils";
 import { cuIsFullXRangePlugin } from "./cuIsFullXRangePlugin";
 import { touchPlugin } from "../../../../uplotReact/touchPlugin";
 import {
@@ -103,7 +100,7 @@ function getChartData(transactions: SlotTransactions) {
     [[-chartBufferMs], [0], [0], [0], [0]],
   );
 
-  const maxTs = getMaxTsWithBuffer(transactions);
+  const maxTs = getMaxTs(transactions, true);
 
   chartData.forEach((series) => {
     series.push(null);

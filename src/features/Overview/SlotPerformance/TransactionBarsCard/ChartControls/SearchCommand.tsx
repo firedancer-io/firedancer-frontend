@@ -48,6 +48,7 @@ import {
 } from "./searchCommandUtils";
 import { txnBarsControlsStickyTop } from "../BarsChartContainer";
 import {
+  ARRIVAL_CONTROL_KEY,
   ChartControlsContext,
   FOCUS_BANK_KEY,
   SEARCH_KEY,
@@ -127,7 +128,7 @@ export default function SearchCommand({
   const commandListRef = useRef<HTMLDivElement>(null);
   const suppressOpenOnFocusRef = useRef<boolean>(false);
 
-  const { triggerControl } = useContext(ChartControlsContext);
+  const { triggerControl, resetControl } = useContext(ChartControlsContext);
 
   const getTxnIdxs = useCallback(
     (value: Search) => {
@@ -278,18 +279,14 @@ export default function SearchCommand({
     [getTxnIdxs, setSearchIdxAndFocus],
   );
 
-  const { isTooltipOpen, closeTooltip } = useChartControl(
-    SEARCH_KEY,
-    handleExternalValueUpdate,
-  );
-
   // For resetting focus when user starts typing in input
   const resetChartElFocus = useCallback(() => {
-    triggerControl(FOCUS_BANK_KEY, undefined);
+    resetControl(FOCUS_BANK_KEY);
+    resetControl(ARRIVAL_CONTROL_KEY);
     highlightTxnIdx(undefined);
     setSearchIdx(undefined);
     setIsCurrentlySelected(false);
-  }, [triggerControl]);
+  }, [resetControl]);
 
   const resetFocus = useCallback(() => {
     resetChartElFocus();
@@ -302,6 +299,12 @@ export default function SearchCommand({
       });
     });
   }, [resetChartElFocus, setDInputValue, uplotAction]);
+
+  const { isTooltipOpen, closeTooltip } = useChartControl(
+    SEARCH_KEY,
+    handleExternalValueUpdate,
+    resetFocus,
+  );
 
   useEffect(() => {
     if (

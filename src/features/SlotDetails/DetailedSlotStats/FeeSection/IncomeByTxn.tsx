@@ -14,7 +14,7 @@ interface IncomeByTxnProps {
   transactions: SlotTransactions;
 }
 export default function IncomeByTxn({ transactions }: IncomeByTxnProps) {
-  const { triggerControl } = useContext(ChartControlsContext);
+  const { triggerControl, resetAllControls } = useContext(ChartControlsContext);
 
   const data = useMemo(() => {
     const signatureValues = transactions.txn_signature.map((signature, i) => {
@@ -34,12 +34,13 @@ export default function IncomeByTxn({ transactions }: IncomeByTxnProps) {
 
   const onItemClick = useCallback(
     ({ label }: { label: string; value: number }) => {
+      resetAllControls([SEARCH_KEY]);
       triggerControl(SEARCH_KEY, {
         mode: SearchMode.TxnSignature,
         text: label,
       });
     },
-    [triggerControl],
+    [resetAllControls, triggerControl],
   );
 
   return (
