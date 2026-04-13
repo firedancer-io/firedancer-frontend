@@ -81,4 +81,17 @@
       }
     }
   }
+
+  .supermajority {
+    background: var(--progress-bar-incomplete-supermajority-color);
+    &.complete {
+      background: var(--progress-bar-complete-supermajority-color);
+    }
+    &.current {
+      border-color: var(--progress-bar-in-progress-supermajority-border);
+      .progressing-bar {
+        background: var(--progress-bar-in-progress-supermajority-background);
+      }
+    }
+  }
 }

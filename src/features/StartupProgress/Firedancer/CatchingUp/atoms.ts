@@ -1,7 +1,6 @@
 import { atom } from "jotai";
-import { bootProgressAtom } from "../../../../api/atoms";
 import { atomWithImmer } from "jotai-immer";
-import { showStartupProgressAtom } from "../../atoms";
+import { showStartupProgressAtom, snapshotSlotAtom } from "../../atoms";
 
 export const catchingUpContainerElAtom = atom<HTMLDivElement | null>(null);
 
@@ -18,11 +17,8 @@ export const catchingUpStartSlotAtom = atom<number | null | undefined>(
   (get) => {
     /* Snapshots represent end-of-slot state; the first slot we replay 
        from live shreds is (incr or full)+1 */
-    const incr = get(bootProgressAtom)?.loading_incremental_snapshot_slot;
-    if (incr != null) return incr + 1;
-    const full = get(bootProgressAtom)?.loading_full_snapshot_slot;
-    if (full != null) return full + 1;
-    return undefined;
+    const snapshotSlot = get(snapshotSlotAtom);
+    return snapshotSlot == null ? undefined : snapshotSlot + 1;
   },
 );
 

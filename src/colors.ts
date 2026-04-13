@@ -43,6 +43,7 @@ export const bootProgressGossipBackgroundColor = "#030312";
 export const bootProgressFullSnapshotBackgroundColor = "#020C12";
 export const bootProgressIncrSnapshotBackgroundColor = "#020912";
 export const bootProgressCatchupBackgroundColor = "#060E0E";
+export const bootProgressSupermajorityBackgroundColor = "#120602";
 
 export const bootProgressGossipBarsColor = "#252D2C";
 export const bootProgressGossipFilledBarColor = "#175E51";
@@ -78,8 +79,15 @@ export const progressBarInProgressCatchupBackground = `linear-gradient(270deg, $
 export const progressBarInProgressCatchupBorder = "#2EC9C9";
 export const progressBarCompleteCatchupColor = "#0C6B5A";
 
+export const progressBarIncompleteSupermajorityColor = "#231511";
+export const progressBarInProgressSupermajorityBackground = `linear-gradient(270deg, #8B2B0E 0%,  #150C09 100%)`;
+export const progressBarInProgressSupermajorityBorder = "#F29D83";
+export const progressBarCompleteSupermajorityColor = "#250C04";
+
 export const snapshotAreaChartDark = "rgba(16, 129, 108, 0.53)";
 export const snapshotAreaChartGridLineColor = "#ffffff1a";
+
+export const supermajoritySecondaryColor = "#646464";
 
 // catching up bars
 export const firstTurbineSlotColor = "#3972C9";
