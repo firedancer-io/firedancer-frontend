@@ -16,6 +16,7 @@ import type {
   SkipRate,
   SlotLevel,
   SlotResponse,
+  SupermajorityEpoch,
 } from "./api/types";
 import { clamp, merge } from "lodash";
 import {
@@ -555,6 +556,68 @@ export const allLeaderNamesAtom = atom((get) => {
   }));
 
   return leadersWithNames;
+});
+
+type SupermajorityEpochByPubkey = Map<
+  SupermajorityEpoch["staked_pubkeys"][number],
+  [
+    lamports: SupermajorityEpoch["staked_lamports"][number],
+    infos: SupermajorityEpoch["infos"][number],
+  ]
+>;
+export const supermajorityEpochAtom = (function getSupermajorityEpochAtom() {
+  const _supermajorityEpochAtom = atomWithImmer<
+    SupermajorityEpochByPubkey | undefined
+  >(undefined);
+
+  return atom(
+    (get) => get(_supermajorityEpochAtom),
+    (_get, set, value: SupermajorityEpoch) => {
+      const byPubkeys: SupermajorityEpochByPubkey = new Map();
+      for (let i = 0; i < value.staked_pubkeys.length; i++) {
+        byPubkeys.set(value.staked_pubkeys[i], [
+          value.staked_lamports[i],
+          value.infos[i],
+        ]);
+      }
+      set(_supermajorityEpochAtom, byPubkeys);
+    },
+  );
+})();
+
+export const [
+  supermajorityOnlinePeersAtom,
+  updateSupermajorityOnlinePeersAtom,
+] = (function getSupermajorityOnlinePeersAtoms() {
+  const _supermajorityOnlinePeersAtom = atomWithImmer(new Set<string>());
+  return [
+    atom((get) => get(_supermajorityOnlinePeersAtom)),
+    atom(null, (_get, set, addPeers: string[], removePeers: string[]) => {
+      set(_supermajorityOnlinePeersAtom, (draft) => {
+        for (const peer of addPeers) {
+          draft.add(peer);
+        }
+        for (const peer of removePeers) {
+          draft.delete(peer);
+        }
+      });
+    }),
+  ];
+})();
+
+export const supermajorityOfflinePeersAtom = atom((get) => {
+  const offlinePeers = new Set<string>();
+  const allPeers = get(supermajorityEpochAtom)?.keys();
+
+  if (!allPeers) return offlinePeers;
+
+  const onlinePeers = get(supermajorityOnlinePeersAtom);
+
+  for (const peer of allPeers) {
+    if (onlinePeers.has(peer)) continue;
+    offlinePeers.add(peer);
+  }
+  return offlinePeers;
 });
 
 export const getSlotStateAtom = (slot?: number) =>

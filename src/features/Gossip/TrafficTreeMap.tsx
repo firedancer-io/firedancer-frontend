@@ -15,7 +15,11 @@ import { shuffle, sum } from "lodash";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { headerGap } from "./consts";
 import styles from "./trafficTreeMap.module.css";
-import { copyToClipboard, formatBytesAsBits } from "../../utils";
+import {
+  copyToClipboard,
+  formatBytesAsBits,
+  getPeerIconUrl,
+} from "../../utils";
 import PeerIcon from "../../components/PeerIcon";
 import { PieChartIcon } from "@radix-ui/react-icons";
 
@@ -99,12 +103,7 @@ export function TrafficTreeMap({ networkTraffic, label }: TrafficTreeMapProps) {
         peer.vote.map((v) => (v.delinquent ? 0 : Number(v.activated_stake))),
       );
 
-      const iconUrl =
-        peer.info?.icon_url ||
-        (peer.info?.keybase_username
-          ? `https://keybase.io/${peer.info.keybase_username}/picture`
-          : undefined) ||
-        undefined;
+      const iconUrl = getPeerIconUrl(peer.info);
 
       const name = peer.info?.name ?? undefined;
 

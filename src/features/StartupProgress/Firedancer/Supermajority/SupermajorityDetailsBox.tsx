@@ -1,13 +1,12 @@
-import { Card, Flex, Text } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import styles from "./supermajority.module.css";
-import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { bootProgressAtom } from "../../../../api/atoms";
 import { formatFrequency } from "../../../../numUtils";
 import CopyButton from "../../../../components/CopyButton";
 import { snapshotSlotAtom } from "../../atoms";
 
-export default function SupermajorityDetailsCard() {
+export default function SupermajorityDetailsBox() {
   const bootProgress = useAtomValue(bootProgressAtom);
   const slot = useAtomValue(snapshotSlotAtom);
 
@@ -19,8 +18,14 @@ export default function SupermajorityDetailsCard() {
     bootProgress.loading_full_snapshot_read_path;
 
   return (
-    <Card className={clsx(styles.card, styles.detailsCard)}>
-      <Flex align="center" justify="between">
+    <Flex
+      flexShrink="0"
+      direction="column"
+      width="100%"
+      className={styles.detailsBox}
+      gapY="10px"
+    >
+      <Flex gapX="8px" justify="between">
         <LabelValue label="Slot" value={slot?.toString()} />
         <LabelValue
           label="Shred Version"
@@ -43,7 +48,7 @@ export default function SupermajorityDetailsCard() {
         valueClassName={styles.snapshotSource}
         allowCopy
       />
-    </Card>
+    </Flex>
   );
 }
 
@@ -62,7 +67,7 @@ function LabelValue({
   allowCopy = false,
 }: LabelValueProps) {
   return (
-    <Flex direction="column">
+    <Flex direction="column" gap="3px">
       <Text className={styles.label}>{label}</Text>
       <CopyButton
         className={styles.copyButton}

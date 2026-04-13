@@ -27,6 +27,10 @@ const blockEngineTopicSchema = z.object({
   topic: z.literal("block_engine"),
 });
 
+const supermajorityTopicSchema = z.object({
+  topic: z.literal("wait_for_supermajority"),
+});
+
 export const topicSchema = z.discriminatedUnion("topic", [
   summaryTopicSchema,
   epochTopicSchema,
@@ -34,6 +38,7 @@ export const topicSchema = z.discriminatedUnion("topic", [
   peersTopicSchema,
   slotTopicSchema,
   blockEngineTopicSchema,
+  supermajorityTopicSchema,
 ]);
 
 export const versionSchema = z.string();
@@ -729,7 +734,7 @@ const peerUpdateVoteAccountSchema = z.object({
   delinquent: z.boolean(),
 });
 
-const peerUpdateInfoSchema = z.object({
+export const peerUpdateInfoSchema = z.object({
   name: z.nullable(z.string()),
   details: z.nullable(z.string()),
   website: z.nullable(z.string()),
@@ -921,5 +926,28 @@ export const blockEngineSchema = z.discriminatedUnion("key", [
   blockEngineTopicSchema.extend({
     key: z.literal("update"),
     value: blockEngineUpdateSchema,
+  }),
+]);
+
+export const supermajorityEpochSchema = z.object({
+  staked_pubkeys: z.string().array(),
+  staked_lamports: z.coerce.bigint().array(),
+  infos: z.array(peerUpdateInfoSchema.nullable()),
+});
+const supermajorityPeerAddSchema = z.string().array();
+const supermajorityPeerRemoveSchema = z.string().array();
+
+export const supermajoritySchema = z.discriminatedUnion("key", [
+  supermajorityTopicSchema.extend({
+    key: z.literal("stakes"),
+    value: supermajorityEpochSchema,
+  }),
+  supermajorityTopicSchema.extend({
+    key: z.literal("peer_add"),
+    value: supermajorityPeerAddSchema,
+  }),
+  supermajorityTopicSchema.extend({
+    key: z.literal("peer_remove"),
+    value: supermajorityPeerRemoveSchema,
   }),
 ]);

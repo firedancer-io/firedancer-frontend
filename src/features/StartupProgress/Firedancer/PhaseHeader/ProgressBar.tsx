@@ -10,6 +10,7 @@ import {
 import { clamp } from "lodash";
 import clsx from "clsx";
 import type { BootPhase } from "../../../../api/types";
+import { useEffect, useState } from "react";
 
 const classNames: { [phase in BootPhase]: string } = {
   [BootPhaseEnum.joining_gossip]: styles.gossip,
@@ -25,18 +26,25 @@ interface ProgressBarProps {
 }
 
 export function ProgressBar({ phaseCompleteFraction }: ProgressBarProps) {
+  // initialize progress animation at 0, even if phase begins with some progress already
+  const [displayFraction, setDisplayFraction] = useState(0);
+
+  useEffect(() => {
+    setDisplayFraction(clamp(phaseCompleteFraction, 0, 1));
+  }, [phaseCompleteFraction]);
+
   const currentPhase = useAtomValue(bootProgressPhaseAtom);
   const phases = useAtomValue(bootProgressPhasesAtom);
   const completedPhases = useAtomValue(bootProgressCompletedPhasesAtom);
 
   return (
     <Flex className={styles.progressBar}>
-      {phases.map(({ phase, barWidthFraction }) => {
+      {phases.map(({ phase, completionFraction }) => {
         if (phase === BootPhaseEnum.running) return;
 
         const isCurrent = phase === currentPhase;
 
-        const width = `${barWidthFraction * 100}%`;
+        const width = `${completionFraction * 100}%`;
 
         return (
           <div
@@ -51,7 +59,7 @@ export function ProgressBar({ phaseCompleteFraction }: ProgressBarProps) {
               <div
                 className={styles.progressingBar}
                 style={{
-                  transform: `scaleX(${clamp(phaseCompleteFraction, 0, 1)})`,
+                  transform: `scaleX(${displayFraction})`,
                 }}
               />
             )}
