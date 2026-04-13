@@ -46,7 +46,6 @@ export default function Gossip() {
   return (
     <>
       <PhaseHeader
-        phase="joining_gossip"
         phaseCompleteFraction={phaseCompleteFraction}
         overallCompleteFraction={overallCompleteFraction}
         remainingSeconds={remainingSeconds}

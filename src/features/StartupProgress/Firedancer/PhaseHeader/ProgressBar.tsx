@@ -11,11 +11,13 @@ import { clamp } from "lodash";
 import clsx from "clsx";
 import type { BootPhase } from "../../../../api/types";
 
-const classNames: { [phase in BootPhase]?: string } = {
+const classNames: { [phase in BootPhase]: string } = {
   [BootPhaseEnum.joining_gossip]: styles.gossip,
   [BootPhaseEnum.loading_full_snapshot]: styles.fullSnapshot,
   [BootPhaseEnum.loading_incremental_snapshot]: styles.incrSnapshot,
   [BootPhaseEnum.catching_up]: styles.catchingUp,
+  [BootPhaseEnum.waiting_for_supermajority]: styles.supermajority,
+  [BootPhaseEnum.running]: "",
 };
 
 interface ProgressBarProps {

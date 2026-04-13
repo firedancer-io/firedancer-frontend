@@ -146,7 +146,6 @@ export default function Snapshot() {
   return (
     <>
       <PhaseHeader
-        phase={bootProgress.phase}
         phaseCompleteFraction={phaseCompleteFraction}
         overallCompleteFraction={overallCompleteFraction}
         remainingSeconds={remainingSeconds}
