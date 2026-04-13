@@ -6,6 +6,7 @@ import {
   peersSchema,
   slotSchema,
   summarySchema,
+  supermajoritySchema,
 } from "../entities";
 import type { GossipHealthEma } from "../atoms";
 
@@ -16,6 +17,7 @@ export const WsMessageSchema = z.discriminatedUnion("topic", [
   peersSchema,
   slotSchema,
   blockEngineSchema,
+  supermajoritySchema,
 ]);
 
 export type WsMessage = z.infer<typeof WsMessageSchema>;
@@ -38,7 +40,8 @@ export type WsEntity =
   | KvFrom<typeof gossipSchema, "gossip">
   | KvFrom<typeof peersSchema, "peers">
   | KvFrom<typeof slotSchema, "slot">
-  | KvFrom<typeof blockEngineSchema, "block_engine">;
+  | KvFrom<typeof blockEngineSchema, "block_engine">
+  | KvFrom<typeof supermajoritySchema, "wait_for_supermajority">;
 
 export type FromWorkerMessage =
   | { type: "connecting" }

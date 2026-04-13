@@ -63,6 +63,8 @@ import type {
   resetSlotSchema,
   storageSlotSchema,
   voteSlotSchema,
+  supermajorityEpochSchema,
+  peerUpdateInfoSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -131,6 +133,8 @@ export type StartupPhase = z.infer<typeof startupPhaseSchema>;
 
 export type BootPhase = z.infer<typeof bootPhaseSchema>;
 
+export type SupermajorityEpoch = z.infer<typeof supermajorityEpochSchema>;
+
 export type TpsHistory = z.infer<typeof tpsHistorySchema>;
 
 export type VoteState = z.infer<typeof voteStateSchema>;
@@ -154,6 +158,7 @@ export type GossipPeersRowsUpdate = z.infer<typeof gossipQueryRowsSchema>;
 export type GossipPeersCellUpdate = z.infer<typeof gossipViewUpdateSchema>;
 export type GossipPeersCellData = z.infer<typeof gossipCellDataSchema>;
 
+export type PeerUpdateInfo = z.infer<typeof peerUpdateInfoSchema>;
 export interface Peer extends z.infer<typeof peerUpdateSchema> {
   removed?: boolean;
 }

@@ -4,6 +4,7 @@ import type {
   Cluster,
   Epoch,
   Peer,
+  PeerUpdateInfo,
   SlotPublish,
   SlotTransactions,
   TileType,
@@ -482,3 +483,13 @@ export const tileNames = {
   bank: isFiredancer ? "execle" : "bank",
   poh: isFiredancer ? "poh" : "pohh",
 } satisfies Record<string, TileType>;
+
+export function getPeerIconUrl(peerInfo: PeerUpdateInfo | null | undefined) {
+  return (
+    peerInfo?.icon_url ||
+    (peerInfo?.keybase_username
+      ? `https://keybase.io/${peerInfo.keybase_username}/picture`
+      : undefined) ||
+    undefined
+  );
+}

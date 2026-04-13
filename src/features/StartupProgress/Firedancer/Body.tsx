@@ -72,6 +72,7 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
         direction="column"
         width="100%"
         maxWidth={appMaxWidth}
+        minHeight="0"
         mx="auto"
         px={isNarrow ? "20px" : "89px"}
       >

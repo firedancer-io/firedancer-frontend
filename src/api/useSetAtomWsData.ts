@@ -31,6 +31,8 @@ import {
   deleteSlotResponseBoundsAtom,
   deleteSlotStatusBoundsAtom,
   deletePreviousEpochsAtom,
+  supermajorityEpochAtom,
+  updateSupermajorityOnlinePeersAtom,
 } from "../atoms";
 import { shredsAtoms } from "../features/Overview/ShredsProgression/atoms";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
@@ -292,6 +294,8 @@ function useUpdateAtoms() {
   const setBootProgress = useSetAtom(bootProgressAtom);
   const setStartupProgress = useSetAtom(startupProgressAtom);
 
+  const setSupermajorityEpoch = useSetAtom(supermajorityEpochAtom);
+
   const setTpsHistory = useSetAtom(tpsHistoryAtom);
 
   const setVoteState = useSetAtom(voteStateAtom);
@@ -457,6 +461,46 @@ function useUpdateAtoms() {
       dbFlushBuffer();
     },
     [dbFlushBuffer],
+  );
+
+  const updateSupermajorityOnlinePeers = useSetAtom(
+    updateSupermajorityOnlinePeersAtom,
+  );
+  const supermajorityPeersBuffers = useRef({
+    toAdd: new Set<string>(),
+    toRemove: new Set<string>(),
+  });
+
+  const dbFlushSupermajorityPeersBuffers = useDebouncedCallback(
+    () => {
+      updateSupermajorityOnlinePeers(
+        [...supermajorityPeersBuffers.current.toAdd],
+        [...supermajorityPeersBuffers.current.toRemove],
+      );
+      supermajorityPeersBuffers.current.toAdd.clear();
+      supermajorityPeersBuffers.current.toRemove.clear();
+    },
+    1_000,
+    { maxWait: 1_000 },
+  );
+
+  const addToSupermajorityPeersBuffers = useCallback(
+    (isAdd: boolean, peers: string[]) => {
+      if (isAdd) {
+        for (const peer of peers) {
+          supermajorityPeersBuffers.current.toAdd.add(peer);
+          supermajorityPeersBuffers.current.toRemove.delete(peer);
+        }
+      } else {
+        for (const peer of peers) {
+          supermajorityPeersBuffers.current.toAdd.delete(peer);
+          supermajorityPeersBuffers.current.toRemove.add(peer);
+        }
+      }
+
+      dbFlushSupermajorityPeersBuffers();
+    },
+    [dbFlushSupermajorityPeersBuffers],
   );
 
   const updateAtoms = useCallback(
@@ -673,6 +717,24 @@ function useUpdateAtoms() {
               break;
             }
           }
+          break;
+        }
+        case "wait_for_supermajority": {
+          switch (key) {
+            case "stakes": {
+              setSupermajorityEpoch(value);
+              break;
+            }
+            case "peer_add": {
+              addToSupermajorityPeersBuffers(true, value);
+              break;
+            }
+            case "peer_remove": {
+              addToSupermajorityPeersBuffers(false, value);
+              break;
+            }
+          }
+          break;
         }
       }
     },
@@ -682,6 +744,7 @@ function useUpdateAtoms() {
       addRepairSlots,
       addSkippedClusterSlots,
       addToPeersBuffer,
+      addToSupermajorityPeersBuffers,
       addTurbineSlot,
       addTurbineSlots,
       handleSlotUpdate,
@@ -717,6 +780,7 @@ function useUpdateAtoms() {
       setStartupProgress,
       setStartupTime,
       setStorageSlot,
+      setSupermajorityEpoch,
       setTiles,
       setTpsHistory,
       setVersion,
