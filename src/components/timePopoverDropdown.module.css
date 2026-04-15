@@ -1,18 +1,15 @@
 .container {
-  border-radius: 5px;
-  background: var(--popover-background-color);
-  max-width: 100vw;
-  border: 1px solid var(--container-border-color);
-  padding: 4px;
   font-size: 12px;
+  padding: 0 5px;
 }
 
 .label {
-  color: var(--gray-10);
+  color: var(--popover-secondary-color);
 }
 
 .value {
-  color: var(--gray-11);
+  color: var(--popover-primary-color);
+  text-align: end;
 }
 
 .popover-trigger {

@@ -58,7 +58,6 @@
 
 .popover {
   max-width: 160px;
-  background-color: var(--gray-1);
   padding: 6px;
 
   .title {
