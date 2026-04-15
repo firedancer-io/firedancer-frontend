@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { useRelativeTime } from "../hooks/useRelativeTime";
 import PopoverDropdown from "./PopoverDropdown";
 import clsx from "clsx";
+import MonoText from "./MonoText";
 
 interface TimePopoverContentProps {
   nanoTs: bigint;
@@ -46,21 +47,22 @@ export function TimePopoverDropdown({
       content={
         <Grid
           columns="max-content max-content"
-          gap="2"
+          gapX="10px"
+          gapY="5px"
           rows="4"
           className={styles.container}
         >
           <Text className={styles.label}>{localTimezone}</Text>
-          <Text className={styles.value}>{values.local}</Text>
+          <MonoText className={styles.value}>{values.local}</MonoText>
 
           <Text className={styles.label}>UTC</Text>
-          <Text className={styles.value}>{values.utc}</Text>
+          <MonoText className={styles.value}>{values.utc}</MonoText>
 
           <Text className={styles.label}>Relative</Text>
-          <Text className={styles.value}>{relativeTime}</Text>
+          <MonoText className={styles.value}>{relativeTime}</MonoText>
 
           <Text className={styles.label}>Timestamp</Text>
-          <Text className={styles.value}>{values.ts}</Text>
+          <MonoText className={styles.value}>{values.ts}</MonoText>
         </Grid>
       }
       align="start"

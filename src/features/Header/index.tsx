@@ -157,11 +157,9 @@ function Attribution() {
   return (
     <PopoverDropdown
       content={
-        <Flex maxWidth="100vw" p="2" className={styles.attributeContainer}>
-          <Text size="2" wrap="wrap">
-            <a href="https://db-ip.com">IP Geolocation by DB-IP</a>
-          </Text>
-        </Flex>
+        <Text size="2" wrap="wrap">
+          <a href="https://db-ip.com">IP Geolocation by DB-IP</a>
+        </Text>
       }
     >
       <InfoCircledIcon color="var(--gray-11)" />

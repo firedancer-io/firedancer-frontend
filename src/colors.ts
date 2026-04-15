@@ -17,7 +17,9 @@ export const containerBorderColor = "rgba(250, 250, 250, 0.12)";
 export const containerBackgroundColor = "rgba(250, 250, 250, 0.05)";
 export const dropdownBackgroundColor = "#24262B";
 export const dropdownButtonTextColor = "#F7F8F8";
-export const popoverBackgroundColor = "#1C2129";
+export const popoverBackgroundColor = "var(--gray-1, #111)";
+export const popoverPrimaryColor = "var(--gray-12, #eee)";
+export const popoverSecondaryColor = "var(--gray-10, #7b7b7b)";
 export const rowSeparatorBackgroundColor = "#333333";
 
 export const navButtonTextColor = "#F7F7F7";
