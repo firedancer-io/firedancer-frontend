@@ -221,6 +221,8 @@ export const transactionPostExecuteColor = "rgba(17, 50, 100, .5)";
 export const transactionPostExecuteTextColor = "#0090FF";
 
 // leader schedule
+export const summaryPrimaryTextColor = "var(--gray-11)";
+export const summarySecondaryTextColor = "var(--gray-10)";
 export const summaryMySlotsColor = "#41B9D3";
 export const summaryFrankendancerTextColor = "#C46BF0";
 export const summaryFiredancerTextColor = "#6BEFD7";
@@ -240,6 +242,9 @@ export const searchDisabledBackgroundColor = "rgba(114, 114, 114, 0.15)";
 
 export const skipRateLabelColor = "#646464";
 export const slotCardSectionBackgroundColor = "#676767";
+export const slotCardSectionPrimaryColor = "var(--gray-11)";
+export const slotCardSectionSecondaryColor = "var(--gray-10)";
+export const slotCardHeaderTextColor = "#cbcbcb";
 export const slotTextLinkColor = "#1190CF";
 export const slotTextActiveLinkColor = "#6CB1D3";
 export const slotTextVisitedLinkColor = "#967DC8";

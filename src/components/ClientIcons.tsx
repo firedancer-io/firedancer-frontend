@@ -58,7 +58,7 @@ const ClientImgs: Record<ClientName, { src: string; alt: string } | null> = {
   },
 };
 
-export type ClientIconSize = "small" | "large" | "xlarge";
+export type ClientIconSize = "small" | "medium" | "large" | "xlarge";
 
 interface ClientProps {
   client: ClientName | undefined;

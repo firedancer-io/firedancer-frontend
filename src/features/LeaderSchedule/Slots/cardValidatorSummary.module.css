@@ -7,50 +7,49 @@
 
 .summary-container {
   width: 40%;
-  min-width: 450px;
+  min-width: 500px;
 }
 
 .name {
-  color: var(--primary-text-color);
+  color: var(--summary-primary-text-color);
   font-size: 24px;
-  line-height: normal;
   min-width: 30px;
-  width: 100%;
+  line-height: 30px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 
+  &.you {
+    color: var(--gray-12);
+  }
+
   &.mobile {
     font-size: inherit;
+    line-height: 16px;
   }
-}
-
-.text {
-  line-height: normal;
-  color: var(--primary-text-color);
 }
 
 .primary-text {
   font-style: normal;
-  line-height: normal;
-  color: var(--primary-text-color);
-  min-width: 70px;
+  color: var(--summary-primary-text-color);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .secondary-text {
-  line-height: normal;
-  font-size: 12px;
-  color: var(--secondary-text-color);
+  color: var(--summary-secondary-text-color);
   > span {
     line-height: normal;
   }
 }
 
 .divider {
-  color: var(--primary-text-color);
+  color: var(--summary-primary-text-color);
+}
+
+.mobile {
+  font-size: 12px;
 }
 
 .firedancer {
@@ -91,6 +90,19 @@
   color: var(--summary-harmonic-text-color);
 }
 
-.container-mobile {
-  padding: 0 6px;
+.major-minor-version-text {
+  flex-shrink: 0;
+}
+
+.remaining-version-text {
+  min-width: 1em;
+  flex-shrink: 2;
+}
+
+.time-ago {
+  text-align: left;
+
+  &.right-aligned {
+    text-align: right;
+  }
 }

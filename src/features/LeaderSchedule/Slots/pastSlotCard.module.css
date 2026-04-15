@@ -2,7 +2,7 @@
   border-radius: 8px;
   border: 1px solid #30323a;
   background: #151b25;
-  padding: 10px;
+  padding: 9px 10px 5px 10px;
 
   &.late-vote {
     border: 1px solid #2f1e7c;

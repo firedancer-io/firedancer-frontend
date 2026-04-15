@@ -3,6 +3,7 @@ import styles from "./pastSlotCard.module.css";
 import sharedStyles from "./slots.module.css";
 import SlotCardGrid from "./SlotCardGrid";
 import CardValidatorSummary, {
+  CardValidatorSummaryTablet,
   CardValidatorSummaryMobile,
 } from "./CardValidatorSummary";
 import { useMedia } from "react-use";
@@ -11,6 +12,7 @@ import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import { discountedLateVoteSlotsAtom } from "../../../atoms";
 import { useAtomValue } from "jotai";
+import { mediumScreenMedia, wideScreenMedia } from "./consts";
 
 interface PastSlotCardProps {
   slot: number;
@@ -34,7 +36,8 @@ export function PastSlotCard({ slot }: PastSlotCardProps) {
     query2.publish?.skipped ||
     query3.publish?.skipped;
 
-  const isWideScreen = useMedia("(min-width: 900px)");
+  const isWide = useMedia(wideScreenMedia);
+  const isMedium = useMedia(mediumScreenMedia);
 
   return (
     <div
@@ -44,9 +47,14 @@ export function PastSlotCard({ slot }: PastSlotCardProps) {
         [styles.skipped]: isSkipped,
       })}
     >
-      {isWideScreen ? (
+      {isWide ? (
         <Flex gap="1" align="start" justify="between">
           <CardValidatorSummary slot={slot} showTime />
+          <SlotCardGrid slot={slot} />
+        </Flex>
+      ) : isMedium ? (
+        <Flex direction="column" gap="1">
+          <CardValidatorSummaryTablet slot={slot} showTime />
           <SlotCardGrid slot={slot} />
         </Flex>
       ) : (

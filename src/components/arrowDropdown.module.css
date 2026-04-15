@@ -1,0 +1,5 @@
+.arrow-dropdown {
+  /* overwrite radix ghost button styles */
+  --button-ghost-padding-x: 2px;
+  --button-ghost-padding-y: 2px;
+}

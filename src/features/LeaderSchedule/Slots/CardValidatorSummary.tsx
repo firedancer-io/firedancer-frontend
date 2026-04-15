@@ -1,6 +1,4 @@
-import type { TextProps } from "@radix-ui/themes";
-import { Box, Flex, Text } from "@radix-ui/themes";
-import { useMemo } from "react";
+import { Box, Flex, Text, Tooltip } from "@radix-ui/themes";
 import {
   getStake,
   getFmtStake,
@@ -10,7 +8,6 @@ import {
 import { useAtomValue } from "jotai";
 import PeerIcon from "../../../components/PeerIcon";
 import styles from "./cardValidatorSummary.module.css";
-import { useMedia } from "react-use";
 import type { Peer } from "../../../api/types";
 import { peerStatsAtom } from "../../../atoms";
 import { formatNumber } from "../../../numUtils";
@@ -20,9 +17,9 @@ import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import { useTimeAgo } from "../../../hooks/useTimeAgo";
 import { usePeerInfo } from "../../../hooks/usePeerInfo";
 import type { ClientName } from "../../../consts";
-import LinkedSlotText from "./SlotText";
 import { TimePopoverDropdown } from "../../../components/TimePopoverDropdown";
 import { formatDateTime } from "./slotsUtils";
+import SlotClient from "../../../components/SlotClient";
 
 interface CardValidatorSummaryProps {
   slot: number;
@@ -36,20 +33,42 @@ export default function CardValidatorSummary({
   const { pubkey, peer, isLeader, name } = useSlotInfo(slot);
 
   return (
-    <Flex gap="1" className={styles.summaryContainer}>
-      <PeerIcon url={peer?.info?.icon_url} size={40} isYou={isLeader} />
-      <Flex
-        direction="column"
-        gap="1"
-        align="start"
-        minWidth="0"
-        style={{ marginLeft: "6px" }}
-      >
-        <Text className={styles.name}>{name}</Text>
-        <Text className={styles.primaryText}>{pubkey}</Text>
-        <ValidatorInfo peer={peer} />
-        {showTime && <TimeAgo slot={slot} />}
+    <Flex direction="column" className={styles.summaryContainer} gap="2" mr="2">
+      <Flex gap="1">
+        <PeerIcon url={peer?.info?.icon_url} size={30} isYou={isLeader} />
+        <Text className={clsx(styles.name, { [styles.you]: isLeader })}>
+          {name}
+        </Text>
       </Flex>
+
+      <Text className={styles.primaryText}>{pubkey}</Text>
+
+      <ValidatorInfoHorizontal slot={slot} peer={peer} showTime={showTime} />
+    </Flex>
+  );
+}
+
+export function CardValidatorSummaryTablet({
+  slot,
+  showTime,
+}: CardValidatorSummaryProps) {
+  const { pubkey, peer, isLeader, name } = useSlotInfo(slot);
+
+  return (
+    <Flex direction="column" gap="1">
+      <Flex gap="1">
+        <PeerIcon url={peer?.info?.icon_url} size={16} isYou={isLeader} />
+        <Text className={clsx(styles.name, styles.mobile)}>{name}</Text>
+        <Box flexGrow="1" />
+        <Text className={styles.primaryText}>{pubkey}</Text>
+      </Flex>
+
+      <ValidatorInfoHorizontal
+        slot={slot}
+        peer={peer}
+        showTime={showTime}
+        full
+      />
     </Flex>
   );
 }
@@ -58,200 +77,258 @@ export function CardValidatorSummaryMobile({
   slot,
   showTime,
 }: CardValidatorSummaryProps) {
-  const { pubkey, peer, isLeader, name: slotName } = useSlotInfo(slot);
-  const isWideScreen = useMedia("(min-width: 700px)");
-  const name = useMemo(() => {
-    if (slotName !== "Private" || isWideScreen) return slotName;
-    return pubkey ? `${pubkey.substring(0, 8)}...` : "Private";
-  }, [slotName, isWideScreen, pubkey]);
+  const { pubkey, peer, isLeader, name } = useSlotInfo(slot);
 
   return (
-    <Flex direction="column" className={styles.containerMobile} gap="1">
-      <Flex gap="1">
-        {isWideScreen ? (
-          <>
-            <PeerIcon url={peer?.info?.icon_url} size={16} isYou={isLeader} />
-            <Text className={clsx(styles.name, styles.mobile)}>{name}</Text>
-            <Box flexGrow="1" />
-            <Text className={styles.primaryText}>{pubkey}</Text>
-          </>
-        ) : (
-          <>
-            <LinkedSlotText
-              className={styles.text}
-              slot={slot}
-              isLeader={isLeader}
-            />
-            <Box flexGrow="1" />
-            <PeerIcon url={peer?.info?.icon_url} size={16} isYou={isLeader} />
-            <Text className={styles.text}>{name}</Text>
-            <ArrowDropdown>
-              <Flex gap="1" direction="column">
-                <Text className={styles.secondaryText}>{pubkey}</Text>
-                <ValidatorInfo peer={peer} />
-                {showTime && <TimeAgo slot={slot} />}
-              </Flex>
-            </ArrowDropdown>
-          </>
-        )}
-      </Flex>
-      {isWideScreen && (
-        <Flex gap="1">
-          <ValidatorInfo peer={peer} />
-          <Box flexGrow="1" />
-          {showTime && <TimeAgo slot={slot} />}
+    <Flex gap="1">
+      <PeerIcon url={peer?.info?.icon_url} size={16} isYou={isLeader} />
+      <Text className={styles.primaryText}>{name}</Text>
+      <ArrowDropdown align="start">
+        <Flex p="1" direction="column" gap="2" className={styles.mobile}>
+          <Text>{pubkey}</Text>
+          <ValidatorInfoMobile slot={slot} peer={peer} showTime={showTime} />
         </Flex>
-      )}
+      </ArrowDropdown>
     </Flex>
   );
 }
 
-function getStakeMsg(
-  peer?: Peer,
-  activeStake?: bigint,
-  delinquentStake?: bigint,
-) {
-  if (!peer) return;
+function useValidatorInfoData(peer?: Peer) {
+  const peerStats = useAtomValue(peerStatsAtom);
+  const { client, version, countryCode, countryFlag, cityName } =
+    usePeerInfo(peer);
 
-  const stake = getStake(peer);
-  const pct =
-    activeStake !== undefined || delinquentStake !== undefined
-      ? (Number(stake) /
-          Number((activeStake ?? 0n) + (delinquentStake ?? 0n))) *
-        100
+  const stake = peer ? getStake(peer) : undefined;
+  const totalStake = peerStats
+    ? peerStats.activeStake + peerStats.delinquentStake
+    : 0n;
+  const stakePct =
+    totalStake > 0n ? (Number(stake) / Number(totalStake)) * 100 : undefined;
+  const stakeMsg =
+    stake !== undefined
+      ? `${getFmtStake(stake)}${
+          stakePct !== undefined
+            ? ` • ${formatNumber(stakePct, {
+                significantDigits: 4,
+                trailingZeroes: false,
+              })}%`
+            : ""
+        }`
       : undefined;
+  const ipWithoutPort = removePortFromIp(peer?.gossip?.sockets["tvu"] ?? "");
 
-  return `${getFmtStake(stake)} ${
-    pct !== undefined
-      ? `(${formatNumber(pct, {
-          significantDigits: 4,
-          trailingZeroes: false,
-        })}%)`
-      : ""
-  }`;
+  if (!isDefined(client) && !isDefined(stakeMsg) && !ipWithoutPort) return null;
+
+  return {
+    client,
+    version,
+    countryCode,
+    countryFlag,
+    cityName,
+    stakeText: stakeMsg ?? "",
+    ipText: ipWithoutPort || "Offline",
+  };
 }
 
 interface ValidatorInfoProps {
+  slot: number;
   peer?: Peer;
+  showTime?: boolean;
 }
 
-function ValidatorInfo({ peer }: ValidatorInfoProps) {
-  const peerStats = useAtomValue(peerStatsAtom);
+interface ValidatorInfoHorizontalProps extends ValidatorInfoProps {
+  /** Right-side columns right-align to fill the full card width */
+  full?: boolean;
+}
 
-  const { client, version, countryCode, countryFlag, cityName } =
-    usePeerInfo(peer);
-  const stakeMsg = getStakeMsg(
-    peer,
-    peerStats?.activeStake,
-    peerStats?.delinquentStake,
-  );
-  const ipWithoutPort = removePortFromIp(peer?.gossip?.sockets["tvu"] ?? "");
+function ValidatorInfoHorizontal({
+  slot,
+  peer,
+  showTime,
+  full,
+}: ValidatorInfoHorizontalProps) {
+  const data = useValidatorInfoData(peer);
+  if (!data) return null;
 
-  const message = [client, stakeMsg, ipWithoutPort]
-    .filter(isDefined)
-    .join(" - ");
-
-  if (!message) return null;
-
-  const versionText = version == null ? "" : ` v${version}`;
-  const validatorText = client
-    ? `${client}${versionText}`
-    : `Unknown${versionText}`;
-
-  const cityText = cityName && countryCode ? `${cityName}, ${countryCode}` : "";
-  const stakeText = stakeMsg ?? "";
-  const ipText = ipWithoutPort || "Offline";
-  // represent country flag as 2 chars because it is composed of multiple chars
-  // but renders as ~2 chars worth of space
-  const textLength = (
-    validatorText +
-    cityText +
-    (countryFlag ? 2 : 0) +
-    stakeText +
-    ipText
-  ).length;
-  const shouldWrap = textLength > 58;
-  const textProps: TextProps = shouldWrap
-    ? { style: { flexBasis: 0 } }
-    : { wrap: "nowrap" };
+  const {
+    client,
+    version,
+    countryCode,
+    countryFlag,
+    cityName,
+    stakeText,
+    ipText,
+  } = data;
 
   return (
-    <Flex gap="1" className={styles.secondaryText}>
-      <ValidatorText {...textProps} client={client} versionText={versionText} />
+    <Flex
+      gap="4"
+      minWidth="0"
+      justify="between"
+      className={styles.secondaryText}
+    >
+      <Flex direction="column" minWidth="0">
+        <Tooltip
+          content={`${client ?? "Unknown"}${version != null ? ` v${version}` : ""}`}
+        >
+          <Flex gap="1">
+            <Flex width="26px" align="center" flexShrink="0">
+              <SlotClient slot={slot} size="medium" />
+            </Flex>
+            <ValidatorText client={client} version={version} />
+          </Flex>
+        </Tooltip>
 
-      {cityText && (
-        <>
-          <Text className={styles.divider}>&bull;</Text>
-          <Text>{cityText}</Text>
-          <Text>{countryFlag}</Text>
-        </>
-      )}
+        {cityName && countryCode && (
+          <Tooltip content={`${cityName}, ${countryCode}`}>
+            <Flex gap="1">
+              <Flex width="26px" align="center" flexShrink="0">
+                <Text>{countryFlag}</Text>
+              </Flex>
+              <LocationText cityName={cityName} countryCode={countryCode} />
+            </Flex>
+          </Tooltip>
+        )}
+      </Flex>
 
-      <Text className={styles.divider}>&bull;</Text>
-      <Text {...textProps}>{stakeText}</Text>
-      <Text className={styles.divider}>&bull;</Text>
-      <Text>{ipText}</Text>
+      <Flex gap="4">
+        <Flex direction="column" width="180px" align={full ? "end" : "start"}>
+          <Text>{stakeText}</Text>
+          <Text>{ipText}</Text>
+        </Flex>
+
+        <Flex width="165px" justify={full ? "end" : "start"}>
+          {showTime && (
+            <TimeAgo slot={slot} align={full ? "right" : "left"} multiline />
+          )}
+        </Flex>
+      </Flex>
     </Flex>
   );
 }
 
-function ValidatorText({
-  client,
-  versionText,
-  ...textProps
-}: {
-  client?: ClientName;
-  versionText: string;
-  textProps?: TextProps;
-}) {
-  if (!client)
-    return (
-      <Text {...textProps}>
-        <Text>Unknown</Text>
-        {versionText && <Text>{versionText}</Text>}
-      </Text>
-    );
+function ValidatorInfoMobile({ slot, peer, showTime }: ValidatorInfoProps) {
+  const data = useValidatorInfoData(peer);
+  if (!data) return null;
 
-  const splitClient = client.split(" ");
-  const primaryClient = splitClient[0];
-  const secondaryClient = splitClient[1];
-
-  if (secondaryClient) {
-    const primaryClassName = styles[primaryClient.toLowerCase()];
-    const secondaryClassName = styles[secondaryClient.toLowerCase()];
-    return (
-      <Text {...textProps}>
-        <Text wrap="nowrap">
-          <Text className={primaryClassName}>{primaryClient}</Text>
-          <Text className={secondaryClassName}> {secondaryClient}</Text>
-        </Text>
-        {versionText && <Text className={primaryClassName}>{versionText}</Text>}
-      </Text>
-    );
-  }
+  const {
+    client,
+    version,
+    countryCode,
+    countryFlag,
+    cityName,
+    stakeText,
+    ipText,
+  } = data;
 
   return (
-    <Text {...textProps} className={styles[client.toLowerCase()]}>
-      <Text wrap="nowrap">{client}</Text>
-      {versionText && <Text>{versionText}</Text>}
-    </Text>
+    <Flex gap="2" minWidth="0" justify="between" direction="column">
+      <Flex gap="1">
+        <SlotClient slot={slot} size="small" />
+        <ValidatorText client={client} version={version} />
+      </Flex>
+
+      {cityName && countryCode && (
+        <Flex gap="1">
+          <Text>{countryFlag}</Text>
+          <LocationText cityName={cityName} countryCode={countryCode} />
+        </Flex>
+      )}
+
+      <Text>{stakeText}</Text>
+      <Text>{ipText}</Text>
+
+      {showTime && (
+        <Box>
+          <TimeAgo slot={slot} align="left" />
+        </Box>
+      )}
+    </Flex>
   );
 }
 
-function TimeAgo({ slot }: CardValidatorSummaryProps) {
+interface LocationTextProps {
+  cityName: string;
+  countryCode: string;
+}
+
+function LocationText({ cityName, countryCode }: LocationTextProps) {
+  return (
+    <Flex minWidth="0">
+      <Text truncate>{cityName}</Text>
+      <Text>&nbsp;{countryCode}</Text>
+    </Flex>
+  );
+}
+
+interface ValidatorTextProps {
+  client?: ClientName;
+  version?: string | null;
+}
+
+function ValidatorText({ client, version }: ValidatorTextProps) {
+  const splitClient = (client ?? "Unknown").split(" ");
+  const primaryClient = splitClient[0];
+  const secondaryClient = splitClient[1];
+  const primaryClassName = styles[primaryClient.toLowerCase()];
+
+  const match = version?.match(/^(\d+\.\d+)(\..+)$/);
+  const majorMinorVersion = match ? match[1] : (version ?? "");
+  const remainingVersion = match ? match[2] : "";
+
+  return (
+    <Flex minWidth="0">
+      <Text truncate>
+        <Text className={primaryClassName}>{primaryClient}</Text>
+        {secondaryClient && (
+          <Text className={styles[secondaryClient.toLowerCase()]}>
+            &nbsp;{secondaryClient}
+          </Text>
+        )}
+        {version && <Text>&nbsp;</Text>}
+      </Text>
+
+      {version && (
+        <Text className={clsx(styles.majorMinorVersionText, primaryClassName)}>
+          v{majorMinorVersion}
+        </Text>
+      )}
+      {remainingVersion && (
+        <Text
+          truncate
+          className={clsx(styles.remainingVersionText, primaryClassName)}
+        >
+          {remainingVersion}
+        </Text>
+      )}
+    </Flex>
+  );
+}
+
+interface TimeAgoProps extends CardValidatorSummaryProps {
+  align: "left" | "right";
+  multiline?: boolean;
+}
+
+function TimeAgo({ slot, align, multiline = false }: TimeAgoProps) {
   const { slotTimestampNanos, slotDateTime, timeAgoText } = useTimeAgo(slot);
 
   if (slotTimestampNanos === undefined) return;
 
+  const dateText = slotDateTime ? formatDateTime(slotDateTime) : "";
+  const lines = timeAgoText
+    ? multiline
+      ? [dateText, timeAgoText]
+      : [`${dateText} (${timeAgoText})`]
+    : [dateText];
+
   return (
     <TimePopoverDropdown
       nanoTs={slotTimestampNanos}
-      text={
-        slotDateTime
-          ? `${formatDateTime(slotDateTime)}${timeAgoText ? ` (${timeAgoText})` : ""}`
-          : ""
-      }
-      textClassName={styles.secondaryText}
+      lines={lines}
+      textClassName={clsx(styles.timeAgo, {
+        [styles.rightAligned]: align === "right",
+      })}
     />
   );
 }

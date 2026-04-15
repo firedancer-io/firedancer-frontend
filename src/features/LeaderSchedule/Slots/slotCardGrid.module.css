@@ -3,7 +3,6 @@
   grid:
     auto-flow / minMax(70px, auto) minMax(80px, auto) minMax(70px, auto)
     minMax(70px, auto) minMax(80px, auto) minMax(149px, auto);
-  row-gap: 1px;
   overflow-x: auto;
   min-width: 80px;
   touch-action: pan-x;
@@ -25,7 +24,7 @@
 .header-text {
   font-size: 12px;
   color: var(--slot-card-header-text-color);
-  padding: 0 6px;
+  padding: 3px 0;
 }
 
 .vote-latency-header {
@@ -55,12 +54,19 @@
 
 .row-text {
   white-space: nowrap;
-  color: var(--slot-card-section-color);
-  padding: 0 6px;
+  color: var(--slot-card-section-secondary-color);
   font-variant-numeric: tabular-nums;
+  border-top: 1px solid rgba(250, 250, 250, 0.12);
+  padding: 1px 0 0 0;
 
   &.active {
     background: var(--container-background-color);
-    color: var(--primary-text-color);
+    color: var(--slot-card-section-primary-color);
   }
+}
+
+.slot-text {
+  color: var(--slot-card-section-primary-color);
+  border-right: 1px solid rgba(250, 250, 250, 0.12);
+  padding-right: 3px;
 }

@@ -9,7 +9,7 @@ import MonoText from "./MonoText";
 
 interface TimePopoverContentProps {
   nanoTs: bigint;
-  text: string;
+  lines: string[];
   textClassName?: string;
   triggerClassName?: string;
 }
@@ -18,7 +18,7 @@ const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export function TimePopoverDropdown({
   nanoTs,
-  text,
+  lines,
   textClassName,
   triggerClassName,
 }: TimePopoverContentProps) {
@@ -75,17 +75,29 @@ export function TimePopoverDropdown({
             The overlay below uses text-overflow: clip so the underline spans the
             full visible width including where the ellipsis appears. */}
         <Flex minWidth="0" position="relative">
-          <Text truncate className={textClassName}>
-            {text}
-          </Text>
+          <Flex direction="column" minWidth="0" width="100%">
+            {lines.map((line, i) => (
+              <Text key={i} truncate className={textClassName}>
+                {line}
+              </Text>
+            ))}
+          </Flex>
 
-          <Text
-            truncate
+          <Flex
+            direction="column"
             aria-hidden="true"
-            className={clsx(textClassName, styles.popoverTextUnderline)}
+            className={styles.popoverUnderlineOverlay}
           >
-            {text}
-          </Text>
+            {lines.map((line, i) => (
+              <Text
+                key={i}
+                truncate
+                className={clsx(textClassName, styles.popoverTextUnderline)}
+              >
+                {line}
+              </Text>
+            ))}
+          </Flex>
         </Flex>
       </Button>
     </PopoverDropdown>

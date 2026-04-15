@@ -20,21 +20,23 @@
   color: inherit;
 }
 
-.popover-text-underline {
+.popover-underline-overlay {
   position: absolute;
   inset: 0;
 
-  color: transparent;
-  text-overflow: clip;
-
-  transition: text-decoration-color 0.2s ease;
-  text-decoration: underline dotted
-    var(--popover-trigger-color, var(--secondary-text-color));
-
-  &:hover {
+  &:hover .popover-text-underline {
     text-decoration-color: var(
       --popover-trigger-hover-color,
       var(--primary-text-color)
     );
   }
+}
+
+.popover-text-underline {
+  color: transparent !important;
+  text-overflow: clip;
+
+  transition: text-decoration-color 0.2s ease;
+  text-decoration: underline dotted
+    var(--popover-trigger-color, var(--secondary-text-color));
 }

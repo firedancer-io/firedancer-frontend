@@ -148,7 +148,7 @@ function TimeTillText({ slot, isNarrowScreen }: TimeTillTextProps) {
     >
       <TimePopoverDropdown
         nanoTs={data.predictedTsNanos}
-        text={`${data.dtText} (${data.timeTillText})`}
+        lines={[`${data.dtText} (${data.timeTillText})`]}
       />
     </Flex>
   );
