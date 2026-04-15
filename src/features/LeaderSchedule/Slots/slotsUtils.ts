@@ -104,8 +104,6 @@ export function getSlotCards({
 }
 
 export function formatDateTime(datetime: DateTime) {
-  return datetime.toLocaleString({
-    ...DateTime.DATETIME_MED_WITH_SECONDS,
-    timeZoneName: "short",
-  });
+  const { year: _year, ...rest } = DateTime.DATETIME_MED_WITH_SECONDS;
+  return datetime.toLocaleString({ ...rest, timeZoneName: "short" });
 }

@@ -4,12 +4,14 @@ import sharedStyles from "./slots.module.css";
 import SlotCardGrid from "./SlotCardGrid";
 import { useAtomValue } from "jotai";
 import CardValidatorSummary, {
+  CardValidatorSummaryTablet,
   CardValidatorSummaryMobile,
 } from "./CardValidatorSummary";
 import { currentSlotAtom } from "../../../atoms";
 import { useMedia } from "react-use";
 import clsx from "clsx";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
+import { mediumScreenMedia, wideScreenMedia } from "./consts";
 
 interface CurrentSlotCardProps {
   slot: number;
@@ -18,7 +20,8 @@ interface CurrentSlotCardProps {
 export default function CurrentSlotCard({ slot }: CurrentSlotCardProps) {
   const currentSlot = useAtomValue(currentSlotAtom);
   const { isLeader } = useSlotInfo(slot);
-  const isWideScreen = useMedia("(min-width: 900px)");
+  const isWide = useMedia(wideScreenMedia);
+  const isMedium = useMedia(mediumScreenMedia);
 
   return (
     <div
@@ -26,9 +29,14 @@ export default function CurrentSlotCard({ slot }: CurrentSlotCardProps) {
         [sharedStyles.mySlots]: isLeader,
       })}
     >
-      {isWideScreen ? (
+      {isWide ? (
         <Flex gap="1" align="start" justify="between">
           <CardValidatorSummary slot={slot} />
+          <SlotCardGrid slot={slot} currentSlot={currentSlot} />
+        </Flex>
+      ) : isMedium ? (
+        <Flex direction="column" gap="1">
+          <CardValidatorSummaryTablet slot={slot} />
           <SlotCardGrid slot={slot} currentSlot={currentSlot} />
         </Flex>
       ) : (

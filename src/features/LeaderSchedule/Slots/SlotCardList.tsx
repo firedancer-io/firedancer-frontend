@@ -21,6 +21,7 @@ import {
   slotCardSectionBackgroundColor,
   tableBodyColor,
 } from "../../../colors";
+import { mediumScreenMedia } from "./consts";
 
 const initSlotCardCount = 10;
 const increaseSlotCardCount = 2;
@@ -162,11 +163,11 @@ function SlotCardSection({
   children,
   sectionName,
 }: PropsWithChildren<{ sectionName: string }>) {
-  const isWideScreen = useMedia("(min-width: 700px)");
+  const isMediumScreen = useMedia(mediumScreenMedia);
 
   return (
     <Flex gap="2" align="stretch">
-      {isWideScreen && (
+      {isMediumScreen && (
         <Flex direction="column" gap="2" align="center">
           <div
             style={{

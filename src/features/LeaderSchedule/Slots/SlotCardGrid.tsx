@@ -11,7 +11,7 @@ import "react-circular-progressbar/dist/styles.css";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import type { SlotPublish } from "../../../api/types";
 import { fixValue, getDiscountedVoteLatency } from "../../../utils";
-import { useMedia, usePrevious, useUnmount } from "react-use";
+import { usePrevious, useUnmount } from "react-use";
 import {
   defaultMaxComputeUnits,
   lamportsPerSol,
@@ -128,24 +128,15 @@ interface SlotCardGridProps {
 }
 
 function SlotColumn({ slot, currentSlot }: SlotCardGridProps) {
-  const isWideScreen = useMedia("(min-width: 700px)");
-
   return (
-    <Flex direction="column" gap="1px">
-      <Text className={clsx(styles.headerText, styles.slotHeaderText)}>
-        {isWideScreen ? "Slot" : "\u00A0"}
-      </Text>
+    <Flex direction="column">
+      <Text className={clsx(styles.headerText, styles.slotText)}>Slot</Text>
       {new Array(4).fill(0).map((_, i) => {
         const cardSlot = slot + 3 - i;
         const isCurrent = cardSlot === currentSlot;
 
         return (
-          <SlotText
-            key={cardSlot}
-            slot={cardSlot}
-            isCurrent={isCurrent}
-            isWideScreen={isWideScreen}
-          />
+          <SlotText key={cardSlot} slot={cardSlot} isCurrent={isCurrent} />
         );
       })}
     </Flex>
@@ -157,11 +148,7 @@ interface SlotTextProps {
   isCurrent: boolean;
 }
 
-function SlotText({
-  slot,
-  isCurrent,
-  isWideScreen,
-}: SlotTextProps & { isWideScreen: boolean }) {
+function SlotText({ slot, isCurrent }: SlotTextProps) {
   const queryPublish = useSlotQueryPublish(slot);
   const pubkey = usePubKey(slot);
   const myPubkey = useAtomValue(identityKeyAtom);
@@ -169,15 +156,16 @@ function SlotText({
 
   return (
     <Flex
-      className={clsx(styles.rowText, isCurrent && styles.active)}
-      align="center"
-      gap={isWideScreen ? "2" : "0"}
-    >
-      {isWideScreen ? (
-        <LinkedSlotText slot={slot} isLeader={isLeader} />
-      ) : (
-        <Text>&nbsp;</Text>
+      className={clsx(
+        styles.rowText,
+        styles.slotText,
+        isCurrent && styles.active,
       )}
+      align="center"
+      gap="2"
+    >
+      <LinkedSlotText slot={slot} isLeader={isLeader} />
+
       <StatusIcon slot={slot} isCurrent={isCurrent} size="small" />
       {queryPublish.publish?.skipped ? (
         <SkippedIcon size="small" />
