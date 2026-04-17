@@ -1,6 +1,7 @@
-import { Flex, Text, Progress } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import styles from "./nextSlotStatus.module.css";
 import useNextSlot from "../../../hooks/useNextSlot";
+import Progress from "../../../components/Progress";
 
 export default function NextSlotStatus() {
   const { progressSinceLastLeader, nextSlotText, nextLeaderSlot } = useNextSlot(
@@ -14,7 +15,7 @@ export default function NextSlotStatus() {
   return (
     <Flex align="center" gap="2">
       <Text className={styles.label}>Next leader slot{slotText}</Text>
-      <Progress value={progressSinceLastLeader} className={styles.progress} />
+      <Progress width="60px" height="8px" value={progressSinceLastLeader} />
       <Text className={styles.value}>{nextSlotText}</Text>
     </Flex>
   );

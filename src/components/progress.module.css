@@ -1,0 +1,9 @@
+.progress {
+  width: var(--progress-width);
+  height: var(--progress-height);
+  background: var(--progress-gutter-background-color);
+
+  div {
+    background: var(--progress-background-color);
+  }
+}

@@ -1,4 +1,4 @@
-import { Flex, Progress, Box, Text } from "@radix-ui/themes";
+import { Flex, Box, Text } from "@radix-ui/themes";
 import CardHeader from "../../../components/CardHeader";
 import Card from "../../../components/Card";
 import CardStat from "../../../components/CardStat";
@@ -15,6 +15,7 @@ import {
   regularTextColor,
   successColor,
 } from "../../../colors";
+import Progress from "../../../components/Progress";
 
 export default function SlotStatusCard() {
   return (
@@ -78,11 +79,7 @@ function NextSlotTimeText() {
         valueColor={headerColor}
         valueSize="medium"
       />
-      <Progress
-        value={progressSinceLastLeader}
-        size="1"
-        className={styles.progress}
-      />
+      <Progress value={progressSinceLastLeader} />
     </Flex>
   );
 }

@@ -1,4 +1,4 @@
-import { Flex, Progress, Box } from "@radix-ui/themes";
+import { Flex, Box } from "@radix-ui/themes";
 import CardHeader from "../../../components/CardHeader";
 import Card from "../../../components/Card";
 import CardStat from "../../../components/CardStat";
@@ -9,6 +9,7 @@ import { headerColor } from "../../../colors";
 import { useMemo } from "react";
 import { getDurationText } from "../../../utils";
 import { Duration } from "luxon";
+import Progress from "../../../components/Progress";
 
 export default function EpochCard() {
   return (
@@ -73,11 +74,7 @@ function NextEpochTimeText() {
         valueColor={headerColor}
         valueSize="medium"
       />
-      <Progress
-        value={progressSinceLastEpoch}
-        size="1"
-        className={styles.progress}
-      />
+      <Progress value={progressSinceLastEpoch} />
     </Flex>
   );
 }

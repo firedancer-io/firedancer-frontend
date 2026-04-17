@@ -9,7 +9,7 @@ import {
   voteSlotAtom,
 } from "../../../api/atoms";
 import { nextLeaderSlotAtom } from "../../../atoms";
-import { Box, Flex, Grid, Progress, Text } from "@radix-ui/themes";
+import { Box, Flex, Grid, Text } from "@radix-ui/themes";
 import {
   createContext,
   memo,
@@ -33,6 +33,7 @@ import { clamp } from "lodash";
 import { showStartupProgressAtom } from "../../StartupProgress/atoms";
 import MonoText from "../../../components/MonoText";
 import AnimatedInteger from "../../../components/AnimatedInteger";
+import Progress from "../../../components/Progress";
 
 const barTrackGapValue = 2;
 const barTrackGap = `${barTrackGapValue}px`;
@@ -567,7 +568,7 @@ function NextLeaderTimer() {
       <div>
         <Progress
           value={progressSinceLastLeader}
-          className={styles.progress}
+          height="2px"
           // a bit longer than an expected slot duration
           duration="500ms"
         />

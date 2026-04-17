@@ -1,13 +1,3 @@
-.progress {
-  max-height: 11px;
-  min-width: 140px;
-  background: var(--dropdown-background-color);
-
-  div {
-    background: var(--progress-background-color);
-  }
-}
-
 .stat-row {
   display: flex;
   flex-wrap: wrap;

@@ -29,6 +29,9 @@ export const votesColor = "#557AE0";
 export const nonVoteColor = successColor;
 export const voteLatencyColor = "#9982f0";
 
+export const progressGutterBackgroundColor = "#303134";
+export const progressBackgroundColor = "#37a4bc";
+
 // slot navigation
 export const slotNavFilterBackgroundColor = "#00205F";
 export const slotNavBackgroundColor = "#010102";
@@ -131,7 +134,6 @@ export const headerColor = "#BDF3FF";
 export const nonDelinquentColor = "#6F77C0";
 export const nonDelinquentChartColor = "#363A63";
 export const totalValidatorsColor = "#20788C";
-export const progressBackgroundColor = "#167B91";
 export const slotTimelineTextColor = "#b1b1b1";
 
 export const transactionNonVotePathColor = "#006851";
@@ -301,7 +303,6 @@ export const slotsListSlotColor = "#ccc";
 export const slotsListFutureSlotColor = "#878787";
 export const slotsListCurrentSlotBoxShadowColor = "rgba(191, 135, 253, 0.13)";
 export const slotsListCurrentSlotNumberBackgroundColor = "#283551";
-export const slotsListNextLeaderProgressBarColor = "#37a4bc";
 
 // Tile charts
 export const tileChartDarkBackground = "#0000001F";
