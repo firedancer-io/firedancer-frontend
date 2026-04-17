@@ -8,6 +8,7 @@ import {
   nonVoteColor,
   votesColor,
 } from "../../../colors";
+import styles from "./transactionsStats.module.css";
 
 export default function TransactionStats() {
   const estimated = useAtomValue(estimatedTpsAtom);
@@ -57,7 +58,7 @@ export default function TransactionStats() {
           }
           valueColor={votesColor}
           valueSize="small"
-          style={{ minWidth: "90px" }}
+          className={styles.voteTps}
         />
       </Flex>
     </Flex>

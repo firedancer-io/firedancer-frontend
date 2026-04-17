@@ -35,15 +35,6 @@
   height: 90px;
 }
 
-.progress {
-  height: 2px;
-  background: #303134;
-
-  div {
-    background: #37a4bc;
-  }
-}
-
 .next-leader-container {
   container-type: inline-size;
   container-name: next-leader-container;

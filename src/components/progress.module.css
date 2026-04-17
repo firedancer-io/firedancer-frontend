@@ -1,0 +1,8 @@
+.progress {
+  background: var(--progress-gutter-background-color);
+  flex-grow: 0;
+
+  div {
+    background: var(--progress-background-color);
+  }
+}

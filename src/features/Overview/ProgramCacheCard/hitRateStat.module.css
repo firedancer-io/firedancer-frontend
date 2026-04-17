@@ -1,0 +1,14 @@
+.trailing {
+  color: var(--gray-9);
+}
+
+.fraction {
+  color: var(--gray-9);
+  text-align: center;
+}
+
+.fraction-line {
+  align-self: stretch;
+  border-color: var(--gray-9);
+  margin: 0;
+}

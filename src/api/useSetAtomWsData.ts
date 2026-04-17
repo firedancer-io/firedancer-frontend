@@ -85,6 +85,7 @@ import {
   voteSlotAtom,
   rootSlotAtom,
   optimisticallyConfirmedSlotAtom,
+  liveProgramCacheAtom,
 } from "./atoms";
 import {
   estimatedTpsDebounceMs,
@@ -423,6 +424,8 @@ function useUpdateAtoms() {
 
   const addLiveShreds = useSetAtom(shredsAtoms.addShredEvents);
 
+  const setLiveProgramCache = useSetAtom(liveProgramCacheAtom);
+
   const peersBuffer = useRef(new Map<string, Peer>());
   const removePeersBuffer = useRef(new Map<string, PeerRemove>());
 
@@ -637,6 +640,9 @@ function useUpdateAtoms() {
             case "live_tile_metrics":
               setDbLiveTileMetrics(value);
               break;
+            case "live_program_cache":
+              setLiveProgramCache(value);
+              break;
             case "slot_caught_up":
             case "estimated_slot":
             case "ping":
@@ -768,6 +774,7 @@ function useUpdateAtoms() {
       setIdentityBalance,
       setIdentityKey,
       setLateVoteHistory,
+      setLiveProgramCache,
       setOptimisticallyConfirmedSlot,
       setResetSlot,
       setRootSlot,
