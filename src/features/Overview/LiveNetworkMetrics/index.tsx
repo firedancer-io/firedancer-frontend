@@ -23,6 +23,7 @@ import { tileChartDarkBackground } from "../../../colors";
 import { isFrankendancer } from "../../../client";
 import type { HistoryEntry } from "../../../api/worker/types";
 import { useEmaValue } from "../../../hooks/useEma";
+import clsx from "clsx";
 
 const chartHeight = 18;
 
@@ -66,7 +67,7 @@ function NetworkMetricsCard({
         <Text className={tableStyles.headerText}>Network {type}</Text>
         <Table.Root
           variant="ghost"
-          className={tableStyles.root}
+          className={clsx(tableStyles.root, styles.table)}
           size="1"
           style={{ "--bar-height": `${chartHeight}px` } as CSSProperties}
         >
@@ -179,7 +180,7 @@ function TableRow({
   );
 
   return (
-    <Table.Row className={className}>
+    <Table.Row className={clsx(styles.row, className)}>
       <Table.RowHeaderCell>{label}</Table.RowHeaderCell>
       <Table.Cell align="right">
         {formattedValue.value} {formattedValue.unit}

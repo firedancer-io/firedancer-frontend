@@ -31,11 +31,11 @@ import { tileChartDarkBackground } from "../../../colors";
 import { isEqual } from "lodash";
 import type { CellProps } from "@radix-ui/themes/components/table";
 import TableDescriptionDialog from "./TableDescriptionDialog";
-import { metrics } from "./consts";
+import { pinnedGroups, pinnedTableWidth, unpinnedGroups } from "./consts";
 
 const chartHeight = 18;
 
-export default function LiveTileMetrics() {
+export default memo(function LiveTileMetrics() {
   return (
     <Card>
       <Flex direction="column" gap={headerGap} width="100%">
@@ -43,15 +43,39 @@ export default function LiveTileMetrics() {
           <Text className={tableStyles.headerText}>Tiles</Text>
           <TableDescriptionDialog />
         </Flex>
-        <MLiveMetricTable />
+        <LiveMetricsTables />
       </Flex>
     </Card>
   );
+});
+
+function LiveMetricsTables() {
+  return (
+    <Flex>
+      <LiveMetricsTable isPinned={true} />
+      <LiveMetricsTable isPinned={false} />
+    </Flex>
+  );
 }
 
-const MLiveMetricTable = memo(function LiveMetricsTable() {
+interface LiveMetricsTableProps {
+  isPinned: boolean;
+}
+function LiveMetricsTable({ isPinned }: LiveMetricsTableProps) {
   const tiles = useAtomValue(tilesAtom);
   const liveTileMetrics = useAtomValue(liveTileMetricsAtom);
+
+  const groups = isPinned ? pinnedGroups : unpinnedGroups;
+
+  const rootStyle = useMemo(
+    () =>
+      ({
+        "--bar-height": `${chartHeight}px`,
+        minWidth: isPinned ? `${pinnedTableWidth}px` : "0px",
+        flexBasis: isPinned ? `${pinnedTableWidth}px` : undefined,
+      }) as CSSProperties,
+    [isPinned],
+  );
 
   if (!tiles || !liveTileMetrics) return;
 
@@ -60,32 +84,55 @@ const MLiveMetricTable = memo(function LiveMetricsTable() {
       variant="ghost"
       className={clsx(tableStyles.root, styles.table)}
       size="1"
-      style={
-        {
-          "--bar-height": `${chartHeight}px`,
-        } as CSSProperties
-      }
+      style={rootStyle}
     >
       <colgroup>
-        {metrics.map((metric) => (
-          <col key={metric.name} style={{ width: metric.headerColWidth }} />
-        ))}
+        {groups.map((group) =>
+          group.metrics.map((metric) => (
+            <col
+              key={metric.uniqueName}
+              style={{ width: metric.headerColWidth }}
+            />
+          )),
+        )}
       </colgroup>
+
       <Table.Header className={styles.header}>
         <Table.Row>
-          {metrics.map((metric) => (
+          {groups.map((group, i) => (
             <Table.ColumnHeaderCell
-              key={metric.name}
-              align={metric.headerColAlign}
-              className={clsx({
-                [styles.wrap]: !!metric.wrap,
+              key={group.name}
+              colSpan={group.metrics.length}
+              className={clsx(styles.groupHeader, {
+                [styles.rightBorder]: isPinned || i !== groups.length - 1,
               })}
             >
-              {metric.name}
+              {group.name}
             </Table.ColumnHeaderCell>
           ))}
         </Table.Row>
+
+        <Table.Row className={styles.lightBorderBottom}>
+          {groups.map((group, i) =>
+            group.metrics.map((metric, j) => (
+              <Table.ColumnHeaderCell
+                key={metric.uniqueName}
+                align={metric.headerColAlign}
+                className={clsx({
+                  [styles.wrap]: !!metric.wrap,
+                  [styles.rightBorder]:
+                    isPinned ||
+                    // last metric (except in last group) has right border
+                    (i !== groups.length - 1 && j === group.metrics.length - 1),
+                })}
+              >
+                {metric.columnName ?? metric.uniqueName}
+              </Table.ColumnHeaderCell>
+            )),
+          )}
+        </Table.Row>
       </Table.Header>
+
       <Table.Body>
         {tiles.map((tile, i) => (
           <TableRow
@@ -93,19 +140,21 @@ const MLiveMetricTable = memo(function LiveMetricsTable() {
             tile={tile}
             liveTileMetrics={liveTileMetrics}
             idx={i}
+            isPinned={isPinned}
           />
         ))}
       </Table.Body>
     </Table.Root>
   );
-});
+}
 
 interface TableRowProps {
   tile: Tile;
   liveTileMetrics: TileMetrics;
   idx: number;
+  isPinned: boolean;
 }
-function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
+function TableRow({ tile, liveTileMetrics, idx, isPinned }: TableRowProps) {
   const prevLiveTileMetricsIdx = usePreviousDistinct(
     liveTileMetrics,
     (prev, next) => {
@@ -121,6 +170,52 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
     },
   );
 
+  const alive =
+    liveTileMetrics.alive[idx] ?? prevLiveTileMetricsIdx?.alive[idx];
+
+  // Meaning tile has shut down, no need to list it in the table
+  if (alive === 2) return;
+
+  const timers =
+    liveTileMetrics.timers[idx] || prevLiveTileMetricsIdx?.timers[idx];
+
+  if (!timers) return;
+
+  if (isPinned) {
+    return (
+      <Table.Row className={styles.dataRow}>
+        <Table.Cell className={styles.rightBorder}>
+          {tile.kind}:{tile.kind_id}
+        </Table.Cell>
+      </Table.Row>
+    );
+  }
+
+  return (
+    <DataRow
+      alive={alive}
+      timers={timers}
+      liveTileMetrics={liveTileMetrics}
+      prevLiveTileMetricsIdx={prevLiveTileMetricsIdx}
+      idx={idx}
+    />
+  );
+}
+
+interface DataRowProps {
+  alive: number | null | undefined;
+  timers: number[];
+  liveTileMetrics: TileMetrics;
+  prevLiveTileMetricsIdx?: TileMetrics;
+  idx: number;
+}
+function DataRow({
+  alive,
+  timers,
+  liveTileMetrics,
+  prevLiveTileMetricsIdx,
+  idx,
+}: DataRowProps) {
   const prevSchedTimers = usePreviousDistinct(
     liveTileMetrics.sched_timers[idx],
   );
@@ -130,8 +225,6 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
   const [schedWaitPct, schedIdlePct, schedUserPct, schedSystemPct] =
     schedTimers.map((v) => (v === -1 ? 0 : v));
 
-  const alive =
-    liveTileMetrics.alive[idx] ?? prevLiveTileMetricsIdx?.alive[idx];
   const nivcsw =
     liveTileMetrics.nivcsw[idx] ?? prevLiveTileMetricsIdx?.nivcsw[idx];
   const nvcsw =
@@ -151,14 +244,6 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
   const prevNvcsw = usePrevious(nvcsw);
   const prevBackPressureCount = usePrevious(backPressureCount);
 
-  // Meaning tile has shut down, no need to list it in the table
-  if (alive === 2) return;
-
-  const timers =
-    liveTileMetrics.timers[idx] || prevLiveTileMetricsIdx?.timers[idx];
-
-  if (!timers) return;
-
   for (let i = 0; i < timers.length; i++) {
     if (timers[i] === -1) timers[i] = 0;
   }
@@ -169,10 +254,7 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
   const workPct = timers[3] + timers[4] + timers[7];
 
   return (
-    <Table.Row className={styles.row}>
-      <Table.Cell>
-        {tile.kind}:{tile.kind_id}
-      </Table.Cell>
+    <Table.Row className={styles.dataRow}>
       <Table.Cell align="right">{cpu}</Table.Cell>
       <Table.Cell
         className={clsx({ [styles.green]: alive, [styles.red]: !alive })}
@@ -180,10 +262,8 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
       >
         {alive ? "Live" : "Dead"}
       </Table.Cell>
-
       <Table.Cell align="right">{minflt}</Table.Cell>
       <Table.Cell align="right">{majflt}</Table.Cell>
-
       <Table.Cell align="right">
         {nivcsw?.toLocaleString() ?? "0"} |
         <IncrementText
@@ -196,9 +276,13 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
           value={nvcsw != null && prevNvcsw != null ? nvcsw - prevNvcsw : 0}
         />
       </Table.Cell>
-      <Table.Cell className={clsx({ [styles.red]: inBackpressure })}>
+      <Table.Cell
+        align="right"
+        className={clsx(styles.rightBorder, { [styles.red]: inBackpressure })}
+      >
         {inBackpressure ? "Yes" : "-"}
       </Table.Cell>
+
       <Table.Cell align="right">
         {backPressureCount?.toLocaleString() ?? "0"} |
         <Text
@@ -217,6 +301,7 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
         </Text>
       </Table.Cell>
       <MUtilization idx={idx} />
+
       <PctCell
         pct={hKeepPct}
         className={clsx({ [styles.red]: hKeepPct > 1 })}
@@ -228,13 +313,14 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
       />
       <PctCell
         pct={workPct}
-        className={styles.pctGradient}
+        className={clsx(styles.pctGradient, styles.rightBorder)}
         style={
           {
             "--pct": `${workPct}%`,
           } as CSSProperties
         }
       />
+
       <PctCell pct={schedWaitPct} />
       <PctCell pct={schedUserPct} />
       <PctCell pct={schedSystemPct} />
@@ -333,7 +419,7 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
           <Bars value={pct >= 0 ? pct : (prevPct ?? 0)} max={1} barWidth={2} />
         </Flex>
       </Table.Cell>
-      <Table.Cell className={styles.noPadding}>
+      <Table.Cell className={clsx(styles.noPadding, styles.rightBorder)}>
         <TileSparkLine
           value={avgValue}
           history={initialHistory}

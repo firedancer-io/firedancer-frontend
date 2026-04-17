@@ -1,55 +1,9 @@
-.row {
-  .green {
-    color: var(--green-9);
-  }
-
-  .red {
-    color: var(--red-9);
-  }
-
-  td {
-    text-align: left;
-    &[align="right"] {
-      text-align: right;
-    }
-    vertical-align: middle;
-
-    &.pct-gradient {
-      color: color-mix(
-        in srgb,
-        var(--tile-busy-green-color),
-        var(--tile-busy-red-color) var(--pct)
-      );
-    }
-
-    &.no-padding {
-      padding-top: 0;
-      padding-bottom: 0;
-    }
-
-    .increment-text {
-      min-width: 5ch;
-      display: inline-block;
-      font-variant-numeric: tabular-nums;
-
-      &.low-increment {
-        color: var(--low-increment-text-color);
-      }
-      &.mid-increment {
-        color: var(--mid-increment-text-color);
-      }
-      &.high-increment {
-        color: var(--high-increment-text-color);
-      }
-    }
-  }
+.group-header {
+  text-align: center;
+  padding: 5px;
 }
 
 .header {
-  position: sticky;
-  top: 0;
-  background: rgb(19, 23, 32);
-
   th {
     vertical-align: bottom;
     &.wrap {
@@ -61,5 +15,75 @@
 .table {
   table {
     table-layout: fixed;
+
+    .data-row {
+      .green {
+        color: var(--green-9);
+      }
+
+      .red {
+        color: var(--red-9);
+      }
+
+      td {
+        color: var(--table-body-color);
+        text-align: left;
+        &[align="right"] {
+          text-align: right;
+        }
+        vertical-align: middle;
+
+        &.pct-gradient {
+          color: color-mix(
+            in srgb,
+            var(--tile-busy-green-color),
+            var(--tile-busy-red-color) var(--pct)
+          );
+        }
+
+        &.no-padding {
+          padding-top: 0;
+          padding-bottom: 0;
+        }
+
+        .increment-text {
+          min-width: 5ch;
+          display: inline-block;
+          font-variant-numeric: tabular-nums;
+
+          &.low-increment {
+            color: var(--low-increment-text-color);
+          }
+          &.mid-increment {
+            color: var(--mid-increment-text-color);
+          }
+          &.high-increment {
+            color: var(--high-increment-text-color);
+          }
+        }
+      }
+    }
+
+    tr {
+      border: solid rgba(250, 250, 250, 0.12);
+      border-width: 1px 0px;
+    }
+
+    .light-border-bottom {
+      border-bottom: 1px solid rgba(250, 250, 250, 0.36);
+    }
+
+    .right-border {
+      border-right: 1px solid rgba(250, 250, 250, 0.36);
+    }
+
+    td.right-border {
+      padding-right: 10px;
+    }
+
+    td,
+    th {
+      box-shadow: none;
+    }
   }
 }
