@@ -24,141 +24,189 @@ export const regimes = [
 ];
 
 interface MetricDefinition {
-  name: string;
+  uniqueName: string;
+  columnName?: string;
   description: string;
   headerColWidth: number;
   headerColAlign?: Table.ColumnHeaderCellProps["align"];
   wrap?: boolean;
 }
 
-export const metrics: MetricDefinition[] = [
+export const metricGroups: {
+  name: string;
+  pinned?: boolean;
+  metrics: MetricDefinition[];
+}[] = [
   {
-    name: "Name",
-    description:
-      "The name and index of each tile. A tile represents a sandboxed process or individual thread that communicates with other tiles using message passing queues.",
-    headerColWidth: 70,
+    name: "",
+    pinned: true,
+    metrics: [
+      {
+        uniqueName: "Name",
+        description:
+          "The name and index of each tile. A tile represents a sandboxed process or individual thread that communicates with other tiles using message passing queues.",
+        headerColWidth: 70,
+      },
+    ],
   },
   {
-    name: "CPU",
-    description: "The CPU index on which the tile was last recorded executing.",
-    headerColWidth: 70,
-    headerColAlign: "right",
-  },
-  {
-    name: "Heartbeat",
-    description:
-      "Liveness indicator based on a periodic heartbeat timestamp written by tiles to a chunk of shared memory.",
-    headerColWidth: 70,
-    headerColAlign: "right",
-  },
-  {
-    name: "Minflt",
-    description:
-      "The number of cumulative minor page faults. Minor page faults occur for pages in RAM not indexed by the page table.",
-    headerColWidth: 80,
-    headerColAlign: "right",
-  },
-  {
-    name: "Majflt",
-    description:
-      "The number of cumulative major page faults. Major page faults occur for pages that are neither in RAM nor the page table.",
-    headerColWidth: 80,
-    headerColAlign: "right",
-  },
-  {
-    name: "Nivcsw",
-    description:
-      "The number of cumulative | immediate (10ms) involuntary context switches.",
-    headerColWidth: 160,
-    headerColAlign: "right",
-  },
-  {
-    name: "Nvcsw",
-    description:
-      "The number of cumulative | immediate (10ms) voluntary context switches.",
-    headerColWidth: 160,
-    headerColAlign: "right",
-  },
-  {
-    name: "Backp",
-    description:
-      "If a tile is backpressured, at least one outgoing message queue is at-capacity which can prevent the tile from moving forward with useful work.",
-    headerColWidth: 70,
-  },
-  {
-    name: "Backp Count",
-    description:
-      "The number of cumulative | immediate (10ms) times a CPU transitioned into a backpressured state.",
-    headerColWidth: 160,
-    headerColAlign: "right",
+    name: "Liveness",
+    metrics: [
+      {
+        uniqueName: "CPU",
+        description:
+          "The CPU index on which the tile was last recorded executing.",
+        headerColWidth: 70,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "Heartbeat",
+        description:
+          "Liveness indicator based on a periodic heartbeat timestamp written by tiles to a chunk of shared memory.",
+        headerColWidth: 70,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "Minflt",
+        description:
+          "The number of cumulative minor page faults. Minor page faults occur for pages in RAM not indexed by the page table.",
+        headerColWidth: 80,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "Majflt",
+        description:
+          "The number of cumulative major page faults. Major page faults occur for pages that are neither in RAM nor the page table.",
+        headerColWidth: 80,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "Nivcsw",
+        description:
+          "The number of cumulative | immediate (10ms) involuntary context switches.",
+        headerColWidth: 160,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "Nvcsw",
+        description:
+          "The number of cumulative | immediate (10ms) voluntary context switches.",
+        headerColWidth: 160,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "Backp",
+        description:
+          "If a tile is backpressured, at least one outgoing message queue is at-capacity which can prevent the tile from moving forward with useful work.",
+        headerColWidth: 70,
+        headerColAlign: "right",
+      },
+    ],
   },
   {
     name: "Utilization",
-    description:
-      "Visualized the percentage of the tile's CPU time spent doing useful work. Time spent in a context switch is not included.",
-    headerColWidth: 200,
+    metrics: [
+      {
+        uniqueName: "Backp Count",
+        description:
+          "The number of cumulative | immediate (10ms) times a CPU transitioned into a backpressured state.",
+        headerColWidth: 160,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "Utilization",
+        description:
+          "Visualized the percentage of the tile's CPU time spent doing useful work. Time spent in a context switch is not included.",
+        headerColWidth: 200,
+      },
+      {
+        uniqueName: "History (1m)",
+        description: "A historical, low-pass-filtered view of CPU utilization.",
+        headerColWidth: 200,
+      },
+    ],
   },
   {
-    name: "History (1m)",
-    description: "A historical, low-pass-filtered view of CPU utilization.",
-    headerColWidth: 200,
+    name: "System",
+    metrics: [
+      {
+        uniqueName: "% Hkeep",
+        description:
+          "The percentage of CPU time spent on housekeeping tasks, which are meant to be infrequent and generally more expensive than tasks on the critical path.",
+        headerColWidth: 80,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "% Wait",
+        description:
+          "The percentage of CPU time spent waiting for useful work to do.",
+        headerColWidth: 80,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "% Backp",
+        description:
+          "The percentage of CPU time during which the tile was backpressured, excluding housekeeping time.",
+        headerColWidth: 80,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "% Work",
+        description:
+          "The percentage of CPU time spent performing useful work, excluding housekeeping and backpressured time.",
+        headerColWidth: 80,
+        headerColAlign: "right",
+      },
+    ],
   },
   {
-    name: "% Hkeep",
-    description:
-      "The percentage of CPU time spent on housekeeping tasks, which are meant to be infrequent and generally more expensive than tasks on the critical path.",
-    headerColWidth: 80,
-    headerColAlign: "right",
-  },
-  {
-    name: "% Wait",
-    description:
-      "The percentage of CPU time spent waiting for useful work to do.",
-    headerColWidth: 80,
-    headerColAlign: "right",
-  },
-  {
-    name: "% Backp",
-    description:
-      "The percentage of CPU time during which the tile was backpressured, excluding housekeeping time.",
-    headerColWidth: 80,
-    headerColAlign: "right",
-  },
-  {
-    name: "% Work",
-    description:
-      "The percentage of CPU time spent performing useful work, excluding housekeeping and backpressured time.",
-    headerColWidth: 80,
-    headerColAlign: "right",
-  },
-  {
-    name: "% Wait (scheduler)",
-    description:
-      "The percentage of CPU time spent waiting in the runqueue before being dispatched.",
-    headerColWidth: 80,
-    headerColAlign: "right",
-    wrap: true,
-  },
-  {
-    name: "% User (scheduler)",
-    description: "The percentage of CPU time spent executing in user mode.",
-    headerColWidth: 80,
-    headerColAlign: "right",
-    wrap: true,
-  },
-  {
-    name: "% System (scheduler)",
-    description: "The percentage of CPU time spent executing in kernel mode.",
-    headerColWidth: 80,
-    headerColAlign: "right",
-    wrap: true,
-  },
-  {
-    name: "% Idle (scheduler)",
-    description:
-      "The percentage of CPU time unaccounted for by the other 3 regimes.",
-    headerColWidth: 80,
-    headerColAlign: "right",
-    wrap: true,
+    name: "Scheduler",
+    metrics: [
+      {
+        uniqueName: "% Wait (scheduler)",
+        columnName: "% Wait",
+        description:
+          "The percentage of CPU time spent waiting in the runqueue before being dispatched.",
+        headerColWidth: 80,
+        headerColAlign: "right",
+        wrap: true,
+      },
+      {
+        uniqueName: "% User (scheduler)",
+        columnName: "% User",
+        description: "The percentage of CPU time spent executing in user mode.",
+        headerColWidth: 80,
+        headerColAlign: "right",
+        wrap: true,
+      },
+      {
+        uniqueName: "% System (scheduler)",
+        columnName: "% System",
+        description:
+          "The percentage of CPU time spent executing in kernel mode.",
+        headerColWidth: 80,
+        headerColAlign: "right",
+        wrap: true,
+      },
+      {
+        uniqueName: "% Idle (scheduler)",
+        columnName: "% Idle",
+        description:
+          "The percentage of CPU time unaccounted for by the other 3 regimes.",
+        headerColWidth: 80,
+        headerColAlign: "right",
+        wrap: true,
+      },
+    ],
   },
 ];
+
+export const pinnedGroups = metricGroups.filter(({ pinned }) => pinned);
+export const unpinnedGroups = metricGroups.filter(({ pinned }) => !pinned);
+
+export const pinnedTableWidth = pinnedGroups.reduce((acc, group) => {
+  for (const metric of group.metrics) {
+    acc += metric.headerColWidth;
+  }
+  return acc;
+}, 0);

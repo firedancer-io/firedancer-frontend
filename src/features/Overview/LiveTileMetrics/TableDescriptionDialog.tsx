@@ -1,7 +1,7 @@
 import { Button, Dialog, Flex, Table, Tooltip } from "@radix-ui/themes";
 import styles from "./tableDescriptionDialog.module.css";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
-import { metrics } from "./consts";
+import { metricGroups } from "./consts";
 import { appMaxWidth } from "../../../consts";
 
 export default function TableDescriptionDialog() {
@@ -40,12 +40,16 @@ export default function TableDescriptionDialog() {
           </Table.Header>
 
           <Table.Body>
-            {metrics.map((metric) => (
-              <Table.Row key={metric.name} className={styles.tr}>
-                <Table.Cell className={styles.name}>{metric.name}</Table.Cell>
-                <Table.Cell>{metric.description}</Table.Cell>
-              </Table.Row>
-            ))}
+            {metricGroups.map((group) =>
+              group.metrics.map((metric) => (
+                <Table.Row key={metric.uniqueName} className={styles.tr}>
+                  <Table.Cell className={styles.name}>
+                    {metric.uniqueName}
+                  </Table.Cell>
+                  <Table.Cell>{metric.description}</Table.Cell>
+                </Table.Row>
+              )),
+            )}
           </Table.Body>
         </Table.Root>
 
