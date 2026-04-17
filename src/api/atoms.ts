@@ -38,6 +38,7 @@ import type {
   StorageSlot,
   ResetSlot,
   RepairSlot,
+  LiveProgramCache,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 import type { ValuesWithHistory } from "./worker/types";
@@ -183,3 +184,7 @@ export const skippedSlotsAtom = atom<SkippedSlots | undefined>(undefined);
 export const blockEngineAtom = atom<BlockEngineUpdate | undefined>(undefined);
 
 export const slotRankingsAtom = atom<SlotRankings | undefined>(undefined);
+
+export const liveProgramCacheAtom = atom<LiveProgramCache | undefined>(
+  undefined,
+);

@@ -1,4 +1,4 @@
-import { Flex, Progress, Box, Text } from "@radix-ui/themes";
+import { Flex, Box } from "@radix-ui/themes";
 import CardHeader from "../../../components/CardHeader";
 import Card from "../../../components/Card";
 import CardStat from "../../../components/CardStat";
@@ -14,11 +14,14 @@ import {
   nextColor,
   regularTextColor,
   successColor,
+  voteDistanceColor,
 } from "../../../colors";
+import { useMemo } from "react";
+import Progress from "../../../components/Progress";
 
 export default function SlotStatusCard() {
   return (
-    <Card style={{ flexGrow: 1 }}>
+    <Card>
       <Flex direction="column" height="100%" gap="2" align="start">
         <CardHeader text="Status" />
         <div className={styles.statRow}>
@@ -78,26 +81,33 @@ function NextSlotTimeText() {
         valueColor={headerColor}
         valueSize="medium"
       />
-      <Progress
-        value={progressSinceLastLeader}
-        size="1"
-        className={styles.progress}
-      />
+      <Progress value={progressSinceLastLeader} />
     </Flex>
   );
 }
 
 function VotingStatusText() {
   const voteState = useAtomValue(voteStateAtom);
+  const voteDistance = useAtomValue(voteDistanceAtom);
 
-  let voteColor = regularTextColor;
-  if (voteState === "voting") {
-    voteColor = successColor;
-  } else if (voteState === "non-voting") {
-    voteColor = mySlotsColor;
-  } else if (voteState === "delinquent") {
-    voteColor = failureColor;
-  }
+  const voteColor = useMemo(() => {
+    if (voteState === "voting") {
+      return successColor;
+    } else if (voteState === "non-voting") {
+      return mySlotsColor;
+    } else if (voteState === "delinquent") {
+      return failureColor;
+    }
+    return regularTextColor;
+  }, [voteState]);
+
+  const voteDistanceText = useMemo(() => {
+    if (voteDistance == null) return undefined;
+    if (voteState === "delinquent") return undefined;
+
+    const value = voteDistance > 150 ? "> 150" : voteDistance;
+    return `${value} behind`;
+  }, [voteDistance, voteState]);
 
   return (
     <CardStat
@@ -105,20 +115,8 @@ function VotingStatusText() {
       value={voteState ?? "Unknown"}
       valueColor={voteColor}
       valueSize="small"
-    >
-      <VoteDistanceText />
-    </CardStat>
+      appendValue={voteDistanceText}
+      appendValueColor={voteDistanceColor}
+    />
   );
-}
-
-function VoteDistanceText() {
-  const voteDistance = useAtomValue(voteDistanceAtom);
-  const voteState = useAtomValue(voteStateAtom);
-
-  if (voteDistance == null) return null;
-  if (voteState === "delinquent") return null;
-
-  const value = voteDistance > 150 ? "> 150" : voteDistance;
-
-  return <Text className={styles.voteDistance}>{value} behind</Text>;
 }

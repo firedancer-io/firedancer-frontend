@@ -451,6 +451,19 @@ export const skipRateSchema = z.object({
   // slots_skipped: z.number(),
 });
 
+export const liveProgramCacheSchema = z.object({
+  hits: z.number(),
+  lookups: z.number(),
+  insertions: z.number(),
+  insertion_bytes: z.number(),
+  evictions: z.number(),
+  eviction_bytes: z.number(),
+  spills: z.number(),
+  spill_bytes: z.number(),
+  free_bytes: z.number(),
+  size_bytes: z.number(),
+});
+
 export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("ping"),
@@ -600,6 +613,10 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("server_time_nanos"),
     value: serverTimeNanosSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("live_program_cache"),
+    value: liveProgramCacheSchema,
   }),
 ]);
 

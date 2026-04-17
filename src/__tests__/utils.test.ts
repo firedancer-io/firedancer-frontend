@@ -1,5 +1,6 @@
 import { expect, describe, it } from "vitest";
 import {
+  formatBytes,
   formatTimeNanos,
   getDiscountedVoteLatency,
   getDurationText,
@@ -7,6 +8,119 @@ import {
 } from "../utils";
 import { Duration } from "luxon";
 import type { SlotPublish } from "../api/types";
+
+describe("formatBytes", () => {
+  describe("auto unit selection", () => {
+    it("returns 0 with unit B for zero bytes (noDecimalForZero default)", () => {
+      expect(formatBytes(0)).toEqual({ value: "0", unit: "B" });
+    });
+
+    it("returns zero with decimal when noDecimalForZero is false", () => {
+      expect(formatBytes(0, 1, undefined, false)).toEqual({
+        value: "0.0",
+        unit: "B",
+      });
+    });
+
+    it("formats bytes below 1000 as B", () => {
+      expect(formatBytes(500)).toEqual({ value: "500.0", unit: "B" });
+    });
+
+    it("formats value at threshold boundary (999) as B", () => {
+      expect(formatBytes(999)).toEqual({ value: "999.0", unit: "B" });
+    });
+
+    it("formats value at 1_000 as kB", () => {
+      expect(formatBytes(1_000)).toEqual({ value: "1.0", unit: "kB" });
+    });
+
+    it("formats bytes in kB range", () => {
+      expect(formatBytes(1_500)).toEqual({ value: "1.5", unit: "kB" });
+    });
+
+    it("formats value at 1_000_000 as MB", () => {
+      expect(formatBytes(1_000_000)).toEqual({ value: "1.0", unit: "MB" });
+    });
+
+    it("formats bytes in MB range", () => {
+      expect(formatBytes(2_500_000)).toEqual({ value: "2.5", unit: "MB" });
+    });
+
+    it("formats value at 1_000_000_000 as GB", () => {
+      expect(formatBytes(1_000_000_000)).toEqual({ value: "1.0", unit: "GB" });
+    });
+
+    it("formats bytes in GB range", () => {
+      expect(formatBytes(3_200_000_000)).toEqual({ value: "3.2", unit: "GB" });
+    });
+
+    it("formats very large values in GB", () => {
+      expect(formatBytes(1_000_000_000_000)).toEqual({
+        value: "1000.0",
+        unit: "GB",
+      });
+    });
+  });
+
+  describe("explicit unit override", () => {
+    it("forces B unit regardless of magnitude", () => {
+      expect(formatBytes(1_000_000, 1, "B")).toEqual({
+        value: "1000000.0",
+        unit: "B",
+      });
+    });
+
+    it("forces kB unit regardless of magnitude", () => {
+      expect(formatBytes(1_000_000, 1, "kB")).toEqual({
+        value: "1000.0",
+        unit: "kB",
+      });
+    });
+
+    it("forces MB unit for small value", () => {
+      expect(formatBytes(500, 4, "MB")).toEqual({
+        value: "0.0005",
+        unit: "MB",
+      });
+    });
+
+    it("forces GB unit for small value", () => {
+      expect(formatBytes(500, 7, "GB")).toEqual({
+        value: "0.0000005",
+        unit: "GB",
+      });
+    });
+
+    it("returns zero with forced unit when bytes is 0 and noDecimalForZero is true", () => {
+      expect(formatBytes(0, 1, "MB")).toEqual({ value: "0", unit: "MB" });
+    });
+
+    it("returns zero with forced unit and decimal when noDecimalForZero is false", () => {
+      expect(formatBytes(0, 1, "MB", false)).toEqual({
+        value: "0.0",
+        unit: "MB",
+      });
+    });
+  });
+
+  describe("precision", () => {
+    it("uses default precision of 1", () => {
+      expect(formatBytes(1_500)).toEqual({ value: "1.5", unit: "kB" });
+    });
+
+    it("uses precision 0 (no decimal)", () => {
+      expect(formatBytes(1_500, 0)).toEqual({ value: "2", unit: "kB" });
+    });
+
+    it("uses precision 2", () => {
+      expect(formatBytes(1_234, 2)).toEqual({ value: "1.23", unit: "kB" });
+    });
+
+    it("uses precision 3", () => {
+      expect(formatBytes(1_234_567, 3)).toEqual({ value: "1.235", unit: "MB" });
+    });
+  });
+});
 
 describe("getDurationText", () => {
   it("shows Never if duration is not defined", () => {
