@@ -242,17 +242,14 @@ function SlotContent({ firstSlot }: SlotGroupProps) {
   );
 }
 
-export function SlotsPlaceholder({
+export const MSlotsPlaceholder = memo(function SlotsPlaceholder({
   width,
   height,
-  totalListHeight,
 }: {
   width: number;
   height: number;
-  totalListHeight: number;
 }) {
   const items = useMemo(() => Math.ceil(height / 46), [height]);
-  if (totalListHeight < height) return;
 
   return (
     <Box
@@ -265,15 +262,11 @@ export function SlotsPlaceholder({
       <div className={clsx(styles.absoluteFullSize, styles.shimmer)} />
       <div className={styles.absoluteFullSize}>
         {Array.from({ length: items }, (_, index) => (
-          <MScrollPlaceholderItem key={index} />
+          <div key={index} className={styles.scrollPlaceholderItem} />
         ))}
       </div>
     </Box>
   );
-}
-
-export const MScrollPlaceholderItem = memo(function ScrollPlaceholderItem() {
-  return <div className={styles.scrollPlaceholderItem} />;
 });
 
 function SlotIconName({

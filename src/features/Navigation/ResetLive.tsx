@@ -3,8 +3,9 @@ import { slotOverrideAtom, statusAtom } from "../../atoms";
 import styles from "./resetLive.module.css";
 import { Button, Text } from "@radix-ui/themes";
 import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
+import { memo } from "react";
 
-export default function ResetLive() {
+function ResetLive() {
   const setSlotOverride = useSetAtom(slotOverrideAtom);
   const status = useAtomValue(statusAtom);
 
@@ -27,3 +28,5 @@ export default function ResetLive() {
     </div>
   );
 }
+
+export default memo(ResetLive);

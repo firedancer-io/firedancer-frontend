@@ -14,7 +14,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./slotsList.module.css";
 import { slotsListPinnedSlotOffset } from "../../consts";
 import { throttle } from "lodash";
-import SlotsRenderer, { SlotsPlaceholder } from "./SlotsRenderer";
+import SlotsRenderer, { MSlotsPlaceholder } from "./SlotsRenderer";
 import type { ScrollSeekConfiguration, VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
 import ResetLive from "./ResetLive";
@@ -62,7 +62,7 @@ function InnerSlotsList({
   const visibleStartIndexRef = useRef<number | null>(null);
 
   const [hideList, setHideList] = useState(true);
-  const [totalListHeight, setTotalListHeight] = useState(0);
+  const [showPlaceholder, setShowPlaceholder] = useState(true);
 
   useEffect(() => {
     // initially hide list to
@@ -142,6 +142,11 @@ function InnerSlotsList({
     [getSlotAtIndex],
   );
 
+  const totalListHeightChanged = useCallback(
+    (totalListHeight: number) => setShowPlaceholder(totalListHeight >= height),
+    [height],
+  );
+
   return (
     <Box
       ref={listContainerRef}
@@ -149,17 +154,13 @@ function InnerSlotsList({
       width={`${width}px`}
       height={`${height}px`}
     >
-      <RTAutoScroll listRef={listRef} getIndexForSlot={getIndexForSlot} />
-      <SlotOverrideScroll
+      <MRtAutoScroll listRef={listRef} getIndexForSlot={getIndexForSlot} />
+      <MSlotOverrideScroll
         listRef={listRef}
         getIndexForSlot={getIndexForSlot}
         debouncedScroll={debouncedScroll}
       />
-      <SlotsPlaceholder
-        width={width}
-        height={height}
-        totalListHeight={totalListHeight}
-      />
+      {showPlaceholder && <MSlotsPlaceholder width={width} height={height} />}
       <ResetLive />
       <Virtuoso
         ref={listRef}
@@ -176,7 +177,7 @@ function InnerSlotsList({
         rangeChanged={rangeChanged}
         components={{ ScrollSeekPlaceholder: MScrollSeekPlaceHolder }}
         scrollSeekConfiguration={scrollSeekConfiguration}
-        totalListHeightChanged={(height) => setTotalListHeight(height)}
+        totalListHeightChanged={totalListHeightChanged}
       />
     </Box>
   );
@@ -191,7 +192,10 @@ interface RTAutoScrollProps {
   listRef: RefObject<VirtuosoHandle>;
   getIndexForSlot: (slot: number) => number | undefined;
 }
-function RTAutoScroll({ listRef, getIndexForSlot }: RTAutoScrollProps) {
+const MRtAutoScroll = memo(function RTAutoScroll({
+  listRef,
+  getIndexForSlot,
+}: RTAutoScrollProps) {
   const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
   const autoScroll = useAtomValue(autoScrollAtom);
 
@@ -212,14 +216,14 @@ function RTAutoScroll({ listRef, getIndexForSlot }: RTAutoScrollProps) {
   }, [autoScroll, currentLeaderSlot, getIndexForSlot, listRef]);
 
   return null;
-}
+});
 
 interface SlotOverrideScrollProps {
   listRef: RefObject<VirtuosoHandle>;
   getIndexForSlot: (slot: number) => number | undefined;
   debouncedScroll: DebouncedState<() => void>;
 }
-function SlotOverrideScroll({
+const MSlotOverrideScroll = memo(function SlotOverrideScroll({
   listRef,
   getIndexForSlot,
   debouncedScroll,
@@ -262,7 +266,7 @@ function SlotOverrideScroll({
   }, [getIndexForSlot, slotOverride, listRef, debouncedScroll]);
 
   return null;
-}
+});
 
 function AllSlotsList({ width, height }: SlotsListProps) {
   const epoch = useAtomValue(epochAtom);
