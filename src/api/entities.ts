@@ -227,11 +227,7 @@ export const tileMetricsSchema = z.object({
   in_backp: z.array(z.boolean().nullable()),
   backp_msgs: z.array(z.number().nullable()),
   alive: z.array(z.number().nullable()),
-  nvcsw: z.array(z.number().nullable()),
-  nivcsw: z.array(z.number().nullable()),
   last_cpu: z.array(z.number().nullable()),
-  minflt: z.array(z.number().nullable()),
-  majflt: z.array(z.number().nullable()),
 });
 
 export const tileTimerSchema = z.object({
