@@ -132,23 +132,13 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
 
   const alive =
     liveTileMetrics.alive[idx] ?? prevLiveTileMetricsIdx?.alive[idx];
-  const nivcsw =
-    liveTileMetrics.nivcsw[idx] ?? prevLiveTileMetricsIdx?.nivcsw[idx];
-  const nvcsw =
-    liveTileMetrics.nvcsw[idx] ?? prevLiveTileMetricsIdx?.nvcsw[idx];
   const inBackpressure =
     liveTileMetrics.in_backp[idx] ?? prevLiveTileMetricsIdx?.in_backp[idx];
   const backPressureCount =
     liveTileMetrics.backp_msgs[idx] ?? prevLiveTileMetricsIdx?.backp_msgs[idx];
   const cpu =
     liveTileMetrics.last_cpu[idx] ?? prevLiveTileMetricsIdx?.last_cpu[idx];
-  const minflt =
-    liveTileMetrics.minflt[idx] ?? prevLiveTileMetricsIdx?.minflt[idx];
-  const majflt =
-    liveTileMetrics.majflt[idx] ?? prevLiveTileMetricsIdx?.majflt[idx];
 
-  const prevNivcsw = usePrevious(nivcsw);
-  const prevNvcsw = usePrevious(nvcsw);
   const prevBackPressureCount = usePrevious(backPressureCount);
 
   // Meaning tile has shut down, no need to list it in the table
@@ -181,21 +171,6 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
         {alive ? "Live" : "Dead"}
       </Table.Cell>
 
-      <Table.Cell align="right">{minflt}</Table.Cell>
-      <Table.Cell align="right">{majflt}</Table.Cell>
-
-      <Table.Cell align="right">
-        {nivcsw?.toLocaleString() ?? "0"} |
-        <IncrementText
-          value={nivcsw != null && prevNivcsw != null ? nivcsw - prevNivcsw : 0}
-        />
-      </Table.Cell>
-      <Table.Cell align="right">
-        {nvcsw?.toLocaleString() ?? "0"} |
-        <IncrementText
-          value={nvcsw != null && prevNvcsw != null ? nvcsw - prevNvcsw : 0}
-        />
-      </Table.Cell>
       <Table.Cell className={clsx({ [styles.red]: inBackpressure })}>
         {inBackpressure ? "Yes" : "-"}
       </Table.Cell>
@@ -240,24 +215,6 @@ function TableRow({ tile, liveTileMetrics, idx }: TableRowProps) {
       <PctCell pct={schedSystemPct} />
       <PctCell pct={schedIdlePct} />
     </Table.Row>
-  );
-}
-
-interface IncrementTextProps {
-  value: number;
-}
-function IncrementText({ value }: IncrementTextProps) {
-  const formatted = value.toLocaleString();
-  return (
-    <Text
-      className={clsx(styles.incrementText, {
-        [styles.lowIncrement]: 1 <= value && value <= 10,
-        [styles.midIncrement]: 11 <= value && value <= 100,
-        [styles.highIncrement]: value >= 101,
-      })}
-    >
-      +{formatted}
-    </Text>
   );
 }
 

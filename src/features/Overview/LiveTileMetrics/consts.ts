@@ -5,7 +5,7 @@ import type { Table } from "@radix-ui/themes";
     running: means that at the time the run loop executed, there was no upstream message I/O for the tile to handle.
     processing: means that at the time the run loop executed, there was one or more messages for the tile to consume.
     stalled: means that at the time the run loop executed, a downstream consumer of the messages produced by this tile is slow or stalled, and the message link for that consumer has filled up. This state causes the tile to stop processing upstream messages.
-    
+
     State Vector 2:
     maintenance: the portion of the run loop that executes infrequent, potentially CPU heavy tasks
     routine: the portion of the run loop that executes regularly, regardless of the presence of incoming messages
@@ -52,34 +52,6 @@ export const metrics: MetricDefinition[] = [
     headerColAlign: "right",
   },
   {
-    name: "Minflt",
-    description:
-      "The number of cumulative minor page faults. Minor page faults occur for pages in RAM not indexed by the page table.",
-    headerColWidth: 80,
-    headerColAlign: "right",
-  },
-  {
-    name: "Majflt",
-    description:
-      "The number of cumulative major page faults. Major page faults occur for pages that are neither in RAM nor the page table.",
-    headerColWidth: 80,
-    headerColAlign: "right",
-  },
-  {
-    name: "Nivcsw",
-    description:
-      "The number of cumulative | immediate (10ms) involuntary context switches.",
-    headerColWidth: 160,
-    headerColAlign: "right",
-  },
-  {
-    name: "Nvcsw",
-    description:
-      "The number of cumulative | immediate (10ms) voluntary context switches.",
-    headerColWidth: 160,
-    headerColAlign: "right",
-  },
-  {
     name: "Backp",
     description:
       "If a tile is backpressured, at least one outgoing message queue is at-capacity which can prevent the tile from moving forward with useful work.",
@@ -89,7 +61,7 @@ export const metrics: MetricDefinition[] = [
     name: "Backp Count",
     description:
       "The number of cumulative | immediate (10ms) times a CPU transitioned into a backpressured state.",
-    headerColWidth: 160,
+    headerColWidth: 90,
     headerColAlign: "right",
   },
   {
