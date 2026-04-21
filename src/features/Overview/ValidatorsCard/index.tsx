@@ -10,7 +10,7 @@ export default function ValidatorsCard() {
   if (!peerStats) return null;
 
   return (
-    <Card style={{ flexGrow: 1 }}>
+    <Card>
       <Flex direction="column" height="100%" gap="2">
         <CardHeader text="Validators" />
         <ValidatorsStatsContent />

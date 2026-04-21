@@ -1,0 +1,37 @@
+.cards {
+  grid-template-columns: 1fr;
+}
+
+.txns-card {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 850px) {
+  .cards {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .txns-card {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1500px) {
+  .cards {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .txns-card {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 1850px) {
+  .cards {
+    grid-template-columns: 1fr 1.5fr 1.7fr 2fr;
+  }
+
+  .txns-card {
+    grid-column: 1 / -1;
+  }
+}

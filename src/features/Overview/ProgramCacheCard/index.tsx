@@ -13,7 +13,7 @@ import { programCacheColor } from "../../../colors";
 
 export default function ProgramCacheCard() {
   return (
-    <Card style={{ flexGrow: 1 }}>
+    <Card>
       <Flex direction="column" height="100%" gap="2" align="start">
         <CardHeader text="Program Cache" />
         <div className={styles.statRow}>

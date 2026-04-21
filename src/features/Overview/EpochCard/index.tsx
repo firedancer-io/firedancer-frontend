@@ -13,7 +13,7 @@ import Progress from "../../../components/Progress";
 
 export default function EpochCard() {
   return (
-    <Card style={{ flexGrow: 1 }}>
+    <Card>
       <Flex direction="column" height="100%" gap="2" align="start">
         <CardHeader text="Epoch" />
 

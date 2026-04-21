@@ -1,4 +1,4 @@
-import { Flex } from "@radix-ui/themes";
+import { Flex, Grid } from "@radix-ui/themes";
 import TransactionsCard from "./TransactionsCard";
 import SlotPerformance from "./SlotPerformance";
 import ValidatorsCard from "./ValidatorsCard";
@@ -9,18 +9,19 @@ import LiveNetworkMetrics from "./LiveNetworkMetrics";
 import LiveTileMetrics from "./LiveTileMetrics";
 import SlotTimeline from "./SlotTimeline";
 import ProgramCacheCard from "./ProgramCacheCard";
+import styles from "./overview.module.css";
 
 export default function Overview() {
   return (
     <Flex direction="column" gap="4" flexGrow="1">
       <SlotTimeline />
-      <Flex gap="16px" align="stretch" wrap="wrap">
+      <Grid className={styles.cards} gap="4">
         <EpochCard />
         <SlotStatusCard />
         <ValidatorsCard />
         <ProgramCacheCard />
-        <TransactionsCard />
-      </Flex>
+        <TransactionsCard className={styles.txnsCard} />
+      </Grid>
       <ShredsProgression />
       <SlotPerformance />
       <LiveNetworkMetrics />

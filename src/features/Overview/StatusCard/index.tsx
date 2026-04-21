@@ -21,7 +21,7 @@ import Progress from "../../../components/Progress";
 
 export default function SlotStatusCard() {
   return (
-    <Card style={{ flexGrow: 1 }}>
+    <Card>
       <Flex direction="column" height="100%" gap="2" align="start">
         <CardHeader text="Status" />
         <div className={styles.statRow}>
