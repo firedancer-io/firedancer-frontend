@@ -65,6 +65,7 @@ import type {
   voteSlotSchema,
   supermajorityEpochSchema,
   peerUpdateInfoSchema,
+  liveProgramCacheSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -184,3 +185,5 @@ export type BlockEngineStatus = z.infer<typeof blockEngineStatusSchema>;
 
 export type SlotRankings = z.infer<typeof slotRankingsSchema>;
 export type LiveShreds = z.infer<typeof liveShredsSchema>;
+
+export type LiveProgramCache = z.infer<typeof liveProgramCacheSchema>;

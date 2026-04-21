@@ -317,23 +317,38 @@ export interface FormattedBytes {
   unit: string;
 }
 
+type ByteUnit = "B" | "kB" | "MB" | "GB";
+
+export const bytesUnits: {
+  unit: ByteUnit;
+  divisor: number;
+  threshold: number;
+}[] = [
+  { unit: "B", divisor: 1, threshold: 1_000 },
+  { unit: "kB", divisor: 1_000, threshold: 1_000_000 },
+  { unit: "MB", divisor: 1_000_000, threshold: 1_000_000_000 },
+  { unit: "GB", divisor: 1_000_000_000, threshold: Infinity },
+] as const;
+
 export function formatBytes(
   bytes: number,
   precision = 1,
+  unit?: ByteUnit,
   noDecimalForZero = true,
 ): {
   value: string;
-  unit: string;
+  unit: ByteUnit;
 } {
-  if (bytes === 0 && noDecimalForZero) return { value: "0", unit: "B" };
-  if (bytes < 1_000) return { value: bytes.toFixed(precision), unit: "B" };
-  if (bytes < 1_000_000)
-    return { value: (bytes / 1_000).toFixed(precision), unit: "kB" };
-  if (bytes < 1_000_000_000) {
-    return { value: (bytes / 1_000_000).toFixed(precision), unit: "MB" };
-  }
+  if (bytes === 0 && noDecimalForZero) return { value: "0", unit: unit ?? "B" };
 
-  return { value: (bytes / 1_000_000_000).toFixed(precision), unit: "GB" };
+  const entry =
+    bytesUnits.find((u) => u.unit === unit) ??
+    bytesUnits.find((u) => bytes < u.threshold) ??
+    bytesUnits[bytesUnits.length - 1];
+  return {
+    value: (bytes / entry.divisor).toFixed(precision),
+    unit: entry.unit,
+  };
 }
 
 /**

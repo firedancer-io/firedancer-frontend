@@ -1,5 +1,9 @@
-.label {
+.container {
+  font-size: 10px;
   color: var(--regular-text-color);
+}
+
+.label {
   font-size: 12px;
   line-height: normal;
   text-wrap: nowrap;
@@ -24,6 +28,6 @@
 }
 
 .append-value {
-  color: var(--regular-text-color);
   line-height: normal;
+  color: var(--append-value-color);
 }

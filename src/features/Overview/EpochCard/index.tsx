@@ -74,7 +74,7 @@ function NextEpochTimeText() {
         valueColor={headerColor}
         valueSize="medium"
       />
-      <Progress value={progressSinceLastEpoch} />
+      <Progress className={styles.progress} value={progressSinceLastEpoch} />
     </Flex>
   );
 }

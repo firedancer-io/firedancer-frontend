@@ -130,11 +130,21 @@ export const toastConnectingEndColor = "#FFC267";
 export const cardBackgroundColor = "#141720";
 
 // overview cards
+export const unknownChangedColor = "var(--gray-11)";
+export const unknownUnchangedColor = "var(--gray-9)";
+export const healthyChangedColor = "#56BF8C";
+export const healthyUnchangedColor = "#4A7661";
+export const worseningChangedColor = "#C27B45";
+export const worseningUnchangedColor = "#714C32";
+export const unhealthyChangedColor = "#DC6869";
+export const unhealthyUnchangedColor = "#7A3B40";
 export const headerColor = "#BDF3FF";
 export const nonDelinquentColor = "#6F77C0";
 export const nonDelinquentChartColor = "#363A63";
 export const totalValidatorsColor = "#20788C";
 export const slotTimelineTextColor = "#b1b1b1";
+export const voteDistanceColor = "#7b837c";
+export const programCacheColor = "#eee";
 
 export const transactionNonVotePathColor = "#006851";
 export const transactionVotePathColor = "#19307C";

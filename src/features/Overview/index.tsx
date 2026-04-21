@@ -8,6 +8,7 @@ import ShredsProgression from "./ShredsProgression";
 import LiveNetworkMetrics from "./LiveNetworkMetrics";
 import LiveTileMetrics from "./LiveTileMetrics";
 import SlotTimeline from "./SlotTimeline";
+import ProgramCacheCard from "./ProgramCacheCard";
 
 export default function Overview() {
   return (
@@ -17,6 +18,7 @@ export default function Overview() {
         <EpochCard />
         <SlotStatusCard />
         <ValidatorsCard />
+        <ProgramCacheCard />
         <TransactionsCard />
       </Flex>
       <ShredsProgression />
