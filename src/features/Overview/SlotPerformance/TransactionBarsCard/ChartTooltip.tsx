@@ -115,19 +115,17 @@ export default function ChartTooltip() {
             />
             <LabelValueDisplay
               label="Age since slot start"
-              value={`${(Number(transactions.txn_arrival_timestamps_nanos[txnIdx] - transactions.start_timestamp_nanos) / 1_000_000).toLocaleString()}ms`}
+              value={`${(Number(transactions.txn_arrival_timestamps_nanos[txnIdx] - transactions.start_timestamp_nanos) / 1_000_000).toLocaleString()} ms`}
+            />
+            <LabelValueDisplay
+              label="Age since arrival"
+              value={`${(Number(transactions.txn_start_timestamps_nanos[txnIdx] - transactions.txn_arrival_timestamps_nanos[txnIdx]) / 1_000_000).toLocaleString()} ms`}
             />
             {formattedArrivalTime && (
-              <>
-                <LabelValueDisplay
-                  label="Arrival Time (ms)"
-                  value={formattedArrivalTime.inMillis}
-                />
-                <LabelValueDisplay
-                  label="Arrival Time (nano)"
-                  value={formattedArrivalTime.inNanos}
-                />
-              </>
+              <LabelValueDisplay
+                label="Arrival Time"
+                value={formattedArrivalTime.inNanos}
+              />
             )}
             <IpDisplay transactions={transactions} txnIdx={txnIdx} />
             <StateDurationDisplay
