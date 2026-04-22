@@ -114,11 +114,11 @@ export default function ChartTooltip() {
               value={`${transactions.txn_bank_idx[txnIdx]}`}
             />
             <LabelValueDisplay
-              label="Age since slot start"
+              label="Arrival relative to slot"
               value={`${(Number(transactions.txn_arrival_timestamps_nanos[txnIdx] - transactions.start_timestamp_nanos) / 1_000_000).toLocaleString()} ms`}
             />
             <LabelValueDisplay
-              label="Age since arrival"
+              label="Scheduled relative to arrival"
               value={`${(Number(transactions.txn_start_timestamps_nanos[txnIdx] - transactions.txn_arrival_timestamps_nanos[txnIdx]) / 1_000_000).toLocaleString()} ms`}
             />
             {formattedArrivalTime && (
