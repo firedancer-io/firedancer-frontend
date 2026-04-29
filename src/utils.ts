@@ -319,7 +319,7 @@ export interface FormattedBytes {
 
 type ByteUnit = "B" | "kB" | "MB" | "GB";
 
-export const bytesUnits: {
+export const bytesUnits: readonly {
   unit: ByteUnit;
   divisor: number;
   threshold: number;
@@ -328,7 +328,7 @@ export const bytesUnits: {
   { unit: "kB", divisor: 1_000, threshold: 1_000_000 },
   { unit: "MB", divisor: 1_000_000, threshold: 1_000_000_000 },
   { unit: "GB", divisor: 1_000_000_000, threshold: Infinity },
-] as const;
+];
 
 export function formatBytes(
   bytes: number,

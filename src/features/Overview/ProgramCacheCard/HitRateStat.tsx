@@ -3,21 +3,21 @@ import cardStatStyles from "../../../components/cardStat.module.css";
 import styles from "./hitRateStat.module.css";
 import clsx from "clsx";
 import {
-  healthyChangedColor,
-  healthyUnchangedColor,
-  unhealthyChangedColor,
-  unhealthyUnchangedColor,
+  goodChangedColor,
+  goodUnchangedColor,
+  badChangedColor,
+  badUnchangedColor,
   unknownChangedColor,
   unknownUnchangedColor,
-  worseningChangedColor,
-  worseningUnchangedColor,
+  averageChangedColor,
+  averageUnchangedColor,
 } from "../../../colors";
 import ColorText from "../../../components/ColorText";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { liveProgramCacheAtom } from "../../../api/atoms";
 
-type Status = "Unknown" | "Healthy" | "Worsening" | "Unhealthy";
+type Status = "Unknown" | "Good" | "Average" | "Bad";
 
 type HitRateValues = {
   percentage: string;
@@ -32,17 +32,17 @@ const colorsMap: Record<Status, { changed: string; unchanged: string }> = {
     changed: unknownChangedColor,
     unchanged: unknownUnchangedColor,
   },
-  Healthy: {
-    changed: healthyChangedColor,
-    unchanged: healthyUnchangedColor,
+  Good: {
+    changed: goodChangedColor,
+    unchanged: goodUnchangedColor,
   },
-  Worsening: {
-    changed: worseningChangedColor,
-    unchanged: worseningUnchangedColor,
+  Average: {
+    changed: averageChangedColor,
+    unchanged: averageUnchangedColor,
   },
-  Unhealthy: {
-    changed: unhealthyChangedColor,
-    unchanged: unhealthyUnchangedColor,
+  Bad: {
+    changed: badChangedColor,
+    unchanged: badUnchangedColor,
   },
 };
 
@@ -73,13 +73,13 @@ export default function HitRateStat() {
       lookups === 0
         ? "Unknown"
         : percentage < 99.95
-          ? "Unhealthy"
+          ? "Bad"
           : percentage < 99.999
-            ? "Worsening"
-            : "Healthy";
+            ? "Average"
+            : "Good";
 
     return {
-      percentage: String(percentage),
+      percentage: percentage === 100 ? "100" : percentage.toFixed(20),
       numerator: hits.toLocaleString(),
       denominator: lookups.toLocaleString(),
       showFraction: Boolean(lookups),
@@ -92,13 +92,15 @@ export default function HitRateStat() {
       className={clsx(cardStatStyles.container)}
       direction="column"
       align="start"
+      gap="1"
     >
       <Text className={cardStatStyles.label}>
         <Text>Hit Rate</Text>{" "}
+        <Text className={styles.trailing}>Trailing 1m</Text>{" "}
         <Text style={{ color: colorsMap[status].unchanged }}>{status}</Text>
       </Text>
-      <Flex gap="2">
-        <Flex align="baseline" gap="1" className={clsx(styles.values)}>
+      <Flex gap="2" align="center">
+        <Flex align="baseline" gap="1">
           <ColorText
             value={percentage}
             changedColor={colorsMap[status].changed}
