@@ -10,7 +10,7 @@
   }
 
   &.skipped {
-    border: 1px rgba(255, 71, 71, 0.38);
+    border: 1px solid rgba(255, 71, 71, 0.38);
     background: rgba(189, 62, 62, 0.15);
   }
 }
