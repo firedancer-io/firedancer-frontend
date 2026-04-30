@@ -5,7 +5,13 @@ import FiberManualRecordIconOutlined from "@material-design-icons/svg/outlined/f
 import baseStyles from "./supermajority.module.css";
 import styles from "./supermajorityTable.module.css";
 import clsx from "clsx";
-import { forwardRef, useCallback, useMemo, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from "react";
 import Card from "../../../../components/Card";
 import { useAtomValue } from "jotai";
 import {
@@ -23,8 +29,10 @@ import { usePeerInfo } from "../../../../hooks/usePeerInfo";
 import ClientIcons from "../../../../components/ClientIcons";
 import { useMeasure } from "react-use";
 import { formatStake, getStakePct } from "./utils";
+import { Virtuoso } from "react-virtuoso";
 
 const iconSize = "16px";
+const rowHeight = 33;
 
 type Size = "wide" | "narrow" | "xnarrow";
 
@@ -72,6 +80,51 @@ export default function SupermajorityTable({
   const totalStake =
     useAtomValue(bootProgressAtom)?.wait_for_supermajority_total_stake;
 
+  const getOfflinePubkey = useCallback(
+    (index: number) => sortedOfflinePeers[index],
+    [sortedOfflinePeers],
+  );
+
+  const getOfflineItemContent = useCallback(
+    (index: number) => {
+      const pubkey = getOfflinePubkey(index);
+      const [lamportsStake, info] = supermajorityEpoch?.get(pubkey) ?? [];
+      return (
+        <DataRow
+          pubkey={pubkey}
+          lamportsStake={lamportsStake}
+          info={info}
+          totalStake={totalStake}
+          isOffline
+          size={size}
+        />
+      );
+    },
+    [getOfflinePubkey, size, supermajorityEpoch, totalStake],
+  );
+
+  const getOnlinePubkey = useCallback(
+    (index: number) => sortedOnlinePeers[index],
+    [sortedOnlinePeers],
+  );
+
+  const getOnlineItemContent = useCallback(
+    (index: number) => {
+      const pubkey = getOnlinePubkey(index);
+      const [lamportsStake, info] = supermajorityEpoch?.get(pubkey) ?? [];
+      return (
+        <DataRow
+          pubkey={pubkey}
+          lamportsStake={lamportsStake}
+          info={info}
+          totalStake={totalStake}
+          size={size}
+        />
+      );
+    },
+    [getOnlinePubkey, size, supermajorityEpoch, totalStake],
+  );
+
   return (
     <Flex
       ref={ref}
@@ -79,6 +132,7 @@ export default function SupermajorityTable({
         styles.container,
         isStacked ? styles.vertical : styles.horizontal,
       )}
+      style={{ "--row-height": `${rowHeight}px` } as CSSProperties}
     >
       <Card
         className={clsx(baseStyles.card, styles.tableCard, {
@@ -131,20 +185,12 @@ export default function SupermajorityTable({
           className={styles.rowsContainer}
           id="supermajority-offline-rows"
         >
-          {sortedOfflinePeers.map((pubkey) => {
-            const [lamportsStake, info] = supermajorityEpoch?.get(pubkey) ?? [];
-            return (
-              <DataRow
-                key={pubkey}
-                pubkey={pubkey}
-                lamportsStake={lamportsStake}
-                info={info}
-                totalStake={totalStake}
-                isOffline
-                size={size}
-              />
-            );
-          })}
+          <Virtuoso
+            totalCount={sortedOfflinePeers.length}
+            fixedItemHeight={rowHeight}
+            computeItemKey={getOfflinePubkey}
+            itemContent={getOfflineItemContent}
+          />
         </Box>
 
         <SizedRow
@@ -171,19 +217,12 @@ export default function SupermajorityTable({
           display={isOnlineExpanded ? undefined : "none"}
           className={styles.rowsContainer}
         >
-          {sortedOnlinePeers.map((pubkey) => {
-            const [lamportsStake, info] = supermajorityEpoch?.get(pubkey) ?? [];
-            return (
-              <DataRow
-                key={pubkey}
-                pubkey={pubkey}
-                lamportsStake={lamportsStake}
-                info={info}
-                totalStake={totalStake}
-                size={size}
-              />
-            );
-          })}
+          <Virtuoso
+            totalCount={sortedOnlinePeers.length}
+            fixedItemHeight={rowHeight}
+            computeItemKey={getOnlinePubkey}
+            itemContent={getOnlineItemContent}
+          />
         </Box>
       </Card>
     </Flex>
