@@ -114,12 +114,24 @@ export default function ChartTooltip() {
               value={`${transactions.txn_bank_idx[txnIdx]}`}
             />
             <LabelValueDisplay
-              label="Arrival relative to slot"
-              value={`${(Number(transactions.txn_arrival_timestamps_nanos[txnIdx] - transactions.start_timestamp_nanos) / 1_000_000).toLocaleString()} ms`}
+              label="Slot to Arrival"
+              value={(
+                Number(
+                  transactions.txn_arrival_timestamps_nanos[txnIdx] -
+                    transactions.start_timestamp_nanos,
+                ) / 1_000_000
+              ).toLocaleString()}
+              unit="ms"
             />
             <LabelValueDisplay
-              label="Scheduled relative to arrival"
-              value={`${(Number(transactions.txn_start_timestamps_nanos[txnIdx] - transactions.txn_arrival_timestamps_nanos[txnIdx]) / 1_000_000).toLocaleString()} ms`}
+              label="Arrival to Scheduled"
+              value={(
+                Number(
+                  transactions.txn_start_timestamps_nanos[txnIdx] -
+                    transactions.txn_arrival_timestamps_nanos[txnIdx],
+                ) / 1_000_000
+              ).toLocaleString()}
+              unit="ms"
             />
             {formattedArrivalTime && (
               <LabelValueDisplay
@@ -136,8 +148,9 @@ export default function ChartTooltip() {
             <RowSeparator />
             <LabelValueDisplay
               label="Txn Sig"
-              value={`${transactions.txn_signature[txnIdx]?.substring(0, 8)}...`}
+              value={transactions.txn_signature[txnIdx]}
               copyValue={transactions.txn_signature[txnIdx]}
+              truncateValue
             />
           </Flex>
         </Flex>
@@ -164,15 +177,8 @@ function IpDisplay({ transactions, txnIdx }: DisplayProps) {
 
     if (!peer) return;
 
-    if (peer.info?.name) {
-      if (peer.info.name.length > 20) {
-        return `${peer.info.name.substring(0, 20)}...`;
-      } else {
-        return peer.info.name;
-      }
-    }
-
-    return `${peer.identity_pubkey.substring(0, 8)}...`;
+    const displayName = peer.info?.name ? peer.info.name : peer.identity_pubkey;
+    return displayName;
   }, [displayIp, peersList]);
 
   return (
@@ -182,7 +188,11 @@ function IpDisplay({ transactions, txnIdx }: DisplayProps) {
         value={`${displayIp} (${transactions.txn_source_tpu[txnIdx]})`}
       />
       {validatorDisplay && (
-        <LabelValueDisplay label="Validator" value={validatorDisplay} />
+        <LabelValueDisplay
+          label="Validator"
+          value={validatorDisplay}
+          truncateValue
+        />
       )}
     </>
   );
@@ -443,6 +453,7 @@ interface LabelValueDisplayProps {
   color?: string;
   unit?: string;
   copyValue?: string;
+  truncateValue?: boolean;
 }
 
 function LabelValueDisplay({
@@ -451,6 +462,7 @@ function LabelValueDisplay({
   color,
   unit,
   copyValue,
+  truncateValue,
 }: LabelValueDisplayProps) {
   const formattedValue =
     typeof value === "number" ? value.toLocaleString() : value;
@@ -465,13 +477,19 @@ function LabelValueDisplay({
         } as CSSProperties
       }
     >
-      <Text>{label}</Text>
-      <Flex gap="2" align="center">
+      <Flex minWidth="105px">
+        <Text wrap="nowrap">{label}</Text>
+      </Flex>
+      <Flex minWidth="0" maxWidth="210px" align="center">
         <CopyButton value={copyValue} color={iconButtonColor} size="14px">
-          <span>
-            <Text>{formattedValue}</Text>
-            {unit && <Text className={styles.unit}>{unit}</Text>}
-          </span>
+          <Text
+            className={styles.valueText}
+            align="right"
+            truncate={truncateValue}
+          >
+            {formattedValue}
+          </Text>
+          {unit && <Text className={styles.unit}>{unit}</Text>}
         </CopyButton>
       </Flex>
     </Flex>
