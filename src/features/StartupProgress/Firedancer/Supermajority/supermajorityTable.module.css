@@ -31,7 +31,10 @@
 }
 
 .row {
+  box-sizing: border-box;
+  height: var(--row-height);
   border: 0px solid var(--supermajority-table-border-color);
+  border-bottom-width: 1px;
   column-gap: 20px;
   padding: 0 20px 0 5px;
 
@@ -56,14 +59,12 @@
     }
   }
 
-  border-bottom-width: 1px;
-
   &.header-row {
+    height: auto;
     border: 0;
   }
 
   &.toggle-row {
-    height: 32px;
     border-width: 1px 0;
     display: flex;
     column-gap: 8px;
@@ -83,7 +84,7 @@
 }
 
 .cell {
-  height: 32px;
+  height: 100%;
 
   &.header {
     height: 22px;
