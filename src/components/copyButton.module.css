@@ -5,6 +5,10 @@
   --button-ghost-padding-x: 2px;
   --button-ghost-padding-y: 2px;
 
+  .icon {
+    flex-shrink: 0;
+  }
+
   &.hide-icon-until-hover {
     .icon {
       display: none;
