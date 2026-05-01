@@ -204,9 +204,10 @@ export const metricGroups: {
 export const pinnedGroups = metricGroups.filter(({ pinned }) => pinned);
 export const unpinnedGroups = metricGroups.filter(({ pinned }) => !pinned);
 
+// start with one pixel to account for border width
 export const pinnedTableWidth = pinnedGroups.reduce((acc, group) => {
   for (const metric of group.metrics) {
     acc += metric.headerColWidth;
   }
   return acc;
-}, 0);
+}, 1);
