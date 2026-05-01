@@ -278,12 +278,11 @@ function DataRow({
       </Table.Cell>
       <Table.Cell
         align="right"
-        className={clsx(styles.rightBorder, { [styles.red]: inBackpressure })}
+        className={clsx({ [styles.red]: inBackpressure })}
       >
         {inBackpressure ? "Yes" : "-"}
       </Table.Cell>
-
-      <Table.Cell align="right">
+      <Table.Cell align="right" className={styles.rightBorder}>
         {backPressureCount?.toLocaleString() ?? "0"} |
         <Text
           className={clsx(styles.incrementText, {
@@ -300,6 +299,7 @@ function DataRow({
           ).toLocaleString()}
         </Text>
       </Table.Cell>
+
       <MUtilization idx={idx} />
 
       <PctCell
