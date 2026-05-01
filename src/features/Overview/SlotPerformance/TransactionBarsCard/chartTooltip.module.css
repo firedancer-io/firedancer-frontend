@@ -35,8 +35,14 @@
     width: 0;
   }
 
+  .value-text {
+    overflow-wrap: anywhere;
+  }
+
   .unit {
     font-family: "Roboto Mono", monospace;
     margin-left: 2px;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 }
