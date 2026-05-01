@@ -56,7 +56,7 @@ export const metricGroups: {
         uniqueName: "CPU",
         description:
           "The CPU index on which the tile was last recorded executing.",
-        headerColWidth: 70,
+        headerColWidth: 50,
         headerColAlign: "right",
       },
       {
@@ -70,35 +70,35 @@ export const metricGroups: {
         uniqueName: "Minflt",
         description:
           "The number of cumulative minor page faults. Minor page faults occur for pages in RAM not indexed by the page table.",
-        headerColWidth: 80,
+        headerColWidth: 60,
         headerColAlign: "right",
       },
       {
         uniqueName: "Majflt",
         description:
           "The number of cumulative major page faults. Major page faults occur for pages that are neither in RAM nor the page table.",
-        headerColWidth: 80,
+        headerColWidth: 60,
         headerColAlign: "right",
       },
       {
         uniqueName: "Nivcsw",
         description:
           "The number of cumulative | immediate (10ms) involuntary context switches.",
-        headerColWidth: 160,
+        headerColWidth: 150,
         headerColAlign: "right",
       },
       {
         uniqueName: "Nvcsw",
         description:
           "The number of cumulative | immediate (10ms) voluntary context switches.",
-        headerColWidth: 160,
+        headerColWidth: 150,
         headerColAlign: "right",
       },
       {
         uniqueName: "Backp",
         description:
           "If a tile is backpressured, at least one outgoing message queue is at-capacity which can prevent the tile from moving forward with useful work.",
-        headerColWidth: 70,
+        headerColWidth: 60,
         headerColAlign: "right",
       },
     ],
@@ -110,19 +110,19 @@ export const metricGroups: {
         uniqueName: "Backp Count",
         description:
           "The number of cumulative | immediate (10ms) times a CPU transitioned into a backpressured state.",
-        headerColWidth: 160,
+        headerColWidth: 120,
         headerColAlign: "right",
       },
       {
         uniqueName: "Utilization",
         description:
           "Visualized the percentage of the tile's CPU time spent doing useful work. Time spent in a context switch is not included.",
-        headerColWidth: 200,
+        headerColWidth: 150,
       },
       {
         uniqueName: "History (1m)",
         description: "A historical, low-pass-filtered view of CPU utilization.",
-        headerColWidth: 200,
+        headerColWidth: 150,
       },
     ],
   },
@@ -133,28 +133,28 @@ export const metricGroups: {
         uniqueName: "% Hkeep",
         description:
           "The percentage of CPU time spent on housekeeping tasks, which are meant to be infrequent and generally more expensive than tasks on the critical path.",
-        headerColWidth: 80,
+        headerColWidth: 70,
         headerColAlign: "right",
       },
       {
         uniqueName: "% Wait",
         description:
           "The percentage of CPU time spent waiting for useful work to do.",
-        headerColWidth: 80,
+        headerColWidth: 70,
         headerColAlign: "right",
       },
       {
         uniqueName: "% Backp",
         description:
           "The percentage of CPU time during which the tile was backpressured, excluding housekeeping time.",
-        headerColWidth: 80,
+        headerColWidth: 70,
         headerColAlign: "right",
       },
       {
         uniqueName: "% Work",
         description:
           "The percentage of CPU time spent performing useful work, excluding housekeeping and backpressured time.",
-        headerColWidth: 80,
+        headerColWidth: 70,
         headerColAlign: "right",
       },
     ],
@@ -167,7 +167,7 @@ export const metricGroups: {
         columnName: "% Wait",
         description:
           "The percentage of CPU time spent waiting in the runqueue before being dispatched.",
-        headerColWidth: 80,
+        headerColWidth: 70,
         headerColAlign: "right",
         wrap: true,
       },
@@ -175,7 +175,7 @@ export const metricGroups: {
         uniqueName: "% User (scheduler)",
         columnName: "% User",
         description: "The percentage of CPU time spent executing in user mode.",
-        headerColWidth: 80,
+        headerColWidth: 70,
         headerColAlign: "right",
         wrap: true,
       },
@@ -184,7 +184,7 @@ export const metricGroups: {
         columnName: "% System",
         description:
           "The percentage of CPU time spent executing in kernel mode.",
-        headerColWidth: 80,
+        headerColWidth: 70,
         headerColAlign: "right",
         wrap: true,
       },
@@ -193,7 +193,7 @@ export const metricGroups: {
         columnName: "% Idle",
         description:
           "The percentage of CPU time unaccounted for by the other 3 regimes.",
-        headerColWidth: 80,
+        headerColWidth: 70,
         headerColAlign: "right",
         wrap: true,
       },
