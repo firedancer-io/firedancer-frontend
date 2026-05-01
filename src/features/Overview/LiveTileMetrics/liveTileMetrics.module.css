@@ -26,6 +26,13 @@
       }
 
       td {
+        /* Prevent different row heights between pinned
+         * and non-pinned tables because of line height
+         * applied by Radix Text component */
+        :global(.rt-Text) {
+          line-height: inherit;
+        }
+
         color: var(--table-body-color);
         text-align: left;
         &[align="right"] {
