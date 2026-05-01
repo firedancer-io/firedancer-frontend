@@ -101,11 +101,6 @@ export const metricGroups: {
         headerColWidth: 70,
         headerColAlign: "right",
       },
-    ],
-  },
-  {
-    name: "Utilization",
-    metrics: [
       {
         uniqueName: "Backp Count",
         description:
@@ -113,6 +108,11 @@ export const metricGroups: {
         headerColWidth: 160,
         headerColAlign: "right",
       },
+    ],
+  },
+  {
+    name: "Utilization",
+    metrics: [
       {
         uniqueName: "Utilization",
         description:
