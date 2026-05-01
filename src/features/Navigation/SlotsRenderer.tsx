@@ -7,7 +7,7 @@ import {
   nextLeaderSlotAtom,
   slotDurationAtom,
 } from "../../atoms";
-import { Box, Flex, Progress, Text } from "@radix-ui/themes";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
 import type React from "react";
 import { memo, useMemo } from "react";
@@ -33,6 +33,7 @@ import { isScrollingAtom } from "./atoms";
 import useNextSlot from "../../hooks/useNextSlot";
 import type { SlotPublish } from "../../api/types";
 import AnimatedInteger from "../../components/AnimatedInteger";
+import Progress from "../../components/Progress";
 
 export default function SlotsRenderer(props: { leaderSlotForGroup: number }) {
   const isScrolling = useAtomValue(isScrollingAtom);
@@ -120,11 +121,7 @@ function YourNextLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
         </Flex>
       </Flex>
 
-      <Progress
-        value={progressSinceLastLeader}
-        size="1"
-        className={styles.progressBar}
-      />
+      <Progress value={progressSinceLastLeader} height="2px" />
     </Flex>
   );
 }

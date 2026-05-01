@@ -1,13 +1,3 @@
-.progress {
-  max-height: 11px;
-  min-width: 140px;
-  background: var(--dropdown-background-color);
-
-  div {
-    background: var(--progress-background-color);
-  }
-}
-
 .stat-row {
   display: flex;
   flex-wrap: wrap;
@@ -18,11 +8,4 @@
     flex: 1 1 auto;
     min-width: 180px;
   }
-}
-
-.vote-distance {
-  color: #7b837c;
-  font-size: 12px;
-  font-style: normal;
-  padding-left: 6px;
 }

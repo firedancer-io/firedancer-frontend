@@ -2,16 +2,6 @@
   color: #737373;
 }
 
-.progress {
-  height: 8px;
-  width: 60px;
-  background: #303134;
-
-  div {
-    background: var(--progress-background-color);
-  }
-}
-
 .value {
   color: var(--next-slot-value-color);
   min-width: 50px;

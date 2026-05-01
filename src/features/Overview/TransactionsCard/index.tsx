@@ -5,9 +5,9 @@ import Card from "../../../components/Card";
 import styles from "./transactionsCard.module.css";
 import TransactionStats from "./TransactionStats";
 
-export default function TransactionsCard() {
+export default function TransactionsCard({ className }: { className: string }) {
   return (
-    <Card style={{ flex: 100 }}>
+    <Card className={className}>
       <Flex direction="column" height="100%" gap="2">
         <CardHeader text="Transactions" />
         <Flex gap="4" flexGrow="1">
