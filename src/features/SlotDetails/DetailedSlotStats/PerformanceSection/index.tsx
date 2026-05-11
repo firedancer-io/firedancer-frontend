@@ -12,7 +12,7 @@ export default function PerformanceSection() {
   return (
     <SlotDetailsSection title="Performance" flexGrow="3">
       <Flex
-        direction={{ xs: "row", initial: "column" }}
+        direction={{ sm: "row", initial: "column" }}
         gapX={sectionGapX}
         gapY={sectionGapY}
         flexGrow="1"
