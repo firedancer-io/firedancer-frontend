@@ -1,12 +1,23 @@
 import { Flex } from "@radix-ui/themes";
 import Slots from "./Slots";
-import { useAtomValue, useSetAtom } from "jotai";
-import { epochAtom, slotNavFilterAtom, slotOverrideAtom } from "../../atoms";
+import { atom, useAtomValue, useSetAtom } from "jotai";
+import {
+  currentLeaderSlotAtom,
+  leaderScheduleSearchDependenciesAtom,
+  slotNavFilterAtom,
+  slotOverrideAtom,
+} from "../../atoms";
 import { useMount } from "react-use";
 import { clusterIndicatorHeight, headerHeight } from "../../consts";
 
+const isVisibleAtom = atom(
+  (get) =>
+    get(currentLeaderSlotAtom) != null &&
+    !!get(leaderScheduleSearchDependenciesAtom),
+);
+
 export function LeaderSchedule() {
-  const epoch = useAtomValue(epochAtom);
+  const isVisible = useAtomValue(isVisibleAtom);
   const setSlotOverride = useSetAtom(slotOverrideAtom);
   const setSlotNavFilter = useSetAtom(slotNavFilterAtom);
 
@@ -21,7 +32,7 @@ export function LeaderSchedule() {
     }
   };
 
-  if (!epoch) return;
+  if (!isVisible) return;
 
   return (
     <Flex

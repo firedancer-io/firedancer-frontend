@@ -8,11 +8,10 @@ import {
   Reset,
   Tooltip,
 } from "@radix-ui/themes";
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { setSearchLeaderSlotsAtom, searchLeaderSlotsAtom } from "./atoms";
 import { useMount } from "react-use";
 import {
-  currentLeaderSlotAtom,
   discountedLateVoteSlotsAtom,
   leaderSlotsAtom,
   skipRateAtom,
@@ -34,10 +33,7 @@ import clsx from "clsx";
 import { getSlotGroupLeader } from "../../utils";
 import { isFiredancer } from "../../client";
 
-const isVisibleAtom = atom((get) => !!get(currentLeaderSlotAtom));
-
 export default function Search() {
-  const isVisible = useAtomValue(isVisibleAtom);
   const setSearch = useSetAtom(setSearchLeaderSlotsAtom);
 
   const setSlotOverride = useSetAtom(slotOverrideAtom);
@@ -69,13 +65,11 @@ export default function Search() {
     }
   });
 
-  if (!isVisible) return;
-
   return (
     <Flex className={styles.container} gap="2" wrap="wrap">
       <Box className={styles.searchBox}>
         <TextField.Root
-          placeholder="Name, pubkey, or slot (separate with , or ; for multiple values)"
+          placeholder="Name, Client Id, Pubkey, or Slot (use , for multiple)"
           variant="soft"
           color="gray"
           onChange={(e) => {

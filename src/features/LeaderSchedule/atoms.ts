@@ -1,12 +1,12 @@
 import { atom } from "jotai";
 import {
-  allLeaderNamesAtom,
+  allLeaderNamesClientIdsAtom,
   currentLeaderSlotAtom,
   epochAtom,
   slotOverrideAtom,
 } from "../../atoms";
 import { getLeaderSlots } from "../../utils";
-import { slotsPerLeader } from "../../consts";
+import { clientIdToClientName, slotsPerLeader } from "../../consts";
 
 /** first slot of leader slot groups in asc order */
 export const searchLeaderSlotsAtom = atom<number[] | undefined>(undefined);
@@ -43,16 +43,28 @@ export const setSearchLeaderSlotsAtom = atom(
     }
 
     const searchTextParts = searchText
-      .split(/[,;]/)
+      .split(",")
       .map((s) => s.trim().toLowerCase())
       .filter((s) => !!s);
 
-    const leaderNames = get(allLeaderNamesAtom);
-    const searchPubkeys = leaderNames
-      ?.filter(({ name, pubkey }) =>
-        searchTextParts.some(
-          (s) => name?.includes(s) || pubkey.toLowerCase().includes(s),
-        ),
+    const matchingClientIds = Object.entries(clientIdToClientName).reduce(
+      (acc, [clientId, clientName]) => {
+        if (searchTextParts.some((s) => clientName.toLowerCase().includes(s))) {
+          acc.add(parseInt(clientId));
+        }
+        return acc;
+      },
+      new Set<number>(),
+    );
+
+    const leaders = get(allLeaderNamesClientIdsAtom);
+    const searchPubkeys = leaders
+      ?.filter(
+        ({ name, pubkey, clientId }) =>
+          (clientId != null && matchingClientIds.has(clientId)) ||
+          searchTextParts.some(
+            (s) => name?.includes(s) || pubkey.toLowerCase().includes(s),
+          ),
       )
       .map(({ pubkey }) => pubkey);
 
