@@ -67,34 +67,6 @@ export const metricGroups: {
         headerColAlign: "right",
       },
       {
-        uniqueName: "Minflt",
-        description:
-          "The number of cumulative minor page faults. Minor page faults occur for pages in RAM not indexed by the page table.",
-        headerColWidth: 60,
-        headerColAlign: "right",
-      },
-      {
-        uniqueName: "Majflt",
-        description:
-          "The number of cumulative major page faults. Major page faults occur for pages that are neither in RAM nor the page table.",
-        headerColWidth: 60,
-        headerColAlign: "right",
-      },
-      {
-        uniqueName: "Nivcsw",
-        description:
-          "The number of cumulative | immediate (10ms) involuntary context switches.",
-        headerColWidth: 150,
-        headerColAlign: "right",
-      },
-      {
-        uniqueName: "Nvcsw",
-        description:
-          "The number of cumulative | immediate (10ms) voluntary context switches.",
-        headerColWidth: 150,
-        headerColAlign: "right",
-      },
-      {
         uniqueName: "Backp",
         description:
           "If a tile is backpressured, at least one outgoing message queue is at-capacity which can prevent the tile from moving forward with useful work.",
@@ -196,6 +168,39 @@ export const metricGroups: {
         headerColWidth: 70,
         headerColAlign: "right",
         wrap: true,
+      },
+    ],
+  },
+  {
+    name: "Exceptions",
+    metrics: [
+      {
+        uniqueName: "Minflt",
+        description:
+          "The number of cumulative minor page faults. Minor page faults occur for pages in RAM not indexed by the page table.",
+        headerColWidth: 60,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "Majflt",
+        description:
+          "The number of cumulative major page faults. Major page faults occur for pages that are neither in RAM nor the page table.",
+        headerColWidth: 60,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "Nivcsw",
+        description:
+          "The number of cumulative | immediate (10ms) involuntary context switches.",
+        headerColWidth: 150,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "Nvcsw",
+        description:
+          "The number of cumulative | immediate (10ms) voluntary context switches.",
+        headerColWidth: 150,
+        headerColAlign: "right",
       },
     ],
   },
