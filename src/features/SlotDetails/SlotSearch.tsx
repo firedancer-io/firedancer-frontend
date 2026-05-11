@@ -1,10 +1,5 @@
 import { useCallback, useMemo, useState, type CSSProperties } from "react";
-import {
-  epochAtom,
-  firstProcessedLeaderIndexAtom,
-  leaderSlotsAtom,
-  nextLeaderSlotIndexAtom,
-} from "../../atoms";
+import { epochAtom, quickSearchSlotsAtom } from "../../atoms";
 import { useAtomValue } from "jotai";
 import {
   baseSelectedSlotAtoms,
@@ -37,6 +32,7 @@ import {
 import clsx from "clsx";
 import { useTimeAgo } from "../../hooks/useTimeAgo";
 import { useNavigateToSlot } from "./useNavigateToSlot";
+import { numQuickSearchSlots } from "./const";
 
 const numQuickSearchCardsPerRow = 3;
 const quickSearchCardWidth = 226;
@@ -114,22 +110,8 @@ function getSolStringWithFourDecimals(lamportAmount: bigint) {
 function QuickSearch() {
   useSlotRankings(true);
   const slotRankings = useAtomValue(slotRankingsAtom);
-  const leaderSlots = useAtomValue(leaderSlotsAtom);
-  const firstProcessedLeaderIndex = useAtomValue(firstProcessedLeaderIndexAtom);
-  const nextLeaderIndex = useAtomValue(nextLeaderSlotIndexAtom);
-  const { earliestQuickSlots, mostRecentQuickSlots } = useMemo(() => {
-    if (leaderSlots === undefined || firstProcessedLeaderIndex === undefined)
-      return {};
-
-    const pastProcessedSlots = leaderSlots.slice(
-      firstProcessedLeaderIndex,
-      nextLeaderIndex,
-    );
-    return {
-      earliestQuickSlots: pastProcessedSlots,
-      mostRecentQuickSlots: pastProcessedSlots.toReversed(),
-    };
-  }, [firstProcessedLeaderIndex, leaderSlots, nextLeaderIndex]);
+  const { earliestQuickSlots, mostRecentQuickSlots } =
+    useAtomValue(quickSearchSlotsAtom);
 
   return (
     <>
@@ -224,8 +206,6 @@ function QuickSearchCard<T extends number | bigint>({
     </Flex>
   );
 }
-
-const numQuickSearchSlots = 3;
 
 function QuickSearchSlots<T extends number | bigint>({
   slots,
