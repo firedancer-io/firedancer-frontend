@@ -262,20 +262,6 @@ function DataRow({
       >
         {alive ? "Live" : "Dead"}
       </Table.Cell>
-      <Table.Cell align="right">{minflt}</Table.Cell>
-      <Table.Cell align="right">{majflt}</Table.Cell>
-      <Table.Cell align="right">
-        {nivcsw?.toLocaleString() ?? "0"} |
-        <IncrementText
-          value={nivcsw != null && prevNivcsw != null ? nivcsw - prevNivcsw : 0}
-        />
-      </Table.Cell>
-      <Table.Cell align="right">
-        {nvcsw?.toLocaleString() ?? "0"} |
-        <IncrementText
-          value={nvcsw != null && prevNvcsw != null ? nvcsw - prevNvcsw : 0}
-        />
-      </Table.Cell>
       <Table.Cell
         align="right"
         className={clsx({ [styles.red]: inBackpressure })}
@@ -283,7 +269,7 @@ function DataRow({
         {inBackpressure ? "Yes" : "-"}
       </Table.Cell>
       <Table.Cell align="right" className={styles.rightBorder}>
-        {backPressureCount?.toLocaleString() ?? "0"} |
+        {backPressureCount?.toLocaleString() ?? "-"} |
         <Text
           className={clsx(styles.incrementText, {
             [styles.highIncrement]:
@@ -324,7 +310,22 @@ function DataRow({
       <PctCell pct={schedWaitPct} />
       <PctCell pct={schedUserPct} />
       <PctCell pct={schedSystemPct} />
-      <PctCell pct={schedIdlePct} />
+      <PctCell pct={schedIdlePct} className={styles.rightBorder} />
+
+      <Table.Cell align="right">{minflt?.toLocaleString() ?? "-"}</Table.Cell>
+      <Table.Cell align="right">{majflt?.toLocaleString() ?? "-"}</Table.Cell>
+      <Table.Cell align="right">
+        {nivcsw?.toLocaleString() ?? "-"} |
+        <IncrementText
+          value={nivcsw != null && prevNivcsw != null ? nivcsw - prevNivcsw : 0}
+        />
+      </Table.Cell>
+      <Table.Cell align="right">
+        {nvcsw?.toLocaleString() ?? "-"} |
+        <IncrementText
+          value={nvcsw != null && prevNvcsw != null ? nvcsw - prevNvcsw : 0}
+        />
+      </Table.Cell>
     </Table.Row>
   );
 }
