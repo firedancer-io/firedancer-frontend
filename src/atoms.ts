@@ -30,6 +30,7 @@ import { selectedSlotAtom } from "./features/Overview/SlotPerformance/atoms";
 import { atomFamily } from "jotai/utils";
 import memoize from "micro-memoize";
 import { isFrankendancer } from "./client";
+import { numQuickSearchSlots } from "./features/SlotDetails/const";
 
 export const containerElAtom = atom<HTMLDivElement | null>();
 export const slotsListElAtom = atom<HTMLDivElement | null>();
@@ -255,6 +256,8 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
   const slot = slotOverride ?? currentSlot;
   const navFilter = get(slotNavFilterAtom);
   const leaderSlots = get(leaderSlotsAtom);
+  const { earliestQuickSlots, mostRecentQuickSlots } =
+    get(quickSearchSlotsAtom);
 
   if (slot !== undefined) {
     set(slotResponseAtom, (draft) => {
@@ -278,6 +281,13 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
         if (
           navFilter === SlotNavFilter.MySlots &&
           leaderSlots?.includes(slotGroupStart)
+        ) {
+          continue;
+        }
+
+        if (
+          (earliestQuickSlots && earliestQuickSlots.includes(slotNumber)) ||
+          (mostRecentQuickSlots && mostRecentQuickSlots.includes(slotNumber))
         ) {
           continue;
         }
@@ -851,3 +861,24 @@ export const [
     ),
   ];
 })();
+
+export const quickSearchSlotsAtom = atom((get) => {
+  const leaderSlots = get(leaderSlotsAtom);
+  const firstProcessedLeaderIndex = get(firstProcessedLeaderIndexAtom);
+  const nextLeaderIndex = get(nextLeaderSlotIndexAtom);
+
+  if (!leaderSlots || firstProcessedLeaderIndex === undefined) {
+    return {};
+  }
+
+  const pastProcessedSlots = leaderSlots.slice(
+    firstProcessedLeaderIndex,
+    nextLeaderIndex,
+  );
+  return {
+    earliestQuickSlots: pastProcessedSlots.slice(0, numQuickSearchSlots),
+    mostRecentQuickSlots: pastProcessedSlots
+      .slice(-numQuickSearchSlots)
+      .toReversed(),
+  };
+});
