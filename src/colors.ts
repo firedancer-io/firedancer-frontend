@@ -91,6 +91,10 @@ export const snapshotAreaChartGridLineColor = "#ffffff1a";
 
 export const supermajorityTableBorderColor = "rgba(250, 250, 250, 0.12)";
 export const supermajorityPieChartTextColor = "#cac4c4";
+export const supermajorityTableOfflinePrimaryColor = "var(--gray-11)";
+export const supermajorityTableOfflineSecondaryColor = "var(--gray-10)";
+export const supermajorityTableOnlinePrimaryColor = "var(--gray-9)";
+export const supermajorityTableOnlineSecondaryColor = "var(--gray-7)";
 
 // catching up bars
 export const firstTurbineSlotColor = "#3972C9";

@@ -49,7 +49,7 @@ export default function SupermajorityTable({
   const size: Size = isXNarrow ? "xnarrow" : isNarrow ? "narrow" : "wide";
 
   const [isOfflineExpanded, setIsOfflineExpanded] = useState(true);
-  const [isOnlineExpanded, setIsOnlineExpanded] = useState(false);
+  const [isOnlineExpanded, setIsOnlineExpanded] = useState(true);
 
   const supermajorityEpoch = useAtomValue(supermajorityEpochAtom);
 
@@ -266,16 +266,18 @@ function DataRow({
   size,
 }: DataRowProps) {
   return (
-    <SizedRow size={size} className={clsx({ [styles.offline]: isOffline })}>
+    <SizedRow
+      size={size}
+      className={isOffline ? styles.offline : styles.online}
+    >
       <IconNameCell
         name={info?.name}
         iconUrl={getPeerIconUrl(info)}
-        isOffline={isOffline}
         size={size}
       />
       <StatusCell isOffline={isOffline} size={size} />
       <PubkeyCell pubkey={pubkey} size={size} />
-      <ClientVersionCell pubkey={pubkey} size={size} isOffline={isOffline} />
+      <ClientVersionCell pubkey={pubkey} size={size} />
       <StakeCell lamportsStake={lamportsStake} size={size} />
       <StakePctCell
         lamportsStake={lamportsStake}
@@ -320,20 +322,11 @@ function HeaderCell({
 interface IconNameCellProps {
   name: string | null | undefined;
   iconUrl: string | undefined;
-  isOffline?: boolean;
   size: Size;
 }
-function IconNameCell({
-  name,
-  iconUrl,
-  isOffline = false,
-  size,
-}: IconNameCellProps) {
+function IconNameCell({ name, iconUrl, size }: IconNameCellProps) {
   return (
-    <Cell
-      size={size}
-      className={clsx(styles.peer, { [styles.offline]: isOffline })}
-    >
+    <Cell size={size} className={styles.peer}>
       <PeerIcon url={iconUrl} size={16} />
       <Text truncate>{name ?? "-"}</Text>
     </Cell>
@@ -349,10 +342,7 @@ function StatusCell({ isOffline = false, size }: StatusCellProps) {
     ? FiberManualRecordIconOutlined
     : FiberManualRecordIcon;
   return (
-    <Cell
-      size={size}
-      className={clsx(styles.status, { [styles.offline]: isOffline })}
-    >
+    <Cell size={size} className={clsx(styles.status)}>
       <Icon height={12} width={12} fill="currentColor" />
       {size === "wide" && (
         <Text truncate>{isOffline ? "Offline" : "Online"}</Text>
@@ -380,22 +370,14 @@ function PubkeyCell({ pubkey, size }: PubkeyCellProps) {
 interface ClientVersionCellProps {
   pubkey: string;
   size: Size;
-  isOffline: boolean;
 }
-function ClientVersionCell({
-  pubkey,
-  size,
-  isOffline,
-}: ClientVersionCellProps) {
+function ClientVersionCell({ pubkey, size }: ClientVersionCellProps) {
   const peer = usePeer(pubkey);
   const { version, client } = usePeerInfo(peer);
 
   return (
-    <Cell
-      size={size}
-      className={clsx(styles.version, { [styles.offline]: isOffline })}
-    >
-      <Flex width="35px">
+    <Cell size={size} className={clsx(styles.version)}>
+      <Flex width="37px" flexShrink="0">
         <ClientIcons
           client={client}
           size="xlarge"
@@ -405,9 +387,7 @@ function ClientVersionCell({
         />
       </Flex>
       {size !== "xnarrow" && (
-        <Text truncate dir="rtl">
-          {version ? `v${version}` : "-"}
-        </Text>
+        <Text truncate>{version ? `v${version}` : "-"}</Text>
       )}
     </Cell>
   );
