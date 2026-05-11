@@ -6,7 +6,6 @@ export const Route = createFileRoute("/gossip")({
   component: Gossip,
   beforeLoad: ({ context, location }) => {
     if (isFrankendancer) {
-      // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw redirect({
         to: "/",
       });

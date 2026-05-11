@@ -65,6 +65,18 @@ export default tseslint.config(
         { allowNumber: true, allowBoolean: true },
       ],
       "@typescript-eslint/no-unsafe-enum-comparison": "off",
+      "@typescript-eslint/only-throw-error": [
+        "error",
+        {
+          allow: [
+            {
+              from: "package",
+              package: "@tanstack/router-core",
+              name: "Redirect",
+            },
+          ],
+        },
+      ],
       "@typescript-eslint/prefer-promise-reject-errors": [
         "error",
         { allowEmptyReject: true },

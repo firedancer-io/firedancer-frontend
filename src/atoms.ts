@@ -551,21 +551,32 @@ export const myStakePctAtom = atom((get) => {
   return (Number(stake) / Number(totalActivePeersStake)) * 100;
 });
 
-export const allLeaderNamesAtom = atom((get) => {
+export const leaderScheduleSearchDependenciesAtom = atom((get) => {
   const epoch = get(epochAtom);
   const peers = get(peersAtom);
+  const peersCount = get(peersCountAtom);
 
-  if (!epoch || !peers) return;
+  if (!epoch || peersCount === 0) return;
+  return {
+    epoch,
+    peers,
+  };
+});
+
+export const allLeaderNamesClientIdsAtom = atom((get) => {
+  const dependencies = get(leaderScheduleSearchDependenciesAtom);
+  if (!dependencies) return;
+
+  const { epoch, peers } = dependencies;
 
   const uniquePubkeys = new Set(
     epoch.leader_slots.map((i) => epoch.staked_pubkeys[i]),
   );
-  const leadersWithNames = [...uniquePubkeys].map((pubkey) => ({
+  return [...uniquePubkeys].map((pubkey) => ({
     pubkey: pubkey,
     name: peers[pubkey]?.info?.name?.toLowerCase(),
+    clientId: peers[pubkey]?.gossip?.client_id,
   }));
-
-  return leadersWithNames;
 });
 
 type SupermajorityEpochByPubkey = Map<
