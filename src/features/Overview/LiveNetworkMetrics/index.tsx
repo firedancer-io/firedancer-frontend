@@ -107,7 +107,9 @@ function NetworkMetricsCard({
               const protocol = networkProtocols[i];
               if (
                 isFrankendancer &&
-                (protocol === "gossip" || protocol === "repair")
+                (protocol === "gossip" ||
+                  protocol === "repair" ||
+                  protocol === "rserve")
               ) {
                 return;
               }
