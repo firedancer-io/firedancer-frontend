@@ -8,6 +8,7 @@ import { useAtomValue } from "jotai";
 import { liveProgramCacheAtom } from "../../../api/atoms";
 import { bytesUnits, formatBytes } from "../../../utils";
 import { clamp } from "lodash";
+import styles from "./programCacheCard.module.css";
 
 type ValueWithUnit = {
   value: string;
@@ -64,7 +65,7 @@ export default function StorageStat() {
   }, [liveProgramCache]);
 
   return (
-    <Flex direction="column">
+    <Flex direction="column" className={styles.storageStatContainer}>
       <Flex
         className={cardStatStyles.container}
         direction="column"

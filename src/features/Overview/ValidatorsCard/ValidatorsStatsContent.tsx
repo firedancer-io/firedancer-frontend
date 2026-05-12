@@ -21,7 +21,7 @@ export default function ValidatorsStatsContent() {
 
   return (
     <Flex gap="2" flexGrow="1">
-      <Flex direction="column" gap="2">
+      <Flex direction="column" gap="2" minWidth="0">
         <div className={styles.statRow}>
           <CardStat
             label="Total Validators"

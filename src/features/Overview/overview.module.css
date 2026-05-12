@@ -1,5 +1,5 @@
 .cards {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(300px, 1fr);
 }
 
 .txns-card {
@@ -22,7 +22,7 @@
   }
 }
 
-@media (min-width: 1500px) {
+@media (min-width: 1512px) {
   .cards {
     grid-template-columns: 1fr 1fr 1fr;
   }
