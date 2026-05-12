@@ -112,10 +112,10 @@ function YourNextLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
       direction="column"
       className={clsx(styles.slotGroup, styles.future, styles.you)}
     >
-      <Flex justify="between">
+      <Flex justify="between" gap="2px">
         <SlotIconName slot={firstSlot} />
 
-        <Flex gap="3px">
+        <Flex gap="3px" flexShrink="0">
           <Text className={styles.slotName}>{nextSlotText}</Text>
           <SlotStatuses firstSlot={firstSlot} />
         </Flex>

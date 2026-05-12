@@ -19,6 +19,7 @@ import CopyButton from "../../../components/CopyButton";
 import MonoText from "../../../components/MonoText";
 import clsx from "clsx";
 import { isFrankendancer } from "../../../client";
+import ConditionalTooltip from "../../../components/ConditionalTooltip";
 
 const gap = "5px";
 
@@ -35,7 +36,7 @@ export default function SlotDetailsHeader() {
     return isLgScreen
       ? "minmax(300px, max-content) minmax(228px, max-content) minmax(200px, max-content) minmax(150px, max-content) minmax(160px, max-content)"
       : isNarrowScreen
-        ? "2"
+        ? "minmax(0px, max-content) 1fr"
         : "1";
   }, [isLgScreen, isNarrowScreen]);
 
@@ -47,7 +48,7 @@ export default function SlotDetailsHeader() {
       align={isLgScreen ? "center" : "start"}
       justify="between"
       columns={columns}
-      gapX="12px"
+      gapX={isLgScreen ? "12px" : "30px"}
       gapY={gap}
     >
       <IconNameKey slot={slot} isLgScreen={isLgScreen} />
@@ -160,7 +161,11 @@ function IconNameKey({ slot, isLgScreen }: IconNameKeyProps) {
         <PeerIcon url={peer?.info?.icon_url} size={42} isYou={isLeader} />
 
         <Flex direction="column" gapY="1px" minWidth="0">
-          <Text className={clsx(styles.name, styles.lg)}>{name}</Text>
+          <ConditionalTooltip content={name}>
+            <Text truncate className={clsx(styles.name, styles.lg)}>
+              {name}
+            </Text>
+          </ConditionalTooltip>
           <Pubkey slot={slot} pubkey={pubkey} />
         </Flex>
       </Flex>
@@ -171,7 +176,11 @@ function IconNameKey({ slot, isLgScreen }: IconNameKeyProps) {
     <Flex direction="column">
       <Flex gapX={gap} align="center">
         <PeerIcon url={peer?.info?.icon_url} size={15} isYou={isLeader} />
-        <Text className={styles.name}>{name}</Text>
+        <ConditionalTooltip content={name}>
+          <Text truncate className={styles.name}>
+            {name}
+          </Text>
+        </ConditionalTooltip>
       </Flex>
 
       <Pubkey slot={slot} pubkey={pubkey} />
