@@ -5,5 +5,6 @@ export const networkProtocols = [
   "gossip",
   "tpu",
   "repair",
+  "rserve",
   "metrics",
 ] as const;
