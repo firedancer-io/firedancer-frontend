@@ -47,7 +47,7 @@ export default function HealthPane() {
     [styles.narrow]: isNarrow,
   });
 
-  if (isStacked) {
+  if (isStacked && healthData.length > 1) {
     return (
       <PopoverDropdown
         className={styles.popover}
@@ -182,34 +182,60 @@ function useBundleHealthData(): HealthData | null {
   }, [blockEngine]);
 }
 
+const noUpdateEmaOptions = {
+  // no updates
+  forceUpdateIntervalMs: undefined,
+};
 /**
  * 2.5 blocks/s
  * Ema threshold = 2.5 × 0.5^(5000 / half life).
  * Ema after 5 seconds of no blocks at 1_000ms half life = 0.09
  * choose threshold between 0.09 and 2.5
  */
-const turbineSlotEmaOptions = {
-  forceUpdateIntervalMs: 1_000,
-  initMinSamples: 2,
-  halfLifeMs: 1_000,
-};
+const turbineSlotEmaOptions = isFrankendancer
+  ? noUpdateEmaOptions
+  : {
+      forceUpdateIntervalMs: 1_000,
+      initMinSamples: 2,
+      halfLifeMs: 1_000,
+    };
 const turbineEmaThreshold = 0.5;
 
+const turbineNetworkEmaOptions = isFrankendancer
+  ? noUpdateEmaOptions
+  : {
+      halfLifeMs: 1_000,
+    };
+
 /**
- * Turbine health data, with checks dependent on client
+ * Turbine health for Firedancer
  */
 function useTurbineHealthData(): HealthData | null {
   const turbineSlot = useAtomValue(turbineSlotAtom);
   const isTurbineSlotMissing = turbineSlot == null;
 
-  const { ema: turbineSlotRate } = useEma(turbineSlot, turbineSlotEmaOptions);
+  const { ema: turbineSlotRate } = useEma(
+    isFrankendancer ? null : turbineSlot,
+    turbineSlotEmaOptions,
+  );
   const isTurbineSlotAlerting =
     isTurbineSlotMissing ||
     (turbineSlotRate != null && turbineSlotRate < turbineEmaThreshold);
 
-  const isNetworkAlerting = useIsTurbineNetworkMetricsAlerting();
+  // network metrics alert if turbine rate < repair rate
+  const liveNetworkMetrics = useAtomValue(liveNetworkMetricsAtom);
+  const turbineRate = useEmaValue(
+    isFrankendancer ? null : liveNetworkMetrics?.ingress[turbineIdx],
+    turbineNetworkEmaOptions,
+  );
+  const repairRate = useEmaValue(
+    isFrankendancer ? null : liveNetworkMetrics?.ingress[repairIdx],
+    turbineNetworkEmaOptions,
+  );
+  const isNetworkAlerting = turbineRate < repairRate;
 
-  const isAlerting = isTurbineSlotAlerting && !!isNetworkAlerting;
+  // overall alert
+  const isAlerting = isTurbineSlotAlerting && isNetworkAlerting;
 
   return useMemo(() => {
     if (isFrankendancer) return null;
@@ -230,35 +256,10 @@ function useTurbineHealthData(): HealthData | null {
 const turbineIdx = networkProtocols.indexOf("turbine");
 const repairIdx = networkProtocols.indexOf("repair");
 
-const emaOptions = isFrankendancer
-  ? {
-      // no updates
-      forceUpdateIntervalMs: undefined,
-    }
-  : {
-      halfLifeMs: 1_000,
-    };
-
-/**
- * For non-Frankendancer, alert if turbine rate < replay rate
- */
-function useIsTurbineNetworkMetricsAlerting() {
-  // network metrics check for non-Frankendancer
-  const liveNetworkMetrics = useAtomValue(liveNetworkMetricsAtom);
-  const turbineRate = useEmaValue(
-    isFrankendancer ? null : liveNetworkMetrics?.ingress[turbineIdx],
-    emaOptions,
-  );
-  const repairRate = useEmaValue(
-    isFrankendancer ? null : liveNetworkMetrics?.ingress[repairIdx],
-    emaOptions,
-  );
-
-  if (isFrankendancer) return;
-  return turbineRate < repairRate;
-}
-
 const REPLAY_ALERT_THRESHOLD_SLOTS = 12;
+/**
+ * Replay health for Firedancer
+ */
 function useReplayHealthData(): HealthData | null {
   const turbineSlot = useAtomValue(turbineSlotAtom);
   const processedSlot = useAtomValue(completedSlotAtom);
