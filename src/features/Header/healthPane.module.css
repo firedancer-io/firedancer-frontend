@@ -34,7 +34,6 @@
     cursor: pointer;
 
     &.stacked {
-      max-height: 6px;
       width: 100%;
     }
 
