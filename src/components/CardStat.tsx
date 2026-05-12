@@ -40,7 +40,7 @@ export default function CardStat({
       style={{ "--value-color": valueColor } as CSSProperties}
     >
       <Text className={styles.label}>{label}</Text>
-      <Flex align="baseline" gap="1">
+      <Flex align="baseline" gap="1" className={styles.valueContainer}>
         {typeof value === "number" && animateInteger ? (
           <AnimatedInteger value={value} className={valueClassName} />
         ) : (
