@@ -198,7 +198,7 @@ const turbineEmaThreshold = 0.5;
 /**
  * Turbine health data, with checks dependent on client
  */
-function useTurbineHealthData(): HealthData {
+function useTurbineHealthData(): HealthData | null {
   const turbineSlot = useAtomValue(turbineSlotAtom);
   const isTurbineSlotMissing = turbineSlot == null;
 
@@ -212,6 +212,8 @@ function useTurbineHealthData(): HealthData {
   const isAlerting = isTurbineSlotAlerting && !!isNetworkAlerting;
 
   return useMemo(() => {
+    if (isFrankendancer) return null;
+
     return {
       title: "Turbine Health",
       Icon: CycloneIcon,
@@ -257,11 +259,13 @@ function useIsTurbineNetworkMetricsAlerting() {
 }
 
 const REPLAY_ALERT_THRESHOLD_SLOTS = 12;
-function useReplayHealthData(): HealthData {
+function useReplayHealthData(): HealthData | null {
   const turbineSlot = useAtomValue(turbineSlotAtom);
   const processedSlot = useAtomValue(completedSlotAtom);
 
   return useMemo(() => {
+    if (isFrankendancer) return null;
+
     const isAlerting =
       turbineSlot == null ||
       processedSlot == null ||
