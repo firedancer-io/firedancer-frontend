@@ -94,6 +94,7 @@ export const snapshotAreaChartGridLineColor = "#ffffff1a";
 
 export const supermajorityTableBorderColor = "rgba(250, 250, 250, 0.12)";
 export const supermajorityPieChartTextColor = "#cac4c4";
+export const supermajorityPieChartUnfilledColor = "#231f1f";
 export const supermajorityTableOfflinePrimaryColor = "var(--gray-11)";
 export const supermajorityTableOfflineSecondaryColor = "var(--gray-10)";
 export const supermajorityTableOnlinePrimaryColor = "var(--gray-9)";
