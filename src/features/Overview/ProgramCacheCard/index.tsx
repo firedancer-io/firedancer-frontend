@@ -10,8 +10,10 @@ import { useMemo } from "react";
 import HitRateStat from "./HitRateStat";
 import StorageStat from "./StorageStat";
 import { programCacheColor } from "../../../colors";
+import { isFrankendancer } from "../../../client";
 
 export default function ProgramCacheCard() {
+  if (isFrankendancer) return;
   return (
     <Card>
       <Flex direction="column" height="100%" gap="2" align="start">
