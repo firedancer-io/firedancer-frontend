@@ -1,0 +1,12 @@
+.container {
+  font-size: 10px;
+  color: var(--gray-8);
+}
+
+.added {
+  color: #436c48;
+}
+
+.removed {
+  color: #925959;
+}
