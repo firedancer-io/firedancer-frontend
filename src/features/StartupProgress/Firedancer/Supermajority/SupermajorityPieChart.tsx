@@ -35,12 +35,17 @@ export default function SupermajorityPieChart() {
       align="center"
       justify="center"
       className={styles.pieChart}
-      style={
-        {
-          "--progress-pct": `${Math.round(clamp(stakeFraction, 0, 1) * 100)}%`,
-        } as CSSProperties
-      }
     >
+      <div className={styles.shimmer} />
+      <div
+        className={styles.overlay}
+        style={
+          {
+            "--progress-pct": `${Math.round(stakeFraction * 100)}%`,
+          } as CSSProperties
+        }
+      />
+
       <Flex
         direction="column"
         position="absolute"
