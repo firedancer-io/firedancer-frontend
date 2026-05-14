@@ -17,7 +17,6 @@ import {
   slotNavWidth,
   slotNavWithoutListWidth,
 } from "../../consts";
-import { StatusIndicator } from "./Status";
 import AutoSizer from "react-virtualized-auto-sizer";
 import NavFilterToggles from "./NavFilterToggles";
 import EpochSlider from "./EpochSlider";
@@ -88,7 +87,6 @@ export default function Navigation() {
               </div>
             )}
 
-            <StatusIndicator />
             <EpochSlider />
           </Flex>
 
