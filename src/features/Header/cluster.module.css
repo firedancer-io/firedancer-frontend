@@ -21,11 +21,4 @@
     font-weight: 700;
     margin-bottom: -3px;
   }
-
-  .ws-status-icon {
-    height: 12px;
-    width: 12px;
-    margin: -1px -2px 0 -2px;
-    user-select: none;
-  }
 }
