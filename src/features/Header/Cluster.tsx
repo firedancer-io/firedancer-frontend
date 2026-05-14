@@ -7,11 +7,6 @@ import {
 } from "../../api/atoms";
 import { Text, Tooltip, Flex } from "@radix-ui/themes";
 import styles from "./cluster.module.css";
-import connectedIcon from "../../assets/power.svg";
-import reconnectingIcon from "../../assets/power_off_orange.svg";
-import disconnectedIcon from "../../assets/power_off_red.svg";
-import { socketStateAtom } from "../../api/ws/atoms";
-import { SocketState } from "../../api/ws/types";
 import { ScheduleStrategyEnum } from "../../api/entities";
 import { ScheduleStrategyIcon } from "../../components/ScheduleStrategyIcon";
 import { clusterIndicatorHeight, slotsListWidth } from "../../consts";
@@ -24,16 +19,8 @@ export function Cluster() {
   const cluster = useAtomValue(clusterAtom);
   const version = useAtomValue(versionAtom);
   const commitHash = useAtomValue(commitHashAtom);
-  const socketState = useAtomValue(socketStateAtom);
 
   if (!cluster && !version) return null;
-
-  let icon = disconnectedIcon;
-  if (socketState === SocketState.Connected) {
-    icon = connectedIcon;
-  } else if (socketState === SocketState.Connecting) {
-    icon = reconnectingIcon;
-  }
 
   let clusterText: string | undefined = cluster;
   if (cluster === "mainnet-beta") {
@@ -65,12 +52,6 @@ export function Cluster() {
           <Text>v{version}</Text>
         </Tooltip>
       </Flex>
-
-      <Tooltip
-        content={`GUI is currently ${socketState} ${socketState === SocketState.Disconnected ? "from" : "to"} the validator`}
-      >
-        <img src={icon} className={styles.wsStatusIcon} alt="ws status" />
-      </Tooltip>
 
       <StrategyIcon />
     </Flex>
