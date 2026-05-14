@@ -177,8 +177,6 @@ function EpochSlider() {
         orientation="vertical"
         className={styles.sliderRoot}
         style={{
-          // handle last slot of epoch, placed 100% from bottom
-          marginTop: `${slotHeight}px`,
           zIndex: maxZIndex,
         }}
         value={value}
