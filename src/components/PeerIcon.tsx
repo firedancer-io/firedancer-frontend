@@ -28,7 +28,14 @@ export default function PeerIcon({
   const [hasError, setHasError] = useState(globalHasError);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const iconStyles = { width: `${size}px`, height: `${size}px` };
+  const sizePx = `${size}px`;
+
+  const iconStyles = {
+    width: sizePx,
+    height: sizePx,
+    minWidth: sizePx,
+    minHeight: sizePx,
+  };
 
   if (!url || hasError) {
     if (hideFallback) {
