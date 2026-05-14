@@ -90,6 +90,7 @@ import {
   optimisticallyConfirmedSlotAtom,
   liveProgramCacheAtom,
   slotCaughtUpAtom,
+  healthAtom,
 } from "./atoms";
 import {
   estimatedTpsDebounceMs,
@@ -450,6 +451,8 @@ function useUpdateAtoms() {
 
   const setLiveProgramCache = useSetAtom(liveProgramCacheAtom);
 
+  const setHealth = useSetAtom(healthAtom);
+
   const peersBuffer = useRef(new Map<string, Peer>());
   const removePeersBuffer = useRef(new Map<string, PeerRemove>());
 
@@ -670,6 +673,9 @@ function useUpdateAtoms() {
             case "live_program_cache":
               setLiveProgramCache(value);
               break;
+            case "health":
+              setHealth(value);
+              break;
             case "estimated_slot":
             case "ping":
             case "vote_key":
@@ -796,6 +802,7 @@ function useUpdateAtoms() {
       setEpoch,
       setGossipPeersCells,
       setGossipPeersRows,
+      setHealth,
       setIdentityBalance,
       setIdentityKey,
       setLateVoteHistory,
