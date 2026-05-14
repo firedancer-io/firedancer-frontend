@@ -46,9 +46,9 @@ export default function IdentityKey() {
         )}
         {isNarrowScreen && (
           <>
-            <StartupTime />
             <Commission />
             <IdentityBalance showTooltip />
+            <StartupTime />
           </>
         )}
       </div>
@@ -92,11 +92,11 @@ function DropdownMenu() {
       </Flex>
       <StakeValue />
       <StakePct />
-      <StartupTime />
       <Commission />
       <IdentityBalance />
       <VotePubkey />
       <VoteBalance />
+      <StartupTime />
     </Flex>
   );
 }
