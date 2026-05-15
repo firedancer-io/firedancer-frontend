@@ -9,6 +9,7 @@ import {
   supermajoritySchema,
 } from "../entities";
 import type { GossipHealthEma } from "../atoms";
+import type { LiveShredsData } from "./cache/shreds/types";
 
 export const WsMessageSchema = z.discriminatedUnion("topic", [
   summarySchema,
@@ -59,6 +60,10 @@ export type FromWorkerMessage =
   | {
       type: "emaHistoryObject";
       items: EmaObjectItem<Record<string, number>, string>[];
+    }
+  | {
+      type: "liveShredsObject";
+      items: LiveShredsItem[];
     };
 
 export interface EmaItem {
@@ -107,4 +112,22 @@ export function isEmaObjectKey<K extends keyof EmaHistoryObjectRegistry>(
   key: K,
 ): item is EmaObjectItem<EmaHistoryObjectRegistry[K], K> {
   return item.key === key;
+}
+
+export interface ValidatorState {
+  serverTimeNanos: number | undefined;
+  isStartup: boolean | undefined;
+}
+
+export const defaultValidatorState: ValidatorState = {
+  serverTimeNanos: undefined,
+  isStartup: undefined,
+};
+
+// only one entry for live shreds
+export const liveShredsKey = "liveShreds";
+export type LiveShredsKey = typeof liveShredsKey;
+export interface LiveShredsItem {
+  key: LiveShredsKey;
+  data: LiveShredsData;
 }

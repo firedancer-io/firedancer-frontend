@@ -5,3 +5,5 @@ export const gossipHealthHistoryBufferMs = 5_000;
 export const overviewPublishIntervalMs = 500;
 export const overviewRenderWindowMs = 60_000;
 export const overviewHistoryBufferMs = 5_000;
+
+export const shredsPublishIntervalMs = 50;
