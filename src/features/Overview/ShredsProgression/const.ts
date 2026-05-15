@@ -10,9 +10,6 @@ import {
   shredSkippedColor,
 } from "../../../colors";
 
-export const xRangeMs = 10_000;
-export const delayMs = 50;
-
 /**
  * Draw highest to lowest priority events.
  * Ignore lower priority events that overlap.

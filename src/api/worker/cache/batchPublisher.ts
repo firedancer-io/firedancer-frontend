@@ -22,6 +22,7 @@ interface BatchPublisherConfig<
   /** Sends the collected batch of messages to the main thread. */
   post: (items: TMessage[]) => void;
   onReset?: (entry: TEntry) => void;
+  onStop?: (entry: TEntry) => void;
 }
 
 export function createBatchPublisher<
@@ -45,6 +46,24 @@ export function createBatchPublisher<
     return e.lastPublishMs + e.publishIntervalMs;
   }
 
+  function collectAndPost(entries: Iterable<TEntry>, isForced: boolean) {
+    const nowMs = performance.now();
+    const batch: TMessage[] = [];
+    for (const e of entries) {
+      if (!isForced && (!e.subscribed || nowMs < nextDueAt(e))) {
+        continue;
+      }
+      const item = config.collect(e, nowMs);
+      if (item !== undefined) {
+        batch.push(item);
+      }
+      e.lastPublishMs = nowMs;
+    }
+    if (batch.length) {
+      config.post(batch);
+    }
+  }
+
   function schedule() {
     if (timer) return;
 
@@ -61,23 +80,7 @@ export function createBatchPublisher<
     timer = setTimeout(
       () => {
         timer = undefined;
-        const nowMs = performance.now();
-        const batch: TMessage[] = [];
-
-        for (const e of entries.values()) {
-          if (!e.subscribed) continue;
-          if (nowMs < nextDueAt(e)) continue;
-
-          const item = config.collect(e, nowMs);
-          if (item !== undefined) {
-            batch.push(item);
-          }
-          e.lastPublishMs = nowMs;
-        }
-
-        if (batch.length) {
-          config.post(batch);
-        }
+        collectAndPost(entries.values(), false);
         schedule();
       },
       Math.max(0, nextDue),
@@ -114,6 +117,12 @@ export function createBatchPublisher<
       return entries.get(key);
     },
 
+    publishNow: (key: TEntry["key"]) => {
+      const e = entries.get(key);
+      if (!e) return;
+      collectAndPost([e], true);
+    },
+
     reset: (key?: TEntry["key"]) => {
       const toReset = key
         ? [entries.get(key)].filter(isDefined)
@@ -133,6 +142,7 @@ export function createBatchPublisher<
 
       for (const e of entries.values()) {
         e.subscribed = false;
+        config.onStop?.(e);
       }
     },
   };

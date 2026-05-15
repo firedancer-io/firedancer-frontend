@@ -1,15 +1,11 @@
 import type uPlot from "uplot";
 import { getDefaultStore } from "jotai";
 import {
-  shredsAtoms,
-  type ShredEventTsDeltas,
-  type SlotsShreds,
+  liveShredsDataAtom,
+  liveShredsPostStartupLeaderSlotsAtom,
+  liveShredsPostStartupRangeAtom,
 } from "./atoms";
-import {
-  delayMs,
-  rowShredEventDescPriorities,
-  shredEventDescPriorities,
-} from "./const";
+import { rowShredEventDescPriorities, shredEventDescPriorities } from "./const";
 import { showStartupProgressAtom } from "../../StartupProgress/atoms";
 import {
   gridLineColor,
@@ -27,6 +23,11 @@ import { clamp, sum } from "lodash";
 import { ShredEvent } from "../../../api/entities";
 import { getSlotGroupLabelId, getSlotLabelId } from "./utils";
 import { slotsPerLeader } from "../../../consts";
+import { delayMs } from "../../../api/worker/cache/shreds/shredsCalc";
+import type {
+  SlotsShreds,
+  ShredEventTsDeltas,
+} from "../../../api/worker/cache/shreds/types";
 
 const store = getDefaultStore();
 export const shredsXScaleKey = "shredsXScaleKey";
@@ -96,13 +97,13 @@ export function shredsProgressionPlugin(
             drawStartupChartAxes(u);
           }
 
-          const atoms = shredsAtoms;
-
-          const liveShreds = store.get(atoms.slotsShreds);
-          const slotRange = store.get(atoms.range);
-          const minCompletedSlot = store.get(atoms.minCompletedSlot);
+          const {
+            slotsShreds: liveShreds,
+            range: slotRange,
+            minCompletedSlot,
+          } = store.get(liveShredsDataAtom) ?? {};
           const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
-          const rangeAfterStartup = store.get(atoms.rangeAfterStartup);
+          const rangeAfterStartup = store.get(liveShredsPostStartupRangeAtom);
 
           const { min: minXScale, max: maxXScale } = u.scales[shredsXScaleKey];
 
@@ -486,11 +487,13 @@ function updateLabels(
 ) {
   const slotBlocks = getSlotBlocks(slotRange, slots);
   const slotTsDeltas = estimateSlotTsDeltas(slotBlocks, skippedSlotsCluster);
-  const groupLeaderSlots = store.get(shredsAtoms.groupLeaderSlots);
-  const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, groupLeaderSlots);
+  const postStartupLeaderSlots = store.get(
+    liveShredsPostStartupLeaderSlotsAtom,
+  );
+  const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, postStartupLeaderSlots);
 
-  for (let groupIdx = 0; groupIdx < groupLeaderSlots.length; groupIdx++) {
-    const leaderSlot = groupLeaderSlots[groupIdx];
+  for (let groupIdx = 0; groupIdx < postStartupLeaderSlots.length; groupIdx++) {
+    const leaderSlot = postStartupLeaderSlots[groupIdx];
     const leaderElId = getSlotGroupLabelId(leaderSlot);
     const leaderEl = document.getElementById(leaderElId);
     if (!leaderEl) continue;
