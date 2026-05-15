@@ -28,17 +28,16 @@
   aspect-ratio: 1/1;
 }
 
+@keyframes shimmer {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .pie-chart {
   aspect-ratio: 1/1;
   container-type: size;
-  transition: --progress-pct 0.2s linear;
-  --progress-pct: 0%;
-  background:
-    conic-gradient(
-      transparent 0 var(--progress-pct),
-      #231f1f var(--progress-pct) 100%
-    ),
-    conic-gradient(#4d4d4d 0, #8b2e11 80%, #231f1f 80% 100%);
+  background: conic-gradient(#4d4d4d 0, #8b2e11 80%);
   border-radius: 50%;
 
   .threshold-marker {
@@ -53,6 +52,35 @@
       height: 5%;
       aspect-ratio: 1/1;
     }
+  }
+
+  /* rotating shimmer on the pie chart */
+  .shimmer {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+      transparent 145deg,
+      rgba(255, 255, 255, 0.05) 158deg,
+      rgba(255, 255, 255, 0.18) 180deg,
+      rgba(255, 255, 255, 0.05) 202deg,
+      transparent 215deg
+    );
+    will-change: transform;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* covers the pie chart and shimmer to only show up to progress pct */
+  .overlay {
+    --progress-pct: 0%;
+    transition: --progress-pct 0.2s linear;
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+      transparent 0 var(--progress-pct),
+      var(--supermajority-pie-chart-unfilled-color) var(--progress-pct) 100%
+    );
   }
 
   .pie-chart-content {
