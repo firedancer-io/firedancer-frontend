@@ -47,7 +47,7 @@ function flush() {
 
 function connect(url: string, zstd: ZstdDec | undefined) {
   logDebug("WS", `Connecting to API WebSocket ${url.toString()}`);
-  ctx.postMessage({ type: "connecting" });
+  handler.onConnectionChange({ type: "connecting" });
   ws = new WebSocket(url, zstd ? ["compress-zstd"] : undefined);
   ws.binaryType = "arraybuffer";
 
@@ -55,7 +55,7 @@ function connect(url: string, zstd: ZstdDec | undefined) {
     if (this !== ws) return;
 
     logDebug("WS", "Connected to API WebSocket");
-    ctx.postMessage({ type: "connected" });
+    handler.onConnectionChange({ type: "connected" });
   };
 
   ws.onclose = function onclose() {
@@ -65,7 +65,7 @@ function connect(url: string, zstd: ZstdDec | undefined) {
       "WS",
       `Disconnected API WebSocket, reconnecting in ${reconnectDelayMs}ms`,
     );
-    ctx.postMessage({ type: "disconnected" });
+    handler.onConnectionChange({ type: "disconnected" });
 
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(() => connect(url, zstd), reconnectDelayMs);

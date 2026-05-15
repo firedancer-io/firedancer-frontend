@@ -1,9 +1,9 @@
 import type uPlot from "uplot";
 import { getDefaultStore } from "jotai";
 import {
-  shredsAtoms,
-  type ShredEventTsDeltas,
-  type SlotsShreds,
+  liveShredsDataAtom,
+  liveShredsPostStartupLeaderSlotsAtom,
+  liveShredsPostStartupRangeAtom,
 } from "./atoms";
 import {
   delayMs,
@@ -27,6 +27,7 @@ import { clamp, sum } from "lodash";
 import { ShredEvent } from "../../../api/entities";
 import { getSlotGroupLabelId, getSlotLabelId } from "./utils";
 import { slotsPerLeader } from "../../../consts";
+import type { SlotsShreds, ShredEventTsDeltas } from "./types";
 
 const store = getDefaultStore();
 export const shredsXScaleKey = "shredsXScaleKey";
@@ -72,13 +73,13 @@ export function shredsProgressionPlugin(
             u.ctx.restore();
           }
 
-          const atoms = shredsAtoms;
-
-          const liveShreds = store.get(atoms.slotsShreds);
-          const slotRange = store.get(atoms.range);
-          const minCompletedSlot = store.get(atoms.minCompletedSlot);
+          const {
+            slotsShreds: liveShreds,
+            range: slotRange,
+            minCompletedSlot,
+          } = store.get(liveShredsDataAtom) ?? {};
           const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
-          const rangeAfterStartup = store.get(atoms.rangeAfterStartup);
+          const rangeAfterStartup = store.get(liveShredsPostStartupRangeAtom);
 
           // Use server time for chart axis
           // Use a rolling avg of the server time and client now diff.
@@ -464,15 +465,17 @@ function updateLabels(
 ) {
   const slotBlocks = getSlotBlocks(slotRange, slots);
   const slotTsDeltas = estimateSlotTsDeltas(slotBlocks, skippedSlotsCluster);
-  const groupLeaderSlots = store.get(shredsAtoms.groupLeaderSlots);
-  const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, groupLeaderSlots);
+  const postStartupLeaderSlots = store.get(
+    liveShredsPostStartupLeaderSlotsAtom,
+  );
+  const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, postStartupLeaderSlots);
 
   const xValToCssPos = (xVal: number) =>
     u.valToPos(xVal, shredsXScaleKey, false);
   const maxXPos = xValToCssPos(maxX);
 
-  for (let groupIdx = 0; groupIdx < groupLeaderSlots.length; groupIdx++) {
-    const leaderSlot = groupLeaderSlots[groupIdx];
+  for (let groupIdx = 0; groupIdx < postStartupLeaderSlots.length; groupIdx++) {
+    const leaderSlot = postStartupLeaderSlots[groupIdx];
     const leaderElId = getSlotGroupLabelId(leaderSlot);
     const leaderEl = document.getElementById(leaderElId);
     if (!leaderEl) continue;

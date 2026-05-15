@@ -22,6 +22,7 @@ interface BatchPublisherConfig<
   /** Sends the collected batch of messages to the main thread. */
   post: (items: TMessage[]) => void;
   onReset?: (entry: TEntry) => void;
+  onStop?: (entry: TEntry) => void;
 }
 
 export function createBatchPublisher<
@@ -133,6 +134,7 @@ export function createBatchPublisher<
 
       for (const e of entries.values()) {
         e.subscribed = false;
+        config.onStop?.(e);
       }
     },
   };

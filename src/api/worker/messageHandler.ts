@@ -15,14 +15,18 @@ import {
   overviewPublishIntervalMs,
   overviewRenderWindowMs,
   overviewHistoryBufferMs,
+  shredsPublishIntervalMs,
 } from "./cache/consts";
 import { gossipHealthEmaFields } from "../atoms";
 import type {
   EmaHistoryArrayKey,
   FromWorkerMessage,
   HistoryArrayKey,
+  ValidatorStateCache,
   WsEntity,
 } from "./types";
+import { createLiveShredsCache } from "./cache/shredsCache";
+import type { PublisherOptions } from "./cache/batchPublisher";
 
 const gossipHealthEmaOptions: EmaHistoryObjectCacheOptions = {
   halfLifeMs: 5_000,
@@ -44,6 +48,10 @@ const networkMetricsEmaOptions: EmaCalcOptions & HistoryArrayOptions = {
 const tileTimerOptions: HistoryArrayOptions = {
   publishIntervalMs: overviewPublishIntervalMs,
   historyWindowMs: overviewRenderWindowMs + overviewHistoryBufferMs,
+};
+
+const liveShredsOptions: PublisherOptions = {
+  publishIntervalMs: shredsPublishIntervalMs,
 };
 
 function isEntry<
@@ -68,9 +76,34 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
     post({ type: "historyArray", items }),
   );
 
+  const validatorStateCache: ValidatorStateCache = {};
+
+  const liveShredsCache = createLiveShredsCache(
+    (items) => post({ type: "liveShredsObject", items }),
+    validatorStateCache,
+  );
+
   return {
+    onConnectionChange(msg: {
+      type: "connected" | "connecting" | "disconnected";
+    }): void {
+      if (msg.type !== "connected") {
+        liveShredsCache.reset();
+      }
+      post(msg);
+    },
     onMessage(item: WsEntity): void {
       const nowMs = performance.now();
+
+      if (isEntry(item, "summary", "server_time_nanos")) {
+        validatorStateCache.serverTimeNanos = item.value;
+      }
+      if (
+        isEntry(item, "summary", "startup_progress") ||
+        isEntry(item, "summary", "boot_progress")
+      ) {
+        validatorStateCache.isStartup = item.value.phase !== "running";
+      }
 
       if (isEntry(item, "gossip", "network_stats")) {
         emaObjectCache.subscribe("gossipHealth", gossipHealthEmaOptions);
@@ -87,6 +120,11 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
       if (isEntry(item, "summary", "live_tile_timers")) {
         historyArrayCache.subscribe("tileTimers", tileTimerOptions);
         historyArrayCache.update("tileTimers", item.value);
+      }
+
+      if (isEntry(item, "slot", "live_shreds")) {
+        liveShredsCache.subscribe("liveShreds", liveShredsOptions);
+        liveShredsCache.add("liveShreds", item.value);
       }
     },
   };

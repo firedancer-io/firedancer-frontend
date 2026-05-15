@@ -7,6 +7,7 @@ import type {
   FromWorkerMessage,
   HistoryArrayKey,
   KeyedValuesWithHistory,
+  LiveShredsItem,
   WsEntity,
 } from "./worker/types";
 import { isEmaObjectKey } from "./worker/types";
@@ -34,7 +35,7 @@ import {
   supermajorityEpochAtom,
   updateSupermajorityOnlinePeersAtom,
 } from "../atoms";
-import { shredsAtoms } from "../features/Overview/ShredsProgression/atoms";
+import { liveShredsDataAtom } from "../features/Overview/ShredsProgression/atoms";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
 import {
   addTurbineSlotsAtom,
@@ -114,7 +115,6 @@ import type {
   PeerRemove,
 } from "./types";
 import { SocketState } from "./ws/types";
-import { xRangeMs } from "../features/Overview/ShredsProgression/const";
 import { showStartupProgressAtom } from "../features/StartupProgress/atoms";
 import { useServerMessages } from "./ws/utils";
 
@@ -162,6 +162,19 @@ export function useSetAtomWsData() {
     [setTileTimerHistory],
   );
 
+  const setLiveShreds = useSetAtom(liveShredsDataAtom);
+  const updateLiveShredsObject = useCallback(
+    ({ key, data }: LiveShredsItem) => {
+      switch (key) {
+        case "liveShreds":
+          setLiveShreds(data);
+          break;
+        default:
+      }
+    },
+    [setLiveShreds],
+  );
+
   const onMessage = useCallback(
     (msg: FromWorkerMessage) => {
       switch (msg.type) {
@@ -200,6 +213,11 @@ export function useSetAtomWsData() {
             updateEmaHistoryObject(item);
           }
           break;
+        case "liveShredsObject":
+          for (const item of msg.items) {
+            updateLiveShredsObject(item);
+          }
+          break;
       }
     },
     [
@@ -208,6 +226,7 @@ export function useSetAtomWsData() {
       updateEmaHistoryArray,
       updateHistoryArray,
       updateEmaHistoryObject,
+      updateLiveShredsObject,
     ],
   );
 
@@ -421,8 +440,6 @@ function useUpdateAtoms() {
   const setOptimisticallyConfirmedSlot = useSetAtom(
     optimisticallyConfirmedSlotAtom,
   );
-
-  const addLiveShreds = useSetAtom(shredsAtoms.addShredEvents);
 
   const setLiveProgramCache = useSetAtom(liveProgramCacheAtom);
 
@@ -707,7 +724,6 @@ function useUpdateAtoms() {
               break;
             }
             case "live_shreds": {
-              addLiveShreds(value);
               break;
             }
             case "late_votes_history": {
@@ -745,7 +761,6 @@ function useUpdateAtoms() {
       }
     },
     [
-      addLiveShreds,
       addRepairSlot,
       addRepairSlots,
       addSkippedClusterSlots,
@@ -833,16 +848,6 @@ function useUpdateAtoms() {
   }, [clearLateVoteSlots, epoch]);
 
   const isStartup = useAtomValue(showStartupProgressAtom);
-  const isSocketDisconnected =
-    useAtomValue(socketStateAtom) === SocketState.Disconnected;
-
-  const deleteLiveShreds = useSetAtom(shredsAtoms.deleteSlots);
-
-  useEffect(() => {
-    if (isSocketDisconnected) {
-      deleteLiveShreds(isSocketDisconnected, isStartup);
-    }
-  }, [deleteLiveShreds, isSocketDisconnected, isStartup]);
 
   const resetTurbineSlots = useSetAtom(resetTurbineSlotsAtom);
   const resetRepairSlots = useSetAtom(resetRepairSlotsAtom);
@@ -852,13 +857,6 @@ function useUpdateAtoms() {
       resetRepairSlots();
     }
   }, [isStartup, resetRepairSlots, resetTurbineSlots]);
-
-  useInterval(
-    () => {
-      deleteLiveShreds(isSocketDisconnected, isStartup);
-    },
-    isStartup ? 1_000 : xRangeMs / 4,
-  );
 
   return updateAtoms;
 }

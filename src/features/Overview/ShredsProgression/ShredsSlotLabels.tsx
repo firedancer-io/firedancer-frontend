@@ -4,12 +4,12 @@ import { getSlotGroupLabelId, getSlotLabelId } from "./utils";
 import styles from "./shreds.module.css";
 import { useMemo } from "react";
 import { slotsPerLeader } from "../../../consts";
-import { shredsAtoms } from "./atoms";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import clsx from "clsx";
 import PeerIcon from "../../../components/PeerIcon";
 import { skippedClusterSlotsAtom } from "../../../atoms";
 import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
+import { liveShredsPostStartupLeaderSlotsAtom } from "./atoms";
 
 /**
  * Labels for shreds slots.
@@ -18,13 +18,15 @@ import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
  */
 export default function ShredsSlotLabels() {
   const isStartup = useAtomValue(isStartupProgressVisibleAtom);
-  const groupLeaderSlots = useAtomValue(shredsAtoms.groupLeaderSlots);
+  const postStartupLeaderSlots = useAtomValue(
+    liveShredsPostStartupLeaderSlotsAtom,
+  );
 
   if (isStartup) return;
 
   return (
     <Flex flexShrink="0" overflowX="hidden" position="relative" height="15px">
-      {groupLeaderSlots.map((slot) => (
+      {postStartupLeaderSlots.map((slot) => (
         <SlotGroupLabel key={slot} firstSlot={slot} />
       ))}
     </Flex>
