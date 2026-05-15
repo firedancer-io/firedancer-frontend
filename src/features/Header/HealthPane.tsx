@@ -19,16 +19,31 @@ import {
 import PopoverDropdown from "../../components/PopoverDropdown";
 import { useEma, useEmaValue } from "../../hooks/useEma";
 import { networkProtocols } from "../Overview/LiveNetworkMetrics/consts";
-import { isFrankendancer } from "../../client";
+import { isFiredancer, isFrankendancer } from "../../client";
+import { bootProgressPhaseAtom } from "../StartupProgress/atoms";
 
-function getStatusText(isAlerting: boolean) {
-  return isAlerting ? "Unhealthy" : "Healthy";
+enum HealthStatus {
+  Healthy,
+  Unhealthy,
+  Intermediate,
+}
+
+function getDefaultStatusText(status: HealthStatus) {
+  switch (status) {
+    case HealthStatus.Unhealthy:
+      return "Unhealthy";
+    case HealthStatus.Healthy:
+      return "Healthy";
+    case HealthStatus.Intermediate:
+      return "Unknown";
+  }
 }
 
 interface HealthData {
   title: string;
   Icon: FC<SVGProps<SVGSVGElement>>;
-  isAlerting: boolean;
+  status: HealthStatus;
+  statusText: string;
   description: string;
 }
 
@@ -83,22 +98,29 @@ export default function HealthPane() {
 interface HealthPopoverContentProps {
   title: string;
   description: string;
-  isAlerting: boolean;
+  status: HealthStatus;
+  statusText: string;
 }
 function HealthPopoverContent({
   title,
   description,
-  isAlerting,
+  status,
+  statusText,
 }: HealthPopoverContentProps) {
   return (
     <Flex direction="column" gap="4px">
       <Flex gap="5px">
         <Text className={styles.title}>{title}</Text>
-        <Text
-          className={clsx(styles.status, { [styles.alerting]: isAlerting })}
-        >
-          {getStatusText(isAlerting)}
-        </Text>
+        {statusText && (
+          <Text
+            className={clsx(styles.status, {
+              [styles.unhealthy]: status === HealthStatus.Unhealthy,
+              [styles.intermediate]: status === HealthStatus.Intermediate,
+            })}
+          >
+            {statusText}
+          </Text>
+        )}
       </Flex>
       <div className={styles.content}>
         <Text>{description}</Text>
@@ -114,12 +136,14 @@ function HealthBox({
   title,
   description,
   Icon,
-  isAlerting,
+  status,
+  statusText,
   isStacked = false,
 }: HealthBoxProps) {
-  const ariaLabel = `${title}: ${getStatusText(isAlerting)}`;
+  const ariaLabel = `${title}: ${statusText}`;
   const className = clsx(styles.healthBox, {
-    [styles.alerting]: isAlerting,
+    [styles.unhealthy]: status === HealthStatus.Unhealthy,
+    [styles.intermediate]: status === HealthStatus.Intermediate,
   });
 
   if (isStacked) {
@@ -135,7 +159,8 @@ function HealthBox({
         <HealthPopoverContent
           title={title}
           description={description}
-          isAlerting={isAlerting}
+          status={status}
+          statusText={statusText}
         />
       }
     >
@@ -150,21 +175,38 @@ function useVoteHealthData(): HealthData {
   const voteState = useAtomValue(voteStateAtom);
   const voteSlot = useAtomValue(voteSlotAtom);
   const turbineSlot = useAtomValue(turbineSlotAtom);
-
-  const isAlerting = voteState === "delinquent";
+  const isCatchingUpPhase =
+    useAtomValue(bootProgressPhaseAtom) === "catching_up" && isFiredancer;
 
   return useMemo(() => {
+    const status = isCatchingUpPhase
+      ? HealthStatus.Intermediate
+      : voteState === "delinquent"
+        ? HealthStatus.Unhealthy
+        : HealthStatus.Healthy;
+
+    const statusText =
+      status === HealthStatus.Intermediate
+        ? "Catching Up"
+        : getDefaultStatusText(status);
+
+    const description =
+      status === HealthStatus.Intermediate
+        ? "Catching up."
+        : status === HealthStatus.Healthy
+          ? "Our consensus votes are being received by other nodes normally."
+          : voteSlot == null || turbineSlot == null
+            ? "Missing vote slot or turbine slot data."
+            : `We haven't landed a vote since slot ${voteSlot} (${voteSlot - turbineSlot}).`;
+
     return {
       title: "Vote Health",
       Icon: HowToVoteIcon,
-      isAlerting,
-      description: isAlerting
-        ? voteSlot == null || turbineSlot == null
-          ? "Missing vote slot or turbine slot data."
-          : `We haven't landed a vote since slot ${voteSlot} (${voteSlot - turbineSlot}).`
-        : "Our consensus votes are being received by other nodes normally.",
+      status,
+      statusText,
+      description,
     };
-  }, [isAlerting, voteSlot, turbineSlot]);
+  }, [isCatchingUpPhase, voteState, voteSlot, turbineSlot]);
 }
 
 function useBundleHealthData(): HealthData | null {
@@ -173,10 +215,21 @@ function useBundleHealthData(): HealthData | null {
   return useMemo(() => {
     if (!blockEngine) return null;
 
+    const status =
+      blockEngine.status === "connected"
+        ? HealthStatus.Healthy
+        : blockEngine.status === "connecting"
+          ? HealthStatus.Intermediate
+          : HealthStatus.Unhealthy;
+
     return {
       title: "Bundle Health",
       Icon: LayersIcon,
-      isAlerting: blockEngine.status !== "connected",
+      status,
+      statusText:
+        status === HealthStatus.Intermediate
+          ? "Connecting"
+          : getDefaultStatusText(status),
       description: `Currently ${blockEngine.status} ${blockEngine.status === "disconnected" ? "from" : "to"} ${blockEngine.name} - ${blockEngine.url} (${blockEngine.ip})`,
     };
   }, [blockEngine]);
@@ -234,8 +287,15 @@ function useTurbineHealthData(): HealthData | null {
   );
   const isNetworkAlerting = turbineRate < repairRate;
 
-  // overall alert
-  const isAlerting = isTurbineSlotAlerting && isNetworkAlerting;
+  const isWaitingForSupermajorityPhase =
+    useAtomValue(bootProgressPhaseAtom) === "waiting_for_supermajority" &&
+    isFiredancer;
+
+  const status = isWaitingForSupermajorityPhase
+    ? HealthStatus.Intermediate
+    : isTurbineSlotAlerting && isNetworkAlerting
+      ? HealthStatus.Unhealthy
+      : HealthStatus.Healthy;
 
   return useMemo(() => {
     if (isFrankendancer) return null;
@@ -243,14 +303,21 @@ function useTurbineHealthData(): HealthData | null {
     return {
       title: "Turbine Health",
       Icon: CycloneIcon,
-      isAlerting,
-      description: isAlerting
-        ? isTurbineSlotMissing
-          ? "Missing turbine slot data."
-          : "We are receiving little to no block data from other nodes over Turbine."
-        : "Block data is arriving normally over Turbine.",
+      status,
+      statusText:
+        status === HealthStatus.Intermediate
+          ? "Waiting for Supermajority"
+          : getDefaultStatusText(status),
+      description:
+        status === HealthStatus.Intermediate
+          ? "Waiting for supermajority."
+          : status === HealthStatus.Unhealthy
+            ? isTurbineSlotMissing
+              ? "Missing turbine slot data."
+              : "We are receiving little to no block data from other nodes over Turbine."
+            : "Block data is arriving normally over Turbine.",
     };
-  }, [isAlerting, isTurbineSlotMissing]);
+  }, [isTurbineSlotMissing, status]);
 }
 
 const turbineIdx = networkProtocols.indexOf("turbine");
@@ -267,20 +334,24 @@ function useReplayHealthData(): HealthData | null {
   return useMemo(() => {
     if (isFrankendancer) return null;
 
-    const isAlerting =
+    const status =
       turbineSlot == null ||
       processedSlot == null ||
-      turbineSlot - processedSlot > REPLAY_ALERT_THRESHOLD_SLOTS;
+      turbineSlot - processedSlot > REPLAY_ALERT_THRESHOLD_SLOTS
+        ? HealthStatus.Unhealthy
+        : HealthStatus.Healthy;
 
     return {
       title: "Replay Health",
       Icon: ReplayIcon,
-      isAlerting,
-      description: isAlerting
-        ? turbineSlot == null || processedSlot == null
-          ? "Missing turbine slot or processed slot data."
-          : `Replay is ${turbineSlot - processedSlot} behind the rest of the cluster.`
-        : "Replay is keeping up with the cluster.",
+      status,
+      statusText: getDefaultStatusText(status),
+      description:
+        status === HealthStatus.Unhealthy
+          ? turbineSlot == null || processedSlot == null
+            ? "Missing turbine slot or processed slot data."
+            : `Replay is ${turbineSlot - processedSlot} behind the rest of the cluster.`
+          : "Replay is keeping up with the cluster.",
     };
   }, [turbineSlot, processedSlot]);
 }

@@ -20,6 +20,9 @@
     }
   }
   .health-box {
+    box-sizing: border-box;
+    --border-width: 1px;
+    --border-radius: 3px;
     height: 100%;
     padding: 0;
     margin: 0;
@@ -29,8 +32,8 @@
     max-width: 24px;
     min-width: 14px;
     background: var(--green-5);
-    border-radius: 3px;
-    border: 1px solid transparent;
+    border-radius: var(--border-radius);
+    border: var(--border-width) solid transparent;
     cursor: pointer;
 
     &.stacked {
@@ -41,11 +44,53 @@
       fill: var(--green-11);
     }
 
-    &.alerting {
+    &.unhealthy {
       background: var(--red-8);
       border-color: var(--red-11);
       svg {
         fill: var(--red-12);
+      }
+    }
+
+    &.intermediate {
+      position: relative;
+      overflow: hidden;
+      background: transparent;
+      /* 
+       * Remove border, because children overflowing border get clipped.
+       * Add padding to maintain same content size as border (for sizing within parent flex box).
+      */
+      border: 0;
+      padding: var(--border-width);
+
+      /* animated border effect using rotating pseudoelement */
+      &::before {
+        position: absolute;
+        z-index: -2;
+        /* larger than width and height of parent */
+        inset: -50px;
+        content: "";
+        animation: animate-intermediate-border 0.8s linear infinite;
+        background: conic-gradient(
+          from 240deg at 50% 50%,
+          #fcf4ee 0deg,
+          #6d3911 180deg,
+          #fcf4ee 360deg
+        );
+      }
+
+      /* regular background with rounded corners */
+      &::after {
+        z-index: -1;
+        position: absolute;
+        inset: var(--border-width);
+        content: "";
+        border-radius: var(--border-radius);
+        background: #492d17;
+      }
+
+      svg {
+        fill: var(--brown-12);
       }
     }
 
@@ -69,13 +114,26 @@
     font-weight: 600;
     color: var(--green-10);
 
-    &.alerting {
+    &.unhealthy {
       color: var(--red-10);
+    }
+
+    &.intermediate {
+      color: var(--brown-10);
     }
   }
 
   .content {
     font-size: 10px;
     color: var(--gray-9);
+  }
+}
+
+@keyframes animate-intermediate-border {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
