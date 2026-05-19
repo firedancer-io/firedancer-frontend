@@ -242,7 +242,6 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
       toFake: ["Date"],
     });
     const chartRangeMs = xRangeMs + delayMs;
-    const chartRangeNs = chartRangeMs / nsPerMs;
     const date = new Date(chartRangeMs);
     vi.setSystemTime(date);
 
@@ -267,37 +266,37 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
     const events = [
       {
         slot: 0,
-        ts: chartRangeNs - 1_000_000,
+        ts: -nsPerMs,
         e: ShredEvent.shred_repair_request,
       },
       {
         slot: 1,
-        ts: chartRangeNs + 1_000_000,
+        ts: nsPerMs,
         e: ShredEvent.slot_complete,
       },
       {
         slot: 2,
         // this will be deleted even if it has an event in chart range,
         // because a slot number larger than it is marked as completed and before chart min x
-        ts: chartRangeNs + 1_000_000,
+        ts: nsPerMs,
         e: ShredEvent.shred_repair_request,
       },
       {
         // max slot number that is complete before chart min X
         // keep this and delete all slot numbers before it
         slot: 3,
-        ts: chartRangeNs - 1_000_000,
+        ts: -nsPerMs,
         e: ShredEvent.slot_complete,
       },
       {
         slot: 4,
         // threshold of not being deleted
-        ts: chartRangeNs,
+        ts: 0,
         e: ShredEvent.slot_complete,
       },
       {
         slot: 6,
-        ts: chartRangeNs + 2_000_000,
+        ts: 2 * nsPerMs,
         e: ShredEvent.shred_repair_request,
       },
     ];
@@ -416,7 +415,6 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
       toFake: ["Date"],
     });
     const chartRangeMs = xRangeMs + delayMs;
-    const chartRangeNs = chartRangeMs / nsPerMs;
     const date = new Date(chartRangeMs);
     vi.setSystemTime(date);
 
@@ -442,31 +440,31 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
       {
         slot: 0,
         // deleted
-        ts: chartRangeNs - 1_000_000,
+        ts: -nsPerMs,
         e: ShredEvent.shred_repair_request,
       },
       {
         slot: 1,
         // not deleted
-        ts: chartRangeNs + 1_000_000,
+        ts: nsPerMs,
         e: ShredEvent.slot_complete,
       },
       {
         slot: 2,
         // not deleted
-        ts: chartRangeNs + 1_000_000,
+        ts: nsPerMs,
         e: ShredEvent.shred_repair_request,
       },
       {
         // deleted
         slot: 3,
-        ts: chartRangeNs - 1_000_000,
+        ts: -nsPerMs,
         e: ShredEvent.slot_complete,
       },
       {
         slot: 4,
         // threshold of not being deleted
-        ts: chartRangeNs,
+        ts: 0,
         e: ShredEvent.slot_complete,
       },
     ];
