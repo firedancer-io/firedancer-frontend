@@ -8,130 +8,161 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as SlotDetailsRouteImport } from './routes/slotDetails'
-import { Route as LeaderScheduleRouteImport } from './routes/leaderSchedule'
-import { Route as GossipRouteImport } from './routes/gossip'
-import { Route as AboutRouteImport } from './routes/about'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as SlotDetailsRouteImport } from "./routes/slotDetails";
+import { Route as LeaderScheduleRouteImport } from "./routes/leaderSchedule";
+import { Route as GossipRouteImport } from "./routes/gossip";
+import { Route as AccountsRouteImport } from "./routes/accounts";
+import { Route as AboutRouteImport } from "./routes/about";
+import { Route as IndexRouteImport } from "./routes/index";
 
 const SlotDetailsRoute = SlotDetailsRouteImport.update({
-  id: '/slotDetails',
-  path: '/slotDetails',
+  id: "/slotDetails",
+  path: "/slotDetails",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const LeaderScheduleRoute = LeaderScheduleRouteImport.update({
-  id: '/leaderSchedule',
-  path: '/leaderSchedule',
+  id: "/leaderSchedule",
+  path: "/leaderSchedule",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const GossipRoute = GossipRouteImport.update({
-  id: '/gossip',
-  path: '/gossip',
+  id: "/gossip",
+  path: "/gossip",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
+const AccountsRoute = AccountsRouteImport.update({
+  id: "/accounts",
+  path: "/accounts",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
+  id: "/about",
+  path: "/about",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/gossip': typeof GossipRoute
-  '/leaderSchedule': typeof LeaderScheduleRoute
-  '/slotDetails': typeof SlotDetailsRoute
+  "/": typeof IndexRoute;
+  "/about": typeof AboutRoute;
+  "/accounts": typeof AccountsRoute;
+  "/gossip": typeof GossipRoute;
+  "/leaderSchedule": typeof LeaderScheduleRoute;
+  "/slotDetails": typeof SlotDetailsRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/gossip': typeof GossipRoute
-  '/leaderSchedule': typeof LeaderScheduleRoute
-  '/slotDetails': typeof SlotDetailsRoute
+  "/": typeof IndexRoute;
+  "/about": typeof AboutRoute;
+  "/accounts": typeof AccountsRoute;
+  "/gossip": typeof GossipRoute;
+  "/leaderSchedule": typeof LeaderScheduleRoute;
+  "/slotDetails": typeof SlotDetailsRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/gossip': typeof GossipRoute
-  '/leaderSchedule': typeof LeaderScheduleRoute
-  '/slotDetails': typeof SlotDetailsRoute
+  __root__: typeof rootRouteImport;
+  "/": typeof IndexRoute;
+  "/about": typeof AboutRoute;
+  "/accounts": typeof AccountsRoute;
+  "/gossip": typeof GossipRoute;
+  "/leaderSchedule": typeof LeaderScheduleRoute;
+  "/slotDetails": typeof SlotDetailsRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/gossip' | '/leaderSchedule' | '/slotDetails'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/gossip' | '/leaderSchedule' | '/slotDetails'
+  fileRoutesByFullPath: FileRoutesByFullPath;
+  fullPaths:
+    | "/"
+    | "/about"
+    | "/accounts"
+    | "/gossip"
+    | "/leaderSchedule"
+    | "/slotDetails";
+  fileRoutesByTo: FileRoutesByTo;
+  to:
+    | "/"
+    | "/about"
+    | "/accounts"
+    | "/gossip"
+    | "/leaderSchedule"
+    | "/slotDetails";
   id:
-    | '__root__'
-    | '/'
-    | '/about'
-    | '/gossip'
-    | '/leaderSchedule'
-    | '/slotDetails'
-  fileRoutesById: FileRoutesById
+    | "__root__"
+    | "/"
+    | "/about"
+    | "/accounts"
+    | "/gossip"
+    | "/leaderSchedule"
+    | "/slotDetails";
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AboutRoute: typeof AboutRoute
-  GossipRoute: typeof GossipRoute
-  LeaderScheduleRoute: typeof LeaderScheduleRoute
-  SlotDetailsRoute: typeof SlotDetailsRoute
+  IndexRoute: typeof IndexRoute;
+  AboutRoute: typeof AboutRoute;
+  AccountsRoute: typeof AccountsRoute;
+  GossipRoute: typeof GossipRoute;
+  LeaderScheduleRoute: typeof LeaderScheduleRoute;
+  SlotDetailsRoute: typeof SlotDetailsRoute;
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/slotDetails': {
-      id: '/slotDetails'
-      path: '/slotDetails'
-      fullPath: '/slotDetails'
-      preLoaderRoute: typeof SlotDetailsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/leaderSchedule': {
-      id: '/leaderSchedule'
-      path: '/leaderSchedule'
-      fullPath: '/leaderSchedule'
-      preLoaderRoute: typeof LeaderScheduleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/gossip': {
-      id: '/gossip'
-      path: '/gossip'
-      fullPath: '/gossip'
-      preLoaderRoute: typeof GossipRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+    "/slotDetails": {
+      id: "/slotDetails";
+      path: "/slotDetails";
+      fullPath: "/slotDetails";
+      preLoaderRoute: typeof SlotDetailsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/leaderSchedule": {
+      id: "/leaderSchedule";
+      path: "/leaderSchedule";
+      fullPath: "/leaderSchedule";
+      preLoaderRoute: typeof LeaderScheduleRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/gossip": {
+      id: "/gossip";
+      path: "/gossip";
+      fullPath: "/gossip";
+      preLoaderRoute: typeof GossipRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/accounts": {
+      id: "/accounts";
+      path: "/accounts";
+      fullPath: "/accounts";
+      preLoaderRoute: typeof AccountsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/about": {
+      id: "/about";
+      path: "/about";
+      fullPath: "/about";
+      preLoaderRoute: typeof AboutRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/": {
+      id: "/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AccountsRoute: AccountsRoute,
   GossipRoute: GossipRoute,
   LeaderScheduleRoute: LeaderScheduleRoute,
   SlotDetailsRoute: SlotDetailsRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();

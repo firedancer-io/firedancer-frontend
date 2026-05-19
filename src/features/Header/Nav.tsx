@@ -6,6 +6,7 @@ import SsidChartIcon from "@material-design-icons/svg/filled/ssid_chart.svg?reac
 import AssessmentIcon from "@material-design-icons/svg/filled/assessment.svg?react";
 import CalendarMonthIcon from "@material-design-icons/svg/filled/calendar_month.svg?react";
 import CampaignIcon from "@material-design-icons/svg/filled/campaign.svg?react";
+import StorageIcon from "@material-design-icons/svg/filled/storage.svg?react";
 import KeyboardArrowDownIcon from "@material-design-icons/svg/filled/keyboard_arrow_down.svg?react";
 import { Link } from "@tanstack/react-router";
 import clsx from "clsx";
@@ -31,6 +32,7 @@ const RouteLabelToIcon: Record<RouteLabel, FC<SVGProps<SVGSVGElement>>> = {
   Overview: SsidChartIcon,
   Schedule: CalendarMonthIcon,
   Gossip: CampaignIcon,
+  Accounts: StorageIcon,
   "Slot Details": AssessmentIcon,
 };
 
@@ -97,7 +99,11 @@ export function NavLinks() {
     <Flex gap={`${slotsNavSpacing}px`}>
       {Object.keys(RouteLabelToPath).map((label) => {
         const routeLabel = label as RouteLabel;
-        if (routeLabel === "Gossip" && isFrankendancer) return;
+        if (
+          (routeLabel === "Gossip" || routeLabel === "Accounts") &&
+          isFrankendancer
+        )
+          return;
 
         return (
           <NavButton
@@ -137,7 +143,11 @@ export function DropdownNav() {
         >
           {Object.keys(RouteLabelToPath).map((label) => {
             const routeLabel = label as RouteLabel;
-            if (routeLabel === "Gossip" && isFrankendancer) return;
+            if (
+              (routeLabel === "Gossip" || routeLabel === "Accounts") &&
+              isFrankendancer
+            )
+              return;
 
             return (
               <DropdownMenu.Item key={routeLabel} asChild>

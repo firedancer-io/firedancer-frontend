@@ -67,6 +67,9 @@ import type {
   peerUpdateInfoSchema,
   liveProgramCacheSchema,
   slotCaughtUpSchema,
+  accountsStatsSchema,
+  accountsPartitionSchema,
+  accountsTileSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -191,3 +194,9 @@ export type SlotRankings = z.infer<typeof slotRankingsSchema>;
 export type LiveShreds = z.infer<typeof liveShredsSchema>;
 
 export type LiveProgramCache = z.infer<typeof liveProgramCacheSchema>;
+
+export type AccountsStats = z.infer<typeof accountsStatsSchema>;
+
+export type AccountsPartition = z.infer<typeof accountsPartitionSchema>;
+
+export type AccountsTile = z.infer<typeof accountsTileSchema>;

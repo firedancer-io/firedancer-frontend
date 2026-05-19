@@ -1,5 +1,6 @@
 import z from "zod";
 import {
+  accountsSchema,
   blockEngineSchema,
   epochSchema,
   gossipSchema,
@@ -18,6 +19,7 @@ export const WsMessageSchema = z.discriminatedUnion("topic", [
   slotSchema,
   blockEngineSchema,
   supermajoritySchema,
+  accountsSchema,
 ]);
 
 export type WsMessage = z.infer<typeof WsMessageSchema>;
@@ -41,7 +43,8 @@ export type WsEntity =
   | KvFrom<typeof peersSchema, "peers">
   | KvFrom<typeof slotSchema, "slot">
   | KvFrom<typeof blockEngineSchema, "block_engine">
-  | KvFrom<typeof supermajoritySchema, "wait_for_supermajority">;
+  | KvFrom<typeof supermajoritySchema, "wait_for_supermajority">
+  | KvFrom<typeof accountsSchema, "accounts">;
 
 export type FromWorkerMessage =
   | { type: "connecting" }
