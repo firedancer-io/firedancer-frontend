@@ -378,31 +378,51 @@ export const bootProgressSchema = z.object({
   catching_up_first_replay_slot: z.number().nullable().optional(),
 });
 
-export const slotTransactionsSchema = z.object({
-  start_timestamp_nanos: z.coerce.bigint(),
-  target_end_timestamp_nanos: z.coerce.bigint(),
-  txn_mb_start_timestamps_nanos: z.coerce.bigint().array(),
-  txn_mb_end_timestamps_nanos: z.coerce.bigint().array(),
-  txn_compute_units_requested: z.number().array(),
-  txn_compute_units_consumed: z.number().array(),
-  txn_transaction_fee: z.coerce.bigint().array(),
-  txn_priority_fee: z.coerce.bigint().array(),
-  txn_tips: z.coerce.bigint().array(),
-  txn_error_code: z.number().array(),
-  txn_from_bundle: z.boolean().array(),
-  txn_is_simple_vote: z.boolean().array(),
-  txn_bank_idx: z.number().array(),
-  txn_preload_end_timestamps_nanos: z.coerce.bigint().array(),
-  txn_start_timestamps_nanos: z.coerce.bigint().array(),
-  txn_load_end_timestamps_nanos: z.coerce.bigint().array(),
-  txn_end_timestamps_nanos: z.coerce.bigint().array(),
-  txn_arrival_timestamps_nanos: z.coerce.bigint().array(),
-  txn_microblock_id: z.number().array(),
-  txn_landed: z.boolean().array(),
-  txn_signature: z.string().array(),
-  txn_source_ipv4: z.string().array(),
-  txn_source_tpu: z.string().array(),
-});
+export const slotTransactionsSchema = z.preprocess(
+  (data) => {
+    if (!data || typeof data !== "object" || Array.isArray(data)) return data;
+    const d = data as Record<string, unknown>;
+    return {
+      ...d,
+      // Forwards/Backwards compatibility for upcoming name change
+      txn_preload_end_timestamps_nanos:
+        d.txn_preload_end_timestamps_nanos ??
+        d.txn_check_start_timestamps_nanos,
+      txn_start_timestamps_nanos:
+        d.txn_start_timestamps_nanos ?? d.txn_load_start_timestamps_nanos,
+      txn_load_end_timestamps_nanos:
+        d.txn_load_end_timestamps_nanos ?? d.txn_execute_start_timestamps_nanos,
+      txn_end_timestamps_nanos:
+        d.txn_end_timestamps_nanos ?? d.txn_commit_start_timestamps_nanos,
+    };
+  },
+  z.object({
+    start_timestamp_nanos: z.coerce.bigint(),
+    target_end_timestamp_nanos: z.coerce.bigint(),
+    txn_mb_start_timestamps_nanos: z.coerce.bigint().array(),
+    txn_mb_end_timestamps_nanos: z.coerce.bigint().array(),
+    txn_compute_units_requested: z.number().array(),
+    txn_compute_units_consumed: z.number().array(),
+    txn_transaction_fee: z.coerce.bigint().array(),
+    txn_priority_fee: z.coerce.bigint().array(),
+    txn_tips: z.coerce.bigint().array(),
+    txn_error_code: z.number().array(),
+    txn_from_bundle: z.boolean().array(),
+    txn_is_simple_vote: z.boolean().array(),
+    txn_bank_idx: z.number().array(),
+    txn_preload_end_timestamps_nanos: z.coerce.bigint().array(),
+    txn_start_timestamps_nanos: z.coerce.bigint().array(),
+    txn_load_end_timestamps_nanos: z.coerce.bigint().array(),
+    txn_end_timestamps_nanos: z.coerce.bigint().array(),
+    txn_commit_end_timestamps_nanos: z.coerce.bigint().array().optional(),
+    txn_arrival_timestamps_nanos: z.coerce.bigint().array(),
+    txn_microblock_id: z.number().array(),
+    txn_landed: z.boolean().array(),
+    txn_signature: z.string().array(),
+    txn_source_ipv4: z.string().array(),
+    txn_source_tpu: z.string().array(),
+  }),
+);
 
 export const slotLevelSchema = z.enum([
   "incomplete",
