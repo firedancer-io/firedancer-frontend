@@ -133,30 +133,50 @@ function getX(pct: number) {
 }
 
 function Row({ label, value, max, minValue, maxValue }: RowProps) {
-  const pct = (value / max) * 100;
-  const minPct = (minValue / max) * 100;
-  const maxPct = (maxValue / max) * 100;
+  const hasData = isFinite(value) && isFinite(minValue) && isFinite(maxValue);
 
-  const formatted = getDurationWithUnits(value);
-  const minFormatted = getDurationWithUnits(minValue);
-  const maxFormatted = getDurationWithUnits(maxValue);
+  const pct = hasData ? (value / max) * 100 : 0;
+  const minPct = hasData ? (minValue / max) * 100 : 0;
+  const maxPct = hasData ? (maxValue / max) * 100 : 0;
+
+  const formatted = hasData ? getDurationWithUnits(value) : null;
+  const minFormatted = hasData ? getDurationWithUnits(minValue) : null;
+  const maxFormatted = hasData ? getDurationWithUnits(maxValue) : null;
 
   return (
     <>
       <Text className={styles.label}>{label}</Text>
       <Text className={styles.value} style={{ color: "#6E56CF" }} align="right">
-        {minFormatted.value}
-        <MonoText>{minFormatted.unit}</MonoText>
+        {minFormatted ? (
+          <>
+            {minFormatted.value}
+            <MonoText>{minFormatted.unit}</MonoText>
+          </>
+        ) : (
+          "-"
+        )}
       </Text>
       <Text className={styles.value}>/</Text>
       <Text className={styles.value} style={{ color: "#BAA7FF" }} align="right">
-        {formatted.value}
-        <MonoText>{formatted.unit}</MonoText>
+        {formatted ? (
+          <>
+            {formatted.value}
+            <MonoText>{formatted.unit}</MonoText>
+          </>
+        ) : (
+          "-"
+        )}
       </Text>
       <Text className={styles.value}>/</Text>
       <Text className={styles.value} style={{ color: "#6E56CF" }} align="right">
-        {maxFormatted.value}
-        <MonoText>{maxFormatted.unit}</MonoText>
+        {maxFormatted ? (
+          <>
+            {maxFormatted.value}
+            <MonoText>{maxFormatted.unit}</MonoText>
+          </>
+        ) : (
+          "-"
+        )}
       </Text>
       <svg
         height="13"

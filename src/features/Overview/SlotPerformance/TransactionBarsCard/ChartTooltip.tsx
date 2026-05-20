@@ -31,6 +31,7 @@ import {
   getTxnBundleStats,
   getTxnStateDurations,
 } from "../../../../transactionUtils";
+import { isFiredancer } from "../../../../client";
 import { sum, values } from "lodash";
 import CopyButton from "../../../../components/CopyButton";
 
@@ -350,20 +351,41 @@ function StateDurationDisplay({
             width={`${durationRatios.preLoading}%`}
             fill={stateTextColors[TxnState.PRELOADING]}
           />
-          <rect
-            height="8"
-            width={`${durationRatios.validating}%`}
-            fill={stateTextColors[TxnState.VALIDATE]}
-            x={`${durationRatios.preLoading}%`}
-            y="20%"
-          />
-          <rect
-            height="8"
-            width={`${durationRatios.loading}%`}
-            fill={stateTextColors[TxnState.LOADING]}
-            x={`${durationRatios.preLoading + durationRatios.validating}%`}
-            y="40%"
-          />
+          {isFiredancer ? (
+            <>
+              <rect
+                height="8"
+                width={`${durationRatios.loading}%`}
+                fill={stateTextColors[TxnState.LOADING]}
+                x={`${durationRatios.preLoading}%`}
+                y="20%"
+              />
+              <rect
+                height="8"
+                width={`${durationRatios.validating}%`}
+                fill={stateTextColors[TxnState.VALIDATE]}
+                x={`${durationRatios.preLoading + durationRatios.loading}%`}
+                y="40%"
+              />
+            </>
+          ) : (
+            <>
+              <rect
+                height="8"
+                width={`${durationRatios.validating}%`}
+                fill={stateTextColors[TxnState.VALIDATE]}
+                x={`${durationRatios.preLoading}%`}
+                y="20%"
+              />
+              <rect
+                height="8"
+                width={`${durationRatios.loading}%`}
+                fill={stateTextColors[TxnState.LOADING]}
+                x={`${durationRatios.preLoading + durationRatios.validating}%`}
+                y="40%"
+              />
+            </>
+          )}
           <rect
             height="8"
             width={`${durationRatios.execute}%`}
@@ -386,18 +408,37 @@ function StateDurationDisplay({
         value={durationUnits.preLoading.value}
         unit={durationUnits.preLoading.unit}
       />
-      <LabelValueDisplay
-        label={TxnState.VALIDATE}
-        color={stateTextColors[TxnState.VALIDATE]}
-        value={durationUnits.validating.value}
-        unit={durationUnits.validating.unit}
-      />
-      <LabelValueDisplay
-        label={TxnState.LOADING}
-        color={stateTextColors[TxnState.LOADING]}
-        value={durationUnits.loading.value}
-        unit={durationUnits.loading.unit}
-      />
+      {isFiredancer ? (
+        <>
+          <LabelValueDisplay
+            label={TxnState.LOADING}
+            color={stateTextColors[TxnState.LOADING]}
+            value={durationUnits.loading.value}
+            unit={durationUnits.loading.unit}
+          />
+          <LabelValueDisplay
+            label={TxnState.VALIDATE}
+            color={stateTextColors[TxnState.VALIDATE]}
+            value={durationUnits.validating.value}
+            unit={durationUnits.validating.unit}
+          />
+        </>
+      ) : (
+        <>
+          <LabelValueDisplay
+            label={TxnState.VALIDATE}
+            color={stateTextColors[TxnState.VALIDATE]}
+            value={durationUnits.validating.value}
+            unit={durationUnits.validating.unit}
+          />
+          <LabelValueDisplay
+            label={TxnState.LOADING}
+            color={stateTextColors[TxnState.LOADING]}
+            value={durationUnits.loading.value}
+            unit={durationUnits.loading.unit}
+          />
+        </>
+      )}
       <LabelValueDisplay
         label={TxnState.EXECUTE}
         color={stateTextColors[TxnState.EXECUTE]}

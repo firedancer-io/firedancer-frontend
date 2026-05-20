@@ -14,6 +14,8 @@ import {
   getTxnBundleStats,
   getTxnStateDurations,
 } from "../../../../transactionUtils";
+import { TxnState } from "../../../Overview/SlotPerformance/TransactionBarsCard/consts";
+import { isFiredancer } from "../../../../client";
 
 const initDurations = {
   preLoading: 0,
@@ -103,20 +105,41 @@ export default function CumulativeExecutionTimeStats() {
           unlanded={unlanded.preLoading}
           max={max}
         />
-        <Row
-          label="Validating"
-          landedSuccess={landedSuccess.validating}
-          landedFailed={landedFailed.validating}
-          unlanded={unlanded.validating}
-          max={max}
-        />
-        <Row
-          label="Loading"
-          landedSuccess={landedSuccess.loading}
-          landedFailed={landedFailed.loading}
-          unlanded={unlanded.loading}
-          max={max}
-        />
+        {isFiredancer ? (
+          <>
+            <Row
+              label={TxnState.LOADING}
+              landedSuccess={landedSuccess.loading}
+              landedFailed={landedFailed.loading}
+              unlanded={unlanded.loading}
+              max={max}
+            />
+            <Row
+              label={TxnState.VALIDATE}
+              landedSuccess={landedSuccess.validating}
+              landedFailed={landedFailed.validating}
+              unlanded={unlanded.validating}
+              max={max}
+            />
+          </>
+        ) : (
+          <>
+            <Row
+              label={TxnState.VALIDATE}
+              landedSuccess={landedSuccess.validating}
+              landedFailed={landedFailed.validating}
+              unlanded={unlanded.validating}
+              max={max}
+            />
+            <Row
+              label={TxnState.LOADING}
+              landedSuccess={landedSuccess.loading}
+              landedFailed={landedFailed.loading}
+              unlanded={unlanded.loading}
+              max={max}
+            />
+          </>
+        )}
         <Row
           label="Execute"
           landedSuccess={landedSuccess.execute}
