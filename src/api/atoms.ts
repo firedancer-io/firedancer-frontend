@@ -39,6 +39,7 @@ import type {
   ResetSlot,
   RepairSlot,
   LiveProgramCache,
+  SlotCaughtUp,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 import type { ValuesWithHistory } from "./worker/types";
@@ -87,6 +88,8 @@ export const voteSlotAtom = atom<VoteSlot | undefined>(undefined);
 export const repairSlotAtom = atom<RepairSlot | undefined>(undefined);
 
 export const turbineSlotAtom = atom<TurbineSlot | undefined>(undefined);
+
+export const slotCaughtUpAtom = atom<SlotCaughtUp | undefined>(undefined);
 
 export const estimatedSlotDurationAtom = atom<
   EstimatedSlotDuration | undefined
