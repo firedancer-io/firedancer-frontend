@@ -66,6 +66,7 @@ import type {
   supermajorityEpochSchema,
   peerUpdateInfoSchema,
   liveProgramCacheSchema,
+  slotCaughtUpSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -95,6 +96,7 @@ export type OptimisticallyConfirmedSlot = z.infer<
 >;
 
 export type CompletedSlot = z.infer<typeof completedSlotSchema>;
+
 export type CatchUpHistory = z.infer<typeof catchUpHistorySchema>;
 
 export type ServerTimeNanos = z.infer<typeof serverTimeNanosSchema>;
@@ -103,6 +105,8 @@ export type EstimatedSlot = z.infer<typeof estimatedSlotSchema>;
 export type ResetSlot = z.infer<typeof resetSlotSchema>;
 export type StorageSlot = z.infer<typeof storageSlotSchema>;
 export type VoteSlot = z.infer<typeof voteSlotSchema>;
+
+export type SlotCaughtUp = z.infer<typeof slotCaughtUpSchema>;
 
 export type EstimatedSlotDuration = z.infer<typeof estimatedSlotDurationSchema>;
 

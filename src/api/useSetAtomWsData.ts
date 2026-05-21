@@ -88,6 +88,7 @@ import {
   rootSlotAtom,
   optimisticallyConfirmedSlotAtom,
   liveProgramCacheAtom,
+  slotCaughtUpAtom,
 } from "./atoms";
 import {
   estimatedTpsDebounceMs,
@@ -427,6 +428,7 @@ function useUpdateAtoms() {
   const setOptimisticallyConfirmedSlot = useSetAtom(
     optimisticallyConfirmedSlotAtom,
   );
+  const setSlotCaughtUp = useSetAtom(slotCaughtUpAtom);
 
   const addLiveShreds = useSetAtom(shredsAtoms.addShredEvents);
 
@@ -630,6 +632,9 @@ function useUpdateAtoms() {
               setOptimisticallyConfirmedSlot(value);
               break;
             }
+            case "slot_caught_up":
+              setSlotCaughtUp(value);
+              break;
             case "catch_up_history": {
               addTurbineSlots(value.turbine);
               addRepairSlots(value.repair);
@@ -649,7 +654,6 @@ function useUpdateAtoms() {
             case "live_program_cache":
               setLiveProgramCache(value);
               break;
-            case "slot_caught_up":
             case "estimated_slot":
             case "ping":
             case "vote_key":
@@ -788,6 +792,7 @@ function useUpdateAtoms() {
       setServerTimeNanos,
       setSkipRate,
       setSkippedSlots,
+      setSlotCaughtUp,
       setSlotRankings,
       setSlotResponse,
       setStartupProgress,

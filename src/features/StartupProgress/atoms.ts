@@ -2,7 +2,6 @@ import { atom } from "jotai";
 import { bootProgressAtom } from "../../api/atoms";
 import { BootPhaseEnum } from "../../api/entities";
 import type { BootPhase } from "../../api/types";
-import { latestTurbineSlotAtom } from "./Firedancer/CatchingUp/atoms";
 import { isFrankendancer } from "../../client";
 
 export const bootProgressPhaseAtom = atom(
@@ -91,24 +90,7 @@ export const bootProgressCompletedPhasesAtom = atom((get) => {
   return completed;
 });
 
-export const [showStartupProgressAtom, startupFinalTurbineHeadAtom] =
-  (function getShowStartupProgressAtom() {
-    const _showStartupProgressAtom = atom(true);
-    const _startupFinalTurbineHeadAtom = atom<number>();
-    return [
-      atom(
-        (get) => get(_showStartupProgressAtom),
-        (get, set, show: boolean) => {
-          set(_showStartupProgressAtom, show);
-          set(
-            _startupFinalTurbineHeadAtom,
-            show ? undefined : (get(latestTurbineSlotAtom) ?? -1),
-          );
-        },
-      ),
-      atom((get) => get(_startupFinalTurbineHeadAtom)),
-    ];
-  })();
+export const showStartupProgressAtom = atom(true);
 
 export const isStartupProgressExpandedAtom = atom(true);
 export const expandStartupProgressElAtom = atom<HTMLButtonElement | null>(null);

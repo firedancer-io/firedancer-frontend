@@ -4,8 +4,8 @@ import { ShredEvent } from "../../../api/entities";
 import { delayMs, xRangeMs } from "./const";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
 import { getSlotGroupLeader } from "../../../utils";
-import { startupFinalTurbineHeadAtom } from "../../StartupProgress/atoms";
 import { serverTimeMsAtom } from "../../../atoms";
+import { slotCaughtUpAtom } from "../../../api/atoms";
 
 type ShredEventTsDeltaMs = number | undefined;
 /**
@@ -44,14 +44,14 @@ export function createLiveShredsAtoms() {
   }>();
   const rangeAfterStartupAtom = atom((get) => {
     const range = get(_slotRangeAtom);
-    const startupFinalTurbineHead = get(startupFinalTurbineHeadAtom);
-    if (!range || startupFinalTurbineHead == null) return;
+    const slotCaughtUp = get(slotCaughtUpAtom);
+    if (!range || slotCaughtUp == null) return;
 
-    // no slots after final turbine head
-    if (startupFinalTurbineHead + 1 > range.max) return;
+    // no slots after startup
+    if (slotCaughtUp + 1 > range.max) return;
 
     return {
-      min: Math.max(startupFinalTurbineHead + 1, range.min),
+      min: Math.max(slotCaughtUp + 1, range.min),
       max: range.max,
     };
   });
@@ -62,16 +62,18 @@ export function createLiveShredsAtoms() {
     minCompletedSlot: atom((get) => get(_minCompletedSlotAtom)),
     range: atom((get) => get(_slotRangeAtom)),
     rangeAfterStartup: rangeAfterStartupAtom,
-    // leader slots after turbine head at the end of startup
+    /**
+     *  leader slots after startup, used for labels
+     * */
     groupLeaderSlots: atom((get) => {
-      const range = get(rangeAfterStartupAtom);
-      const startupFinalTurbineHead = get(startupFinalTurbineHeadAtom);
-      if (!range || startupFinalTurbineHead == null) return [];
+      const rangeAfterStartup = get(rangeAfterStartupAtom);
+      if (!rangeAfterStartup) return [];
 
-      const min = Math.max(startupFinalTurbineHead + 1, range.min);
-
-      const slots = [getSlotGroupLeader(min)];
-      while (slots[slots.length - 1] + slotsPerLeader - 1 < range.max) {
+      const slots = [getSlotGroupLeader(rangeAfterStartup.min)];
+      while (
+        slots[slots.length - 1] + slotsPerLeader - 1 <
+        rangeAfterStartup.max
+      ) {
         slots.push(
           getSlotGroupLeader(slots[slots.length - 1] + slotsPerLeader),
         );
