@@ -33,6 +33,8 @@ import {
   deletePreviousEpochsAtom,
   supermajorityEpochAtom,
   updateSupermajorityOnlinePeersAtom,
+  deleteSupermajorityDeltaEntriesAtom,
+  resetSupermajorityAtom,
 } from "../atoms";
 import { shredsAtoms } from "../features/Overview/ShredsProgression/atoms";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
@@ -97,6 +99,7 @@ import {
   gossipPeerSizeDebounceMs,
 } from "./consts";
 import type { peersSchema } from "./entities";
+import { BootPhaseEnum } from "./entities";
 import type {
   EstimatedSlotDuration,
   EstimatedTps,
@@ -114,7 +117,10 @@ import type {
 } from "./types";
 import { SocketState } from "./ws/types";
 import { xRangeMs } from "../features/Overview/ShredsProgression/const";
-import { showStartupProgressAtom } from "../features/StartupProgress/atoms";
+import {
+  bootProgressPhaseAtom,
+  showStartupProgressAtom,
+} from "../features/StartupProgress/atoms";
 import { useServerMessages } from "./ws/utils";
 
 export function useSetAtomWsData() {
@@ -851,6 +857,30 @@ function useUpdateAtoms() {
       deleteLiveShreds(isSocketDisconnected, isStartup);
     },
     isStartup ? 1_000 : xRangeMs / 4,
+  );
+
+  const deleteSupermajorityDeltaEntries = useSetAtom(
+    deleteSupermajorityDeltaEntriesAtom,
+  );
+  const resetSupermajority = useSetAtom(resetSupermajorityAtom);
+  const bootPhase = useAtomValue(bootProgressPhaseAtom);
+
+  useEffect(() => {
+    if (isSocketDisconnected) {
+      dbFlushSupermajorityPeersBuffers.cancel();
+      supermajorityPeersBuffers.current.toAdd.clear();
+      supermajorityPeersBuffers.current.toRemove.clear();
+      resetSupermajority();
+    }
+  }, [
+    dbFlushSupermajorityPeersBuffers,
+    isSocketDisconnected,
+    resetSupermajority,
+  ]);
+
+  useInterval(
+    deleteSupermajorityDeltaEntries,
+    bootPhase === BootPhaseEnum.waiting_for_supermajority ? 1_000 : null,
   );
 
   return updateAtoms;

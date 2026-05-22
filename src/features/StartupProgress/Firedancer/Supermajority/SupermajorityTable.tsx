@@ -30,9 +30,12 @@ import ClientIcons from "../../../../components/ClientIcons";
 import { useMeasure } from "react-use";
 import { formatStake, getStakePct } from "./utils";
 import { Virtuoso } from "react-virtuoso";
+import AnimatedInteger from "../../../../components/AnimatedInteger";
+import { SupermajorityCounts } from "./SupermajorityCounts";
 
 const iconSize = "16px";
 const rowHeight = 33;
+const accordionGap = "15px";
 
 type Size = "wide" | "narrow" | "xnarrow";
 
@@ -176,7 +179,13 @@ export default function SupermajorityTable({
             onClick={() => setIsOfflineExpanded((prev) => !prev)}
           >
             <ToggleIcon isExpanded={isOfflineExpanded} />
-            <Text>{offlinePeers.size} Nodes Offline</Text>
+            <Flex align="center" gap={accordionGap}>
+              <Flex align="center" gap="1">
+                <AnimatedInteger value={offlinePeers.size} />
+                <Text>Nodes Offline</Text>
+              </Flex>
+              <SupermajorityCounts isOffline />
+            </Flex>
           </button>
         </SizedRow>
 
@@ -208,7 +217,13 @@ export default function SupermajorityTable({
             onClick={() => setIsOnlineExpanded((prev) => !prev)}
           >
             <ToggleIcon isExpanded={isOnlineExpanded} />
-            <Text>{onlinePeers.size} Nodes Online</Text>
+            <Flex align="center" gap={accordionGap}>
+              <Flex align="center" gap="1">
+                <AnimatedInteger value={onlinePeers.size} />
+                <Text>Nodes Online</Text>
+              </Flex>
+              <SupermajorityCounts />
+            </Flex>
           </button>
         </SizedRow>
 

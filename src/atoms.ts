@@ -595,22 +595,87 @@ export const supermajorityEpochAtom = (function getSupermajorityEpochAtom() {
   );
 })();
 
+type DeltaEvent = {
+  addPeers: string[];
+  removePeers: string[];
+  timestamp: number;
+};
+
+export const SUPERMAJORITY_DELTA_WINDOW_MS = 5 * 60_000;
+
 export const [
   supermajorityOnlinePeersAtom,
   updateSupermajorityOnlinePeersAtom,
-] = (function getSupermajorityOnlinePeersAtoms() {
+  supermajorityCountsAtom,
+  deleteSupermajorityDeltaEntriesAtom,
+  resetSupermajorityAtom,
+] = (function getSupermajorityAtoms() {
   const _supermajorityOnlinePeersAtom = atomWithImmer(new Set<string>());
+  const _supermajorityInitialized = atom(false);
+  const _supermajorityWindowStartAtom = atomWithImmer(new Set<string>());
+  const _supermajorityHistoryAtom = atomWithImmer<DeltaEvent[]>([]);
+
   return [
     atom((get) => get(_supermajorityOnlinePeersAtom)),
-    atom(null, (_get, set, addPeers: string[], removePeers: string[]) => {
+    atom(null, (get, set, addPeers: string[], removePeers: string[]) => {
       set(_supermajorityOnlinePeersAtom, (draft) => {
-        for (const peer of addPeers) {
-          draft.add(peer);
-        }
-        for (const peer of removePeers) {
-          draft.delete(peer);
+        for (const peer of addPeers) draft.add(peer);
+        for (const peer of removePeers) draft.delete(peer);
+      });
+
+      // When recording history, ignore the first update because it will
+      // contain initial state, not recent additions/removals
+      if (!get(_supermajorityInitialized)) {
+        set(_supermajorityInitialized, true);
+        set(_supermajorityWindowStartAtom, (draft) => {
+          for (const peer of addPeers) draft.add(peer);
+          for (const peer of removePeers) draft.delete(peer);
+        });
+      } else if (addPeers.length > 0 || removePeers.length > 0) {
+        const timestamp = Date.now();
+        const event: DeltaEvent = { addPeers, removePeers, timestamp };
+        set(_supermajorityHistoryAtom, (draft) => {
+          draft.push(event);
+        });
+      }
+    }),
+    atom((get) => {
+      const windowStartOnline = get(_supermajorityWindowStartAtom);
+      const currentOnline = get(_supermajorityOnlinePeersAtom);
+
+      let offline = 0;
+      for (const peer of windowStartOnline) {
+        if (!currentOnline.has(peer)) offline++;
+      }
+      const online = currentOnline.size + offline - windowStartOnline.size;
+
+      return { online, offline };
+    }),
+    atom(null, (get, set) => {
+      const history = get(_supermajorityHistoryAtom);
+      if (history.length === 0) return;
+
+      const cutoff = Date.now() - SUPERMAJORITY_DELTA_WINDOW_MS;
+      const cutoffIdx = history.findIndex((event) => event.timestamp >= cutoff);
+      if (cutoffIdx === 0) return;
+
+      const numExpiredEvents = cutoffIdx === -1 ? history.length : cutoffIdx;
+      set(_supermajorityWindowStartAtom, (draft) => {
+        for (let i = 0; i < numExpiredEvents; i++) {
+          const { addPeers, removePeers } = history[i];
+          for (const peer of addPeers) draft.add(peer);
+          for (const peer of removePeers) draft.delete(peer);
         }
       });
+      set(_supermajorityHistoryAtom, (draft) =>
+        cutoffIdx === -1 ? [] : draft.slice(cutoffIdx),
+      );
+    }),
+    atom(null, (_get, set) => {
+      set(_supermajorityOnlinePeersAtom, new Set());
+      set(_supermajorityInitialized, false);
+      set(_supermajorityWindowStartAtom, new Set());
+      set(_supermajorityHistoryAtom, []);
     }),
   ];
 })();
