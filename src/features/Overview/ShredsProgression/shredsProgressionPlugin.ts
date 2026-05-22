@@ -1,4 +1,5 @@
 import type uPlot from "uplot";
+import type { MutableRefObject } from "react";
 import { getDefaultStore } from "jotai";
 import {
   liveShredsDataAtom,
@@ -7,13 +8,10 @@ import {
 } from "./atoms";
 import {
   delayMs,
-  rowShredEventDescPriorities,
-  shredEventDescPriorities,
 } from "./const";
 import { showStartupProgressAtom } from "../../StartupProgress/atoms";
 import {
   gridLineColor,
-  shredPublishedColor,
   shredReceivedRepairColor,
   shredReceivedTurbineColor,
   shredRepairRequestedColor,
@@ -21,13 +19,14 @@ import {
   shredReplayedRepairColor,
   shredReplayedTurbineColor,
   shredSkippedColor,
+  shredPublishedColor,
 } from "../../../colors";
 import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
 import { clamp, sum } from "lodash";
-import { ShredEvent } from "../../../api/entities";
 import { getSlotGroupLabelId, getSlotLabelId } from "./utils";
 import { slotsPerLeader } from "../../../consts";
-import type { SlotsShreds, ShredEventTsDeltas } from "./types";
+import type { SlotsShreds } from "./types";
+import type { ChartDrawData } from "../../../api/worker/types";
 
 const store = getDefaultStore();
 export const shredsXScaleKey = "shredsXScaleKey";
@@ -46,8 +45,26 @@ export type LabelPositions = {
   };
 };
 
+/**
+ * Maps a fillStyle to a y-section index for the startup screen.
+ *  0 = top section (received_turbine, published)
+ *  1 = middle section (repair_request, received_repair)
+ *  2 = bottom section (replayed)
+ */
+const fillStyleToStartupSection: Readonly<Record<string, number>> = {
+  [shredReceivedTurbineColor]: 0,
+  [shredPublishedColor]: 0,
+  [shredRepairRequestedColor]: 1,
+  [shredReceivedRepairColor]: 1,
+  [shredReplayedTurbineColor]: 2,
+  [shredReplayedRepairColor]: 2,
+  [shredReplayedNothingColor]: 2,
+  [shredSkippedColor]: 0,
+};
+
 export function shredsProgressionPlugin(
   isOnStartupScreen: boolean,
+  groupedDataRef: MutableRefObject<ChartDrawData | undefined>,
 ): uPlot.Plugin {
   const prevTimeDiffs: number[] = [];
   return {
@@ -73,11 +90,7 @@ export function shredsProgressionPlugin(
             u.ctx.restore();
           }
 
-          const {
-            slotsShreds: liveShreds,
-            range: slotRange,
-            minCompletedSlot,
-          } = store.get(liveShredsDataAtom) ?? {};
+          const groupedData = groupedDataRef.current;
           const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
           const rangeAfterStartup = store.get(liveShredsPostStartupRangeAtom);
 
@@ -104,9 +117,11 @@ export function shredsProgressionPlugin(
 
           const maxX = u.scales[shredsXScaleKey].max;
 
-          if (!liveShreds || !slotRange || maxX == null) {
+          if (!groupedData || maxX == null) {
             return;
           }
+
+          const { slots, maxShreds, minCompletedSlot, range: slotRange } = groupedData;
 
           if (!isOnStartupScreen) {
             // if startup is running, prevent drawing non-startup screen chart
@@ -122,12 +137,11 @@ export function shredsProgressionPlugin(
           // Offset to convert shred event delta to chart x value
           const delayedNow = adjustedTimeMs - delayMs;
 
-          const tsXValueOffset = delayedNow - liveShreds.referenceTs;
+          const tsXValueOffset = delayedNow - groupedData.referenceTs;
 
           const minSlot = isOnStartupScreen
             ? slotRange.min
             : Math.max(slotRange.min, minCompletedSlot ?? slotRange.min);
-          const maxSlot = slotRange.max;
 
           u.ctx.rect(u.bbox.left, u.bbox.top, u.bbox.width, u.bbox.height);
           u.ctx.clip();
@@ -136,35 +150,27 @@ export function shredsProgressionPlugin(
           const getXPos = (xVal: number) =>
             u.valToPos(xVal, shredsXScaleKey, true);
 
-          const { maxShreds, orderedSlotNumbers } = getDrawInfo(
-            minSlot,
-            maxSlot,
-            liveShreds,
-            u.scales[shredsXScaleKey],
-            tsXValueOffset,
-          );
+          // Filter slots by time range
+          const scaleX = u.scales[shredsXScaleKey];
+          const visibleSlots = slots.filter((slot) => {
+            if (slot.slotNumber < minSlot) return false;
+            if (
+              scaleX.max != null &&
+              slot.minEventTsDelta - tsXValueOffset > scaleX.max
+            )
+              return false;
+            if (
+              scaleX.min != null &&
+              slot.completionTsDelta != null &&
+              slot.completionTsDelta - tsXValueOffset < scaleX.min
+            )
+              return false;
+            return true;
+          });
 
           const canvasHeight = isOnStartupScreen
             ? Math.trunc(u.bbox.height / 3)
             : u.bbox.height;
-
-          const getYOffset = isOnStartupScreen
-            ? (eventType: Exclude<ShredEvent, ShredEvent.slot_complete>) => {
-                switch (eventType) {
-                  case ShredEvent.shred_received_turbine:
-                  case ShredEvent.shred_published: {
-                    return 0;
-                  }
-                  case ShredEvent.shred_repair_request:
-                  case ShredEvent.shred_received_repair: {
-                    return canvasHeight;
-                  }
-                  case ShredEvent.shred_replayed: {
-                    return canvasHeight * 2;
-                  }
-                }
-              }
-            : undefined;
 
           // each row is at least 1 px
           const rowPxHeight = clamp(canvasHeight / maxShreds, 1, 10);
@@ -172,13 +178,9 @@ export function shredsProgressionPlugin(
 
           const dotSize = Math.max(rowPxHeight, 3);
 
-          // n rows, n-1 gaps
-          const rowsCount = Math.trunc(
-            (canvasHeight + gapPxHeight) / (rowPxHeight + gapPxHeight),
-          );
-          const shredsPerRow = maxShreds / rowsCount;
+          const maxXPos = u.bbox.left + u.bbox.width;
 
-          for (const slotNumber of orderedSlotNumbers) {
+          for (const slotData of visibleSlots) {
             const eventsByFillStyle: EventsByFillStyle = {};
             const addEventPosition = (
               fillStyle: string,
@@ -188,36 +190,43 @@ export function shredsProgressionPlugin(
               eventsByFillStyle[fillStyle].push(position);
             };
 
-            const slot = liveShreds.slots.get(slotNumber);
-            if (slot?.minEventTsDelta == null) continue;
+            const isSlotSkipped = skippedSlotsCluster.has(slotData.slotNumber);
 
-            const isSlotSkipped = skippedSlotsCluster.has(slotNumber);
+            for (let rowIdx = 0; rowIdx < slotData.rows.length; rowIdx++) {
+              const row = slotData.rows[rowIdx];
 
-            for (let rowIdx = 0; rowIdx < rowsCount; rowIdx++) {
-              const shredsAboveRow = rowIdx * shredsPerRow;
-              const firstShredIdx = Math.trunc(shredsAboveRow);
+              const y = (rowPxHeight + gapPxHeight) * rowIdx + u.bbox.top;
 
-              const shredsAboveOrInRow = (rowIdx + 1) * shredsPerRow;
-              const lastShredIdx = Math.min(
-                maxShreds,
-                Math.ceil(shredsAboveOrInRow) - 1,
-              );
+              let endXPos: number =
+                row.endTsDelta == null
+                  ? maxXPos
+                  : getXPos(row.endTsDelta - tsXValueOffset);
 
-              addEventsForRow({
-                addEventPosition,
-                u,
-                firstShredIdx,
-                lastShredIdx,
-                shreds: slot.shreds,
-                slotCompletionTsDelta: slot.completionTsDelta,
-                isSlotSkipped,
-                drawOnlyDots: isOnStartupScreen,
-                tsXValueOffset,
-                y: (rowPxHeight + gapPxHeight) * rowIdx + u.bbox.top,
-                getYOffset,
-                scaleX: u.scales[shredsXScaleKey],
-                getXPos,
-              });
+              for (const event of row.events) {
+                const startXVal = event.startTsDelta - tsXValueOffset;
+                const startXPos = getXPos(startXVal);
+
+                // Pixel-space overlap check (handles edge cases not caught in tsDelta space)
+                if (startXPos >= endXPos) continue;
+
+                const yOffset = isOnStartupScreen
+                  ? (fillStyleToStartupSection[event.fillStyle] ?? 0) *
+                    canvasHeight
+                  : 0;
+
+                const fillStyle = isSlotSkipped
+                  ? shredSkippedColor
+                  : event.fillStyle;
+
+                addEventPosition(
+                  fillStyle,
+                  isOnStartupScreen || isSlotSkipped
+                    ? [startXPos, y + yOffset]
+                    : [startXPos, y + yOffset, endXPos - startXPos],
+                );
+
+                endXPos = startXPos;
+              }
             }
 
             // draw events, one fillStyle at a time for this slot
@@ -239,217 +248,22 @@ export function shredsProgressionPlugin(
           u.ctx.restore();
 
           if (!isOnStartupScreen && rangeAfterStartup) {
-            updateLabels(
-              rangeAfterStartup,
-              liveShreds.slots,
-              skippedSlotsCluster,
-              u,
-              maxX,
-              tsXValueOffset,
-            );
+            const liveShredsData = store.get(liveShredsDataAtom);
+            if (liveShredsData?.slotsShreds) {
+              updateLabels(
+                rangeAfterStartup,
+                liveShredsData.slotsShreds.slots,
+                skippedSlotsCluster,
+                u,
+                maxX,
+                tsXValueOffset,
+              );
+            }
           }
         },
       ],
     },
   };
-}
-
-/**
- * Get slots in draw order
- * and max shreds count per slot for scaling
- */
-const getDrawInfo = (
-  minSlotNumber: number,
-  maxSlotNumber: number,
-  liveShreds: SlotsShreds,
-  scaleX: uPlot.Scale,
-  tsXValueOffset: number,
-) => {
-  const orderedSlotNumbers = [];
-  let maxShreds = 0;
-
-  for (
-    let slotNumber = minSlotNumber;
-    slotNumber <= maxSlotNumber;
-    slotNumber++
-  ) {
-    const slot = liveShreds.slots.get(slotNumber);
-    if (!slot || !slot.shreds.length || slot.minEventTsDelta == null) {
-      // slot has no events
-      continue;
-    }
-
-    if (
-      scaleX.max != null &&
-      slot.minEventTsDelta - tsXValueOffset > scaleX.max
-    ) {
-      // slot started after chart max X
-      continue;
-    }
-
-    if (
-      scaleX.min != null &&
-      slot.completionTsDelta != null &&
-      slot.completionTsDelta - tsXValueOffset < scaleX.min
-    ) {
-      // slot completed before chart min X
-      continue;
-    }
-
-    orderedSlotNumbers.push(slotNumber);
-    maxShreds = Math.max(maxShreds, slot.shreds.length);
-  }
-
-  return {
-    maxShreds,
-    orderedSlotNumbers,
-  };
-};
-
-interface AddEventsForRowArgs {
-  addEventPosition: (fillStyle: string, position: Coordinates) => void;
-  u: uPlot;
-  firstShredIdx: number;
-  lastShredIdx: number;
-  shreds: (ShredEventTsDeltas | undefined)[];
-  slotCompletionTsDelta: number | undefined;
-  isSlotSkipped: boolean;
-  drawOnlyDots: boolean;
-  tsXValueOffset: number;
-  y: number;
-  getYOffset?: (
-    eventType: Exclude<ShredEvent, ShredEvent.slot_complete>,
-  ) => number;
-  scaleX: uPlot.Scale;
-  getXPos: (xVal: number) => number;
-}
-/**
- * Draw rows for shreds, with rectangles or dots for events.
- * Each row may represent partial or multiple shreds. Use the row shred priorities to determine
- * which shred to draw.
- */
-function addEventsForRow({
-  addEventPosition,
-  u,
-  firstShredIdx,
-  lastShredIdx,
-  shreds,
-  slotCompletionTsDelta,
-  tsXValueOffset,
-  drawOnlyDots,
-  isSlotSkipped,
-  y,
-  getYOffset,
-  scaleX,
-  getXPos,
-}: AddEventsForRowArgs) {
-  if (scaleX.max == null || scaleX.min == null) return;
-
-  const shredIdx = getShredIdxToDrawForRow(firstShredIdx, lastShredIdx, shreds);
-
-  const eventTsDeltas = shreds[shredIdx];
-  if (!eventTsDeltas) return;
-
-  const maxXPos = u.bbox.left + u.bbox.width;
-  let endXPos: number =
-    slotCompletionTsDelta == null
-      ? // event goes to max x
-        maxXPos
-      : getXPos(slotCompletionTsDelta - tsXValueOffset);
-
-  const eventPositions = new Map<
-    Exclude<ShredEvent, ShredEvent.slot_complete>,
-    Coordinates
-  >();
-
-  // draw events from highest to lowest priority
-  for (const eventType of shredEventDescPriorities) {
-    const tsDelta = eventTsDeltas[eventType];
-    if (tsDelta == null) continue;
-
-    const startXVal = tsDelta - tsXValueOffset;
-    const startXPos = getXPos(startXVal);
-
-    // ignore overlapping events with lower priority
-    if (startXPos >= endXPos) continue;
-
-    const yOffset = getYOffset?.(eventType) ?? 0;
-
-    eventPositions.set(
-      eventType,
-      drawOnlyDots || isSlotSkipped
-        ? [startXPos, y + yOffset]
-        : [startXPos, y + yOffset, endXPos - startXPos],
-    );
-    endXPos = startXPos;
-  }
-
-  for (const [eventType, position] of eventPositions.entries()) {
-    if (isSlotSkipped) {
-      addEventPosition(shredSkippedColor, position);
-      continue;
-    }
-    switch (eventType) {
-      case ShredEvent.shred_repair_request: {
-        addEventPosition(shredRepairRequestedColor, position);
-        break;
-      }
-      case ShredEvent.shred_received_turbine: {
-        addEventPosition(shredReceivedTurbineColor, position);
-        break;
-      }
-      case ShredEvent.shred_received_repair: {
-        addEventPosition(shredReceivedRepairColor, position);
-        break;
-      }
-      case ShredEvent.shred_replayed: {
-        if (eventPositions.has(ShredEvent.shred_received_repair)) {
-          addEventPosition(shredReplayedRepairColor, position);
-        } else if (eventPositions.has(ShredEvent.shred_received_turbine)) {
-          addEventPosition(shredReplayedTurbineColor, position);
-        } else {
-          addEventPosition(shredReplayedNothingColor, position);
-        }
-        break;
-      }
-      case ShredEvent.shred_published: {
-        addEventPosition(shredPublishedColor, position);
-      }
-    }
-  }
-}
-
-function getShredIdxToDrawForRow(
-  firstShredIdx: number,
-  lastShredIdx: number,
-  shreds: (ShredEventTsDeltas | undefined)[],
-): number {
-  for (const shredEvent of rowShredEventDescPriorities) {
-    const shredIdx = findShredIdx(
-      firstShredIdx,
-      lastShredIdx,
-      shreds,
-      (shred: ShredEventTsDeltas | undefined) => shred?.[shredEvent] != null,
-    );
-    if (shredIdx !== -1) return shredIdx;
-  }
-  return firstShredIdx;
-}
-
-/**
- * Find first shred index that satisfies the condition.
- * Returns -1 if no shred passes the condition.
- */
-function findShredIdx(
-  firstShredIdx: number,
-  lastShredIdx: number,
-  shreds: (ShredEventTsDeltas | undefined)[],
-  condition: (shred: ShredEventTsDeltas | undefined) => boolean,
-) {
-  for (let shredIdx = firstShredIdx; shredIdx < lastShredIdx; shredIdx++) {
-    if (condition(shreds[shredIdx])) return shredIdx;
-  }
-  return -1;
 }
 
 function updateLabels(

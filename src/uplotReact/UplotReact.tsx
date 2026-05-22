@@ -137,7 +137,7 @@ export default function UplotReact({
         }),
       );
     },
-    500,
+    1,
     { leading: true, trailing: true },
   );
 

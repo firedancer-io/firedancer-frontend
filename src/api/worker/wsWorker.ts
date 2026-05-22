@@ -139,7 +139,20 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
       } else {
         logWarning("WS", "Attempting to send on closed WebSocket", msg.value);
       }
-
+      break;
+    case "subscribe_shreds_chart":
+      handler.subscribeShredsChart(msg.chartId);
+      break;
+    case "unsubscribe_shreds_chart":
+      handler.unsubscribeShredsChart(msg.chartId);
+      break;
+    case "update_shreds_chart_scale":
+      handler.updateShredsChartScale(msg.chartId, {
+        scaleMin: msg.scaleMin,
+        scaleMax: msg.scaleMax,
+        bboxHeight: msg.bboxHeight,
+        isOnStartupScreen: msg.isOnStartupScreen,
+      });
       break;
   }
 };

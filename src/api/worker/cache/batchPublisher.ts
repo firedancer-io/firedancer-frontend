@@ -126,6 +126,24 @@ export function createBatchPublisher<
       }
     },
 
+    forcePublish: (key: TEntry["key"]) => {
+      const e = entries.get(key);
+      if (!e || !e.subscribed) return;
+
+      const nowMs = performance.now();
+      const item = config.collect(e, nowMs);
+      if (item !== undefined) {
+        config.post([item]);
+        e.lastPublishMs = nowMs;
+      }
+
+      if (timer) {
+        clearTimeout(timer);
+        timer = undefined;
+      }
+      schedule();
+    },
+
     stop: () => {
       if (timer) {
         clearTimeout(timer);

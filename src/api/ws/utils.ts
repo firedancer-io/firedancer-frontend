@@ -1,4 +1,4 @@
-import type { SendMessage } from "./types";
+import type { PostWorkerMessage, SendMessage } from "./types";
 import { useContext, useRef, useEffect } from "react";
 import { ConnectionContext, messageEventType } from "./ConnectionContext";
 import type { FromWorkerMessage } from "../worker/types";
@@ -10,6 +10,15 @@ import type { FromWorkerMessage } from "../worker/types";
 export function useWebSocketSend(): SendMessage {
   const { sendMessage } = useContext(ConnectionContext);
   return sendMessage;
+}
+
+/**
+ * The returned function is referentially stable over the lifetime of ConnectionProvider
+ * and can safely be included as a React hook dependency.
+ */
+export function usePostWorkerMessage(): PostWorkerMessage {
+  const { postWorkerMessage } = useContext(ConnectionContext);
+  return postWorkerMessage;
 }
 
 /**

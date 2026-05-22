@@ -26,6 +26,7 @@ import type {
   WsEntity,
 } from "./types";
 import { createLiveShredsCache } from "./cache/shredsCache";
+import { createShredsGroupedCache, type ChartScaleParams } from "./cache/shredsGroupedCache";
 import type { PublisherOptions } from "./cache/batchPublisher";
 
 const gossipHealthEmaOptions: EmaHistoryObjectCacheOptions = {
@@ -83,14 +84,31 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
     validatorStateCache,
   );
 
+  const shredsGroupedCache = createShredsGroupedCache(
+    (items) => post({ type: "shredsChartData", items }),
+    () => liveShredsCache.get("liveShreds"),
+  );
+
   return {
     onConnectionChange(msg: {
       type: "connected" | "connecting" | "disconnected";
     }): void {
       if (msg.type !== "connected") {
         liveShredsCache.reset();
+        shredsGroupedCache.reset();
       }
       post(msg);
+    },
+    subscribeShredsChart(chartId: string): void {
+      shredsGroupedCache.subscribe(chartId, {
+        publishIntervalMs: shredsPublishIntervalMs,
+      });
+    },
+    unsubscribeShredsChart(chartId: string): void {
+      shredsGroupedCache.unsubscribe(chartId);
+    },
+    updateShredsChartScale(chartId: string, params: ChartScaleParams): void {
+      shredsGroupedCache.updateScale(chartId, params);
     },
     onMessage(item: WsEntity): void {
       const nowMs = performance.now();

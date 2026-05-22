@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from "react";
 import type { FromWorkerMessage, ToWorkerMessage } from "./types";
 import { createTypedWorker, type TypedWorker } from "./typedWorker";
-import type { SendMessage } from "../ws/types";
+import type { PostWorkerMessage, SendMessage } from "../ws/types";
 import { messageEventType, type MessageEmitter } from "../ws/ConnectionContext";
 import EventEmitter from "events";
 import WsWorker from "./wsWorker?worker";
@@ -47,7 +47,11 @@ export function useWsWorker({
     worker?.postMessage({ type: "send", value: data });
   }, []);
 
-  return { sendMessage, emitter };
+  const postWorkerMessage = useCallback<PostWorkerMessage>((msg) => {
+    worker?.postMessage(msg);
+  }, []);
+
+  return { sendMessage, postWorkerMessage, emitter };
 }
 
 /**

@@ -9,7 +9,10 @@ import {
   supermajoritySchema,
 } from "../entities";
 import type { GossipHealthEma } from "../atoms";
-import type { LiveShredsData } from "../../features/Overview/ShredsProgression/types";
+import type {
+  LiveShredsData,
+  ShredEventTsDeltas,
+} from "../../features/Overview/ShredsProgression/types";
 
 export const WsMessageSchema = z.discriminatedUnion("topic", [
   summarySchema,
@@ -33,7 +36,17 @@ type KvFrom<TSchema extends z.ZodTypeAny, TTopic extends string> =
 export type ToWorkerMessage =
   | { type: "connect"; websocketUrl: string; compress: boolean }
   | { type: "disconnect" }
-  | { type: "send"; value: unknown };
+  | { type: "send"; value: unknown }
+  | { type: "subscribe_shreds_chart"; chartId: string }
+  | { type: "unsubscribe_shreds_chart"; chartId: string }
+  | {
+      type: "update_shreds_chart_scale";
+      chartId: string;
+      scaleMin: number;
+      scaleMax: number;
+      bboxHeight: number;
+      isOnStartupScreen: boolean;
+    };
 
 export type WsEntity =
   | KvFrom<typeof summarySchema, "summary">
@@ -64,6 +77,10 @@ export type FromWorkerMessage =
   | {
       type: "liveShredsObject";
       items: LiveShredsItem[];
+    }
+  | {
+      type: "shredsChartData";
+      items: ChartDrawItem[];
     };
 
 export interface EmaItem {
@@ -122,4 +139,48 @@ export interface ValidatorStateCache {
 export interface LiveShredsItem {
   key: string;
   data: LiveShredsData;
+}
+
+/** A single event for a row, with its fill color and tsDelta-space position */
+export interface DrawRowEvent {
+  fillStyle: string;
+  startTsDelta: number;
+}
+
+/**
+ * Pre-computed events for a single row.
+ * Events are ordered from highest to lowest priority.
+ * `endTsDelta` is the slot's completion tsDelta (the right boundary for the first event),
+ * or undefined if the slot is incomplete (extends to chart right edge).
+ */
+export interface DrawRow {
+  endTsDelta: number | undefined;
+  events: DrawRowEvent[];
+}
+
+/** Pre-computed draw data for a single slot */
+export interface SlotDrawData {
+  slotNumber: number;
+  /** earliest event tsDelta, used for visibility filtering */
+  minEventTsDelta: number;
+  /** slot completion tsDelta, used for visibility filtering */
+  completionTsDelta: number | undefined;
+  rows: DrawRow[];
+}
+
+/**
+ * Pre-computed chart draw data produced by the web worker.
+ * Events are in tsDelta space; the main thread applies tsXValueOffset for positioning.
+ */
+export interface ChartDrawData {
+  referenceTs: number;
+  minCompletedSlot?: number;
+  range: { min: number; max: number };
+  maxShreds: number;
+  slots: SlotDrawData[];
+}
+
+export interface ChartDrawItem {
+  key: string;
+  data: ChartDrawData;
 }

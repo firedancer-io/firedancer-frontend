@@ -12,8 +12,10 @@ import {
 import { Box, Flex } from "@radix-ui/themes";
 import type { FlexProps } from "@radix-ui/themes";
 import ShredsSlotLabels from "./ShredsSlotLabels";
+import { usePostWorkerMessage, useServerMessages } from "../../../api/ws/utils";
+import type { ChartDrawData } from "../../../api/worker/types";
 
-const REDRAW_INTERVAL_MS = 40;
+const REDRAW_INTERVAL_MS = 10;
 
 // prevent x axis tick labels from being cut off
 const chartXPadding = 15;
@@ -78,6 +80,38 @@ export default function ShredsChart({
     uplotRef.current = u;
   }, []);
 
+  const postWorkerMessage = usePostWorkerMessage();
+
+  useEffect(() => {
+    postWorkerMessage({ type: "subscribe_shreds_chart", chartId });
+    return () => {
+      postWorkerMessage({ type: "unsubscribe_shreds_chart", chartId });
+    };
+  }, [chartId, postWorkerMessage]);
+
+  // Stable ref for the scale update params — avoids stale closures in uplot hooks
+  const scaleUpdateParamsRef = useRef({
+    chartId,
+    isOnStartupScreen,
+    postWorkerMessage,
+  });
+  scaleUpdateParamsRef.current = {
+    chartId,
+    isOnStartupScreen,
+    postWorkerMessage,
+  };
+
+  const groupedDataRef = useRef<ChartDrawData>();
+
+  useServerMessages((msg) => {
+    if (msg.type !== "shredsChartData") return;
+    for (const item of msg.items) {
+      if (item.key === chartId) {
+        groupedDataRef.current = item.data;
+      }
+    }
+  });
+
   const [chartData, xIncrs] = useMemo(() => {
     return [
       [[Math.trunc(scale * -xRangeMs), 0], new Array(2)] satisfies AlignedData,
@@ -92,6 +126,19 @@ export default function ShredsChart({
   }, [chartData, xIncrs]);
 
   const options = useMemo<uPlot.Options>(() => {
+    const postScaleUpdate = (u: uPlot) => {
+      const { chartId, isOnStartupScreen, postWorkerMessage } =
+        scaleUpdateParamsRef.current;
+      postWorkerMessage({
+        type: "update_shreds_chart_scale",
+        chartId,
+        scaleMin: u.scales[shredsXScaleKey].min ?? 0,
+        scaleMax: u.scales[shredsXScaleKey].max ?? 0,
+        bboxHeight: u.bbox.height,
+        isOnStartupScreen,
+      });
+    };
+
     return {
       padding: [0, chartXPadding, 0, chartXPadding],
       width: 0,
@@ -144,9 +191,19 @@ export default function ShredsChart({
           },
         },
       ],
-      plugins: [shredsProgressionPlugin(isOnStartupScreen)],
+      hooks: {
+        // Fire when data range changes (viewport scale breakpoint changed)
+        setScale: [
+          (u, scaleKey) => {
+            if (scaleKey === shredsXScaleKey) postScaleUpdate(u);
+          },
+        ],
+        // Fire when canvas dimensions change (container resized)
+        setSize: [postScaleUpdate],
+      },
+      plugins: [shredsProgressionPlugin(isOnStartupScreen, groupedDataRef)],
     };
-  }, [isOnStartupScreen, xIncrs]);
+  }, [isOnStartupScreen, xIncrs, groupedDataRef]);
 
   options.width = measureRect.width;
   options.height = measureRect.height;
