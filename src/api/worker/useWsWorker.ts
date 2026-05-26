@@ -5,13 +5,70 @@ import type { SendMessage } from "../ws/types";
 import { messageEventType, type MessageEmitter } from "../ws/ConnectionContext";
 import EventEmitter from "events";
 import WsWorker from "./wsWorker?worker";
+import { logError } from "../../logger";
 
 let worker: TypedWorker<ToWorkerMessage, FromWorkerMessage> | null = null;
 // Singleton so existing listeners keep receiving events if the worker is recreated
 const emitter = new EventEmitter().setMaxListeners(1e3) as MessageEmitter;
 
+/**
+ * Buffer worker messages and flush once per frame to prevent worker
+ * onmessage tasks from starving setTimeout/setInterval on slow machines.
+ * RAF when visible; setTimeout(0) when hidden (RAF is suspended, but
+ * browsers only throttle timers, bounding buffer growth).
+ */
+let buffer: FromWorkerMessage[] = [];
+let rafId: number | null = null;
+let timeoutId: number | null = null;
+
+function flushBuffer() {
+  rafId = null;
+  timeoutId = null;
+  const messages = buffer;
+  buffer = [];
+  for (const msg of messages) {
+    try {
+      emitter.emit(messageEventType, msg);
+    } catch (e) {
+      logError("useWsWorker", "Error processing worker message:", msg.type, e);
+    }
+  }
+}
+
+function cancelPendingFlush() {
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+  if (timeoutId !== null) {
+    clearTimeout(timeoutId);
+    timeoutId = null;
+  }
+}
+
+function scheduleFlush() {
+  if (rafId !== null || timeoutId !== null) return;
+  if (!buffer.length) return;
+
+  if (document.visibilityState === "visible") {
+    rafId = requestAnimationFrame(flushBuffer);
+  } else {
+    timeoutId = window.setTimeout(flushBuffer, 0);
+  }
+}
+
+function onVisibilityChange() {
+  if (rafId !== null || timeoutId !== null) {
+    cancelPendingFlush();
+    scheduleFlush();
+  }
+}
+
+document.addEventListener("visibilitychange", onVisibilityChange);
+
 function onMessage(e: MessageEvent<FromWorkerMessage>) {
-  emitter.emit(messageEventType, e.data);
+  buffer.push(e.data);
+  scheduleFlush();
 }
 
 function startWorker(websocketUrl: string, compress: boolean) {
@@ -24,6 +81,8 @@ function startWorker(websocketUrl: string, compress: boolean) {
 }
 
 function stopWorker() {
+  cancelPendingFlush();
+  buffer = [];
   if (worker) {
     worker.postMessage({ type: "disconnect" });
     worker.terminate();
@@ -55,5 +114,8 @@ export function useWsWorker({
  * Terminate it to avoid duplicate connections.
  */
 if (import.meta.hot) {
-  import.meta.hot.dispose(() => stopWorker());
+  import.meta.hot.dispose(() => {
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    stopWorker();
+  });
 }
