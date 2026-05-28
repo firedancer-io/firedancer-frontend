@@ -45,31 +45,55 @@ export type LabelPositions = {
   };
 };
 
+type XRange = {
+  minDeltaTs: number;
+  maxDeltaTs: number;
+  minCanvasPos: number;
+  maxCanvasPos: number;
+  minCssPos: number;
+  maxCssPos: number;
+};
+
 export function shredsProgressionPlugin(
   isOnStartupScreen: boolean,
 ): uPlot.Plugin {
   const prevTimeDiffs: number[] = [];
+
+  /**
+   * Get timestamp for "now", which is the ts at x = 0 (right-most in chart).
+   * "now" is adjusted using an avg diff of server time and real now ts to smooth out server msg delays.
+   * We also delay "now" by one data update interval to prevent instability of right-most data.
+   */
+  function getAdjustedNow() {
+    // Use server time for chart axis
+    // Use a rolling avg of the server time and client now diff.
+    // If we get ws messages buffered and it results in a temporary high
+    // diff, shred still move smoothly by using the avg
+    const now = Date.now();
+    const serverTimeMs = store.get(serverTimeMsAtom);
+
+    if (serverTimeMs) {
+      const timeDiff = now - serverTimeMs;
+      prevTimeDiffs.push(timeDiff);
+      while (prevTimeDiffs.length > 20) {
+        prevTimeDiffs.shift();
+      }
+    }
+
+    const timeDiffAvg = prevTimeDiffs.length
+      ? sum(prevTimeDiffs) / prevTimeDiffs.length
+      : undefined;
+    const adjustedTimeMs =
+      timeDiffAvg == null ? (serverTimeMs ?? now) : now - timeDiffAvg;
+    return adjustedTimeMs - delayMs;
+  }
+
   return {
     hooks: {
       draw: [
         (u) => {
-          u.ctx.save();
-
           if (isOnStartupScreen) {
-            // draw grid lines to split y axis into thirds
-            u.ctx.strokeStyle = gridLineColor;
-            u.ctx.lineWidth = 1;
-            u.ctx.beginPath();
-
-            const left = u.bbox.left;
-            const right = u.bbox.left + u.bbox.width;
-
-            for (let i = 0; i < 3; i++) {
-              u.ctx.moveTo(left, u.bbox.top + (u.bbox.height * i) / 3);
-              u.ctx.lineTo(right, u.bbox.top + (u.bbox.height * i) / 3);
-            }
-            u.ctx.stroke();
-            u.ctx.restore();
+            drawStartupChartAxes(u);
           }
 
           const atoms = shredsAtoms;
@@ -80,30 +104,14 @@ export function shredsProgressionPlugin(
           const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
           const rangeAfterStartup = store.get(atoms.rangeAfterStartup);
 
-          // Use server time for chart axis
-          // Use a rolling avg of the server time and client now diff.
-          // If we get ws messages buffered and it results in a temporary high
-          // diff, shred still move smoothly by using the avg
-          const now = Date.now();
-          const serverTimeMs = store.get(serverTimeMsAtom);
+          const { min: minXScale, max: maxXScale } = u.scales[shredsXScaleKey];
 
-          if (serverTimeMs) {
-            const timeDiff = now - serverTimeMs;
-            prevTimeDiffs.push(timeDiff);
-            while (prevTimeDiffs.length > 20) {
-              prevTimeDiffs.shift();
-            }
-          }
-
-          const timeDiffAvg = prevTimeDiffs.length
-            ? sum(prevTimeDiffs) / prevTimeDiffs.length
-            : undefined;
-          const adjustedTimeMs =
-            timeDiffAvg == null ? (serverTimeMs ?? now) : now - timeDiffAvg;
-
-          const maxX = u.scales[shredsXScaleKey].max;
-
-          if (!liveShreds || !slotRange || maxX == null) {
+          if (
+            !liveShreds ||
+            !slotRange ||
+            minXScale == null ||
+            maxXScale == null
+          ) {
             return;
           }
 
@@ -118,29 +126,30 @@ export function shredsProgressionPlugin(
             if (!rangeAfterStartup) return;
           }
 
-          // Offset to convert shred event delta to chart x value
-          const delayedNow = adjustedTimeMs - delayMs;
+          const adjustedNow = getAdjustedNow();
 
-          const tsXValueOffset = delayedNow - liveShreds.referenceTs;
+          const maxReferenceTs = adjustedNow - liveShreds.referenceTs;
+          const tsSpan = maxXScale - minXScale;
+
+          const xRange: XRange = {
+            minDeltaTs: maxReferenceTs - tsSpan,
+            maxDeltaTs: maxReferenceTs,
+            minCanvasPos: u.bbox.left,
+            maxCanvasPos: u.bbox.left + u.bbox.width,
+            minCssPos: u.valToPos(minXScale, shredsXScaleKey, false),
+            maxCssPos: u.valToPos(maxXScale, shredsXScaleKey, false),
+          };
 
           const minSlot = isOnStartupScreen
             ? slotRange.min
             : Math.max(slotRange.min, minCompletedSlot ?? slotRange.min);
           const maxSlot = slotRange.max;
 
-          u.ctx.rect(u.bbox.left, u.bbox.top, u.bbox.width, u.bbox.height);
-          u.ctx.clip();
-
-          // helper to get x pos
-          const getXPos = (xVal: number) =>
-            u.valToPos(xVal, shredsXScaleKey, true);
-
           const { maxShreds, orderedSlotNumbers } = getDrawInfo(
             minSlot,
             maxSlot,
             liveShreds,
-            u.scales[shredsXScaleKey],
-            tsXValueOffset,
+            xRange,
           );
 
           const canvasHeight = isOnStartupScreen
@@ -177,6 +186,10 @@ export function shredsProgressionPlugin(
           );
           const shredsPerRow = maxShreds / rowsCount;
 
+          u.ctx.save();
+          u.ctx.rect(u.bbox.left, u.bbox.top, u.bbox.width, u.bbox.height);
+          u.ctx.clip();
+
           for (const slotNumber of orderedSlotNumbers) {
             const eventsByFillStyle: EventsByFillStyle = {};
             const addEventPosition = (
@@ -188,7 +201,7 @@ export function shredsProgressionPlugin(
             };
 
             const slot = liveShreds.slots.get(slotNumber);
-            if (slot?.minEventTsDelta == null) continue;
+            if (!slot) continue;
 
             const isSlotSkipped = skippedSlotsCluster.has(slotNumber);
 
@@ -204,18 +217,15 @@ export function shredsProgressionPlugin(
 
               addEventsForRow({
                 addEventPosition,
-                u,
                 firstShredIdx,
                 lastShredIdx,
                 shreds: slot.shreds,
                 slotCompletionTsDelta: slot.completionTsDelta,
                 isSlotSkipped,
                 drawOnlyDots: isOnStartupScreen,
-                tsXValueOffset,
                 y: (rowPxHeight + gapPxHeight) * rowIdx + u.bbox.top,
                 getYOffset,
-                scaleX: u.scales[shredsXScaleKey],
-                getXPos,
+                xRange,
               });
             }
 
@@ -243,8 +253,7 @@ export function shredsProgressionPlugin(
               liveShreds.slots,
               skippedSlotsCluster,
               u,
-              maxX,
-              tsXValueOffset,
+              xRange,
             );
           }
         },
@@ -254,16 +263,35 @@ export function shredsProgressionPlugin(
 }
 
 /**
+ * Draw grid lines to split y axis into thirds
+ */
+function drawStartupChartAxes(u: uPlot) {
+  u.ctx.save();
+  u.ctx.strokeStyle = gridLineColor;
+  u.ctx.lineWidth = 1;
+  u.ctx.beginPath();
+
+  const left = u.bbox.left;
+  const right = u.bbox.left + u.bbox.width;
+
+  for (let i = 0; i < 3; i++) {
+    u.ctx.moveTo(left, u.bbox.top + (u.bbox.height * i) / 3);
+    u.ctx.lineTo(right, u.bbox.top + (u.bbox.height * i) / 3);
+  }
+  u.ctx.stroke();
+  u.ctx.restore();
+}
+
+/**
  * Get slots in draw order
  * and max shreds count per slot for scaling
  */
-const getDrawInfo = (
+function getDrawInfo(
   minSlotNumber: number,
   maxSlotNumber: number,
   liveShreds: SlotsShreds,
-  scaleX: uPlot.Scale,
-  tsXValueOffset: number,
-) => {
+  xRange: XRange,
+) {
   const orderedSlotNumbers = [];
   let maxShreds = 0;
 
@@ -273,23 +301,19 @@ const getDrawInfo = (
     slotNumber++
   ) {
     const slot = liveShreds.slots.get(slotNumber);
-    if (!slot || !slot.shreds.length || slot.minEventTsDelta == null) {
+    if (!slot?.shreds.length || slot.minEventTsDelta == null) {
       // slot has no events
       continue;
     }
 
-    if (
-      scaleX.max != null &&
-      slot.minEventTsDelta - tsXValueOffset > scaleX.max
-    ) {
+    if (slot.minEventTsDelta > xRange.maxDeltaTs) {
       // slot started after chart max X
       continue;
     }
 
     if (
-      scaleX.min != null &&
       slot.completionTsDelta != null &&
-      slot.completionTsDelta - tsXValueOffset < scaleX.min
+      slot.completionTsDelta < xRange.minDeltaTs
     ) {
       // slot completed before chart min X
       continue;
@@ -303,24 +327,29 @@ const getDrawInfo = (
     maxShreds,
     orderedSlotNumbers,
   };
-};
+}
+
+function getXPos(tsDelta: number, xRange: XRange, isCanvasPos: boolean) {
+  const tsRange = xRange.maxDeltaTs - xRange.minDeltaTs;
+  const minPos = isCanvasPos ? xRange.minCanvasPos : xRange.minCssPos;
+  const maxPos = isCanvasPos ? xRange.maxCanvasPos : xRange.maxCssPos;
+  const posRange = maxPos - minPos;
+  return minPos + posRange * ((tsDelta - xRange.minDeltaTs) / tsRange);
+}
 
 interface AddEventsForRowArgs {
   addEventPosition: (fillStyle: string, position: Coordinates) => void;
-  u: uPlot;
   firstShredIdx: number;
   lastShredIdx: number;
   shreds: (ShredEventTsDeltas | undefined)[];
   slotCompletionTsDelta: number | undefined;
   isSlotSkipped: boolean;
   drawOnlyDots: boolean;
-  tsXValueOffset: number;
   y: number;
   getYOffset?: (
     eventType: Exclude<ShredEvent, ShredEvent.slot_complete>,
   ) => number;
-  scaleX: uPlot.Scale;
-  getXPos: (xVal: number) => number;
+  xRange: XRange;
 }
 /**
  * Draw rows for shreds, with rectangles or dots for events.
@@ -329,32 +358,27 @@ interface AddEventsForRowArgs {
  */
 function addEventsForRow({
   addEventPosition,
-  u,
   firstShredIdx,
   lastShredIdx,
   shreds,
   slotCompletionTsDelta,
-  tsXValueOffset,
   drawOnlyDots,
   isSlotSkipped,
   y,
   getYOffset,
-  scaleX,
-  getXPos,
+  xRange,
 }: AddEventsForRowArgs) {
-  if (scaleX.max == null || scaleX.min == null) return;
-
   const shredIdx = getShredIdxToDrawForRow(firstShredIdx, lastShredIdx, shreds);
 
   const eventTsDeltas = shreds[shredIdx];
+  // no events to draw
   if (!eventTsDeltas) return;
 
-  const maxXPos = u.bbox.left + u.bbox.width;
   let endXPos: number =
     slotCompletionTsDelta == null
       ? // event goes to max x
-        maxXPos
-      : getXPos(slotCompletionTsDelta - tsXValueOffset);
+        xRange.maxCanvasPos
+      : getXPos(slotCompletionTsDelta, xRange, true);
 
   const eventPositions = new Map<
     Exclude<ShredEvent, ShredEvent.slot_complete>,
@@ -366,8 +390,7 @@ function addEventsForRow({
     const tsDelta = eventTsDeltas[eventType];
     if (tsDelta == null) continue;
 
-    const startXVal = tsDelta - tsXValueOffset;
-    const startXPos = getXPos(startXVal);
+    const startXPos = getXPos(tsDelta, xRange, true);
 
     // ignore overlapping events with lower priority
     if (startXPos >= endXPos) continue;
@@ -459,17 +482,12 @@ function updateLabels(
   slots: SlotsShreds["slots"],
   skippedSlotsCluster: Set<number>,
   u: uPlot,
-  maxX: number,
-  tsXValueOffset: number,
+  xRange: XRange,
 ) {
   const slotBlocks = getSlotBlocks(slotRange, slots);
   const slotTsDeltas = estimateSlotTsDeltas(slotBlocks, skippedSlotsCluster);
   const groupLeaderSlots = store.get(shredsAtoms.groupLeaderSlots);
   const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, groupLeaderSlots);
-
-  const xValToCssPos = (xVal: number) =>
-    u.valToPos(xVal, shredsXScaleKey, false);
-  const maxXPos = xValToCssPos(maxX);
 
   for (let groupIdx = 0; groupIdx < groupLeaderSlots.length; groupIdx++) {
     const leaderSlot = groupLeaderSlots[groupIdx];
@@ -479,12 +497,8 @@ function updateLabels(
 
     const groupRange = groupTsDeltas[leaderSlot];
 
-    const groupPos = getPosFromTsDeltaRange(
-      groupRange,
-      tsXValueOffset,
-      xValToCssPos,
-    );
-    moveLabelPosition(true, groupPos, maxXPos, leaderEl);
+    const groupPos = getPosFromTsDeltaRange(groupRange, xRange);
+    moveLabelPosition(true, groupPos, xRange.maxCssPos, leaderEl);
 
     for (
       let slotNumber = leaderSlot;
@@ -496,11 +510,7 @@ function updateLabels(
       if (!slotEl) continue;
 
       const slotRange = slotTsDeltas[slotNumber];
-      const slotPos = getPosFromTsDeltaRange(
-        slotRange,
-        tsXValueOffset,
-        xValToCssPos,
-      );
+      const slotPos = getPosFromTsDeltaRange(slotRange, xRange);
 
       // position slot relative to its slot group
       const relativeSlotPos =
@@ -508,7 +518,7 @@ function updateLabels(
           ? ([slotPos[0] - groupPos[0], slotPos[1]] satisfies Position)
           : undefined;
 
-      moveLabelPosition(false, relativeSlotPos, maxXPos, slotEl);
+      moveLabelPosition(false, relativeSlotPos, xRange.maxCssPos, slotEl);
     }
   }
 }
@@ -809,19 +819,18 @@ export function getGroupTsDeltas(
  */
 function getPosFromTsDeltaRange(
   tsDeltaRange: TsDeltaRange | undefined,
-  tsXValueOffset: number,
-  valToCssPos: (val: number) => number,
+  xRange: XRange,
 ): Position | undefined {
-  if (!tsDeltaRange) return undefined;
-  const xStartVal = tsDeltaRange[0] - tsXValueOffset;
-  const xStartPos = valToCssPos(xStartVal);
+  if (!tsDeltaRange) return;
 
-  if (tsDeltaRange[1] == null) {
+  const xStartPos = getXPos(tsDeltaRange[0], xRange, false);
+  const xEndVal = tsDeltaRange[1];
+
+  if (xEndVal == null) {
     return [xStartPos, undefined];
   }
 
-  const xEndVal = tsDeltaRange[1] - tsXValueOffset;
-  const xEndPos = valToCssPos(xEndVal);
+  const xEndPos = getXPos(xEndVal, xRange, false);
   return [xStartPos, xEndPos - xStartPos];
 }
 
