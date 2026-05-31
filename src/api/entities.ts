@@ -104,7 +104,6 @@ export const tileTypeSchema = z.enum([
   // others
   "http",
   "plugin",
-  "cswtch",
   "genesi",
   "diag",
   "event",
