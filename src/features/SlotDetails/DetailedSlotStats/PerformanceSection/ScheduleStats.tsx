@@ -10,7 +10,7 @@ import { Fragment } from "react/jsx-runtime";
 
 const scheduleOutcomes = [
   "success",
-  "fail_taken",
+  "fail_cu_limit",
   "fail_fast_path",
   "fail_byte_limit",
   "fail_alloc_limit",
