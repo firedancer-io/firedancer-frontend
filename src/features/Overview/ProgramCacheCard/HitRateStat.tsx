@@ -21,9 +21,8 @@ type Status = "Unknown" | "Good" | "Average" | "Bad";
 
 type HitRateValues = {
   percentage: string;
-  numerator: string;
-  denominator: string;
-  showFraction: boolean;
+  hits: string;
+  misses: string;
   status: Status;
 };
 
@@ -49,19 +48,12 @@ const colorsMap: Record<Status, { changed: string; unchanged: string }> = {
 export default function HitRateStat() {
   const liveProgramCache = useAtomValue(liveProgramCacheAtom);
 
-  const {
-    percentage,
-    numerator,
-    denominator,
-    showFraction,
-    status,
-  }: HitRateValues = useMemo(() => {
+  const { percentage, hits, misses, status }: HitRateValues = useMemo(() => {
     if (!liveProgramCache) {
       return {
         percentage: "-",
-        numerator: "-",
-        denominator: "-",
-        showFraction: false,
+        hits: "-",
+        misses: "-",
         status: "Unknown",
       };
     }
@@ -79,10 +71,9 @@ export default function HitRateStat() {
             : "Good";
 
     return {
-      percentage: percentage === 100 ? "100" : percentage.toFixed(20),
-      numerator: hits.toLocaleString(),
-      denominator: lookups.toLocaleString(),
-      showFraction: Boolean(lookups),
+      percentage: (Math.trunc(percentage * 100) / 100).toFixed(2),
+      hits: hits.toLocaleString(),
+      misses: (lookups - hits).toLocaleString(),
       status,
     };
   }, [liveProgramCache]);
@@ -100,7 +91,7 @@ export default function HitRateStat() {
         <Text style={{ color: colorsMap[status].unchanged }}>{status}</Text>
       </Text>
       <Flex gap="2" align="center">
-        <Flex align="baseline" gap="1">
+        <Flex align="baseline" gap="1" minWidth="70px">
           <ColorText
             value={percentage}
             changedColor={colorsMap[status].changed}
@@ -109,21 +100,24 @@ export default function HitRateStat() {
           />
           <Text className={cardStatStyles.appendValue}>%</Text>
         </Flex>
-        {showFraction && (
-          <Flex direction="column" className={styles.fraction}>
-            <ColorText
-              value={numerator}
-              changedColor={unknownChangedColor}
-              unchangedColor={unknownUnchangedColor}
-            />
-            <hr className={styles.fractionLine} />
-            <ColorText
-              value={denominator}
-              changedColor={unknownChangedColor}
-              unchangedColor={unknownUnchangedColor}
-            />
-          </Flex>
-        )}
+        <Flex align="baseline" gap="1">
+          <ColorText
+            value={hits}
+            changedColor={unknownChangedColor}
+            unchangedColor={unknownUnchangedColor}
+            className={clsx(cardStatStyles.value, cardStatStyles.small)}
+          />
+          <Text className={cardStatStyles.appendValue}>Hits</Text>
+        </Flex>
+        <Flex align="baseline" gap="1">
+          <ColorText
+            value={misses}
+            changedColor={unknownChangedColor}
+            unchangedColor={unknownUnchangedColor}
+            className={clsx(cardStatStyles.value, cardStatStyles.small)}
+          />
+          <Text className={cardStatStyles.appendValue}>Misses</Text>
+        </Flex>
       </Flex>
     </Flex>
   );

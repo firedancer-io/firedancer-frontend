@@ -42,12 +42,17 @@ export default function ColorText({
     prevValueRef.current = value;
   }, [value]);
 
+  const prevValue = prevValueRef.current;
+  const chars = value.split("");
+  const firstChangedIdx =
+    prevValue === undefined
+      ? 0
+      : chars.findIndex((_, idx) => isCharChanged(idx, value, prevValue));
+
   return (
     <Text className={className}>
-      {value.split("").map((char, idx) => {
-        const changed =
-          prevValueRef.current === undefined ||
-          isCharChanged(idx, value, prevValueRef.current);
+      {chars.map((char, idx) => {
+        const changed = firstChangedIdx !== -1 && idx >= firstChangedIdx;
         return (
           <span
             key={idx}
