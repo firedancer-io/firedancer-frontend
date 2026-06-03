@@ -40,6 +40,7 @@ import type {
   RepairSlot,
   LiveProgramCache,
   SlotCaughtUp,
+  AccountsStats,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 import type { ValuesWithHistory } from "./worker/types";
@@ -191,3 +192,5 @@ export const slotRankingsAtom = atom<SlotRankings | undefined>(undefined);
 export const liveProgramCacheAtom = atom<LiveProgramCache | undefined>(
   undefined,
 );
+
+export const accountsStatsAtom = atom<AccountsStats | undefined>(undefined);

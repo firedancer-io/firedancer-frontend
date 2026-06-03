@@ -31,15 +31,9 @@ const supermajorityTopicSchema = z.object({
   topic: z.literal("wait_for_supermajority"),
 });
 
-export const topicSchema = z.discriminatedUnion("topic", [
-  summaryTopicSchema,
-  epochTopicSchema,
-  gossipTopicSchema,
-  peersTopicSchema,
-  slotTopicSchema,
-  blockEngineTopicSchema,
-  supermajorityTopicSchema,
-]);
+const accountsTopicSchema = z.object({
+  topic: z.literal("accounts"),
+});
 
 export const versionSchema = z.string();
 
@@ -995,5 +989,132 @@ export const supermajoritySchema = z.discriminatedUnion("key", [
   supermajorityTopicSchema.extend({
     key: z.literal("peer_remove"),
     value: supermajorityPeerRemoveSchema,
+  }),
+]);
+
+const accountsDiskSchema = z.object({
+  accounts_total: z.number(),
+  accounts_capacity: z.number(),
+  allocated_bytes: z.number(),
+  current_bytes: z.number(),
+  used_bytes: z.number(),
+});
+
+const accountsCompactionSchema = z.object({
+  in_compaction: z.number(),
+  compactions_requested: z.number(),
+  compactions_completed: z.number(),
+  accounts_relocated_bytes: z.number(),
+  relocated_bytes_per_sec: z.number(),
+});
+
+const accountsCacheClassSchema = z.object({
+  class: z.number(),
+  used_slots: z.number(),
+  max_slots: z.number(),
+  reserved_slots: z.number(),
+  target_used_slots: z.number(),
+  low_water_used_slots: z.number(),
+  not_found: z.number(),
+  evicted: z.number(),
+  preevicted: z.number(),
+  committed_new: z.number(),
+  committed_overwrite: z.number(),
+  not_found_per_sec: z.number(),
+  evicted_per_sec: z.number(),
+  preevicted_per_sec: z.number(),
+  committed_new_per_sec: z.number(),
+  committed_overwrite_per_sec: z.number(),
+  reads_per_sec: z.number(),
+  writes_per_sec: z.number(),
+  hit_rate_ema: z.number(),
+});
+
+const accountsCacheSchema = z.object({
+  hit_rate_ema: z.number(),
+  size_bytes: z.number(),
+  classes: z.array(accountsCacheClassSchema),
+});
+
+const accountsIoSchema = z.object({
+  acquired: z.number(),
+  acquired_writable: z.number(),
+  bytes_read: z.number(),
+  bytes_copied: z.number(),
+  bytes_written: z.number(),
+  bytes_written_accdb: z.number(),
+  read_ops: z.number(),
+  write_ops: z.number(),
+  acquired_per_sec: z.number(),
+  acquired_writable_per_sec: z.number(),
+  bytes_read_per_sec: z.number(),
+  bytes_copied_per_sec: z.number(),
+  bytes_written_per_sec: z.number(),
+  read_ops_per_sec: z.number(),
+  write_ops_per_sec: z.number(),
+  prewrite_ratio: z.number(),
+});
+
+const accountsTileSchema = z.object({
+  name: z.string(),
+  kind_id: z.number(),
+  joiner_type: z.string(),
+  status: z.number(),
+  acquired: z.number(),
+  bytes_read: z.number(),
+  bytes_written: z.number(),
+  acquired_per_sec: z.number(),
+  acquired_writable_per_sec: z.number(),
+  bytes_read_per_sec: z.number(),
+  bytes_copied_per_sec: z.number(),
+  bytes_written_per_sec: z.number(),
+  read_ops_per_sec: z.number(),
+  write_ops_per_sec: z.number(),
+  not_found_per_sec: z.number(),
+  evicted_per_sec: z.number(),
+  committed_per_sec: z.number(),
+  hit_rate_ema: z.number(),
+});
+
+const accountsPartitionSchema = z.object({
+  partition_idx: z.number(),
+  file_offset: z.number(),
+  tier: z.number(),
+  write_offset: z.number(),
+  bytes_freed: z.number(),
+  read_ops: z.number(),
+  bytes_read: z.number(),
+  write_ops: z.number(),
+  bytes_written: z.number(),
+  read_ops_per_sec: z.number(),
+  bytes_read_per_sec: z.number(),
+  write_ops_per_sec: z.number(),
+  bytes_written_per_sec: z.number(),
+  utilization: z.number(),
+  fragmentation: z.number(),
+  used_frac: z.number(),
+  fragmented_frac: z.number(),
+  compaction_trigger_frac: z.number(),
+  age_seconds: z.number(),
+  filled_seconds: z.number(),
+  compaction_state: z.number(),
+  compaction_frac: z.number(),
+  is_write_head: z.boolean(),
+});
+
+export const accountsStatsSchema = z.object({
+  sample_time_nanos: z.number(),
+  disk: accountsDiskSchema,
+  compaction: accountsCompactionSchema,
+  cache: accountsCacheSchema,
+  io: accountsIoSchema,
+  tiles: z.array(accountsTileSchema),
+  partitions: z.array(accountsPartitionSchema),
+});
+
+export const accountsSchema = z.discriminatedUnion("key", [
+  accountsTopicSchema.extend({
+    key: z.literal("stats"),
+    value: accountsStatsSchema,
   }),
 ]);
