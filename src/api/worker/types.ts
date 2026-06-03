@@ -9,6 +9,7 @@ import {
   supermajoritySchema,
 } from "../entities";
 import type { GossipHealthEma } from "../atoms";
+import type { Epoch } from "../types";
 
 export const WsMessageSchema = z.discriminatedUnion("topic", [
   summarySchema,
@@ -43,12 +44,17 @@ export type WsEntity =
   | KvFrom<typeof blockEngineSchema, "block_engine">
   | KvFrom<typeof supermajoritySchema, "wait_for_supermajority">;
 
+export type FromWorkerWsEntity = Exclude<
+  WsEntity,
+  KvFrom<typeof epochSchema, "epoch">
+>;
+
 export type FromWorkerMessage =
   | { type: "connecting" }
   | { type: "connected" }
   | { type: "disconnected" }
-  | { type: "kvb"; items: WsEntity[] }
-  | ({ type: "kv" } & WsEntity)
+  | { type: "kvb"; items: FromWorkerWsEntity[] }
+  | ({ type: "kv" } & FromWorkerWsEntity)
   // batch publisher caches
   | { type: "ema"; items: EmaItem[] }
   | {
@@ -59,6 +65,12 @@ export type FromWorkerMessage =
   | {
       type: "emaHistoryObject";
       items: EmaObjectItem<Record<string, number>, string>[];
+    }
+  | { type: "currentSlot"; slot: number }
+  | {
+      type: "epochData";
+      currentEpoch: Epoch | undefined;
+      nextEpoch: Epoch | undefined;
     };
 
 export interface EmaItem {
@@ -107,4 +119,15 @@ export function isEmaObjectKey<K extends keyof EmaHistoryObjectRegistry>(
   key: K,
 ): item is EmaObjectItem<EmaHistoryObjectRegistry[K], K> {
   return item.key === key;
+}
+
+export function isEntry<
+  T extends WsEntity["topic"],
+  K extends Extract<WsEntity, { topic: T }>["key"],
+>(
+  it: WsEntity,
+  topic: T,
+  key: K,
+): it is Extract<WsEntity, { topic: T; key: K }> {
+  return it.topic === topic && it.key === key;
 }
