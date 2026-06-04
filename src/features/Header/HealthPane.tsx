@@ -173,11 +173,19 @@ function useBundleHealthData(): HealthData | null {
   return useMemo(() => {
     if (!blockEngine) return null;
 
+    const statusPhrase =
+      blockEngine.status === "sleeping"
+        ? "sleeping and disconnected from"
+        : blockEngine.status === "disconnected"
+          ? `${blockEngine.status} from`
+          : `${blockEngine.status} to`;
+
     return {
       title: "Bundle Health",
       Icon: LayersIcon,
-      isAlerting: blockEngine.status !== "connected",
-      description: `Currently ${blockEngine.status} ${blockEngine.status === "disconnected" ? "from" : "to"} ${blockEngine.name} - ${blockEngine.url} (${blockEngine.ip})`,
+      isAlerting:
+        blockEngine.status !== "connected" && blockEngine.status !== "sleeping",
+      description: `Currently ${statusPhrase} ${blockEngine.name} - ${blockEngine.url} (${blockEngine.ip})`,
     };
   }, [blockEngine]);
 }
