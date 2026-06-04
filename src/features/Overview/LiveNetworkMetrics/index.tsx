@@ -7,11 +7,7 @@ import {
 import Card from "../../../components/Card";
 import { Flex, Table, Text } from "@radix-ui/themes";
 import tableStyles from "../../Gossip/table.module.css";
-import {
-  networkMaxByteValues,
-  networkProtocols,
-  type NetworkMetricsCardType,
-} from "./consts";
+import { networkProtocols, type NetworkMetricsCardType } from "./consts";
 import { formatBytesAsBits } from "../../../utils";
 import { Bars } from "../../StartupProgress/Firedancer/Bars";
 import TileSparkLine from "../SlotPerformance/TileSparkLine";
@@ -37,11 +33,13 @@ export default function LiveNetworkMetrics() {
     <Flex wrap="wrap" gap="4">
       <NetworkMetricsCard
         emaValues={liveNetworkMetrics.ingress_ema}
+        maxValue={liveNetworkMetrics.ingress_max_5m}
         history={ingressEma.history}
         type="Ingress"
       />
       <NetworkMetricsCard
         emaValues={liveNetworkMetrics.egress_ema}
+        maxValue={liveNetworkMetrics.egress_max_5m}
         history={egressEma.history}
         type="Egress"
       />
@@ -51,12 +49,14 @@ export default function LiveNetworkMetrics() {
 
 interface NetworkMetricsCardProps {
   emaValues: number[];
+  maxValue: number;
   history: HistoryEntry[];
   type: NetworkMetricsCardType;
 }
 
 function NetworkMetricsCard({
   emaValues,
+  maxValue,
   history,
   type,
 }: NetworkMetricsCardProps) {
@@ -116,7 +116,7 @@ function NetworkMetricsCard({
                   key={i}
                   label={protocol}
                   emaValue={emaValue}
-                  maxValue={networkMaxByteValues[type][protocol]}
+                  maxValue={maxValue}
                   history={history}
                   mapHistory={(values) => values[i] ?? 0}
                 />
@@ -125,7 +125,7 @@ function NetworkMetricsCard({
             <TableRow
               label="Total"
               emaValue={sum(emaValues)}
-              maxValue={networkMaxByteValues[type]["Total"]}
+              maxValue={maxValue}
               history={history}
               mapHistory={sum}
               className={styles.totalRow}
