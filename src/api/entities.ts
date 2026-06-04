@@ -949,6 +949,7 @@ export const blockEngineStatusSchema = z.enum([
   "disconnected",
   "connecting",
   "connected",
+  "sleeping",
 ]);
 
 export const blockEngineUpdateSchema = z.object({
