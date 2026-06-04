@@ -312,44 +312,86 @@ export function formatBytesAsBits(bytes: number): {
   return { value: getRoundedBitsValue(bits / 1_000_000_000), unit: "Gb" };
 }
 
-export interface FormattedBytes {
+export type ValueWithUnit<U extends string = string> = {
   value: string;
-  unit: string;
-}
+  unit: U;
+};
 
-type ByteUnit = "B" | "kB" | "MB" | "GB";
-
-export const bytesUnits: readonly {
-  unit: ByteUnit;
+export type UnitInfo<U extends string = string> = {
+  unit: U;
   divisor: number;
   threshold: number;
-}[] = [
+};
+
+export type UnitFormatter<U extends string = string> = (
+  value: number,
+  precision?: number,
+  unit?: U,
+  noDecimalForZero?: boolean,
+) => ValueWithUnit<U>;
+
+export type ByteUnit = "B" | "kB" | "MB" | "GB";
+
+export type CountUnit = "" | "k" | "M" | "B" | "T";
+
+export const countUnits: readonly UnitInfo<CountUnit>[] = [
+  { unit: "", divisor: 1, threshold: 1_000 },
+  { unit: "k", divisor: 1_000, threshold: 1_000_000 },
+  { unit: "M", divisor: 1_000_000, threshold: 1_000_000_000 },
+  { unit: "B", divisor: 1_000_000_000, threshold: 1_000_000_000_000 },
+  { unit: "T", divisor: 1_000_000_000_000, threshold: Infinity },
+];
+
+export const bytesUnits: readonly UnitInfo<ByteUnit>[] = [
   { unit: "B", divisor: 1, threshold: 1_000 },
   { unit: "kB", divisor: 1_000, threshold: 1_000_000 },
   { unit: "MB", divisor: 1_000_000, threshold: 1_000_000_000 },
   { unit: "GB", divisor: 1_000_000_000, threshold: Infinity },
 ];
 
-export function formatBytes(
-  bytes: number,
-  precision = 1,
-  unit?: ByteUnit,
-  noDecimalForZero = true,
-): {
-  value: string;
-  unit: ByteUnit;
-} {
-  if (bytes === 0 && noDecimalForZero) return { value: "0", unit: unit ?? "B" };
-
-  const entry =
-    bytesUnits.find((u) => u.unit === unit) ??
-    bytesUnits.find((u) => bytes < u.threshold) ??
-    bytesUnits[bytesUnits.length - 1];
-  return {
-    value: (bytes / entry.divisor).toFixed(precision),
-    unit: entry.unit,
+export function createUnitFormatter<U extends string>(
+  units: readonly UnitInfo<U>[],
+): UnitFormatter<U> {
+  return (value, precision = 1, unit, noDecimalForZero = true) => {
+    if (value === 0 && noDecimalForZero)
+      return { value: "0", unit: unit ?? units[0].unit };
+    const entry =
+      units.find((u) => u.unit === unit) ??
+      units.find((u) => value < u.threshold) ??
+      units[units.length - 1];
+    return {
+      value: (value / entry.divisor).toFixed(precision),
+      unit: entry.unit,
+    };
   };
 }
+
+// If the two values naturally land on neighbouring units (e.g. MB vs GB),
+// the numerator is re-formatted using the denominator's unit.
+export function formatBytesFraction(
+  num: number,
+  den: number,
+  precision?: number,
+): {
+  numerator: ValueWithUnit<ByteUnit>;
+  denominator: ValueWithUnit<ByteUnit>;
+} {
+  const numerator = formatBytes(num, precision);
+  const denominator = formatBytes(den, precision);
+  const numIdx = bytesUnits.findIndex((u) => u.unit === numerator.unit);
+  const denIdx = bytesUnits.findIndex((u) => u.unit === denominator.unit);
+  if (denIdx === numIdx + 1)
+    return {
+      numerator: formatBytes(num, precision, denominator.unit),
+      denominator,
+    };
+  return { numerator, denominator };
+}
+
+export const formatCount = createUnitFormatter(countUnits);
+export const formatBytes = createUnitFormatter(bytesUnits);
+
+export type FormattedBytes = ValueWithUnit<ByteUnit>;
 
 /**
  * Round to 1 decimal place if value is <= 10, otherwise round to nearest integer
