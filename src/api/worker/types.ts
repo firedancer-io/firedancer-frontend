@@ -46,7 +46,11 @@ export type WsEntity =
 
 export type FromWorkerWsEntity = Exclude<
   WsEntity,
-  KvFrom<typeof epochSchema, "epoch">
+  | KvFrom<typeof epochSchema, "epoch">
+  | {
+      topic: "slot";
+      key: "skipped_history_cluster";
+    }
 >;
 
 export type FromWorkerMessage =
@@ -71,6 +75,10 @@ export type FromWorkerMessage =
       type: "epochData";
       currentEpoch: Epoch | undefined;
       nextEpoch: Epoch | undefined;
+    }
+  | {
+      type: "skippedClusterSlots";
+      slots: Set<number>;
     };
 
 export interface EmaItem {

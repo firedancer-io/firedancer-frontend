@@ -768,42 +768,7 @@ export const statusAtom = atom<Status | null>((get) => {
   return "Past";
 });
 
-export const [
-  skippedClusterSlotsAtom,
-  addSkippedClusterSlotsAtom,
-  deleteSkippedClusterSlotAtom,
-  deleteSkippedClusterSlotsRangeAtom,
-] = (function getSkippedSlotsClusterAtom() {
-  const _skippedClusterSlotsAtom = atomWithImmer(new Set<number>());
-  return [
-    atom((get) => get(_skippedClusterSlotsAtom)),
-    atom(null, (_get, set, slots: number[]) => {
-      set(_skippedClusterSlotsAtom, (draft) => {
-        for (const slot of slots) {
-          draft.add(slot);
-        }
-      });
-    }),
-    atom(null, (_get, set, slot: number) => {
-      set(_skippedClusterSlotsAtom, (draft) => {
-        draft.delete(slot);
-      });
-    }),
-
-    atom(null, (_get, set, startSlot: number, endSlot: number) => {
-      set(_skippedClusterSlotsAtom, (draft) => {
-        const toKeep = new Set<number>();
-
-        for (const slot of draft) {
-          if (slot < startSlot || slot > endSlot) continue;
-          toKeep.add(slot);
-        }
-
-        return toKeep;
-      });
-    }),
-  ];
-})();
+export const skippedClusterSlotsAtom = atom(new Set<number>());
 
 export const serverTimeMsAtom = atom((get) => {
   const serverTimeNanos = get(serverTimeNanosAtom);
