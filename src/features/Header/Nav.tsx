@@ -7,6 +7,7 @@ import AssessmentIcon from "@material-design-icons/svg/filled/assessment.svg?rea
 import CalendarMonthIcon from "@material-design-icons/svg/filled/calendar_month.svg?react";
 import CampaignIcon from "@material-design-icons/svg/filled/campaign.svg?react";
 import AccountBalanceIcon from "@material-design-icons/svg/filled/account_balance.svg?react";
+import ReplayIcon from "@material-design-icons/svg/filled/replay_circle_filled.svg?react";
 import KeyboardArrowDownIcon from "@material-design-icons/svg/filled/keyboard_arrow_down.svg?react";
 import { Link } from "@tanstack/react-router";
 import clsx from "clsx";
@@ -34,6 +35,7 @@ const RouteLabelToIcon: Record<RouteLabel, FC<SVGProps<SVGSVGElement>>> = {
   Gossip: CampaignIcon,
   "Slot Details": AssessmentIcon,
   Accounts: AccountBalanceIcon,
+  Replay: ReplayIcon,
 };
 
 function isRouteHidden(routeLabel: RouteLabel) {
