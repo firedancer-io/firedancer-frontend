@@ -67,6 +67,11 @@ import type {
   peerUpdateInfoSchema,
   liveProgramCacheSchema,
   slotCaughtUpSchema,
+  voteHealthSchema,
+  bundleHealthSchema,
+  replayHealthSchema,
+  turbineHealthSchema,
+  healthSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -191,3 +196,9 @@ export type SlotRankings = z.infer<typeof slotRankingsSchema>;
 export type LiveShreds = z.infer<typeof liveShredsSchema>;
 
 export type LiveProgramCache = z.infer<typeof liveProgramCacheSchema>;
+
+export type Health = z.infer<typeof healthSchema>;
+export type VoteHealth = z.infer<typeof voteHealthSchema>;
+export type BundleHealth = z.infer<typeof bundleHealthSchema>;
+export type ReplayHealth = z.infer<typeof replayHealthSchema>;
+export type TurbineHealth = z.infer<typeof turbineHealthSchema>;

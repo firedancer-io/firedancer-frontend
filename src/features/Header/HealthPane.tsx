@@ -8,35 +8,20 @@ import styles from "./healthPane.module.css";
 import clsx from "clsx";
 import { useMedia } from "react-use";
 import { useAtomValue } from "jotai";
-import {
-  blockEngineAtom,
-  completedSlotAtom,
-  liveNetworkMetricsAtom,
-  turbineSlotAtom,
-  voteSlotAtom,
-  voteStateAtom,
-} from "../../api/atoms";
+import { blockEngineAtom, healthAtom } from "../../api/atoms";
 import PopoverDropdown from "../../components/PopoverDropdown";
-import { useEma, useEmaValue } from "../../hooks/useEma";
-import { networkProtocols } from "../Overview/LiveNetworkMetrics/consts";
-import { isFiredancer, isFrankendancer } from "../../client";
-import { bootProgressPhaseAtom } from "../StartupProgress/atoms";
+import type {
+  BundleHealth,
+  ReplayHealth,
+  TurbineHealth,
+  VoteHealth,
+} from "../../api/types";
+import { startCase } from "lodash";
 
 enum HealthStatus {
   Healthy,
   Unhealthy,
   Intermediate,
-}
-
-function getDefaultStatusText(status: HealthStatus) {
-  switch (status) {
-    case HealthStatus.Unhealthy:
-      return "Unhealthy";
-    case HealthStatus.Healthy:
-      return "Healthy";
-    case HealthStatus.Intermediate:
-      return "Unknown";
-  }
 }
 
 interface HealthData {
@@ -171,203 +156,193 @@ function HealthBox({
   );
 }
 
-function useVoteHealthData(): HealthData {
-  const voteState = useAtomValue(voteStateAtom);
-  const voteSlot = useAtomValue(voteSlotAtom);
-  const turbineSlot = useAtomValue(turbineSlotAtom);
-  const isCatchingUpPhase =
-    useAtomValue(bootProgressPhaseAtom) === "catching_up" && isFiredancer;
-
-  return useMemo(() => {
-    const status = isCatchingUpPhase
-      ? HealthStatus.Intermediate
-      : voteState === "delinquent"
-        ? HealthStatus.Unhealthy
-        : HealthStatus.Healthy;
-
-    const statusText =
-      status === HealthStatus.Intermediate
-        ? "Catching Up"
-        : getDefaultStatusText(status);
-
-    const description =
-      status === HealthStatus.Intermediate
-        ? "Catching up."
-        : status === HealthStatus.Healthy
-          ? "Our consensus votes are being received by other nodes normally."
-          : voteSlot == null || turbineSlot == null
-            ? "Missing vote slot or turbine slot data."
-            : `We haven't landed a vote since slot ${voteSlot} (${voteSlot - turbineSlot}).`;
-
-    return {
-      title: "Vote Health",
-      Icon: HowToVoteIcon,
-      status,
-      statusText,
-      description,
-    };
-  }, [isCatchingUpPhase, voteState, voteSlot, turbineSlot]);
+interface HealthStatusData {
+  status: HealthStatus;
+  description: string;
 }
 
-function useBundleHealthData(): HealthData | null {
+function getVoteHealthData(state?: VoteHealth): HealthStatusData | undefined {
+  switch (state) {
+    case "not_started":
+      return {
+        status: HealthStatus.Intermediate,
+        description:
+          "The tower tile exists but is not yet running, or the validator has not yet produced a vote.",
+      };
+    case "delinquent":
+      return {
+        status: HealthStatus.Unhealthy,
+        description:
+          "The validator is voting but the latest landed vote is greater than 150 slots behind the replay slot, or the vote slot has not advanced in over 60 seconds.",
+      };
+    case "voting":
+      return {
+        status: HealthStatus.Healthy,
+        description: "The validator is landing votes on-chain.",
+      };
+    case "disabled":
+    case undefined:
+      return;
+  }
+}
+
+function getBundleHealthData(
+  state?: BundleHealth,
+): HealthStatusData | undefined {
+  switch (state) {
+    case "disconnected":
+      return {
+        status: HealthStatus.Unhealthy,
+        description:
+          "All bundle tiles are disconnected from their block engine.",
+      };
+    case "connecting":
+      return {
+        status: HealthStatus.Intermediate,
+        description:
+          "At least one bundle tile is attempting to connect, but none are connected or sleeping.",
+      };
+    case "connected":
+      return {
+        status: HealthStatus.Healthy,
+        description:
+          "At least one bundle tile has an active connection to its block engine.",
+      };
+    case "sleeping":
+      return {
+        status: HealthStatus.Healthy,
+        description:
+          "At least one bundle tile is deliberately sleeping before reconnecting.",
+      };
+    case "disabled":
+    case undefined:
+      return;
+  }
+}
+
+function getReplayHealthData(
+  state?: ReplayHealth,
+): HealthStatusData | undefined {
+  switch (state) {
+    case "not_started":
+      return {
+        status: HealthStatus.Intermediate,
+        description:
+          "The replay tile exists but is not yet running, or the turbine slot or reset slot is zero.",
+      };
+    case "behind":
+      return {
+        status: HealthStatus.Unhealthy,
+        description:
+          "The gap between the turbine slot and the reset slot exceeds 12 slots, or the reset slot has not advanced in over 12 seconds.",
+      };
+    case "running":
+      return {
+        status: HealthStatus.Healthy,
+        description:
+          "The replay tile is keeping up with incoming turbine data.",
+      };
+    case "disabled":
+    case undefined:
+      return;
+  }
+}
+
+function getTurbineHealthData(
+  state?: TurbineHealth,
+): HealthStatusData | undefined {
+  switch (state) {
+    case "not_started":
+      return {
+        status: HealthStatus.Intermediate,
+        description:
+          "The relevant tiles exist but are not yet all running, or the turbine slot is zero.",
+      };
+    case "stalled":
+      return {
+        status: HealthStatus.Unhealthy,
+        description: "The turbine slot has not advanced in over 12 seconds.",
+      };
+    case "repair_outpacing":
+      return {
+        status: HealthStatus.Unhealthy,
+        description:
+          "Turbine slot is advancing, but repair byte throughput has exceeded turbine byte throughput over the last 12-second window, indicating degraded turbine connectivity.",
+      };
+    case "running":
+      return {
+        status: HealthStatus.Healthy,
+        description:
+          "Turbine is receiving shreds and its throughput exceeds repair.",
+      };
+    case "disabled":
+    case undefined:
+      return;
+  }
+}
+
+function useBlockEngineDescription(): string | undefined {
   const blockEngine = useAtomValue(blockEngineAtom);
-
-  return useMemo(() => {
-    if (!blockEngine) return null;
-
-    const status =
-      blockEngine.status === "connected" || blockEngine.status === "sleeping"
-        ? HealthStatus.Healthy
-        : blockEngine.status === "connecting"
-          ? HealthStatus.Intermediate
-          : HealthStatus.Unhealthy;
-
-    const statusPhrase =
-      blockEngine.status === "sleeping"
-        ? "sleeping and disconnected from"
-        : blockEngine.status === "disconnected"
-          ? `${blockEngine.status} from`
-          : `${blockEngine.status} to`;
-
-    return {
-      title: "Bundle Health",
-      Icon: LayersIcon,
-      status,
-      statusText:
-        status === HealthStatus.Intermediate
-          ? "Connecting"
-          : getDefaultStatusText(status),
-      description: `Currently ${statusPhrase} ${blockEngine.name} - ${blockEngine.url} (${blockEngine.ip})`,
-    };
-  }, [blockEngine]);
-}
-
-const noUpdateEmaOptions = {
-  // no updates
-  forceUpdateIntervalMs: undefined,
-};
-/**
- * 2.5 blocks/s
- * Ema threshold = 2.5 × 0.5^(5000 / half life).
- * Ema after 5 seconds of no blocks at 1_000ms half life = 0.09
- * choose threshold between 0.09 and 2.5
- */
-const turbineSlotEmaOptions = isFrankendancer
-  ? noUpdateEmaOptions
-  : {
-      forceUpdateIntervalMs: 1_000,
-      initMinSamples: 2,
-      halfLifeMs: 1_000,
-    };
-const turbineEmaThreshold = 0.5;
-
-const turbineNetworkEmaOptions = isFrankendancer
-  ? noUpdateEmaOptions
-  : {
-      halfLifeMs: 1_000,
-    };
-
-/**
- * Turbine health for Firedancer
- */
-function useTurbineHealthData(): HealthData | null {
-  const turbineSlot = useAtomValue(turbineSlotAtom);
-  const isTurbineSlotMissing = turbineSlot == null;
-
-  const { ema: turbineSlotRate } = useEma(
-    isFrankendancer ? null : turbineSlot,
-    turbineSlotEmaOptions,
-  );
-  const isTurbineSlotAlerting =
-    isTurbineSlotMissing ||
-    (turbineSlotRate != null && turbineSlotRate < turbineEmaThreshold);
-
-  // network metrics alert if turbine rate < repair rate
-  const liveNetworkMetrics = useAtomValue(liveNetworkMetricsAtom);
-  const turbineRate = useEmaValue(
-    isFrankendancer ? null : liveNetworkMetrics?.ingress[turbineIdx],
-    turbineNetworkEmaOptions,
-  );
-  const repairRate = useEmaValue(
-    isFrankendancer ? null : liveNetworkMetrics?.ingress[repairIdx],
-    turbineNetworkEmaOptions,
-  );
-  const isNetworkAlerting = turbineRate < repairRate;
-
-  const isWaitingForSupermajorityPhase =
-    useAtomValue(bootProgressPhaseAtom) === "waiting_for_supermajority" &&
-    isFiredancer;
-
-  const status = isWaitingForSupermajorityPhase
-    ? HealthStatus.Intermediate
-    : isTurbineSlotAlerting && isNetworkAlerting
-      ? HealthStatus.Unhealthy
-      : HealthStatus.Healthy;
-
-  return useMemo(() => {
-    if (isFrankendancer) return null;
-
-    return {
-      title: "Turbine Health",
-      Icon: CycloneIcon,
-      status,
-      statusText:
-        status === HealthStatus.Intermediate
-          ? "Waiting for Supermajority"
-          : getDefaultStatusText(status),
-      description:
-        status === HealthStatus.Intermediate
-          ? "Waiting for supermajority."
-          : status === HealthStatus.Unhealthy
-            ? isTurbineSlotMissing
-              ? "Missing turbine slot data."
-              : "We are receiving little to no block data from other nodes over Turbine."
-            : "Block data is arriving normally over Turbine.",
-    };
-  }, [isTurbineSlotMissing, status]);
-}
-
-const turbineIdx = networkProtocols.indexOf("turbine");
-const repairIdx = networkProtocols.indexOf("repair");
-
-const REPLAY_ALERT_THRESHOLD_SLOTS = 12;
-/**
- * Replay health for Firedancer
- */
-function useReplayHealthData(): HealthData | null {
-  const turbineSlot = useAtomValue(turbineSlotAtom);
-  const processedSlot = useAtomValue(completedSlotAtom);
-
-  return useMemo(() => {
-    if (isFrankendancer) return null;
-
-    const status =
-      turbineSlot == null ||
-      processedSlot == null ||
-      turbineSlot - processedSlot > REPLAY_ALERT_THRESHOLD_SLOTS
-        ? HealthStatus.Unhealthy
-        : HealthStatus.Healthy;
-
-    return {
-      title: "Replay Health",
-      Icon: ReplayIcon,
-      status,
-      statusText: getDefaultStatusText(status),
-      description:
-        status === HealthStatus.Unhealthy
-          ? turbineSlot == null || processedSlot == null
-            ? "Missing turbine slot or processed slot data."
-            : `Replay is ${turbineSlot - processedSlot} behind the rest of the cluster.`
-          : "Replay is keeping up with the cluster.",
-    };
-  }, [turbineSlot, processedSlot]);
+  return blockEngine
+    ? `Block Engine: ${blockEngine.name} - ${blockEngine.url}${blockEngine.ip ? ` (${blockEngine.ip})` : ""}`
+    : undefined;
 }
 
 function useHealthData(): HealthData[] {
-  const voteData = useVoteHealthData();
-  const bundleData = useBundleHealthData();
-  const turbineData = useTurbineHealthData();
-  const replayData = useReplayHealthData();
+  const { vote, bundle, turbine, replay } = useAtomValue(healthAtom) ?? {};
+  const voteData = useMemo(() => {
+    const data = getVoteHealthData(vote);
+    if (!data) return;
+
+    return {
+      ...data,
+      title: "Vote Health",
+      Icon: HowToVoteIcon,
+      statusText: startCase(vote),
+    };
+  }, [vote]);
+
+  const blockEngineDescription = useBlockEngineDescription();
+  const bundleData = useMemo(() => {
+    const data = getBundleHealthData(bundle);
+    if (!data) return;
+
+    const description = blockEngineDescription
+      ? `${data.description}\n${blockEngineDescription}`
+      : data.description;
+
+    return {
+      ...data,
+      title: "Bundle Health",
+      Icon: LayersIcon,
+      statusText: startCase(bundle),
+      description,
+    };
+  }, [blockEngineDescription, bundle]);
+
+  const turbineData = useMemo(() => {
+    const data = getTurbineHealthData(turbine);
+    if (!data) return;
+
+    return {
+      ...data,
+      title: "Turbine Health",
+      Icon: CycloneIcon,
+      statusText: startCase(turbine),
+    };
+  }, [turbine]);
+
+  const replayData = useMemo(() => {
+    const data = getReplayHealthData(replay);
+    if (!data) return;
+
+    return {
+      ...data,
+      title: "Replay Health",
+      Icon: ReplayIcon,
+      statusText: startCase(replay),
+    };
+  }, [replay]);
 
   const healthData = [voteData, bundleData, turbineData, replayData].filter(
     (d) => d != null,

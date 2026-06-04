@@ -483,6 +483,40 @@ export const liveProgramCacheSchema = z.object({
   size_bytes: z.number(),
 });
 
+export const voteHealthSchema = z.enum([
+  "disabled",
+  "not_started",
+  "delinquent",
+  "voting",
+]);
+export const bundleHealthSchema = z.enum([
+  "disabled",
+  "disconnected",
+  "connecting",
+  "connected",
+  "sleeping",
+]);
+export const replayHealthSchema = z.enum([
+  "disabled",
+  "not_started",
+  "behind",
+  "running",
+]);
+export const turbineHealthSchema = z.enum([
+  "disabled",
+  "not_started",
+  "stalled",
+  "repair_outpacing",
+  "running",
+]);
+
+export const healthSchema = z.object({
+  vote: voteHealthSchema,
+  bundle: bundleHealthSchema,
+  replay: replayHealthSchema,
+  turbine: turbineHealthSchema,
+});
+
 export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("ping"),
@@ -636,6 +670,10 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("live_program_cache"),
     value: liveProgramCacheSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("health"),
+    value: healthSchema,
   }),
 ]);
 
