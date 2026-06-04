@@ -3,7 +3,7 @@ import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
 import { accountsStatsAtom } from "../../../api/atoms";
 import { useAtomValue } from "jotai";
-import { formatBytes } from "../../../utils";
+import { formatSIBytes } from "../../../utils";
 import Stat from "../Stat";
 import Progress from "../../../components/Progress";
 
@@ -11,8 +11,8 @@ export default function DiskCard() {
   const accountStats = useAtomValue(accountsStatsAtom);
   if (!accountStats) return;
 
-  const used = formatBytes(accountStats.disk.used_bytes);
-  const allocated = formatBytes(accountStats.disk.allocated_bytes);
+  const used = formatSIBytes(accountStats.disk.used_bytes);
+  const allocated = formatSIBytes(accountStats.disk.allocated_bytes);
   const pct = accountStats.disk.allocated_bytes
     ? (accountStats.disk.used_bytes / accountStats.disk.allocated_bytes) * 100
     : 0;
@@ -20,7 +20,7 @@ export default function DiskCard() {
     accountStats.disk.current_bytes > accountStats.disk.used_bytes
       ? accountStats.disk.current_bytes - accountStats.disk.used_bytes
       : 0;
-  const frag = formatBytes(fragBytes);
+  const frag = formatSIBytes(fragBytes);
   const fragPct = accountStats.disk.current_bytes
     ? (fragBytes / accountStats.disk.current_bytes) * 100
     : 0;

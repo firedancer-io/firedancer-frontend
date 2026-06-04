@@ -5,7 +5,7 @@ import {
   SnapshotTitle,
   SnapshotTotalComplete,
 } from "./SnapshotBarsCard";
-import { formatBytes } from "../../../../utils";
+import { formatSIBytes } from "../../../../utils";
 import styles from "./snapshot.module.css";
 
 interface SnapshotInsertingCardProps {
@@ -23,13 +23,13 @@ export function SnapshotInsertingCard({
   const throughputObj =
     decompressedThroughput == null
       ? undefined
-      : formatBytes(decompressedThroughput);
+      : formatSIBytes(decompressedThroughput);
   const completedObj =
     decompressedCompleted == null
       ? undefined
-      : formatBytes(decompressedCompleted);
+      : formatSIBytes(decompressedCompleted);
   const totalObj =
-    decompressedTotal == null ? undefined : formatBytes(decompressedTotal);
+    decompressedTotal == null ? undefined : formatSIBytes(decompressedTotal);
 
   return (
     <SnapshotBarsCard

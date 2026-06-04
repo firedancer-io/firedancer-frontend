@@ -6,6 +6,7 @@ import clsx from "clsx";
 type Size = "sm" | "lg";
 
 interface StatProps {
+  className?: string;
   label?: string;
   value: string;
   size?: Size;
@@ -15,6 +16,7 @@ interface StatProps {
 }
 
 export default function Stat({
+  className,
   label,
   value,
   size = "sm",
@@ -22,7 +24,7 @@ export default function Stat({
   suffix,
 }: StatProps) {
   return (
-    <Flex direction="column">
+    <Flex className={className} direction="column">
       {label && <Text className={styles.label}>{label}</Text>}
       <Flex
         className={clsx(styles.valuesContainer, { [styles.lg]: size === "lg" })}

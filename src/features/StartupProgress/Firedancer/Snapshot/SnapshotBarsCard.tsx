@@ -8,7 +8,7 @@ import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import StorageIcon from "@material-design-icons/svg/filled/storage.svg?react";
 import { compactSingleDecimalFormatter } from "../../../../numUtils";
-import type { FormattedBytes } from "../../../../utils";
+import type { FormattedSIBytes } from "../../../../utils";
 
 interface SnapshotBarsCardProps {
   headerContent: JSX.Element;
@@ -101,8 +101,8 @@ export function AccountsRate({ cumulativeAccounts }: AccountsRateProps) {
 }
 
 interface SnapshotTotalCompleteProps {
-  completed: FormattedBytes | undefined;
-  total: FormattedBytes | undefined;
+  completed: FormattedSIBytes | undefined;
+  total: FormattedSIBytes | undefined;
 }
 export function SnapshotTotalComplete({
   completed,
@@ -121,7 +121,7 @@ export function SnapshotTotalComplete({
 
 interface SnapshotThroughputProps {
   prefix?: string;
-  throughput: FormattedBytes | undefined;
+  throughput: FormattedSIBytes | undefined;
 }
 export function SnapshotThroughput({
   prefix,

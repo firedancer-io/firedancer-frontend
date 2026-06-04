@@ -8,7 +8,7 @@ import {
   SnapshotTotalComplete,
 } from "./SnapshotBarsCard";
 import { Flex } from "@radix-ui/themes";
-import { formatBytes } from "../../../../utils";
+import { formatSIBytes } from "../../../../utils";
 import styles from "./snapshot.module.css";
 import { useEma } from "../../../../hooks/useEma";
 
@@ -39,16 +39,18 @@ export function SnapshotDecompressingCard({
   const compressedThroughputObj =
     compressedThroughput == null
       ? undefined
-      : formatBytes(compressedThroughput);
+      : formatSIBytes(compressedThroughput);
   const decompressedThroughputObj =
     decompressedThroughput == null
       ? undefined
-      : formatBytes(decompressedThroughput);
+      : formatSIBytes(decompressedThroughput);
 
   const completedObj =
-    compressedCompleted == null ? undefined : formatBytes(compressedCompleted);
+    compressedCompleted == null
+      ? undefined
+      : formatSIBytes(compressedCompleted);
   const totalObj =
-    compressedTotal == null ? undefined : formatBytes(compressedTotal);
+    compressedTotal == null ? undefined : formatSIBytes(compressedTotal);
 
   return (
     <SnapshotBarsCard

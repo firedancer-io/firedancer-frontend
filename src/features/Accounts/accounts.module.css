@@ -1,4 +1,4 @@
 .cards > * {
-  flex-grow: 1;
-  min-width: 180px;
+  flex: 1 0 0;
+  min-width: 250px;
 }

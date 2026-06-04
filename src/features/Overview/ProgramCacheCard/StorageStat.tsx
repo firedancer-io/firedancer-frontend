@@ -6,7 +6,7 @@ import { headerColor } from "../../../colors";
 import { useMemo, type CSSProperties } from "react";
 import { useAtomValue } from "jotai";
 import { liveProgramCacheAtom } from "../../../api/atoms";
-import { formatBytesFraction } from "../../../utils";
+import { formatSIBytesFraction } from "../../../utils";
 import type { ValueWithUnit } from "../../../utils";
 import { clamp } from "lodash";
 import styles from "./programCacheCard.module.css";
@@ -34,7 +34,7 @@ export default function StorageStat() {
       ? clamp((usedStorage / sizeBytes) * 100, 0, 100)
       : 0;
 
-    const { numerator, denominator } = formatBytesFraction(
+    const { numerator, denominator } = formatSIBytesFraction(
       usedStorage,
       sizeBytes,
       2,

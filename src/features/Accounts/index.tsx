@@ -2,6 +2,7 @@ import { Flex } from "@radix-ui/themes";
 import styles from "./accounts.module.css";
 import DiskCard from "./DiskCard";
 import IndexCard from "./IndexCard";
+import CacheCard from "./CacheCard";
 
 export default function Accounts() {
   return (
@@ -9,6 +10,7 @@ export default function Accounts() {
       <Flex className={styles.cards} width="100%" wrap="wrap" gap="5px">
         <DiskCard />
         <IndexCard />
+        <CacheCard />
       </Flex>
     </Flex>
   );

@@ -5,7 +5,7 @@ import CardStat from "../../../components/CardStat";
 import styles from "./programCacheCard.module.css";
 import { useAtomValue } from "jotai";
 import { liveProgramCacheAtom } from "../../../api/atoms";
-import { formatBytes } from "../../../utils";
+import { formatSIBytes } from "../../../utils";
 import { useMemo } from "react";
 import HitRateStat from "./HitRateStat";
 import StorageStat from "./StorageStat";
@@ -62,7 +62,7 @@ function ProgramCacheText({
   bytes?: number;
 }) {
   const { value, appendValue } = useMemo(() => {
-    const fmtBytes = bytes !== undefined ? formatBytes(bytes) : undefined;
+    const fmtBytes = bytes !== undefined ? formatSIBytes(bytes) : undefined;
 
     return {
       value: numTimes !== undefined ? numTimes.toLocaleString() : "-",

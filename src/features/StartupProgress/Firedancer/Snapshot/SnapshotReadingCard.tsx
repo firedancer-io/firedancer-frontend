@@ -8,7 +8,7 @@ import {
   SnapshotTitle,
   SnapshotTotalComplete,
 } from "./SnapshotBarsCard";
-import { formatBytes } from "../../../../utils";
+import { formatSIBytes } from "../../../../utils";
 import styles from "./snapshot.module.css";
 import { useEma } from "../../../../hooks/useEma";
 
@@ -31,9 +31,9 @@ export function SnapshotReadingCard({
   }, [phase, reset]);
 
   const throughputObj =
-    throughput == null ? undefined : formatBytes(throughput);
-  const completedObj = completed == null ? undefined : formatBytes(completed);
-  const totalObj = total == null ? undefined : formatBytes(total);
+    throughput == null ? undefined : formatSIBytes(throughput);
+  const completedObj = completed == null ? undefined : formatSIBytes(completed);
+  const totalObj = total == null ? undefined : formatSIBytes(total);
 
   const footer = useMemo(() => {
     return <SnapshotReadPath readPath={readPath} />;
