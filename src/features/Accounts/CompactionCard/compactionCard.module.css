@@ -1,0 +1,7 @@
+.in-progress {
+  color: var(--yellow-9);
+}
+
+.idle {
+  color: var(--gray-10);
+}

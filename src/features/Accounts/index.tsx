@@ -3,6 +3,7 @@ import styles from "./accounts.module.css";
 import DiskCard from "./DiskCard";
 import IndexCard from "./IndexCard";
 import CacheCard from "./CacheCard";
+import CompactionCard from "./CompactionCard";
 
 export default function Accounts() {
   return (
@@ -11,6 +12,7 @@ export default function Accounts() {
         <DiskCard />
         <IndexCard />
         <CacheCard />
+        <CompactionCard />
       </Flex>
     </Flex>
   );
