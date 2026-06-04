@@ -22,7 +22,6 @@ import { sum } from "lodash";
 import { tileChartDarkBackground } from "../../../colors";
 import { isFrankendancer } from "../../../client";
 import type { HistoryEntry } from "../../../api/worker/types";
-import { useEmaValue } from "../../../hooks/useEma";
 import clsx from "clsx";
 
 const chartHeight = 18;
@@ -37,12 +36,12 @@ export default function LiveNetworkMetrics() {
   return (
     <Flex wrap="wrap" gap="4">
       <NetworkMetricsCard
-        metrics={liveNetworkMetrics.ingress}
+        emaValues={liveNetworkMetrics.ingress_ema}
         history={ingressEma.history}
         type="Ingress"
       />
       <NetworkMetricsCard
-        metrics={liveNetworkMetrics.egress}
+        emaValues={liveNetworkMetrics.egress_ema}
         history={egressEma.history}
         type="Egress"
       />
@@ -51,13 +50,13 @@ export default function LiveNetworkMetrics() {
 }
 
 interface NetworkMetricsCardProps {
-  metrics: number[];
+  emaValues: number[];
   history: HistoryEntry[];
   type: NetworkMetricsCardType;
 }
 
 function NetworkMetricsCard({
-  metrics,
+  emaValues,
   history,
   type,
 }: NetworkMetricsCardProps) {
@@ -104,7 +103,7 @@ function NetworkMetricsCard({
           </Table.Header>
 
           <Table.Body>
-            {metrics.map((value, i) => {
+            {emaValues.map((emaValue, i) => {
               const protocol = networkProtocols[i];
               if (
                 isFrankendancer &&
@@ -116,7 +115,7 @@ function NetworkMetricsCard({
                 <TableRow
                   key={i}
                   label={protocol}
-                  value={value}
+                  emaValue={emaValue}
                   maxValue={networkMaxByteValues[type][protocol]}
                   history={history}
                   mapHistory={(values) => values[i] ?? 0}
@@ -125,7 +124,7 @@ function NetworkMetricsCard({
             })}
             <TableRow
               label="Total"
-              value={sum(metrics)}
+              emaValue={sum(emaValues)}
               maxValue={networkMaxByteValues[type]["Total"]}
               history={history}
               mapHistory={sum}
@@ -144,11 +143,9 @@ function toUtilization(value: number, maxValue: number) {
   return Math.min(1, value / maxValue);
 }
 
-const emaOptions = { halfLifeMs: 1_000 };
-
 interface TableRowProps {
   label: string;
-  value: number;
+  emaValue: number;
   maxValue?: number;
   history: HistoryEntry[];
   mapHistory: (values: number[]) => number;
@@ -157,13 +154,12 @@ interface TableRowProps {
 
 function TableRow({
   label,
-  value,
+  emaValue,
   maxValue = defaultMaxValue,
   history,
   mapHistory,
   className,
 }: TableRowProps) {
-  const emaValue = useEmaValue(value, emaOptions);
   const formattedValue = formatBytesAsBits(emaValue);
   const utilization = toUtilization(emaValue, maxValue);
 

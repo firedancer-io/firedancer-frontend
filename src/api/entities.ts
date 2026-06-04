@@ -151,6 +151,10 @@ export const estimatedTpsSchema = z.object({
 export const liveNetworkMetricsSchema = z.object({
   ingress: z.array(z.number()),
   egress: z.array(z.number()),
+  ingress_ema: z.array(z.number()),
+  egress_ema: z.array(z.number()),
+  ingress_max_5m: z.number(),
+  egress_max_5m: z.number(),
 });
 
 export const txnWaterfallInSchema = z.object({
