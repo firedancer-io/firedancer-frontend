@@ -82,7 +82,7 @@ export interface ValuesWithHistory {
 }
 
 /** Keys of emaHistoryArray cache */
-export type EmaHistoryArrayKey = "";
+export type EmaHistoryArrayKey = never;
 
 /** Keys of historyArray cache */
 export type HistoryArrayKey =
