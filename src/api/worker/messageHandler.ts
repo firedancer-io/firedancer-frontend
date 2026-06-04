@@ -129,7 +129,7 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
         );
         historyArrayCache.update(
           "liveNetworkMetricsEgress",
-          item.value.ingress_ema,
+          item.value.egress_ema,
         );
       }
 
