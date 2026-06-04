@@ -4,6 +4,7 @@ import DiskCard from "./DiskCard";
 import IndexCard from "./IndexCard";
 import CacheCard from "./CacheCard";
 import CompactionCard from "./CompactionCard";
+import IOCard from "./IOCard";
 
 export default function Accounts() {
   return (
@@ -13,6 +14,7 @@ export default function Accounts() {
         <IndexCard />
         <CacheCard />
         <CompactionCard />
+        <IOCard />
       </Flex>
     </Flex>
   );

@@ -1,0 +1,25 @@
+.copied {
+  min-width: 100px;
+}
+
+.per-sec-stat {
+  min-width: 60px;
+}
+
+.verticalProgressGutter {
+  width: 3px;
+  height: 34px;
+  background: var(--progress-gutter-background-color);
+  position: relative;
+  overflow: hidden;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.verticalProgressFill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--progress-background-color);
+}
