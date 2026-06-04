@@ -82,10 +82,13 @@ export interface ValuesWithHistory {
 }
 
 /** Keys of emaHistoryArray cache */
-export type EmaHistoryArrayKey = "ingress" | "egress";
+export type EmaHistoryArrayKey = "";
 
 /** Keys of historyArray cache */
-export type HistoryArrayKey = "tileTimers";
+export type HistoryArrayKey =
+  | "tileTimers"
+  | "liveNetworkMetricsIngress"
+  | "liveNetworkMetricsEgress";
 
 export interface KeyedValuesWithHistory<K extends string>
   extends ValuesWithHistory {

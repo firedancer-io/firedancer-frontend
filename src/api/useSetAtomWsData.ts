@@ -2,7 +2,6 @@ import { useCallback, useEffect, useReducer, useRef } from "react";
 import { socketStateAtom } from "./ws/atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import type {
-  EmaHistoryArrayKey,
   EmaObjectItem,
   FromWorkerMessage,
   HistoryArrayKey,
@@ -145,29 +144,25 @@ export function useSetAtomWsData() {
     [setGossipHealthEma],
   );
 
-  const updateEmaHistoryArray = useCallback(
-    ({ key, values, history }: KeyedValuesWithHistory<EmaHistoryArrayKey>) => {
-      switch (key) {
-        case "ingress":
-          setNetworkMetricsEmaIngress({ values, history });
-          break;
-        case "egress":
-          setNetworkMetricsEmaEgress({ values, history });
-          break;
-      }
-    },
-    [setNetworkMetricsEmaIngress, setNetworkMetricsEmaEgress],
-  );
-
   const updateHistoryArray = useCallback(
     ({ key, values, history }: KeyedValuesWithHistory<HistoryArrayKey>) => {
       switch (key) {
         case "tileTimers":
           setTileTimerHistory({ values, history });
           break;
+        case "liveNetworkMetricsIngress":
+          setNetworkMetricsEmaIngress({ values, history });
+          break;
+        case "liveNetworkMetricsEgress":
+          setNetworkMetricsEmaEgress({ values, history });
+          break;
       }
     },
-    [setTileTimerHistory],
+    [
+      setNetworkMetricsEmaEgress,
+      setNetworkMetricsEmaIngress,
+      setTileTimerHistory,
+    ],
   );
 
   const setLiveShreds = useSetAtom(liveShredsDataAtom);
@@ -205,10 +200,8 @@ export function useSetAtomWsData() {
         // currently unused, would map to EmaCache object
         case "ema":
           break;
+        // currently unused, would map to KeyedValuesWithHistory
         case "emaHistoryArray":
-          for (const item of msg.items) {
-            updateEmaHistoryArray(item);
-          }
           break;
         case "historyArray":
           for (const item of msg.items) {
@@ -230,7 +223,6 @@ export function useSetAtomWsData() {
     [
       setSocketState,
       updateAtoms,
-      updateEmaHistoryArray,
       updateHistoryArray,
       updateEmaHistoryObject,
       updateLiveShredsObject,
