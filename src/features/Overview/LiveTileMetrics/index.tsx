@@ -12,7 +12,7 @@ import styles from "./liveTileMetrics.module.css";
 import { Bars } from "../../StartupProgress/Firedancer/Bars";
 import TileSparkLine from "../SlotPerformance/TileSparkLine";
 import { headerGap } from "../../Gossip/consts";
-import type { Tile, TileMetrics } from "../../../api/types";
+import type { Priority, Tile, TileMetrics } from "../../../api/types";
 import clsx from "clsx";
 import {
   useHarmonicIntervalFn,
@@ -32,6 +32,7 @@ import { isEqual } from "lodash";
 import type { CellProps } from "@radix-ui/themes/components/table";
 import TableDescriptionDialog from "./TableDescriptionDialog";
 import { pinnedGroups, pinnedTableWidth, unpinnedGroups } from "./consts";
+import { PriorityEnum } from "../../../api/entities";
 
 const chartHeight = 18;
 
@@ -107,7 +108,12 @@ function LiveMetricsTable({ isPinned }: LiveMetricsTableProps) {
                 [styles.rightBorder]: isPinned || i !== groups.length - 1,
               })}
             >
-              {group.name}
+              {group.name || (
+                <PriorityCountCell
+                  priority={liveTileMetrics.priority}
+                  alive={liveTileMetrics.alive}
+                />
+              )}
             </Table.ColumnHeaderCell>
           ))}
         </Table.Row>
@@ -182,8 +188,13 @@ function TableRow({ tile, liveTileMetrics, idx, isPinned }: TableRowProps) {
   if (!timers) return;
 
   if (isPinned) {
+    const isFloating =
+      (liveTileMetrics.priority?.[idx] ??
+        prevLiveTileMetricsIdx?.priority?.[idx]) === PriorityEnum.floating;
     return (
-      <Table.Row className={styles.dataRow}>
+      <Table.Row
+        className={clsx(styles.dataRow, { [styles.floating]: isFloating })}
+      >
         <Table.Cell className={styles.rightBorder}>
           {tile.kind}:{tile.kind_id}
         </Table.Cell>
@@ -201,6 +212,13 @@ function TableRow({ tile, liveTileMetrics, idx, isPinned }: TableRowProps) {
     />
   );
 }
+
+const priorityLabels: Record<Priority, string> = {
+  floating: "Floating",
+  startup: "Startup",
+  normal: "Pinned",
+  critical: "Critical",
+};
 
 interface DataRowProps {
   alive: number | null | undefined;
@@ -239,6 +257,8 @@ function DataRow({
     liveTileMetrics.minflt[idx] ?? prevLiveTileMetricsIdx?.minflt[idx];
   const majflt =
     liveTileMetrics.majflt[idx] ?? prevLiveTileMetricsIdx?.majflt[idx];
+  const priority =
+    liveTileMetrics.priority?.[idx] ?? prevLiveTileMetricsIdx?.priority?.[idx];
 
   const prevNivcsw = usePrevious(nivcsw);
   const prevNvcsw = usePrevious(nvcsw);
@@ -254,13 +274,25 @@ function DataRow({
   const workPct = timers[3] + timers[4] + timers[7];
 
   return (
-    <Table.Row className={styles.dataRow}>
+    <Table.Row
+      className={clsx(styles.dataRow, {
+        [styles.floating]: priority === PriorityEnum.floating,
+      })}
+    >
       <Table.Cell align="right">{cpu}</Table.Cell>
       <Table.Cell
         className={clsx({ [styles.green]: alive, [styles.red]: !alive })}
         align="right"
       >
         {alive ? "Live" : "Dead"}
+      </Table.Cell>
+      <Table.Cell
+        align="right"
+        className={clsx({
+          [styles.critical]: priority === PriorityEnum.critical,
+        })}
+      >
+        {priority ? priorityLabels[priority] : "-"}
       </Table.Cell>
       <Table.Cell
         align="right"
@@ -434,3 +466,51 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
     </>
   );
 });
+
+interface PriorityCountCellProps {
+  priority: TileMetrics["priority"];
+  alive: TileMetrics["alive"];
+}
+function PriorityCountCell({ priority, alive }: PriorityCountCellProps) {
+  const counts = useMemo(() => {
+    if (!priority) return null;
+    let critical = 0;
+    let pinned = 0;
+    let floating = 0;
+    for (let i = 0; i < priority.length; i++) {
+      // A shutdown tile is not displayed in the table, so exclude it from the count
+      const isShutdown = alive[i] === 2;
+      if (isShutdown) continue;
+
+      switch (priority[i]) {
+        case PriorityEnum.critical:
+          critical++;
+          break;
+        case PriorityEnum.normal:
+        case PriorityEnum.startup:
+          pinned++;
+          break;
+        case PriorityEnum.floating:
+          floating++;
+          break;
+      }
+    }
+    return { critical, pinned, floating };
+  }, [alive, priority]);
+
+  if (!counts) return;
+
+  return (
+    <Flex className={styles.priorityCount} gap="5px" justify="between">
+      <Text>
+        {counts.critical} <Text className={styles.critical}>C</Text>
+      </Text>
+      <Text>
+        {counts.pinned} <Text className={styles.pinned}>P</Text>
+      </Text>
+      <Text>
+        {counts.floating} <Text className={styles.floating}>F</Text>
+      </Text>
+    </Flex>
+  );
+}

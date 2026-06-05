@@ -45,7 +45,7 @@ export const metricGroups: {
         uniqueName: "Name",
         description:
           "The name and index of each tile. A tile represents a sandboxed process or individual thread that communicates with other tiles using message passing queues.",
-        headerColWidth: 70,
+        headerColWidth: 85,
       },
     ],
   },
@@ -60,9 +60,16 @@ export const metricGroups: {
         headerColAlign: "right",
       },
       {
-        uniqueName: "Heartbeat",
+        uniqueName: "Hbt",
         description:
           "Liveness indicator based on a periodic heartbeat timestamp written by tiles to a chunk of shared memory.",
+        headerColWidth: 50,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "Priority",
+        description:
+          "The tile's scheduling priority. Floating tiles run on the Linux scheduler; others are pinned to a core. Startup tiles go away shortly after boot. Critical tiles never share a hyperthread pair.",
         headerColWidth: 70,
         headerColAlign: "right",
       },
@@ -89,12 +96,12 @@ export const metricGroups: {
         uniqueName: "Utilization",
         description:
           "Visualized the percentage of the tile's CPU time spent doing useful work. Time spent in a context switch is not included.",
-        headerColWidth: 150,
+        headerColWidth: 140,
       },
       {
         uniqueName: "History (1m)",
         description: "A historical, low-pass-filtered view of CPU utilization.",
-        headerColWidth: 150,
+        headerColWidth: 140,
       },
     ],
   },
