@@ -225,6 +225,14 @@ export const liveTilePrimaryMetricSchema = z.object({
   tile_primary_metric: tilePrimaryMetricSchema,
 });
 
+export const prioritySchema = z.enum([
+  "floating",
+  "startup",
+  "normal",
+  "critical",
+]);
+export const PriorityEnum = prioritySchema.enum;
+
 export const tileMetricsSchema = z.object({
   timers: z.array(z.array(z.number()).nullable()),
   sched_timers: z.array(z.array(z.number()).nullable()),
@@ -236,6 +244,7 @@ export const tileMetricsSchema = z.object({
   last_cpu: z.array(z.number().nullable()),
   minflt: z.array(z.number().nullable()),
   majflt: z.array(z.number().nullable()),
+  priority: z.array(prioritySchema).optional(),
 });
 
 export const tileTimerSchema = z.object({

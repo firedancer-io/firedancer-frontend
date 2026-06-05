@@ -67,6 +67,7 @@ import type {
   peerUpdateInfoSchema,
   liveProgramCacheSchema,
   slotCaughtUpSchema,
+  prioritySchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -121,6 +122,7 @@ export type LiveTilePrimaryMetric = z.infer<typeof liveTilePrimaryMetricSchema>;
 export type TilePrimaryMetric = z.infer<typeof tilePrimaryMetricSchema>;
 
 export type TileMetrics = z.infer<typeof tileMetricsSchema>;
+export type Priority = z.infer<typeof prioritySchema>;
 
 export type TxnWaterfallIn = z.infer<typeof txnWaterfallInSchema>;
 export type TxnWaterfallOut = z.infer<typeof txnWaterfallOutSchema>;

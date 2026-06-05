@@ -17,6 +17,10 @@
     table-layout: fixed;
 
     .data-row {
+      &.floating {
+        filter: brightness(0.55);
+      }
+
       .green {
         color: var(--green-9);
       }
@@ -68,6 +72,10 @@
             color: var(--high-increment-text-color);
           }
         }
+
+        &.critical {
+          color: var(--gold-10);
+        }
       }
     }
 
@@ -91,6 +99,18 @@
     td,
     th {
       box-shadow: none;
+    }
+
+    .priority-count {
+      .critical {
+        color: var(--gold-10);
+      }
+      .pinned {
+        color: var(--table-body-color);
+      }
+      .floating {
+        color: var(--gray-7);
+      }
     }
   }
 }
