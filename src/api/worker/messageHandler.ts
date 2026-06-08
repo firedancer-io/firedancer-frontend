@@ -90,12 +90,7 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
         historyArrayCache.update("tileTimers", item.value);
       }
 
-      if (
-        isEntry(item, "slot", "update") ||
-        isEntry(item, "slot", "query") ||
-        isEntry(item, "slot", "query_detailed") ||
-        isEntry(item, "slot", "query_transactions")
-      ) {
+      if (isEntry(item, "slot", "update")) {
         if (item.value) {
           const { slot, level } = item.value.publish;
           if (

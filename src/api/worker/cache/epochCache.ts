@@ -16,13 +16,11 @@ export function createEpochCache(
   let currentSlot: number | undefined;
 
   function findCurrentEpoch() {
-    if (!epochs.length || currentSlot === undefined) return;
+    const slot = currentSlot;
+    if (!epochs.length || slot === undefined) return;
 
     const epoch = epochs.find(
-      ({ start_slot, end_slot }) =>
-        currentSlot != null &&
-        currentSlot >= start_slot &&
-        currentSlot <= end_slot,
+      ({ start_slot, end_slot }) => slot >= start_slot && slot <= end_slot,
     );
     if (!epoch) return;
 
