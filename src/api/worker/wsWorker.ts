@@ -1,6 +1,11 @@
 import { ZstdInit, type ZstdDec } from "@oneidentity/zstd-js/decompress";
 import { logDebug, logError, logWarning } from "../../logger";
-import { WsMessageSchema, type WsEntity, type ToWorkerMessage } from "./types";
+import {
+  WsMessageSchema,
+  type WsEntity,
+  type ToWorkerMessage,
+  type FromWorkerWsEntity,
+} from "./types";
 import { createMessageHandler } from "./messageHandler";
 
 const reconnectDelayMs = 3_000;
@@ -11,12 +16,17 @@ let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout>;
 
 let scheduled = false;
-const pendingBatches = new Map<string, WsEntity[]>();
+const pendingBatches = new Map<string, FromWorkerWsEntity[]>();
 
 const handler = createMessageHandler((msg) => ctx.postMessage(msg));
 
 function enqueue(item: WsEntity) {
   handler.onMessage(item);
+
+  // filter unnecessary ws items
+  if (item.topic === "epoch") {
+    return;
+  }
 
   const key = `${item.topic}:${item.key}`;
   if (pendingBatches.has(key)) {

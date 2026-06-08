@@ -17,12 +17,14 @@ import {
   overviewHistoryBufferMs,
 } from "./cache/consts";
 import { gossipHealthEmaFields } from "../atoms";
-import type {
-  EmaHistoryArrayKey,
-  FromWorkerMessage,
-  HistoryArrayKey,
-  WsEntity,
+import {
+  isEntry,
+  type EmaHistoryArrayKey,
+  type FromWorkerMessage,
+  type HistoryArrayKey,
+  type WsEntity,
 } from "./types";
+import { createEpochCache } from "./cache/epochCache";
 
 const gossipHealthEmaOptions: EmaHistoryObjectCacheOptions = {
   halfLifeMs: 5_000,
@@ -46,17 +48,6 @@ const tileTimerOptions: HistoryArrayOptions = {
   historyWindowMs: overviewRenderWindowMs + overviewHistoryBufferMs,
 };
 
-function isEntry<
-  T extends WsEntity["topic"],
-  K extends Extract<WsEntity, { topic: T }>["key"],
->(
-  it: WsEntity,
-  topic: T,
-  key: K,
-): it is Extract<WsEntity, { topic: T; key: K }> {
-  return it.topic === topic && it.key === key;
-}
-
 export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
   const emaArrayCache = createEmaHistoryArrayCache<EmaHistoryArrayKey>(
     (items) => post({ type: "emaHistoryArray", items }),
@@ -68,9 +59,19 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
     post({ type: "historyArray", items }),
   );
 
+  const epochCache = createEpochCache(
+    (slot) => post({ type: "currentSlot", slot }),
+    ({ currentEpoch, nextEpoch }) =>
+      post({ type: "epochData", currentEpoch, nextEpoch }),
+  );
+
   return {
     onMessage(item: WsEntity): void {
       const nowMs = performance.now();
+
+      if (isEntry(item, "epoch", "new")) {
+        epochCache.addEpoch(item.value);
+      }
 
       if (isEntry(item, "gossip", "network_stats")) {
         emaObjectCache.subscribe("gossipHealth", gossipHealthEmaOptions);
@@ -87,6 +88,19 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
       if (isEntry(item, "summary", "live_tile_timers")) {
         historyArrayCache.subscribe("tileTimers", tileTimerOptions);
         historyArrayCache.update("tileTimers", item.value);
+      }
+
+      if (isEntry(item, "slot", "update")) {
+        if (item.value) {
+          const { slot, level } = item.value.publish;
+          if (
+            level === "completed" ||
+            level === "optimistically_confirmed" ||
+            level === "rooted"
+          ) {
+            epochCache.setCurrentSlot(slot + 1);
+          }
+        }
       }
     },
   };

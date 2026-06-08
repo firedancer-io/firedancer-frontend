@@ -39,51 +39,8 @@ export const _isNavCollapsedAtom = atom(false);
 
 export const bootProgressContainerElAtom = atom<HTMLDivElement | null>();
 
-const _epochsAtom = atomWithImmer<Epoch[]>([]);
-export const epochAtom = atom(
-  (get) => {
-    const currentSlot = get(currentSlotAtom);
-    const epochs = get(_epochsAtom);
-    if (!epochs.length || currentSlot === undefined) return;
-
-    const epoch = epochs.find(
-      ({ start_slot, end_slot }) =>
-        currentSlot >= start_slot && currentSlot <= end_slot,
-    );
-    if (!epoch) return;
-
-    return epoch;
-  },
-  (_get, set, epoch: Epoch) => {
-    set(_epochsAtom, (draft) => {
-      const isDuplicate =
-        draft.findIndex((e) => e.epoch === epoch.epoch) !== -1;
-      if (isDuplicate) return;
-
-      draft.push(epoch);
-    });
-  },
-);
-
-export const deletePreviousEpochsAtom = atom(
-  null,
-  (_get, set, currentEpoch: number) => {
-    set(_epochsAtom, (draft) =>
-      draft.filter(({ epoch }) => epoch >= currentEpoch),
-    );
-  },
-);
-
-export const nextEpochAtom = atom((get) => {
-  const currentEpoch = get(epochAtom);
-  if (!currentEpoch) return;
-
-  const nextEpoch = get(_epochsAtom).find(
-    (epoch) => epoch.epoch === currentEpoch?.epoch + 1,
-  );
-
-  return nextEpoch;
-});
+export const epochAtom = atom<Epoch>();
+export const nextEpochAtom = atom<Epoch>();
 
 export const [slotOverrideAtom, autoScrollAtom] =
   (function getSlotOverrideAtom() {
@@ -145,13 +102,6 @@ export const slotNavFilterAtom = (function getSlotNavFilterAtom() {
 export const setSlotStatusAtom = atom(
   null,
   (_, set, slot: number, level: SlotLevel) => {
-    if (
-      level === "completed" ||
-      level === "optimistically_confirmed" ||
-      level === "rooted"
-    ) {
-      set(currentSlotAtom, slot + 1);
-    }
     set(slotStatusAtom, (draft) => {
       draft[slot] = level;
     });
@@ -341,18 +291,21 @@ export const lastProcessedLeaderAtom = atom((get) => {
     : undefined;
 });
 
-const _currentSlotAtom = atom<number | undefined>(undefined);
-export const currentSlotAtom = atom(
-  (get) => get(_currentSlotAtom),
-  (get, set, slot: number) => {
-    const nextLeaderSlot = get(nextLeaderSlotAtom);
-    if (nextLeaderSlot === undefined || slot >= nextLeaderSlot) {
-      set(nextLeaderSlotAtom, slot);
-    }
+export const currentSlotAtom = (function getCurrentSlotAtom() {
+  const _currentSlotAtom = atom<number | undefined>();
 
-    set(_currentSlotAtom, (prev) => Math.max(slot, prev ?? 0));
-  },
-);
+  return atom(
+    (get) => get(_currentSlotAtom),
+    (get, set, slot: number) => {
+      const nextLeaderSlot = get(nextLeaderSlotAtom);
+      if (nextLeaderSlot === undefined || slot >= nextLeaderSlot) {
+        set(nextLeaderSlotAtom, slot);
+      }
+
+      set(_currentSlotAtom, slot);
+    },
+  );
+})();
 
 /** In order array of your leader slots (only first slot in group of 4) */
 export const leaderSlotsAtom = atom((get) => {

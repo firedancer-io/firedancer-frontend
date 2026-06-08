@@ -5,9 +5,9 @@ import type {
   EmaHistoryArrayKey,
   EmaObjectItem,
   FromWorkerMessage,
+  FromWorkerWsEntity,
   HistoryArrayKey,
   KeyedValuesWithHistory,
-  WsEntity,
 } from "./worker/types";
 import { isEmaObjectKey } from "./worker/types";
 import { DateTime } from "luxon";
@@ -18,6 +18,8 @@ import {
   skipRateAtom,
   setSlotResponseAtom,
   epochAtom,
+  nextEpochAtom,
+  currentSlotAtom,
   setSlotStatusAtom,
   updatePeersAtom,
   removePeersAtom,
@@ -30,7 +32,6 @@ import {
   deleteSkippedClusterSlotsRangeAtom,
   deleteSlotResponseBoundsAtom,
   deleteSlotStatusBoundsAtom,
-  deletePreviousEpochsAtom,
   supermajorityEpochAtom,
   updateSupermajorityOnlinePeersAtom,
   deleteSupermajorityDeltaEntriesAtom,
@@ -169,6 +170,10 @@ export function useSetAtomWsData() {
     [setTileTimerHistory],
   );
 
+  const setEpoch = useSetAtom(epochAtom);
+  const setNextEpoch = useSetAtom(nextEpochAtom);
+  const setCurrentSlot = useSetAtom(currentSlotAtom);
+
   const onMessage = useCallback(
     (msg: FromWorkerMessage) => {
       switch (msg.type) {
@@ -207,11 +212,21 @@ export function useSetAtomWsData() {
             updateEmaHistoryObject(item);
           }
           break;
+        case "currentSlot":
+          setCurrentSlot(msg.slot);
+          break;
+        case "epochData":
+          setEpoch(msg.currentEpoch);
+          setNextEpoch(msg.nextEpoch);
+          break;
       }
     },
     [
       setSocketState,
       updateAtoms,
+      setCurrentSlot,
+      setEpoch,
+      setNextEpoch,
       updateEmaHistoryArray,
       updateHistoryArray,
       updateEmaHistoryObject,
@@ -314,7 +329,7 @@ function useUpdateAtoms() {
   const setSlotResponse = useSetAtom(setSlotResponseAtom);
   const setSlotRankings = useSetAtom(slotRankingsAtom);
 
-  const [epoch, setEpoch] = useAtom(epochAtom);
+  const epoch = useAtomValue(epochAtom);
 
   const setSlotStatus = useSetAtom(setSlotStatusAtom);
 
@@ -515,7 +530,7 @@ function useUpdateAtoms() {
   );
 
   const updateAtoms = useCallback(
-    (item: WsEntity) => {
+    (item: FromWorkerWsEntity) => {
       const { topic, key, value } = item;
       switch (topic) {
         case "summary":
@@ -661,13 +676,6 @@ function useUpdateAtoms() {
               break;
           }
           break;
-        case "epoch":
-          switch (key) {
-            case "new":
-              setEpoch(value);
-              break;
-          }
-          break;
         case "gossip":
           switch (key) {
             case "network_stats": {
@@ -778,7 +786,6 @@ function useUpdateAtoms() {
       setDbLiveTileMetrics,
       setDbLiveTxnWaterfall,
       setDbTileTimer,
-      setEpoch,
       setGossipPeersCells,
       setGossipPeersRows,
       setIdentityBalance,
@@ -814,7 +821,6 @@ function useUpdateAtoms() {
   const deleteSkippedClusterSlotsRange = useSetAtom(
     deleteSkippedClusterSlotsRangeAtom,
   );
-  const deletePreviousEpochs = useSetAtom(deletePreviousEpochsAtom);
 
   useInterval(() => {
     deleteSlotStatusBounds();
@@ -832,8 +838,7 @@ function useUpdateAtoms() {
   useEffect(() => {
     if (!epoch) return;
     deleteSkippedClusterSlotsRange(epoch.start_slot, epoch.end_slot);
-    deletePreviousEpochs(epoch.epoch);
-  }, [deleteSkippedClusterSlotsRange, deletePreviousEpochs, epoch]);
+  }, [deleteSkippedClusterSlotsRange, epoch]);
 
   useEffect(() => {
     if (!epoch) return;
