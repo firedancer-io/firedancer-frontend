@@ -63,6 +63,8 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
     (slot) => post({ type: "currentSlot", slot }),
     ({ currentEpoch, nextEpoch }) =>
       post({ type: "epochData", currentEpoch, nextEpoch }),
+    (skippedClusterSlots: Set<number>) =>
+      post({ type: "skippedClusterSlots", slots: skippedClusterSlots }),
   );
 
   return {
@@ -92,7 +94,7 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
 
       if (isEntry(item, "slot", "update")) {
         if (item.value) {
-          const { slot, level } = item.value.publish;
+          const { slot, level, skipped } = item.value.publish;
           if (
             level === "completed" ||
             level === "optimistically_confirmed" ||
@@ -100,7 +102,16 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
           ) {
             epochCache.setCurrentSlot(slot + 1);
           }
+          if (skipped) {
+            epochCache.addSkippedClusterSlots([slot]);
+          } else {
+            epochCache.deleteSkippedClusterSlot(slot);
+          }
         }
+      }
+
+      if (isEntry(item, "slot", "skipped_history_cluster")) {
+        epochCache.addSkippedClusterSlots(item.value);
       }
     },
   };

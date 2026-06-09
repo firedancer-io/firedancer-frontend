@@ -5,6 +5,7 @@ import {
   type WsEntity,
   type ToWorkerMessage,
   type FromWorkerWsEntity,
+  isEntry,
 } from "./types";
 import { createMessageHandler } from "./messageHandler";
 
@@ -24,7 +25,10 @@ function enqueue(item: WsEntity) {
   handler.onMessage(item);
 
   // filter unnecessary ws items
-  if (item.topic === "epoch") {
+  if (
+    item.topic === "epoch" ||
+    isEntry(item, "slot", "skipped_history_cluster")
+  ) {
     return;
   }
 

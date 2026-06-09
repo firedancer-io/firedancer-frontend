@@ -23,19 +23,17 @@ import {
   setSlotStatusAtom,
   updatePeersAtom,
   removePeersAtom,
-  addSkippedClusterSlotsAtom,
-  deleteSkippedClusterSlotAtom,
   addLateVoteSlotAtom,
   deleteLateVoteSlotAtom,
   clearLateVoteSlotsAtom,
   setLateVoteHistoryAtom,
-  deleteSkippedClusterSlotsRangeAtom,
   deleteSlotResponseBoundsAtom,
   deleteSlotStatusBoundsAtom,
   supermajorityEpochAtom,
   updateSupermajorityOnlinePeersAtom,
   deleteSupermajorityDeltaEntriesAtom,
   resetSupermajorityAtom,
+  skippedClusterSlotsAtom,
 } from "../atoms";
 import { shredsAtoms } from "../features/Overview/ShredsProgression/atoms";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
@@ -173,6 +171,7 @@ export function useSetAtomWsData() {
   const setEpoch = useSetAtom(epochAtom);
   const setNextEpoch = useSetAtom(nextEpochAtom);
   const setCurrentSlot = useSetAtom(currentSlotAtom);
+  const setSkippedClusterSlots = useSetAtom(skippedClusterSlotsAtom);
 
   const onMessage = useCallback(
     (msg: FromWorkerMessage) => {
@@ -219,6 +218,9 @@ export function useSetAtomWsData() {
           setEpoch(msg.currentEpoch);
           setNextEpoch(msg.nextEpoch);
           break;
+        case "skippedClusterSlots":
+          setSkippedClusterSlots(msg.slots);
+          break;
       }
     },
     [
@@ -227,6 +229,7 @@ export function useSetAtomWsData() {
       setCurrentSlot,
       setEpoch,
       setNextEpoch,
+      setSkippedClusterSlots,
       updateEmaHistoryArray,
       updateHistoryArray,
       updateEmaHistoryObject,
@@ -359,9 +362,6 @@ function useUpdateAtoms() {
   const setCompletedSlot = useSetAtom(completedSlotAtom);
   const setServerTimeNanos = useSetAtom(serverTimeNanosAtom);
 
-  const addSkippedClusterSlots = useSetAtom(addSkippedClusterSlotsAtom);
-  const deleteSkippedClusterSlot = useSetAtom(deleteSkippedClusterSlotAtom);
-
   const addLateVoteSlots = useSetAtom(addLateVoteSlotAtom);
   const deleteLateVoteSlot = useSetAtom(deleteLateVoteSlotAtom);
   const clearLateVoteSlots = useSetAtom(clearLateVoteSlotsAtom);
@@ -370,12 +370,6 @@ function useUpdateAtoms() {
   const handleSlotUpdate = useCallback(
     (value: SlotResponse) => {
       setSlotStatus(value.publish.slot, value.publish.level);
-
-      if (value.publish.skipped) {
-        addSkippedClusterSlots([value.publish.slot]);
-      } else {
-        deleteSkippedClusterSlot(value.publish.slot);
-      }
 
       if (value.publish.level === "rooted") {
         if (hasLateVote(value.publish)) {
@@ -404,14 +398,7 @@ function useUpdateAtoms() {
         }
       }
     },
-    [
-      addLateVoteSlots,
-      addSkippedClusterSlots,
-      deleteLateVoteSlot,
-      deleteSkippedClusterSlot,
-      setSkippedSlots,
-      setSlotStatus,
-    ],
+    [addLateVoteSlots, deleteLateVoteSlot, setSkippedSlots, setSlotStatus],
   );
 
   const setTurbineSlot = useSetAtom(turbineSlotAtom);
@@ -706,10 +693,6 @@ function useUpdateAtoms() {
               setSkippedSlots(value.sort());
               break;
             }
-            case "skipped_history_cluster": {
-              addSkippedClusterSlots(value);
-              break;
-            }
             case "update":
             case "query":
             case "query_detailed":
@@ -766,7 +749,6 @@ function useUpdateAtoms() {
       addLiveShreds,
       addRepairSlot,
       addRepairSlots,
-      addSkippedClusterSlots,
       addToPeersBuffer,
       addToSupermajorityPeersBuffers,
       addTurbineSlot,
@@ -818,9 +800,6 @@ function useUpdateAtoms() {
 
   const deleteSlotStatusBounds = useSetAtom(deleteSlotStatusBoundsAtom);
   const deleteSlotResponseBounds = useSetAtom(deleteSlotResponseBoundsAtom);
-  const deleteSkippedClusterSlotsRange = useSetAtom(
-    deleteSkippedClusterSlotsRangeAtom,
-  );
 
   useInterval(() => {
     deleteSlotStatusBounds();
@@ -834,11 +813,6 @@ function useUpdateAtoms() {
       });
     }
   }, 5_000);
-
-  useEffect(() => {
-    if (!epoch) return;
-    deleteSkippedClusterSlotsRange(epoch.start_slot, epoch.end_slot);
-  }, [deleteSkippedClusterSlotsRange, epoch]);
 
   useEffect(() => {
     if (!epoch) return;

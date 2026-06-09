@@ -9,11 +9,13 @@ export function createEpochCache(
     currentEpoch: Epoch | undefined;
     nextEpoch: Epoch | undefined;
   }) => void,
+  postSkippedClusterSlots: (skippedClusterSlots: Set<number>) => void,
 ) {
   let epochs: Epoch[] = [];
   let currentEpoch: Epoch | undefined;
   let nextEpoch: Epoch | undefined;
   let currentSlot: number | undefined;
+  let skippedClusterSlots = new Set<number>();
 
   function findCurrentEpoch() {
     const slot = currentSlot;
@@ -50,6 +52,30 @@ export function createEpochCache(
 
     if (changed) {
       postEpochs({ currentEpoch, nextEpoch });
+      onEpochChange();
+    }
+  }
+
+  function onEpochChange() {
+    if (currentEpoch) {
+      deleteSkippedClusterSlotsOutsideEpoch(currentEpoch);
+    }
+  }
+
+  function deleteSkippedClusterSlotsOutsideEpoch(epoch: Epoch) {
+    const toKeep = new Set<number>();
+
+    for (const slot of skippedClusterSlots) {
+      // not in epoch
+      if (slot < epoch.start_slot || slot > epoch.end_slot) continue;
+      toKeep.add(slot);
+    }
+
+    const changed = toKeep.size !== skippedClusterSlots.size;
+    skippedClusterSlots = toKeep;
+
+    if (changed) {
+      postSkippedClusterSlots(skippedClusterSlots);
     }
   }
 
@@ -64,6 +90,7 @@ export function createEpochCache(
         updateAndPostEpochs();
       }
     },
+
     addEpoch(epoch: Epoch) {
       const isDuplicate =
         epochs.findIndex((e) => e.epoch === epoch.epoch) !== -1;
@@ -71,6 +98,23 @@ export function createEpochCache(
 
       epochs.push(epoch);
       updateAndPostEpochs();
+    },
+
+    addSkippedClusterSlots(slots: number[]) {
+      const initialSize = skippedClusterSlots.size;
+      for (const slot of slots) {
+        skippedClusterSlots.add(slot);
+      }
+      if (initialSize !== skippedClusterSlots.size) {
+        postSkippedClusterSlots(skippedClusterSlots);
+      }
+    },
+    deleteSkippedClusterSlot(slot: number) {
+      const initialSize = skippedClusterSlots.size;
+      skippedClusterSlots.delete(slot);
+      if (initialSize !== skippedClusterSlots.size) {
+        postSkippedClusterSlots(skippedClusterSlots);
+      }
     },
   };
 }
