@@ -1,0 +1,432 @@
+.statCard {
+  flex: 1 1 220px;
+  min-width: 220px;
+}
+
+.statLabel {
+  color: var(--gray-10);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statValue {
+  color: var(--gray-12);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.statValueSuffix {
+  color: var(--gray-10);
+  font-size: 15px;
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+.statValueSecondary {
+  color: var(--gray-12);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.statValueActive {
+  color: var(--accent-9);
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.statLabelStatusIdle {
+  color: var(--gray-9);
+  margin-left: 6px;
+  font-weight: 500;
+}
+
+.statLabelStatusActive {
+  color: var(--amber-10);
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+.statValueWarn {
+  color: var(--amber-10) !important;
+}
+
+.statValueDanger {
+  color: var(--red-10) !important;
+}
+
+.statHitRateGood {
+  color: var(--green-10);
+}
+
+.statHitRateWarn {
+  color: var(--amber-10);
+}
+
+.statHitRateBad {
+  color: var(--red-10);
+}
+
+.statBar {
+  width: 100%;
+  height: 4px;
+  background-color: var(--gray-4);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.statBarFill {
+  height: 100%;
+  background: var(--accent-9);
+  border-radius: 2px;
+}
+
+.statSub {
+  color: var(--gray-10);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: auto;
+}
+
+.sectionTitle {
+  color: var(--primary-text-color);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.table {
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+}
+
+.table th,
+.table td {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.table th.usageCol,
+.table td.usageCol {
+  width: auto;
+}
+
+.table th.hitRateCol,
+.table td.hitRateCol {
+  width: 8ch;
+  min-width: 8ch;
+  max-width: 8ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th.rateCol,
+.table td.rateCol {
+  width: 13ch;
+  min-width: 13ch;
+  max-width: 13ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th.sparkCol,
+.table td.sparkCol {
+  width: auto;
+  min-width: 180px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.table th.sparkCol {
+  vertical-align: middle;
+}
+
+.table td.sparkCol {
+  vertical-align: middle;
+}
+
+.sparkLegend {
+  color: var(--gray-10);
+}
+
+.sparkHeaderSub {
+  color: var(--gray-10);
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.sparkSwatchRead,
+.sparkSwatchWrite {
+  display: inline-block;
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.sparkSwatchRead {
+  background: #5b9bd5;
+}
+
+.sparkSwatchWrite {
+  background: #8e4ec6;
+}
+
+.table td.usageCol {
+  vertical-align: middle;
+}
+
+.mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.primaryCol {
+  font-weight: 600;
+}
+
+.dividerCol {
+  border-right: 1px solid var(--gray-a5);
+}
+
+.boldCol {
+  font-weight: 600;
+}
+
+.tierHot {
+  color: var(--red-8);
+}
+
+.tierWarm {
+  color: var(--amber-8);
+}
+
+.tierCold {
+  color: var(--blue-8);
+}
+
+.tierOff {
+  color: var(--gray-8);
+}
+
+.rowCompacting {
+  background-color: var(--amber-a2);
+}
+
+.table th.commitCol,
+.table td.commitCol {
+  width: 16ch;
+  min-width: 16ch;
+  max-width: 16ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.commitRate {
+  display: inline-block;
+  width: 7ch;
+  text-align: right;
+}
+
+.commitPct {
+  color: var(--gray-10);
+  display: inline-block;
+  width: 8ch;
+  text-align: left;
+  white-space: pre;
+  margin-left: 6px;
+}
+
+.commitPctHidden {
+  visibility: hidden;
+}
+
+.barWrap {
+  position: relative;
+  flex: 1;
+  min-width: 80px;
+  display: flex;
+  align-items: center;
+}
+
+.bar {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background-color: var(--gray-4);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.barFill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--accent-9);
+  border-radius: 3px;
+}
+
+.barFillFade {
+  animation: barFillFadeIn 250ms ease-out;
+}
+
+@keyframes barFillFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.barFillFrag {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--orange-9);
+}
+
+.barHit {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: auto;
+  background: transparent;
+}
+
+.barTriggerHit {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 12px;
+  margin-left: -6px;
+  pointer-events: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.barTrigger {
+  width: 3px;
+  height: 6px;
+  background: var(--amber-10);
+}
+
+.barWriteHeadHit {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 12px;
+  margin-left: -6px;
+  pointer-events: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.barWriteHead {
+  position: relative;
+  width: 3px;
+  height: 6px;
+  background: var(--gray-12);
+}
+
+.barWriteHead::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--gray-12);
+}
+
+.barCompactedOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--gray-4);
+  pointer-events: none;
+}
+
+.barCompactionHeadHit {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 12px;
+  margin-left: -6px;
+  pointer-events: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.barCompactionHead {
+  position: relative;
+  width: 3px;
+  height: 6px;
+  background: var(--gray-11);
+}
+
+.barCompactionHead::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--gray-11);
+}
+
+.barFillWarn {
+  background: var(--amber-8);
+  opacity: 0.7;
+}
+
+.pctLabelWarn {
+  color: var(--amber-10);
+}
+
+.barMarkerHit {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 12px;
+  margin-left: -6px;
+  pointer-events: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.barMarker {
+  width: 3px;
+  height: 6px;
+}
+
+.barMarkerTarget {
+  background: var(--gray-9);
+  opacity: 0.6;
+}
+
+.barMarkerLwm {
+  background: var(--amber-9);
+  opacity: 0.55;
+}
+
+.pctLabel {
+  color: var(--gray-11);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: right;
+}

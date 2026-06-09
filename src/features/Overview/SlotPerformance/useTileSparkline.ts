@@ -105,7 +105,9 @@ function isNumberHistory(
 
 interface UseScaledDataPointsProps {
   value?: number;
+  value2?: number;
   history?: number[] | { ts: number; value: number }[];
+  history2?: number[] | { ts: number; value: number }[];
   windowMs: number;
   height: number;
   width: number;
@@ -116,7 +118,9 @@ interface UseScaledDataPointsProps {
 
 export function useScaledDataPoints({
   value,
+  value2,
   history,
+  history2,
   windowMs: _windowMs,
   height,
   width: _width,
@@ -127,6 +131,11 @@ export function useScaledDataPoints({
   const [scaledDataPoints, setScaledDataPoints] = useState<
     { x: number; y: number }[]
   >([]);
+  const [scaledDataPoints2, setScaledDataPoints2] = useState<
+    { x: number; y: number }[]
+  >([]);
+
+  const hasSeries2 = value2 !== undefined || !!history2?.length;
 
   const isStatic = !!(history?.length && value === undefined);
 
@@ -140,6 +149,16 @@ export function useScaledDataPoints({
     const tStart = now - _windowMs;
     return history.map((value, i) => ({ value, ts: tStart + i * ratio }));
   }, [_windowMs, history]);
+
+  const normalizedHistory2 = useMemo(() => {
+    if (!history2?.length) return;
+    if (!isNumberHistory(history2)) return history2;
+
+    const now = performance.now();
+    const ratio = _windowMs / (history2.length - 1);
+    const tStart = now - _windowMs;
+    return history2.map((value, i) => ({ value, ts: tStart + i * ratio }));
+  }, [_windowMs, history2]);
 
   const { pxPerTick, width, windowMs } = useMemo(() => {
     let windowMs = _windowMs;
@@ -161,8 +180,13 @@ export function useScaledDataPoints({
     { value: undefined, ts: performance.now() - windowMs },
     { value: undefined, ts: performance.now() },
   ]);
+  const dataRef2 = useRef<PointSample[]>([
+    { value: undefined, ts: performance.now() - windowMs },
+    { value: undefined, ts: performance.now() },
+  ]);
 
   const isSeededRef = useRef(false);
+  const isSeededRef2 = useRef(false);
 
   useEffect(() => {
     if (isSeededRef.current || !normalizedHistory?.length) return;
@@ -178,10 +202,24 @@ export function useScaledDataPoints({
   }, [normalizedHistory]);
 
   useEffect(() => {
+    if (isSeededRef2.current || !normalizedHistory2?.length) return;
+    isSeededRef2.current = true;
+
+    const now = performance.now();
+    const newestTs = normalizedHistory2[normalizedHistory2.length - 1].ts;
+
+    dataRef2.current = normalizedHistory2.map(({ ts, value }) => ({
+      value,
+      ts: now - (newestTs - ts),
+    }));
+  }, [normalizedHistory2]);
+
+  useEffect(() => {
     if (stopShifting || isStatic) return;
 
     setDataWindow(dataRef.current, windowMs, value);
-  }, [isStatic, windowMs, stopShifting, value]);
+    if (hasSeries2) setDataWindow(dataRef2.current, windowMs, value2);
+  }, [isStatic, windowMs, stopShifting, value, value2, hasSeries2]);
 
   useInterval(() => {
     if (stopShifting || isStatic) return;
@@ -193,15 +231,13 @@ export function useScaledDataPoints({
     }
 
     setDataWindow(dataRef.current, windowMs, value);
+    if (hasSeries2) setDataWindow(dataRef2.current, windowMs, value2);
   }, updateIntervalMs);
 
   useEffect(() => {
-    function tick(data: (PointSample | undefined)[], tEnd: number) {
+    function buildPoints(data: (PointSample | undefined)[], tEnd: number) {
       const size = data.length;
-      if (size === 0) {
-        setScaledDataPoints([]);
-        return;
-      }
+      if (size === 0) return [];
 
       const tStart = tEnd - windowMs;
       const scale = width / windowMs;
@@ -233,7 +269,16 @@ export function useScaledDataPoints({
         points[i] = { x: x, y: y };
       }
 
-      setScaledDataPoints(points);
+      return points;
+    }
+
+    function tick(
+      data: (PointSample | undefined)[],
+      data2: (PointSample | undefined)[] | undefined,
+      tEnd: number,
+    ) {
+      setScaledDataPoints(buildPoints(data, tEnd));
+      if (data2) setScaledDataPoints2(buildPoints(data2, tEnd));
     }
 
     if (isStatic) {
@@ -245,8 +290,14 @@ export function useScaledDataPoints({
         value,
         ts: tEnd - (newestTs - ts),
       }));
+      const data2 = normalizedHistory2?.length
+        ? normalizedHistory2.map(({ ts, value }) => ({
+            value,
+            ts: tEnd - (newestTs - ts),
+          }))
+        : undefined;
 
-      tick(data, tEnd);
+      tick(data, data2, tEnd);
     }
     // live
     else {
@@ -256,16 +307,30 @@ export function useScaledDataPoints({
       const clock = clocks.get(tickMs);
       if (clock) {
         const unsub = clock.subscribeClock((tEnd) => {
-          tick(dataRef.current, tEnd);
+          tick(
+            dataRef.current,
+            hasSeries2 ? dataRef2.current : undefined,
+            tEnd,
+          );
         });
 
         return unsub;
       }
     }
-  }, [height, normalizedHistory, isStatic, tickMs, width, windowMs]);
+  }, [
+    height,
+    normalizedHistory,
+    normalizedHistory2,
+    isStatic,
+    tickMs,
+    width,
+    windowMs,
+    hasSeries2,
+  ]);
 
   return {
     scaledDataPoints,
+    scaledDataPoints2: hasSeries2 ? scaledDataPoints2 : undefined,
     range: sparkLineRange,
     pxPerTick,
     chartTickMs: tickMs,
