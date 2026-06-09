@@ -18,8 +18,6 @@ function percentileSpread(values: number[], percentiles: number[] = [1, 10]) {
     prefix[i + 1] = prefix[i] + values[i];
   }
 
-  const total = prefix[n];
-
   // Normalize, de-dup, and sort requested percentiles
   const ps = Array.from(new Set(percentiles.map((p) => clamp(p, 0, 100)))).sort(
     (a, b) => a - b,
@@ -40,11 +38,10 @@ function percentileSpread(values: number[], percentiles: number[] = [1, 10]) {
     const k0 = countForPercentile(p0);
     const k1 = countForPercentile(p1);
     const bandSum = prefix[k1] - prefix[k0];
-    const share = total === 0 ? 0 : bandSum / total;
 
     const key = i === bounds.length - 1 ? "other" : `top${p0}-${p1}%`;
 
-    disjoint[key] = share;
+    disjoint[key] = bandSum;
   }
 
   return disjoint;
