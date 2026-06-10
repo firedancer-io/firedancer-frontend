@@ -6,8 +6,8 @@ import {
 } from "../../../api/atoms";
 import Card from "../../../components/Card";
 import { Flex, Table, Text } from "@radix-ui/themes";
-import tableStyles from "../../Gossip/table.module.css";
 import { networkProtocols, type NetworkMetricsCardType } from "./consts";
+import tableStyles from "./../../../components/dataTable.module.css";
 import { formatBytesAsBits } from "../../../utils";
 import { Bars } from "../../StartupProgress/Firedancer/Bars";
 import TileSparkLine from "../SlotPerformance/TileSparkLine";

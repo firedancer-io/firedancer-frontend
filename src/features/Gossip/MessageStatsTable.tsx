@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import EmaTableCell from "./RateTableCell";
 import type { GossipMessageStats } from "../../api/types";
 import { headerGap, messageTypes, tableMinWidth } from "./consts";
-import styles from "./table.module.css";
+import tableStyles from "./../../components/dataTable.module.css";
 
 interface MessageStatsTableProps {
   messages: GossipMessageStats;
@@ -28,8 +28,8 @@ export default function MessageStatsTable({
 
   return (
     <Flex direction="column" gap={headerGap} minWidth={tableMinWidth}>
-      <Text className={styles.headerText}>Message Stats</Text>
-      <Table.Root variant="surface" className={styles.root} size="1">
+      <Text className={tableStyles.headerText}>Message Stats</Text>
+      <Table.Root variant="surface" className={tableStyles.root} size="1">
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeaderCell>Message Type</Table.ColumnHeaderCell>

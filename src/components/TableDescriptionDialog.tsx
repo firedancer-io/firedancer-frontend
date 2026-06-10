@@ -1,10 +1,16 @@
 import { Button, Dialog, Flex, Table, Tooltip } from "@radix-ui/themes";
 import styles from "./tableDescriptionDialog.module.css";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
-import { metricGroups } from "./consts";
-import { appMaxWidth } from "../../../consts";
+import { appMaxWidth } from "../consts";
+import type { ColumnGroup } from "./DataTable";
 
-export default function TableDescriptionDialog() {
+interface TableDescriptionDialogProps {
+  groups: ColumnGroup[];
+}
+
+export default function TableDescriptionDialog({
+  groups,
+}: TableDescriptionDialogProps) {
   return (
     <Dialog.Root>
       <Dialog.Trigger>
@@ -21,7 +27,7 @@ export default function TableDescriptionDialog() {
         size="1"
         className={styles.tableDescriptionDialog}
       >
-        <Dialog.Title size="2" className={styles.title} mb="0px">
+        <Dialog.Title size="2" mb="0px">
           Column Definitions
         </Dialog.Title>
         <Table.Root size="1" className={styles.table}>
@@ -40,13 +46,13 @@ export default function TableDescriptionDialog() {
           </Table.Header>
 
           <Table.Body>
-            {metricGroups.map((group) =>
-              group.metrics.map((metric) => (
-                <Table.Row key={metric.uniqueName} className={styles.tr}>
+            {groups.map((group) =>
+              group.columns.map((column) => (
+                <Table.Row key={column.uniqueName} className={styles.tr}>
                   <Table.Cell className={styles.name}>
-                    {metric.uniqueName}
+                    {column.uniqueName}
                   </Table.Cell>
-                  <Table.Cell>{metric.description}</Table.Cell>
+                  <Table.Cell>{column.description}</Table.Cell>
                 </Table.Row>
               )),
             )}

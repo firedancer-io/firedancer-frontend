@@ -1,3 +1,36 @@
+.header-text {
+  color: var(--primary-text-color);
+  font-size: 18px;
+}
+
+.root {
+  min-height: 0;
+
+  thead {
+    th {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--table-header-color);
+    }
+  }
+
+  tbody {
+    th,
+    td {
+      font-size: 14px;
+      color: var(--table-body-color);
+    }
+  }
+
+  td,
+  th {
+    white-space: nowrap;
+  }
+  td {
+    text-align: right;
+  }
+}
+
 .group-header {
   text-align: center;
   padding: 5px;
@@ -17,7 +50,7 @@
     table-layout: fixed;
 
     .data-row {
-      &.floating {
+      &.faded {
         filter: brightness(0.55);
       }
 
