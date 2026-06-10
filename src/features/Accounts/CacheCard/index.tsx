@@ -8,10 +8,7 @@ import Stat from "../Stat";
 import Progress from "../../../components/Progress";
 
 import styles from "./cacheCard.module.css";
-
-const CACHE_CLASS_BYTES = [
-  128, 512, 2048, 8192, 32768, 131072, 1048576, 10485760,
-];
+import { cacheClassList } from "../consts";
 
 export default function CacheCard() {
   const accountStats = useAtomValue(accountsStatsAtom);
@@ -38,7 +35,7 @@ export default function CacheCard() {
   const sizeBytes = formatIECBytes(accountStats.cache.size_bytes, 2);
   const usedBytes = formatIECBytes(
     cacheClasses.reduce(
-      (a, c) => a + c.used_slots * (CACHE_CLASS_BYTES[c.class] ?? 0),
+      (a, c) => a + c.used_slots * (cacheClassList[c.class]?.bytes ?? 0),
       0,
     ),
     2,
