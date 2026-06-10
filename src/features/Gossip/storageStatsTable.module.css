@@ -1,0 +1,4 @@
+.storage-stats-container {
+  /* takes table out of grid track sizing so it will size up to the other column's table */
+  contain: size;
+}
