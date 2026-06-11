@@ -1,0 +1,49 @@
+.secondary {
+  color: var(--gray-8);
+  margin-left: 4px;
+  display: inline-block;
+  min-width: 36px;
+}
+
+.usageBar {
+  min-width: 0;
+}
+
+.track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  background: var(--gray-6);
+  border-radius: 2px;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--blue-9);
+}
+
+.fillWarn {
+  background: var(--yellow-8);
+}
+
+.marker {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
+  border-radius: 1px;
+}
+
+.marker-target {
+  background: var(--gray-10);
+}
+
+.marker-low-water {
+  background: var(--yellow-9);
+}
+
+.pctWarn {
+  color: var(--yellow-8);
+}
