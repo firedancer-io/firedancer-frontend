@@ -5,6 +5,7 @@ export const networkProtocols = [
   "gossip",
   "tpu",
   "repair",
+  "rserve",
   "metrics",
 ] as const;
 
@@ -21,6 +22,7 @@ export const networkMaxByteValues: {
     gossip: 1_000_000_000 / 8,
     tpu: 100_000_000 / 8,
     repair: 1_000_000 / 8,
+    rserve: 100_000_000 / 8,
     metrics: 10_000 / 8,
     Total: 1_189_010_000 / 8,
   },
@@ -29,6 +31,7 @@ export const networkMaxByteValues: {
     gossip: 1_000_000_000 / 8,
     tpu: 1_000_000 / 8,
     repair: 1_000_000 / 8,
+    rserve: 25_000_000 / 8,
     metrics: 10_000 / 8,
     Total: 2_050_010_000 / 8,
   },
