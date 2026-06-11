@@ -137,7 +137,9 @@ function TableHeader({ groups, isPinned, hideGroupHeaders }: TableHeaderProps) {
                 key={group.name}
                 colSpan={group.columns.length}
                 className={clsx(styles.groupHeader, {
-                  [styles.rightBorder]: isPinned || i !== groups.length - 1,
+                  [styles.rightBorder]: isPinned
+                    ? i === groups.length - 1
+                    : i !== groups.length - 1,
                 })}
               >
                 {group.headerRenderer ? <group.headerRenderer /> : group.name}
@@ -155,9 +157,10 @@ function TableHeader({ groups, isPinned, hideGroupHeaders }: TableHeaderProps) {
                 className={clsx({
                   [styles.wrap]: !!column.wrap,
                   [styles.rightBorder]:
-                    isPinned ||
-                    // last field (except in last group) has right border
-                    (i !== groups.length - 1 && j === group.columns.length - 1),
+                    j === group.columns.length - 1 &&
+                    (isPinned
+                      ? i === groups.length - 1
+                      : i !== groups.length - 1),
                 })}
                 style={
                   column.headerColor ? { color: column.headerColor } : undefined

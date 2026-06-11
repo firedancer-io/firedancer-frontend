@@ -1,0 +1,97 @@
+.usageCol {
+  min-width: 0;
+  width: 100%;
+}
+
+.barWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bar {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  background: var(--gray-6);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.secondary {
+  color: var(--gray-8);
+  display: inline-block;
+  min-width: 32px;
+  text-align: right;
+}
+
+.barFill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--blue-9);
+}
+
+.barFillFrag {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--orange-9);
+}
+
+.barFillFade {
+  animation: barFade 3s ease-out forwards;
+}
+
+@keyframes barFade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.5;
+  }
+}
+
+.barCompactedOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.barHit {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  cursor: default;
+}
+
+.barTriggerHit,
+.barWriteHeadHit,
+.barCompactionHeadHit {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 10px;
+  transform: translateX(-50%);
+  cursor: default;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.barTrigger {
+  width: 2px;
+  background: var(--yellow-9);
+  border-radius: 1px;
+}
+
+.barWriteHead,
+.barCompactionHead {
+  width: 2px;
+  background: #d9d9d9;
+  border-radius: 1px;
+}
