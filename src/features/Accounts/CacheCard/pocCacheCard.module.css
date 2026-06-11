@@ -1,0 +1,17 @@
+.pieWrap {
+  flex-shrink: 0;
+  width: 110px;
+  align-self: stretch;
+}
+
+.legendDivider {
+  height: 1px;
+  background: var(--gray-4);
+  margin: 2px 0;
+}
+
+.legendSwatch {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+}

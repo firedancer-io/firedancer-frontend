@@ -2,3 +2,8 @@
   flex: 1 0 0;
   min-width: 250px;
 }
+
+.pocCards > * {
+  flex: 1 0 0;
+  min-width: 380px;
+}

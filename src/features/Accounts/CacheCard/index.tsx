@@ -5,7 +5,6 @@ import { accountsStatsAtom } from "../../../api/atoms";
 import { useAtomValue } from "jotai";
 import { formatCount, formatIECBytes } from "../../../utils";
 import Stat from "../Stat";
-import Progress from "../../../components/Progress";
 
 import styles from "./cacheCard.module.css";
 import { cacheClassList } from "../consts";
@@ -30,7 +29,6 @@ export default function CacheCard() {
   const maxSlots = cacheClasses.reduce((a, c) => a + c.max_slots, 0);
   const fmtUsedSlots = formatCount(usedSlots, 2);
   const fmtMaxSlots = formatCount(maxSlots, 2);
-  const cachePct = maxSlots ? (usedSlots / maxSlots) * 100 : 0;
 
   const sizeBytes = formatIECBytes(accountStats.cache.size_bytes, 2);
   const usedBytes = formatIECBytes(
@@ -67,7 +65,6 @@ export default function CacheCard() {
               suffix="w/s"
             />
           </Flex>
-          <Progress value={cachePct} color="#BC3737" />
         </Flex>
         <Flex justify="between" gap="2">
           <Stat
