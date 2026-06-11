@@ -321,3 +321,7 @@ export const slotsListCurrentSlotNumberBackgroundColor = "#283551";
 
 // Tile charts
 export const tileChartDarkBackground = "#0000001F";
+
+// Accounts
+export const accountsReadColor = "var(--blue-10)";
+export const accountsWriteColor = "var(--violet-10)";

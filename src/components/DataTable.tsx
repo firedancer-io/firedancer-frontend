@@ -10,6 +10,7 @@ export interface ColumnDefinition {
   description: string;
   headerColWidth: number;
   headerColAlign?: Table.ColumnHeaderCellProps["align"];
+  headerColor?: string;
   wrap?: boolean;
 }
 
@@ -158,6 +159,9 @@ function TableHeader({ groups, isPinned, hideGroupHeaders }: TableHeaderProps) {
                     // last field (except in last group) has right border
                     (i !== groups.length - 1 && j === group.columns.length - 1),
                 })}
+                style={
+                  column.headerColor ? { color: column.headerColor } : undefined
+                }
               >
                 {column.columnName ?? column.uniqueName}
               </Table.ColumnHeaderCell>

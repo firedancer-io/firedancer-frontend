@@ -60,10 +60,24 @@ describe("formatSIBytes", () => {
       });
     });
 
-    it("formats very large values in GB", () => {
+    it("formats value at 1_000_000_000_000 as TB", () => {
       expect(formatSIBytes(1_000_000_000_000)).toEqual({
+        value: "1.0",
+        unit: "TB",
+      });
+    });
+
+    it("formats bytes in TB range", () => {
+      expect(formatSIBytes(4_200_000_000_000)).toEqual({
+        value: "4.2",
+        unit: "TB",
+      });
+    });
+
+    it("formats very large values in TB", () => {
+      expect(formatSIBytes(1_000_000_000_000_000)).toEqual({
         value: "1000.0",
-        unit: "GB",
+        unit: "TB",
       });
     });
   });

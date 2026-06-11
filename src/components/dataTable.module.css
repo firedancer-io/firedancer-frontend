@@ -58,6 +58,10 @@
         color: var(--green-9);
       }
 
+      .orange {
+        color: var(--orange-9);
+      }
+
       .red {
         color: var(--red-9);
       }
@@ -70,7 +74,7 @@
           line-height: inherit;
         }
 
-        color: var(--table-body-color);
+        color: var(--cell-color, var(--table-body-color));
         text-align: left;
         &[align="right"] {
           text-align: right;

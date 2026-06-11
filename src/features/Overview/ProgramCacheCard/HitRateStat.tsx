@@ -12,6 +12,7 @@ import {
   averageChangedColor,
   averageUnchangedColor,
 } from "../../../colors";
+import { formatHitRate } from "../../../utils";
 import ColorText from "../../../components/ColorText";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
@@ -60,7 +61,8 @@ export default function HitRateStat() {
 
     const { hits, lookups } = liveProgramCache;
 
-    const percentage = lookups === 0 ? 0 : (hits / lookups) * 100;
+    const fraction = lookups === 0 ? 0 : hits / lookups;
+    const percentage = fraction * 100;
     const status =
       lookups === 0
         ? "Unknown"
@@ -71,7 +73,7 @@ export default function HitRateStat() {
             : "Good";
 
     return {
-      percentage: (Math.trunc(percentage * 100) / 100).toFixed(2),
+      percentage: formatHitRate(fraction),
       hits: hits.toLocaleString(),
       misses: (lookups - hits).toLocaleString(),
       status,

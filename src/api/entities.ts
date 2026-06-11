@@ -1063,6 +1063,7 @@ const accountsTileSchema = z.object({
   acquired: z.number(),
   bytes_read: z.number(),
   bytes_written: z.number(),
+  acquire_calls_per_sec: z.number(),
   acquired_per_sec: z.number(),
   acquired_writable_per_sec: z.number(),
   bytes_read_per_sec: z.number(),
@@ -1074,6 +1075,8 @@ const accountsTileSchema = z.object({
   evicted_per_sec: z.number(),
   committed_per_sec: z.number(),
   hit_rate_ema: z.number(),
+  acquired_history: z.array(z.number()),
+  acquired_writable_history: z.array(z.number()),
 });
 
 const accountsPartitionSchema = z.object({

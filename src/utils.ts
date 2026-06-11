@@ -339,12 +339,13 @@ export const countUnits: readonly UnitInfo<CountUnit>[] = [
   { unit: "T", divisor: 1_000_000_000_000, threshold: Infinity },
 ];
 
-export type SIByteUnit = "B" | "kB" | "MB" | "GB";
+export type SIByteUnit = "B" | "kB" | "MB" | "GB" | "TB";
 export const siByteUnits: readonly UnitInfo<SIByteUnit>[] = [
   { unit: "B", divisor: 1, threshold: 1_000 },
   { unit: "kB", divisor: 1_000, threshold: 1_000_000 },
   { unit: "MB", divisor: 1_000_000, threshold: 1_000_000_000 },
-  { unit: "GB", divisor: 1_000_000_000, threshold: Infinity },
+  { unit: "GB", divisor: 1_000_000_000, threshold: 1_000_000_000_000 },
+  { unit: "TB", divisor: 1_000_000_000_000, threshold: Infinity },
 ];
 
 export type IECByteUnit = "B" | "KiB" | "MiB" | "GiB" | "TiB";
@@ -557,4 +558,27 @@ export function getPeerIconUrl(peerInfo: PeerUpdateInfo | null | undefined) {
       : undefined) ||
     undefined
   );
+}
+
+// truncate instead of round hit rate values
+export function formatHitRate(fraction: number, precision = 2) {
+  const pct = fraction * 100;
+  return (Math.trunc(pct * 100) / 100).toFixed(precision);
+}
+
+export function formatRate(value: number) {
+  if (value === 0) return "-";
+  if (value < 10) return value.toFixed(1);
+  return Math.round(value).toLocaleString();
+}
+
+export function formatSIBytesStr(value: number) {
+  if (value === 0) return "-";
+  const bytes = formatSIBytes(value);
+  return `${bytes.value} ${bytes.unit}`;
+}
+
+export function formatSIBytesRate(value: number) {
+  if (value === 0) return "-";
+  return `${formatSIBytesStr(value)}/s`;
 }
