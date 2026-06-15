@@ -11,12 +11,15 @@ import {
 import type { GossipStorageStats } from "../../api/types";
 import { Box, Flex, Grid, Text } from "@radix-ui/themes";
 import { useValuePerSecond } from "../StartupProgress/Firedancer/useValuePerSecond";
-import { Pie, type ComputedDatum, type PieTooltipProps } from "@nivo/pie";
-import AutoSizer from "react-virtualized-auto-sizer";
+import type { ComputedDatum } from "@nivo/pie";
 import { sum } from "lodash";
 import { StatCard } from "./StatCard";
 import { useHarmonicIntervalFn } from "react-use";
-import styles from "./pieChart.module.css";
+import styles from "./storageStatsTable.module.css";
+import PieChart, {
+  type PieCenteredMetricProps,
+  PieCenteredMetric,
+} from "../../components/PieChart";
 
 interface StorageStatsChartsProps {
   storage: GossipStorageStats;
@@ -102,6 +105,13 @@ export default function StorageStatsCharts({
   );
 }
 
+type StoragePieData = {
+  id: string;
+  label: string;
+  value: number;
+  color: string;
+};
+
 const colors = ["#48295C", "#562800", "#132D21"];
 const getColor = (i: number) => colors[i % colors.length];
 
@@ -130,81 +140,47 @@ function StorageStatsPieChart({
         .map((node, i) => {
           return { ...node, color: getColor(i) };
         }),
-    ];
+    ] as StoragePieData[];
   }, [storage]);
 
+  const centeredMetricLayer = useMemo(
+    () => CenteredMetric(usedCapacity),
+    [usedCapacity],
+  );
+
   return (
-    <AutoSizer>
-      {({ height, width }) => (
-        <Pie
-          height={height}
-          width={width}
-          data={data}
-          colors={(d) => d.data.color}
-          arcLabelsSkipAngle={10}
-          arcLinkLabelsSkipAngle={10}
-          arcLabelsTextColor="#9F9F9F"
-          enableArcLinkLabels={false}
-          layers={["arcs", "arcLabels", CenteredMetric(usedCapacity)]}
-          tooltip={Tooltip}
-          animate={false}
-          innerRadius={0.7}
-          arcLabel={(d) => d.data.label}
-        />
-      )}
-    </AutoSizer>
+    <PieChart
+      data={data}
+      tooltipFormatter={formatTooltipValue}
+      centeredMetric={centeredMetricLayer}
+      enableArcLabels
+      arcLabelsSkipAngle={10}
+      arcLinkLabelsSkipAngle={10}
+      arcLabelsTextColor="#9F9F9F"
+      enableArcLinkLabels={false}
+      arcLabel={(d) => d.data.label}
+    />
   );
 }
 
 function CenteredMetric(metricLabel: string) {
   return function CenteredMetricLayer({
-    dataWithArc,
     centerX,
     centerY,
-  }: {
-    dataWithArc: readonly ComputedDatum<{
-      id: string;
-      label: string;
-      value: number;
-    }>[];
-    centerX: number;
-    centerY: number;
-    innerRadius: number;
-    radius: number;
-  }) {
+  }: PieCenteredMetricProps<StoragePieData>) {
     return (
-      <text
-        y={centerY - 6}
-        textAnchor="middle"
-        dominantBaseline="central"
-        style={{
-          fontSize: "28px",
-          fill: "#9F9F9F",
-        }}
+      <PieCenteredMetric
+        centerY={centerY}
+        style={{ fontSize: "28px", fill: "#9F9F9F" }}
       >
         <tspan x={centerX} dy={5}>
           {metricLabel}
         </tspan>
-      </text>
+      </PieCenteredMetric>
     );
   };
 }
 
-function Tooltip(
-  props: PieTooltipProps<{
-    id: string;
-    label: string;
-    value: number;
-    color: string;
-  }>,
-) {
-  const value = props.datum.value;
-
-  return (
-    <div className={styles.tooltip}>
-      <Text style={{ whiteSpace: "nowrap" }}>
-        {props.datum.label}:&nbsp;{value}
-      </Text>
-    </div>
-  );
+function formatTooltipValue(datum: ComputedDatum<StoragePieData>) {
+  return datum.value.toLocaleString();
 }

@@ -38,7 +38,7 @@ export default function StorageStatsTable({ storage }: StorageStatsTableProps) {
       // Prevents shrinking to 0 when collapsed to single column
       minHeight="250px"
     >
-      <Text className={tableStyles.headerText}>Storage Stats</Text>
+      <Text className={styles.headerText}>Storage Stats</Text>
       <Table.Root variant="surface" className={tableStyles.root} size="1">
         <Table.Header>
           <Table.Row>

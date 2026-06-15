@@ -8,16 +8,20 @@ causing a horizontal scrollbar */
 div:has(> .tooltip) {
   width: 1px;
   height: 1px;
+  contain: layout;
+}
+
+.centered-metric {
+  font-size: 12px;
 }
 
 .tooltip {
+  position: absolute;
   width: fit-content;
-  /* This left aligns the tooltip from the position nivo calculates */
-  transform: translate(calc(-100% - 5px));
+  background: var(--popover-background-color);
   padding: 4px;
-  background: #131923;
-  border: 1px solid #2e343e;
-  border-radius: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
   color: var(--regular-text-color);
 
   span {

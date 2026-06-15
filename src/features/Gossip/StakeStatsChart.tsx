@@ -10,7 +10,8 @@ import {
 import ValidatorStatsChart from "./ValidatorStatsChart";
 import { formatNumberLamports } from "../Overview/ValidatorsCard/formatAmt";
 import { StatCard } from "./StatCard";
-import styles from "./pieChart.module.css";
+import gossipStyles from "./gossip.module.css";
+
 import {
   gridColumns,
   gridGap,
@@ -30,7 +31,7 @@ export default function StakeStatsChart() {
 
     return (
       <Flex direction="column" gap={headerGap}>
-        <Text className={styles.headerText}>Validator Stats</Text>
+        <Text className={gossipStyles.headerText}>Validator Stats</Text>
         <Flex gap={statsCardPieChartGap} wrap="wrap">
           <Grid
             columns={gridColumns}
