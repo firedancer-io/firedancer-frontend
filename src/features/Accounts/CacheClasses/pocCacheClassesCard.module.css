@@ -1,0 +1,151 @@
+.card {
+  display: grid;
+  grid-template-columns: 52px 1fr 32px auto;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.row {
+  display: contents;
+}
+
+.label {
+  font-size: 11px;
+  color: var(--gray-11);
+  text-align: right;
+}
+
+.barsWrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+
+  --step: calc(var(--bar-width, 2px) + var(--bar-gap, 3px));
+  --used-width: max(
+    0px,
+    calc(
+      round(down, 100% + var(--bar-gap, 3px), var(--step)) - var(--bar-gap, 3px)
+    )
+  );
+}
+
+.bars {
+  position: relative;
+  width: 100%;
+  height: var(--bar-height, 12px);
+
+  --threshold-start: max(
+    0px,
+    calc(
+      round(
+          nearest,
+          var(--pct) * (var(--used-width) + var(--bar-gap, 3px)),
+          var(--step)
+        ) -
+        var(--step)
+    )
+  );
+  --threshold-visible: sign(var(--pct));
+
+  mask-image: repeating-linear-gradient(
+    to right,
+    black 0 var(--bar-width, 2px),
+    transparent var(--bar-width, 2px) var(--step)
+  );
+  mask-size: var(--used-width) 100%;
+  mask-repeat: no-repeat;
+
+  /* Unfilled bars: zone colors (dim) */
+  background: linear-gradient(
+    to right,
+    var(--boot-progress-gossip-bars-color) 0 var(--zone-1-pct),
+    var(--boot-progress-gossip-mid-bar-color) var(--zone-1-pct)
+      var(--zone-2-pct),
+    var(--boot-progress-gossip-high-bar-color) var(--zone-2-pct) 100%
+  );
+  background-size: var(--used-width) 100%;
+  background-repeat: no-repeat;
+
+  /* Filled bars */
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--used-width);
+    clip-path: inset(
+      0 calc(100% - var(--threshold-start) + var(--bar-width, 2px)) 0 0
+    );
+    background: linear-gradient(
+      to right,
+      var(--boot-progress-gossip-filled-bar-color) 0 var(--zone-1-pct),
+      var(--boot-progress-gossip-mid-filled-bar-color) var(--zone-1-pct)
+        var(--zone-2-pct),
+      var(--boot-progress-gossip-high-filled-bar-color) var(--zone-2-pct) 100%
+    );
+    background-size: var(--used-width) 100%;
+    background-repeat: no-repeat;
+  }
+
+  /* Threshold cursor bar */
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--used-width);
+    clip-path: inset(
+      0 calc(100% - var(--threshold-start) - var(--bar-width, 2px)) 0
+        var(--threshold-start)
+    );
+    opacity: var(--threshold-visible, 0);
+    background: linear-gradient(
+      to right,
+      var(--app-teal) 0 var(--zone-1-pct),
+      var(--boot-progress-gossip-mid-threshold-bar-color) var(--zone-1-pct)
+        var(--zone-2-pct),
+      var(--boot-progress-gossip-high-threshold-bar-color) var(--zone-2-pct)
+        100%
+    );
+    background-size: var(--used-width) 100%;
+    background-repeat: no-repeat;
+  }
+}
+
+.pct {
+  font-size: 11px;
+  color: var(--gray-9);
+  width: 32px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.slots {
+  font-size: 10px;
+  color: var(--gray-8);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.lowWaterMarker,
+.targetMarker {
+  position: absolute;
+  top: calc(100% + 1px);
+  width: 0;
+  height: 0;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  transform: translateX(-50%);
+}
+
+.lowWaterMarker {
+  left: calc(var(--low-water-frac) * var(--used-width));
+  border-bottom: 4px solid var(--boot-progress-gossip-high-threshold-bar-color);
+}
+
+.targetMarker {
+  left: calc(var(--target-frac) * var(--used-width));
+  border-bottom: 4px solid var(--boot-progress-gossip-mid-threshold-bar-color);
+}

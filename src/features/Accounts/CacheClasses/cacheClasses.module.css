@@ -45,5 +45,9 @@
 }
 
 .pctWarn {
-  color: var(--yellow-8);
+  color: var(--yellow-9);
+}
+
+.pctDanger {
+  color: var(--red-9);
 }

@@ -97,7 +97,7 @@ function DataRow({ partition }: { partition: Partition }) {
     <Table.Row className={tableStyles.dataRow}>
       <Table.Cell className={styles.usageCol}>
         <UsageBar
-          usedFrac={partition.utilization}
+          usedFrac={partition.used_frac}
           fragmentedFrac={partition.fragmented_frac}
           compactionTriggerFrac={partition.compaction_trigger_frac}
           isWriteHead={partition.is_write_head}

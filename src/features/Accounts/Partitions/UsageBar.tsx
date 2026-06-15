@@ -134,7 +134,7 @@ export default function UsageBar({
           </div>
         )}
       </div>
-      <span className={styles.secondary}>{Math.round(usedPct)}%</span>
+      <span className={styles.secondary}>{Math.round(headPct)}%</span>
     </div>
   );
 }

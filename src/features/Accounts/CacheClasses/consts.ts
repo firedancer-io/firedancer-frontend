@@ -30,7 +30,7 @@ export const cacheClassGroups: ColumnGroup[] = [
       {
         uniqueName: "Usage",
         description: "",
-        headerColWidth: 250,
+        headerColWidth: 300,
       },
       {
         uniqueName: "Reserved",
