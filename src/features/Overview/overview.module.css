@@ -40,10 +40,10 @@
 
 @media (min-width: 1850px) {
   .cards {
-    grid-template-columns: 1fr 1.5fr 1.7fr 2fr;
+    grid-template-columns: 1fr 1fr 1fr;
 
     &.frankendancer {
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
     }
   }
 

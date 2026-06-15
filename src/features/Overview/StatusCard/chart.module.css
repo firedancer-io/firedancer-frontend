@@ -1,9 +1,0 @@
-.slice-tooltip {
-  display: grid;
-  grid: auto-flow / auto auto;
-  column-gap: 4px;
-  padding: 4px;
-  border-radius: 8px;
-  border: 1px solid var(--container-border-color);
-  background: #070b14;
-}
