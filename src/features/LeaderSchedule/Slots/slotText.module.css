@@ -14,3 +14,16 @@
     color: var(--slot-text-active-link-color);
   }
 }
+
+.slot-with-copy {
+  /* Reveal on hover without shifting the digits. */
+  .copy-affordance {
+    opacity: 0;
+    transition: opacity 0.1s ease-in-out;
+  }
+
+  &:hover .copy-affordance,
+  &:focus-within .copy-affordance {
+    opacity: 1;
+  }
+}
