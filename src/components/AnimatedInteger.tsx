@@ -10,8 +10,10 @@ import {
 import styles from "./animatedInteger.module.css";
 import clsx from "clsx";
 import { Box, Flex, Text, type FlexProps } from "@radix-ui/themes";
-import { useUnmount } from "react-use";
+import { useMedia, useUnmount } from "react-use";
+import { useAtomValue } from "jotai";
 import useIsDocumentVisible from "../hooks/useIsDocumentVisible";
+import { animateNumbersAtom } from "../settingsAtoms";
 
 const MIN_ANIMATION_DURATION_MS = 20;
 
@@ -31,11 +33,40 @@ interface AnimatedIntegerProps {
  */
 export default function AnimatedInteger(props: AnimatedIntegerProps) {
   const isDocumentVisible = useIsDocumentVisible();
+  const animateNumbers = useAtomValue(animateNumbersAtom);
+  const prefersReducedMotion = useMedia(
+    "(prefers-reduced-motion: reduce)",
+    false,
+  );
+
+  // Skip animation if disabled or prefers-reduced-motion.
+  if (!animateNumbers || prefersReducedMotion) {
+    return <StaticInteger {...props} />;
+  }
 
   // re-mount when visible again, so there's no need to catch up
   if (!isDocumentVisible) return null;
 
   return <AnimatedIntegerInner {...props} />;
+}
+
+/** Static render matching the animated variant's layout. */
+function StaticInteger({
+  value,
+  height,
+  className,
+  containerRowJustify,
+}: AnimatedIntegerProps) {
+  const heightStyle =
+    height == null ? undefined : ({ height: `${height}px` } as CSSProperties);
+
+  return (
+    <Flex position="relative" justify={containerRowJustify}>
+      <Text className={className} style={heightStyle}>
+        {value}
+      </Text>
+    </Flex>
+  );
 }
 
 type Direction = "incr" | "decr";

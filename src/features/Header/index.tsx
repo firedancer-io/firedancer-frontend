@@ -30,6 +30,7 @@ import { bootProgressContainerElAtom } from "../../atoms";
 import { useCallback } from "react";
 import PopoverDropdown from "../../components/PopoverDropdown";
 import HealthPane from "./HealthPane";
+import DisplaySettings from "./DisplaySettings";
 
 export default function Header({ isStartup }: { isStartup?: boolean }) {
   const showDropdownNav = useMedia("(max-width: 1218px)");
@@ -117,6 +118,8 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
               <HealthPane />
 
               <Flex gap="1" direction={isNarrowScreen ? "column" : "row"}>
+                <DisplaySettings />
+
                 <Attribution />
 
                 {isStartup ? (
