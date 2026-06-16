@@ -28,7 +28,9 @@ export default function PopoverDropdown({
 
   return (
     <Popover.Root open={isOpen} onOpenChange={onOpenChange}>
-      <Popover.Trigger asChild>{children}</Popover.Trigger>
+      <Popover.Trigger asChild className={styles.popoverTrigger}>
+        {children}
+      </Popover.Trigger>
       <Popover.Portal container={containerEl}>
         <Popover.Content
           className={clsx(className, styles.popoverContent)}

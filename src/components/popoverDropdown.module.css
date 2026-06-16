@@ -1,3 +1,7 @@
+.popover-trigger {
+  cursor: pointer;
+}
+
 .popover-content {
   box-sizing: border-box;
 
