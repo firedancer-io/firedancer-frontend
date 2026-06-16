@@ -23,7 +23,7 @@ export default function IdentityKey() {
 
   const isXXNarrowScreen = useMedia(`(min-width: ${identityIconOnlyWidth})`);
   const isXNarrowScreen = useMedia("(min-width: 798px)");
-  const isNarrowScreen = useMedia("(min-width: 914px)");
+  const isNarrowScreen = useMedia("(min-width: 945px)");
 
   useEffect(() => {
     const suffix = peer?.info?.name ?? identityKey;
