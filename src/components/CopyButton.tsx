@@ -1,5 +1,6 @@
 import { Button } from "@radix-ui/themes";
-import { useState, type PropsWithChildren } from "react";
+import { useCallback, useState } from "react";
+import type { PropsWithChildren } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { copyToClipboard } from "../utils";
 import { CheckIcon, CopyIcon } from "@radix-ui/react-icons";
@@ -12,6 +13,7 @@ interface CopyButtonProps {
   size?: string | number;
   hideIconUntilHover?: boolean;
   className?: string;
+  copyOnIconOnly?: boolean;
 }
 
 export default function CopyButton({
@@ -20,37 +22,63 @@ export default function CopyButton({
   size,
   hideIconUntilHover,
   className,
+  copyOnIconOnly,
   children,
 }: PropsWithChildren<CopyButtonProps>) {
   const [hasCopied, setHasCopied] = useState(false);
   const resetHasCopied = useDebouncedCallback(() => setHasCopied(false), 1_000);
 
+  const handleCopy = useCallback(
+    (e: React.MouseEvent) => {
+      if (value === undefined) return;
+
+      copyToClipboard(value);
+      setHasCopied(true);
+      resetHasCopied();
+      // When inside of a tooltip, seems to be caught by the outside
+      // tooltip click handler without this
+      e.stopPropagation();
+    },
+    [resetHasCopied, value],
+  );
+
   if (value === undefined) return children;
+
+  const icon = hasCopied ? (
+    <CheckIcon className={styles.icon} color="green" height={size} />
+  ) : (
+    <CopyIcon
+      className={styles.icon}
+      color={color}
+      height={size}
+      onClick={copyOnIconOnly ? handleCopy : undefined}
+    />
+  );
+
+  const sharedClasses = clsx(
+    className,
+    styles.copyButton,
+    hideIconUntilHover && styles.hideIconUntilHover,
+  );
+
+  if (copyOnIconOnly) {
+    return (
+      <span className={clsx(sharedClasses, styles.copyOnIconOnlyContainer)}>
+        {children}
+        {icon}
+      </span>
+    );
+  }
 
   return (
     <Button
-      className={clsx(
-        className,
-        styles.copyButton,
-        hideIconUntilHover && styles.hideIconUntilHover,
-      )}
+      className={sharedClasses}
       variant="ghost"
       size="1"
-      onClick={(e) => {
-        copyToClipboard(value);
-        setHasCopied(true);
-        resetHasCopied();
-        // When inside of a tooltip, seems to be caught by the outside
-        // tooltip click handler without this
-        e.stopPropagation();
-      }}
+      onClick={handleCopy}
     >
       {children}
-      {hasCopied ? (
-        <CheckIcon className={styles.icon} color="green" height={size} />
-      ) : (
-        <CopyIcon className={styles.icon} color={color} height={size} />
-      )}
+      {icon}
     </Button>
   );
 }
