@@ -32,9 +32,7 @@ export default function IdentityKey() {
 
   return (
     <DropdownContainer showDropdown>
-      <div
-        className={clsx(styles.container, styles.horizontal, styles.pointer)}
-      >
+      <div className={clsx(styles.container, styles.horizontal)}>
         <PeerIcon url={peer?.info?.icon_url} size={28} isYou />
 
         {isXXNarrowScreen && <ValidatorName shouldShrink />}
