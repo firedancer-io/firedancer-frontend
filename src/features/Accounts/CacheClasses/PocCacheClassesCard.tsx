@@ -187,7 +187,7 @@ function PocUsageBar({
           style={
             {
               "--bar-width": "2px",
-              "--bar-gap": "3px",
+              "--bar-gap": "0px",
               "--pct": pct,
               "--low-water-frac": lowWaterFrac,
               "--target-frac": targetFrac,

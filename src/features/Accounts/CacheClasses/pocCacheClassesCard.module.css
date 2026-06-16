@@ -58,7 +58,7 @@
   /* Unfilled bars: zone colors (dim) */
   background: linear-gradient(
     to right,
-    var(--boot-progress-gossip-bars-color) 0 var(--zone-1-pct),
+    var(--gray-4) 0 var(--zone-1-pct),
     var(--boot-progress-gossip-mid-bar-color) var(--zone-1-pct)
       var(--zone-2-pct),
     var(--boot-progress-gossip-high-bar-color) var(--zone-2-pct) 100%
@@ -74,12 +74,10 @@
     bottom: 0;
     left: 0;
     width: var(--used-width);
-    clip-path: inset(
-      0 calc(100% - var(--threshold-start) + var(--bar-width, 2px)) 0 0
-    );
+    clip-path: inset(0 calc(100% - var(--threshold-start)) 0 0);
     background: linear-gradient(
       to right,
-      var(--boot-progress-gossip-filled-bar-color) 0 var(--zone-1-pct),
+      var(--gray-8) 0 var(--zone-1-pct),
       var(--boot-progress-gossip-mid-filled-bar-color) var(--zone-1-pct)
         var(--zone-2-pct),
       var(--boot-progress-gossip-high-filled-bar-color) var(--zone-2-pct) 100%
@@ -103,7 +101,7 @@
     opacity: var(--threshold-visible, 0);
     background: linear-gradient(
       to right,
-      var(--app-teal) 0 var(--zone-1-pct),
+      var(--gray-8) 0 var(--zone-1-pct),
       var(--boot-progress-gossip-mid-threshold-bar-color) var(--zone-1-pct)
         var(--zone-2-pct),
       var(--boot-progress-gossip-high-threshold-bar-color) var(--zone-2-pct)

@@ -43,11 +43,40 @@ export default function PocDiskCard() {
   const readMBs = accountStats.io.bytes_read_per_sec / 1_000_000;
   const writeMBs = accountStats.io.bytes_written_per_sec / 1_000_000;
 
+  const used = formatSIBytes(accountStats.disk.used_bytes);
+  const usedPct = accountStats.disk.allocated_bytes
+    ? (accountStats.disk.used_bytes / accountStats.disk.allocated_bytes) * 100
+    : 0;
+  const fragBytes =
+    accountStats.disk.current_bytes > accountStats.disk.used_bytes
+      ? accountStats.disk.current_bytes - accountStats.disk.used_bytes
+      : 0;
+  const frag = formatSIBytes(fragBytes);
+  const fragPct = accountStats.disk.current_bytes
+    ? (fragBytes / accountStats.disk.current_bytes) * 100
+    : 0;
+
   return (
     <Card>
       <Flex direction="column" gap="7px">
         <CardHeader text="Disk" />
-        <DiskPieChart />
+        <Flex>
+          <Flex direction="column" gap="2">
+            <Stat
+              label="Used"
+              value={`${used.value} ${used.unit}`}
+              suffix={`${usedPct.toFixed(1)}%`}
+              color="#6f77c0"
+            />
+            <Stat
+              label="Fragmentation"
+              value={`${frag.value} ${frag.unit}`}
+              suffix={`${fragPct.toFixed(1)}%`}
+              color="#E5484D"
+            />
+          </Flex>
+          <DiskPieChart />
+        </Flex>
         <Flex gap="6">
           <Flex direction="column" align="center" gap="1">
             <SpeedGauge
@@ -57,10 +86,10 @@ export default function PocDiskCard() {
             />
             <Stat
               className={styles.perSecStat}
-              label="R/S"
               value={Math.round(
                 accountStats.io.read_ops_per_sec,
               ).toLocaleString()}
+              suffix="r/s"
             />
           </Flex>
           <Flex direction="column" align="center" gap="1">
@@ -71,10 +100,10 @@ export default function PocDiskCard() {
             />
             <Stat
               className={styles.perSecStat}
-              label="W/S"
               value={Math.round(
                 accountStats.io.write_ops_per_sec,
               ).toLocaleString()}
+              suffix="w/s"
             />
           </Flex>
         </Flex>
@@ -116,7 +145,7 @@ function SpeedGauge({
   const fillEnd = valueToAngle(valueMBs);
 
   return (
-    <svg viewBox="0 -14 115 86" style={{ width: 173, display: "block" }}>
+    <svg viewBox="0 -14 115 86" style={{ width: 120, display: "block" }}>
       <defs>
         <linearGradient
           id={gradId}
@@ -145,7 +174,8 @@ function SpeedGauge({
         <path
           d={arcPath(GAUGE_START, fillEnd)}
           fill="none"
-          stroke={`url(#${gradId})`}
+          // stroke={`url(#${gradId})`}
+          stroke="#733b8e"
           strokeWidth={SW}
           strokeLinecap="round"
         />
@@ -191,20 +221,20 @@ function SpeedGauge({
       {/* Center value and label */}
       <text
         x={CX}
+        y={CY - 10}
+        textAnchor="middle"
+        style={{ fontSize: "12px", fill: "var(--gray-9)" }}
+      >
+        {label}
+      </text>
+      <text
+        x={CX}
         y={CY + 4}
         textAnchor="middle"
         dominantBaseline="middle"
         style={{ fontSize: "12px", fill: "var(--gray-12)" }}
       >
         {displayValue}
-      </text>
-      <text
-        x={CX}
-        y={60}
-        textAnchor="middle"
-        style={{ fontSize: "12px", fill: "var(--gray-9)" }}
-      >
-        {label}
       </text>
     </svg>
   );

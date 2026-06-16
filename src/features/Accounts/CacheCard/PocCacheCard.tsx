@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Flex, Text } from "@radix-ui/themes";
 import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
@@ -5,27 +6,46 @@ import { accountsStatsAtom } from "../../../api/atoms";
 import { useAtomValue } from "jotai";
 import { formatCount, formatIECBytes, formatSIBytes } from "../../../utils";
 import Stat from "../Stat";
-import { Pie } from "@nivo/pie";
-import AutoSizer from "react-virtualized-auto-sizer";
 
 import styles from "./cacheCard.module.css";
-import pieStyles from "./pocCacheCard.module.css";
 import { cacheClassList } from "../consts";
 
 const CLASS_COLORS = [
-  "#60a5fa", // blue
-  "#22d3ee", // cyan
-  "#34d399", // emerald
-  "#a3e635", // lime
-  "#fbbf24", // amber
-  "#f87171", // coral/red
-  "#a78bfa", // violet
-  "#f472b6", // pink
+  "#5055B4",
+  "#507DAF",
+  "#50A7AF",
+  "#50AF82",
+  "#82AF50",
+  "#AFAA50",
+  "#AF7D50",
+  "#AF5050",
+  "#AF509D",
+  "#9150AF",
 ];
-const UNUSED_COLOR = "var(--gray-6)";
+
+function darkenHex(hex: string, factor: number): string {
+  const num = parseInt(hex.slice(1), 16);
+  const r = Math.round(((num >> 16) & 0xff) * (1 - factor));
+  const g = Math.round(((num >> 8) & 0xff) * (1 - factor));
+  const b = Math.round((num & 0xff) * (1 - factor));
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
+type ClassRow = {
+  id: string;
+  label: string;
+  color: string;
+  darkerColor: string;
+  usedSlots: number;
+  maxSlots: number;
+  usedBytes: number;
+  maxBytes: number;
+  fmtBytes: ReturnType<typeof formatIECBytes>;
+};
 
 export default function PocCacheCard() {
   const accountStats = useAtomValue(accountsStatsAtom);
+  const [legendVisible, setLegendVisible] = useState(false);
   if (!accountStats) return;
 
   const cacheClasses = accountStats.cache.classes;
@@ -41,96 +61,108 @@ export default function PocCacheCard() {
   const writesPerSec = formatCount(accountStats.io.acquired_writable_per_sec);
   const copiedPerSec = formatSIBytes(accountStats.io.bytes_copied_per_sec);
 
-  const totalUsedSlots = cacheClasses.reduce((a, c) => a + c.used_slots, 0);
-  const totalMaxSlots = cacheClasses.reduce((a, c) => a + c.max_slots, 0);
-  const totalUsedBytes = cacheClasses.reduce(
-    (a, c) => a + c.used_slots * (cacheClassList[c.class]?.bytes ?? 0),
-    0,
+  const usedSlots = cacheClasses.reduce((a, c) => a + c.used_slots, 0);
+  const maxSlots = cacheClasses.reduce((a, c) => a + c.max_slots, 0);
+  const fmtUsedSlots = formatCount(usedSlots, 2);
+  const fmtMaxSlots = formatCount(maxSlots, 2);
+
+  const sizeBytes = formatIECBytes(accountStats.cache.size_bytes, 2);
+  const usedBytes = formatIECBytes(
+    cacheClasses.reduce(
+      (a, c) => a + c.used_slots * (cacheClassList[c.class]?.bytes ?? 0),
+      0,
+    ),
+    2,
   );
-  const totalCapacityBytes = accountStats.cache.size_bytes;
-  const unusedBytes = Math.max(0, totalCapacityBytes - totalUsedBytes);
 
-  const fmtTotalUsedBytes = formatIECBytes(totalUsedBytes, 2);
-  const fmtTotalCapBytes = formatIECBytes(totalCapacityBytes, 2);
-  const fmtTotalUsedSlots = formatCount(totalUsedSlots, 2);
-  const fmtTotalMaxSlots = formatCount(totalMaxSlots, 2);
-
-  const classRows = cacheClasses.map((c, i) => {
+  const classRows: ClassRow[] = cacheClasses.map((c, i) => {
     const classInfo = cacheClassList[c.class];
+    const color = CLASS_COLORS[i % CLASS_COLORS.length];
     const usedBytes = c.used_slots * (classInfo?.bytes ?? 0);
-    const fmtBytes = formatIECBytes(usedBytes, 1);
+    const maxBytes = c.max_slots * (classInfo?.bytes ?? 0);
     return {
       id: `class-${c.class}`,
       label: classInfo?.label ?? `Class ${c.class}`,
-      value: usedBytes,
-      color: CLASS_COLORS[i % CLASS_COLORS.length],
+      color,
+      darkerColor: darkenHex(color, 0.68),
       usedSlots: c.used_slots,
-      fmtBytes,
+      maxSlots: c.max_slots,
+      usedBytes,
+      maxBytes,
+      fmtBytes: formatIECBytes(usedBytes, 1),
     };
   });
-
-  const pieData = [
-    ...classRows
-      .filter((r) => r.value > 0)
-      .map(({ id, label, value, color }) => ({ id, label, value, color })),
-    { id: "unused", label: "Unused", value: unusedBytes, color: UNUSED_COLOR },
-  ];
 
   return (
     <Card>
       <Flex direction="column" gap="7px">
         <CardHeader text="Cache" />
-        <Flex gap="8px" align="baseline">
-          <Stat
-            className={styles.pct}
-            value={hitRate.toFixed(2)}
-            size="lg"
-            color="#EC5D5E"
-            suffix="% hit"
-          />
-        </Flex>
-        <Flex gap="3" align="center" minHeight="130px">
-          <div className={pieStyles.pieWrap}>
-            <AutoSizer>
-              {({ height, width }) => (
-                <Pie
-                  height={height}
-                  width={width}
-                  data={pieData}
-                  colors={{ datum: "data.color" }}
-                  enableArcLabels={false}
-                  enableArcLinkLabels={false}
-                  innerRadius={0.65}
-                  animate={false}
-                  tooltip={() => null}
-                  layers={[
-                    "arcs",
-                    (props) => (
-                      <CenterLabel
-                        {...props}
-                        usedLabel={`${fmtTotalUsedBytes.value} ${fmtTotalUsedBytes.unit}`}
-                        capLabel={`${fmtTotalCapBytes.value} ${fmtTotalCapBytes.unit}`}
-                        slotsLabel={`${fmtTotalUsedSlots.value}${fmtTotalUsedSlots.unit}/${fmtTotalMaxSlots.value}${fmtTotalMaxSlots.unit}`}
-                      />
-                    ),
-                  ]}
-                />
-              )}
-            </AutoSizer>
-          </div>
-          <Flex direction="column" gap="1" flexShrink="0" overflow="hidden">
-            {classRows.map((row) => (
-              <ClassLegendRow key={row.id} {...row} />
-            ))}
+        <Flex direction="column">
+          <Flex gap="8px" align="baseline">
+            <Stat
+              className={styles.pct}
+              value={hitRate.toFixed(2)}
+              size="lg"
+              color="#EC5D5E"
+              suffix="% hit"
+            />
+            <Stat
+              className={styles.perSecStat}
+              value={`${readsPerSec.value}${readsPerSec.unit}`}
+              color="var(--gray-12)"
+              suffix="r/s"
+            />
+            <Stat
+              className={styles.perSecStat}
+              value={`${writesPerSec.value}${writesPerSec.unit}`}
+              color="var(--gray-12)"
+              suffix="w/s"
+            />
           </Flex>
         </Flex>
-        <Flex justify="between" gap="2">
-          <Stat label="R/S" value={`${readsPerSec.value}${readsPerSec.unit}`} />
-          <Stat
-            label="W/S"
-            value={`${writesPerSec.value}${writesPerSec.unit}`}
-          />
+        <Flex direction="column" gap="6px">
+          <Flex justify="between" gap="2">
+            <Stat
+              label="Used"
+              value={`${usedBytes.value} ${usedBytes.unit}`}
+              suffix={`/ ${sizeBytes.value} ${sizeBytes.unit}`}
+            />
+            <Stat
+              label="Slots"
+              value={`${fmtUsedSlots.value} ${fmtUsedSlots.unit}`}
+              suffix={`/ ${fmtMaxSlots.value} ${fmtMaxSlots.unit}`}
+            />
+          </Flex>
+          <div
+            style={{ position: "relative" }}
+            onMouseEnter={() => setLegendVisible(true)}
+            onMouseLeave={() => setLegendVisible(false)}
+          >
+            <CacheStackedBar classRows={classRows} />
+            {legendVisible && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 4px)",
+                  left: 0,
+                  right: 0,
+                  zIndex: 10,
+                  background: "var(--color-panel-solid)",
+                  border: "1px solid var(--gray-4)",
+                  borderRadius: 6,
+                  padding: "6px 8px",
+                }}
+              >
+                <Flex direction="row" gap="2" wrap="wrap">
+                  {classRows.map((row) => (
+                    <ClassLegendRow key={row.id} {...row} />
+                  ))}
+                </Flex>
+              </div>
+            )}
+          </div>
         </Flex>
+
         <Flex justify="between" gap="2">
           <Stat
             label="Copied"
@@ -146,62 +178,79 @@ export default function PocCacheCard() {
   );
 }
 
-function CenterLabel({
-  centerX,
-  centerY,
-  usedLabel,
-  capLabel,
-  slotsLabel,
-}: {
-  centerX: number;
-  centerY: number;
-  innerRadius: number;
-  radius: number;
-  usedLabel: string;
-  capLabel: string;
-  slotsLabel: string;
-}) {
+function CacheStackedBar({ classRows }: { classRows: ClassRow[] }) {
+  const totalMaxBytes = classRows.reduce((a, r) => a + r.maxBytes, 0);
+  if (totalMaxBytes === 0) return null;
+
+  const usedRows = classRows.filter((r) => r.usedBytes > 0);
+  const unusedRows = classRows
+    .map((r) => ({ ...r, unusedBytes: r.maxBytes - r.usedBytes }))
+    .filter((r) => r.unusedBytes > 0);
+
+  const totalUsedBytes = usedRows.reduce((a, r) => a + r.usedBytes, 0);
+  const totalUnusedBytes = unusedRows.reduce((a, r) => a + r.unusedBytes, 0);
+
   return (
-    <text textAnchor="middle" dominantBaseline="central">
-      <tspan
-        x={centerX}
-        y={centerY - 14}
-        style={{ fontSize: "10px", fill: "var(--gray-11)", fontWeight: 600 }}
-      >
-        {usedLabel}
-      </tspan>
-      <tspan
-        x={centerX}
-        y={centerY - 3}
-        style={{ fontSize: "10px", fill: "var(--gray-8)" }}
-      >
-        {`/ ${capLabel}`}
-      </tspan>
-      <tspan
-        x={centerX}
-        y={centerY + 10}
-        style={{ fontSize: "9px", fill: "var(--gray-8)" }}
-      >
-        {slotsLabel}
-      </tspan>
-    </text>
+    <div
+      style={{
+        display: "flex",
+        height: 5,
+        width: "100%",
+        overflow: "hidden",
+        gap: 0,
+        borderRadius: "4px",
+      }}
+    >
+      {totalUsedBytes > 0 && (
+        <div
+          style={{
+            display: "flex",
+            flex: totalUsedBytes / totalMaxBytes,
+            gap: 0,
+            minWidth: 0,
+          }}
+        >
+          {usedRows.map((row) => (
+            <div
+              key={row.id}
+              style={{
+                flex: row.usedBytes,
+                background: row.color,
+                minWidth: 0,
+              }}
+            />
+          ))}
+        </div>
+      )}
+      {totalUnusedBytes > 0 && (
+        <div
+          style={{
+            display: "flex",
+            flex: totalUnusedBytes / totalMaxBytes,
+            gap: 0,
+            minWidth: 0,
+          }}
+        >
+          {unusedRows.map((row) => (
+            <div
+              key={`${row.id}-unused`}
+              style={{
+                flex: row.unusedBytes,
+                background: row.darkerColor,
+                minWidth: 0,
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
-function ClassLegendRow({
-  color,
-  label,
-  fmtBytes,
-  usedSlots,
-}: {
-  color: string;
-  label: string;
-  fmtBytes: ReturnType<typeof formatIECBytes>;
-  usedSlots: number;
-}) {
+function ClassLegendRow({ color, label, fmtBytes, usedSlots }: ClassRow) {
   const dim = usedSlots === 0;
   return (
-    <Flex align="center" gap="2">
+    <Flex align="center" gap="1" minWidth="100px">
       <div
         style={{
           width: 7,
@@ -215,7 +264,6 @@ function ClassLegendRow({
         size="1"
         style={{
           color: dim ? "var(--gray-7)" : "var(--gray-9)",
-          minWidth: 44,
         }}
       >
         {label}
