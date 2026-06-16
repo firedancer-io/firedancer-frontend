@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Text } from "@radix-ui/themes";
 import styles from "./slotText.module.css";
 import clsx from "clsx";
+import CopyButton from "../../../components/CopyButton";
 
 interface LinkedSlotTextProps {
   slot: number;
@@ -14,16 +15,22 @@ export default function LinkedSlotText({
   isLeader,
   className,
 }: LinkedSlotTextProps) {
-  const clsxName = clsx(className, styles.slotText);
-  if (!isLeader) {
-    return <Text className={clsxName}>{slot}</Text>;
-  }
-
   return (
-    <Text className={clsxName}>
-      <Link to="/slotDetails" search={{ slot }}>
-        {slot}
-      </Link>
-    </Text>
+    <CopyButton
+      className={styles.copyButton}
+      value={String(slot)}
+      hideIconUntilHover
+      copyOnIconOnly
+    >
+      <Text className={clsx(className, styles.slotText)}>
+        {isLeader ? (
+          <Link to="/slotDetails" search={{ slot }} draggable={false}>
+            {slot}
+          </Link>
+        ) : (
+          slot
+        )}
+      </Text>
+    </CopyButton>
   );
 }

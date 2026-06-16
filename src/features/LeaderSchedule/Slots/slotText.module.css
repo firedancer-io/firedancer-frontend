@@ -1,4 +1,6 @@
 .slot-text {
+  color: var(--slot-card-section-primary-color);
+  font-size: 14px;
   user-select: text;
   a:link {
     text-decoration: none;
@@ -13,4 +15,8 @@
     text-decoration: none;
     color: var(--slot-text-active-link-color);
   }
+}
+
+.copy-button {
+  color: var(--slot-card-section-primary-color);
 }
