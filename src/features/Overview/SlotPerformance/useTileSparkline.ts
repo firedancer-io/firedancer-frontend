@@ -258,6 +258,8 @@ export function useScaledDataPoints({
     }
     // live
     else {
+      if (stopShifting) return;
+
       if (!clocks.has(tickMs)) {
         clocks.set(tickMs, createClock(tickMs));
       }
@@ -270,7 +272,15 @@ export function useScaledDataPoints({
         return unsub;
       }
     }
-  }, [height, normalizedHistory, isStatic, tickMs, width, windowMs]);
+  }, [
+    height,
+    normalizedHistory,
+    isStatic,
+    tickMs,
+    width,
+    windowMs,
+    stopShifting,
+  ]);
 
   return {
     scaledDataPoints,

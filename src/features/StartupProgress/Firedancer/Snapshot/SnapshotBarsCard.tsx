@@ -5,41 +5,71 @@ import { Bars } from "../Bars";
 import { useValuePerSecond } from "../useValuePerSecond";
 import { bootProgressPhaseAtom } from "../../atoms";
 import { useAtomValue } from "jotai";
-import { useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import StorageIcon from "@material-design-icons/svg/filled/storage.svg?react";
 import { compactSingleDecimalFormatter } from "../../../../numUtils";
-import type { FormattedBytes } from "../../../../utils";
+import Progress from "../../../../components/Progress";
+import { formatByteValue } from "./utils";
+
+const gap = "4px";
 
 interface SnapshotBarsCardProps {
-  headerContent: JSX.Element;
-  footer?: JSX.Element;
-  throughput: number | null | undefined;
-  containerClassName: string;
+  title: string;
+  progressPct: number | undefined;
+  completed: number | null | undefined;
+  total: number | null | undefined;
+  barsThroughput: number | null | undefined;
   maxThroughput: number;
+  headerRightContent: JSX.Element;
+  footerText?: string | null;
 }
 export function SnapshotBarsCard({
-  headerContent,
-  footer,
-  throughput,
-  containerClassName,
+  title,
+  progressPct,
+  completed,
+  total,
+  barsThroughput,
   maxThroughput,
+  headerRightContent,
+  footerText,
 }: SnapshotBarsCardProps) {
   return (
-    <Card className={clsx(styles.card, styles.barsCard, containerClassName)}>
-      <Flex
-        justify="between"
-        align="center"
-        wrap="wrap"
-        gapX="4"
-        className={styles.cardHeader}
-      >
-        {headerContent}
+    <Card className={clsx(styles.card, styles.barsCard)}>
+      <Flex direction="column" gap="2px">
+        <ProgressBar pct={progressPct} />
+        <Flex
+          justify="between"
+          wrap="nowrap"
+          gap={gap}
+          className={styles.cardHeader}
+        >
+          <SnapshotTitle text={title} />
+          <Flex gap={gap} minWidth="0" className={styles.headerRightSection}>
+            <SnapshotTotalComplete completed={completed} total={total} />
+            {headerRightContent}
+          </Flex>
+        </Flex>
       </Flex>
+      <Bars value={barsThroughput ?? 0} max={maxThroughput} />
 
-      <Bars value={throughput ?? 0} max={maxThroughput} />
-
-      {footer}
+      <MSnapshotPath path={footerText} />
     </Card>
+  );
+}
+
+interface ProgressBarProps {
+  pct: number | undefined;
+}
+function ProgressBar({ pct }: ProgressBarProps) {
+  const bootPhase = useAtomValue(bootProgressPhaseAtom);
+  // jump to inital value on phase change
+  return (
+    <Flex key={bootPhase} gap="10px" align="center">
+      <Progress className={styles.progressBar} value={pct ?? 0} />
+      <Text className={clsx(styles.secondaryColor, styles.progressPctText)}>
+        {pct == null ? "-" : pct.toFixed(0)}%
+      </Text>
+    </Flex>
   );
 }
 
@@ -53,12 +83,7 @@ function ValueUnitText({
   return (
     <>
       <Text>{value ?? "--"}</Text>
-      {unit && (
-        <>
-          {" "}
-          <Text className={styles.secondaryColor}>{unit}</Text>
-        </>
-      )}
+      {unit && <Text className={styles.secondaryColor}> {unit}</Text>}
     </>
   );
 }
@@ -66,14 +91,18 @@ function ValueUnitText({
 interface SnapshotTitleProps {
   text: string;
 }
-export function SnapshotTitle({ text }: SnapshotTitleProps) {
-  return <Text className={clsx(styles.title, styles.ellipsis)}>{text}</Text>;
+function SnapshotTitle({ text }: SnapshotTitleProps) {
+  return <Text className={clsx(styles.leftColumn, styles.title)}>{text}</Text>;
 }
 
 interface AccountsRateProps {
+  isComplete: boolean;
   cumulativeAccounts?: number | null;
 }
-export function AccountsRate({ cumulativeAccounts }: AccountsRateProps) {
+export function AccountsRate({
+  isComplete,
+  cumulativeAccounts,
+}: AccountsRateProps) {
   const phase = useAtomValue(bootProgressPhaseAtom);
 
   const { valuePerSecond: accountsPerSecond, reset } = useValuePerSecond(
@@ -87,68 +116,75 @@ export function AccountsRate({ cumulativeAccounts }: AccountsRateProps) {
   }, [phase, reset]);
 
   const value = useMemo(() => {
+    if (isComplete) return 0;
     // Possible to have no rate due to only having a single point
     if (cumulativeAccounts != null && accountsPerSecond == null) return "0";
     if (accountsPerSecond == null) return;
     return compactSingleDecimalFormatter.format(accountsPerSecond);
-  }, [accountsPerSecond, cumulativeAccounts]);
+  }, [accountsPerSecond, cumulativeAccounts, isComplete]);
 
   return (
-    <div className={styles.accountsRate}>
+    <div className={styles.rightColumn}>
       <ValueUnitText value={value} unit="Accounts / sec" />
     </div>
   );
 }
 
 interface SnapshotTotalCompleteProps {
-  completed: FormattedBytes | undefined;
-  total: FormattedBytes | undefined;
+  completed: number | null | undefined;
+  total: number | null | undefined;
 }
-export function SnapshotTotalComplete({
+function SnapshotTotalComplete({
   completed,
   total,
 }: SnapshotTotalCompleteProps) {
+  const completedObj = formatByteValue(completed);
+  const totalObj = formatByteValue(total);
+
   return (
-    <div className={styles.total}>
-      <ValueUnitText value={completed?.value} unit={completed?.unit} />
+    <Flex className={styles.centerColumn}>
+      <ValueUnitText value={completedObj?.value} unit={completedObj?.unit} />
 
       <Text> / </Text>
 
-      <ValueUnitText value={total?.value} unit={total?.unit} />
-    </div>
+      <ValueUnitText value={totalObj?.value} unit={totalObj?.unit} />
+    </Flex>
   );
 }
 
 interface SnapshotThroughputProps {
   prefix?: string;
-  throughput: FormattedBytes | undefined;
+  throughput: number | null | undefined;
 }
 export function SnapshotThroughput({
   prefix,
   throughput,
 }: SnapshotThroughputProps) {
+  const throughputObj = formatByteValue(throughput);
+
   return (
-    <div className={clsx(styles.throughput, { [styles.withPrefix]: !!prefix })}>
+    <div className={styles.rightColumn}>
       {prefix && <Text className={styles.secondaryColor}>{prefix} </Text>}
-      <ValueUnitText value={throughput?.value} unit={throughput?.unit} />
+      <ValueUnitText value={throughputObj?.value} unit={throughputObj?.unit} />
       <Text className={styles.secondaryColor}>/sec</Text>
     </div>
   );
 }
 
-interface SnapshotReadPathProps {
-  readPath?: string | null;
+interface SnapshotPathProps {
+  path?: string | null;
 }
-export function SnapshotReadPath({ readPath }: SnapshotReadPathProps) {
+const MSnapshotPath = memo(function SnapshotPath({ path }: SnapshotPathProps) {
+  if (!path) return;
   return (
     <Flex
       align="center"
       gap="10px"
       wrap="nowrap"
-      className={styles.readPathContainer}
+      className={styles.pathContainer}
     >
       <StorageIcon />
-      <Text className={clsx(styles.readPath, styles.ellipsis)}>{readPath}</Text>
+      <Text className={clsx(styles.path, styles.ellipsis)}>{path}</Text>
     </Flex>
   );
-}
+});

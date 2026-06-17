@@ -41,7 +41,8 @@ export default function SnapshotSparklineCard({
     tileCount: tileCounts[tileType],
     liveIdlePerTile: timers?.[tileType],
   });
-  const avgBusy = useLastDefinedValue(currentAvgBusy);
+  const lastDefinedAvgBusy = useLastDefinedValue(currentAvgBusy);
+  const avgBusy = isComplete ? currentAvgBusy : lastDefinedAvgBusy;
 
   const { scaledDataPoints, range, pxPerTick, chartTickMs, isLive } =
     useScaledDataPoints({
