@@ -133,7 +133,7 @@ export const groupedLiveIdlePerTileAtom = atom((get) => {
 export const snapshotTimerIndicesAtom = atom(
   (get): [TileType, number[]][] | undefined => {
     const tiles = get(tilesAtom);
-    const tileTypes: TileType[] = ["snapld", "snapdc", "snapin"];
+    const tileTypes: TileType[] = ["snapld", "snapdc", "snapin", "snapwr"];
 
     if (!tiles) return;
 

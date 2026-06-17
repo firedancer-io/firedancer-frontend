@@ -5,35 +5,39 @@ import { Bars } from "../Bars";
 import { useValuePerSecond } from "../useValuePerSecond";
 import { bootProgressPhaseAtom } from "../../atoms";
 import { useAtomValue } from "jotai";
-import { useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import StorageIcon from "@material-design-icons/svg/filled/storage.svg?react";
 import { compactSingleDecimalFormatter } from "../../../../numUtils";
 import type { FormattedBytes } from "../../../../utils";
 
+const gap = "4px";
+
 interface SnapshotBarsCardProps {
+  title: string;
   headerContent: JSX.Element;
   footer?: JSX.Element;
   throughput: number | null | undefined;
-  containerClassName: string;
   maxThroughput: number;
 }
 export function SnapshotBarsCard({
+  title,
   headerContent,
   footer,
   throughput,
-  containerClassName,
   maxThroughput,
 }: SnapshotBarsCardProps) {
   return (
-    <Card className={clsx(styles.card, styles.barsCard, containerClassName)}>
+    <Card className={clsx(styles.card, styles.barsCard)}>
       <Flex
         justify="between"
-        align="center"
-        wrap="wrap"
-        gapX="4"
+        wrap="nowrap"
+        gap={gap}
         className={styles.cardHeader}
       >
-        {headerContent}
+        <SnapshotTitle text={title} />
+        <Flex gap={gap} minWidth="0" className={styles.headerRightSection}>
+          {headerContent}
+        </Flex>
       </Flex>
 
       <Bars value={throughput ?? 0} max={maxThroughput} />
@@ -53,12 +57,7 @@ function ValueUnitText({
   return (
     <>
       <Text>{value ?? "--"}</Text>
-      {unit && (
-        <>
-          {" "}
-          <Text className={styles.secondaryColor}>{unit}</Text>
-        </>
-      )}
+      {unit && <Text className={styles.secondaryColor}> {unit}</Text>}
     </>
   );
 }
@@ -66,8 +65,8 @@ function ValueUnitText({
 interface SnapshotTitleProps {
   text: string;
 }
-export function SnapshotTitle({ text }: SnapshotTitleProps) {
-  return <Text className={clsx(styles.title, styles.ellipsis)}>{text}</Text>;
+function SnapshotTitle({ text }: SnapshotTitleProps) {
+  return <Text className={clsx(styles.leftColumn, styles.title)}>{text}</Text>;
 }
 
 interface AccountsRateProps {
@@ -94,7 +93,7 @@ export function AccountsRate({ cumulativeAccounts }: AccountsRateProps) {
   }, [accountsPerSecond, cumulativeAccounts]);
 
   return (
-    <div className={styles.accountsRate}>
+    <div className={styles.rightColumn}>
       <ValueUnitText value={value} unit="Accounts / sec" />
     </div>
   );
@@ -109,13 +108,13 @@ export function SnapshotTotalComplete({
   total,
 }: SnapshotTotalCompleteProps) {
   return (
-    <div className={styles.total}>
+    <Flex className={styles.centerColumn}>
       <ValueUnitText value={completed?.value} unit={completed?.unit} />
 
       <Text> / </Text>
 
       <ValueUnitText value={total?.value} unit={total?.unit} />
-    </div>
+    </Flex>
   );
 }
 
@@ -128,7 +127,7 @@ export function SnapshotThroughput({
   throughput,
 }: SnapshotThroughputProps) {
   return (
-    <div className={clsx(styles.throughput, { [styles.withPrefix]: !!prefix })}>
+    <div className={styles.rightColumn}>
       {prefix && <Text className={styles.secondaryColor}>{prefix} </Text>}
       <ValueUnitText value={throughput?.value} unit={throughput?.unit} />
       <Text className={styles.secondaryColor}>/sec</Text>
@@ -136,19 +135,22 @@ export function SnapshotThroughput({
   );
 }
 
-interface SnapshotReadPathProps {
-  readPath?: string | null;
+interface SnapshotPathProps {
+  path?: string | null;
 }
-export function SnapshotReadPath({ readPath }: SnapshotReadPathProps) {
+export const MSnapshotPath = memo(function SnapshotPath({
+  path,
+}: SnapshotPathProps) {
+  if (!path) return;
   return (
     <Flex
       align="center"
       gap="10px"
       wrap="nowrap"
-      className={styles.readPathContainer}
+      className={styles.pathContainer}
     >
       <StorageIcon />
-      <Text className={clsx(styles.readPath, styles.ellipsis)}>{readPath}</Text>
+      <Text className={clsx(styles.path, styles.ellipsis)}>{path}</Text>
     </Flex>
   );
-}
+});

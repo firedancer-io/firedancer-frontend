@@ -4,12 +4,9 @@ import { useEffect } from "react";
 import {
   SnapshotBarsCard,
   SnapshotThroughput,
-  SnapshotTitle,
   SnapshotTotalComplete,
 } from "./SnapshotBarsCard";
-import { Flex } from "@radix-ui/themes";
 import { formatBytes } from "../../../../utils";
-import styles from "./snapshot.module.css";
 import { useEma } from "../../../../hooks/useEma";
 
 interface SnapshotDecompressingCardProps {
@@ -36,10 +33,6 @@ export function SnapshotDecompressingCard({
     resetDecompressed();
   }, [phase, resetCompressed, resetDecompressed]);
 
-  const compressedThroughputObj =
-    compressedThroughput == null
-      ? undefined
-      : formatBytes(compressedThroughput);
   const decompressedThroughputObj =
     decompressedThroughput == null
       ? undefined
@@ -52,33 +45,14 @@ export function SnapshotDecompressingCard({
 
   return (
     <SnapshotBarsCard
-      containerClassName={styles.decompressingCard}
+      title="Decompressing"
       headerContent={
         <>
-          <Flex
-            flexGrow="1"
-            justify="between"
-            align="center"
-            className={styles.decompressingCardLeft}
-          >
-            <SnapshotTitle text="Decompressing" />
-            <SnapshotTotalComplete completed={completedObj} total={totalObj} />
-          </Flex>
-          <Flex
-            gapX="30px"
-            justify="end"
-            flexGrow="1"
-            className={styles.decompressingCardRight}
-          >
-            <SnapshotThroughput
-              prefix="Input"
-              throughput={compressedThroughputObj}
-            />
-            <SnapshotThroughput
-              prefix="Output"
-              throughput={decompressedThroughputObj}
-            />
-          </Flex>
+          <SnapshotTotalComplete completed={completedObj} total={totalObj} />
+          <SnapshotThroughput
+            prefix="Output"
+            throughput={decompressedThroughputObj}
+          />
         </>
       }
       throughput={compressedThroughput}

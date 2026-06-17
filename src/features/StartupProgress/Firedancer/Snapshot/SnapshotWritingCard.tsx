@@ -1,37 +1,44 @@
 import {
-  AccountsRate,
   SnapshotBarsCard,
+  MSnapshotPath,
+  SnapshotThroughput,
   SnapshotTotalComplete,
 } from "./SnapshotBarsCard";
 import { formatBytes } from "../../../../utils";
 
-interface SnapshotInsertingCardProps {
+interface SnapshotWritingCardProps {
   decompressedThroughput?: number;
   decompressedCompleted?: number | null;
   decompressedTotal?: number | null;
-  cumulativeAccounts?: number | null;
+  path?: string | null;
 }
-export function SnapshotInsertingCard({
+export function SnapshotWritingCard({
   decompressedThroughput,
   decompressedCompleted,
   decompressedTotal,
-  cumulativeAccounts,
-}: SnapshotInsertingCardProps) {
+  path,
+}: SnapshotWritingCardProps) {
+  const throughputObj =
+    decompressedThroughput == null
+      ? undefined
+      : formatBytes(decompressedThroughput);
   const completedObj =
     decompressedCompleted == null
       ? undefined
       : formatBytes(decompressedCompleted);
   const totalObj =
     decompressedTotal == null ? undefined : formatBytes(decompressedTotal);
+
   return (
     <SnapshotBarsCard
-      title="Inserting"
+      title="Writing"
       headerContent={
         <>
           <SnapshotTotalComplete completed={completedObj} total={totalObj} />
-          <AccountsRate cumulativeAccounts={cumulativeAccounts} />
+          <SnapshotThroughput prefix="Writing" throughput={throughputObj} />
         </>
       }
+      footer={<MSnapshotPath path={path} />}
       throughput={decompressedThroughput}
       maxThroughput={3_500_000_000}
     />
