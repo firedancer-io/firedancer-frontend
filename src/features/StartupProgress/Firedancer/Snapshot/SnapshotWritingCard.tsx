@@ -1,18 +1,18 @@
-import { AccountsRate, SnapshotBarsCard } from "./SnapshotBarsCard";
+import { SnapshotBarsCard, SnapshotThroughput } from "./SnapshotBarsCard";
 import { getProgress, getThroughputCompleteCorrected } from "./utils";
 
-interface SnapshotInsertingCardProps {
+interface SnapshotWritingCardProps {
   emaDecompressedThroughput?: number;
   decompressedCompleted?: number | null;
   decompressedTotal?: number | null;
-  cumulativeAccounts?: number | null;
+  path?: string | null;
 }
-export function SnapshotInsertingCard({
+export function SnapshotWritingCard({
   emaDecompressedThroughput,
   decompressedCompleted,
   decompressedTotal,
-  cumulativeAccounts,
-}: SnapshotInsertingCardProps) {
+  path,
+}: SnapshotWritingCardProps) {
   const { isComplete, progressPct } = getProgress(
     decompressedCompleted,
     decompressedTotal,
@@ -24,18 +24,16 @@ export function SnapshotInsertingCard({
 
   return (
     <SnapshotBarsCard
-      title="Inserting"
+      title="Writing"
       progressPct={progressPct}
       completed={decompressedCompleted}
       total={decompressedTotal}
       barsThroughput={throughput}
       maxThroughput={3_500_000_000}
       headerRightContent={
-        <AccountsRate
-          isComplete={isComplete}
-          cumulativeAccounts={cumulativeAccounts}
-        />
+        <SnapshotThroughput prefix="Writing" throughput={throughput} />
       }
+      footerText={path}
     />
   );
 }

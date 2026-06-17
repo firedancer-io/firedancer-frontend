@@ -1,16 +1,9 @@
 import { bootProgressPhaseAtom } from "../../atoms";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
-import {
-  SnapshotBarsCard,
-  SnapshotThroughput,
-  SnapshotTitle,
-  SnapshotTotalComplete,
-} from "./SnapshotBarsCard";
-import { Flex } from "@radix-ui/themes";
-import { formatBytes } from "../../../../utils";
-import styles from "./snapshot.module.css";
+import { SnapshotBarsCard, SnapshotThroughput } from "./SnapshotBarsCard";
 import { useEma } from "../../../../hooks/useEma";
+import { getProgress, getThroughputCompleteCorrected } from "./utils";
 
 interface SnapshotDecompressingCardProps {
   compressedCompleted?: number | null;
@@ -23,11 +16,23 @@ export function SnapshotDecompressingCard({
   compressedTotal,
 }: SnapshotDecompressingCardProps) {
   const phase = useAtomValue(bootProgressPhaseAtom);
-  const { ema: compressedThroughput, reset: resetCompressed } =
+  const { isComplete, progressPct } = getProgress(
+    compressedCompleted,
+    compressedTotal,
+  );
+  const { ema: emaCompressedThroughput, reset: resetCompressed } =
     useEma(compressedCompleted);
+  const compressedThroughput = getThroughputCompleteCorrected(
+    isComplete,
+    emaCompressedThroughput,
+  );
 
-  const { ema: decompressedThroughput, reset: resetDecompressed } = useEma(
+  const { ema: emaDecompressedThroughput, reset: resetDecompressed } = useEma(
     decompressedCompleted,
+  );
+  const decompressedThroughput = getThroughputCompleteCorrected(
+    isComplete,
+    emaDecompressedThroughput,
   );
 
   useEffect(() => {
@@ -36,53 +41,20 @@ export function SnapshotDecompressingCard({
     resetDecompressed();
   }, [phase, resetCompressed, resetDecompressed]);
 
-  const compressedThroughputObj =
-    compressedThroughput == null
-      ? undefined
-      : formatBytes(compressedThroughput);
-  const decompressedThroughputObj =
-    decompressedThroughput == null
-      ? undefined
-      : formatBytes(decompressedThroughput);
-
-  const completedObj =
-    compressedCompleted == null ? undefined : formatBytes(compressedCompleted);
-  const totalObj =
-    compressedTotal == null ? undefined : formatBytes(compressedTotal);
-
   return (
     <SnapshotBarsCard
-      containerClassName={styles.decompressingCard}
-      headerContent={
-        <>
-          <Flex
-            flexGrow="1"
-            justify="between"
-            align="center"
-            className={styles.decompressingCardLeft}
-          >
-            <SnapshotTitle text="Decompressing" />
-            <SnapshotTotalComplete completed={completedObj} total={totalObj} />
-          </Flex>
-          <Flex
-            gapX="30px"
-            justify="end"
-            flexGrow="1"
-            className={styles.decompressingCardRight}
-          >
-            <SnapshotThroughput
-              prefix="Input"
-              throughput={compressedThroughputObj}
-            />
-            <SnapshotThroughput
-              prefix="Output"
-              throughput={decompressedThroughputObj}
-            />
-          </Flex>
-        </>
-      }
-      throughput={compressedThroughput}
+      title="Decompressing"
+      progressPct={progressPct}
+      completed={compressedCompleted}
+      total={compressedTotal}
+      barsThroughput={compressedThroughput}
       maxThroughput={800_000_000}
+      headerRightContent={
+        <SnapshotThroughput
+          prefix="Output"
+          throughput={decompressedThroughput}
+        />
+      }
     />
   );
 }

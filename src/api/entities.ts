@@ -85,6 +85,7 @@ export const tileTypeSchema = z.enum([
   "snapld",
   "snapdc",
   "snapin",
+  "snapwr",
 
   // shred tiles
   "netlnk",
@@ -338,6 +339,15 @@ export const bootProgressSchema = z.object({
     .nullable()
     .optional(),
   loading_full_snapshot_insert_accounts: z.number().nullable().optional(),
+  loading_full_snapshot_snapwr_in_bytes_decompressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_full_snapshot_snapwr_out_bytes_decompressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_full_snapshot_snapwr_accounts: z.number().nullable().optional(),
 
   loading_incremental_snapshot_elapsed_seconds: z
     .number()
@@ -370,6 +380,20 @@ export const bootProgressSchema = z.object({
     .number()
     .nullable()
     .optional(),
+  loading_incremental_snapshot_snapwr_in_bytes_decompressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_snapwr_out_bytes_decompressed: z.coerce
+    .number()
+    .nullable()
+    .optional(),
+  loading_incremental_snapshot_snapwr_accounts: z
+    .number()
+    .nullable()
+    .optional(),
+
+  accounts_database_path: z.string().nullable().optional(),
 
   wait_for_supermajority_bank_hash: z.string().nullable().optional(),
   wait_for_supermajority_shred_version: z.string().nullable().optional(),
