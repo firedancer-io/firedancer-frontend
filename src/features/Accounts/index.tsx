@@ -14,6 +14,7 @@ import PocCacheClassesCard from "./CacheClasses/PocCacheClassesCard";
 import Tiles from "./Tiles";
 import Partitions from "./Partitions";
 import PocDiskCard from "./DiskCard/PocDiskCard";
+import PartitionsPoc from "./Partitions/PartitionsPoc";
 
 type ViewMode = "default" | "poc";
 
@@ -59,7 +60,7 @@ export default function Accounts() {
         <>
           <PocCacheClassesCard />
           <Tiles />
-          <Partitions />
+          <PartitionsPoc />
         </>
       ) : (
         <>
