@@ -13,13 +13,18 @@ import SlotNavigation from "./SlotNavigation";
 import DetailedSlotStats from "./DetailedSlotStats";
 import { useEffect, useState } from "react";
 import ChartControlsProvider from "./ChartControlsProvider";
+import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
 
 export default function SlotDetails() {
+  const baseSelectedSlot = useAtomValue(baseSelectedSlotAtoms.slot);
   const selectedSlot = useAtomValue(selectedSlotAtom);
+  const state = useAtomValue(baseSelectedSlotAtoms.state);
   const [waitedForDependencies, setWaitedForDependencies] = useState(false);
-  const isNotReady =
-    useAtomValue(baseSelectedSlotAtoms.state) ===
-    SelectedSlotValidityState.NotReady;
+  const isNotReady = state === SelectedSlotValidityState.NotReady;
+
+  // Query publish before the validity check so the server can confirm the slot
+  // exists (validity is gated on having a response — see getSlotState).
+  const { hasWaitedForData } = useSlotQueryPublish(baseSelectedSlot);
 
   useEffect(() => {
     if (isNotReady && !waitedForDependencies) {
@@ -30,6 +35,15 @@ export default function SlotDetails() {
 
   // wait a bit for dependencies to load before showing SlotSearch with Not Ready error
   if (isNotReady && !waitedForDependencies) return null;
+
+  // Wait for the publish query to resolve before showing the not-found error.
+  if (
+    selectedSlot === undefined &&
+    state === SelectedSlotValidityState.NotYou &&
+    !hasWaitedForData
+  ) {
+    return null;
+  }
 
   return selectedSlot === undefined ? <SlotSearch /> : <SlotContent />;
 }
