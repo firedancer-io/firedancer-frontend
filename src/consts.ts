@@ -98,6 +98,8 @@ export enum ClientName {
   FiredancerHarmonic = "Firedancer Harmonic",
   AgaveHarmonic = "Agave Harmonic",
   FrankendancerHarmonic = "Frankendancer Harmonic",
+  FiredancerBam = "Firedancer BAM",
+  AgaveRaiku = "Agave Raiku",
 }
 
 export const clientIdToClientName: Record<number, ClientName> = {
@@ -112,6 +114,8 @@ export const clientIdToClientName: Record<number, ClientName> = {
   9: ClientName.FiredancerHarmonic,
   10: ClientName.AgaveHarmonic,
   11: ClientName.FrankendancerHarmonic,
+  12: ClientName.FiredancerBam,
+  13: ClientName.AgaveRaiku,
 };
 
 function checkNeedsTouchScreenSupport() {

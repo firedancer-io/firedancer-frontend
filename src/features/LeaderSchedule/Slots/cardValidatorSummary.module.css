@@ -90,6 +90,10 @@
   color: var(--summary-harmonic-text-color);
 }
 
+.raiku {
+  color: var(--summary-raiku-text-color);
+}
+
 .major-minor-version-text {
   flex-shrink: 0;
 }
