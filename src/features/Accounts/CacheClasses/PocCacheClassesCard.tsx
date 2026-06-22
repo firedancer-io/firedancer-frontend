@@ -107,10 +107,10 @@ function PocDataRow({ cacheClass }: { cacheClass: CacheClass }) {
           {formatHitRate(cacheClass.hit_rate_ema)}%
         </span>
       </Table.Cell>
-      <Table.Cell align="right">
+      <Table.Cell align="right" className={styles.read}>
         {formatRate(cacheClass.reads_per_sec)}
       </Table.Cell>
-      <Table.Cell align="right">
+      <Table.Cell align="right" className={styles.write}>
         {formatRate(cacheClass.writes_per_sec)}
       </Table.Cell>
       <Table.Cell align="right">

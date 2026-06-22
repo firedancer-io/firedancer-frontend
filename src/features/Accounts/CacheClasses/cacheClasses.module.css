@@ -1,3 +1,11 @@
+.read {
+  --cell-color: var(--accounts-read-color);
+}
+
+.write {
+  --cell-color: var(--accounts-write-color);
+}
+
 .secondary {
   color: var(--gray-8);
   margin-left: 4px;

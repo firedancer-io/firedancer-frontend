@@ -44,24 +44,28 @@ export const partitionGroups: ColumnGroup[] = [
         description: "",
         headerColWidth: 55,
         headerColAlign: "right",
+        headerColor: "var(--accounts-read-color)",
       },
       {
         uniqueName: "Writes/s",
         description: "",
         headerColWidth: 55,
         headerColAlign: "right",
+        headerColor: "var(--accounts-write-color)",
       },
       {
         uniqueName: "Read IO",
         description: "",
         headerColWidth: 85,
         headerColAlign: "right",
+        headerColor: "var(--accounts-read-color)",
       },
       {
         uniqueName: "Write IO",
         description: "",
         headerColWidth: 85,
         headerColAlign: "right",
+        headerColor: "var(--accounts-write-color)",
       },
       {
         uniqueName: "Compacting",

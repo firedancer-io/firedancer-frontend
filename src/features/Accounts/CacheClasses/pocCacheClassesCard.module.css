@@ -1,3 +1,11 @@
+.read {
+  --cell-color: var(--accounts-read-color);
+}
+
+.write {
+  --cell-color: var(--accounts-write-color);
+}
+
 .card {
   display: grid;
   grid-template-columns: 52px 1fr 32px auto;
@@ -74,31 +82,9 @@
     bottom: 0;
     left: 0;
     width: var(--used-width);
-    clip-path: inset(0 calc(100% - var(--threshold-start)) 0 0);
-    background: linear-gradient(
-      to right,
-      var(--gray-8) 0 var(--zone-1-pct),
-      var(--boot-progress-gossip-mid-filled-bar-color) var(--zone-1-pct)
-        var(--zone-2-pct),
-      var(--boot-progress-gossip-high-filled-bar-color) var(--zone-2-pct) 100%
-    );
-    background-size: var(--used-width) 100%;
-    background-repeat: no-repeat;
-  }
-
-  /* Threshold cursor bar */
-  &::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: var(--used-width);
     clip-path: inset(
-      0 calc(100% - var(--threshold-start) - var(--bar-width, 2px)) 0
-        var(--threshold-start)
+      0 calc(100% - var(--threshold-start) - var(--bar-width, 2px)) 0 0
     );
-    opacity: var(--threshold-visible, 0);
     background: linear-gradient(
       to right,
       var(--gray-8) 0 var(--zone-1-pct),

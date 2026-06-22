@@ -49,12 +49,14 @@ export const cacheClassGroups: ColumnGroup[] = [
         description: "",
         headerColWidth: 75,
         headerColAlign: "right",
+        headerColor: "var(--accounts-read-color)",
       },
       {
         uniqueName: "Writes/s",
         description: "",
         headerColWidth: 75,
         headerColAlign: "right",
+        headerColor: "var(--accounts-write-color)",
       },
       {
         uniqueName: "Commits/s",

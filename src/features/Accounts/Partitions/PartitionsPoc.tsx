@@ -20,7 +20,7 @@ export default function PartitionsPoc() {
     <Card>
       <Flex direction="column" gap="7px">
         <Flex align="center" gap="5px">
-          <CardHeader text="Partitions (POC)" />
+          <CardHeader text="Partitions" />
           <TableDescriptionDialog groups={partitionGroups} />
         </Flex>
         <DataTable
@@ -116,16 +116,16 @@ function DataRow({ partition }: { partition: Partition }) {
       >
         {`${Math.round(partition.fragmented_frac * 100)}%`}
       </Table.Cell>
-      <Table.Cell align="right">
+      <Table.Cell align="right" className={styles.read}>
         {formatRate(partition.read_ops_per_sec)}
       </Table.Cell>
-      <Table.Cell align="right">
+      <Table.Cell align="right" className={styles.write}>
         {formatRate(partition.write_ops_per_sec)}
       </Table.Cell>
-      <Table.Cell align="right">
+      <Table.Cell align="right" className={styles.read}>
         {formatSIBytesRate(partition.bytes_read_per_sec)}
       </Table.Cell>
-      <Table.Cell align="right">
+      <Table.Cell align="right" className={styles.write}>
         {formatSIBytesRate(partition.bytes_written_per_sec)}
       </Table.Cell>
       <Table.Cell align="right">
