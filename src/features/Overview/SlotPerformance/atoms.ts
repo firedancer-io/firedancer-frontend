@@ -16,6 +16,7 @@ import {
   leaderSlotsAtom,
 } from "../../../atoms";
 import { getSlotGroupLeader } from "../../../utils";
+import { DisplayType } from "../../../sankey";
 
 export enum SelectedSlotValidityState {
   Valid = "valid",
@@ -90,12 +91,6 @@ export const selectedSlotAtom = atom<number | undefined>((get) => {
     ? get(baseSelectedSlotAtoms.slot)
     : undefined;
 });
-
-export enum DisplayType {
-  Count = "Count",
-  Pct = "Pct %",
-  Rate = "Rate",
-}
 
 export const sankeyDisplayTypeAtom = atom(DisplayType.Count);
 

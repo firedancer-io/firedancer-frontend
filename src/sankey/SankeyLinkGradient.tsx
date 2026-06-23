@@ -6,8 +6,7 @@ import type { SankeyCommonProps } from "./types";
 
 interface SankeyLinkGradientProps {
   id: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  layout: SankeyCommonProps<any, any>["layout"];
+  layout: SankeyCommonProps["layout"];
   startColor: string;
   endColor: string;
 }

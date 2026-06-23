@@ -1,7 +1,5 @@
-import type { SankeyLayerId, SankeyNodeDatum, SankeyAlignType } from "./types";
-import type { InheritedColorConfig } from "@nivo/colors";
-import { SankeyNodeTooltip } from "./SankeyNodeTooltip";
-import { SankeyLinkTooltip } from "./SankeyLinkTooltip";
+import { DisplayType } from "./types";
+import type { SankeyLayerId, SankeyAlignType } from "./types";
 import {
   sankeyCenter,
   sankeyJustify,
@@ -23,55 +21,22 @@ export const sankeyAlignmentPropKeys = Object.keys(
 export const sankeyAlignmentFromProp = (prop: SankeyAlignType) =>
   sankeyAlignmentPropMapping[prop];
 
-export const svgDefaultProps = {
+export const sankeyDefaultProps = {
+  displayType: DisplayType.Count,
   layout: "horizontal" as const,
-  align: "center" as const,
   sort: "auto" as const,
-
+  align: "center" as const,
   colors: { scheme: "nivo" as const },
-
-  nodeOpacity: 0.75,
-  nodeHoverOpacity: 1,
-  nodeHoverOthersOpacity: 0.15,
   nodeThickness: 12,
   nodeSpacing: 12,
   nodeInnerPadding: 0,
-  nodeBorderWidth: 1,
-  nodeBorderColor: {
-    from: "color",
-    modifiers: [["darker", 0.5]],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as InheritedColorConfig<SankeyNodeDatum<any, any>>,
-  nodeBorderRadius: 0,
-
-  linkOpacity: 0.25,
-  linkHoverOpacity: 0.6,
-  linkHoverOthersOpacity: 0.15,
   linkContract: 0,
-  linkBlendMode: "multiply" as const,
   enableLinkGradient: false,
-
   enableLabels: true,
-  label: "id",
   labelPosition: "inside" as const,
   labelPadding: 9,
   labelOrientation: "horizontal" as const,
-  labelTextColor: {
-    from: "color",
-    modifiers: [["darker", 0.8]],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as InheritedColorConfig<SankeyNodeDatum<any, any>>,
-
-  isInteractive: false,
-  nodeTooltip: SankeyNodeTooltip,
-  linkTooltip: SankeyLinkTooltip,
-
-  legends: [],
-
+  label: "id",
   layers: ["links", "nodes", "labels"] as SankeyLayerId[],
-
   role: "img",
-
-  animate: false,
-  motionConfig: "gentle",
 };

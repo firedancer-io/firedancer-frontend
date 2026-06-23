@@ -1,18 +1,11 @@
-import type { AriaAttributes, MouseEvent, FunctionComponent } from "react";
+import type { AriaAttributes } from "react";
 import type {
   Box,
-  Theme,
-  CssMixBlendMode,
   Dimensions,
-  MotionProps,
   PropertyAccessor,
   ValueFormat,
 } from "@nivo/core";
-import type {
-  InheritedColorConfig,
-  OrdinalColorScaleConfig,
-} from "@nivo/colors";
-import type { LegendProps } from "@nivo/legends";
+import type { OrdinalColorScaleConfig } from "@nivo/colors";
 import type { SankeyNodeMinimal } from "../d3Sankey";
 
 export interface SankeyRawNode {
@@ -91,7 +84,7 @@ export type SankeyNodeDatum<
   height: number;
 
   hideLabel?: boolean;
-  labelPositionOverride?: "right" | "left";
+  labelPositionOverride?: "right" | "left" | "center";
   alignLabelBottom?: boolean;
 
   isStartNode?: boolean;
@@ -105,12 +98,7 @@ export interface SankeyDataProps<N extends DefaultNode, L extends DefaultLink> {
   };
 }
 
-export type SankeyLayerId = "links" | "nodes" | "labels" | "legends";
-
-export type SankeyMouseHandler<N extends DefaultNode, L extends DefaultLink> = (
-  data: SankeyNodeDatum<N, L> | SankeyLinkDatum<N, L>,
-  event: MouseEvent,
-) => void;
+export type SankeyLayerId = "links" | "nodes" | "labels";
 
 export type SankeyAlignType = "center" | "justify" | "start" | "end";
 export type SankeyAlignFunction = (
@@ -126,11 +114,11 @@ export type SankeySortFunction<N extends DefaultNode, L extends DefaultLink> = (
 ) => number;
 
 export interface SankeyCommonProps<
-  N extends DefaultNode,
-  L extends DefaultLink,
+  N extends DefaultNode = DefaultNode,
+  L extends DefaultLink = DefaultLink,
 > {
-  // formatting for link value
   valueFormat: ValueFormat<number>;
+  displayType: DisplayType;
 
   layout: "horizontal" | "vertical";
   align: SankeyAlignType | SankeyAlignFunction;
@@ -143,23 +131,12 @@ export interface SankeyCommonProps<
   colors: OrdinalColorScaleConfig<
     Omit<SankeyNodeDatum<N, L>, "color" | "label">
   >;
-  theme: Theme;
 
-  nodeOpacity: number;
-  nodeHoverOpacity: number;
-  nodeHoverOthersOpacity: number;
   nodeThickness: number;
   nodeSpacing: number;
   nodeInnerPadding: number;
-  nodeBorderWidth: number;
-  nodeBorderColor: InheritedColorConfig<SankeyNodeDatum<N, L>>;
-  nodeBorderRadius: number;
 
-  linkOpacity: number;
-  linkHoverOpacity: number;
-  linkHoverOthersOpacity: number;
   linkContract: number;
-  linkBlendMode: CssMixBlendMode;
   enableLinkGradient: boolean;
 
   enableLabels: boolean;
@@ -170,16 +147,8 @@ export interface SankeyCommonProps<
   labelPosition: "inside" | "outside";
   labelPadding: number;
   labelOrientation: "horizontal" | "vertical";
-  labelTextColor: InheritedColorConfig<SankeyNodeDatum<N, L>>;
-
-  isInteractive: boolean;
-  onClick: SankeyMouseHandler<N, L>;
-  nodeTooltip: FunctionComponent<{ node: SankeyNodeDatum<N, L> }>;
-  linkTooltip: FunctionComponent<{ link: SankeyLinkDatum<N, L> }>;
-
-  legends: LegendProps[];
-
-  renderWrapper: boolean;
+  getLabelFill: (label: N["id"], value: L["value"]) => [string, string];
+  getLinkColor: (link: SankeyLinkDatum<N, L>) => string | undefined;
 
   role: string;
   ariaLabel: AriaAttributes["aria-label"];
@@ -187,10 +156,13 @@ export interface SankeyCommonProps<
   ariaDescribedBy: AriaAttributes["aria-describedby"];
 }
 
-export type SankeySvgProps<
+export type SankeyProps<
   N extends DefaultNode,
   L extends DefaultLink,
-> = Partial<SankeyCommonProps<N, L>> &
-  SankeyDataProps<N, L> &
-  Dimensions &
-  MotionProps;
+> = SankeyDataProps<N, L> & Dimensions & Partial<SankeyCommonProps<N, L>>;
+
+export enum DisplayType {
+  Count = "Count",
+  Pct = "Pct %",
+  Rate = "Rate",
+}

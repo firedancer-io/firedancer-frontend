@@ -1,17 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import {
-  SlotNode,
-  incomingSlotNodes,
-} from "../features/Overview/SlotPerformance/SlotSankey/consts";
 
-export function useShowNode(node: SlotNode, value: number) {
+export function useShowNode(node: string, value: number) {
   const [showNode, setShowNode] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    const alwayShowNodes = [...incomingSlotNodes, SlotNode.SlotStart];
-    if (alwayShowNodes.includes(node)) return;
-
     if (value) {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);

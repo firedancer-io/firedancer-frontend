@@ -1,7 +1,8 @@
 import styles from "./sankeyControls.module.css";
 import * as ToggleGroup from "@radix-ui/react-toggle-group";
 import { useAtom } from "jotai";
-import { DisplayType, sankeyDisplayTypeAtom } from "./atoms";
+import { sankeyDisplayTypeAtom } from "./atoms";
+import { DisplayType } from "../../../sankey";
 
 export default function SankeyControls() {
   const [value, setValue] = useAtom(sankeyDisplayTypeAtom);

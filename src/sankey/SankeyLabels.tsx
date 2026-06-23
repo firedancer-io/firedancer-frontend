@@ -4,127 +4,46 @@ import type {
   SankeyCommonProps,
   SankeyNodeDatum,
 } from "./types";
-import { getDefaultStore } from "jotai";
-import {
-  DisplayType,
-  sankeyDisplayTypeAtom,
-} from "../features/Overview/SlotPerformance/atoms";
 import ShowNode from "./ShowNode";
-import {
-  tileNodes,
-  SlotNode,
-  retainedSlotNodes,
-  droppedSlotNodes,
-  successfulSlotNodes,
-  failedSlotNodes,
-} from "../features/Overview/SlotPerformance/SlotSankey/consts";
-import {
-  failureColor,
-  nonVoteColor,
-  sankeyBaseLabelColor,
-  secondaryTextColor,
-  votesColor,
-} from "../colors";
-import type { SVGAttributes } from "react";
-
-const store = getDefaultStore();
-
-function getSuffix() {
-  const displayType = store.get(sankeyDisplayTypeAtom);
-
-  switch (displayType) {
-    case DisplayType.Pct:
-      return "%";
-    case DisplayType.Rate:
-      return "/s";
-    case DisplayType.Count:
-      return "";
-  }
-}
+import { sankeyBaseLabelColor } from "../colors";
+import { computeLabelLayout, getLabelParts, getSuffix } from "./labels";
 
 interface SankeyLabelsProps<N extends DefaultNode, L extends DefaultLink> {
   nodes: SankeyNodeDatum<N, L>[];
+  displayType: SankeyCommonProps<N, L>["displayType"];
   layout: SankeyCommonProps<N, L>["layout"];
   width: number;
   height: number;
   labelPosition: SankeyCommonProps<N, L>["labelPosition"];
   labelPadding: SankeyCommonProps<N, L>["labelPadding"];
   labelOrientation: SankeyCommonProps<N, L>["labelOrientation"];
-  getLabelTextColor: (node: SankeyNodeDatum<N, L>) => string;
+  getLabelFill?: SankeyCommonProps<N, L>["getLabelFill"];
 }
 
 export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
   nodes,
+  displayType,
   layout,
   width,
   height,
   labelPosition,
   labelPadding,
   labelOrientation,
+  getLabelFill,
 }: SankeyLabelsProps<N, L>) => {
-  // const theme = useTheme();
-
   const labelRotation = labelOrientation === "vertical" ? -90 : 0;
   const labels = nodes
     .filter((n) => !n.hideLabel)
     .map((node) => {
-      let x;
-      let y;
-      let textAnchor: SVGAttributes<SVGTextElement>["textAnchor"];
-
-      if (layout === "horizontal") {
-        y = node.y + node.height / 2 - 5;
-        if (node.alignLabelBottom) {
-          y = node.y1;
-        }
-        if (tileNodes.includes(node.id as SlotNode)) {
-          x = node.x0 + (node.x1 - node.x0) / 2;
-          y = y + 10;
-          textAnchor = "middle";
-        } else if (node.labelPositionOverride === "right") {
-          x = node.x1 + labelPadding;
-          textAnchor = labelOrientation === "vertical" ? "middle" : "start";
-        } else if (node.labelPositionOverride === "left") {
-          x = node.x - labelPadding;
-          textAnchor = labelOrientation === "vertical" ? "middle" : "end";
-        } else if (node.x < width / 2) {
-          if (labelPosition === "inside") {
-            x = node.x1 + labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "middle" : "start";
-          } else {
-            x = node.x - labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "middle" : "end";
-          }
-        } else {
-          if (labelPosition === "inside") {
-            x = node.x - labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "middle" : "end";
-          } else {
-            x = node.x1 + labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "middle" : "start";
-          }
-        }
-      } else if (layout === "vertical") {
-        x = node.x + node.width / 2;
-        if (node.y < height / 2) {
-          if (labelPosition === "inside") {
-            y = node.y1 + labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "end" : "middle";
-          } else {
-            y = node.y - labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "start" : "middle";
-          }
-        } else {
-          if (labelPosition === "inside") {
-            y = node.y - labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "start" : "middle";
-          } else {
-            y = node.y1 + labelPadding;
-            textAnchor = labelOrientation === "vertical" ? "end" : "middle";
-          }
-        }
-      }
-
+      const { x, y, textAnchor } = computeLabelLayout(
+        node,
+        layout,
+        width,
+        height,
+        labelPosition,
+        labelPadding,
+        labelOrientation,
+      );
       return {
         id: node.id,
         label: node.label,
@@ -135,34 +54,17 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
       };
     });
 
-  // const { animate, config: springConfig } = useCustomMotionConfig();
-  // const springs = useSprings(
-  //   labels.length,
-  //   labels.map((label) => {
-  //     return {
-  //       transform: `translate(${label.x}, ${label.y}) rotate(${labelRotation})`,
-  //       config: springConfig,
-  //       immediate: !animate,
-  //     };
-  //   }),
-  // );
-
   return (
     <>
       {labels.map((label) => {
-        const [labelFill, valueFill] = getLabelFill(
-          label.label as SlotNode,
-          label.value,
-        );
+        const [labelFill, valueFill] = getLabelFill
+          ? getLabelFill(label.id, label.value)
+          : [sankeyBaseLabelColor, sankeyBaseLabelColor];
 
         const labelText = label.label.split(":")[0]?.trim();
 
         return (
-          <ShowNode
-            node={label.label as SlotNode}
-            value={label.value}
-            key={label.id}
-          >
+          <ShowNode node={label.id} value={label.value} key={label.id}>
             <text
               key={label.id}
               dominantBaseline="central"
@@ -184,7 +86,7 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
               })}
               <tspan x="0" dy="1em" style={{ fill: valueFill }}>
                 {label.value?.toLocaleString()}
-                {getSuffix()}
+                {getSuffix(displayType)}
               </tspan>
             </text>
           </ShowNode>
@@ -193,47 +95,3 @@ export const SankeyLabels = <N extends DefaultNode, L extends DefaultLink>({
     </>
   );
 };
-
-function getLabelFill(label: SlotNode, value: number) {
-  if (!value) {
-    return [secondaryTextColor, secondaryTextColor];
-  }
-
-  if (retainedSlotNodes.includes(label)) {
-    return [sankeyBaseLabelColor, sankeyBaseLabelColor];
-  }
-  if (successfulSlotNodes.includes(label)) {
-    return [sankeyBaseLabelColor, nonVoteColor];
-  }
-
-  if (tileNodes.includes(label)) {
-    return [secondaryTextColor, secondaryTextColor];
-  }
-
-  if (droppedSlotNodes.includes(label) || failedSlotNodes.includes(label)) {
-    return [sankeyBaseLabelColor, failureColor];
-  }
-
-  if (label === SlotNode.Votes) {
-    return [sankeyBaseLabelColor, votesColor];
-  }
-
-  return [sankeyBaseLabelColor, sankeyBaseLabelColor];
-}
-
-function getLabelParts(labelText: string) {
-  if (labelText.length < 17 || !labelText.includes(" ")) return [labelText];
-
-  const midIndex = Math.trunc(labelText.length / 2);
-  const firstIndex = labelText.lastIndexOf(" ", midIndex);
-  const lastIndex = labelText.indexOf(" ", midIndex + 1);
-  const splitIndex =
-    midIndex - firstIndex < lastIndex - midIndex || lastIndex === -1
-      ? firstIndex
-      : lastIndex;
-
-  return [
-    labelText.substring(0, splitIndex),
-    labelText.substring(splitIndex + 1),
-  ];
-}

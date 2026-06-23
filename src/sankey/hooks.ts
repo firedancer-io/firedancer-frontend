@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import cloneDeep from "lodash/cloneDeep";
 import { usePropertyAccessor, useValueFormatter } from "@nivo/core";
-import { useOrdinalColorScale, useInheritedColor } from "@nivo/colors";
+import { useOrdinalColorScale } from "@nivo/colors";
 import { sankeyAlignmentFromProp } from "./props";
+import { DisplayType } from "./types";
 import type {
   DefaultLink,
   DefaultNode,
@@ -26,6 +27,7 @@ export const computeNodeAndLinks = <
 >({
   data: _data,
   formatValue,
+  displayType,
   layout,
   alignFunction,
   sortFunction,
@@ -40,6 +42,7 @@ export const computeNodeAndLinks = <
 }: {
   data: SankeyDataProps<N, L>["data"];
   formatValue: (value: number) => string;
+  displayType: DisplayType;
   layout: SankeyCommonProps<N, L>["layout"];
   alignFunction: SankeyAlignFunction;
   sortFunction: null | undefined | SankeySortFunction<N, L>;
@@ -61,7 +64,8 @@ export const computeNodeAndLinks = <
     .nodeWidth(nodeThickness)
     .nodePadding(nodeSpacing)
     .size(layout === "horizontal" ? [width, height] : [height, width])
-    .nodeId(getId);
+    .nodeId(getId)
+    .isPctMode(displayType === DisplayType.Pct);
 
   // deep clone is required as the sankey diagram mutates data
   // we need a different identity for correct updates
@@ -96,12 +100,6 @@ export const computeNodeAndLinks = <
       node.y0 = oldX0;
       node.y1 = oldX1;
     }
-    // if (node.showNode) {
-    //   // node.y = 0;
-    //   node.height = 1_000;
-    //   // node.y0 = 0;
-    //   // node.y1 = 1_000;
-    // }
   });
 
   data.links.forEach((link) => {
@@ -136,9 +134,8 @@ export const useSankey = <N extends DefaultNode, L extends DefaultLink>({
   nodeThickness,
   nodeSpacing,
   nodeInnerPadding,
-  nodeBorderColor,
   label,
-  labelTextColor,
+  displayType,
 }: {
   data: SankeyDataProps<N, L>["data"];
   valueFormat?: SankeyCommonProps<N, L>["valueFormat"];
@@ -151,17 +148,9 @@ export const useSankey = <N extends DefaultNode, L extends DefaultLink>({
   nodeThickness: SankeyCommonProps<N, L>["nodeThickness"];
   nodeSpacing: SankeyCommonProps<N, L>["nodeSpacing"];
   nodeInnerPadding: SankeyCommonProps<N, L>["nodeInnerPadding"];
-  nodeBorderColor: SankeyCommonProps<N, L>["nodeBorderColor"];
   label: SankeyCommonProps<N, L>["label"];
-  labelTextColor: SankeyCommonProps<N, L>["labelTextColor"];
+  displayType: SankeyCommonProps<N, L>["displayType"];
 }) => {
-  const [currentNode, setCurrentNode] = useState<SankeyNodeDatum<N, L> | null>(
-    null,
-  );
-  const [currentLink, setCurrentLink] = useState<SankeyLinkDatum<N, L> | null>(
-    null,
-  );
-
   const sortFunction = useMemo(() => {
     if (sort === "auto") return undefined;
     if (sort === "input") return null;
@@ -187,13 +176,11 @@ export const useSankey = <N extends DefaultNode, L extends DefaultLink>({
   }, [align]);
 
   const getColor = useOrdinalColorScale(colors, "id");
-  const getNodeBorderColor = useInheritedColor(nodeBorderColor);
 
   const getLabel = usePropertyAccessor<
     Omit<SankeyNodeDatum<N, L>, "color" | "label">,
     string
   >(label);
-  const getLabelTextColor = useInheritedColor(labelTextColor);
   const formatValue = useValueFormatter<number>(valueFormat);
 
   const { nodes, links } = useMemo(
@@ -212,6 +199,7 @@ export const useSankey = <N extends DefaultNode, L extends DefaultLink>({
         height,
         getColor,
         getLabel,
+        displayType,
       }),
     [
       data,
@@ -227,28 +215,9 @@ export const useSankey = <N extends DefaultNode, L extends DefaultLink>({
       height,
       getColor,
       getLabel,
+      displayType,
     ],
   );
 
-  const legendData = useMemo(
-    () =>
-      nodes.map((node) => ({
-        id: node.id,
-        label: node.label,
-        color: node.color,
-      })),
-    [nodes],
-  );
-
-  return {
-    nodes,
-    links,
-    legendData,
-    getNodeBorderColor,
-    currentNode,
-    setCurrentNode,
-    currentLink,
-    setCurrentLink,
-    getLabelTextColor,
-  };
+  return { nodes, links };
 };

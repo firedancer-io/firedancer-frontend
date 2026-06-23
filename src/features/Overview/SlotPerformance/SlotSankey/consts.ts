@@ -53,8 +53,6 @@ export const enum SlotNode {
   NonVoteFailure = "Non-vote Failure",
 }
 
-export const startEndNodes: SlotNode[] = [SlotNode.SlotStart, SlotNode.SlotEnd];
-
 export const tileNodes: SlotNode[] = [
   SlotNode.Networking,
   SlotNode.QUIC,
@@ -151,22 +149,27 @@ export const slotNodes = [
     id: SlotNode.SlotStart,
     alignLabelBottom: true,
     labelPositionOverride: "right",
+    isStartNode: true,
   },
   {
     id: SlotNode.QUIC,
     alignLabelBottom: true,
+    labelPositionOverride: "center",
   },
   {
     id: SlotNode.Verification,
     alignLabelBottom: true,
+    labelPositionOverride: "center",
   },
   {
     id: SlotNode.Dedup,
     alignLabelBottom: true,
+    labelPositionOverride: "center",
   },
   {
     id: SlotNode.Resolv,
     alignLabelBottom: true,
+    labelPositionOverride: "center",
   },
   {
     id: SlotNode.IncGossip,
@@ -189,10 +192,12 @@ export const slotNodes = [
   {
     id: SlotNode.Pack,
     alignLabelBottom: true,
+    labelPositionOverride: "center",
   },
   {
     id: SlotNode.Execle,
     alignLabelBottom: true,
+    labelPositionOverride: "center",
   },
   {
     id: SlotNode.End,
@@ -202,6 +207,7 @@ export const slotNodes = [
     id: SlotNode.SlotEnd,
     alignLabelBottom: true,
     labelPositionOverride: "left",
+    isEndNode: true,
   },
   {
     id: SlotNode.BlockFailure,

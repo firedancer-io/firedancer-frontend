@@ -362,6 +362,15 @@ export interface SankeyLayout<
   iterations(iterations: number): this;
 
   /**
+   * Return the current isPctMode flag, which defaults to false.
+   */
+  isPctMode(): boolean;
+  /**
+   * Set whether percentage mode is active (affects minimum node height calculation).
+   */
+  isPctMode(isPctMode: boolean): this;
+
+  /**
    * Returns the node comparison function which defaults to undefined.
    */
   nodeSort():
