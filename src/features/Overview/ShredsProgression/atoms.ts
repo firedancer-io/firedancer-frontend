@@ -1,5 +1,4 @@
 import { atom } from "jotai";
-import { slotsPerLeader } from "../../../consts";
 import { getSlotGroupLeader } from "../../../utils";
 import { slotCaughtUpAtom } from "../../../api/atoms";
 import type { LiveShredsData } from "../../../api/worker/cache/shreds/types";
@@ -25,11 +24,10 @@ export const liveShredsPostStartupRangeAtom = atom((get) => {
  * */
 export const liveShredsPostStartupLeaderSlotsAtom = atom((get) => {
   const rangeAfterStartup = get(liveShredsPostStartupRangeAtom);
-  if (!rangeAfterStartup) return [];
+  if (!rangeAfterStartup) return;
 
-  const slots = [getSlotGroupLeader(rangeAfterStartup.min)];
-  while (slots[slots.length - 1] + slotsPerLeader - 1 < rangeAfterStartup.max) {
-    slots.push(getSlotGroupLeader(slots[slots.length - 1] + slotsPerLeader));
-  }
-  return slots;
+  return {
+    min: getSlotGroupLeader(rangeAfterStartup.min),
+    max: getSlotGroupLeader(rangeAfterStartup.max),
+  };
 });

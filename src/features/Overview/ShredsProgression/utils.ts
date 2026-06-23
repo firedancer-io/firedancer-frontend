@@ -7,3 +7,7 @@ export function getSlotGroupLabelId(slot: number) {
 export function getSlotLabelId(slot: number) {
   return `slot-label-${slot}`;
 }
+
+export function getSlotGroupNameId(slot: number) {
+  return `slot-group-name-${getSlotGroupLeader(slot)}`;
+}
