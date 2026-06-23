@@ -1,15 +1,38 @@
 import { useAtomValue } from "jotai";
 import { Flex, Text } from "@radix-ui/themes";
-import { getSlotGroupLabelId, getSlotLabelId } from "./utils";
+import {
+  getSlotGroupLabelId,
+  getSlotGroupNameId,
+  getSlotLabelId,
+} from "./utils";
 import styles from "./shreds.module.css";
-import { useMemo } from "react";
+import { memo, useLayoutEffect, useMemo, useState } from "react";
 import { slotsPerLeader } from "../../../consts";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import clsx from "clsx";
 import PeerIcon from "../../../components/PeerIcon";
-import { skippedClusterSlotsAtom } from "../../../atoms";
 import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
 import { liveShredsPostStartupLeaderSlotsAtom } from "./atoms";
+
+const extraGroups = 20;
+
+/**
+ * Add extra leaders to reduce update frequency
+ */
+function getRangeWithExtraLeaders(
+  range:
+    | {
+        min: number;
+        max: number;
+      }
+    | undefined,
+) {
+  if (!range) return;
+  return {
+    min: range.min,
+    max: range.max + extraGroups * slotsPerLeader,
+  };
+}
 
 /**
  * Labels for shreds slots.
@@ -18,40 +41,74 @@ import { liveShredsPostStartupLeaderSlotsAtom } from "./atoms";
  */
 export default function ShredsSlotLabels() {
   const isStartup = useAtomValue(isStartupProgressVisibleAtom);
-  const postStartupLeaderSlots = useAtomValue(
-    liveShredsPostStartupLeaderSlotsAtom,
+  const leaderSlotsRange = useAtomValue(liveShredsPostStartupLeaderSlotsAtom);
+  const [renderSlotRange, setRenderSlotRange] = useState(
+    getRangeWithExtraLeaders(leaderSlotsRange),
   );
+
+  useLayoutEffect(() => {
+    if (!leaderSlotsRange) {
+      // reset
+      setRenderSlotRange(undefined);
+      return;
+    }
+
+    setRenderSlotRange((prev) => {
+      if (!prev || prev.max < leaderSlotsRange.max) {
+        // need to render more groups
+        return getRangeWithExtraLeaders(leaderSlotsRange);
+      }
+      return prev;
+    });
+  }, [leaderSlotsRange]);
 
   if (isStartup) return;
 
   return (
+    <SlotGroupContainer
+      firstLeader={renderSlotRange?.min}
+      lastLeader={renderSlotRange?.max}
+    />
+  );
+}
+
+interface SlotGroupContainerProps {
+  firstLeader?: number;
+  lastLeader?: number;
+}
+const SlotGroupContainer = memo(function SlotGroupContainer({
+  firstLeader,
+  lastLeader,
+}: SlotGroupContainerProps) {
+  const leaderSlots = useMemo(() => {
+    if (firstLeader == null || lastLeader == null) return;
+
+    const result = [];
+    for (let slot = firstLeader; slot <= lastLeader; slot += slotsPerLeader) {
+      result.push(slot);
+    }
+    return result;
+  }, [firstLeader, lastLeader]);
+
+  return (
     <Flex flexShrink="0" overflowX="hidden" position="relative" height="15px">
-      {postStartupLeaderSlots.map((slot) => (
+      {leaderSlots?.map((slot) => (
         <SlotGroupLabel key={slot} firstSlot={slot} />
       ))}
     </Flex>
   );
-}
+});
 
 interface SlotGroupLabelProps {
   firstSlot: number;
 }
-function SlotGroupLabel({ firstSlot }: SlotGroupLabelProps) {
+const SlotGroupLabel = memo(function SlotGroupLabel({
+  firstSlot,
+}: SlotGroupLabelProps) {
   const { peer, name, isLeader } = useSlotInfo(firstSlot);
   const slots = useMemo(() => {
     return Array.from({ length: slotsPerLeader }, (_, i) => firstSlot + i);
   }, [firstSlot]);
-
-  const skippedClusterSlots = useAtomValue(skippedClusterSlotsAtom);
-  const skippedSlots = useMemo(() => {
-    const skipped = new Set<number>();
-    for (const slot of slots) {
-      if (skippedClusterSlots.has(slot)) {
-        skipped.add(slot);
-      }
-    }
-    return skipped;
-  }, [slots, skippedClusterSlots]);
 
   return (
     <Flex
@@ -71,14 +128,13 @@ function SlotGroupLabel({ firstSlot }: SlotGroupLabelProps) {
         minHeight="0"
         minWidth="0"
         px="2px"
-        className={clsx(styles.slotGroupTopContainer, {
-          [styles.skipped]: skippedSlots.size > 0,
-        })}
+        className={styles.slotGroupTopContainer}
       >
         <Flex
           align="center"
           gap="4px"
           minWidth="0"
+          id={getSlotGroupNameId(firstSlot)}
           className={styles.slotGroupNameContainer}
         >
           <PeerIcon
@@ -99,13 +155,11 @@ function SlotGroupLabel({ firstSlot }: SlotGroupLabelProps) {
         {slots.map((slot) => (
           <div
             key={slot}
-            className={clsx(styles.slotBar, {
-              [styles.skipped]: skippedSlots.has(slot),
-            })}
+            className={styles.slotBar}
             id={getSlotLabelId(slot)}
           />
         ))}
       </Flex>
     </Flex>
   );
-}
+});

@@ -14,7 +14,7 @@ describe("shreds progression plugin", () => {
         "11": [600, 800],
         "12": [800, 1100],
       } satisfies TsDeltasBySlot;
-      const groupLeaderSlots = [8, 12];
+      const groupLeaderSlots = { min: 8, max: 12 };
       expect(getGroupTsDeltas(slotTsDeltas, groupLeaderSlots)).toEqual({
         "8": [400, 800],
         "12": [800, undefined],
@@ -22,7 +22,7 @@ describe("shreds progression plugin", () => {
     });
 
     it("sets group label end to undefined if valid slots are missing / have undefined end", () => {
-      const groupLeaderSlots = [8, 12];
+      const groupLeaderSlots = { min: 8, max: 12 };
 
       expect(
         getGroupTsDeltas(
@@ -116,7 +116,7 @@ describe("shreds progression plugin", () => {
           "12": [800, 1200],
         });
 
-        const groupLeaderSlots = [8, 12];
+        const groupLeaderSlots = { min: 8, max: 12 };
         const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, groupLeaderSlots);
         expect(groupTsDeltas).toEqual({
           "8": [0, 800],
@@ -182,7 +182,7 @@ describe("shreds progression plugin", () => {
           "12": [800, 1100],
         });
 
-        const groupLeaderSlots = [8, 12];
+        const groupLeaderSlots = { min: 8, max: 12 };
         const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, groupLeaderSlots);
 
         expect(groupTsDeltas).toEqual({
@@ -246,7 +246,7 @@ describe("shreds progression plugin", () => {
           "12": [800, 1100],
         });
 
-        const groupLeaderSlots = [8, 12];
+        const groupLeaderSlots = { min: 8, max: 12 };
         const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, groupLeaderSlots);
         expect(groupTsDeltas).toEqual({
           "8": [0, 800],
@@ -374,7 +374,7 @@ describe("shreds progression plugin", () => {
         "15": [520, 700],
       });
 
-      const groupLeaderSlots = [8, 12];
+      const groupLeaderSlots = { min: 8, max: 12 };
       const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, groupLeaderSlots);
       expect(groupTsDeltas).toEqual({ "8": [0, 2000], "12": [300, 700] });
     });

@@ -21,7 +21,13 @@ import {
 import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
 import { clamp, sum } from "lodash";
 import { ShredEvent } from "../../../api/entities";
-import { getSlotGroupLabelId, getSlotLabelId } from "./utils";
+import {
+  getSlotGroupLabelId,
+  getSlotGroupNameId,
+  getSlotLabelId,
+} from "./utils";
+import styles from "./shreds.module.css";
+
 import { slotsPerLeader } from "../../../consts";
 import { delayMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import type {
@@ -30,6 +36,7 @@ import type {
 } from "../../../api/worker/cache/shreds/types";
 
 const store = getDefaultStore();
+
 export const shredsXScaleKey = "shredsXScaleKey";
 
 type Coordinates = [x: number, y: number, width?: number];
@@ -55,9 +62,27 @@ type XRange = {
   maxCssPos: number;
 };
 
+type LabelState = {
+  transformX: number;
+  width?: number;
+  opacity?: string;
+  isSkipped?: boolean;
+};
+
 export function shredsProgressionPlugin(
   isOnStartupScreen: boolean,
 ): uPlot.Plugin {
+  let prevLabels = {
+    groups: new Map<number, LabelState>(),
+    slots: new Map<number, LabelState>(),
+  };
+
+  // use to get new map values without creating a new map every update
+  let tempNewLabels: typeof prevLabels = {
+    groups: new Map(),
+    slots: new Map(),
+  };
+
   const prevTimeDiffs: number[] = [];
 
   /**
@@ -65,27 +90,21 @@ export function shredsProgressionPlugin(
    * "now" is adjusted using an avg diff of server time and real now ts to smooth out server msg delays.
    * We also delay "now" by one data update interval to prevent instability of right-most data.
    */
-  function getAdjustedNow() {
+  function getAdjustedNow(serverTimeMs: number) {
     // Use server time for chart axis
     // Use a rolling avg of the server time and client now diff.
     // If we get ws messages buffered and it results in a temporary high
     // diff, shred still move smoothly by using the avg
     const now = Date.now();
-    const serverTimeMs = store.get(serverTimeMsAtom);
 
-    if (serverTimeMs) {
-      const timeDiff = now - serverTimeMs;
-      prevTimeDiffs.push(timeDiff);
-      while (prevTimeDiffs.length > 20) {
-        prevTimeDiffs.shift();
-      }
+    const timeDiff = now - serverTimeMs;
+    prevTimeDiffs.push(timeDiff);
+    while (prevTimeDiffs.length > 100) {
+      prevTimeDiffs.shift();
     }
 
-    const timeDiffAvg = prevTimeDiffs.length
-      ? sum(prevTimeDiffs) / prevTimeDiffs.length
-      : undefined;
-    const adjustedTimeMs =
-      timeDiffAvg == null ? (serverTimeMs ?? now) : now - timeDiffAvg;
+    const timeDiffAvg = sum(prevTimeDiffs) / prevTimeDiffs.length;
+    const adjustedTimeMs = now - timeDiffAvg;
     return adjustedTimeMs - delayMs;
   }
 
@@ -96,6 +115,9 @@ export function shredsProgressionPlugin(
           if (isOnStartupScreen) {
             drawStartupChartAxes(u);
           }
+
+          const serverTimeMs = store.get(serverTimeMsAtom);
+          if (!serverTimeMs) return;
 
           const {
             slotsShreds: liveShreds,
@@ -127,7 +149,7 @@ export function shredsProgressionPlugin(
             if (!rangeAfterStartup) return;
           }
 
-          const adjustedNow = getAdjustedNow();
+          const adjustedNow = getAdjustedNow(serverTimeMs);
 
           const maxReferenceTs = adjustedNow - liveShreds.referenceTs;
           const tsSpan = maxXScale - minXScale;
@@ -253,9 +275,14 @@ export function shredsProgressionPlugin(
               rangeAfterStartup,
               liveShreds.slots,
               skippedSlotsCluster,
-              u,
               xRange,
+              prevLabels,
+              tempNewLabels,
             );
+            // switch map for reuse, don't create new maps each render
+            [prevLabels, tempNewLabels] = [tempNewLabels, prevLabels];
+            tempNewLabels.groups.clear();
+            tempNewLabels.slots.clear();
           }
         },
       ],
@@ -482,38 +509,62 @@ function updateLabels(
   },
   slots: SlotsShreds["slots"],
   skippedSlotsCluster: Set<number>,
-  u: uPlot,
   xRange: XRange,
+  prevLabels: {
+    groups: Map<number, LabelState>;
+    slots: Map<number, LabelState>;
+  },
+  newLabels: {
+    groups: Map<number, LabelState>;
+    slots: Map<number, LabelState>;
+  },
 ) {
   const slotBlocks = getSlotBlocks(slotRange, slots);
   const slotTsDeltas = estimateSlotTsDeltas(slotBlocks, skippedSlotsCluster);
-  const postStartupLeaderSlots = store.get(
-    liveShredsPostStartupLeaderSlotsAtom,
-  );
-  const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, postStartupLeaderSlots);
+  const leaderSlotsRange = store.get(liveShredsPostStartupLeaderSlotsAtom);
+  if (!leaderSlotsRange) return;
 
-  for (let groupIdx = 0; groupIdx < postStartupLeaderSlots.length; groupIdx++) {
-    const leaderSlot = postStartupLeaderSlots[groupIdx];
+  const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, leaderSlotsRange);
+  for (
+    let leaderSlot = leaderSlotsRange.min;
+    leaderSlot <= leaderSlotsRange.max;
+    leaderSlot += slotsPerLeader
+  ) {
     const leaderElId = getSlotGroupLabelId(leaderSlot);
     const leaderEl = document.getElementById(leaderElId);
     if (!leaderEl) continue;
 
     const groupRange = groupTsDeltas[leaderSlot];
-
     const groupPos = getPosFromTsDeltaRange(groupRange, xRange);
-    moveLabelPosition(true, groupPos, xRange.maxCssPos, leaderEl);
+
+    let isGroupSkipped = false;
+    for (let slot = leaderSlot; slot < leaderSlot + slotsPerLeader; slot++) {
+      if (skippedSlotsCluster.has(slot)) {
+        isGroupSkipped = true;
+        break;
+      }
+    }
+
+    moveLabelPosition(
+      true,
+      groupPos,
+      leaderEl,
+      leaderSlot,
+      prevLabels.groups,
+      newLabels.groups,
+      xRange.maxCssPos,
+      isGroupSkipped,
+    );
 
     for (
       let slotNumber = leaderSlot;
       slotNumber < leaderSlot + slotsPerLeader;
       slotNumber++
     ) {
-      const slotElId = getSlotLabelId(slotNumber);
-      const slotEl = document.getElementById(slotElId);
+      const slotEl = document.getElementById(getSlotLabelId(slotNumber));
       if (!slotEl) continue;
 
-      const slotRange = slotTsDeltas[slotNumber];
-      const slotPos = getPosFromTsDeltaRange(slotRange, xRange);
+      const slotPos = getPosFromTsDeltaRange(slotTsDeltas[slotNumber], xRange);
 
       // position slot relative to its slot group
       const relativeSlotPos =
@@ -521,7 +572,35 @@ function updateLabels(
           ? ([slotPos[0] - groupPos[0], slotPos[1]] satisfies Position)
           : undefined;
 
-      moveLabelPosition(false, relativeSlotPos, xRange.maxCssPos, slotEl);
+      moveLabelPosition(
+        false,
+        relativeSlotPos,
+        slotEl,
+        slotNumber,
+        prevLabels.slots,
+        newLabels.slots,
+        xRange.maxCssPos,
+        skippedSlotsCluster.has(slotNumber),
+      );
+    }
+  }
+
+  // Hide any labels that were visible last frame but are no longer in range
+  for (const slot of prevLabels.groups.keys()) {
+    if (newLabels.groups.has(slot)) continue;
+
+    const el = document.getElementById(getSlotGroupLabelId(slot));
+    if (el && prevLabels.groups.get(slot)?.transformX !== hiddenTransformX) {
+      el.style.transform = `translateX(${hiddenTransformX}px)`;
+    }
+  }
+
+  for (const slot of prevLabels.slots.keys()) {
+    if (newLabels.slots.has(slot)) continue;
+
+    const el = document.getElementById(getSlotLabelId(slot));
+    if (el && prevLabels.slots.get(slot)?.transformX !== hiddenTransformX) {
+      el.style.transform = `translateX(${hiddenTransformX}px)`;
     }
   }
 }
@@ -765,11 +844,15 @@ function splitRangeAmongSlots(
  */
 export function getGroupTsDeltas(
   slotTsDeltas: TsDeltasBySlot,
-  groupLeaderSlots: number[],
+  groupLeaderSlots: { min: number; max: number },
 ) {
   const tsDeltasByGroup: TsDeltasBySlot = {};
 
-  for (const leaderSlot of groupLeaderSlots) {
+  for (
+    let leaderSlot = groupLeaderSlots.min;
+    leaderSlot <= groupLeaderSlots.max;
+    leaderSlot += slotsPerLeader
+  ) {
     // filter to relevant slots
     const slotsWithWidths = Array.from(
       { length: slotsPerLeader },
@@ -837,39 +920,75 @@ function getPosFromTsDeltaRange(
   return [xStartPos, xEndPos - xStartPos];
 }
 
-/**
- * Update label element styles
- */
+// Large enough to cover the viewport for incomplete labels without redrawing every frame
+const hugeWidth = 100000;
+const hiddenTransformX = -hugeWidth;
+
 function moveLabelPosition(
   isGroup: boolean,
   position: Position | undefined,
-  maxXPos: number,
   el: HTMLElement,
+  slotNumber: number,
+  prevLabels: Map<number, LabelState>,
+  newLabels: Map<number, LabelState>,
+  maxVisibleXPos: number,
+  isSkipped: boolean,
 ) {
-  const groupBorderOffset = 1;
-  const xPosProp = isGroup ? "--group-x" : "--slot-x";
+  const borderOffset = isGroup ? 1 : 0;
+  const prevState = prevLabels.get(slotNumber);
 
-  const isVisible = !!position;
-  if (!isVisible) {
-    // hide
-    el.style.setProperty(xPosProp, "-100000px");
+  if (!position) {
+    // label hidden
+    const transformX = hiddenTransformX;
+    if (prevState?.transformX !== transformX) {
+      el.style.transform = `translateX(${transformX}px)`;
+    }
+    newLabels.set(slotNumber, { ...prevState, transformX });
     return;
   }
 
   const [xPos, width] = position;
-  el.style.setProperty(
-    xPosProp,
-    `${xPos - (isGroup ? groupBorderOffset : 0)}px`,
-  );
+  const transformX = xPos - borderOffset;
+  const newState = { ...prevState, transformX };
 
-  // If missing width, extend to max width (with extra px to hide right border)
-  const newWidth = width ?? maxXPos - xPos + 1;
-  el.style.width = `${newWidth + (isGroup ? groupBorderOffset * 2 : 0)}px`;
+  if (prevState?.transformX !== transformX) {
+    el.style.transform = `translateX(${transformX}px)`;
+  }
 
-  const isExtended = width == null;
+  if (width != null) {
+    const newWidth = width + borderOffset * 2;
+    if (prevState?.width !== newWidth) {
+      el.style.width = `${newWidth}px`;
+      newState.width = newWidth;
+    }
+  } else if (
+    // missing width, so label should extend to Infinity
+    !prevState?.width ||
+    // extend label again so its right edge is not visible. +1 to hide right border
+    newState.transformX + prevState.width < maxVisibleXPos + 1
+  ) {
+    const newWidth = hugeWidth;
+    if (prevState?.width !== newWidth) {
+      el.style.width = `${newWidth}px`;
+      newState.width = newWidth;
+    }
+  }
+
   if (isGroup) {
+    const nameEl = document.getElementById(getSlotGroupNameId(slotNumber));
     // Extended groups don't have a defined end, so we don't know where to center the name text.
     // Set to opacity 0, and transition to 1 when the group end becomes defined.
-    el.style.setProperty("--group-name-opacity", isExtended ? "0" : "1");
+    const opacity = width == null ? "0" : "1";
+    if (nameEl && prevState?.opacity !== opacity) {
+      newState.opacity = opacity;
+      nameEl.style.opacity = opacity;
+    }
   }
+
+  if (prevState?.isSkipped !== isSkipped) {
+    el.classList.toggle(styles.skipped, isSkipped);
+    newState.isSkipped = isSkipped;
+  }
+
+  newLabels.set(slotNumber, newState);
 }
