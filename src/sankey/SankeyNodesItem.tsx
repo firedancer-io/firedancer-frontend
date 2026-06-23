@@ -1,104 +1,25 @@
-import type {
-  DefaultLink,
-  DefaultNode,
-  SankeyCommonProps,
-  SankeyNodeDatum,
-} from "./types";
 import { sankeyStartEndNodeColor } from "../colors";
 
-interface SankeyNodesItemProps<N extends DefaultNode, L extends DefaultLink> {
-  node: SankeyNodeDatum<N, L>;
+interface SankeyNodesItemProps {
   x: number;
   y: number;
   width: number;
   height: number;
-  color: string;
-  opacity: number;
-  borderWidth: SankeyCommonProps<N, L>["nodeBorderWidth"];
-  borderColor: string;
-  borderRadius: SankeyCommonProps<N, L>["nodeBorderRadius"];
-  setCurrent: (node: SankeyNodeDatum<N, L> | null) => void;
-  isInteractive: SankeyCommonProps<N, L>["isInteractive"];
-  onClick?: SankeyCommonProps<N, L>["onClick"];
-  tooltip: SankeyCommonProps<N, L>["nodeTooltip"];
 }
 
-export const SankeyNodesItem = <N extends DefaultNode, L extends DefaultLink>({
-  node,
+export const SankeyNodesItem = ({
   x,
   y,
   width,
   height,
-  color,
-  opacity,
-  borderWidth,
-  borderRadius,
-  setCurrent,
-  isInteractive,
-  onClick,
-  tooltip,
-}: SankeyNodesItemProps<N, L>) => {
-  // const { animate, config: springConfig } = useCustomMotionConfig();
-  // const animatedProps = useSpring({
-  //   x,
-  //   y,
-  //   width,
-  //   height,
-  //   opacity,
-  //   color,
-  //   config: springConfig,
-  //   immediate: !animate,
-  // });
-
-  // const { showTooltipFromEvent, hideTooltip } = useTooltip();
-
-  // const handleMouseEnter = useCallback(
-  //   (event: MouseEvent<SVGRectElement>) => {
-  //     setCurrent(node);
-  //     showTooltipFromEvent(createElement(tooltip, { node }), event, "left");
-  //   },
-  //   [setCurrent, node, showTooltipFromEvent, tooltip],
-  // );
-
-  // const handleMouseMove = useCallback(
-  //   (event: MouseEvent<SVGRectElement>) => {
-  //     showTooltipFromEvent(createElement(tooltip, { node }), event, "left");
-  //   },
-  //   [showTooltipFromEvent, node, tooltip],
-  // );
-
-  // const handleMouseLeave = useCallback(() => {
-  //   setCurrent(null);
-  //   hideTooltip();
-  // }, [setCurrent, hideTooltip]);
-
-  // const handleClick = useCallback(
-  //   (event: MouseEvent<SVGRectElement>) => {
-  //     onClick?.(node, event);
-  //   },
-  //   [onClick, node],
-  // );
-
-  // console.log(opacity)
-
+}: SankeyNodesItemProps) => {
   return (
     <rect
       x={x}
       y={y}
-      // rx={borderRadius}
-      // ry={borderRadius}
       width={width}
       height={height}
-      // fill={"animatedProps.color"}
       fill={sankeyStartEndNodeColor}
-      // fillOpacity={animatedProps.opacity}
-      // strokeWidth={borderWidth}
-      // stroke={sankeyStartEndNodeColor}
-      // strokeOpacity={opacity}
-      // onMouseEnter={isInteractive ? handleMouseEnter : undefined}
-      // onMouseMove={isInteractive ? handleMouseMove : undefined}
-      // onMouseLeave={isInteractive ? handleMouseLeave : undefined}
-      // onClick={isInteractive ? handleClick : undefined}
     />
   );
 };

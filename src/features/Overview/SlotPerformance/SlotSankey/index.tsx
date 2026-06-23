@@ -1,18 +1,37 @@
 import { useMemo } from "react";
-import { Sankey } from "../../../../sankey";
+import { DisplayType, Sankey } from "../../../../sankey";
+import type { SankeyLinkDatum, DefaultLink } from "../../../../sankey";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { useAtomValue } from "jotai";
 import {
-  DisplayType,
   liveWaterfallAtom,
   sankeyDisplayTypeAtom,
   selectedSlotAtom,
 } from "../atoms";
 import type { TxnWaterfall, TxnWaterfallOut } from "../../../../api/types";
 import { Flex, Spinner, Text } from "@radix-ui/themes";
-import { SlotNode, slotNodes } from "./consts";
+import {
+  droppedSlotNodes,
+  failedSlotNodes,
+  incomingSlotNodes,
+  retainedSlotNodes,
+  SlotNode,
+  slotNodes,
+  successfulSlotNodes,
+  tileNodes,
+} from "./consts";
 import { sum } from "lodash";
 import { useSlotQueryResponseDetailed } from "../../../../hooks/useSlotQuery";
+import {
+  failureColor,
+  nonVoteColor,
+  sankeyBaseLabelColor,
+  sankeyDroppedLinkColor,
+  sankeyIncomingLinkColor,
+  sankeyRetainedLinkColor,
+  secondaryTextColor,
+  votesColor,
+} from "../../../../colors";
 
 function getGetValue({
   displayType,
@@ -399,6 +418,53 @@ function getHistoricalLinks(
   ];
 }
 
+function getNodeSpacing(height: number) {
+  if (height < 275) {
+    return 32;
+  } else if (height < 300) {
+    return 36;
+  } else if (height < 325) {
+    return 40;
+  } else if (height < 350) {
+    return 48;
+  }
+  return 52;
+}
+
+function getLinkColor(
+  link: SankeyLinkDatum<{ id: SlotNode }, DefaultLink>,
+): string | undefined {
+  if (incomingSlotNodes.includes(link.source.id))
+    return sankeyIncomingLinkColor;
+  if (
+    retainedSlotNodes.includes(link.source.id) ||
+    retainedSlotNodes.includes(link.target.id)
+  )
+    return sankeyRetainedLinkColor;
+  if (successfulSlotNodes.includes(link.target.id)) return nonVoteColor;
+  if (failedSlotNodes.includes(link.target.id)) return failureColor;
+  if (link.target.id === SlotNode.Votes) return votesColor;
+  if (droppedSlotNodes.includes(link.target.id)) return sankeyDroppedLinkColor;
+
+  return undefined;
+}
+
+function getLabelFill(label: SlotNode, value: number): [string, string] {
+  if (!value) return [secondaryTextColor, secondaryTextColor];
+
+  if (retainedSlotNodes.includes(label))
+    return [sankeyBaseLabelColor, sankeyBaseLabelColor];
+  if (successfulSlotNodes.includes(label))
+    return [sankeyBaseLabelColor, nonVoteColor];
+  if (tileNodes.includes(label))
+    return [secondaryTextColor, secondaryTextColor];
+  if (droppedSlotNodes.includes(label) || failedSlotNodes.includes(label))
+    return [sankeyBaseLabelColor, failureColor];
+  if (label === SlotNode.Votes) return [sankeyBaseLabelColor, votesColor];
+
+  return [sankeyBaseLabelColor, sankeyBaseLabelColor];
+}
+
 export default function Container() {
   const slot = useAtomValue(selectedSlotAtom);
 
@@ -481,39 +547,18 @@ function SlotSankey({ slot }: { slot?: number }) {
               left: 85,
             }}
             align="center"
-            isInteractive={false}
-            nodeThickness={0}
+            nodeThickness={1}
             nodeSpacing={getNodeSpacing(height)}
-            nodeBorderWidth={0}
             sort="input"
-            nodeBorderRadius={0}
-            linkOpacity={1}
             enableLinkGradient
             labelPosition="outside"
             labelPadding={16}
-            animate={false}
-            nodeTooltip={NullComponent}
-            linkTooltip={NullComponent}
+            getLabelFill={getLabelFill}
+            getLinkColor={getLinkColor}
+            displayType={displayType}
           />
         );
       }}
     </AutoSizer>
   );
-}
-
-function NullComponent() {
-  return null;
-}
-
-function getNodeSpacing(height: number) {
-  if (height < 275) {
-    return 32;
-  } else if (height < 300) {
-    return 36;
-  } else if (height < 325) {
-    return 40;
-  } else if (height < 350) {
-    return 48;
-  }
-  return 52;
 }

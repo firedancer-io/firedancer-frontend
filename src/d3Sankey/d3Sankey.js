@@ -4,21 +4,8 @@
 import { max, min, sum } from "d3-array";
 import { justify } from "./align.js";
 import constant from "./constant.js";
-import { getDefaultStore } from "jotai";
-import {
-  DisplayType,
-  sankeyDisplayTypeAtom,
-} from "../features/Overview/SlotPerformance/atoms";
-import {
-  SlotNode,
-  startEndNodes,
-} from "../features/Overview/SlotPerformance/SlotSankey/consts";
-
-const store = getDefaultStore();
 
 const slotStartEndWidth = 1;
-const nodeHeightRatio = 1.5;
-// const minNodeHeight = 1;
 const minNodeHeight = -1000;
 const columnOffset = 12;
 const droppedSpacing = 30;
@@ -86,6 +73,7 @@ export default function d3Sankey() {
   let align = justify;
   let sort;
   let linkSort;
+  let isPctMode = false;
   let nodes = defaultNodes;
   let links = defaultLinks;
   let iterations = 6;
@@ -171,6 +159,10 @@ export default function d3Sankey() {
 
   sankey.iterations = function (_) {
     return arguments.length ? ((iterations = +_), sankey) : iterations;
+  };
+
+  sankey.isPctMode = function (_) {
+    return arguments.length ? ((isPctMode = !!_), sankey) : isPctMode;
   };
 
   function computeNodeLinks({ nodes, links }) {
@@ -273,12 +265,13 @@ export default function d3Sankey() {
       } else if (i < 1) {
         node.x0 = x0 + i * startEndNodeWidth;
       } else if (i === x - 1) {
-        node.x0 = xEndNode + startEndNodeWidth;
+        node.x0 = x1 - slotStartEndWidth;
       } else {
         node.x0 = xStartNode + (i - 1) * kx;
       }
 
-      node.x1 = node.x0 + slotStartEndWidth;
+      node.x1 =
+        node.x0 + (node.isStartNode || node.isEndNode ? slotStartEndWidth : dx);
 
       if (columns[i]) columns[i].push(node);
       else columns[i] = [node];
@@ -291,15 +284,11 @@ export default function d3Sankey() {
   }
 
   function initializeNodeBreadths(columns) {
-    const usePct = store.get(sankeyDisplayTypeAtom) === DisplayType.Pct;
-
     const ky = min(
       columns,
       (c) =>
         (y1 - y0 - (c.length - 1) * py) /
-        sum(c, (e) => Math.max(e.value, usePct ? 1 : minTransactionCount)),
-      //  /
-      // nodeHeightRatio
+        sum(c, (e) => Math.max(e.value, isPctMode ? 1 : minTransactionCount)),
     );
     for (let i = 0; i < columns.length; i++) {
       const nodes = columns[i];
@@ -307,9 +296,6 @@ export default function d3Sankey() {
       let y = y0;
       for (const node of nodes) {
         let height = Math.max(node.value * ky, minNodeHeight);
-        // if(node.id === SlotNode.SlotEnd || node.id === SlotNode.SlotStart){
-        //   height = (y1 - y0) / 2
-        // }
 
         node.y0 = y;
         node.y1 = y + height;
@@ -357,11 +343,11 @@ export default function d3Sankey() {
         target.y0 += dy;
         target.y1 += dy;
 
-        if (target.id === SlotNode.SlotStart) {
+        if (target.isStartNode) {
           target.y0 = y0 + (y1 - y0) / 6;
           target.y1 = target.y0 + target.height;
         }
-        if (target.id === SlotNode.SlotEnd) {
+        if (target.isEndNode) {
           target.y1 = y1 - (y1 - y0) / 6;
           target.y0 = target.y1 - target.height;
         }
@@ -390,11 +376,11 @@ export default function d3Sankey() {
         source.y0 += dy;
         source.y1 += dy;
 
-        if (source.id === SlotNode.SlotStart) {
+        if (source.isStartNode) {
           source.y0 = y0 + (y1 - y0) / 6;
           source.y1 = source.y0 + source.height;
         }
-        if (source.id === SlotNode.SlotEnd) {
+        if (source.isEndNode) {
           source.y1 = y1 - (y1 - y0) / 6;
           source.y0 = source.y1 - source.height;
         }
@@ -420,7 +406,7 @@ export default function d3Sankey() {
     for (; i < nodes.length; ++i) {
       const node = nodes[i];
       const dy = (y - node.y0) * alpha;
-      if (dy > 1e-6) (node.y0 += dy), (node.y1 += dy);
+      if (dy > 1e-6) ((node.y0 += dy), (node.y1 += dy));
       y = node.y1 + py;
     }
   }
@@ -430,7 +416,7 @@ export default function d3Sankey() {
     for (; i >= 0; --i) {
       const node = nodes[i];
       const dy = (node.y1 - y) * alpha;
-      if (dy > 1e-6) (node.y0 -= dy), (node.y1 -= dy);
+      if (dy > 1e-6) ((node.y0 -= dy), (node.y1 -= dy));
       y = node.y0 - py;
     }
   }
@@ -497,7 +483,7 @@ export default function d3Sankey() {
   function computeStartEndNodes(graph) {
     const max = graph.nodes.reduce((max, n) => Math.max(max, n.y1), 0);
     graph.nodes.forEach((n) => {
-      if (startEndNodes.includes(n.id)) {
+      if (n.isStartNode || n.isEndNode) {
         n.y0 = 0;
         n.y1 = max;
         n.height = max;
