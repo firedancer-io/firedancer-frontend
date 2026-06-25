@@ -7,6 +7,7 @@ import type { MutableRefObject } from "react";
 import type { SlotTransactions } from "../../../../api/types";
 import { getDefaultStore } from "jotai";
 import { logRatio } from "../../../../mathUtils";
+import { slotDurationAtom } from "../../../../atoms";
 import { barCountAtom } from "./atoms";
 import { FilterEnum, stateColors, TxnState } from "./consts";
 import {
@@ -494,7 +495,8 @@ export function txnBarsPlugin(
                     const scaleDiff =
                       u.scales[banksXScaleKey].min != null &&
                       u.scales[banksXScaleKey].max != null
-                        ? 400_000_000 /
+                        ? (getDefaultStore().get(slotDurationAtom) *
+                            1_000_000) /
                           (u.scales[banksXScaleKey].max -
                             u.scales[banksXScaleKey].min)
                         : undefined;
