@@ -48,11 +48,11 @@ export function computeLabelLayout<
 ): {
   x: number;
   y: number;
-  textAnchor: "start" | "middle" | "end" | undefined;
+  textAlign: CanvasTextAlign;
 } {
   let x = 0;
   let y = 0;
-  let textAnchor: "start" | "middle" | "end" | undefined;
+  let textAlign: CanvasTextAlign = "left";
 
   if (layout === "horizontal") {
     y = node.y + node.height / 2 - 5;
@@ -61,28 +61,28 @@ export function computeLabelLayout<
     if (node.labelPositionOverride === "center") {
       x = node.x0 + (node.x1 - node.x0) / 2;
       y = y + 10;
-      textAnchor = "middle";
+      textAlign = "center";
     } else if (node.labelPositionOverride === "right") {
       x = node.x1 + labelPadding;
-      textAnchor = labelOrientation === "vertical" ? "middle" : "start";
+      textAlign = labelOrientation === "vertical" ? "center" : "left";
     } else if (node.labelPositionOverride === "left") {
       x = node.x - labelPadding;
-      textAnchor = labelOrientation === "vertical" ? "middle" : "end";
+      textAlign = labelOrientation === "vertical" ? "center" : "right";
     } else if (node.x < width / 2) {
       if (labelPosition === "inside") {
         x = node.x1 + labelPadding;
-        textAnchor = labelOrientation === "vertical" ? "middle" : "start";
+        textAlign = labelOrientation === "vertical" ? "center" : "left";
       } else {
         x = node.x - labelPadding;
-        textAnchor = labelOrientation === "vertical" ? "middle" : "end";
+        textAlign = labelOrientation === "vertical" ? "center" : "right";
       }
     } else {
       if (labelPosition === "inside") {
         x = node.x - labelPadding;
-        textAnchor = labelOrientation === "vertical" ? "middle" : "end";
+        textAlign = labelOrientation === "vertical" ? "center" : "right";
       } else {
         x = node.x1 + labelPadding;
-        textAnchor = labelOrientation === "vertical" ? "middle" : "start";
+        textAlign = labelOrientation === "vertical" ? "center" : "left";
       }
     }
   } else if (layout === "vertical") {
@@ -90,21 +90,21 @@ export function computeLabelLayout<
     if (node.y < height / 2) {
       if (labelPosition === "inside") {
         y = node.y1 + labelPadding;
-        textAnchor = labelOrientation === "vertical" ? "end" : "middle";
+        textAlign = labelOrientation === "vertical" ? "right" : "center";
       } else {
         y = node.y - labelPadding;
-        textAnchor = labelOrientation === "vertical" ? "start" : "middle";
+        textAlign = labelOrientation === "vertical" ? "left" : "center";
       }
     } else {
       if (labelPosition === "inside") {
         y = node.y - labelPadding;
-        textAnchor = labelOrientation === "vertical" ? "start" : "middle";
+        textAlign = labelOrientation === "vertical" ? "left" : "center";
       } else {
         y = node.y1 + labelPadding;
-        textAnchor = labelOrientation === "vertical" ? "end" : "middle";
+        textAlign = labelOrientation === "vertical" ? "right" : "center";
       }
     }
   }
 
-  return { x, y, textAnchor };
+  return { x, y, textAlign };
 }

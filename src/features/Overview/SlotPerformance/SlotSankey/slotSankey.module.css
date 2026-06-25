@@ -18,7 +18,7 @@
     aspect-ratio: 1 / 3;
     overflow-x: clip;
 
-    .slot-sankey-container svg {
+    .slot-sankey-container canvas {
       transform: rotate(90deg) translateY(-100%) translateX(15px);
       transform-origin: top left;
     }
