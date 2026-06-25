@@ -52,7 +52,7 @@ export const getSlotGroupTypeAtom = atom((get) => {
 
 export const getIsGroupSelectedAtom = atom((get) => {
   const selectedSlot = get(selectedSlotAtom);
-  return function isGroupSelected(slot: number) {
+  return function getIsGroupSelected(slot: number) {
     if (selectedSlot == null) return false;
     return areInSameGroup(slot, selectedSlot);
   };
