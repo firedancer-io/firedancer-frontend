@@ -1,5 +1,5 @@
 .slot-group-container {
-  padding-bottom: 5px;
+  padding-bottom: var(--slot-group-padding-bottom);
   background: var(--slot-nav-background-color);
 }
 
@@ -18,6 +18,7 @@
 }
 
 .future {
+  height: var(--other-future-slot-group-height);
   padding: 3px;
   background: var(--slots-list-future-slot-background-color);
   color: var(--slots-list-future-slot-color);
@@ -26,14 +27,20 @@
   }
 
   &.you {
+    height: var(--your-non-next-future-slot-group-height);
     border: solid var(--slots-list-not-processed-my-slots-border-color);
     border-width: 2px 1px 1px 1px;
     padding: 2px 3px 3px 3px;
     background: var(--slots-list-my-slot-background-color);
+
+    &.next-you {
+      height: var(--your-next-leader-slot-group-height);
+    }
   }
 }
 
 .current {
+  height: var(--other-current-slot-group-height);
   padding: 2px;
   border: 1px solid var(--container-border-color);
   background-color: var(--container-background-color);
@@ -49,6 +56,7 @@
   }
 
   &.you {
+    height: var(--your-current-slot-group-height);
     border-width: 3px 1px 1px 1px;
     border-color: var(--slots-list-my-slots-selected-border-color);
   }
@@ -61,6 +69,7 @@
 }
 
 .past {
+  height: var(--other-past-slot-group-height);
   padding: 3px;
   color: var(--slots-list-past-slot-color);
 
@@ -69,6 +78,7 @@
   }
 
   &.you {
+    height: var(--your-past-slot-group-height);
     background: var(--slots-list-my-slot-background-color);
 
     &.processed {

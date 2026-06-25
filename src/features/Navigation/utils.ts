@@ -1,81 +1,98 @@
-import { sortedIndex } from "lodash";
-import type { Epoch } from "../../api/types";
-import { slotsPerLeader } from "../../consts";
-import { getSlotGroupLeader } from "../../utils";
+import {
+  YOUR_PAST_HEIGHT,
+  OTHER_PAST_HEIGHT,
+  YOUR_CURRENT_HEIGHT,
+  OTHER_CURRENT_HEIGHT,
+  OTHER_FUTURE_HEIGHT,
+  YOUR_NEXT_LEADER_HEIGHT,
+  YOUR_NON_NEXT_FUTURE_HEIGHT,
+  MAX_GROUP_HEIGHT,
+  MIN_GROUP_HEIGHT,
+} from "./const";
 
-export interface SlotsIndexProps {
-  getSlotAtIndex: (index: number) => number | undefined;
-  getIndexForSlot: (slot: number) => number | undefined;
-  itemsCount: number;
+export interface Counts {
+  otherPastCount: number;
+  otherCurrentCount: number;
+  otherFutureCount: number;
+  yourPastCount: number;
+  yourCurrentCount: number;
+  yourNextFutureCount: number;
+  yourNonNextFutureCount: number;
 }
 
-/**
- * Get props for slots list, where the list of items are comprised of
- * the leader slots in the current epoch, in descending order
- */
-export function getAllSlotsListProps(
-  epoch: Epoch | undefined,
-): SlotsIndexProps | undefined {
-  if (!epoch) return;
-
-  const numSlotsInEpoch = epoch.end_slot - epoch.start_slot + 1;
-  const itemsCount = Math.ceil(numSlotsInEpoch / slotsPerLeader);
-
-  const getIndexForSlot = (slot: number) => {
-    if (slot < epoch.start_slot || slot > epoch.end_slot) return;
-    return Math.trunc((epoch.end_slot - slot) / slotsPerLeader);
-  };
-
-  const getSlotAtIndex = (index: number) => {
-    if (index < 0 || index >= itemsCount) return;
-    return getSlotGroupLeader(epoch.end_slot - index * slotsPerLeader);
-  };
-
-  return {
-    getSlotAtIndex,
-    getIndexForSlot,
-    itemsCount,
-  };
-}
-
-/**
- * Get props for my slots list, where the list of items are comprised of
- * my leader slots in the current epoch, in descending order
- */
-export function getMySlotsListProps(
-  mySlots: number[] | undefined,
-): SlotsIndexProps | undefined {
-  if (mySlots == null) return;
-
-  // Optimized index lookup of My slots
-  const slotToIndexMapping = mySlots.reduce<Record<number, number>>(
-    (acc, slot, index) => {
-      acc[slot] = mySlots.length - index - 1;
-      return acc;
-    },
-    {},
+export function getHeightSum({
+  otherPastCount,
+  otherCurrentCount,
+  otherFutureCount,
+  yourPastCount,
+  yourCurrentCount,
+  yourNextFutureCount,
+  yourNonNextFutureCount,
+}: Counts) {
+  return (
+    otherPastCount * OTHER_PAST_HEIGHT +
+    otherCurrentCount * OTHER_CURRENT_HEIGHT +
+    otherFutureCount * OTHER_FUTURE_HEIGHT +
+    yourPastCount * YOUR_PAST_HEIGHT +
+    yourCurrentCount * YOUR_CURRENT_HEIGHT +
+    yourNextFutureCount * YOUR_NEXT_LEADER_HEIGHT +
+    yourNonNextFutureCount * YOUR_NON_NEXT_FUTURE_HEIGHT
   );
+}
 
-  const getSlotAtIndex = (index: number) => mySlots[mySlots.length - index - 1];
+/**
+ * Find first item whose top offset is >= scrollTop
+ */
+export function findMinVisibleIdx(
+  scrollTop: number,
+  totalCount: number,
+  getTopOffsetAtIdx: (idx: number) => number | undefined,
+) {
+  let lo = Math.max(0, Math.floor(scrollTop / MAX_GROUP_HEIGHT));
+  let hi = Math.min(
+    totalCount - 1,
+    Math.max(lo, Math.ceil(scrollTop / MIN_GROUP_HEIGHT)),
+  );
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    const offsetAtIdx = getTopOffsetAtIdx(mid);
+    if (offsetAtIdx == null) return;
 
-  /**
-   * In the items (desc value) array, get:
-   *   - the exact slot index, or
-   *   - the index of closest, smaller my slot leader, or if unavailable,
-   *   - index 0
-   */
-  const getClosestIndexForSlot = (slot: number) => {
-    if (slot >= mySlots[mySlots.length - 1]) return 0;
+    if (offsetAtIdx <= scrollTop) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return lo;
+}
 
-    return (
-      slotToIndexMapping[getSlotGroupLeader(slot)] ??
-      mySlots.length - sortedIndex(mySlots, slot) - 1
-    );
-  };
+/**
+ * Find last item whose bottom offset is <= scrollBottom
+ */
+export function findMaxVisibleIdx(
+  scrollTop: number,
+  totalCount: number,
+  visibleHeight: number,
+  getTopOffsetAtIdx: (idx: number) => number | undefined,
+) {
+  const scrollBottom = scrollTop + visibleHeight;
 
-  return {
-    getSlotAtIndex,
-    getIndexForSlot: getClosestIndexForSlot,
-    itemsCount: mySlots.length,
-  };
+  let lo = Math.max(0, Math.floor(scrollBottom / MAX_GROUP_HEIGHT));
+  let hi = Math.min(
+    totalCount - 1,
+    Math.max(lo, Math.ceil(scrollBottom / MIN_GROUP_HEIGHT)),
+  );
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    const offsetAtIndex = getTopOffsetAtIdx(mid);
+    if (offsetAtIndex == null) return;
+
+    if (offsetAtIndex <= scrollBottom) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return lo;
 }
