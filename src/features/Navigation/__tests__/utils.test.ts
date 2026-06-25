@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { getAllSlotsListProps, getMySlotsListProps } from "../utils";
+import { getAllSlotsListProps } from "../allSlotsUtils";
+import { getMySlotsListProps } from "../mySlotsUtils";
 
 describe("navigation utils", () => {
   describe("getAllSlotsListProps", () => {
