@@ -14,9 +14,10 @@ import {
 } from "./useTileSparkline";
 import styles from "./tileSparkline.module.css";
 import clsx from "clsx";
+import { useAtomValue } from "jotai";
+import { slotDurationAtom } from "../../../atoms";
+import { slotsPerLeader } from "../../../consts";
 
-// 4 slots worth
-const leaderGroupWindowMs = 400 * 4;
 const _updateIntervalMs = 80;
 
 interface TileParkLineProps {
@@ -35,11 +36,13 @@ export default function TileSparkLine({
   history,
   height = 24,
   background,
-  windowMs = leaderGroupWindowMs,
+  windowMs: windowMsProp,
   strokeWidth = strokeLineWidth,
   updateIntervalMs = _updateIntervalMs,
   tickMs,
 }: TileParkLineProps) {
+  const slotDuration = useAtomValue(slotDurationAtom);
+  const windowMs = windowMsProp ?? slotDuration * slotsPerLeader;
   const [svgRef, { width }] = useMeasure<SVGSVGElement>();
 
   const { scaledDataPoints, range, pxPerTick, chartTickMs, isLive } =

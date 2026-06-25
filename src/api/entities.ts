@@ -700,6 +700,7 @@ export const epochNewSchema = z.object({
   staked_pubkeys: z.string().array(),
   staked_lamports: z.coerce.bigint().array(),
   leader_slots: z.number().array(),
+  target_slot_duration_nanos: z.number().optional(),
 });
 
 export const epochSchema = z.discriminatedUnion("key", [
