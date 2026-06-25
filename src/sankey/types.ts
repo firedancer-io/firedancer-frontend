@@ -8,24 +8,11 @@ import type {
 import type { OrdinalColorScaleConfig } from "@nivo/colors";
 import type { SankeyNodeMinimal } from "../d3Sankey";
 
-export interface SankeyRawNode {
-  id: string;
-}
-
 export interface DefaultNode {
   id: string;
 }
 
 export interface DefaultLink {
-  source: string;
-  target: string;
-  value: number;
-  // start/end color can optionally be used to have custom gradients
-  startColor?: string;
-  endColor?: string;
-}
-
-export interface SankeyRawLink {
   source: string;
   target: string;
   value: number;

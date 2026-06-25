@@ -541,7 +541,7 @@ function SlotSankey({ slot }: { slot?: number }) {
             width={width}
             data={data}
             margin={{
-              top: 10,
+              top: 15,
               right: liveWaterfall ? 100 : isRotated ? 145 : 130,
               bottom: 35,
               left: 85,
