@@ -203,6 +203,14 @@ export function useScaledDataPoints({
         return;
       }
 
+      // In live mode, if the last data point is more than
+      // (tickBufferCount - 1) ticks behind tEnd, it will slide past
+      // the right edge of the sparkline svg, leaving a gap.
+      // Skip this render to prevent the gap.
+      const lastDataPoint = data[data.length - 1];
+      const rightEdgeTs = tEnd - tickMs * (tickBufferCount - 1);
+      if (!isStatic && lastDataPoint && lastDataPoint.ts < rightEdgeTs) return;
+
       const tStart = tEnd - windowMs;
       const scale = width / windowMs;
 
