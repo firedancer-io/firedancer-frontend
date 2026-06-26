@@ -34,6 +34,10 @@ export function getSlotGroupLeader(slot: number) {
   return slot - (slot % slotsPerLeader);
 }
 
+export function areInSameGroup(slotA: number, slotB: number) {
+  return getSlotGroupLeader(slotA) === getSlotGroupLeader(slotB);
+}
+
 const descendingUnits = [
   { unit: "years", suffix: "y" },
   { unit: "months", suffix: "m" },
