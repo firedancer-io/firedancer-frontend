@@ -7,14 +7,14 @@
   thead {
     tr {
       font-size: 12px;
-      color: var(--gossip-table-header-color);
+      color: var(--table-header-color);
     }
   }
 
   tbody {
     tr {
       font-size: 14px;
-      color: var(--gossip-table-body-color);
+      color: var(--table-body-color);
     }
   }
 }

@@ -15,7 +15,7 @@
     th {
       font-size: 12px;
       font-weight: 400;
-      color: var(--gossip-table-header-color);
+      color: var(--table-header-color);
     }
   }
 
@@ -23,7 +23,7 @@
     th,
     td {
       font-size: 14px;
-      color: var(--gossip-table-body-color);
+      color: var(--table-body-color);
     }
   }
 
