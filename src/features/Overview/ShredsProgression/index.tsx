@@ -4,6 +4,7 @@ import CardHeader from "../../../components/CardHeader";
 import ShredsChart from "./ShredsChart";
 import { ShredsChartLegend } from "./ShredsChartLegend";
 import { isFrankendancer } from "../../../client";
+import ShredsChartWebGl from "./ShredsChartWebGl";
 
 export default function ShredsProgression() {
   if (isFrankendancer) return;
@@ -16,11 +17,16 @@ export default function ShredsProgression() {
           <CardHeader text="Shreds" />
           <ShredsChartLegend />
         </Flex>
-        <ShredsChart
+        <ShredsChartWebGl
           height="400px"
           chartId="overview-shreds-chart"
           isOnStartupScreen={false}
         />
+        {/* <ShredsChart
+          height="400px"
+          chartId="overview-shreds-chart"
+          isOnStartupScreen={false}
+        /> */}
       </Flex>
     </Card>
   );

@@ -13,7 +13,7 @@ import { Box, Flex } from "@radix-ui/themes";
 import type { FlexProps } from "@radix-ui/themes";
 import ShredsSlotLabels from "./ShredsSlotLabels";
 
-const REDRAW_INTERVAL_MS = 40;
+const REDRAW_INTERVAL_MS = 10;
 
 // prevent x axis tick labels from being cut off
 const chartXPadding = 15;
@@ -115,6 +115,7 @@ export default function ShredsChart({
       legend: { show: false },
       axes: [
         {
+          show: false,
           scale: shredsXScaleKey,
           incrs: xIncrs,
           size: 30,
@@ -136,6 +137,7 @@ export default function ShredsChart({
           stroke: gridTicksColor,
         },
         {
+          show: false,
           size: 0,
           grid: {
             filter: () => [0],
@@ -151,7 +153,7 @@ export default function ShredsChart({
   options.width = measureRect.width;
   options.height = measureRect.height;
 
-  useRafLoop((time: number) => {
+  useRafLoop(function drawShredsLoop(time: number) {
     if (!uplotRef) return;
     if (
       lastRedrawRef.current == null ||
@@ -164,7 +166,7 @@ export default function ShredsChart({
 
   return (
     <Flex direction="column" gap="2px" {...flexProps}>
-      {!isOnStartupScreen && <ShredsSlotLabels />}
+      {/* {!isOnStartupScreen && <ShredsSlotLabels />} */}
       <Box
         flexGrow="1"
         minHeight="0"

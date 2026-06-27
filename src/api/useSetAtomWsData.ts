@@ -36,7 +36,10 @@ import {
   deleteSupermajorityDeltaEntriesAtom,
   resetSupermajorityAtom,
 } from "../atoms";
-import { liveShredsDataAtom } from "../features/Overview/ShredsProgression/atoms";
+import {
+  liveShredsDataAtom,
+  minDirtySlotByChartAtom,
+} from "../features/Overview/ShredsProgression/atoms";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
 import {
   addTurbineSlotsAtom,
@@ -166,15 +169,31 @@ export function useSetAtomWsData() {
   );
 
   const setLiveShreds = useSetAtom(liveShredsDataAtom);
+  const setMinDirtySlotByChart = useSetAtom(minDirtySlotByChartAtom);
   const updateLiveShredsObject = useCallback(
     ({ key, data }: LiveShredsItem) => {
       switch (key) {
         case liveShredsKey:
           setLiveShreds(data);
+          if (data.minChangedSlot != null) {
+            const { slot: changedSlot, idx: changedIdx } = data.minChangedSlot;
+            setMinDirtySlotByChart((prev) => {
+              for (const [chartId, minDirty] of prev) {
+                if (
+                  minDirty == null ||
+                  changedSlot < minDirty.slot ||
+                  (changedSlot === minDirty.slot && changedIdx < minDirty.idx)
+                ) {
+                  prev.set(chartId, { slot: changedSlot, idx: changedIdx });
+                }
+              }
+              return prev;
+            });
+          }
           break;
       }
     },
-    [setLiveShreds],
+    [setLiveShreds, setMinDirtySlotByChart],
   );
 
   const onMessage = useCallback(

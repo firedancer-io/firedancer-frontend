@@ -36,7 +36,9 @@ export function createShredsCache(
       };
     },
     collect: (e) => {
-      return { key: e.key, data: e.shredsCalc.data };
+      const item = { key: e.key, data: { ...e.shredsCalc.data } };
+      e.shredsCalc.data.minChangedSlot = undefined;
+      return item;
     },
     post,
     onReset: (e) => {

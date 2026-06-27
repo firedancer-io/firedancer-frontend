@@ -36,4 +36,8 @@ export interface LiveShredsData {
     max: number;
   };
   slotsShreds?: SlotsShreds;
+  /**
+   * min slot number updated since the last publish, and the min shred idx changed within that slot
+   */
+  minChangedSlot?: { slot: number; idx: number };
 }

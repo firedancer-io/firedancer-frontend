@@ -50,6 +50,18 @@ export function createShredsCalc(getValidatorState: () => ValidatorState) {
       const slotNumber = reference_slot + slot_delta[i];
       const shredIdx = shred_idx[i];
 
+      if (
+        data.minChangedSlot == null ||
+        slotNumber < data.minChangedSlot.slot
+      ) {
+        data.minChangedSlot = { slot: slotNumber, idx: shredIdx ?? 0 };
+      } else if (slotNumber === data.minChangedSlot.slot) {
+        data.minChangedSlot.idx = Math.min(
+          shredIdx ?? 0,
+          data.minChangedSlot.idx,
+        );
+      }
+
       // convert to current reference and delta
       const eventTsDelta = Math.round(
         (Number(reference_ts) + event_ts_delta[i]) / nsPerMs -

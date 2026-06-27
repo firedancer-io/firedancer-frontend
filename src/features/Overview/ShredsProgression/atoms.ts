@@ -19,6 +19,15 @@ export const liveShredsPostStartupRangeAtom = atom((get) => {
   };
 });
 
+/*
+ * Maps chartId to the minimum slot number that received a shred update since the last draw.
+ * null means the chart is registered but has no pending dirty slots.
+ * Reset each entry to null after the chart consumes it (do not delete, so new updates can accumulate).
+ */
+export const minDirtySlotByChartAtom = atom<
+  Map<string, { slot: number; idx: number } | null>
+>(new Map());
+
 /**
  *  leader slots after startup, used for labels
  * */
