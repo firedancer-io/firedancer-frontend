@@ -1,5 +1,6 @@
 import { useAtomValue } from "jotai";
 import {
+  ascendingLeaderSlotsSetAtom,
   currentSlotAtom,
   epochAtom,
   isCurrentlyLeaderAtom,
@@ -74,12 +75,18 @@ const MAllSlotsList = memo(function AllSlotsList({
 }: SlotsListProps) {
   const epoch = useAtomValue(epochAtom);
   const currentSlot = useAtomValue(currentSlotAtom);
-  const leaderSlots = useAtomValue(leaderSlotsAtom);
+  const ascendingLeaderSlotsSet = useAtomValue(ascendingLeaderSlotsSetAtom);
   const nextLeaderSlot = useAtomValue(nextLeaderSlotAtom);
 
   const slotsListProps = useMemo(
-    () => getAllSlotsListProps(epoch, currentSlot, leaderSlots, nextLeaderSlot),
-    [epoch, currentSlot, leaderSlots, nextLeaderSlot],
+    () =>
+      getAllSlotsListProps(
+        epoch,
+        currentSlot,
+        ascendingLeaderSlotsSet,
+        nextLeaderSlot,
+      ),
+    [epoch, currentSlot, ascendingLeaderSlotsSet, nextLeaderSlot],
   );
 
   if (!slotsListProps) return null;

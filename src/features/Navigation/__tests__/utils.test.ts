@@ -41,14 +41,25 @@ describe("navigation utils", () => {
     });
 
     it("handles undefined epoch", () => {
-      const result = getAllSlotsListProps(undefined, undefined, undefined, undefined);
+      const result = getAllSlotsListProps(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      );
       expect(result).toBeUndefined();
     });
   });
 
   describe("getMySlotsListProps", () => {
     it("gets correct values and gives the index for the closest smaller my slot leader", () => {
-      const result = getMySlotsListProps([4, 12, 20, 40, 44, 48], undefined, undefined, false, undefined);
+      const result = getMySlotsListProps(
+        [4, 12, 20, 40, 44, 48],
+        undefined,
+        undefined,
+        false,
+        undefined,
+      );
 
       expect(result).not.toBeUndefined();
       const { itemsCount, getSlotAtIndex, getIndexForSlot } = result!;
