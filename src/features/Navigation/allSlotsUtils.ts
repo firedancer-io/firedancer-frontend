@@ -17,7 +17,7 @@ import { getHeightSum, type Counts } from "./utils";
 export function getAllSlotsOffsetHelpers(
   epoch: Epoch,
   currentSlot: number,
-  leaderSlots: number[],
+  ascendingLeaderSlotsSet: Set<number>,
   nextLeaderSlot: number | undefined,
   getSlotAtIndex: (index: number) => number | undefined,
 ): OffsetHelpers {
@@ -30,7 +30,7 @@ export function getAllSlotsOffsetHelpers(
     lastLeaderSlot,
     currentLeaderSlot,
     nextLeaderSlot,
-    leaderSlots,
+    ascendingLeaderSlotsSet,
   );
   const totalHeight = getHeightSum(counts);
 
@@ -44,7 +44,7 @@ export function getAllSlotsOffsetHelpers(
       lastLeaderSlot,
       currentLeaderSlot,
       nextLeaderSlot,
-      leaderSlots,
+      ascendingLeaderSlotsSet,
     );
     return getHeightSum(counts);
   };
@@ -58,7 +58,7 @@ export function getAllSlotsOffsetHelpers(
 
   const getSlotHeight = (anySlot: number) => {
     const slot = getSlotGroupLeader(anySlot);
-    const isYours = leaderSlots.includes(slot);
+    const isYours = ascendingLeaderSlotsSet.has(slot);
     if (slot < currentLeaderSlot)
       return isYours ? YOUR_PAST_HEIGHT : OTHER_PAST_HEIGHT;
     if (slot === currentLeaderSlot)
@@ -92,7 +92,7 @@ export function getAllSlotsOffsetHelpers(
 export function getAllSlotsListProps(
   epoch: Epoch | undefined,
   currentSlot: number | undefined,
-  leaderSlots: number[] | undefined,
+  ascendingLeaderSlotsSet: Set<number> | undefined,
   nextLeaderSlot: number | undefined,
 ): SlotsIndexProps | undefined {
   if (!epoch) return;
@@ -111,11 +111,11 @@ export function getAllSlotsListProps(
   };
 
   const offsetHelpers =
-    currentSlot != null && leaderSlots != null
+    currentSlot != null && ascendingLeaderSlotsSet != null
       ? getAllSlotsOffsetHelpers(
           epoch,
           currentSlot,
-          leaderSlots,
+          ascendingLeaderSlotsSet,
           nextLeaderSlot,
           getSlotAtIndex,
         )
@@ -134,13 +134,13 @@ function getTypeCounts(
   maxLeaderSlot: number,
   currentLeaderSlot: number,
   yourNextLeaderSlot: number | undefined,
-  leaderSlots: number[],
+  ascendingLeaderSlotsSet: Set<number>,
 ): Counts {
   let yourPastCount = 0;
   let yourCurrentCount = 0;
   let yourNextFutureCount = 0;
   let yourNonNextFutureCount = 0;
-  for (const slot of leaderSlots) {
+  for (const slot of ascendingLeaderSlotsSet) {
     if (slot < minLeaderSlot) continue;
     if (slot > maxLeaderSlot) break;
 

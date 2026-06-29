@@ -26,6 +26,7 @@ export function getMySlotsOffsetHelpers(
     mySlots.length - 1,
     isCurrentlyLeader,
     nextLeaderSlotIndex,
+    mySlots.length,
   );
   const totalHeight = getHeightSum(counts);
 
@@ -41,6 +42,7 @@ export function getMySlotsOffsetHelpers(
       leaderEndIdx,
       isCurrentlyLeader,
       nextLeaderSlotIndex,
+      mySlots.length,
     );
 
     return getHeightSum(countsAbove);
@@ -141,6 +143,7 @@ function getTypeCountsForLeaderIndices(
   endLeadersIdx: number,
   isCurrentlyLeader: boolean,
   nextLeaderSlotIndex: number | undefined,
+  totalLeadersCount: number,
 ): Counts {
   const totalCount = endLeadersIdx - startLeadersIdx + 1;
   const futureCount =
@@ -156,6 +159,7 @@ function getTypeCountsForLeaderIndices(
     endLeadersIdx,
     nextLeaderSlotIndex,
     isCurrentlyLeader,
+    totalLeadersCount,
   )
     ? 1
     : 0;
@@ -180,10 +184,14 @@ function isCurrentLeaderAndInRange(
   endIdx: number,
   nextLeaderSlotIndex: number | undefined,
   isCurrentlyLeader: boolean,
+  totalLeadersCount: number,
 ) {
-  if (!isCurrentlyLeader || nextLeaderSlotIndex == null) return false;
+  if (!isCurrentlyLeader) return false;
 
-  const currentIndex = nextLeaderSlotIndex - 1;
+  const currentIndex =
+    nextLeaderSlotIndex != null
+      ? nextLeaderSlotIndex - 1
+      : totalLeadersCount - 1;
   if (currentIndex < 0) return false;
 
   return currentIndex >= startIdx && currentIndex <= endIdx;
