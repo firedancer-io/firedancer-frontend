@@ -13,6 +13,23 @@ let reconnectTimer: ReturnType<typeof setTimeout>;
 let scheduled = false;
 const pendingBatches = new Map<string, WsEntity[]>();
 
+const loggedZodFailures = new Set<string>();
+
+function getZodFailureKey(json: unknown): string | null {
+  if (
+    json != null &&
+    typeof json === "object" &&
+    "topic" in json &&
+    "key" in json &&
+    typeof json.topic === "string" &&
+    typeof json.key === "string"
+  ) {
+    return `${json.topic}:${json.key}`;
+  }
+
+  return null;
+}
+
 const handler = createMessageHandler((msg) => ctx.postMessage(msg));
 
 function enqueue(item: WsEntity) {
@@ -87,14 +104,24 @@ function connect(url: string, zstd: ZstdDec | undefined) {
 
       if (json !== undefined) {
         const result = WsMessageSchema.safeParse(json);
-        if (!result.success) {
+
+        if (result.success) {
+          enqueue(result.data);
+          return;
+        }
+
+        const failureKey = getZodFailureKey(json);
+        if (failureKey == null) {
           logDebug("zod", json);
           logDebug("Zod", result.error.message);
           logDebug("Zod", result.error.issues);
           return;
+        } else if (!loggedZodFailures.has(failureKey)) {
+          loggedZodFailures.add(failureKey);
+          logDebug("zod", json);
+          logDebug("Zod", result.error.message);
+          logDebug("Zod", result.error.issues);
         }
-
-        enqueue(result.data);
       }
     } catch (e) {
       logError("WS", e);
