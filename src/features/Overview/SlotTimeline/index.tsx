@@ -373,7 +373,7 @@ function PrevSlots({
 
           if (slotBars) {
             return (
-              <HighlightedSlotBar
+              <MHighlightedSlotBar
                 key={slot}
                 colors={slotBars.map(({ barColor }) => barColor)}
                 barWidth={slotBarWidth}
@@ -469,7 +469,7 @@ function CurrentSlots({
           const slotBars = groupedSlotBars.get(slot);
           if (slotBars) {
             return (
-              <HighlightedSlotBar
+              <MHighlightedSlotBar
                 key={slot}
                 colors={slotBars.map(({ barColor }) => barColor)}
               />
@@ -531,7 +531,7 @@ function NextSlots({ nextLeaderSlotBar, minSlot }: NextSlotsProps) {
       >
         <MFillerBars count={fillerSlotCount} />
         {nextLeaderSlotBar.slot && (
-          <HighlightedSlotBar
+          <MHighlightedSlotBar
             colors={[nextLeaderSlotBar.barColor]}
             barWidth={barWidth / 2}
           />
@@ -639,17 +639,24 @@ interface HighlightedSlotBarProps {
   barWidth?: number;
 }
 
-function HighlightedSlotBar({ colors, barWidth }: HighlightedSlotBarProps) {
-  const flexGrow = barWidth ? undefined : "1";
+const MHighlightedSlotBar = memo(
+  function HighlightedSlotBar({ colors, barWidth }: HighlightedSlotBarProps) {
+    const flexGrow = barWidth ? undefined : "1";
 
-  return (
-    <Grid rows="repeat(auto-fill, 1fr)" gap={barTrackGap} flexGrow={flexGrow}>
-      {colors.map((color) => (
-        <MSlotBar key={color} barWidth={barWidth} color={color} />
-      ))}
-    </Grid>
-  );
-}
+    return (
+      <Grid rows="repeat(auto-fill, 1fr)" gap={barTrackGap} flexGrow={flexGrow}>
+        {colors.map((color) => (
+          <MSlotBar key={color} barWidth={barWidth} color={color} />
+        ))}
+      </Grid>
+    );
+  },
+  // colors is a fresh array each render — compare by value
+  (a, b) =>
+    a.barWidth === b.barWidth &&
+    a.colors.length === b.colors.length &&
+    a.colors.every((c, i) => c === b.colors[i]),
+);
 
 interface SlotBarProps {
   isDim?: boolean;
@@ -678,11 +685,11 @@ interface FillerBarsProps {
   count: number;
 }
 
-const MFillerBars = function FillerBars({ count }: FillerBarsProps) {
+const MFillerBars = memo(function FillerBars({ count }: FillerBarsProps) {
   return Array.from({ length: count }).map((_, i) => (
     <MSlotBar key={i} isDim />
   ));
-};
+});
 
 interface LabelsGridProps {
   storageSlotBar: SlotBarInfo;
