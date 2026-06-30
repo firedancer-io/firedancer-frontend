@@ -18,6 +18,7 @@ interface UplotReactProps {
   onCreate?: (chart: uPlot) => void;
   resetScales?: boolean;
   className?: string;
+  setSizeDebounceMs?: number;
 }
 
 export interface UplotChartRef {
@@ -32,6 +33,7 @@ export default function UplotReact({
   onDelete,
   onCreate,
   resetScales = true,
+  setSizeDebounceMs = 500,
   className,
 }: UplotReactProps): JSX.Element | null {
   const chartRef = useRef<uPlot | null>(null);
@@ -137,7 +139,7 @@ export default function UplotReact({
         }),
       );
     },
-    500,
+    setSizeDebounceMs,
     { leading: true, trailing: true },
   );
 
