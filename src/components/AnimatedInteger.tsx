@@ -12,6 +12,9 @@ import clsx from "clsx";
 import { Box, Flex, Text, type FlexProps } from "@radix-ui/themes";
 import { useUnmount } from "react-use";
 import useIsDocumentVisible from "../hooks/useIsDocumentVisible";
+import { useAtomValue } from "jotai";
+import { nsPerMs } from "../consts";
+import { epochAtom } from "../atoms";
 
 const MIN_ANIMATION_DURATION_MS = 20;
 
@@ -29,13 +32,48 @@ interface AnimatedIntegerProps {
  * Animate individual digits to reach the desired value.
  * Animation occurs one step at a time, even if the value jumps by > 1.
  */
-export default function AnimatedInteger(props: AnimatedIntegerProps) {
+export default function AnimatedInteger({
+  value,
+  animationDurationMs,
+  height,
+  containerRowJustify,
+  className,
+}: AnimatedIntegerProps) {
   const isDocumentVisible = useIsDocumentVisible();
+  const targetSlotDuration =
+    useAtomValue(epochAtom)?.target_slot_duration_nanos;
+  const noAnimation =
+    targetSlotDuration != null && targetSlotDuration < 400 * nsPerMs;
+
+  const heightStyle = useMemo(() => {
+    if (height == null) return;
+    return {
+      height: `${height}px`,
+    } as CSSProperties;
+  }, [height]);
 
   // re-mount when visible again, so there's no need to catch up
   if (!isDocumentVisible) return null;
 
-  return <AnimatedIntegerInner {...props} />;
+  if (noAnimation) {
+    return (
+      <Flex position="relative" justify={containerRowJustify}>
+        <Text className={className} style={heightStyle}>
+          {value}
+        </Text>
+      </Flex>
+    );
+  }
+
+  return (
+    <AnimatedIntegerInner
+      value={value}
+      animationDurationMs={animationDurationMs}
+      heightStyle={heightStyle}
+      containerRowJustify={containerRowJustify}
+      className={className}
+    />
+  );
 }
 
 type Direction = "incr" | "decr";
@@ -66,13 +104,21 @@ function animationLegReducer(
   };
 }
 
+interface AnimatedIntegerInnerProps {
+  value: number;
+  animationDurationMs?: number;
+  heightStyle?: CSSProperties;
+  containerRowJustify?: FlexProps["justify"];
+  className?: string;
+}
+
 function AnimatedIntegerInner({
   value,
   animationDurationMs = 150,
-  height,
+  heightStyle,
   className,
   containerRowJustify,
-}: AnimatedIntegerProps) {
+}: AnimatedIntegerInnerProps) {
   const [leg, setLeg] = useReducer(animationLegReducer, {
     start: value,
     target: value,
@@ -194,13 +240,6 @@ function AnimatedIntegerInner({
     // next time animation is stopped, update to new leg
     setLeg({ start: currentValidNumber, target: value });
   }, [currentValidNumber, isDuringAnimation, nextState.number, target, value]);
-
-  const heightStyle = useMemo(() => {
-    if (height == null) return;
-    return {
-      height: `${height}px`,
-    } as CSSProperties;
-  }, [height]);
 
   return (
     <Flex position="relative" justify={containerRowJustify}>
