@@ -25,7 +25,7 @@ import {
   isStartupProgressExpandedAtom,
   showStartupProgressAtom,
 } from "../StartupProgress/atoms";
-import { Cross1Icon, InfoCircledIcon, TimerIcon } from "@radix-ui/react-icons";
+import { Cross1Icon, TimerIcon, GlobeIcon } from "@radix-ui/react-icons";
 import { bootProgressContainerElAtom } from "../../atoms";
 import { useCallback } from "react";
 import PopoverDropdown from "../../components/PopoverDropdown";
@@ -116,7 +116,12 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
 
               <HealthPane />
 
-              <Flex gap="1" direction={isNarrowScreen ? "column" : "row"}>
+              <Flex
+                className={clsx(
+                  styles.togglesContainer,
+                  isNarrowScreen ? styles.column : styles.row,
+                )}
+              >
                 <Attribution />
 
                 {isStartup ? (
@@ -162,7 +167,14 @@ function Attribution() {
         </Text>
       }
     >
-      <InfoCircledIcon color="var(--gray-11)" />
+      <Flex
+        className={styles.attributionContainer}
+        align="center"
+        px="5px"
+        py="3px"
+      >
+        <GlobeIcon />
+      </Flex>
     </PopoverDropdown>
   );
 }
@@ -178,6 +190,7 @@ function ExpandStartupProgressButton() {
 
   return (
     <IconButton
+      className={styles.startupToggleButton}
       ref={setExpandStartupProgressEl}
       variant="ghost"
       color="gray"
@@ -212,7 +225,12 @@ function CollapseStartupProgressButton() {
   if (!showStartupProgress) return null;
 
   return (
-    <IconButton variant="ghost" color="gray" onClick={onClick}>
+    <IconButton
+      variant="ghost"
+      color="gray"
+      onClick={onClick}
+      className={styles.startupToggleButton}
+    >
       <Cross1Icon color="white" />
     </IconButton>
   );
