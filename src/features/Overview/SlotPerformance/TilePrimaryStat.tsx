@@ -1,25 +1,36 @@
 import styles from "./tilePrimaryStat.module.css";
-import { useAtomValue } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { liveTilePrimaryMetricAtom } from "../../../api/atoms";
 import { Text } from "@radix-ui/themes";
 import type { TilePrimaryMetric } from "../../../api/types";
 import { selectedSlotAtom } from "./atoms";
 import byteSize from "byte-size";
 import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";
+import { memo, useMemo } from "react";
 
 interface TilePrimaryStatProps {
   type: keyof TilePrimaryMetric;
   label: string;
 }
 
-export default function TilePrimaryStat({ type, label }: TilePrimaryStatProps) {
+export default memo(function TilePrimaryStat({
+  type,
+  label,
+}: TilePrimaryStatProps) {
   const slot = useAtomValue(selectedSlotAtom);
   const showLive = !slot;
-  const primaryMetric = useAtomValue(liveTilePrimaryMetricAtom);
+  const liveStatAtom = useMemo(
+    () =>
+      atom(
+        (get) => get(liveTilePrimaryMetricAtom)?.tile_primary_metric?.[type],
+      ),
+    [type],
+  );
+  const liveStat = useAtomValue(liveStatAtom);
   const query = useSlotQueryResponseDetailed(showLive ? undefined : slot);
 
   const stat = showLive
-    ? primaryMetric?.tile_primary_metric?.[type]
+    ? liveStat
     : query.response?.tile_primary_metric?.[type];
 
   const style =
@@ -33,7 +44,7 @@ export default function TilePrimaryStat({ type, label }: TilePrimaryStatProps) {
       </div>
     </div>
   );
-}
+});
 
 function getFormatted(type: keyof TilePrimaryMetric, value?: number) {
   if (value === undefined || value === -1) return "-";

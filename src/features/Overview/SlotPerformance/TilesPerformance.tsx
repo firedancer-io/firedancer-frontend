@@ -11,8 +11,7 @@ export default function TilesPerformance() {
   const isStartupVisible = useAtomValue(isStartupProgressVisibleAtom);
   const isExpanded = _isExpanded && !isStartupVisible;
 
-  const { tileCounts, groupedLiveIdlePerTile, showLive, queryIdleData } =
-    useTilesPerformance();
+  const { tileCounts, showLive, queryIdleData } = useTilesPerformance();
 
   const netType = tileCounts["net"] ? "net" : "sock";
 
@@ -22,7 +21,7 @@ export default function TilesPerformance() {
         header={netType}
         subHeader="(in)"
         tileCount={tileCounts[netType]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.[netType]}
+        tileType={netType}
         queryIdlePerTile={showLive ? undefined : queryIdleData?.[netType]}
         statLabel="Ingress"
         metricType="net_in"
@@ -32,7 +31,7 @@ export default function TilesPerformance() {
       <TileCard
         header="QUIC"
         tileCount={tileCounts["quic"]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.["quic"]}
+        tileType="quic"
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["quic"]}
         statLabel="Conns"
         metricType="quic"
@@ -43,7 +42,7 @@ export default function TilesPerformance() {
         <TileCard
           header="bundle"
           tileCount={tileCounts["bundle"]}
-          liveIdlePerTile={groupedLiveIdlePerTile?.["bundle"]}
+          tileType="bundle"
           queryIdlePerTile={showLive ? undefined : queryIdleData?.["bundle"]}
           {...(showLive
             ? {
@@ -61,7 +60,7 @@ export default function TilesPerformance() {
       <TileCard
         header="verify"
         tileCount={tileCounts["verify"]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.["verify"]}
+        tileType="verify"
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["verify"]}
         statLabel="Failed"
         metricType="verify"
@@ -71,7 +70,7 @@ export default function TilesPerformance() {
       <TileCard
         header="dedup"
         tileCount={tileCounts["dedup"]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.["dedup"]}
+        tileType="dedup"
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["dedup"]}
         statLabel="Dupes"
         metricType="dedup"
@@ -81,7 +80,7 @@ export default function TilesPerformance() {
       <TileCard
         header={tileNames.resolv}
         tileCount={tileCounts[tileNames.resolv]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.[tileNames.resolv]}
+        tileType={tileNames.resolv}
         queryIdlePerTile={
           showLive ? undefined : queryIdleData?.[tileNames.resolv]
         }
@@ -92,7 +91,7 @@ export default function TilesPerformance() {
       <TileCard
         header="pack"
         tileCount={tileCounts["pack"]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.["pack"]}
+        tileType="pack"
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["pack"]}
         statLabel="Full"
         metricType="pack"
@@ -102,7 +101,7 @@ export default function TilesPerformance() {
       <TileCard
         header={tileNames.bank}
         tileCount={tileCounts[tileNames.bank]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.[tileNames.bank]}
+        tileType={tileNames.bank}
         queryIdlePerTile={
           showLive ? undefined : queryIdleData?.[tileNames.bank]
         }
@@ -114,7 +113,7 @@ export default function TilesPerformance() {
       <TileCard
         header={tileNames.poh}
         tileCount={tileCounts[tileNames.poh]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.[tileNames.poh]}
+        tileType={tileNames.poh}
         queryIdlePerTile={showLive ? undefined : queryIdleData?.[tileNames.poh]}
         statLabel="Hash"
         // metricType="poh"
@@ -124,7 +123,7 @@ export default function TilesPerformance() {
       <TileCard
         header="shred"
         tileCount={tileCounts["shred"]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.["shred"]}
+        tileType="shred"
         queryIdlePerTile={showLive ? undefined : queryIdleData?.["shred"]}
         statLabel="Shreds"
         // metricType="shred"
@@ -135,7 +134,7 @@ export default function TilesPerformance() {
         header={netType}
         subHeader="(out)"
         tileCount={tileCounts[netType]}
-        liveIdlePerTile={groupedLiveIdlePerTile?.[netType]}
+        tileType={netType}
         queryIdlePerTile={showLive ? undefined : queryIdleData?.[netType]}
         statLabel="Egress" // mbs
         metricType="net_out"
