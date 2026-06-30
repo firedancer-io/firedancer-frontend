@@ -1,9 +1,13 @@
-import { Flex } from "@radix-ui/themes";
+import { lazy, Suspense } from "react";
+import { Box, Flex } from "@radix-ui/themes";
 import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
-import ShredsChartWebGl from "./WebGl/Chart";
 import { ShredsChartLegend } from "./ShredsChartLegend";
 import { isFrankendancer } from "../../../client";
+
+// Lazy-load so Three.js is split into its own chunk, downloaded only when the
+// shreds chart mounts.
+const ShredsChartWebGl = lazy(() => import("./WebGl/Chart"));
 
 export default function ShredsProgression() {
   if (isFrankendancer) return;
@@ -16,7 +20,9 @@ export default function ShredsProgression() {
           <CardHeader text="Shreds" />
           <ShredsChartLegend />
         </Flex>
-        <ShredsChartWebGl height="400px" chartId="overview-shreds-chart" />
+        <Suspense fallback={<Box height="400px" />}>
+          <ShredsChartWebGl height="400px" chartId="overview-shreds-chart" />
+        </Suspense>
       </Flex>
     </Card>
   );
