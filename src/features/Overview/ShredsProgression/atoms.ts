@@ -105,6 +105,8 @@ export function createLiveShredsAtoms() {
         const minCompletedSlot = get(_minCompletedSlotAtom);
         let newMinCompletedSlot = minCompletedSlot;
 
+        let minEventSlot = Infinity;
+
         set(_liveShredsAtom, (prev) => {
           const updated: SlotsShreds = prev ?? {
             referenceTs: Math.round(Number(reference_ts) / nsPerMs),
@@ -125,6 +127,8 @@ export function createLiveShredsAtoms() {
             }
 
             const slotNumber = reference_slot + slot_delta[i];
+            minEventSlot = Math.min(minEventSlot, slotNumber);
+
             const shredIdx = shred_idx[i];
 
             // convert to current reference and delta
@@ -163,6 +167,16 @@ export function createLiveShredsAtoms() {
 
         set(_slotRangeAtom, slotRange);
         set(_minCompletedSlotAtom, newMinCompletedSlot);
+
+        // update min dirty slots
+        set(minDirtySlotByChartAtom, (prev) => {
+          for (const [chartId, minDirtySlot] of prev) {
+            if (minEventSlot < minDirtySlot) {
+              prev.set(chartId, minEventSlot);
+            }
+          }
+          return prev;
+        });
       },
     ),
 
@@ -284,6 +298,12 @@ export const liveShredsDataAtom = atom<LiveShredsData>((get) => ({
 export const liveShredsPostStartupRangeAtom = atom((get) =>
   get(shredsAtoms.rangeAfterStartup),
 );
+
+/*
+ * Maps chartId to the minimum slot number that received a shred update since the last draw.
+ * Reset each entry to Infinity after the chart consumes it (do not delete, so new updates can accumulate).
+ */
+export const minDirtySlotByChartAtom = atom<Map<string, number>>(new Map());
 
 /**
  *  leader slots after startup, used for labels

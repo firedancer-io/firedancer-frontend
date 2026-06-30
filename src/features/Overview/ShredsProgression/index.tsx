@@ -1,7 +1,7 @@
 import { Flex } from "@radix-ui/themes";
 import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
-import ShredsChart from "./ShredsChart";
+import ShredsChartWebGl from "./WebGl/Chart";
 import { ShredsChartLegend } from "./ShredsChartLegend";
 import { isFrankendancer } from "../../../client";
 
@@ -16,11 +16,7 @@ export default function ShredsProgression() {
           <CardHeader text="Shreds" />
           <ShredsChartLegend />
         </Flex>
-        <ShredsChart
-          height="400px"
-          chartId="overview-shreds-chart"
-          isOnStartupScreen={false}
-        />
+        <ShredsChartWebGl height="400px" chartId="overview-shreds-chart" />
       </Flex>
     </Card>
   );

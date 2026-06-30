@@ -945,6 +945,16 @@ export enum ShredEvent {
   shred_published = 6,
 }
 
+export const MAX_SHRED_EVENT_IDX = Object.values(ShredEvent).reduce(
+  (acc, v) => {
+    if (typeof v === "number" && v > acc) {
+      return v;
+    }
+    return acc;
+  },
+  -Infinity,
+);
+
 export const liveShredsSchema = z.object({
   reference_slot: z.number(),
   reference_ts: z.coerce.bigint(),
