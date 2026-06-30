@@ -6,6 +6,7 @@ import { nsPerMs, slotsPerLeader } from "../../../consts";
 import { getSlotGroupLeader } from "../../../utils";
 import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
 import { slotCaughtUpAtom } from "../../../api/atoms";
+import { isWebGl2Available } from "./webglSupport";
 
 type ShredEventTsDeltaMs = number | undefined;
 /**
@@ -291,6 +292,13 @@ export const liveShredsDataAtom = atom<LiveShredsData>((get) => ({
 export const liveShredsPostStartupRangeAtom = atom((get) =>
   get(shredsAtoms.rangeAfterStartup),
 );
+
+/**
+ * Whether WebGL2 is available.
+ * Will be set to false if renderer setup fails at runtime
+ * (e.g. because of context-limit / driver failure).
+ */
+export const isWebgl2SupportedAtom = atom(isWebGl2Available());
 
 export const minDirtySlotByChartAtom = atom<Map<string, number>>(new Map());
 

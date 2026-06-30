@@ -12,6 +12,7 @@ import {
   liveShredsDataAtom,
   liveShredsPostStartupRangeAtom,
   minDirtySlotByChartAtom,
+  isWebgl2SupportedAtom,
 } from "../atoms";
 import { shredEventDescPriorities } from "../const";
 import { updateLabels } from "../shredsProgressionPlugin";
@@ -55,6 +56,8 @@ export type RendererObj = {
   worldTsRange: TsRange;
 };
 
+const MAX_PIXEL_RATIO = 2;
+
 const colors = {
   skipped: convertToWebGlColor(shredSkippedColor),
   repairRequested: convertToWebGlColor(shredRepairRequestedColor),
@@ -85,23 +88,29 @@ export function setUpRenderer(canvasWidth: number, canvasHeight: number) {
   const camera = new THREE.OrthographicCamera(0, 0, 0, 0, 0.5, 10);
   camera.position.z = 1;
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(canvasWidth, canvasHeight);
-  renderer.setClearColor(0x000000, 0);
+  try {
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
+    renderer.setSize(canvasWidth, canvasHeight);
+    renderer.setClearColor(0x000000, 0);
 
-  const meshes = new Map<number, SlotMesh>();
-  const availableMeshes: SlotMesh[] = [];
-  renderer.render(scene, camera);
+    const meshes = new Map<number, SlotMesh>();
+    const availableMeshes: SlotMesh[] = [];
+    renderer.render(scene, camera);
 
-  return {
-    renderer,
-    camera,
-    scene,
-    meshes,
-    availableMeshes,
-    worldTsRange,
-  };
+    return {
+      renderer,
+      camera,
+      scene,
+      meshes,
+      availableMeshes,
+      worldTsRange,
+    };
+  } catch {
+    // context creation can still fail despite the probe (e.g. too many live
+    // contexts, driver crash). Mark as unsupported to trigger fallback to canvas chart
+    store.set(isWebgl2SupportedAtom, false);
+  }
 }
 
 export function draw(

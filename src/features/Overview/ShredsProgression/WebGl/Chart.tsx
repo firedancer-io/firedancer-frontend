@@ -101,10 +101,11 @@ export default function ShredsChart({
     ) {
       lastRedrawRef.current = time;
       if (!rendererRef.current) {
-        const result = setUpRenderer(width, height);
-        if (!result) return;
-        rendererRef.current = result;
-        containerRef.current?.replaceChildren(result.renderer.domElement);
+        const rendererObj = setUpRenderer(width, height);
+        if (!rendererObj) return;
+
+        rendererRef.current = rendererObj;
+        containerRef.current?.replaceChildren(rendererObj.renderer.domElement);
       } else {
         draw(
           chartId,
