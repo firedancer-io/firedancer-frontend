@@ -6,10 +6,11 @@ import type { TilePrimaryMetric } from "../../../api/types";
 import { useAtomValue } from "jotai";
 import TilePrimaryStat from "./TilePrimaryStat";
 import TileBusy from "./TileBusy";
-import { selectedSlotAtom } from "./atoms";
+import { liveIdlePerTileFamily, selectedSlotAtom } from "./atoms";
 import TileSparkLineExpandedContainer from "./TileSparkLineExpandedContainer";
 import { useMeasure } from "react-use";
-import type React from "react";
+import { memo, type CSSProperties } from "react";
+import type { TileType } from "../../../api/types";
 import { useLastDefinedValue, useTileSparkline } from "./useTileSparkline";
 import clsx from "clsx";
 import { tileChartDarkBackground } from "../../../colors";
@@ -19,6 +20,7 @@ interface TileCardProps {
   subHeader?: string;
   tileCount: number;
   statLabel: string;
+  tileType?: TileType;
   liveIdlePerTile?: number[];
   queryIdlePerTile?: number[][];
   metricType?: keyof TilePrimaryMetric;
@@ -29,12 +31,13 @@ interface TileCardProps {
   isNarrow?: boolean;
 }
 
-export default function TileCard({
+export default memo(function TileCard({
   header,
   subHeader,
   tileCount,
   statLabel,
-  liveIdlePerTile,
+  tileType,
+  liveIdlePerTile: liveIdlePerTileProp,
   queryIdlePerTile,
   metricType,
   sparklineHeight,
@@ -47,6 +50,9 @@ export default function TileCard({
 
   const selectedSlot = useAtomValue(selectedSlotAtom);
   const isLive = selectedSlot === undefined;
+
+  const slicedLiveIdle = useAtomValue(liveIdlePerTileFamily(tileType));
+  const liveIdlePerTile = tileType ? slicedLiveIdle : liveIdlePerTileProp;
 
   const {
     avgBusy: currentAvgBusy,
@@ -120,7 +126,7 @@ export default function TileCard({
                     style={
                       {
                         "--busy": `${tileBusy * 100}%`,
-                      } as React.CSSProperties
+                      } as CSSProperties
                     }
                   />
                 );
@@ -132,7 +138,7 @@ export default function TileCard({
       </Card>
     </Flex>
   );
-}
+});
 
 function TileHeader({
   header,

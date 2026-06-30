@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { atomFamily, selectAtom } from "jotai/utils";
 import {
   liveTxnWaterfallAtom,
   tilesAtom,
@@ -7,7 +8,7 @@ import {
 import type { Epoch, TileType, TxnWaterfall } from "../../../api/types";
 import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
-import { countBy } from "lodash";
+import { countBy, isEqual } from "lodash";
 import { tileTypeSchema } from "../../../api/entities";
 import {
   currentSlotAtom,
@@ -124,6 +125,14 @@ export const groupedLiveIdlePerTileAtom = atom((get) => {
     {} as Record<TileType, number[]>,
   );
 });
+
+export const liveIdlePerTileFamily = atomFamily((tileType?: TileType) =>
+  selectAtom(
+    groupedLiveIdlePerTileAtom,
+    (g) => (tileType ? g?.[tileType] : undefined),
+    isEqual,
+  ),
+);
 
 export const snapshotTimerIndicesAtom = atom(
   (get): [TileType, number[]][] | undefined => {

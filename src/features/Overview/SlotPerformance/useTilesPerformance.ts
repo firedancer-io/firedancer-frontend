@@ -2,18 +2,13 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { tilesAtom } from "../../../api/atoms";
 import { useSlotQueryResponseDetailed } from "../../../hooks/useSlotQuery";
-import {
-  groupedLiveIdlePerTileAtom,
-  selectedSlotAtom,
-  tileCountAtom,
-} from "./atoms";
+import { selectedSlotAtom, tileCountAtom } from "./atoms";
 
 export function useTilesPerformance() {
   const slot = useAtomValue(selectedSlotAtom);
   const showLive = !slot;
   const tiles = useAtomValue(tilesAtom);
   const tileCounts = useAtomValue(tileCountAtom);
-  const groupedLiveIdlePerTile = useAtomValue(groupedLiveIdlePerTileAtom);
 
   const query = useSlotQueryResponseDetailed(slot);
 
@@ -58,7 +53,6 @@ export function useTilesPerformance() {
 
   return {
     tileCounts,
-    groupedLiveIdlePerTile,
     showLive,
     queryIdleData,
   };

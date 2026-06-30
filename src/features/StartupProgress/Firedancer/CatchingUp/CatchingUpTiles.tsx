@@ -15,8 +15,7 @@ export default function CatchingUpTiles() {
   const isStartupVisible = useAtomValue(isStartupProgressVisibleAtom);
   const isExpanded = isStartupVisible && _isExpanded;
 
-  const { tileCounts, groupedLiveIdlePerTile, showLive, queryIdleData } =
-    useTilesPerformance();
+  const { tileCounts, showLive, queryIdleData } = useTilesPerformance();
 
   return (
     <Grid
@@ -32,7 +31,7 @@ export default function CatchingUpTiles() {
           key={tile}
           header={tile}
           tileCount={tileCounts[tile]}
-          liveIdlePerTile={groupedLiveIdlePerTile?.[tile]}
+          tileType={tile}
           queryIdlePerTile={showLive ? undefined : queryIdleData?.[tile]}
           statLabel=""
           sparklineHeight={sparklineHeight}
