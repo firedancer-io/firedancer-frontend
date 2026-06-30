@@ -4,8 +4,9 @@ import { ShredEvent } from "../../../api/entities";
 import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
 import { getSlotGroupLeader } from "../../../utils";
-import { serverTimeMsAtom } from "../../../atoms";
+import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
 import { slotCaughtUpAtom } from "../../../api/atoms";
+import { isWebGl2Available } from "./webglSupport";
 
 type ShredEventTsDeltaMs = number | undefined;
 /**
@@ -105,6 +106,8 @@ export function createLiveShredsAtoms() {
         const minCompletedSlot = get(_minCompletedSlotAtom);
         let newMinCompletedSlot = minCompletedSlot;
 
+        let minEventSlot = Infinity;
+
         set(_liveShredsAtom, (prev) => {
           const updated: SlotsShreds = prev ?? {
             referenceTs: Math.round(Number(reference_ts) / nsPerMs),
@@ -125,6 +128,8 @@ export function createLiveShredsAtoms() {
             }
 
             const slotNumber = reference_slot + slot_delta[i];
+            minEventSlot = Math.min(minEventSlot, slotNumber);
+
             const shredIdx = shred_idx[i];
 
             // convert to current reference and delta
@@ -163,6 +168,9 @@ export function createLiveShredsAtoms() {
 
         set(_slotRangeAtom, slotRange);
         set(_minCompletedSlotAtom, newMinCompletedSlot);
+
+        // mark slot for redraw
+        set(setMinDirtySlotByChartIfSmaller, minEventSlot);
       },
     ),
 
@@ -283,6 +291,46 @@ export const liveShredsDataAtom = atom<LiveShredsData>((get) => ({
 
 export const liveShredsPostStartupRangeAtom = atom((get) =>
   get(shredsAtoms.rangeAfterStartup),
+);
+
+/**
+ * Whether WebGL2 is available.
+ * Will be set to false if renderer setup fails at runtime
+ * (e.g. because of context-limit / driver failure).
+ */
+export const isWebgl2SupportedAtom = atom(isWebGl2Available());
+
+export const minDirtySlotByChartAtom = atom<Map<string, number>>(new Map());
+
+/*
+ * Maps chartId to the minimum slot number that received a shred update since the last draw.
+ * Reset each entry to Infinity after the chart consumes it (do not delete, so new updates can accumulate).
+ */
+export const setMinDirtySlotByChartIfSmaller = atom(
+  null,
+  (_get, set, updatedSlot: number) => {
+    set(minDirtySlotByChartAtom, (prev) => {
+      for (const [chartId, minDirtySlot] of prev) {
+        if (updatedSlot < minDirtySlot) {
+          prev.set(chartId, updatedSlot);
+        }
+      }
+      return prev;
+    });
+  },
+);
+
+/**
+ * Mark a slot as dirty if skipped state changed
+ */
+export const setDirtySlotOnSkippedChangeAtom = atom(
+  null,
+  (get, set, slot: number, isSkipped: boolean) => {
+    const wasSkipped = get(skippedClusterSlotsAtom).has(slot);
+    if (wasSkipped === isSkipped) return;
+
+    set(setMinDirtySlotByChartIfSmaller, slot);
+  },
 );
 
 /**
