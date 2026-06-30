@@ -60,10 +60,6 @@ export type FromWorkerMessage =
   | {
       type: "emaHistoryObject";
       items: EmaObjectItem<Record<string, number>, string>[];
-    }
-  | {
-      type: "liveShredsObject";
-      items: LiveShredsItem[];
     };
 
 export interface EmaItem {
