@@ -53,7 +53,7 @@ export type LabelPositions = {
   };
 };
 
-type XRange = {
+export type XRange = {
   minDeltaTs: number;
   maxDeltaTs: number;
   minCanvasPos: number;
@@ -62,7 +62,7 @@ type XRange = {
   maxCssPos: number;
 };
 
-type LabelState = {
+export type LabelState = {
   transformX: number;
   width?: number;
   opacity?: string;
@@ -502,7 +502,7 @@ function findShredIdx(
   return -1;
 }
 
-function updateLabels(
+export function updateLabels(
   slotRange: {
     min: number;
     max: number;

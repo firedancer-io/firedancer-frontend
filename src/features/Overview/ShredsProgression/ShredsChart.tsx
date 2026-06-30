@@ -166,7 +166,7 @@ export default function ShredsChart({
 
   return (
     <Flex direction="column" gap="2px" {...flexProps}>
-      {/* {!isOnStartupScreen && <ShredsSlotLabels />} */}
+      {!isOnStartupScreen && <ShredsSlotLabels />}
       <Box
         flexGrow="1"
         minHeight="0"

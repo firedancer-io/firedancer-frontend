@@ -8,13 +8,13 @@ import { getDefaultStore, useAtomValue } from "jotai";
 import { serverTimeMsAtom } from "../../../../atoms";
 import { minDirtySlotByChartAtom } from "../atoms";
 import type {} from "../../../../api/worker/cache/shreds/types";
-import type { RendererObj, TsRange } from "./chartUtils";
-import { setUpRenderer, draw } from "./chartUtils";
+import type { RendererObj, TsRange, LabelsState } from "./chartUtils";
+import { setUpRenderer, draw, createLabelsState } from "./chartUtils";
 import ShredsSlotLabels from "../ShredsSlotLabels";
 
 const store = getDefaultStore();
 
-const REDRAW_INTERVAL_MS = 10;
+const REDRAW_INTERVAL_MS = 15;
 
 type FlexPropsSubset = Pick<FlexProps, "height" | "minHeight" | "flexGrow">;
 
@@ -46,6 +46,13 @@ export default function ShredsChart({
 
   const rendererRef = useRef<RendererObj | undefined>();
   const visibleTsRangeRef = useRef<TsRange | undefined>();
+  const labelsRef = useRef<{
+    prevLabels: LabelsState;
+    tempNewLabels: LabelsState;
+  }>({
+    prevLabels: createLabelsState(),
+    tempNewLabels: createLabelsState(),
+  });
 
   const lastRedrawRef = useRef(0);
   const lastRedrawServerTimeNsRef = useRef(serverTimeNs);
@@ -72,8 +79,10 @@ export default function ShredsChart({
           prevTimeDiffsRef,
           rendererRef.current,
           visibleTsRangeRef,
+          labelsRef,
           scale,
           false,
+          width,
         );
       }
     }
@@ -90,8 +99,10 @@ export default function ShredsChart({
       prevTimeDiffsRef,
       rendererRef.current,
       visibleTsRangeRef,
+      labelsRef,
       scale,
       true /* force redraw */,
+      width,
     );
   }, [scale, width, height, chartId, isOnStartupScreen]);
 
@@ -106,8 +117,10 @@ export default function ShredsChart({
       prevTimeDiffsRef,
       rendererRef.current,
       visibleTsRangeRef,
+      labelsRef,
       scale,
       true /* force redraw */,
+      width,
     );
   }, [scale, width, height, chartId, isOnStartupScreen]);
 

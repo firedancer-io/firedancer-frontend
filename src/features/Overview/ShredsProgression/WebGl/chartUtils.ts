@@ -18,6 +18,11 @@ import {
   minDirtySlotByChartAtom,
 } from "../atoms";
 import { shredEventDescPriorities } from "../const";
+import {
+  updateLabels,
+  type XRange,
+  type LabelState,
+} from "../shredsProgressionPlugin";
 import type { SlotMesh } from "../webglUtils";
 import {
   createSlotMesh,
@@ -113,8 +118,13 @@ export function draw(
   prevTimeDiffsRef: MutableRefObject<number[]>,
   rendererObj: RendererObj,
   visibleTsRangeRef: MutableRefObject<TsRange | undefined>,
+  labelsRef: MutableRefObject<{
+    prevLabels: LabelsState;
+    tempNewLabels: LabelsState;
+  }>,
   scale: number,
   forceDraw: boolean,
+  chartWidth: number,
 ) {
   const {
     slotsShreds: liveShreds,
@@ -273,6 +283,34 @@ export function draw(
   if (forceDraw || anythingDrawn || cameraChanged) {
     rendererObj.renderer.render(rendererObj.scene, rendererObj.camera);
   }
+
+  if (!isOnStartupScreen && rangeAfterStartup) {
+    const xRange: XRange = {
+      minDeltaTs: visibleTsRange[0],
+      maxDeltaTs: visibleTsRange[1],
+      minCanvasPos: 0,
+      maxCanvasPos: 0,
+      minCssPos: 0,
+      maxCssPos: chartWidth,
+    };
+
+    const { prevLabels, tempNewLabels } = labelsRef.current;
+    updateLabels(
+      rangeAfterStartup,
+      liveShreds.slots,
+      skippedSlotsCluster,
+      xRange,
+      prevLabels,
+      tempNewLabels,
+    );
+    // switch map for reuse, don't create new maps each render
+    labelsRef.current = {
+      prevLabels: tempNewLabels,
+      tempNewLabels: prevLabels,
+    };
+    prevLabels.groups.clear();
+    prevLabels.slots.clear();
+  }
 }
 
 function updateVisibleXRange(
@@ -376,6 +414,18 @@ function getDrawInfo(
 }
 
 export type TsRange = [startTs: number, endTs: number];
+
+export type LabelsState = {
+  groups: Map<number, LabelState>;
+  slots: Map<number, LabelState>;
+};
+
+export function createLabelsState(): LabelsState {
+  return {
+    groups: new Map<number, LabelState>(),
+    slots: new Map<number, LabelState>(),
+  };
+}
 
 interface AddEventsForRowArgs {
   tempEventPositions: Map<
