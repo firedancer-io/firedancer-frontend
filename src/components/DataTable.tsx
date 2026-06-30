@@ -1,4 +1,3 @@
-import { Flex, Table } from "@radix-ui/themes";
 import clsx from "clsx";
 
 import styles from "./dataTable.module.css";
@@ -9,7 +8,7 @@ export interface ColumnDefinition {
   columnName?: string;
   description: string;
   headerColWidth: number;
-  headerColAlign?: Table.ColumnHeaderCellProps["align"];
+  headerColAlign?: "left" | "center" | "right";
   wrap?: boolean;
 }
 
@@ -34,7 +33,7 @@ export default function DataTable({
   hideGroupHeaders,
 }: DataTableProps) {
   return (
-    <Flex>
+    <div className={styles.container}>
       <InnerTable
         groups={groups}
         TableBody={TableBody}
@@ -48,7 +47,7 @@ export default function DataTable({
         style={style}
         hideGroupHeaders={hideGroupHeaders}
       />
-    </Flex>
+    </div>
   );
 }
 
@@ -72,39 +71,43 @@ function InnerTable({
     [allGroups, isPinned],
   );
 
-  const rootStyle = useMemo(() => {
-    if (!isPinned) return { ...style, minWidth: "0px" };
-
-    // start with one pixel to account for border width
-    const pinnedTableWidth = `${groups.reduce((acc, group) => {
-      for (const column of group.columns) {
-        acc += column.headerColWidth;
-      }
-      return acc;
-    }, 1)}px`;
-
-    return {
-      ...style,
-      minWidth: pinnedTableWidth,
-      flexBasis: pinnedTableWidth,
-    };
-  }, [groups, isPinned, style]);
+  const tableWidth = useMemo(
+    () =>
+      groups.reduce((acc, group) => {
+        for (const column of group.columns) acc += column.headerColWidth;
+        return acc;
+      }, 0),
+    [groups],
+  );
 
   return (
-    <Table.Root
-      variant="ghost"
-      className={clsx(styles.root, styles.table)}
-      size="1"
-      style={rootStyle}
+    <div
+      className={clsx(
+        styles.root,
+        isPinned ? styles.pinned : styles.scrollable,
+      )}
+      style={{ "--table-width": `${tableWidth}px` } as CSSProperties}
     >
-      <TableHeader
-        groups={groups}
-        isPinned={isPinned}
-        hideGroupHeaders={hideGroupHeaders}
-      />
+      <table className={styles.table} style={style}>
+        <colgroup>
+          {groups.map((group) =>
+            group.columns.map((column) => (
+              <col
+                key={column.uniqueName}
+                style={{ width: column.headerColWidth }}
+              />
+            )),
+          )}
+        </colgroup>
+        <TableHeader
+          groups={groups}
+          isPinned={isPinned}
+          hideGroupHeaders={hideGroupHeaders}
+        />
 
-      <TableBody isPinned={isPinned} />
-    </Table.Root>
+        <TableBody isPinned={isPinned} />
+      </table>
+    </div>
   );
 }
 
@@ -116,55 +119,42 @@ interface TableHeaderProps {
 
 function TableHeader({ groups, isPinned, hideGroupHeaders }: TableHeaderProps) {
   return (
-    <>
-      <colgroup>
-        {groups.map((group) =>
-          group.columns.map((column) => (
-            <col
+    <thead className={styles.header}>
+      {!hideGroupHeaders && (
+        <tr>
+          {groups.map((group, i) => (
+            <th
+              key={group.name}
+              colSpan={group.columns.length}
+              className={clsx(styles.groupHeader, {
+                [styles.rightBorder]: isPinned || i !== groups.length - 1,
+              })}
+            >
+              {group.headerRenderer ? <group.headerRenderer /> : group.name}
+            </th>
+          ))}
+        </tr>
+      )}
+
+      <tr className={styles.lightBorderBottom}>
+        {groups.map((group, i) =>
+          group.columns.map((column, j) => (
+            <th
               key={column.uniqueName}
-              style={{ width: column.headerColWidth }}
-            />
+              align={column.headerColAlign}
+              className={clsx({
+                [styles.wrap]: !!column.wrap,
+                [styles.rightBorder]:
+                  isPinned ||
+                  // last field (except in last group) has right border
+                  (i !== groups.length - 1 && j === group.columns.length - 1),
+              })}
+            >
+              {column.columnName ?? column.uniqueName}
+            </th>
           )),
         )}
-      </colgroup>
-
-      <Table.Header className={styles.header}>
-        {!hideGroupHeaders && (
-          <Table.Row>
-            {groups.map((group, i) => (
-              <Table.ColumnHeaderCell
-                key={group.name}
-                colSpan={group.columns.length}
-                className={clsx(styles.groupHeader, {
-                  [styles.rightBorder]: isPinned || i !== groups.length - 1,
-                })}
-              >
-                {group.headerRenderer ? <group.headerRenderer /> : group.name}
-              </Table.ColumnHeaderCell>
-            ))}
-          </Table.Row>
-        )}
-
-        <Table.Row className={styles.lightBorderBottom}>
-          {groups.map((group, i) =>
-            group.columns.map((column, j) => (
-              <Table.ColumnHeaderCell
-                key={column.uniqueName}
-                align={column.headerColAlign}
-                className={clsx({
-                  [styles.wrap]: !!column.wrap,
-                  [styles.rightBorder]:
-                    isPinned ||
-                    // last field (except in last group) has right border
-                    (i !== groups.length - 1 && j === group.columns.length - 1),
-                })}
-              >
-                {column.columnName ?? column.uniqueName}
-              </Table.ColumnHeaderCell>
-            )),
-          )}
-        </Table.Row>
-      </Table.Header>
-    </>
+      </tr>
+    </thead>
   );
 }

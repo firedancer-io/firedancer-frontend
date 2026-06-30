@@ -6,7 +6,7 @@ import {
   tileTimerHistoryAtom,
 } from "../../../api/atoms";
 import Card from "../../../components/Card";
-import { Flex, Table, Text } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import tableStyles from "./../../../components/dataTable.module.css";
 import { Bars } from "../../StartupProgress/Firedancer/Bars";
 import TileSparkLine from "../SlotPerformance/TileSparkLine";
@@ -28,7 +28,6 @@ import {
 } from "react";
 import { tileChartDarkBackground } from "../../../colors";
 import { isEqual } from "lodash";
-import type { CellProps } from "@radix-ui/themes/components/table";
 import TableDescriptionDialog from "../../../components/TableDescriptionDialog";
 import { metricGroups } from "./consts";
 import { PriorityEnum } from "../../../api/entities";
@@ -68,7 +67,7 @@ function LiveMetricsTableBody({ isPinned }: LiveMetricsTableProps) {
   if (!tiles || !liveTileMetrics) return null;
 
   return (
-    <Table.Body>
+    <tbody>
       {tiles.map((tile, i) => (
         <TableRow
           key={`${tile.kind}${tile.kind_id}`}
@@ -78,7 +77,7 @@ function LiveMetricsTableBody({ isPinned }: LiveMetricsTableProps) {
           isPinned={isPinned}
         />
       ))}
-    </Table.Body>
+    </tbody>
   );
 }
 
@@ -120,15 +119,15 @@ function TableRow({ tile, liveTileMetrics, idx, isPinned }: TableRowProps) {
       (liveTileMetrics.priority?.[idx] ??
         prevLiveTileMetricsIdx?.priority?.[idx]) === PriorityEnum.floating;
     return (
-      <Table.Row
+      <tr
         className={clsx(tableStyles.dataRow, {
           [tableStyles.faded]: isFloating,
         })}
       >
-        <Table.Cell className={tableStyles.rightBorder}>
+        <td className={tableStyles.rightBorder}>
           {tile.kind}:{tile.kind_id}
-        </Table.Cell>
-      </Table.Row>
+        </td>
+      </tr>
     );
   }
 
@@ -204,13 +203,13 @@ function DataRow({
   const workPct = timers[3] + timers[4] + timers[7];
 
   return (
-    <Table.Row
+    <tr
       className={clsx(tableStyles.dataRow, {
         [tableStyles.faded]: priority === PriorityEnum.floating,
       })}
     >
-      <Table.Cell align="right">{cpu}</Table.Cell>
-      <Table.Cell
+      <td align="right">{cpu}</td>
+      <td
         className={clsx({
           [tableStyles.green]: alive,
           [tableStyles.red]: !alive,
@@ -218,24 +217,21 @@ function DataRow({
         align="right"
       >
         {alive ? "Live" : "Dead"}
-      </Table.Cell>
-      <Table.Cell
+      </td>
+      <td
         align="right"
         className={clsx({
           [tableStyles.critical]: priority === PriorityEnum.critical,
         })}
       >
         {priority ? priorityLabels[priority] : "-"}
-      </Table.Cell>
-      <Table.Cell
-        align="right"
-        className={clsx({ [tableStyles.red]: inBackpressure })}
-      >
+      </td>
+      <td align="right" className={clsx({ [tableStyles.red]: inBackpressure })}>
         {inBackpressure ? "Yes" : "-"}
-      </Table.Cell>
-      <Table.Cell align="right" className={tableStyles.rightBorder}>
+      </td>
+      <td align="right" className={tableStyles.rightBorder}>
         {backPressureCount?.toLocaleString() ?? "-"} |
-        <Text
+        <span
           className={clsx(tableStyles.incrementText, {
             [tableStyles.highIncrement]:
               backPressureCount != null && prevBackPressureCount != null
@@ -248,8 +244,8 @@ function DataRow({
             ? backPressureCount - prevBackPressureCount
             : 0
           ).toLocaleString()}
-        </Text>
-      </Table.Cell>
+        </span>
+      </td>
 
       <MUtilization idx={idx} />
 
@@ -277,21 +273,21 @@ function DataRow({
       <PctCell pct={schedSystemPct} />
       <PctCell pct={schedIdlePct} className={tableStyles.rightBorder} />
 
-      <Table.Cell align="right">{minflt?.toLocaleString() ?? "-"}</Table.Cell>
-      <Table.Cell align="right">{majflt?.toLocaleString() ?? "-"}</Table.Cell>
-      <Table.Cell align="right">
+      <td align="right">{minflt?.toLocaleString() ?? "-"}</td>
+      <td align="right">{majflt?.toLocaleString() ?? "-"}</td>
+      <td align="right">
         {nivcsw?.toLocaleString() ?? "-"} |
         <IncrementText
           value={nivcsw != null && prevNivcsw != null ? nivcsw - prevNivcsw : 0}
         />
-      </Table.Cell>
-      <Table.Cell align="right">
+      </td>
+      <td align="right">
         {nvcsw?.toLocaleString() ?? "-"} |
         <IncrementText
           value={nvcsw != null && prevNvcsw != null ? nvcsw - prevNvcsw : 0}
         />
-      </Table.Cell>
-    </Table.Row>
+      </td>
+    </tr>
   );
 }
 
@@ -301,7 +297,7 @@ interface IncrementTextProps {
 function IncrementText({ value }: IncrementTextProps) {
   const formatted = value.toLocaleString();
   return (
-    <Text
+    <span
       className={clsx(tableStyles.incrementText, {
         [tableStyles.lowIncrement]: 1 <= value && value <= 10,
         [tableStyles.midIncrement]: 11 <= value && value <= 100,
@@ -309,19 +305,21 @@ function IncrementText({ value }: IncrementTextProps) {
       })}
     >
       +{formatted}
-    </Text>
+    </span>
   );
 }
 
 interface PctCellProps {
   pct: number | undefined;
+  className?: string;
+  style?: CSSProperties;
 }
 
-function PctCell({ pct, ...props }: PctCellProps & CellProps) {
+function PctCell({ pct, className, style }: PctCellProps) {
   return (
-    <Table.Cell align="right" {...props}>
+    <td className={className} style={style} align="right">
       {pct == null ? "--" : `${pct.toFixed(2)}%`}
-    </Table.Cell>
+    </td>
   );
 }
 
@@ -380,14 +378,12 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
 
   return (
     <>
-      <Table.Cell className={tableStyles.noPadding}>
+      <td className={tableStyles.noPadding}>
         <Flex align="center">
           <Bars value={pct >= 0 ? pct : (prevPct ?? 0)} max={1} barWidth={2} />
         </Flex>
-      </Table.Cell>
-      <Table.Cell
-        className={clsx(tableStyles.noPadding, tableStyles.rightBorder)}
-      >
+      </td>
+      <td className={clsx(tableStyles.noPadding, tableStyles.rightBorder)}>
         <TileSparkLine
           value={avgValue}
           history={initialHistory}
@@ -397,7 +393,7 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
           updateIntervalMs={updateIntervalMs}
           tickMs={1_000}
         />
-      </Table.Cell>
+      </td>
     </>
   );
 });
