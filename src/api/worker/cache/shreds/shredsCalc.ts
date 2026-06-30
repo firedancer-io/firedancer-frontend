@@ -130,6 +130,7 @@ export function createShredsCalc(getValidatorState: () => ValidatorState) {
     } else {
       // After startup complete
       let minSlot = data.range.min;
+      // TODO: adapt deletion range when using cache
       if (data.range.max - data.range.min > 50) {
         // only keep 50 slots
         for (

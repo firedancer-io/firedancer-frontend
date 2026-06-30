@@ -4,7 +4,7 @@ import { ShredEvent } from "../../../api/entities";
 import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
 import { getSlotGroupLeader } from "../../../utils";
-import { serverTimeMsAtom } from "../../../atoms";
+import { epochAtom, serverTimeMsAtom } from "../../../atoms";
 import { slotCaughtUpAtom } from "../../../api/atoms";
 
 type ShredEventTsDeltaMs = number | undefined;
@@ -204,7 +204,13 @@ export function createLiveShredsAtoms() {
           } else {
             // After startup complete
             let minSlot = slotRange.min;
-            const countToKeep = 50;
+            const targetSlotDurationNs =
+              get(epochAtom)?.target_slot_duration_nanos;
+            const targetMs =
+              targetSlotDurationNs == null
+                ? 400
+                : targetSlotDurationNs / nsPerMs;
+            const countToKeep = Math.ceil((xRangeMs * 2) / targetMs);
             if (slotRange.max - slotRange.min > countToKeep) {
               // only keep countToKeep slots
               for (
