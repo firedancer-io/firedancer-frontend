@@ -11,7 +11,7 @@ import tableStyles from "./../../../components/dataTable.module.css";
 import { Bars } from "../../StartupProgress/Firedancer/Bars";
 import TileSparkLine from "../SlotPerformance/TileSparkLine";
 import { headerGap } from "../../Gossip/consts";
-import type { Priority, Tile, TileMetrics } from "../../../api/types";
+import type { Priority, Tile } from "../../../api/types";
 import clsx from "clsx";
 import {
   useHarmonicIntervalFn,
@@ -27,15 +27,143 @@ import {
   type CSSProperties,
 } from "react";
 import { tileChartDarkBackground } from "../../../colors";
-import { isEqual } from "lodash";
 import TableDescriptionDialog from "../../../components/TableDescriptionDialog";
 import { metricGroups } from "./consts";
 import { PriorityEnum } from "../../../api/entities";
 import DataTable from "../../../components/DataTable";
 
 const chartHeight = 18;
+const tableStyle = { "--bar-height": `${chartHeight}px` } as CSSProperties;
+
+const priorityLabels: Record<Priority, string> = {
+  floating: "Floating",
+  startup: "Startup",
+  normal: "Pinned",
+  critical: "Critical",
+};
+
+interface PinnedRowData {
+  name: string;
+  kindId: number;
+  priority: Priority | undefined;
+}
+
+interface ScrollableRowData {
+  idx: number;
+  alive: number | null | undefined;
+  timers: number[] | null | undefined;
+  schedTimers: number[] | null | undefined;
+  inBackpressure: boolean | null | undefined;
+  backPressureCount: number | null | undefined;
+  cpu: number | null | undefined;
+  minflt: number | null | undefined;
+  majflt: number | null | undefined;
+  nivcsw: number | null | undefined;
+  nvcsw: number | null | undefined;
+  priority: Priority | undefined;
+}
+
+interface TileRow {
+  tile: Tile;
+  idx: number;
+}
+
+function pinnedDataEqualityFn(a: PinnedRowData, b: PinnedRowData) {
+  return (
+    a.name === b.name && a.kindId === b.kindId && a.priority === b.priority
+  );
+}
+
+function scrollableDataEqualityFn(a: ScrollableRowData, b: ScrollableRowData) {
+  if (
+    a.alive !== b.alive ||
+    a.inBackpressure !== b.inBackpressure ||
+    a.backPressureCount !== b.backPressureCount ||
+    a.cpu !== b.cpu ||
+    a.minflt !== b.minflt ||
+    a.majflt !== b.majflt ||
+    a.nivcsw !== b.nivcsw ||
+    a.nvcsw !== b.nvcsw ||
+    a.priority !== b.priority
+  )
+    return false;
+
+  const at = a.timers;
+  const bt = b.timers;
+  if (at !== bt) {
+    if (!at || !bt || at.length !== bt.length) return false;
+    for (let i = 0; i < at.length; i++) if (at[i] !== bt[i]) return false;
+  }
+
+  const ast = a.schedTimers;
+  const bst = b.schedTimers;
+  if (ast !== bst) {
+    if (!ast || !bst || ast.length !== bst.length) return false;
+    for (let i = 0; i < ast.length; i++) if (ast[i] !== bst[i]) return false;
+  }
+
+  return true;
+}
+
+function getRowKey({ tile }: TileRow) {
+  return `${tile.kind}:${tile.kind_id}`;
+}
 
 export default memo(function LiveTileMetrics() {
+  const tiles = useAtomValue(tilesAtom);
+  const liveTileMetrics = useAtomValue(liveTileMetricsAtom);
+
+  const rows = useMemo<TileRow[]>(
+    () =>
+      (tiles ?? [])
+        .map((tile, idx) => ({ tile, idx }))
+        .filter(({ idx }) => liveTileMetrics?.alive[idx] !== 2),
+    [tiles, liveTileMetrics?.alive],
+  );
+
+  const getPinnedData = useMemo(
+    () =>
+      ({ tile, idx }: TileRow): PinnedRowData => ({
+        name: tile.kind,
+        kindId: tile.kind_id,
+        priority: liveTileMetrics?.priority?.[idx],
+      }),
+    [liveTileMetrics?.priority],
+  );
+
+  const prevScrollableRef = useRef<Map<number, ScrollableRowData>>(new Map());
+
+  // Returns a stable object reference per tile when data hasn't changed for that row
+  const getScrollableData = useMemo(
+    () =>
+      ({ tile: _tile, idx }: TileRow): ScrollableRowData => {
+        const prev = prevScrollableRef.current.get(idx);
+        const next: ScrollableRowData = {
+          idx,
+          alive: liveTileMetrics?.alive[idx] ?? prev?.alive,
+          timers: liveTileMetrics?.timers[idx] ?? prev?.timers,
+          schedTimers: liveTileMetrics?.sched_timers[idx] ?? prev?.schedTimers,
+          inBackpressure:
+            liveTileMetrics?.in_backp[idx] ?? prev?.inBackpressure,
+          backPressureCount:
+            liveTileMetrics?.backp_msgs[idx] ?? prev?.backPressureCount,
+          cpu: liveTileMetrics?.last_cpu[idx] ?? prev?.cpu,
+          minflt: liveTileMetrics?.minflt[idx] ?? prev?.minflt,
+          majflt: liveTileMetrics?.majflt[idx] ?? prev?.majflt,
+          nivcsw: liveTileMetrics?.nivcsw[idx] ?? prev?.nivcsw,
+          nvcsw: liveTileMetrics?.nvcsw[idx] ?? prev?.nvcsw,
+          priority: liveTileMetrics?.priority?.[idx] ?? prev?.priority,
+        };
+        if (prev !== undefined && scrollableDataEqualityFn(prev, next))
+          return prev;
+        prevScrollableRef.current.set(idx, next);
+        return next;
+      },
+    [liveTileMetrics],
+  );
+
+  if (!tiles) return null;
+
   return (
     <Card>
       <Flex direction="column" gap={headerGap} width="100%">
@@ -45,162 +173,66 @@ export default memo(function LiveTileMetrics() {
         </Flex>
         <DataTable
           groups={metricGroups}
-          TableBody={LiveMetricsTableBody}
-          style={
-            {
-              "--bar-height": `${chartHeight}px`,
-            } as CSSProperties
-          }
+          rows={rows}
+          getRowKey={getRowKey}
+          getPinnedData={getPinnedData}
+          getScrollableData={getScrollableData}
+          PinnedRow={PinnedTileRow}
+          ScrollableRow={ScrollableTileRow}
+          pinnedDataEqualityFn={pinnedDataEqualityFn}
+          style={tableStyle}
         />
       </Flex>
     </Card>
   );
 });
 
-interface LiveMetricsTableProps {
-  isPinned?: boolean;
-}
-function LiveMetricsTableBody({ isPinned }: LiveMetricsTableProps) {
-  const tiles = useAtomValue(tilesAtom);
-  const liveTileMetrics = useAtomValue(liveTileMetricsAtom);
-
-  if (!tiles || !liveTileMetrics) return null;
-
+function PinnedTileRow({ data }: { data: PinnedRowData }) {
+  const isFloating = data.priority === PriorityEnum.floating;
   return (
-    <tbody>
-      {tiles.map((tile, i) => (
-        <TableRow
-          key={`${tile.kind}${tile.kind_id}`}
-          tile={tile}
-          liveTileMetrics={liveTileMetrics}
-          idx={i}
-          isPinned={isPinned}
-        />
-      ))}
-    </tbody>
+    <tr
+      className={clsx(tableStyles.dataRow, {
+        [tableStyles.faded]: isFloating,
+      })}
+    >
+      <td className={tableStyles.rightBorder}>
+        {data.name}:{data.kindId}
+      </td>
+    </tr>
   );
 }
 
-interface TableRowProps {
-  tile: Tile;
-  liveTileMetrics: TileMetrics;
-  idx: number;
-  isPinned?: boolean;
-}
-function TableRow({ tile, liveTileMetrics, idx, isPinned }: TableRowProps) {
-  const prevLiveTileMetricsIdx = usePreviousDistinct(
-    liveTileMetrics,
-    (prev, next) => {
-      if (!prev) return false;
-      if (!next) return true;
-
-      return Object.keys(next).every((key) => {
-        return isEqual(
-          prev[key as keyof typeof prev]?.[idx],
-          next[key as keyof typeof next]?.[idx],
-        );
-      });
-    },
-  );
-
-  const alive =
-    liveTileMetrics.alive[idx] ?? prevLiveTileMetricsIdx?.alive[idx];
-
-  // Meaning tile has shut down, no need to list it in the table
-  if (alive === 2) return;
-
-  const timers =
-    liveTileMetrics.timers[idx] || prevLiveTileMetricsIdx?.timers[idx];
-
-  if (!timers) return;
-
-  if (isPinned) {
-    const isFloating =
-      (liveTileMetrics.priority?.[idx] ??
-        prevLiveTileMetricsIdx?.priority?.[idx]) === PriorityEnum.floating;
-    return (
-      <tr
-        className={clsx(tableStyles.dataRow, {
-          [tableStyles.faded]: isFloating,
-        })}
-      >
-        <td className={tableStyles.rightBorder}>
-          {tile.kind}:{tile.kind_id}
-        </td>
-      </tr>
-    );
-  }
-
-  return (
-    <DataRow
-      alive={alive}
-      timers={timers}
-      liveTileMetrics={liveTileMetrics}
-      prevLiveTileMetricsIdx={prevLiveTileMetricsIdx}
-      idx={idx}
-    />
-  );
-}
-
-const priorityLabels: Record<Priority, string> = {
-  floating: "Floating",
-  startup: "Startup",
-  normal: "Pinned",
-  critical: "Critical",
-};
-
-interface DataRowProps {
-  alive: number | null | undefined;
-  timers: number[];
-  liveTileMetrics: TileMetrics;
-  prevLiveTileMetricsIdx?: TileMetrics;
-  idx: number;
-}
-function DataRow({
-  alive,
-  timers,
-  liveTileMetrics,
-  prevLiveTileMetricsIdx,
-  idx,
-}: DataRowProps) {
-  const prevSchedTimers = usePreviousDistinct(
-    liveTileMetrics.sched_timers[idx],
-  );
-  const schedTimers =
-    liveTileMetrics.sched_timers[idx] || prevSchedTimers || [];
-
-  const [schedWaitPct, schedIdlePct, schedUserPct, schedSystemPct] =
-    schedTimers.map((v) => (v === -1 ? 0 : v));
-
-  const nivcsw =
-    liveTileMetrics.nivcsw[idx] ?? prevLiveTileMetricsIdx?.nivcsw[idx];
-  const nvcsw =
-    liveTileMetrics.nvcsw[idx] ?? prevLiveTileMetricsIdx?.nvcsw[idx];
-  const inBackpressure =
-    liveTileMetrics.in_backp[idx] ?? prevLiveTileMetricsIdx?.in_backp[idx];
-  const backPressureCount =
-    liveTileMetrics.backp_msgs[idx] ?? prevLiveTileMetricsIdx?.backp_msgs[idx];
-  const cpu =
-    liveTileMetrics.last_cpu[idx] ?? prevLiveTileMetricsIdx?.last_cpu[idx];
-  const minflt =
-    liveTileMetrics.minflt[idx] ?? prevLiveTileMetricsIdx?.minflt[idx];
-  const majflt =
-    liveTileMetrics.majflt[idx] ?? prevLiveTileMetricsIdx?.majflt[idx];
-  const priority =
-    liveTileMetrics.priority?.[idx] ?? prevLiveTileMetricsIdx?.priority?.[idx];
+function ScrollableTileRow({ data }: { data: ScrollableRowData }) {
+  const {
+    alive,
+    timers,
+    idx,
+    inBackpressure,
+    backPressureCount,
+    cpu,
+    minflt,
+    majflt,
+    nivcsw,
+    nvcsw,
+    schedTimers,
+    priority,
+  } = data;
 
   const prevNivcsw = usePrevious(nivcsw);
   const prevNvcsw = usePrevious(nvcsw);
   const prevBackPressureCount = usePrevious(backPressureCount);
 
-  for (let i = 0; i < timers.length; i++) {
-    if (timers[i] === -1) timers[i] = 0;
-  }
+  if (!timers) return <tr />;
 
-  const hKeepPct = timers[0] + timers[1] + timers[2];
-  const waitPct = timers[6];
-  const backpPct = timers[5];
-  const workPct = timers[3] + timers[4] + timers[7];
+  const [schedWaitPct, schedIdlePct, schedUserPct, schedSystemPct] = (
+    schedTimers ?? []
+  ).map((v) => (v === -1 ? 0 : v));
+
+  const t = timers.map((v) => (v === -1 ? 0 : v));
+  const hKeepPct = t[0] + t[1] + t[2];
+  const waitPct = t[6];
+  const backpPct = t[5];
+  const workPct = t[3] + t[4] + t[7];
 
   return (
     <tr

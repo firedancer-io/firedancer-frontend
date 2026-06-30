@@ -1,7 +1,7 @@
 import clsx from "clsx";
 
 import styles from "./dataTable.module.css";
-import { useMemo, type CSSProperties } from "react";
+import { memo, useMemo, type CSSProperties, type ComponentType } from "react";
 
 export interface ColumnDefinition {
   uniqueName: string;
@@ -19,31 +19,65 @@ export interface ColumnGroup {
   columns: ColumnDefinition[];
 }
 
-export interface DataTableProps {
+interface DataTableProps<TRow, TPinnedData, TScrollableData> {
   groups: ColumnGroup[];
-  TableBody: (props: { isPinned?: boolean }) => JSX.Element | null;
+  rows: TRow[];
+  getRowKey: (row: TRow) => string;
+  getPinnedData: (row: TRow) => TPinnedData;
+  getScrollableData: (row: TRow) => TScrollableData;
+  PinnedRow: ComponentType<{ data: TPinnedData }>;
+  ScrollableRow: ComponentType<{ data: TScrollableData }>;
+  pinnedDataEqualityFn?: (a: TPinnedData, b: TPinnedData) => boolean;
+  scrollableDataEqualityFn?: (
+    a: TScrollableData,
+    b: TScrollableData,
+  ) => boolean;
   style?: CSSProperties;
   hideGroupHeaders?: boolean;
 }
 
-export default function DataTable({
+export default function DataTable<TRow, TPinnedData, TScrollableData>({
   groups,
-  TableBody,
+  rows,
+  getRowKey,
+  getPinnedData,
+  getScrollableData,
+  PinnedRow,
+  ScrollableRow,
+  pinnedDataEqualityFn,
+  scrollableDataEqualityFn,
   style,
   hideGroupHeaders,
-}: DataTableProps) {
+}: DataTableProps<TRow, TPinnedData, TScrollableData>) {
+  const pinnedGroups = useMemo(
+    () => groups.filter(({ pinned }) => !!pinned),
+    [groups],
+  );
+  const scrollableGroups = useMemo(
+    () => groups.filter(({ pinned }) => !pinned),
+    [groups],
+  );
+
   return (
     <div className={styles.container}>
-      <InnerTable
-        groups={groups}
-        TableBody={TableBody}
+      <MInnerTable
+        groups={pinnedGroups}
+        rows={rows}
+        getRowKey={getRowKey}
+        getData={getPinnedData}
+        RowRenderer={PinnedRow}
+        equalityFn={pinnedDataEqualityFn}
         style={style}
         hideGroupHeaders={hideGroupHeaders}
         isPinned
       />
-      <InnerTable
-        groups={groups}
-        TableBody={TableBody}
+      <MInnerTable
+        groups={scrollableGroups}
+        rows={rows}
+        getRowKey={getRowKey}
+        getData={getScrollableData}
+        RowRenderer={ScrollableRow}
+        equalityFn={scrollableDataEqualityFn}
         style={style}
         hideGroupHeaders={hideGroupHeaders}
       />
@@ -51,26 +85,29 @@ export default function DataTable({
   );
 }
 
-interface InnerTableProps {
+interface InnerTableProps<TRow, TData> {
   groups: ColumnGroup[];
-  TableBody: DataTableProps["TableBody"];
+  rows: TRow[];
+  getRowKey: (row: TRow) => string;
+  getData: (row: TRow) => TData;
+  RowRenderer: ComponentType<{ data: TData }>;
+  equalityFn?: (a: TData, b: TData) => boolean;
   style?: CSSProperties;
   isPinned?: boolean;
   hideGroupHeaders?: boolean;
 }
 
-function InnerTable({
-  groups: allGroups,
-  TableBody,
+function InnerTable<TRow, TData>({
+  groups,
+  rows,
+  getRowKey,
+  getData,
+  RowRenderer,
+  equalityFn,
   style,
   isPinned,
   hideGroupHeaders,
-}: InnerTableProps) {
-  const groups = useMemo(
-    () => allGroups.filter(({ pinned }) => !!pinned === !!isPinned),
-    [allGroups, isPinned],
-  );
-
+}: InnerTableProps<TRow, TData>) {
   const tableWidth = useMemo(
     () =>
       groups.reduce((acc, group) => {
@@ -89,25 +126,45 @@ function InnerTable({
       style={{ "--table-width": `${tableWidth}px` } as CSSProperties}
     >
       <table className={styles.table} style={style}>
-        <colgroup>
-          {groups.map((group) =>
-            group.columns.map((column) => (
-              <col
-                key={column.uniqueName}
-                style={{ width: column.headerColWidth }}
-              />
-            )),
-          )}
-        </colgroup>
+        <TableColGroup groups={groups} />
         <TableHeader
           groups={groups}
           isPinned={isPinned}
           hideGroupHeaders={hideGroupHeaders}
         />
-
-        <TableBody isPinned={isPinned} />
+        <tbody>
+          {rows.map((row) => (
+            <MRow
+              key={getRowKey(row)}
+              data={getData(row)}
+              RowRenderer={RowRenderer}
+              equalityFn={equalityFn}
+            />
+          ))}
+        </tbody>
       </table>
     </div>
+  );
+}
+
+const MInnerTable = memo(InnerTable) as typeof InnerTable;
+
+interface TableColGroupProps {
+  groups: ColumnGroup[];
+}
+
+function TableColGroup({ groups }: TableColGroupProps) {
+  return (
+    <colgroup>
+      {groups.map((group) =>
+        group.columns.map((column) => (
+          <col
+            key={column.uniqueName}
+            style={{ width: column.headerColWidth }}
+          />
+        )),
+      )}
+    </colgroup>
   );
 }
 
@@ -158,3 +215,18 @@ function TableHeader({ groups, isPinned, hideGroupHeaders }: TableHeaderProps) {
     </thead>
   );
 }
+
+interface RowProps<TData> {
+  data: TData;
+  RowRenderer: ComponentType<{ data: TData }>;
+  equalityFn?: (a: TData, b: TData) => boolean;
+}
+
+function Row<TData>({ data, RowRenderer }: RowProps<TData>) {
+  return <RowRenderer data={data} />;
+}
+const MRow = memo(Row, (prev, next) => {
+  if (prev.RowRenderer !== next.RowRenderer) return false;
+  if (prev.equalityFn) return prev.equalityFn(prev.data, next.data);
+  return prev.data === next.data;
+}) as typeof Row;
