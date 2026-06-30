@@ -38,7 +38,10 @@ import {
   deleteSupermajorityDeltaEntriesAtom,
   resetSupermajorityAtom,
 } from "../atoms";
-import { shredsAtoms } from "../features/Overview/ShredsProgression/atoms";
+import {
+  shredsAtoms,
+  setDirtySlotOnSkippedChangeAtom,
+} from "../features/Overview/ShredsProgression/atoms";
 import { xRangeMs } from "./worker/cache/shreds/shredsCalc";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
 import {
@@ -343,6 +346,9 @@ function useUpdateAtoms() {
 
   const addSkippedClusterSlots = useSetAtom(addSkippedClusterSlotsAtom);
   const deleteSkippedClusterSlot = useSetAtom(deleteSkippedClusterSlotAtom);
+  const setDirtySlotOnSkippedChange = useSetAtom(
+    setDirtySlotOnSkippedChangeAtom,
+  );
 
   const addLateVoteSlots = useSetAtom(addLateVoteSlotAtom);
   const deleteLateVoteSlot = useSetAtom(deleteLateVoteSlotAtom);
@@ -353,10 +359,13 @@ function useUpdateAtoms() {
     (value: SlotResponse) => {
       setSlotStatus(value.publish.slot, value.publish.level);
 
+      const slot = value.publish.slot;
+      setDirtySlotOnSkippedChange(slot, value.publish.skipped);
+
       if (value.publish.skipped) {
-        addSkippedClusterSlots([value.publish.slot]);
+        addSkippedClusterSlots([slot]);
       } else {
-        deleteSkippedClusterSlot(value.publish.slot);
+        deleteSkippedClusterSlot(slot);
       }
 
       if (value.publish.level === "rooted") {
@@ -391,6 +400,7 @@ function useUpdateAtoms() {
       addSkippedClusterSlots,
       deleteLateVoteSlot,
       deleteSkippedClusterSlot,
+      setDirtySlotOnSkippedChange,
       setSkippedSlots,
       setSlotStatus,
     ],

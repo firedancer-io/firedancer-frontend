@@ -19,17 +19,21 @@ import {
   shredSkippedColor,
 } from "../../../colors";
 import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
-import { clamp, sum } from "lodash";
+import { clamp } from "lodash";
 import { ShredEvent } from "../../../api/entities";
 import {
+  createLabelsState,
+  getAdjustedNow,
+  getDrawInfo,
   getSlotGroupLabelId,
   getSlotGroupNameId,
   getSlotLabelId,
+  type LabelState,
+  type XRange,
 } from "./utils";
 import styles from "./shreds.module.css";
 
 import { slotsPerLeader } from "../../../consts";
-import { delayMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import type { SlotsShreds, ShredEventTsDeltas } from "./atoms";
 
 const store = getDefaultStore();
@@ -50,60 +54,15 @@ export type LabelPositions = {
   };
 };
 
-type XRange = {
-  minDeltaTs: number;
-  maxDeltaTs: number;
-  minCanvasPos: number;
-  maxCanvasPos: number;
-  minCssPos: number;
-  maxCssPos: number;
-};
-
-type LabelState = {
-  transformX: number;
-  width?: number;
-  opacity?: string;
-  isSkipped?: boolean;
-};
-
 export function shredsProgressionPlugin(
   isOnStartupScreen: boolean,
 ): uPlot.Plugin {
-  let prevLabels = {
-    groups: new Map<number, LabelState>(),
-    slots: new Map<number, LabelState>(),
-  };
+  let prevLabels = createLabelsState();
 
   // use to get new map values without creating a new map every update
-  let tempNewLabels: typeof prevLabels = {
-    groups: new Map(),
-    slots: new Map(),
-  };
+  let tempNewLabels: typeof prevLabels = createLabelsState();
 
   const prevTimeDiffs: number[] = [];
-
-  /**
-   * Get timestamp for "now", which is the ts at x = 0 (right-most in chart).
-   * "now" is adjusted using an avg diff of server time and real now ts to smooth out server msg delays.
-   * We also delay "now" by one data update interval to prevent instability of right-most data.
-   */
-  function getAdjustedNow(serverTimeMs: number) {
-    // Use server time for chart axis
-    // Use a rolling avg of the server time and client now diff.
-    // If we get ws messages buffered and it results in a temporary high
-    // diff, shred still move smoothly by using the avg
-    const now = Date.now();
-
-    const timeDiff = now - serverTimeMs;
-    prevTimeDiffs.push(timeDiff);
-    while (prevTimeDiffs.length > 100) {
-      prevTimeDiffs.shift();
-    }
-
-    const timeDiffAvg = sum(prevTimeDiffs) / prevTimeDiffs.length;
-    const adjustedTimeMs = now - timeDiffAvg;
-    return adjustedTimeMs - delayMs;
-  }
 
   return {
     hooks: {
@@ -146,7 +105,7 @@ export function shredsProgressionPlugin(
             if (!rangeAfterStartup) return;
           }
 
-          const adjustedNow = getAdjustedNow(serverTimeMs);
+          const adjustedNow = getAdjustedNow(serverTimeMs, prevTimeDiffs);
 
           const maxReferenceTs = adjustedNow - liveShreds.referenceTs;
           const tsSpan = maxXScale - minXScale;
@@ -307,53 +266,6 @@ function drawStartupChartAxes(u: uPlot) {
   u.ctx.restore();
 }
 
-/**
- * Get slots in draw order
- * and max shreds count per slot for scaling
- */
-function getDrawInfo(
-  minSlotNumber: number,
-  maxSlotNumber: number,
-  liveShreds: SlotsShreds,
-  xRange: XRange,
-) {
-  const orderedSlotNumbers = [];
-  let maxShreds = 0;
-
-  for (
-    let slotNumber = minSlotNumber;
-    slotNumber <= maxSlotNumber;
-    slotNumber++
-  ) {
-    const slot = liveShreds.slots.get(slotNumber);
-    if (!slot?.shreds.length || slot.minEventTsDelta == null) {
-      // slot has no events
-      continue;
-    }
-
-    if (slot.minEventTsDelta > xRange.maxDeltaTs) {
-      // slot started after chart max X
-      continue;
-    }
-
-    if (
-      slot.completionTsDelta != null &&
-      slot.completionTsDelta < xRange.minDeltaTs
-    ) {
-      // slot completed before chart min X
-      continue;
-    }
-
-    orderedSlotNumbers.push(slotNumber);
-    maxShreds = Math.max(maxShreds, slot.shreds.length);
-  }
-
-  return {
-    maxShreds,
-    orderedSlotNumbers,
-  };
-}
-
 function getXPos(tsDelta: number, xRange: XRange, isCanvasPos: boolean) {
   const tsRange = xRange.maxDeltaTs - xRange.minDeltaTs;
   const minPos = isCanvasPos ? xRange.minCanvasPos : xRange.minCssPos;
@@ -499,7 +411,7 @@ function findShredIdx(
   return -1;
 }
 
-function updateLabels(
+export function updateLabels(
   slotRange: {
     min: number;
     max: number;
