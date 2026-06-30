@@ -12,32 +12,9 @@ import {
 import { Box, Flex } from "@radix-ui/themes";
 import type { FlexProps } from "@radix-ui/themes";
 import ShredsSlotLabels from "./ShredsSlotLabels";
+import { chartXPadding, getXIncrs } from "./utils";
 
 const REDRAW_INTERVAL_MS = 10;
-
-// prevent x axis tick labels from being cut off
-const chartXPadding = 15;
-
-const minXIncrRange = {
-  min: 200,
-  max: 1_600,
-};
-
-/**
- * Get dynamic x axis tick increments based on chart scale
- */
-const getXIncrs = (scale: number) => {
-  const scaledIncr = scale * minXIncrRange.max;
-  // round to multiples of minimum increment
-  const minIncrMultiple =
-    Math.trunc(scaledIncr / minXIncrRange.min) * minXIncrRange.min;
-
-  const incrs = [minIncrMultiple];
-  while (incrs[incrs.length - 1] < xRangeMs * scale) {
-    incrs.push(incrs[incrs.length - 1] * 2);
-  }
-  return incrs;
-};
 
 type FlexPropsSubset = Pick<FlexProps, "height" | "minHeight" | "flexGrow">;
 
@@ -115,7 +92,6 @@ export default function ShredsChart({
       legend: { show: false },
       axes: [
         {
-          show: false,
           scale: shredsXScaleKey,
           incrs: xIncrs,
           size: 30,
@@ -137,7 +113,6 @@ export default function ShredsChart({
           stroke: gridTicksColor,
         },
         {
-          show: false,
           size: 0,
           grid: {
             filter: () => [0],

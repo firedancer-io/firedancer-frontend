@@ -20,12 +20,16 @@ void main() {
 
 const fragmentShader = /* glsl */ `
 precision mediump float;
+uniform float uOpacity;
 varying vec3 vColor;
 
 void main() {
-  gl_FragColor = vec4(vColor, 1.0);
+  gl_FragColor = vec4(vColor, uOpacity);
 }
 `;
+
+// Global opacity applied to all shred rectangles
+export const SHRED_OPACITY = 0.85;
 
 export type SlotMesh = {
   mesh: THREE.Mesh;
@@ -52,6 +56,10 @@ const sharedMaterial = new THREE.RawShaderMaterial({
   vertexShader,
   fragmentShader,
   side: THREE.FrontSide,
+  transparent: true,
+  uniforms: {
+    uOpacity: { value: SHRED_OPACITY },
+  },
 });
 
 const INITIAL_CAPACITY = 1500 * 5; // 1500 shreds × 5 events max

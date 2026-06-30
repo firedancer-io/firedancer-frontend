@@ -11,6 +11,7 @@ import type {} from "../../../../api/worker/cache/shreds/types";
 import type { RendererObj, TsRange, LabelsState } from "./chartUtils";
 import { setUpRenderer, draw, createLabelsState } from "./chartUtils";
 import ShredsSlotLabels from "../ShredsSlotLabels";
+import { MChartAxes, xAxisHeight } from "./ChartAxes";
 
 const store = getDefaultStore();
 
@@ -56,7 +57,9 @@ export default function ShredsChart({
 
   const lastRedrawRef = useRef(0);
   const lastRedrawServerTimeNsRef = useRef(serverTimeNs);
-  const [measureRef, { width, height }] = useMeasure<HTMLDivElement>();
+  const [measureRef, { width, height: fullHeight }] =
+    useMeasure<HTMLDivElement>();
+  const height = fullHeight - xAxisHeight;
   const prevTimeDiffsRef = useRef<number[]>([]);
 
   useRafLoop(function drawShredsLoop(time: number) {
@@ -82,7 +85,7 @@ export default function ShredsChart({
           labelsRef,
           scale,
           false,
-          width,
+          [0, width],
         );
       }
     }
@@ -102,7 +105,7 @@ export default function ShredsChart({
       labelsRef,
       scale,
       true /* force redraw */,
-      width,
+      [0, width],
     );
   }, [scale, width, height, chartId, isOnStartupScreen]);
 
@@ -120,20 +123,21 @@ export default function ShredsChart({
       labelsRef,
       scale,
       true /* force redraw */,
-      width,
+      [0, width],
     );
   }, [scale, width, height, chartId, isOnStartupScreen]);
 
   return (
     <Flex direction="column" gap="2px" {...flexProps}>
       {!isOnStartupScreen && <ShredsSlotLabels />}
-      <Box
-        flexGrow="1"
-        minHeight="0"
-        // mx={`-${chartXPadding}px`}
-        ref={measureRef}
-      >
-        <Box ref={containerRef} />
+      <Box flexGrow="1" minHeight="0" position="relative" ref={measureRef}>
+        <MChartAxes
+          chartId={`${chartId}-axes`}
+          scale={scale}
+          containerWidth={width}
+          containerHeight={fullHeight + 1}
+        />
+        <Box ref={containerRef} position="relative" style={{ zIndex: 1 }} />
       </Box>
     </Flex>
   );

@@ -124,7 +124,7 @@ export function draw(
   }>,
   scale: number,
   forceDraw: boolean,
-  chartWidth: number,
+  cssRange: [min: number, max: number],
 ) {
   const {
     slotsShreds: liveShreds,
@@ -290,8 +290,8 @@ export function draw(
       maxDeltaTs: visibleTsRange[1],
       minCanvasPos: 0,
       maxCanvasPos: 0,
-      minCssPos: 0,
-      maxCssPos: chartWidth,
+      minCssPos: cssRange[0],
+      maxCssPos: cssRange[1],
     };
 
     const { prevLabels, tempNewLabels } = labelsRef.current;
