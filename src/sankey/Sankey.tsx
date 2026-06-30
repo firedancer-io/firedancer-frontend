@@ -57,6 +57,7 @@ export const Sankey = <
 }: SankeyProps<N, L>) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawRef = useRef<(() => void) | null>(null);
+  const gradientCacheRef = useRef<Map<string, CanvasGradient>>(new Map());
 
   const { margin, innerWidth, innerHeight, outerWidth, outerHeight } =
     useDimensions(width, height, partialMargin);
@@ -105,7 +106,12 @@ export const Sankey = <
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(outerWidth * dpr);
     canvas.height = Math.round(outerHeight * dpr);
+    gradientCacheRef.current.clear();
   }, [outerWidth, outerHeight]);
+
+  useLayoutEffect(() => {
+    gradientCacheRef.current.clear();
+  }, [layout]);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -132,6 +138,7 @@ export const Sankey = <
             enableLinkGradient,
             getLinkColor,
             linkVisibilityRef.current,
+            gradientCacheRef.current,
           );
         else if (layer === "nodes") drawNodes(ctx, nodes);
         else if (layer === "labels" && enableLabels)
@@ -200,6 +207,7 @@ function drawLinks<N extends DefaultNode, L extends DefaultLink>(
   enableLinkGradient: boolean,
   getLinkColor: SankeyCommonProps<N, L>["getLinkColor"] | undefined,
   visibleLinks: Set<string>,
+  gradientCache: Map<string, CanvasGradient>,
 ) {
   for (const link of links) {
     if (!visibleLinks.has(getLinkId(link))) continue;
@@ -208,13 +216,22 @@ function drawLinks<N extends DefaultNode, L extends DefaultLink>(
     if (solidColor != null) {
       ctx.fillStyle = solidColor;
     } else if (enableLinkGradient) {
-      const gradient =
+      // coords are stable across data redraws, so cache and reuse the gradient
+      const key =
         layout === "horizontal"
-          ? ctx.createLinearGradient(link.source.x1, 0, link.target.x0, 0)
-          : ctx.createLinearGradient(0, link.source.y1, 0, link.target.y0);
-      gradient.addColorStop(0, sankeyLinkGradientEndColor);
-      gradient.addColorStop(0.24, sankeyLinkGradientMiddleColor);
-      gradient.addColorStop(1, sankeyLinkGradientEndColor);
+          ? `h:${link.source.x1}:${link.target.x0}`
+          : `v:${link.source.y1}:${link.target.y0}`;
+      let gradient = gradientCache.get(key);
+      if (!gradient) {
+        gradient =
+          layout === "horizontal"
+            ? ctx.createLinearGradient(link.source.x1, 0, link.target.x0, 0)
+            : ctx.createLinearGradient(0, link.source.y1, 0, link.target.y0);
+        gradient.addColorStop(0, sankeyLinkGradientEndColor);
+        gradient.addColorStop(0.24, sankeyLinkGradientMiddleColor);
+        gradient.addColorStop(1, sankeyLinkGradientEndColor);
+        gradientCache.set(key, gradient);
+      }
       ctx.fillStyle = gradient;
     } else {
       ctx.fillStyle = link.color;
