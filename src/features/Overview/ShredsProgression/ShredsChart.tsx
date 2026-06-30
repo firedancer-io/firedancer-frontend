@@ -4,7 +4,7 @@ import type uPlot from "uplot";
 import { chartAxisColor, gridLineColor, gridTicksColor } from "../../../colors";
 import type { AlignedData } from "uplot";
 import { xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
-import { useMeasure, useMedia, useRafLoop } from "react-use";
+import { useMeasure, useRafLoop } from "react-use";
 import {
   shredsProgressionPlugin,
   shredsXScaleKey,
@@ -12,32 +12,10 @@ import {
 import { Box, Flex } from "@radix-ui/themes";
 import type { FlexProps } from "@radix-ui/themes";
 import ShredsSlotLabels from "./ShredsSlotLabels";
+import { chartXPadding, getXIncrs } from "./utils";
+import { useShredsChartScale } from "./useShredsChartScale";
 
-const REDRAW_INTERVAL_MS = 40;
-
-// prevent x axis tick labels from being cut off
-const chartXPadding = 15;
-
-const minXIncrRange = {
-  min: 200,
-  max: 1_600,
-};
-
-/**
- * Get dynamic x axis tick increments based on chart scale
- */
-const getXIncrs = (scale: number) => {
-  const scaledIncr = scale * minXIncrRange.max;
-  // round to multiples of minimum increment
-  const minIncrMultiple =
-    Math.trunc(scaledIncr / minXIncrRange.min) * minXIncrRange.min;
-
-  const incrs = [minIncrMultiple];
-  while (incrs[incrs.length - 1] < xRangeMs * scale) {
-    incrs.push(incrs[incrs.length - 1] * 2);
-  }
-  return incrs;
-};
+const REDRAW_INTERVAL_MS = 10;
 
 type FlexPropsSubset = Pick<FlexProps, "height" | "minHeight" | "flexGrow">;
 
@@ -50,26 +28,7 @@ export default function ShredsChart({
   isOnStartupScreen,
   ...flexProps
 }: ShredsChartProps & FlexPropsSubset) {
-  const isXL = useMedia("(max-width: 2100px)");
-  const isL = useMedia("(max-width: 1800px)");
-  const isM = useMedia("(max-width: 1500px)");
-  const isS = useMedia("(max-width: 1200px)");
-  const isXS = useMedia("(max-width: 900px)");
-  const isXXS = useMedia("(max-width: 600px)");
-  const scale = isXXS
-    ? 1 / 7
-    : isXS
-      ? 2 / 7
-      : isS
-        ? 3 / 7
-        : isM
-          ? 4 / 7
-          : isL
-            ? 5 / 7
-            : isXL
-              ? 6 / 7
-              : 1;
-
+  const scale = useShredsChartScale();
   const uplotRef = useRef<uPlot>();
   const lastRedrawRef = useRef(0);
   const [measureRef, measureRect] = useMeasure<HTMLDivElement>();
@@ -151,7 +110,7 @@ export default function ShredsChart({
   options.width = measureRect.width;
   options.height = measureRect.height;
 
-  useRafLoop((time: number) => {
+  useRafLoop(function drawShredsLoop(time: number) {
     if (!uplotRef) return;
     if (
       lastRedrawRef.current == null ||
@@ -176,6 +135,7 @@ export default function ShredsChart({
           options={options}
           data={chartData}
           onCreate={handleCreate}
+          setSizeDebounceMs={100}
         />
       </Box>
     </Flex>
