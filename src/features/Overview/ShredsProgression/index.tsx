@@ -4,7 +4,7 @@ import CardHeader from "../../../components/CardHeader";
 import ShredsChart from "./ShredsChart";
 import { ShredsChartLegend } from "./ShredsChartLegend";
 import { isFrankendancer } from "../../../client";
-import ShredsChartWebGl from "./ShredsChartWebGl";
+import ShredsChartWebGl from "./WebGl/Chart";
 
 export default function ShredsProgression() {
   if (isFrankendancer) return;

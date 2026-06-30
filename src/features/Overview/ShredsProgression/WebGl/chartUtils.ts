@@ -1,9 +1,31 @@
+import * as THREE from "three";
+import { sum } from "lodash";
+import type { MutableRefObject } from "react";
+import { MAX_SHRED_EVENT_IDX, ShredEvent } from "../../../../api/entities";
 import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  type MutableRefObject,
-} from "react";
+  delayMs,
+  xRangeMs,
+} from "../../../../api/worker/cache/shreds/shredsCalc";
+import type {
+  SlotsShreds,
+  ShredEventTsDeltas,
+} from "../../../../api/worker/cache/shreds/types";
+import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../../atoms";
+import { showStartupProgressAtom } from "../../../StartupProgress/atoms";
+import {
+  liveShredsDataAtom,
+  liveShredsPostStartupRangeAtom,
+  minDirtySlotByChartAtom,
+} from "../atoms";
+import { shredEventDescPriorities } from "../const";
+import type { SlotMesh } from "../webglUtils";
+import {
+  createSlotMesh,
+  flushSlotMesh,
+  ensureCapacity,
+  addRectangleToMesh,
+  convertToWebGlColor,
+} from "../webglUtils";
 import {
   shredPublishedColor,
   shredReceivedRepairColor,
@@ -13,42 +35,25 @@ import {
   shredReplayedRepairColor,
   shredReplayedTurbineColor,
   shredSkippedColor,
-} from "../../../colors";
-import { shredEventDescPriorities } from "./const";
-import { useMeasure, useRafLoop } from "react-use";
-import { Box, Flex } from "@radix-ui/themes";
-import type { FlexProps } from "@radix-ui/themes";
-import { useShredsChartScale } from "./useShredsChartScale";
-import * as THREE from "three";
-import { MAX_SHRED_EVENT_IDX, ShredEvent } from "../../../api/entities";
-import { getDefaultStore, useAtomValue } from "jotai";
-import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
-import {
-  liveShredsDataAtom,
-  liveShredsPostStartupRangeAtom,
-  minDirtySlotByChartAtom,
-} from "./atoms";
-import type {
-  ShredEventTsDeltas,
-  SlotsShreds,
-} from "../../../api/worker/cache/shreds/types";
-import { showStartupProgressAtom } from "../../StartupProgress/atoms";
-import { sum } from "lodash";
-import {
-  addRectangleToMesh,
-  ensureCapacity,
-  convertToWebGlColor,
-  createSlotMesh,
-  flushSlotMesh,
-  type SlotMesh,
-} from "./webglUtils";
-import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
+} from "../../../../colors";
+import { getDefaultStore } from "jotai";
+
+export type RendererObj = {
+  renderer: THREE.WebGLRenderer;
+  camera: THREE.OrthographicCamera;
+  scene: THREE.Scene;
+  meshes: Map<number, SlotMesh>;
+  availableMeshes: SlotMesh[];
+  worldTsRange: TsRange;
+};
 
 const store = getDefaultStore();
 
-const REDRAW_INTERVAL_MS = 15;
+export const MAX_SHREDS_PER_SLOT = 32_768;
+export const MAX_EVENTS_PER_SLOT =
+  (MAX_SHRED_EVENT_IDX + 1) * MAX_SHREDS_PER_SLOT;
 
-type FlexPropsSubset = Pick<FlexProps, "height" | "minHeight" | "flexGrow">;
+const msPerDay = 24 * 60 * 60 * 1000;
 
 const colors = {
   skipped: convertToWebGlColor(shredSkippedColor),
@@ -61,130 +66,10 @@ const colors = {
   published: convertToWebGlColor(shredPublishedColor),
 };
 
-type RendererObj = {
-  renderer: THREE.WebGLRenderer;
-  camera: THREE.OrthographicCamera;
-  scene: THREE.Scene;
-  meshes: Map<number, SlotMesh>;
-  availableMeshes: SlotMesh[];
-  worldTsRange: TsRange;
-};
-interface ShredsChartProps {
-  chartId: string;
-  isOnStartupScreen: boolean;
-}
-export default function ShredsChart({
-  chartId,
-  isOnStartupScreen,
-  ...flexProps
-}: ShredsChartProps & FlexPropsSubset) {
-  const serverTimeNs = useAtomValue(serverTimeMsAtom);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const scale = useShredsChartScale();
-
-  useEffect(() => {
-    store.set(minDirtySlotByChartAtom, (prev) => {
-      prev.set(chartId, null);
-      return prev;
-    });
-    return () => {
-      store.set(minDirtySlotByChartAtom, (prev) => {
-        prev.delete(chartId);
-        return prev;
-      });
-    };
-  }, [chartId]);
-
-  const rendererRef = useRef<RendererObj | undefined>();
-  const visibleTsRangeRef = useRef<TsRange | undefined>();
-
-  const lastRedrawRef = useRef(0);
-  const lastRedrawServerTimeNsRef = useRef(serverTimeNs);
-  const [measureRef, { width, height }] = useMeasure<HTMLDivElement>();
-  const prevTimeDiffsRef = useRef<number[]>([]);
-
-  useRafLoop(function drawShredsLoop(time: number) {
-    if (
-      lastRedrawRef.current == null ||
-      time - lastRedrawRef.current >= REDRAW_INTERVAL_MS
-      //   &&
-      // lastRedrawServerTimeNsRef.current !== serverTimeNs
-    ) {
-      lastRedrawRef.current = time;
-      if (!rendererRef.current) {
-        const result = setUpRenderer(isOnStartupScreen, width, height);
-        if (!result) return;
-        rendererRef.current = result;
-        containerRef.current?.replaceChildren(result.renderer.domElement);
-      } else {
-        draw(
-          chartId,
-          isOnStartupScreen,
-          prevTimeDiffsRef,
-          rendererRef.current,
-          visibleTsRangeRef,
-          scale,
-          false,
-        );
-      }
-    }
-  });
-
-  // handle chart resize
-  useLayoutEffect(() => {
-    if (!rendererRef.current) return;
-    const { renderer } = rendererRef.current;
-    renderer.setSize(width, height);
-    draw(
-      chartId,
-      isOnStartupScreen,
-      prevTimeDiffsRef,
-      rendererRef.current,
-      visibleTsRangeRef,
-      scale,
-      true /* force redraw */,
-    );
-  }, [scale, width, height, chartId, isOnStartupScreen]);
-
-  // handle chart resize
-  useLayoutEffect(() => {
-    if (!rendererRef.current) return;
-    const { renderer } = rendererRef.current;
-    renderer.setSize(width, height);
-    draw(
-      chartId,
-      isOnStartupScreen,
-      prevTimeDiffsRef,
-      rendererRef.current,
-      visibleTsRangeRef,
-      scale,
-      true /* force redraw */,
-    );
-  }, [scale, width, height, chartId, isOnStartupScreen]);
-
-  return (
-    <Flex direction="column" gap="2px" {...flexProps}>
-      <Box
-        flexGrow="1"
-        minHeight="0"
-        // mx={`-${chartXPadding}px`}
-        ref={measureRef}
-      >
-        <Box ref={containerRef} />
-      </Box>
-    </Flex>
-  );
-}
-
-const MAX_SHREDS_PER_SLOT = 32_768;
-const MAX_EVENTS_PER_SLOT = (MAX_SHRED_EVENT_IDX + 1) * MAX_SHREDS_PER_SLOT;
-
-const msPerDay = 24 * 60 * 60 * 1000;
-
 /**
  * Set up renderer world, setup according to shred reference ts
  */
-function setUpRenderer(
+export function setUpRenderer(
   isOnStartupScreen: boolean,
   canvasWidth: number,
   canvasHeight: number,
@@ -222,7 +107,7 @@ function setUpRenderer(
   };
 }
 
-function draw(
+export function draw(
   chartId: string,
   isOnStartupScreen: boolean,
   prevTimeDiffsRef: MutableRefObject<number[]>,
