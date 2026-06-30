@@ -59,16 +59,20 @@ export default function ShredsChart({
       });
 
       // dispose of WebGL resources
+      // NOTE: keep sharedMaterial and unitQuad to be reused across mounts
       const obj = rendererRef.current;
       if (!obj) return;
 
-      obj.renderer.dispose();
       for (const slotMesh of obj.meshes.values()) {
         slotMesh.mesh.geometry.dispose();
       }
       for (const slotMesh of obj.availableMeshes) {
         slotMesh.mesh.geometry.dispose();
       }
+      obj.renderer.dispose();
+      // force release of GL context on repeated mount / unmounts
+      obj.renderer.forceContextLoss();
+      obj.renderer.domElement.remove();
       rendererRef.current = undefined;
     };
   }, [chartId, setMinDirtySlotByChart]);

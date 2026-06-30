@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { MAX_SHRED_EVENT_IDX } from "../../../api/entities";
+import { SHRED_EVENT_TYPES_COUNT } from "../../../api/entities";
 
 export type SlotMesh = {
   mesh: THREE.Mesh;
@@ -60,7 +60,8 @@ const sharedMaterial = new THREE.RawShaderMaterial({
   },
 });
 
-const INITIAL_CAPACITY = 700 * (MAX_SHRED_EVENT_IDX + 1); // 700 shreds
+// 700 shreds, all events except completion could have a rectangle
+const INITIAL_CAPACITY = 700 * (SHRED_EVENT_TYPES_COUNT - 1);
 
 /**
  * Create one mesh per slot. That way, we can easily add / delete slots without updating
@@ -72,6 +73,9 @@ export function createSlotMesh(): SlotMesh {
 
   const rectAttr = new THREE.InstancedBufferAttribute(rectArray, 4);
   const colorAttr = new THREE.InstancedBufferAttribute(colorArray, 3);
+  // DynamicDrawUsage to optimize for frequent updates
+  rectAttr.setUsage(THREE.DynamicDrawUsage);
+  colorAttr.setUsage(THREE.DynamicDrawUsage);
 
   const geometry = new THREE.InstancedBufferGeometry();
   geometry.index = unitQuad.index;
@@ -156,7 +160,7 @@ const tmpRgb = { r: 0, g: 0, b: 0 };
 /**
  *
  * Convert hex color to sRGB values for the shader, instead of
- * Three.js's default linear sRGB
+ * Three.js's default linear working color space
  */
 export function convertToWebGlColor(
   hex: string,

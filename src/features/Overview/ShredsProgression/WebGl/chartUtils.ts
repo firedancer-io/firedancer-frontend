@@ -78,6 +78,7 @@ export function setUpRenderer(canvasWidth: number, canvasHeight: number) {
 
   const worldStartTs = serverTimeMs - xRangeMs - delayMs - referenceTs;
   const worldEndTs = worldStartTs + 365 * msPerDay;
+  // store world range for future pause / pan
   const worldTsRange: TsRange = [worldStartTs, worldEndTs];
 
   const scene = new THREE.Scene();
@@ -336,19 +337,23 @@ function addEventsForRow({
     endTs = startTs;
   }
 
-  let i = 0;
+  let rectanglesAdded = 0;
   for (const [eventType, { x, w }] of tempEventPositions.entries()) {
     const color = getShredEventColor(
       isSlotSkipped,
       eventType,
       tempEventPositions,
     );
-    const rectangleIdx = startRectangleIdx + i;
+
+    // unknown event type, skip it
+    if (color == null) continue;
+
+    const rectangleIdx = startRectangleIdx + rectanglesAdded;
     ensureCapacity(slotMesh, rectangleIdx + 1);
     addRectangleToMesh(slotMesh, rectangleIdx, x, y, w, 1, color);
-    i++;
+    rectanglesAdded++;
   }
-  return tempEventPositions.size;
+  return rectanglesAdded;
 }
 
 function getShredEventColor(
@@ -358,7 +363,7 @@ function getShredEventColor(
     Exclude<ShredEvent, ShredEvent.slot_complete>,
     { x: number; w: number }
   >,
-) {
+): [number, number, number] | undefined {
   if (isSlotSkipped) return colors.skipped;
   switch (eventType) {
     case ShredEvent.shred_repair_request: {
