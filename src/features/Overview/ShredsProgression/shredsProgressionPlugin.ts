@@ -30,10 +30,7 @@ import styles from "./shreds.module.css";
 
 import { slotsPerLeader } from "../../../consts";
 import { delayMs } from "../../../api/worker/cache/shreds/shredsCalc";
-import type {
-  SlotsShreds,
-  ShredEventTsDeltas,
-} from "../../../api/worker/cache/shreds/types";
+import type { SlotsShreds, ShredEventTsDeltas } from "./atoms";
 
 const store = getDefaultStore();
 

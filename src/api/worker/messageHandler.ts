@@ -13,7 +13,6 @@ import {
   overviewPublishIntervalMs,
   overviewRenderWindowMs,
   overviewHistoryBufferMs,
-  shredsPublishIntervalMs,
 } from "./cache/consts";
 import { gossipHealthEmaFields } from "../atoms";
 import {
@@ -22,8 +21,6 @@ import {
   type HistoryArrayKey,
   type WsEntity,
 } from "./types";
-import { createShredsCache } from "./cache/shreds/shredsCache";
-import type { PublisherOptions } from "./cache/batchPublisher";
 
 const gossipHealthEmaOptions: EmaHistoryObjectCacheOptions = {
   halfLifeMs: 5_000,
@@ -42,10 +39,6 @@ const tileTimerOptions: HistoryArrayOptions = {
 const networkMetricsOptions: HistoryArrayOptions = {
   publishIntervalMs: overviewPublishIntervalMs,
   historyWindowMs: overviewRenderWindowMs + overviewHistoryBufferMs,
-};
-
-const liveShredsOptions: PublisherOptions = {
-  publishIntervalMs: shredsPublishIntervalMs,
 };
 
 function isEntry<
@@ -69,23 +62,12 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
 
   let validatorState = { ...defaultValidatorState };
 
-  function getValidatorState() {
-    return validatorState;
-  }
-
-  const liveShredsCache = createShredsCache(
-    liveShredsOptions,
-    (items) => post({ type: "liveShredsObject", items }),
-    getValidatorState,
-  );
-
   return {
     onConnectionChange(msg: {
       type: "connected" | "connecting" | "disconnected";
     }): void {
       if (msg.type !== "connected") {
         validatorState = { ...defaultValidatorState };
-        liveShredsCache.resetDataAndUnsubscribe();
       }
       post(msg);
     },
@@ -136,10 +118,6 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
       if (isEntry(item, "summary", "live_tile_timers")) {
         historyArrayCache.subscribe("tileTimers", tileTimerOptions);
         historyArrayCache.update("tileTimers", item.value);
-      }
-
-      if (isEntry(item, "slot", "live_shreds")) {
-        liveShredsCache.subscribeAndAdd(item.value);
       }
     },
   };
