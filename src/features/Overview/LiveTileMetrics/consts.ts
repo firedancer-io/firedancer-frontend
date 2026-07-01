@@ -223,3 +223,5 @@ export const pinnedTableWidth = pinnedGroups.reduce((acc, group) => {
   }
   return acc;
 }, 1);
+
+export const chartHeight = 18;
