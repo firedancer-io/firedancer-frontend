@@ -1,5 +1,5 @@
 export const slotsPerLeader = 4;
-export const slotsListPinnedSlotOffset = 5;
+export const slotsListTopPaddingIndex = 5;
 export const scheduleUpcomingSlotsCount = 3;
 
 export const solDecimals = 4;

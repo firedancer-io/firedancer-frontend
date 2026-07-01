@@ -364,6 +364,16 @@ export const leaderSlotsAtom = atom((get) => {
   return getLeaderSlots(epoch, pubkey);
 });
 
+/**
+ * Set of your leader slots, in ascending order
+ */
+export const ascendingLeaderSlotsSetAtom = atom((get) => {
+  const leaderSlots = get(leaderSlotsAtom);
+  if (!leaderSlots) return;
+
+  return new Set(leaderSlots);
+});
+
 /** In order array of your leader slots (only first slot in group of 4) */
 export const nextEpochLeaderSlotsAtom = atom((get) => {
   const epoch = get(nextEpochAtom);
