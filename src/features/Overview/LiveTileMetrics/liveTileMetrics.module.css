@@ -1,6 +1,13 @@
+.scrollable {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-a8) transparent;
+}
+
 .group-header {
   text-align: center;
   padding: 5px;
+  height: 29px;
+  box-sizing: border-box;
 }
 
 .header {
@@ -13,104 +20,114 @@
 }
 
 .table {
-  table {
-    table-layout: fixed;
+  table-layout: fixed;
+  border-collapse: collapse;
 
-    .data-row {
-      &.floating {
-        filter: brightness(0.55);
-      }
-
-      .green {
-        color: var(--green-9);
-      }
-
-      .red {
-        color: var(--red-9);
-      }
-
-      td {
-        /* Prevent different row heights between pinned
-         * and non-pinned tables because of line height
-         * applied by Radix Text component */
-        :global(.rt-Text) {
-          line-height: inherit;
-        }
-
-        color: var(--table-body-color);
-        text-align: left;
-        &[align="right"] {
-          text-align: right;
-        }
-        vertical-align: middle;
-
-        &.pct-gradient {
-          color: color-mix(
-            in srgb,
-            var(--tile-busy-green-color),
-            var(--tile-busy-red-color) var(--pct)
-          );
-        }
-
-        &.no-padding {
-          padding-top: 0;
-          padding-bottom: 0;
-        }
-
-        .increment-text {
-          min-width: 5ch;
-          display: inline-block;
-          font-variant-numeric: tabular-nums;
-
-          &.low-increment {
-            color: var(--low-increment-text-color);
-          }
-          &.mid-increment {
-            color: var(--mid-increment-text-color);
-          }
-          &.high-increment {
-            color: var(--high-increment-text-color);
-          }
-        }
-
-        &.critical {
-          color: var(--gold-10);
-        }
-      }
-    }
-
-    tr {
-      border: solid rgba(250, 250, 250, 0.12);
-      border-width: 1px 0px;
-    }
-
-    .light-border-bottom {
-      border-bottom: 1px solid rgba(250, 250, 250, 0.36);
-    }
-
-    .right-border {
-      border-right: 1px solid rgba(250, 250, 250, 0.36);
-    }
-
-    td.right-border {
-      padding-right: 10px;
-    }
-
-    td,
+  thead {
     th {
-      box-shadow: none;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--table-header-color);
+    }
+  }
+
+  tbody {
+    th,
+    td {
+      font-size: 14px;
+      color: var(--table-body-color);
+    }
+  }
+
+  td,
+  th {
+    white-space: nowrap;
+    box-shadow: none;
+    padding: 4px 8px;
+  }
+
+  .data-row {
+    &.floating {
+      filter: brightness(0.55);
     }
 
-    .priority-count {
-      .critical {
+    .green {
+      color: var(--green-9);
+    }
+
+    .red {
+      color: var(--red-9);
+    }
+
+    td {
+      color: var(--table-body-color);
+      text-align: left;
+      &[align="right"] {
+        text-align: right;
+      }
+      vertical-align: middle;
+
+      &.pct-gradient {
+        color: color-mix(
+          in srgb,
+          var(--tile-busy-green-color),
+          var(--tile-busy-red-color) var(--pct)
+        );
+      }
+
+      &.no-padding {
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+
+      .increment-text {
+        min-width: 5ch;
+        display: inline-block;
+        font-variant-numeric: tabular-nums;
+
+        &.low-increment {
+          color: var(--low-increment-text-color);
+        }
+        &.mid-increment {
+          color: var(--mid-increment-text-color);
+        }
+        &.high-increment {
+          color: var(--high-increment-text-color);
+        }
+      }
+
+      &.critical {
         color: var(--gold-10);
       }
-      .pinned {
-        color: var(--table-body-color);
-      }
-      .floating {
-        color: var(--gray-7);
-      }
+    }
+  }
+
+  tr {
+    border: solid rgba(250, 250, 250, 0.12);
+    border-width: 1px 0px;
+  }
+
+  .light-border-bottom {
+    border-bottom: 1px solid rgba(250, 250, 250, 0.36);
+  }
+
+  .right-border {
+    border-right: 1px solid rgba(250, 250, 250, 0.36);
+  }
+
+  td.right-border {
+    padding-right: 10px;
+  }
+
+  .priority-count {
+    .critical {
+      color: var(--gold-10);
+    }
+    .pinned {
+      color: var(--table-body-color);
+    }
+    .floating {
+      color: var(--gray-7);
     }
   }
 }

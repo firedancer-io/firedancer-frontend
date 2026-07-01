@@ -512,3 +512,13 @@ export function getPeerIconUrl(peerInfo: PeerUpdateInfo | null | undefined) {
     undefined
   );
 }
+
+export function numArrEqual(
+  a: number[] | null | undefined,
+  b: number[] | null | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
