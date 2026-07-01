@@ -11,7 +11,10 @@ import type {
 import { isEmaObjectKey } from "./worker/types";
 import { DateTime } from "luxon";
 import { useInterval } from "react-use";
-import { useThrottledCallback, useDebouncedCallback } from "use-debounce";
+import {
+  useThrottledCallbackIfVisible,
+  useDebouncedCallbackIfVisible,
+} from "./useDebounceIfVisible";
 import type z from "zod";
 import {
   skipRateAtom,
@@ -223,6 +226,19 @@ function useUpdateAtoms() {
 
   const [startupTime, setStartupTime] = useAtom(startupTimeAtom);
 
+  const isVisibleRef = useRef(
+    typeof document === "undefined" || document.visibilityState === "visible",
+  );
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      isVisibleRef.current = document.visibilityState === "visible";
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
+
   const [slotDurationDbMs, updateSlotDurationDbMs] = useReducer(() => {
     const uptimeDuration =
       startupTime !== undefined
@@ -241,18 +257,24 @@ function useUpdateAtoms() {
   useInterval(updateSlotDurationDbMs, 1_000);
 
   const setEstimatedSlotDuration = useSetAtom(estimatedSlotDurationAtom);
-  const setDbEstimatedSlotDuration = useThrottledCallback(
+  const setDbEstimatedSlotDuration = useThrottledCallbackIfVisible(
+    isVisibleRef,
     (value?: EstimatedSlotDuration) => setEstimatedSlotDuration(value),
     slotDurationDbMs,
   );
 
   const setEstimatedTps = useSetAtom(estimatedTpsAtom);
-  const setDbEstimatedTps = useThrottledCallback((value?: EstimatedTps) => {
-    setEstimatedTps(value);
-  }, estimatedTpsDebounceMs);
+  const setDbEstimatedTps = useThrottledCallbackIfVisible(
+    isVisibleRef,
+    (value?: EstimatedTps) => {
+      setEstimatedTps(value);
+    },
+    estimatedTpsDebounceMs,
+  );
 
   const setLiveNetworkMetrics = useSetAtom(liveNetworkMetricsAtom);
-  const setDbLiveNetworkMetrics = useThrottledCallback(
+  const setDbLiveNetworkMetrics = useThrottledCallbackIfVisible(
+    isVisibleRef,
     (value?: LiveNetworkMetrics) => {
       setLiveNetworkMetrics(value);
     },
@@ -260,12 +282,17 @@ function useUpdateAtoms() {
   );
 
   const setLiveTileMetrics = useSetAtom(liveTileMetricsAtom);
-  const setDbLiveTileMetrics = useThrottledCallback((value?: TileMetrics) => {
-    setLiveTileMetrics(value);
-  }, liveTileMetricsDebounceMs);
+  const setDbLiveTileMetrics = useThrottledCallbackIfVisible(
+    isVisibleRef,
+    (value?: TileMetrics) => {
+      setLiveTileMetrics(value);
+    },
+    liveTileMetricsDebounceMs,
+  );
 
   const setLivePrimaryMetrics = useSetAtom(liveTilePrimaryMetricAtom);
-  const setDbLivePrimaryMetrics = useThrottledCallback(
+  const setDbLivePrimaryMetrics = useThrottledCallbackIfVisible(
+    isVisibleRef,
     (value?: LiveTilePrimaryMetric) => {
       setLivePrimaryMetrics(value);
     },
@@ -274,7 +301,8 @@ function useUpdateAtoms() {
 
   const setRateLiveTxnWaterfall = useSetAtom(rateLiveWaterfallAtom);
   const setLiveTxnWaterfall = useSetAtom(liveTxnWaterfallAtom);
-  const setDbLiveTxnWaterfall = useThrottledCallback(
+  const setDbLiveTxnWaterfall = useThrottledCallbackIfVisible(
+    isVisibleRef,
     (value?: LiveTxnWaterfall) => {
       setLiveTxnWaterfall(value);
       setRateLiveTxnWaterfall(value?.waterfall);
@@ -283,9 +311,13 @@ function useUpdateAtoms() {
   );
 
   const setTileTimer = useSetAtom(tileTimerAtom);
-  const setDbTileTimer = useThrottledCallback((value?: number[]) => {
-    setTileTimer(value);
-  }, tileTimerDebounceMs);
+  const setDbTileTimer = useThrottledCallbackIfVisible(
+    isVisibleRef,
+    (value?: number[]) => {
+      setTileTimer(value);
+    },
+    tileTimerDebounceMs,
+  );
 
   const setBootProgress = useSetAtom(bootProgressAtom);
   const setStartupProgress = useSetAtom(startupProgressAtom);
@@ -307,7 +339,8 @@ function useUpdateAtoms() {
   const setSlotStatus = useSetAtom(setSlotStatusAtom);
 
   const setGossipNetworkStats = useSetAtom(gossipNetworkStatsAtom);
-  const setDbGossipNetworkStats = useThrottledCallback(
+  const setDbGossipNetworkStats = useThrottledCallbackIfVisible(
+    isVisibleRef,
     (value?: GossipNetworkStats) => {
       setGossipNetworkStats(value);
     },
@@ -315,7 +348,8 @@ function useUpdateAtoms() {
   );
 
   const setGossipPeersSize = useSetAtom(gossipPeersSizeAtom);
-  const setDbGossipPeersSize = useThrottledCallback(
+  const setDbGossipPeersSize = useThrottledCallbackIfVisible(
+    isVisibleRef,
     (value?: GossipPeersSize) => {
       setGossipPeersSize(value);
     },
@@ -427,7 +461,8 @@ function useUpdateAtoms() {
   const peersBuffer = useRef(new Map<string, Peer>());
   const removePeersBuffer = useRef(new Map<string, PeerRemove>());
 
-  const dbFlushBuffer = useDebouncedCallback(
+  const dbFlushBuffer = useDebouncedCallbackIfVisible(
+    isVisibleRef,
     () => {
       updatePeers([...peersBuffer.current.values()]);
       removePeers([...removePeersBuffer.current.values()]);
@@ -459,6 +494,8 @@ function useUpdateAtoms() {
         }
       }
 
+      // While hidden the hook defers the flush to a requestAnimationFrame, so
+      // the buffer coalesces and flushes when the tab is visible again.
       dbFlushBuffer();
     },
     [dbFlushBuffer],
@@ -472,7 +509,8 @@ function useUpdateAtoms() {
     toRemove: new Set<string>(),
   });
 
-  const dbFlushSupermajorityPeersBuffers = useDebouncedCallback(
+  const dbFlushSupermajorityPeersBuffers = useDebouncedCallbackIfVisible(
+    isVisibleRef,
     () => {
       updateSupermajorityOnlinePeers(
         [...supermajorityPeersBuffers.current.toAdd],
@@ -873,16 +911,13 @@ function useUpdateAtoms() {
 
   useEffect(() => {
     if (isSocketDisconnected) {
-      dbFlushSupermajorityPeersBuffers.cancel();
+      // Clear buffers on disconnect. Any pending flush would just flush the now
+      // empty buffers, so there's nothing extra to cancel.
       supermajorityPeersBuffers.current.toAdd.clear();
       supermajorityPeersBuffers.current.toRemove.clear();
       resetSupermajority();
     }
-  }, [
-    dbFlushSupermajorityPeersBuffers,
-    isSocketDisconnected,
-    resetSupermajority,
-  ]);
+  }, [isSocketDisconnected, resetSupermajority]);
 
   useInterval(
     deleteSupermajorityDeltaEntries,
