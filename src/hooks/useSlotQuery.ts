@@ -1,15 +1,16 @@
 import { useAtomValue } from "jotai";
 import {
   getIsFutureSlotAtom,
+  isDocumentVisibleAtom,
   slotPublishAtomFamily,
   slotResponseAtomFamily,
 } from "../atoms";
-import { useMount } from "react-use";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useWebSocketSend } from "../api/ws/utils";
 import memoize from "micro-memoize";
 import type { SendMessage } from "../api/ws/types";
 import { throttle } from "lodash";
+import { useUnmount } from "react-use";
 
 enum SlotQueryType {
   Publish = "publish",
@@ -70,8 +71,15 @@ function useSlotQuery(
   skipQuery: boolean,
 ) {
   const wsSend = useWebSocketSend();
+  const queryTimerRef = useRef<{
+    query: () => void;
+    queryTimeoutId: ReturnType<typeof setTimeout>;
+    waitedForDataTimeoutId: ReturnType<typeof setTimeout>;
+  } | null>(null);
 
   const isFutureSlot = useAtomValue(getIsFutureSlotAtom(slot));
+  const isDocumentVisible = useAtomValue(isDocumentVisibleAtom);
+  const [waitingForData, setWaitingForData] = useState(true);
 
   const query = useCallback(() => {
     if (!slot) return;
@@ -83,15 +91,30 @@ function useSlotQuery(
   }, [query_type, isFutureSlot, slot, skipQuery, wsSend]);
 
   useEffect(() => {
-    const queryTimeout = setTimeout(() => query(), 250);
-    return () => {
-      clearTimeout(queryTimeout);
-    };
-  }, [query]);
+    if (!isDocumentVisible || queryTimerRef.current?.query === query) return;
 
-  const [waitingForData, setWaitingForData] = useState(true);
-  useMount(() => {
-    setTimeout(() => setWaitingForData(false), 3_000);
+    // new query
+    if (queryTimerRef.current) {
+      clearTimeout(queryTimerRef.current.queryTimeoutId);
+      clearTimeout(queryTimerRef.current.waitedForDataTimeoutId);
+      setWaitingForData(true);
+    }
+    const queryTimeout = setTimeout(() => query(), 250);
+    const waitingTimeout = setTimeout(() => setWaitingForData(false), 3_000);
+
+    queryTimerRef.current = {
+      query,
+      queryTimeoutId: queryTimeout,
+      waitedForDataTimeoutId: waitingTimeout,
+    };
+  }, [query, isDocumentVisible]);
+
+  useUnmount(() => {
+    if (queryTimerRef.current) {
+      clearTimeout(queryTimerRef.current.queryTimeoutId);
+      clearTimeout(queryTimerRef.current.waitedForDataTimeoutId);
+      queryTimerRef.current = null;
+    }
   });
 
   const hasWaitedForData = !waitingForData;
