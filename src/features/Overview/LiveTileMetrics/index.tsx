@@ -6,13 +6,14 @@ import {
   tileTimerHistoryAtom,
 } from "../../../api/atoms";
 import Card from "../../../components/Card";
-import { Flex, Table, Text } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import tableStyles from "../../Gossip/table.module.css";
+import { numArrEqual } from "../../../utils";
 import styles from "./liveTileMetrics.module.css";
 import { Bars } from "../../StartupProgress/Firedancer/Bars";
 import TileSparkLine from "../SlotPerformance/TileSparkLine";
 import { headerGap } from "../../Gossip/consts";
-import type { Priority, Tile, TileMetrics } from "../../../api/types";
+import type { Priority, Tile } from "../../../api/types";
 import clsx from "clsx";
 import {
   useHarmonicIntervalFn,
@@ -21,20 +22,80 @@ import {
 } from "react-use";
 import {
   memo,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type ComponentType,
 } from "react";
 import { tileChartDarkBackground } from "../../../colors";
-import { isEqual } from "lodash";
-import type { CellProps } from "@radix-ui/themes/components/table";
 import TableDescriptionDialog from "./TableDescriptionDialog";
-import { pinnedGroups, pinnedTableWidth, unpinnedGroups } from "./consts";
+import { pinnedGroups, unpinnedGroups, type MetricGroup } from "./consts";
+
 import { PriorityEnum } from "../../../api/entities";
 
 const chartHeight = 18;
+
+const priorityLabels: Record<Priority, string> = {
+  floating: "Floating",
+  startup: "Startup",
+  normal: "Pinned",
+  critical: "Critical",
+};
+
+interface TileRow {
+  tile: Tile;
+  idx: number;
+}
+
+interface PinnedRowData {
+  name: string;
+  kindId: number;
+  priority: Priority | undefined;
+}
+
+interface ScrollableRowData {
+  idx: number;
+  alive: number | null | undefined;
+  timers: number[] | null | undefined;
+  schedTimers: number[] | null | undefined;
+  inBackpressure: boolean | null | undefined;
+  backPressureCount: number | null | undefined;
+  cpu: number | null | undefined;
+  minflt: number | null | undefined;
+  majflt: number | null | undefined;
+  nivcsw: number | null | undefined;
+  nvcsw: number | null | undefined;
+  priority: Priority | undefined;
+}
+
+function pinnedDataEqualityFn(a: PinnedRowData, b: PinnedRowData) {
+  return (
+    a.name === b.name && a.kindId === b.kindId && a.priority === b.priority
+  );
+}
+
+function scrollableDataEqualityFn(a: ScrollableRowData, b: ScrollableRowData) {
+  return (
+    a.alive === b.alive &&
+    a.inBackpressure === b.inBackpressure &&
+    a.backPressureCount === b.backPressureCount &&
+    a.cpu === b.cpu &&
+    a.minflt === b.minflt &&
+    a.majflt === b.majflt &&
+    a.nivcsw === b.nivcsw &&
+    a.nvcsw === b.nvcsw &&
+    a.priority === b.priority &&
+    numArrEqual(a.timers, b.timers) &&
+    numArrEqual(a.schedTimers, b.schedTimers)
+  );
+}
+
+function getRowKey({ tile }: TileRow) {
+  return `${tile.kind}:${tile.kind_id}`;
+}
 
 export default memo(function LiveTileMetrics() {
   return (
@@ -51,258 +112,332 @@ export default memo(function LiveTileMetrics() {
 });
 
 function LiveMetricsTables() {
+  const tiles = useAtomValue(tilesAtom);
+  const liveTileMetrics = useAtomValue(liveTileMetricsAtom);
+
+  const prevPinnedDataRef = useRef<Map<number, PinnedRowData>>(new Map());
+  const prevScrollableDataRef = useRef<Map<number, ScrollableRowData>>(
+    new Map(),
+  );
+  const prevPinnedGroupHeaderDataRef = useRef<PriorityCountCellProps>({
+    critical: 0,
+    pinned: 0,
+    floating: 0,
+  });
+
+  // Stable bit mask representation of alive tiles.
+  // alive[i] is 2 if tile i has permanently shut down
+  const aliveTiles = useMemo(
+    () =>
+      (liveTileMetrics?.alive ?? []).reduce<bigint>(
+        (mask, v, i) => (v !== 2 ? mask | (1n << BigInt(i)) : mask),
+        0n,
+      ),
+    [liveTileMetrics?.alive],
+  );
+
+  const rows = useMemo<TileRow[]>(
+    () =>
+      (tiles ?? [])
+        .map((tile, idx) => ({ tile, idx }))
+        .filter(({ idx }) => (aliveTiles >> BigInt(idx)) & 1n),
+    [tiles, aliveTiles],
+  );
+
+  // Stablizes data reference per row when row priority hasn't changed
+  const getPinnedData = useCallback(
+    ({ tile, idx }: TileRow): PinnedRowData => {
+      const prev = prevPinnedDataRef.current.get(idx);
+      const next: PinnedRowData = {
+        name: tile.kind,
+        kindId: tile.kind_id,
+        priority: liveTileMetrics?.priority?.[idx],
+      };
+      if (prev !== undefined && pinnedDataEqualityFn(prev, next)) return prev;
+      prevPinnedDataRef.current.set(idx, next);
+      return next;
+    },
+    [liveTileMetrics?.priority],
+  );
+
+  // Stablizes data reference per row when row data hasn't changed
+  const getScrollableData = useCallback(
+    ({ idx }: TileRow): ScrollableRowData => {
+      const prev = prevScrollableDataRef.current.get(idx);
+      const next: ScrollableRowData = {
+        idx,
+        alive: liveTileMetrics?.alive[idx] ?? prev?.alive,
+        timers: liveTileMetrics?.timers[idx] ?? prev?.timers,
+        schedTimers: liveTileMetrics?.sched_timers[idx] ?? prev?.schedTimers,
+        inBackpressure: liveTileMetrics?.in_backp[idx] ?? prev?.inBackpressure,
+        backPressureCount:
+          liveTileMetrics?.backp_msgs[idx] ?? prev?.backPressureCount,
+        cpu: liveTileMetrics?.last_cpu[idx] ?? prev?.cpu,
+        minflt: liveTileMetrics?.minflt[idx] ?? prev?.minflt,
+        majflt: liveTileMetrics?.majflt[idx] ?? prev?.majflt,
+        nivcsw: liveTileMetrics?.nivcsw[idx] ?? prev?.nivcsw,
+        nvcsw: liveTileMetrics?.nvcsw[idx] ?? prev?.nvcsw,
+        priority: liveTileMetrics?.priority?.[idx] ?? prev?.priority,
+      };
+      if (prev !== undefined && scrollableDataEqualityFn(prev, next))
+        return prev;
+      prevScrollableDataRef.current.set(idx, next);
+      return next;
+    },
+    [liveTileMetrics],
+  );
+
+  // Stabalizes priority counts
+  const pinnedGroupHeaderData = useMemo((): PriorityCountCellProps => {
+    const priority = liveTileMetrics?.priority;
+    const alive = liveTileMetrics?.alive;
+    let critical = 0,
+      pinned = 0,
+      floating = 0;
+    if (priority && alive) {
+      for (let i = 0; i < priority.length; i++) {
+        if (alive[i] === 2) continue;
+        switch (priority[i]) {
+          case PriorityEnum.critical:
+            critical++;
+            break;
+          case PriorityEnum.normal:
+          case PriorityEnum.startup:
+            pinned++;
+            break;
+          case PriorityEnum.floating:
+            floating++;
+            break;
+        }
+      }
+    }
+
+    const prev = prevPinnedGroupHeaderDataRef.current;
+    if (
+      prev.critical === critical &&
+      prev.pinned === pinned &&
+      prev.floating === floating
+    )
+      return prev;
+    prevPinnedGroupHeaderDataRef.current = { critical, pinned, floating };
+    return prevPinnedGroupHeaderDataRef.current;
+  }, [liveTileMetrics?.priority, liveTileMetrics?.alive]);
+
+  if (!tiles || !liveTileMetrics) return null;
+
   return (
     <Flex>
-      <LiveMetricsTable isPinned={true} />
-      <LiveMetricsTable isPinned={false} />
+      <MInnerTable
+        groups={pinnedGroups}
+        rows={rows}
+        getData={getPinnedData}
+        RowRenderer={PinnedTileRow}
+        groupHeaderData={pinnedGroupHeaderData}
+        GroupHeaderRenderer={MPriorityCountCell}
+        isPinned
+      />
+      <MInnerTable
+        groups={unpinnedGroups}
+        rows={rows}
+        getData={getScrollableData}
+        RowRenderer={ScrollableTileRow}
+      />
     </Flex>
   );
 }
 
-interface LiveMetricsTableProps {
-  isPinned: boolean;
+interface InnerTableProps<TData, THeaderData> {
+  groups: MetricGroup[];
+  rows: TileRow[];
+  getData: (row: TileRow) => TData;
+  RowRenderer: ComponentType<{ data: TData }>;
+  groupHeaderData?: THeaderData | null;
+  GroupHeaderRenderer?: ComponentType<{ data: THeaderData }>;
+  isPinned?: boolean;
 }
-function LiveMetricsTable({ isPinned }: LiveMetricsTableProps) {
-  const tiles = useAtomValue(tilesAtom);
-  const liveTileMetrics = useAtomValue(liveTileMetricsAtom);
 
-  const groups = isPinned ? pinnedGroups : unpinnedGroups;
+function InnerTable<TData, THeaderData>({
+  groups,
+  rows,
+  getData,
+  RowRenderer,
+  groupHeaderData,
+  GroupHeaderRenderer,
+  isPinned,
+}: InnerTableProps<TData, THeaderData>) {
+  const width = useMemo(
+    () =>
+      groups.reduce((acc, group) => {
+        for (const metric of group.metrics) acc += metric.headerColWidth;
+        return acc;
+      }, 0),
+    [groups],
+  );
 
   const rootStyle = useMemo(
     () =>
       ({
         "--bar-height": `${chartHeight}px`,
-        minWidth: isPinned ? `${pinnedTableWidth}px` : "0px",
-        flexBasis: isPinned ? `${pinnedTableWidth}px` : undefined,
+        minWidth: isPinned ? width : 0,
+        flexBasis: isPinned ? width : undefined,
+        flexShrink: isPinned ? 0 : undefined,
+        overflowX: isPinned ? undefined : "auto",
       }) as CSSProperties,
-    [isPinned],
+    [isPinned, width],
   );
 
-  if (!tiles || !liveTileMetrics) return;
-
   return (
-    <Table.Root
-      variant="ghost"
-      className={clsx(tableStyles.root, styles.table)}
-      size="1"
-      style={rootStyle}
-    >
-      <colgroup>
-        {groups.map((group) =>
-          group.metrics.map((metric) => (
-            <col
-              key={metric.uniqueName}
-              style={{ width: metric.headerColWidth }}
-            />
-          )),
-        )}
-      </colgroup>
-
-      <Table.Header className={styles.header}>
-        <Table.Row>
-          {groups.map((group, i) => (
-            <Table.ColumnHeaderCell
-              key={group.name}
-              colSpan={group.metrics.length}
-              className={clsx(styles.groupHeader, {
-                [styles.rightBorder]: isPinned || i !== groups.length - 1,
-              })}
-            >
-              {group.name || (
-                <PriorityCountCell
-                  priority={liveTileMetrics.priority}
-                  alive={liveTileMetrics.alive}
-                />
-              )}
-            </Table.ColumnHeaderCell>
-          ))}
-        </Table.Row>
-
-        <Table.Row className={styles.lightBorderBottom}>
-          {groups.map((group, i) =>
-            group.metrics.map((metric, j) => (
-              <Table.ColumnHeaderCell
+    <div style={rootStyle} className={isPinned ? undefined : styles.scrollable}>
+      <table className={clsx(tableStyles.root, styles.table)} style={{ width }}>
+        <colgroup>
+          {groups.map((group) =>
+            group.metrics.map((metric) => (
+              <col
                 key={metric.uniqueName}
-                align={metric.headerColAlign}
-                className={clsx({
-                  [styles.wrap]: !!metric.wrap,
-                  [styles.rightBorder]:
-                    isPinned ||
-                    // last metric (except in last group) has right border
-                    (i !== groups.length - 1 && j === group.metrics.length - 1),
-                })}
-              >
-                {metric.columnName ?? metric.uniqueName}
-              </Table.ColumnHeaderCell>
+                style={{ width: metric.headerColWidth }}
+              />
             )),
           )}
-        </Table.Row>
-      </Table.Header>
-
-      <Table.Body>
-        {tiles.map((tile, i) => (
-          <TableRow
-            key={`${tile.kind}${tile.kind_id}`}
-            tile={tile}
-            liveTileMetrics={liveTileMetrics}
-            idx={i}
-            isPinned={isPinned}
-          />
-        ))}
-      </Table.Body>
-    </Table.Root>
+        </colgroup>
+        <thead className={styles.header}>
+          <tr>
+            {groups.map((group, i) => (
+              <th
+                key={group.name}
+                colSpan={group.metrics.length}
+                className={clsx(styles.groupHeader, {
+                  [styles.rightBorder]: isPinned || i !== groups.length - 1,
+                })}
+              >
+                {GroupHeaderRenderer && groupHeaderData ? (
+                  <MRenderer
+                    Renderer={GroupHeaderRenderer}
+                    data={groupHeaderData}
+                  />
+                ) : (
+                  group.name
+                )}
+              </th>
+            ))}
+          </tr>
+          <tr className={styles.lightBorderBottom}>
+            {groups.map((group, i) =>
+              group.metrics.map((metric, j) => (
+                <th
+                  key={metric.uniqueName}
+                  align={metric.headerColAlign}
+                  className={clsx({
+                    [styles.wrap]: !!metric.wrap,
+                    [styles.rightBorder]:
+                      isPinned ||
+                      // last metric (except in last group) has right border
+                      (i !== groups.length - 1 &&
+                        j === group.metrics.length - 1),
+                  })}
+                >
+                  {metric.columnName ?? metric.uniqueName}
+                </th>
+              )),
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <MRenderer
+              key={getRowKey(row)}
+              data={getData(row)}
+              Renderer={RowRenderer}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
-interface TableRowProps {
-  tile: Tile;
-  liveTileMetrics: TileMetrics;
-  idx: number;
-  isPinned: boolean;
+const MInnerTable = memo(InnerTable) as typeof InnerTable;
+
+function RenderData<TData>({
+  data,
+  Renderer,
+}: {
+  data: TData;
+  Renderer: ComponentType<{ data: TData }>;
+}) {
+  return <Renderer data={data} />;
 }
-function TableRow({ tile, liveTileMetrics, idx, isPinned }: TableRowProps) {
-  const prevLiveTileMetricsIdx = usePreviousDistinct(
-    liveTileMetrics,
-    (prev, next) => {
-      if (!prev) return false;
-      if (!next) return true;
+const MRenderer = memo(RenderData) as typeof RenderData;
 
-      return Object.keys(next).every((key) => {
-        return isEqual(
-          prev[key as keyof typeof prev]?.[idx],
-          next[key as keyof typeof next]?.[idx],
-        );
-      });
-    },
-  );
-
-  const alive =
-    liveTileMetrics.alive[idx] ?? prevLiveTileMetricsIdx?.alive[idx];
-
-  // Meaning tile has shut down, no need to list it in the table
-  if (alive === 2) return;
-
-  const timers =
-    liveTileMetrics.timers[idx] || prevLiveTileMetricsIdx?.timers[idx];
-
-  if (!timers) return;
-
-  if (isPinned) {
-    const isFloating =
-      (liveTileMetrics.priority?.[idx] ??
-        prevLiveTileMetricsIdx?.priority?.[idx]) === PriorityEnum.floating;
-    return (
-      <Table.Row
-        className={clsx(styles.dataRow, { [styles.floating]: isFloating })}
-      >
-        <Table.Cell className={styles.rightBorder}>
-          {tile.kind}:{tile.kind_id}
-        </Table.Cell>
-      </Table.Row>
-    );
-  }
-
+function PinnedTileRow({ data }: { data: PinnedRowData }) {
+  const isFloating = data.priority === PriorityEnum.floating;
   return (
-    <DataRow
-      alive={alive}
-      timers={timers}
-      liveTileMetrics={liveTileMetrics}
-      prevLiveTileMetricsIdx={prevLiveTileMetricsIdx}
-      idx={idx}
-    />
+    <tr className={clsx(styles.dataRow, { [styles.floating]: isFloating })}>
+      <td className={styles.rightBorder}>
+        {data.name}:{data.kindId}
+      </td>
+    </tr>
   );
 }
 
-const priorityLabels: Record<Priority, string> = {
-  floating: "Floating",
-  startup: "Startup",
-  normal: "Pinned",
-  critical: "Critical",
-};
-
-interface DataRowProps {
-  alive: number | null | undefined;
-  timers: number[];
-  liveTileMetrics: TileMetrics;
-  prevLiveTileMetricsIdx?: TileMetrics;
-  idx: number;
-}
-function DataRow({
-  alive,
-  timers,
-  liveTileMetrics,
-  prevLiveTileMetricsIdx,
-  idx,
-}: DataRowProps) {
-  const prevSchedTimers = usePreviousDistinct(
-    liveTileMetrics.sched_timers[idx],
-  );
-  const schedTimers =
-    liveTileMetrics.sched_timers[idx] || prevSchedTimers || [];
-
-  const [schedWaitPct, schedIdlePct, schedUserPct, schedSystemPct] =
-    schedTimers.map((v) => (v === -1 ? 0 : v));
-
-  const nivcsw =
-    liveTileMetrics.nivcsw[idx] ?? prevLiveTileMetricsIdx?.nivcsw[idx];
-  const nvcsw =
-    liveTileMetrics.nvcsw[idx] ?? prevLiveTileMetricsIdx?.nvcsw[idx];
-  const inBackpressure =
-    liveTileMetrics.in_backp[idx] ?? prevLiveTileMetricsIdx?.in_backp[idx];
-  const backPressureCount =
-    liveTileMetrics.backp_msgs[idx] ?? prevLiveTileMetricsIdx?.backp_msgs[idx];
-  const cpu =
-    liveTileMetrics.last_cpu[idx] ?? prevLiveTileMetricsIdx?.last_cpu[idx];
-  const minflt =
-    liveTileMetrics.minflt[idx] ?? prevLiveTileMetricsIdx?.minflt[idx];
-  const majflt =
-    liveTileMetrics.majflt[idx] ?? prevLiveTileMetricsIdx?.majflt[idx];
-  const priority =
-    liveTileMetrics.priority?.[idx] ?? prevLiveTileMetricsIdx?.priority?.[idx];
+function ScrollableTileRow({ data }: { data: ScrollableRowData }) {
+  const {
+    alive,
+    timers,
+    idx,
+    inBackpressure,
+    backPressureCount,
+    cpu,
+    minflt,
+    majflt,
+    nivcsw,
+    nvcsw,
+    schedTimers,
+    priority,
+  } = data;
 
   const prevNivcsw = usePrevious(nivcsw);
   const prevNvcsw = usePrevious(nvcsw);
   const prevBackPressureCount = usePrevious(backPressureCount);
 
-  for (let i = 0; i < timers.length; i++) {
-    if (timers[i] === -1) timers[i] = 0;
-  }
+  if (!timers) return <tr />;
 
-  const hKeepPct = timers[0] + timers[1] + timers[2];
-  const waitPct = timers[6];
-  const backpPct = timers[5];
-  const workPct = timers[3] + timers[4] + timers[7];
+  const [schedWaitPct, schedIdlePct, schedUserPct, schedSystemPct] = (
+    schedTimers ?? []
+  ).map((v) => (v === -1 ? 0 : v));
+
+  const t = timers.map((v) => (v === -1 ? 0 : v));
+  const hKeepPct = t[0] + t[1] + t[2];
+  const waitPct = t[6];
+  const backpPct = t[5];
+  const workPct = t[3] + t[4] + t[7];
 
   return (
-    <Table.Row
+    <tr
       className={clsx(styles.dataRow, {
         [styles.floating]: priority === PriorityEnum.floating,
       })}
     >
-      <Table.Cell align="right">{cpu}</Table.Cell>
-      <Table.Cell
+      <td align="right">{cpu}</td>
+      <td
         className={clsx({ [styles.green]: alive, [styles.red]: !alive })}
         align="right"
       >
         {alive ? "Live" : "Dead"}
-      </Table.Cell>
-      <Table.Cell
+      </td>
+      <td
         align="right"
         className={clsx({
           [styles.critical]: priority === PriorityEnum.critical,
         })}
       >
         {priority ? priorityLabels[priority] : "-"}
-      </Table.Cell>
-      <Table.Cell
-        align="right"
-        className={clsx({ [styles.red]: inBackpressure })}
-      >
+      </td>
+      <td align="right" className={clsx({ [styles.red]: inBackpressure })}>
         {inBackpressure ? "Yes" : "-"}
-      </Table.Cell>
-      <Table.Cell align="right" className={styles.rightBorder}>
+      </td>
+      <td align="right" className={styles.rightBorder}>
         {backPressureCount?.toLocaleString() ?? "-"} |
-        <Text
+        <span
           className={clsx(styles.incrementText, {
             [styles.highIncrement]:
               backPressureCount != null && prevBackPressureCount != null
@@ -315,8 +450,8 @@ function DataRow({
             ? backPressureCount - prevBackPressureCount
             : 0
           ).toLocaleString()}
-        </Text>
-      </Table.Cell>
+        </span>
+      </td>
 
       <MUtilization idx={idx} />
 
@@ -332,11 +467,7 @@ function DataRow({
       <PctCell
         pct={workPct}
         className={clsx(styles.pctGradient, styles.rightBorder)}
-        style={
-          {
-            "--pct": `${workPct}%`,
-          } as CSSProperties
-        }
+        style={{ "--pct": `${workPct}%` } as CSSProperties}
       />
 
       <PctCell pct={schedWaitPct} />
@@ -344,21 +475,21 @@ function DataRow({
       <PctCell pct={schedSystemPct} />
       <PctCell pct={schedIdlePct} className={styles.rightBorder} />
 
-      <Table.Cell align="right">{minflt?.toLocaleString() ?? "-"}</Table.Cell>
-      <Table.Cell align="right">{majflt?.toLocaleString() ?? "-"}</Table.Cell>
-      <Table.Cell align="right">
+      <td align="right">{minflt?.toLocaleString() ?? "-"}</td>
+      <td align="right">{majflt?.toLocaleString() ?? "-"}</td>
+      <td align="right">
         {nivcsw?.toLocaleString() ?? "-"} |
         <IncrementText
           value={nivcsw != null && prevNivcsw != null ? nivcsw - prevNivcsw : 0}
         />
-      </Table.Cell>
-      <Table.Cell align="right">
+      </td>
+      <td align="right">
         {nvcsw?.toLocaleString() ?? "-"} |
         <IncrementText
           value={nvcsw != null && prevNvcsw != null ? nvcsw - prevNvcsw : 0}
         />
-      </Table.Cell>
-    </Table.Row>
+      </td>
+    </tr>
   );
 }
 
@@ -368,7 +499,7 @@ interface IncrementTextProps {
 function IncrementText({ value }: IncrementTextProps) {
   const formatted = value.toLocaleString();
   return (
-    <Text
+    <span
       className={clsx(styles.incrementText, {
         [styles.lowIncrement]: 1 <= value && value <= 10,
         [styles.midIncrement]: 11 <= value && value <= 100,
@@ -376,19 +507,20 @@ function IncrementText({ value }: IncrementTextProps) {
       })}
     >
       +{formatted}
-    </Text>
+    </span>
   );
 }
 
 interface PctCellProps {
   pct: number | undefined;
+  className?: string;
+  style?: CSSProperties;
 }
-
-function PctCell({ pct, ...props }: PctCellProps & CellProps) {
+function PctCell({ pct, className, style }: PctCellProps) {
   return (
-    <Table.Cell align="right" {...props}>
+    <td className={className} style={style} align="right">
       {pct == null ? "--" : `${pct.toFixed(2)}%`}
-    </Table.Cell>
+    </td>
   );
 }
 
@@ -447,12 +579,12 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
 
   return (
     <>
-      <Table.Cell className={styles.noPadding}>
+      <td className={styles.noPadding}>
         <Flex align="center">
           <Bars value={pct >= 0 ? pct : (prevPct ?? 0)} max={1} barWidth={2} />
         </Flex>
-      </Table.Cell>
-      <Table.Cell className={clsx(styles.noPadding, styles.rightBorder)}>
+      </td>
+      <td className={clsx(styles.noPadding, styles.rightBorder)}>
         <TileSparkLine
           value={avgValue}
           history={initialHistory}
@@ -462,55 +594,33 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
           updateIntervalMs={updateIntervalMs}
           tickMs={1_000}
         />
-      </Table.Cell>
+      </td>
     </>
   );
 });
 
 interface PriorityCountCellProps {
-  priority: TileMetrics["priority"];
-  alive: TileMetrics["alive"];
+  critical: number;
+  pinned: number;
+  floating: number;
 }
-function PriorityCountCell({ priority, alive }: PriorityCountCellProps) {
-  const counts = useMemo(() => {
-    if (!priority) return null;
-    let critical = 0;
-    let pinned = 0;
-    let floating = 0;
-    for (let i = 0; i < priority.length; i++) {
-      // A shutdown tile is not displayed in the table, so exclude it from the count
-      const isShutdown = alive[i] === 2;
-      if (isShutdown) continue;
 
-      switch (priority[i]) {
-        case PriorityEnum.critical:
-          critical++;
-          break;
-        case PriorityEnum.normal:
-        case PriorityEnum.startup:
-          pinned++;
-          break;
-        case PriorityEnum.floating:
-          floating++;
-          break;
-      }
-    }
-    return { critical, pinned, floating };
-  }, [alive, priority]);
-
-  if (!counts) return;
-
+const MPriorityCountCell = memo(function PriorityCountCell({
+  data: { critical, pinned, floating },
+}: {
+  data: PriorityCountCellProps;
+}) {
   return (
     <Flex className={styles.priorityCount} gap="5px" justify="between">
       <Text>
-        {counts.critical} <Text className={styles.critical}>C</Text>
+        {critical} <Text className={styles.critical}>C</Text>
       </Text>
       <Text>
-        {counts.pinned} <Text className={styles.pinned}>P</Text>
+        {pinned} <Text className={styles.pinned}>P</Text>
       </Text>
       <Text>
-        {counts.floating} <Text className={styles.floating}>F</Text>
+        {floating} <Text className={styles.floating}>F</Text>
       </Text>
     </Flex>
   );
-}
+});

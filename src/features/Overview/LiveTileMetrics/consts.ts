@@ -1,11 +1,9 @@
-import type { Table } from "@radix-ui/themes";
-
 /** Tile regimes are the cartesian product of the following two state vectors:
     State vector 1:
     running: means that at the time the run loop executed, there was no upstream message I/O for the tile to handle.
     processing: means that at the time the run loop executed, there was one or more messages for the tile to consume.
     stalled: means that at the time the run loop executed, a downstream consumer of the messages produced by this tile is slow or stalled, and the message link for that consumer has filled up. This state causes the tile to stop processing upstream messages.
-    
+
     State Vector 2:
     maintenance: the portion of the run loop that executes infrequent, potentially CPU heavy tasks
     routine: the portion of the run loop that executes regularly, regardless of the presence of incoming messages
@@ -28,15 +26,17 @@ interface MetricDefinition {
   columnName?: string;
   description: string;
   headerColWidth: number;
-  headerColAlign?: Table.ColumnHeaderCellProps["align"];
+  headerColAlign?: "center" | "right" | "left" | "justify" | "char";
   wrap?: boolean;
 }
 
-export const metricGroups: {
+export interface MetricGroup {
   name: string;
   pinned?: boolean;
   metrics: MetricDefinition[];
-}[] = [
+}
+
+export const metricGroups: MetricGroup[] = [
   {
     name: "",
     pinned: true,
@@ -215,11 +215,3 @@ export const metricGroups: {
 
 export const pinnedGroups = metricGroups.filter(({ pinned }) => pinned);
 export const unpinnedGroups = metricGroups.filter(({ pinned }) => !pinned);
-
-// start with one pixel to account for border width
-export const pinnedTableWidth = pinnedGroups.reduce((acc, group) => {
-  for (const metric of group.metrics) {
-    acc += metric.headerColWidth;
-  }
-  return acc;
-}, 1);
