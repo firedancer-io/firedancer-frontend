@@ -4,9 +4,9 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import "./app.css";
 import { routeTree } from "./routeTree.gen";
 import { ConnectionProvider } from "./api/ws/ConnectionProvider";
-import { useSetAtom } from "jotai";
-import { containerElAtom } from "./atoms";
-import { useCallback } from "react";
+import { getDefaultStore, useSetAtom } from "jotai";
+import { containerElAtom, isDocumentVisibleAtom } from "./atoms";
+import { useCallback, useLayoutEffect } from "react";
 import * as colors from "./colors";
 import { kebabCase } from "lodash";
 import FiredancerLogo from "./assets/firedancer_logo.svg";
@@ -32,6 +32,8 @@ if (isFiredancer) {
 } else {
   document.getElementById("favicon")?.setAttribute("href", FrankendancerLogo);
 }
+
+const store = getDefaultStore();
 
 export default function App() {
   const setContainerEl = useSetAtom(containerElAtom);
@@ -63,6 +65,15 @@ export default function App() {
     }
   });
 
+  useLayoutEffect(() => {
+    document.addEventListener("visibilitychange", onDocumentVisibilityChange);
+    return () =>
+      document.removeEventListener(
+        "visibilitychange",
+        onDocumentVisibilityChange,
+      );
+  }, []);
+
   return (
     <Theme id="app" appearance="dark" ref={setRefAndColors} scaling="90%">
       <ConnectionProvider>
@@ -70,4 +81,8 @@ export default function App() {
       </ConnectionProvider>
     </Theme>
   );
+}
+
+function onDocumentVisibilityChange() {
+  store.set(isDocumentVisibleAtom, document.visibilityState === "visible");
 }
