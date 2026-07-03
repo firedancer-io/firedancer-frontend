@@ -11,7 +11,10 @@ import type {
 import { isEmaObjectKey } from "./worker/types";
 import { DateTime } from "luxon";
 import { useInterval } from "react-use";
-import { useThrottledCallback, useDebouncedCallback } from "use-debounce";
+import {
+  useThrottledCallbackIfVisible,
+  useDebouncedCallbackIfVisible,
+} from "./useDebounceIfVisible";
 import type z from "zod";
 import {
   skipRateAtom,
@@ -241,18 +244,21 @@ function useUpdateAtoms() {
   useInterval(updateSlotDurationDbMs, 1_000);
 
   const setEstimatedSlotDuration = useSetAtom(estimatedSlotDurationAtom);
-  const setDbEstimatedSlotDuration = useThrottledCallback(
+  const setDbEstimatedSlotDuration = useThrottledCallbackIfVisible(
     (value?: EstimatedSlotDuration) => setEstimatedSlotDuration(value),
     slotDurationDbMs,
   );
 
   const setEstimatedTps = useSetAtom(estimatedTpsAtom);
-  const setDbEstimatedTps = useThrottledCallback((value?: EstimatedTps) => {
-    setEstimatedTps(value);
-  }, estimatedTpsDebounceMs);
+  const setDbEstimatedTps = useThrottledCallbackIfVisible(
+    (value?: EstimatedTps) => {
+      setEstimatedTps(value);
+    },
+    estimatedTpsDebounceMs,
+  );
 
   const setLiveNetworkMetrics = useSetAtom(liveNetworkMetricsAtom);
-  const setDbLiveNetworkMetrics = useThrottledCallback(
+  const setDbLiveNetworkMetrics = useThrottledCallbackIfVisible(
     (value?: LiveNetworkMetrics) => {
       setLiveNetworkMetrics(value);
     },
@@ -260,12 +266,15 @@ function useUpdateAtoms() {
   );
 
   const setLiveTileMetrics = useSetAtom(liveTileMetricsAtom);
-  const setDbLiveTileMetrics = useThrottledCallback((value?: TileMetrics) => {
-    setLiveTileMetrics(value);
-  }, liveTileMetricsDebounceMs);
+  const setDbLiveTileMetrics = useThrottledCallbackIfVisible(
+    (value?: TileMetrics) => {
+      setLiveTileMetrics(value);
+    },
+    liveTileMetricsDebounceMs,
+  );
 
   const setLivePrimaryMetrics = useSetAtom(liveTilePrimaryMetricAtom);
-  const setDbLivePrimaryMetrics = useThrottledCallback(
+  const setDbLivePrimaryMetrics = useThrottledCallbackIfVisible(
     (value?: LiveTilePrimaryMetric) => {
       setLivePrimaryMetrics(value);
     },
@@ -274,7 +283,7 @@ function useUpdateAtoms() {
 
   const setRateLiveTxnWaterfall = useSetAtom(rateLiveWaterfallAtom);
   const setLiveTxnWaterfall = useSetAtom(liveTxnWaterfallAtom);
-  const setDbLiveTxnWaterfall = useThrottledCallback(
+  const setDbLiveTxnWaterfall = useThrottledCallbackIfVisible(
     (value?: LiveTxnWaterfall) => {
       setLiveTxnWaterfall(value);
       setRateLiveTxnWaterfall(value?.waterfall);
@@ -283,7 +292,7 @@ function useUpdateAtoms() {
   );
 
   const setTileTimer = useSetAtom(tileTimerAtom);
-  const setDbTileTimer = useThrottledCallback((value?: number[]) => {
+  const setDbTileTimer = useThrottledCallbackIfVisible((value?: number[]) => {
     setTileTimer(value);
   }, tileTimerDebounceMs);
 
@@ -307,7 +316,7 @@ function useUpdateAtoms() {
   const setSlotStatus = useSetAtom(setSlotStatusAtom);
 
   const setGossipNetworkStats = useSetAtom(gossipNetworkStatsAtom);
-  const setDbGossipNetworkStats = useThrottledCallback(
+  const setDbGossipNetworkStats = useThrottledCallbackIfVisible(
     (value?: GossipNetworkStats) => {
       setGossipNetworkStats(value);
     },
@@ -315,7 +324,7 @@ function useUpdateAtoms() {
   );
 
   const setGossipPeersSize = useSetAtom(gossipPeersSizeAtom);
-  const setDbGossipPeersSize = useThrottledCallback(
+  const setDbGossipPeersSize = useThrottledCallbackIfVisible(
     (value?: GossipPeersSize) => {
       setGossipPeersSize(value);
     },
@@ -427,7 +436,7 @@ function useUpdateAtoms() {
   const peersBuffer = useRef(new Map<string, Peer>());
   const removePeersBuffer = useRef(new Map<string, PeerRemove>());
 
-  const dbFlushBuffer = useDebouncedCallback(
+  const dbFlushBuffer = useDebouncedCallbackIfVisible(
     () => {
       updatePeers([...peersBuffer.current.values()]);
       removePeers([...removePeersBuffer.current.values()]);
@@ -459,6 +468,7 @@ function useUpdateAtoms() {
         }
       }
 
+      // only triggers when document is visible
       dbFlushBuffer();
     },
     [dbFlushBuffer],
@@ -472,7 +482,7 @@ function useUpdateAtoms() {
     toRemove: new Set<string>(),
   });
 
-  const dbFlushSupermajorityPeersBuffers = useDebouncedCallback(
+  const dbFlushSupermajorityPeersBuffers = useDebouncedCallbackIfVisible(
     () => {
       updateSupermajorityOnlinePeers(
         [...supermajorityPeersBuffers.current.toAdd],
@@ -499,6 +509,7 @@ function useUpdateAtoms() {
         }
       }
 
+      // only triggers when document is visible
       dbFlushSupermajorityPeersBuffers();
     },
     [dbFlushSupermajorityPeersBuffers],
