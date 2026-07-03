@@ -11,10 +11,9 @@ import styles from "./animatedInteger.module.css";
 import clsx from "clsx";
 import { Box, Flex, Text, type FlexProps } from "@radix-ui/themes";
 import { useUnmount } from "react-use";
-import useIsDocumentVisible from "../hooks/useIsDocumentVisible";
 import { useAtomValue } from "jotai";
 import { nsPerMs } from "../consts";
-import { epochAtom } from "../atoms";
+import { epochAtom, isDocumentVisibleAtom } from "../atoms";
 
 const MIN_ANIMATION_DURATION_MS = 20;
 
@@ -39,7 +38,7 @@ export default function AnimatedInteger({
   containerRowJustify,
   className,
 }: AnimatedIntegerProps) {
-  const isDocumentVisible = useIsDocumentVisible();
+  const isDocumentVisible = useAtomValue(isDocumentVisibleAtom);
   const targetSlotDuration =
     useAtomValue(epochAtom)?.target_slot_duration_nanos;
   const noAnimation =

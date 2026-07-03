@@ -32,6 +32,10 @@ import memoize from "micro-memoize";
 import { isFrankendancer } from "./client";
 import { numQuickSearchSlots } from "./features/SlotDetails/const";
 
+export const isDocumentVisibleAtom = atom<boolean>(
+  document.visibilityState === "visible",
+);
+
 export const containerElAtom = atom<HTMLDivElement | null>();
 export const slotsListElAtom = atom<HTMLDivElement | null>();
 

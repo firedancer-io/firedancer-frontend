@@ -6,6 +6,10 @@ import { messageEventType, type MessageEmitter } from "../ws/ConnectionContext";
 import EventEmitter from "events";
 import WsWorker from "./wsWorker?worker";
 import { logError } from "../../logger";
+import { getDefaultStore } from "jotai";
+import { isDocumentVisibleAtom } from "../../atoms";
+
+const store = getDefaultStore();
 
 let worker: TypedWorker<ToWorkerMessage, FromWorkerMessage> | null = null;
 // Singleton so existing listeners keep receiving events if the worker is recreated
@@ -50,21 +54,19 @@ function scheduleFlush() {
   if (rafId !== null || timeoutId !== null) return;
   if (!buffer.length) return;
 
-  if (document.visibilityState === "visible") {
+  if (store.get(isDocumentVisibleAtom)) {
     rafId = requestAnimationFrame(flushBuffer);
   } else {
     timeoutId = window.setTimeout(flushBuffer, 0);
   }
 }
 
-function onVisibilityChange() {
+const unsubscribeVisibility = store.sub(isDocumentVisibleAtom, () => {
   if (rafId !== null || timeoutId !== null) {
     cancelPendingFlush();
     scheduleFlush();
   }
-}
-
-document.addEventListener("visibilitychange", onVisibilityChange);
+});
 
 function onMessage(e: MessageEvent<FromWorkerMessage>) {
   buffer.push(e.data);
@@ -115,7 +117,7 @@ export function useWsWorker({
  */
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
-    document.removeEventListener("visibilitychange", onVisibilityChange);
+    unsubscribeVisibility();
     stopWorker();
   });
 }
