@@ -71,6 +71,10 @@
           &.high-increment {
             color: var(--high-increment-text-color);
           }
+
+          &.hidden {
+            display: none;
+          }
         }
 
         &.critical {

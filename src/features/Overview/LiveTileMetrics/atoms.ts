@@ -15,6 +15,7 @@ export interface TileRowMetrics {
   last_cpu?: number | null;
   minflt?: number | null;
   majflt?: number | null;
+  interrupts?: number | null;
   priority?: Priority | null;
 }
 
@@ -30,6 +31,7 @@ function getTileRow(m: TileMetrics, idx: number): TileRowMetrics {
     last_cpu: m.last_cpu[idx],
     minflt: m.minflt[idx],
     majflt: m.majflt[idx],
+    interrupts: m.interrupts[idx],
     priority: m.priority?.[idx],
   };
 }
