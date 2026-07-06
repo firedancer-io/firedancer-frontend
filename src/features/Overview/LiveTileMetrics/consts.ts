@@ -209,6 +209,13 @@ export const metricGroups: {
         headerColWidth: 150,
         headerColAlign: "right",
       },
+      {
+        uniqueName: "Irq",
+        description:
+          "The number of hardware interrupt requests handled since startup on the CPU the tile is pinned to. Not applicable to floating tiles.",
+        headerColWidth: 160,
+        headerColAlign: "right",
+      },
     ],
   },
 ];

@@ -153,6 +153,7 @@ type RowPick = (row: TileRowMetrics | undefined) => number | null | undefined;
 const pickBackp: RowPick = (r) => r?.backp_msgs;
 const pickNivcsw: RowPick = (r) => r?.nivcsw;
 const pickNvcsw: RowPick = (r) => r?.nvcsw;
+const pickIrq: RowPick = (r) => r?.interrupts;
 
 function writeIncrement(el: HTMLElement, value: number, graded: boolean) {
   el.textContent = `+${value.toLocaleString()}`;
@@ -169,12 +170,14 @@ interface LiveCountIncrementProps {
   idx: number;
   pick: RowPick;
   graded?: boolean;
+  blankOnFloating?: boolean;
 }
 
 function LiveCountIncrement({
   idx,
   pick,
   graded = false,
+  blankOnFloating = false,
   ...cellProps
 }: LiveCountIncrementProps & CellProps) {
   const countRef = useRef<HTMLSpanElement>(null);
@@ -186,7 +189,27 @@ function LiveCountIncrement({
     let prevTick: number | null | undefined;
 
     const handleUpdate = () => {
-      const value = pick(store.get(rowAtom));
+      const rowData = store.get(rowAtom);
+
+      if (blankOnFloating) {
+        if (rowData?.priority === PriorityEnum.floating) {
+          if (countRef.current) {
+            countRef.current.textContent = "--";
+          }
+          if (incRef.current) {
+            incRef.current.classList.add(styles.hidden);
+          }
+          prevTick = undefined;
+          lastKnown = undefined;
+          return;
+        }
+
+        if (incRef.current) {
+          incRef.current.classList.remove(styles.hidden);
+        }
+      }
+
+      const value = pick(rowData);
       const resolved = value ?? lastKnown;
       const inc =
         resolved != null && prevTick != null ? resolved - prevTick : 0;
@@ -208,7 +231,7 @@ function LiveCountIncrement({
     const unsub = store.sub(liveTileMetricsAtom, handleUpdate);
     handleUpdate();
     return unsub;
-  }, [idx, pick, graded]);
+  }, [idx, pick, graded, blankOnFloating]);
 
   return (
     <Table.Cell {...cellProps}>
@@ -388,6 +411,13 @@ export const DataRow = memo(function DataRow({ idx }: DataRowProps) {
       <LiveCell idx={idx} write={writeMajflt} align="right" />
       <LiveCountIncrement idx={idx} pick={pickNivcsw} graded align="right" />
       <LiveCountIncrement idx={idx} pick={pickNvcsw} graded align="right" />
+      <LiveCountIncrement
+        idx={idx}
+        pick={pickIrq}
+        graded
+        blankOnFloating
+        align="right"
+      />
     </Table.Row>
   );
 });

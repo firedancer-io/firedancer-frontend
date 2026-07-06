@@ -249,7 +249,8 @@ export const tileMetricsSchema = z.object({
   last_cpu: z.array(z.number().nullable()),
   minflt: z.array(z.number().nullable()),
   majflt: z.array(z.number().nullable()),
-  priority: z.array(prioritySchema).optional(),
+  interrupts: z.array(z.number().nullable()),
+  priority: z.array(prioritySchema),
 });
 
 export const tileTimerSchema = z.object({
