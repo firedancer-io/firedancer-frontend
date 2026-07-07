@@ -1,0 +1,39 @@
+.label {
+  color: #8e909d;
+  font-size: 12px;
+}
+
+.values-container {
+  gap: 5px;
+
+  .value {
+    color: var(--header-color);
+    font-size: 18px;
+  }
+
+  .secondary-value {
+    color: #8e909d;
+    font-size: 18px;
+  }
+
+  .suffix {
+    color: #8e909d;
+    font-size: 10px;
+  }
+
+  &.lg {
+    gap: 8px;
+
+    .value {
+      font-size: 28px;
+    }
+
+    .secondary-value {
+      font-size: 28px;
+    }
+
+    .suffix {
+      font-size: 12px;
+    }
+  }
+}

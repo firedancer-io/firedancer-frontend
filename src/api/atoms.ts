@@ -41,6 +41,7 @@ import type {
   LiveProgramCache,
   SlotCaughtUp,
   Health,
+  AccountsStats,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 import type { ValuesWithHistory } from "./worker/types";
@@ -194,3 +195,7 @@ export const liveProgramCacheAtom = atom<LiveProgramCache | undefined>(
 );
 
 export const healthAtom = atom<Health | undefined>(undefined);
+
+export const accountsStatsAtom = atom<AccountsStats | undefined>(undefined);
+
+export const hasAccountStatsAtom = atom((get) => !!get(accountsStatsAtom));

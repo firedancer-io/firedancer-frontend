@@ -1,0 +1,5 @@
+.secondary-text {
+  color: var(--gray-8);
+  margin-left: 4px;
+  min-width: 36px;
+}

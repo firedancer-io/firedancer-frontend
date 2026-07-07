@@ -6,7 +6,7 @@ import {
   type TileRowMetrics,
 } from "./atoms";
 import { Flex, Table, Text } from "@radix-ui/themes";
-import styles from "./liveTileMetrics.module.css";
+import tableStyles from "../../../components/dataTable.module.css";
 import { Bars } from "../../StartupProgress/Firedancer/Bars";
 import TileSparkLine from "../SlotPerformance/TileSparkLine";
 import type { Priority } from "../../../api/types";
@@ -92,27 +92,27 @@ const writeCpu: CellWrite<HTMLTableCellElement> = (el, c, p) => {
 const writeAlive: CellWrite<HTMLTableCellElement> = (el, c, p) => {
   const alive = c?.alive ?? p?.alive;
   el.textContent = alive ? "Live" : "Dead";
-  el.classList.toggle(styles.green, !!alive);
-  el.classList.toggle(styles.red, !alive);
+  el.classList.toggle(tableStyles.green, !!alive);
+  el.classList.toggle(tableStyles.red, !alive);
 };
 
 const writePriority: CellWrite<HTMLTableCellElement> = (el, c, p) => {
   const priority = c?.priority ?? p?.priority;
   el.textContent = priority ? priorityLabels[priority] : "-";
-  el.classList.toggle(styles.critical, priority === PriorityEnum.critical);
+  el.classList.toggle(tableStyles.critical, priority === PriorityEnum.critical);
 };
 
 const writeInBackp: CellWrite<HTMLTableCellElement> = (el, c, p) => {
   const inBackp = c?.in_backp ?? p?.in_backp;
   el.textContent = inBackp ? "Yes" : "-";
-  el.classList.toggle(styles.red, !!inBackp);
+  el.classList.toggle(tableStyles.red, !!inBackp);
 };
 
 const writeHKeep: CellWrite<HTMLTableCellElement> = (el, c, p) => {
   const t = normTimers(c, p);
   const v = t[0] + t[1] + t[2];
   el.textContent = pctText(v);
-  el.classList.toggle(styles.red, v > 1);
+  el.classList.toggle(tableStyles.red, v > 1);
 };
 
 const writeWait: CellWrite<HTMLTableCellElement> = (el, c, p) => {
@@ -122,7 +122,7 @@ const writeWait: CellWrite<HTMLTableCellElement> = (el, c, p) => {
 const writeBackpPct: CellWrite<HTMLTableCellElement> = (el, c, p) => {
   const v = normTimers(c, p)[5];
   el.textContent = pctText(v);
-  el.classList.toggle(styles.red, v > 0);
+  el.classList.toggle(tableStyles.red, v > 0);
 };
 
 const writeWork: CellWrite<HTMLTableCellElement> = (el, c, p) => {
@@ -146,7 +146,7 @@ const writeRow: CellWrite<HTMLTableRowElement> = (el, c, p) => {
   const hasTimers = !!(c?.timers || p?.timers);
   const priority = c?.priority ?? p?.priority;
   el.style.display = alive === 2 || !hasTimers ? "none" : "";
-  el.classList.toggle(styles.floating, priority === PriorityEnum.floating);
+  el.classList.toggle(tableStyles.faded, priority === PriorityEnum.floating);
 };
 
 type RowPick = (row: TileRowMetrics | undefined) => number | null | undefined;
@@ -158,11 +158,11 @@ const pickIrq: RowPick = (r) => r?.interrupts;
 function writeIncrement(el: HTMLElement, value: number, graded: boolean) {
   el.textContent = `+${value.toLocaleString()}`;
   if (graded) {
-    el.classList.toggle(styles.lowIncrement, 1 <= value && value <= 10);
-    el.classList.toggle(styles.midIncrement, 11 <= value && value <= 100);
-    el.classList.toggle(styles.highIncrement, value >= 101);
+    el.classList.toggle(tableStyles.lowIncrement, 1 <= value && value <= 10);
+    el.classList.toggle(tableStyles.midIncrement, 11 <= value && value <= 100);
+    el.classList.toggle(tableStyles.highIncrement, value >= 101);
   } else {
-    el.classList.toggle(styles.highIncrement, !!value);
+    el.classList.toggle(tableStyles.highIncrement, !!value);
   }
 }
 
@@ -197,7 +197,7 @@ function LiveCountIncrement({
             countRef.current.textContent = "--";
           }
           if (incRef.current) {
-            incRef.current.classList.add(styles.hidden);
+            incRef.current.classList.add(tableStyles.hidden);
           }
           prevTick = undefined;
           lastKnown = undefined;
@@ -205,7 +205,7 @@ function LiveCountIncrement({
         }
 
         if (incRef.current) {
-          incRef.current.classList.remove(styles.hidden);
+          incRef.current.classList.remove(tableStyles.hidden);
         }
       }
 
@@ -236,7 +236,7 @@ function LiveCountIncrement({
   return (
     <Table.Cell {...cellProps}>
       <span ref={countRef} />
-      <Text ref={incRef} className={styles.incrementText} />
+      <Text ref={incRef} className={tableStyles.incrementText} />
     </Table.Cell>
   );
 }
@@ -274,7 +274,11 @@ function LiveSchedCells({ idx }: { idx: number }) {
       <Table.Cell ref={waitRef} align="right" />
       <Table.Cell ref={userRef} align="right" />
       <Table.Cell ref={systemRef} align="right" />
-      <Table.Cell ref={idleRef} align="right" className={styles.rightBorder} />
+      <Table.Cell
+        ref={idleRef}
+        align="right"
+        className={tableStyles.rightBorder}
+      />
     </>
   );
 }
@@ -348,7 +352,7 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
 
   return (
     <>
-      <Table.Cell className={styles.noPadding}>
+      <Table.Cell className={tableStyles.noPadding}>
         <Flex align="center" ref={barsWrapRef}>
           <Bars
             value={initialPct >= 0 ? initialPct : (prevPctRef.current ?? 0)}
@@ -357,7 +361,9 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
           />
         </Flex>
       </Table.Cell>
-      <Table.Cell className={clsx(styles.noPadding, styles.rightBorder)}>
+      <Table.Cell
+        className={clsx(tableStyles.noPadding, tableStyles.rightBorder)}
+      >
         <TileSparkLine
           value={avgValue}
           history={initialHistory}
@@ -381,7 +387,7 @@ export const DataRow = memo(function DataRow({ idx }: DataRowProps) {
   useStateCell(idx, rowRef, writeRow);
 
   return (
-    <Table.Row ref={rowRef} className={styles.dataRow}>
+    <Table.Row ref={rowRef} className={tableStyles.dataRow}>
       <LiveCell idx={idx} write={writeCpu} align="right" />
       <LiveCell idx={idx} write={writeAlive} align="right" />
       <LiveCell idx={idx} write={writePriority} align="right" />
@@ -390,7 +396,7 @@ export const DataRow = memo(function DataRow({ idx }: DataRowProps) {
         idx={idx}
         pick={pickBackp}
         align="right"
-        className={styles.rightBorder}
+        className={tableStyles.rightBorder}
       />
 
       <MUtilization idx={idx} />
@@ -402,7 +408,7 @@ export const DataRow = memo(function DataRow({ idx }: DataRowProps) {
         idx={idx}
         write={writeWork}
         align="right"
-        className={clsx(styles.pctGradient, styles.rightBorder)}
+        className={clsx(tableStyles.pctGradient, tableStyles.rightBorder)}
       />
 
       <LiveSchedCells idx={idx} />

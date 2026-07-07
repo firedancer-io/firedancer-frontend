@@ -1,12 +1,18 @@
 import { useLocation } from "@tanstack/react-router";
 import { useMemo } from "react";
 
-export type RouteLabel = "Overview" | "Schedule" | "Gossip" | "Slot Details";
+export type RouteLabel =
+  | "Overview"
+  | "Schedule"
+  | "Gossip"
+  | "Slot Details"
+  | "Accounts";
 export const RouteLabelToPath: Record<RouteLabel, string> = {
   Overview: "/",
   "Slot Details": "/slotDetails",
   Schedule: "/leaderSchedule",
   Gossip: "/gossip",
+  Accounts: "/accounts",
 };
 
 export function useCurrentRoute() {

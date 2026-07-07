@@ -6,6 +6,7 @@ import SsidChartIcon from "@material-design-icons/svg/filled/ssid_chart.svg?reac
 import AssessmentIcon from "@material-design-icons/svg/filled/assessment.svg?react";
 import CalendarMonthIcon from "@material-design-icons/svg/filled/calendar_month.svg?react";
 import CampaignIcon from "@material-design-icons/svg/filled/campaign.svg?react";
+import AccountBalanceIcon from "@material-design-icons/svg/filled/account_balance.svg?react";
 import KeyboardArrowDownIcon from "@material-design-icons/svg/filled/keyboard_arrow_down.svg?react";
 import { Link } from "@tanstack/react-router";
 import clsx from "clsx";
@@ -32,7 +33,14 @@ const RouteLabelToIcon: Record<RouteLabel, FC<SVGProps<SVGSVGElement>>> = {
   Schedule: CalendarMonthIcon,
   Gossip: CampaignIcon,
   "Slot Details": AssessmentIcon,
+  Accounts: AccountBalanceIcon,
 };
+
+function isRouteHidden(routeLabel: RouteLabel) {
+  if (isFrankendancer)
+    return routeLabel === "Gossip" || routeLabel === "Accounts";
+  return false;
+}
 
 interface NavLinkProps extends ButtonProps {
   label: RouteLabel;
@@ -97,7 +105,7 @@ export function NavLinks() {
     <Flex gap={`${slotsNavSpacing}px`}>
       {Object.keys(RouteLabelToPath).map((label) => {
         const routeLabel = label as RouteLabel;
-        if (routeLabel === "Gossip" && isFrankendancer) return;
+        if (isRouteHidden(routeLabel)) return;
 
         return (
           <NavButton
@@ -137,7 +145,7 @@ export function DropdownNav() {
         >
           {Object.keys(RouteLabelToPath).map((label) => {
             const routeLabel = label as RouteLabel;
-            if (routeLabel === "Gossip" && isFrankendancer) return;
+            if (isRouteHidden(routeLabel)) return;
 
             return (
               <DropdownMenu.Item key={routeLabel} asChild>

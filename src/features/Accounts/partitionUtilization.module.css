@@ -1,0 +1,77 @@
+.trigger-marker,
+.compaction-marker,
+.write-head-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 1;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    transform: translateX(-50%);
+  }
+}
+
+.trigger-marker {
+  bottom: 0;
+  background: var(--yellow-9);
+
+  &::before {
+    border-top: 4px solid var(--accounts-partition-compaction-trigger-color);
+  }
+}
+
+.write-head-marker {
+  &::before {
+    border-top: 4px solid var(--accounts-partition-write-head-color);
+  }
+}
+
+.compaction-marker {
+  &::before {
+    border-top: 4px solid var(--accounts-partition-compaction-head-color);
+  }
+}
+
+.track {
+  position: relative;
+  border-radius: 1px;
+  background-color: #3a3a3a;
+}
+
+.fragmented {
+  background: var(--accounts-fragmented-color);
+}
+
+.used {
+  background: var(--accounts-used-color);
+}
+
+.unused {
+  background: var(--accounts-unused-color);
+}
+
+.compactionOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  background: var(--accounts-partition-compaction-color);
+}
+
+.usage-text {
+  min-width: 36px;
+  text-align: right;
+}
