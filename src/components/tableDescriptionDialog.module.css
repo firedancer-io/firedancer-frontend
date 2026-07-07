@@ -1,6 +1,11 @@
 .table-description-dialog {
   overflow-y: auto;
 
+  .title {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
   .table {
     padding: var(--space-3) 8px;
     --table-cell-padding: 5px;

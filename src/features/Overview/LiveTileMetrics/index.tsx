@@ -7,22 +7,24 @@ import {
 } from "./atoms";
 import Card from "../../../components/Card";
 import { Flex, Table, Text } from "@radix-ui/themes";
-import tableStyles from "../../Gossip/table.module.css";
+import tableStyles from "../../../components/dataTable.module.css";
 import styles from "./liveTileMetrics.module.css";
 import { headerGap } from "../../Gossip/consts";
 import type { Tile } from "../../../api/types";
 import clsx from "clsx";
 import { usePreviousDistinct } from "react-use";
 import { memo, useMemo, type CSSProperties } from "react";
-import TableDescriptionDialog from "./TableDescriptionDialog";
+import TableDescriptionDialog from "../../../components/TableDescriptionDialog";
 import {
   chartHeight,
+  metricGroups,
   pinnedGroups,
   pinnedTableWidth,
   unpinnedGroups,
 } from "./consts";
 import { PriorityEnum } from "../../../api/entities";
 import { DataRow } from "./DataRow";
+import { TableHeader } from "../../../components/DataTable";
 
 export default memo(function LiveTileMetrics() {
   return (
@@ -30,7 +32,7 @@ export default memo(function LiveTileMetrics() {
       <Flex direction="column" gap={headerGap} width="100%">
         <Flex align="center" gap="2">
           <Text className={tableStyles.headerText}>Tiles</Text>
-          <TableDescriptionDialog />
+          <TableDescriptionDialog groups={metricGroups} />
         </Flex>
         <LiveMetricsTables />
       </Flex>
@@ -71,57 +73,15 @@ function LiveMetricsTable({ isPinned }: LiveMetricsTableProps) {
   return (
     <Table.Root
       variant="ghost"
-      className={clsx(tableStyles.root, styles.table)}
+      className={clsx(tableStyles.root, tableStyles.table)}
       size="1"
       style={rootStyle}
     >
-      <colgroup>
-        {groups.map((group) =>
-          group.metrics.map((metric) => (
-            <col
-              key={metric.uniqueName}
-              style={{ width: metric.headerColWidth }}
-            />
-          )),
-        )}
-      </colgroup>
-
-      <Table.Header className={styles.header}>
-        <Table.Row>
-          {groups.map((group, i) => (
-            <Table.ColumnHeaderCell
-              key={group.name}
-              colSpan={group.metrics.length}
-              className={clsx(styles.groupHeader, {
-                [styles.rightBorder]: isPinned || i !== groups.length - 1,
-              })}
-            >
-              {group.name || <PriorityCountCell />}
-            </Table.ColumnHeaderCell>
-          ))}
-        </Table.Row>
-
-        <Table.Row className={styles.lightBorderBottom}>
-          {groups.map((group, i) =>
-            group.metrics.map((metric, j) => (
-              <Table.ColumnHeaderCell
-                key={metric.uniqueName}
-                align={metric.headerColAlign}
-                className={clsx({
-                  [styles.wrap]: !!metric.wrap,
-                  [styles.rightBorder]:
-                    isPinned ||
-                    // last metric (except in last group) has right border
-                    (i !== groups.length - 1 && j === group.metrics.length - 1),
-                })}
-              >
-                {metric.columnName ?? metric.uniqueName}
-              </Table.ColumnHeaderCell>
-            )),
-          )}
-        </Table.Row>
-      </Table.Header>
-
+      <TableHeader
+        groups={groups}
+        isPinned={isPinned}
+        HeaderRenderer={PriorityCountCell}
+      />
       <Table.Body>
         {tiles.map((tile, i) => (
           <TableRow
@@ -190,9 +150,9 @@ const PinnedTableRowContent = memo(function PinnedTableRowContent({
 }: PinnedTableRowContentProps) {
   return (
     <Table.Row
-      className={clsx(styles.dataRow, { [styles.floating]: isFloating })}
+      className={clsx(tableStyles.dataRow, { [tableStyles.faded]: isFloating })}
     >
-      <Table.Cell className={styles.rightBorder}>
+      <Table.Cell className={tableStyles.rightBorder}>
         {tile.kind}:{tile.kind_id}
       </Table.Cell>
     </Table.Row>

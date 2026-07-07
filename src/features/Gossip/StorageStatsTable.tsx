@@ -3,7 +3,8 @@ import { useMemo } from "react";
 import EmaTableCell from "./RateTableCell";
 import { headerGap, storageTypes, tableMinWidth } from "./consts";
 import type { GossipStorageStats } from "../../api/types";
-import styles from "./table.module.css";
+import tableStyles from "./../../components/dataTable.module.css";
+import styles from "./storageStatsTable.module.css";
 
 interface StorageStatsTableProps {
   storage: GossipStorageStats;
@@ -38,7 +39,7 @@ export default function StorageStatsTable({ storage }: StorageStatsTableProps) {
       minHeight="250px"
     >
       <Text className={styles.headerText}>Storage Stats</Text>
-      <Table.Root variant="surface" className={styles.root} size="1">
+      <Table.Root variant="surface" className={tableStyles.root} size="1">
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeaderCell>Entry Type</Table.ColumnHeaderCell>

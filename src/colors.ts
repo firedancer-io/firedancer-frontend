@@ -322,3 +322,22 @@ export const slotsListCurrentSlotNumberBackgroundColor = "#283551";
 
 // Tile charts
 export const tileChartDarkBackground = "#0000001F";
+
+// Accounts
+export const accountsReadColor = "#70B8FF";
+export const accountsWriteColor = "#9EB1FF";
+export const accountsUsedColor = "#4C82A5";
+export const accountsFragmentedColor = "#F76B15";
+export const accountsSecondaryColor = "#B4B4B4";
+export const accountsUnusedColor = "#313131";
+export const accountsIndexUsedColor = "#FFA057";
+export const accountsCacheClassNormalColor = "var(--gray-8)";
+export const accountsCacheClassTargetColor = "var(--amber-8)";
+export const accountsCacheClassLowWaterColor = "var(--yellow-9)";
+export const accountsCacheClassNormalEmptyColor = "var(--gray-6)";
+export const accountsCacheClassTargetEmptyColor = "var(--amber-5)";
+export const accountsCacheClassLowWaterEmptyColor = "var(--yellow-5)";
+export const accountsPartitionCompactionTriggerColor = "var(--yellow-9)";
+export const accountsPartitionCompactionColor = "var(--amber-9)";
+export const accountsPartitionCompactionHeadColor = "#d9d9d9";
+export const accountsPartitionWriteHeadColor = "#838383";

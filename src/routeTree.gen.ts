@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SlotDetailsRouteImport } from './routes/slotDetails'
 import { Route as LeaderScheduleRouteImport } from './routes/leaderSchedule'
 import { Route as GossipRouteImport } from './routes/gossip'
+import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -30,6 +31,11 @@ const GossipRoute = GossipRouteImport.update({
   path: '/gossip',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountsRoute = AccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -44,6 +50,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accounts': typeof AccountsRoute
   '/gossip': typeof GossipRoute
   '/leaderSchedule': typeof LeaderScheduleRoute
   '/slotDetails': typeof SlotDetailsRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accounts': typeof AccountsRoute
   '/gossip': typeof GossipRoute
   '/leaderSchedule': typeof LeaderScheduleRoute
   '/slotDetails': typeof SlotDetailsRoute
@@ -59,19 +67,33 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accounts': typeof AccountsRoute
   '/gossip': typeof GossipRoute
   '/leaderSchedule': typeof LeaderScheduleRoute
   '/slotDetails': typeof SlotDetailsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/gossip' | '/leaderSchedule' | '/slotDetails'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/accounts'
+    | '/gossip'
+    | '/leaderSchedule'
+    | '/slotDetails'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/gossip' | '/leaderSchedule' | '/slotDetails'
+  to:
+    | '/'
+    | '/about'
+    | '/accounts'
+    | '/gossip'
+    | '/leaderSchedule'
+    | '/slotDetails'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/accounts'
     | '/gossip'
     | '/leaderSchedule'
     | '/slotDetails'
@@ -80,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AccountsRoute: typeof AccountsRoute
   GossipRoute: typeof GossipRoute
   LeaderScheduleRoute: typeof LeaderScheduleRoute
   SlotDetailsRoute: typeof SlotDetailsRoute
@@ -108,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GossipRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accounts': {
+      id: '/accounts'
+      path: '/accounts'
+      fullPath: '/accounts'
+      preLoaderRoute: typeof AccountsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -128,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AccountsRoute: AccountsRoute,
   GossipRoute: GossipRoute,
   LeaderScheduleRoute: LeaderScheduleRoute,
   SlotDetailsRoute: SlotDetailsRoute,

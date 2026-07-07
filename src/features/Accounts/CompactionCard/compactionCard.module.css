@@ -1,0 +1,41 @@
+.legend-item {
+  font-size: 10px;
+  color: #8e909d;
+
+  .value {
+    color: #b4b4b4;
+  }
+}
+
+.icon-used {
+  width: 8px;
+  height: 8px;
+  background: var(--accounts-used-color);
+}
+
+.icon-frag {
+  width: 8px;
+  height: 8px;
+  background: var(--accounts-fragmented-color);
+}
+
+.icon-trigger {
+  width: 2px;
+  height: 8px;
+  background: var(--accounts-partition-compaction-trigger-color);
+  flex-shrink: 0;
+}
+
+.compact-head-triangle {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid var(--accounts-partition-compaction-head-color);
+}
+
+.compact-head-square {
+  width: 5px;
+  height: 5px;
+  background: var(--accounts-partition-compaction-color);
+}

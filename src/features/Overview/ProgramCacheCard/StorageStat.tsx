@@ -6,14 +6,10 @@ import { headerColor } from "../../../colors";
 import { useMemo, type CSSProperties } from "react";
 import { useAtomValue } from "jotai";
 import { liveProgramCacheAtom } from "../../../api/atoms";
-import { bytesUnits, formatBytes } from "../../../utils";
+import { formatSIBytesFraction } from "../../../utils";
+import type { ValueWithUnit } from "../../../utils";
 import { clamp } from "lodash";
 import styles from "./programCacheCard.module.css";
-
-type ValueWithUnit = {
-  value: string;
-  unit: string;
-};
 
 type StorageValues = {
   progress: number;
@@ -33,35 +29,18 @@ export default function StorageStat() {
       };
 
     const { size_bytes: sizeBytes, free_bytes: freeBytes } = liveProgramCache;
-
     const usedStorage = sizeBytes - freeBytes;
-    const used = formatBytes(usedStorage, 2);
-    const total = formatBytes(sizeBytes, 2);
     const progress = sizeBytes
       ? clamp((usedStorage / sizeBytes) * 100, 0, 100)
       : 0;
 
-    // use the denominator's units if the numerator is only one unit smaller
-    const numeratorUnitIdx = bytesUnits.findIndex(
-      (unit) => unit.unit === used.unit,
-    );
-    const denominatorUnitIdx = bytesUnits.findIndex(
-      (unit) => unit.unit === total.unit,
+    const { numerator, denominator } = formatSIBytesFraction(
+      usedStorage,
+      sizeBytes,
+      2,
     );
 
-    if (denominatorUnitIdx === numeratorUnitIdx + 1) {
-      return {
-        numerator: formatBytes(usedStorage, 3, total.unit),
-        denominator: total,
-        progress,
-      };
-    }
-
-    return {
-      numerator: used,
-      denominator: total,
-      progress,
-    };
+    return { numerator, denominator, progress };
   }, [liveProgramCache]);
 
   return (

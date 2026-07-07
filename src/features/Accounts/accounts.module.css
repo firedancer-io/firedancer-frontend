@@ -1,0 +1,19 @@
+.cards > * {
+  flex-grow: 1;
+}
+
+.compaction-card {
+  flex-basis: 400px;
+}
+
+.cache-card {
+  flex-basis: 300px;
+}
+
+.read {
+  --cell-color: var(--accounts-read-color);
+}
+
+.write {
+  --cell-color: var(--accounts-write-color);
+}

@@ -30,9 +30,12 @@ import { bootProgressContainerElAtom } from "../../atoms";
 import { useCallback } from "react";
 import PopoverDropdown from "../../components/PopoverDropdown";
 import HealthPane from "./HealthPane";
+import { isFiredancer } from "../../client";
 
 export default function Header({ isStartup }: { isStartup?: boolean }) {
-  const showDropdownNav = useMedia("(max-width: 1218px)");
+  const showDropdownNav = useMedia(
+    `(max-width: ${isFiredancer ? "1300px" : "1200px"})`,
+  );
   const isXNarrow = useMedia("(max-width: 401px)");
 
   const showIdentityIconOnly = useMedia(

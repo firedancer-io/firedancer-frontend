@@ -316,43 +316,124 @@ export function formatBytesAsBits(bytes: number): {
   return { value: getRoundedBitsValue(bits / 1_000_000_000), unit: "Gb" };
 }
 
-export interface FormattedBytes {
+export type ValueWithUnit<U extends string = string> = {
   value: string;
-  unit: string;
-}
+  unit: U;
+};
 
-type ByteUnit = "B" | "kB" | "MB" | "GB";
-
-export const bytesUnits: readonly {
-  unit: ByteUnit;
+export type UnitInfo<U extends string = string> = {
+  unit: U;
   divisor: number;
   threshold: number;
-}[] = [
+};
+
+export type UnitFormatter<U extends string = string> = (
+  value: number,
+  precision?: number,
+  unit?: U,
+  noDecimalForZero?: boolean,
+) => ValueWithUnit<U>;
+
+export type CountUnit = "" | "k" | "M" | "B" | "T";
+const countUnits: readonly UnitInfo<CountUnit>[] = [
+  { unit: "", divisor: 1, threshold: 1_000 },
+  { unit: "k", divisor: 1_000, threshold: 1_000_000 },
+  { unit: "M", divisor: 1_000_000, threshold: 1_000_000_000 },
+  { unit: "B", divisor: 1_000_000_000, threshold: 1_000_000_000_000 },
+  { unit: "T", divisor: 1_000_000_000_000, threshold: Infinity },
+];
+const indexCountUnits: readonly UnitInfo<CountUnit>[] = [
+  { unit: "", divisor: 1, threshold: 10_000 },
+  { unit: "k", divisor: 1_000, threshold: 10_000_000 },
+  { unit: "M", divisor: 1_000_000, threshold: 10_000_000_000 },
+  { unit: "B", divisor: 1_000_000_000, threshold: 10_000_000_000_000 },
+  { unit: "T", divisor: 1_000_000_000_000, threshold: Infinity },
+];
+
+export type SIByteUnit = "B" | "kB" | "MB" | "GB" | "TB";
+const siByteUnits: readonly UnitInfo<SIByteUnit>[] = [
   { unit: "B", divisor: 1, threshold: 1_000 },
   { unit: "kB", divisor: 1_000, threshold: 1_000_000 },
   { unit: "MB", divisor: 1_000_000, threshold: 1_000_000_000 },
-  { unit: "GB", divisor: 1_000_000_000, threshold: Infinity },
+  { unit: "GB", divisor: 1_000_000_000, threshold: 1_000_000_000_000 },
+  { unit: "TB", divisor: 1_000_000_000_000, threshold: Infinity },
 ];
 
-export function formatBytes(
-  bytes: number,
-  precision = 1,
-  unit?: ByteUnit,
-  noDecimalForZero = true,
-): {
-  value: string;
-  unit: ByteUnit;
-} {
-  if (bytes === 0 && noDecimalForZero) return { value: "0", unit: unit ?? "B" };
+export type IECByteUnit = "B" | "KiB" | "MiB" | "GiB" | "TiB";
+const iecByteUnits: readonly UnitInfo<IECByteUnit>[] = [
+  { unit: "B", divisor: 1, threshold: 1_024 },
+  { unit: "KiB", divisor: 1_024, threshold: 1_048_576 },
+  { unit: "MiB", divisor: 1_048_576, threshold: 1_073_741_824 },
+  { unit: "GiB", divisor: 1_073_741_824, threshold: 1_099_511_627_776 },
+  { unit: "TiB", divisor: 1_099_511_627_776, threshold: Infinity },
+];
 
-  const entry =
-    bytesUnits.find((u) => u.unit === unit) ??
-    bytesUnits.find((u) => bytes < u.threshold) ??
-    bytesUnits[bytesUnits.length - 1];
-  return {
-    value: (bytes / entry.divisor).toFixed(precision),
-    unit: entry.unit,
+export function createUnitFormatter<U extends string>(
+  units: readonly UnitInfo<U>[],
+): UnitFormatter<U> {
+  return (value, precision = 1, unit, noDecimalForZero = true) => {
+    if (value === 0 && noDecimalForZero)
+      return { value: "0", unit: unit ?? units[0].unit };
+    const entry =
+      units.find((u) => u.unit === unit) ??
+      units.find((u) => value < u.threshold) ??
+      units[units.length - 1];
+    return {
+      value: (value / entry.divisor).toFixed(precision),
+      unit: entry.unit,
+    };
   };
+}
+
+export const formatCount = createUnitFormatter(countUnits);
+export const formatIndexCount = createUnitFormatter(indexCountUnits);
+export const formatSIBytes = createUnitFormatter(siByteUnits);
+export const formatIECBytes = createUnitFormatter(iecByteUnits);
+
+// If the two values naturally land on neighbouring units (e.g. MB vs GB),
+// the numerator is re-formatted using the denominator's unit.
+export function formatSIBytesFraction(
+  num: number,
+  den: number,
+  precision?: number,
+): {
+  numerator: ValueWithUnit<SIByteUnit>;
+  denominator: ValueWithUnit<SIByteUnit>;
+} {
+  const numerator = formatSIBytes(num, precision);
+  const denominator = formatSIBytes(den, precision);
+  const numIdx = siByteUnits.findIndex((u) => u.unit === numerator.unit);
+  const denIdx = siByteUnits.findIndex((u) => u.unit === denominator.unit);
+  if (denIdx === numIdx + 1)
+    return {
+      numerator: formatSIBytes(num, precision, denominator.unit),
+      denominator,
+    };
+  return { numerator, denominator };
+}
+
+export type FormattedSIBytes = ValueWithUnit<SIByteUnit>;
+
+// If the two values naturally land on neighbouring units (e.g. MB vs GB),
+// the numerator is re-formatted using the denominator's unit.
+export function formatIECBytesFraction(
+  num: number,
+  den: number,
+  precision?: number,
+): {
+  numerator: ValueWithUnit<IECByteUnit>;
+  denominator: ValueWithUnit<IECByteUnit>;
+} {
+  const numerator = formatIECBytes(num, precision);
+  const denominator = formatIECBytes(den, precision);
+  const numIdx = iecByteUnits.findIndex((u) => u.unit === numerator.unit);
+  const denIdx = iecByteUnits.findIndex((u) => u.unit === denominator.unit);
+  if (denIdx === numIdx + 1)
+    return {
+      numerator: formatIECBytes(num, precision, denominator.unit),
+      denominator,
+    };
+  return { numerator, denominator };
 }
 
 /**
@@ -511,4 +592,32 @@ export function getPeerIconUrl(peerInfo: PeerUpdateInfo | null | undefined) {
       : undefined) ||
     undefined
   );
+}
+
+export function getSafePct(numerator: number, denominator: number) {
+  return denominator ? Math.abs(numerator / denominator) * 100 : 0;
+}
+
+// truncate instead of round hit rate values
+export function formatHitRate(fraction: number, precision = 2) {
+  const pct = fraction * 100;
+  const factor = 10 ** precision;
+  return (Math.trunc(pct * factor) / factor).toFixed(precision);
+}
+
+export function formatRate(value: number, showZero = false) {
+  if (value === 0) return showZero ? "0" : "-";
+  if (value < 10) return value.toFixed(1);
+  return Math.round(value).toLocaleString();
+}
+
+export function formatSIBytesStr(value: number) {
+  if (value === 0) return "-";
+  const bytes = formatSIBytes(value);
+  return `${bytes.value} ${bytes.unit}`;
+}
+
+export function formatSIBytesRate(value: number) {
+  if (value === 0) return "-";
+  return `${formatSIBytesStr(value)}/s`;
 }

@@ -96,6 +96,7 @@ import {
   liveProgramCacheAtom,
   slotCaughtUpAtom,
   healthAtom,
+  accountsStatsAtom,
 } from "./atoms";
 import {
   estimatedTpsDebounceMs,
@@ -443,6 +444,8 @@ function useUpdateAtoms() {
 
   const setHealth = useSetAtom(healthAtom);
 
+  const setAccountsStats = useSetAtom(accountsStatsAtom);
+
   const peersBuffer = useRef(new Map<string, Peer>());
   const removePeersBuffer = useRef(new Map<string, PeerRemove>());
 
@@ -766,6 +769,15 @@ function useUpdateAtoms() {
           }
           break;
         }
+        case "accounts": {
+          switch (key) {
+            case "stats": {
+              setAccountsStats(value);
+              break;
+            }
+          }
+          break;
+        }
       }
     },
     [
@@ -821,6 +833,7 @@ function useUpdateAtoms() {
       setVoteDistance,
       setVoteSlot,
       setVoteState,
+      setAccountsStats,
     ],
   );
 

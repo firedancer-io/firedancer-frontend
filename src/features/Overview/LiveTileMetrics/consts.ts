@@ -1,4 +1,4 @@
-import type { Table } from "@radix-ui/themes";
+import type { ColumnGroup } from "../../../components/DataTable";
 
 /** Tile regimes are the cartesian product of the following two state vectors:
     State vector 1:
@@ -23,24 +23,11 @@ export const regimes = [
   // "stalled_handling" is an impossible state, and is therefore excluded
 ];
 
-interface MetricDefinition {
-  uniqueName: string;
-  columnName?: string;
-  description: string;
-  headerColWidth: number;
-  headerColAlign?: Table.ColumnHeaderCellProps["align"];
-  wrap?: boolean;
-}
-
-export const metricGroups: {
-  name: string;
-  pinned?: boolean;
-  metrics: MetricDefinition[];
-}[] = [
+export const metricGroups: ColumnGroup[] = [
   {
     name: "",
     pinned: true,
-    metrics: [
+    columns: [
       {
         uniqueName: "Name",
         description:
@@ -51,7 +38,7 @@ export const metricGroups: {
   },
   {
     name: "Liveness",
-    metrics: [
+    columns: [
       {
         uniqueName: "CPU",
         description:
@@ -91,7 +78,7 @@ export const metricGroups: {
   },
   {
     name: "Utilization",
-    metrics: [
+    columns: [
       {
         uniqueName: "Utilization",
         description:
@@ -107,7 +94,7 @@ export const metricGroups: {
   },
   {
     name: "System",
-    metrics: [
+    columns: [
       {
         uniqueName: "% Hkeep",
         description:
@@ -140,7 +127,7 @@ export const metricGroups: {
   },
   {
     name: "Scheduler",
-    metrics: [
+    columns: [
       {
         uniqueName: "% Wait (scheduler)",
         columnName: "% Wait",
@@ -180,7 +167,7 @@ export const metricGroups: {
   },
   {
     name: "Exceptions",
-    metrics: [
+    columns: [
       {
         uniqueName: "Minflt",
         description:
@@ -239,8 +226,8 @@ export const unpinnedGroups = metricGroups.filter(({ pinned }) => !pinned);
 
 // start with one pixel to account for border width
 export const pinnedTableWidth = pinnedGroups.reduce((acc, group) => {
-  for (const metric of group.metrics) {
-    acc += metric.headerColWidth;
+  for (const column of group.columns) {
+    acc += column.headerColWidth;
   }
   return acc;
 }, 1);

@@ -1,4 +1,4 @@
-import { formatBytes } from "../../../../utils";
+import { formatSIBytes } from "../../../../utils";
 
 export function getProgress(
   completed: number | null | undefined,
@@ -20,5 +20,5 @@ export function getThroughputCompleteCorrected(
   return isComplete ? 0 : emaThroughput;
 }
 export function formatByteValue(value: number | null | undefined) {
-  return value == null ? undefined : formatBytes(value);
+  return value == null ? undefined : formatSIBytes(value);
 }
