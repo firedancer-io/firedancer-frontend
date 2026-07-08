@@ -131,6 +131,15 @@ export default function TilesPerformance() {
         setIsExpanded={setIsExpanded}
       />
       <TileCard
+        header="repair"
+        tileCount={tileCounts["repair"]}
+        tileType="repair"
+        queryIdlePerTile={showLive ? undefined : queryIdleData?.["repair"]}
+        statLabel="Repair"
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
+      />
+      <TileCard
         header={netType}
         subHeader="(out)"
         tileCount={tileCounts[netType]}
