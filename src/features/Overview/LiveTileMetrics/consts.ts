@@ -196,6 +196,13 @@ export const metricGroups: {
         headerColAlign: "right",
       },
       {
+        uniqueName: "Tlbsd",
+        description:
+          "The number of TLB shootdowns handled since startup on the CPU the tile is pinned to. Not applicable to floating tiles.",
+        headerColWidth: 150,
+        headerColAlign: "right",
+      },
+      {
         uniqueName: "Nivcsw",
         description:
           "The number of cumulative | immediate (10ms) involuntary context switches.",
@@ -214,6 +221,13 @@ export const metricGroups: {
         description:
           "The number of hardware interrupt requests handled since startup on the CPU the tile is pinned to. Not applicable to floating tiles.",
         headerColWidth: 160,
+        headerColAlign: "right",
+      },
+      {
+        uniqueName: "Loc",
+        description:
+          "The number of local timer interrupts (LOC) handled since startup on the CPU the tile is pinned to. Not applicable to floating tiles.",
+        headerColWidth: 150,
         headerColAlign: "right",
       },
     ],

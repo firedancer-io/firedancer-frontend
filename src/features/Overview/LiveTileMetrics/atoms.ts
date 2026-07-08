@@ -16,6 +16,8 @@ export interface TileRowMetrics {
   minflt?: number | null;
   majflt?: number | null;
   interrupts?: number | null;
+  timer_ticks?: number | null;
+  tlb_shootdowns?: number | null;
   priority?: Priority | null;
 }
 
@@ -32,6 +34,8 @@ function getTileRow(m: TileMetrics, idx: number): TileRowMetrics {
     minflt: m.minflt[idx],
     majflt: m.majflt[idx],
     interrupts: m.interrupts[idx],
+    timer_ticks: m.timer_ticks[idx],
+    tlb_shootdowns: m.tlb_shootdowns[idx],
     priority: m.priority?.[idx],
   };
 }

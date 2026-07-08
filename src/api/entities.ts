@@ -250,6 +250,8 @@ export const tileMetricsSchema = z.object({
   minflt: z.array(z.number().nullable()),
   majflt: z.array(z.number().nullable()),
   interrupts: z.array(z.number().nullable()),
+  timer_ticks: z.array(z.number().nullable()),
+  tlb_shootdowns: z.array(z.number().nullable()),
   priority: z.array(prioritySchema),
 });
 
