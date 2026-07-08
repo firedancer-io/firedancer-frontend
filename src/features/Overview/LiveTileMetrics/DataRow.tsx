@@ -154,6 +154,8 @@ const pickBackp: RowPick = (r) => r?.backp_msgs;
 const pickNivcsw: RowPick = (r) => r?.nivcsw;
 const pickNvcsw: RowPick = (r) => r?.nvcsw;
 const pickIrq: RowPick = (r) => r?.interrupts;
+const pickLoc: RowPick = (r) => r?.timer_ticks;
+const pickTlbsd: RowPick = (r) => r?.tlb_shootdowns;
 
 function writeIncrement(el: HTMLElement, value: number, graded: boolean) {
   el.textContent = `+${value.toLocaleString()}`;
@@ -409,11 +411,25 @@ export const DataRow = memo(function DataRow({ idx }: DataRowProps) {
 
       <LiveCell idx={idx} write={writeMinflt} align="right" />
       <LiveCell idx={idx} write={writeMajflt} align="right" />
+      <LiveCountIncrement
+        idx={idx}
+        pick={pickTlbsd}
+        graded
+        blankOnFloating
+        align="right"
+      />
       <LiveCountIncrement idx={idx} pick={pickNivcsw} graded align="right" />
       <LiveCountIncrement idx={idx} pick={pickNvcsw} graded align="right" />
       <LiveCountIncrement
         idx={idx}
         pick={pickIrq}
+        graded
+        blankOnFloating
+        align="right"
+      />
+      <LiveCountIncrement
+        idx={idx}
+        pick={pickLoc}
         graded
         blankOnFloating
         align="right"
