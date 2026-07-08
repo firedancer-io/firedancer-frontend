@@ -4,7 +4,7 @@ import {
   currentLeaderSlotAtom,
   slotOverrideAtom,
 } from "../../atoms";
-import type { PropsWithChildren, ReactNode, RefObject } from "react";
+import type { PropsWithChildren, RefObject } from "react";
 import {
   memo,
   useCallback,
@@ -21,13 +21,25 @@ import {
   useThrottledCallback,
   type DebouncedState,
 } from "use-debounce";
-import { findMaxVisibleIdx, findMinVisibleIdx } from "./utils";
+import {
+  findMinVisibleIdx,
+  getItemInfo,
+  getItemBelowInfo,
+  ItemType,
+  type BaseItemInfo,
+} from "./utils";
 import type { SlotsIndexProps } from "./const";
+import { getSlotGroupLeader } from "../../utils";
 
 const noop = () => {};
 
-const OVERSCAN = 20;
 const SCROLL_THROTTLE = 50;
+
+type VisibleItem = BaseItemInfo &
+  (
+    | { topOffset: number; type: ItemType.Future | ItemType.Current }
+    | { topOffset?: number; type: ItemType.Past }
+  );
 
 interface VirtualSlotsListProps extends SlotsIndexProps {
   visibleWidth: number;
@@ -42,6 +54,7 @@ export default function VirtualSlotsList({
   itemsCount,
   offsetHelpers,
 }: VirtualSlotsListProps) {
+  const visibleItemsRef = useRef<VisibleItem[]>();
   const containerRef = useRef<HTMLDivElement>(null);
   const previousTotalHeightRef = useRef<number | undefined>();
   const [scrollTop, setScrollTop] = useState<number | undefined>();
@@ -93,15 +106,34 @@ export default function VirtualSlotsList({
     setScrollTop(newScrollTop);
   }, [calcHelpers]);
 
-  const minVisibleIdx = useMemo(() => {
-    if (scrollTop == null) return;
-    return calcHelpers?.getMinVisibleIdx(scrollTop);
-  }, [calcHelpers, scrollTop]);
+  if (scrollTop != null && calcHelpers != null && offsetHelpers != null) {
+    const visibleItems: VisibleItem[] = [];
+    const endVisibleOffset = scrollTop + visibleHeight;
 
-  const maxVisibleIdx = useMemo(() => {
-    if (scrollTop == null) return;
-    return calcHelpers?.getMaxVisibleIdx(scrollTop, visibleHeight);
-  }, [calcHelpers, scrollTop, visibleHeight]);
+    const firstIdx = calcHelpers.getMinVisibleIdx(scrollTop);
+    const currentLeaderSlot = getSlotGroupLeader(
+      offsetHelpers.offsetSnapshotCurrentSlot,
+    );
+    let currentItem = getItemInfo(
+      firstIdx,
+      getSlotAtIndex,
+      calcHelpers.getIndexTopOffset,
+      offsetHelpers.getSlotHeight,
+      offsetHelpers.totalHeight,
+      currentLeaderSlot,
+    );
+
+    while (currentItem && currentItem.topOffset < endVisibleOffset) {
+      visibleItems.push(currentItem);
+      currentItem = getItemBelowInfo(
+        currentItem,
+        getSlotAtIndex,
+        offsetHelpers.getSlotHeight,
+        currentLeaderSlot,
+      );
+    }
+    visibleItemsRef.current = visibleItems;
+  }
 
   const getPaddedSlotTopOffsetRef = useRef<
     (slot: number) => number | undefined
@@ -116,7 +148,7 @@ export default function VirtualSlotsList({
 
   if (!calcHelpers) return;
 
-  const { totalHeight, getTopOffset, getPaddedSlotAtOffset } = calcHelpers;
+  const { totalHeight, getPaddedSlotAtOffset } = calcHelpers;
 
   getPaddedSlotAtOffsetRef.current = getPaddedSlotAtOffset;
 
@@ -134,13 +166,8 @@ export default function VirtualSlotsList({
         getPaddedSlotAtOffsetRef={getPaddedSlotAtOffsetRef}
       >
         <div style={{ height: totalHeight, position: "relative" }}>
-          {minVisibleIdx != null && maxVisibleIdx != null && (
-            <MItems
-              minIdx={minVisibleIdx}
-              maxIdx={maxVisibleIdx}
-              getSlotAtIndex={getSlotAtIndex}
-              getTopOffset={getTopOffset}
-            />
+          {visibleItemsRef.current != null && (
+            <MItems visibleItems={visibleItemsRef.current} />
           )}
         </div>
       </MScrollContainer>
@@ -205,15 +232,6 @@ function getCalcHelpers(
     return findMinVisibleIdx(scrollTop, itemsCount, getIndexTopOffset);
   };
 
-  const getMaxVisibleIdx = (scrollTop: number, visibleHeight: number) => {
-    return findMaxVisibleIdx(
-      scrollTop,
-      itemsCount,
-      visibleHeight,
-      getIndexTopOffset,
-    );
-  };
-
   const offsetSnapshotCurrentSlotIdx = getIndexForSlot(
     offsetSnapshotCurrentSlot,
   );
@@ -230,7 +248,6 @@ function getCalcHelpers(
     getPaddedSlotAtOffset,
     getTopOffset,
     getMinVisibleIdx,
-    getMaxVisibleIdx,
   };
 }
 
@@ -388,53 +405,36 @@ const MScrollToSlotOverride = memo(function SlotOverrideScroll({
 });
 
 interface ItemsProps {
-  minIdx: number;
-  maxIdx: number;
-  getSlotAtIndex: (idx: number) => number | undefined;
-  getTopOffset: (
-    idx: number,
-    prevSlot: number | null,
-    prevIdxOffset: number | null,
-  ) => number | undefined;
+  visibleItems: VisibleItem[];
 }
-const MItems = memo(function Items({
-  minIdx,
-  maxIdx,
-  getSlotAtIndex,
-  getTopOffset,
-}: ItemsProps) {
-  const items: ReactNode[] = [];
-
-  let prevIdxOffset = null;
-  let prevSlot = null;
-  for (let i = minIdx - OVERSCAN; i <= maxIdx + OVERSCAN; i++) {
-    const slot = getSlotAtIndex(i);
-    if (slot == null) continue;
-
-    // pass in all data so the list can use the optimal way to get offset
-    const offset = getTopOffset(i, prevSlot, prevIdxOffset);
-    if (offset == null) continue;
-
-    items.push(<MItem key={slot} slot={slot} offset={offset} />);
-    prevIdxOffset = offset;
-    prevSlot = slot;
-  }
-
-  return items;
+const MItems = memo(function Items({ visibleItems }: ItemsProps) {
+  console.log("visibleItems", visibleItems);
+  return visibleItems.map(({ slot, topOffset, bottomOffset, type }) => (
+    <MItem
+      key={slot}
+      slot={slot}
+      offset={type === ItemType.Past ? bottomOffset : topOffset}
+      isBottomOffset={type === ItemType.Past}
+    />
+  ));
 });
 
 interface ItemProps {
   slot: number;
   offset: number;
+  isBottomOffset: boolean;
 }
-const MItem = memo(function Item({ slot, offset }: ItemProps) {
+const MItem = memo(function Item({ slot, offset, isBottomOffset }: ItemProps) {
+  const anchorStyle = isBottomOffset
+    ? { bottom: 0, transform: `translateY(-${offset}px)` }
+    : { top: 0, transform: `translateY(${offset}px)` };
+
   return (
     <div
       style={{
         position: "absolute",
-        top: 0,
-        transform: `translateY(${offset}px)`,
         width: "100%",
+        ...anchorStyle,
         // prevent browser snapping to document's pixel grid
         willChange: "transform",
       }}

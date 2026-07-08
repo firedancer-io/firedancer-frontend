@@ -34,7 +34,8 @@ import Progress from "../../components/Progress";
 interface SlotsRendererProps {
   leaderSlotForGroup: number;
 }
-export default function SlotsRenderer({
+
+const MSlotsRenderer = memo(function SlotsRenderer({
   leaderSlotForGroup,
 }: SlotsRendererProps) {
   const isScrolling = useAtomValue(isScrollingAtom);
@@ -54,7 +55,8 @@ export default function SlotsRenderer({
       isSelected={getIsGroupSelected(leaderSlotForGroup)}
     />
   );
-}
+});
+export default MSlotsRenderer;
 
 const MPlaceholder = memo(function Placeholder() {
   return <div className={styles.placeholder} />;
