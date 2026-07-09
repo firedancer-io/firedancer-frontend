@@ -142,6 +142,7 @@ function NetworkMetricsCard({
 const defaultMaxValue = 100_000_000;
 
 function toUtilization(value: number, maxValue: number) {
+  if (!maxValue) return 0;
   return Math.min(1, value / maxValue);
 }
 
