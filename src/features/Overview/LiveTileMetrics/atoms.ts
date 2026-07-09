@@ -34,8 +34,8 @@ function getTileRow(m: TileMetrics, idx: number): TileRowMetrics {
     minflt: m.minflt[idx],
     majflt: m.majflt[idx],
     interrupts: m.interrupts[idx],
-    timer_ticks: m.timer_ticks[idx],
-    tlb_shootdowns: m.tlb_shootdowns[idx],
+    timer_ticks: m.timer_ticks?.[idx],
+    tlb_shootdowns: m.tlb_shootdowns?.[idx],
     priority: m.priority?.[idx],
   };
 }
