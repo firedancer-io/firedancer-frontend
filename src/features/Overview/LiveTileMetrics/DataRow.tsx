@@ -249,7 +249,7 @@ interface UtilizationProps {
   idx: number;
 }
 
-const updateIntervalMs = 300;
+const liveTileMetricsSparklineDebounceMs = 300;
 
 const timerToPct = (tileTimer: number | null | undefined) =>
   tileTimer != null && tileTimer >= 0 ? 1 - Math.max(0, tileTimer) : -1;
@@ -298,7 +298,7 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
 
     setAvgValue(rollingSum.current.sum / rollingSum.current.count);
     rollingSum.current = { count: 0, sum: 0 };
-  }, updateIntervalMs);
+  }, liveTileMetricsSparklineDebounceMs);
 
   const initialHistory = useMemo(
     () =>
@@ -338,7 +338,7 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
           background={tileChartDarkBackground}
           windowMs={60_000}
           height={chartHeight}
-          updateIntervalMs={updateIntervalMs}
+          updateIntervalMs={liveTileMetricsSparklineDebounceMs}
           tickMs={1_000}
         />
       </Table.Cell>
