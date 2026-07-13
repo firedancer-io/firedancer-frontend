@@ -90,7 +90,7 @@ export default function CacheCard({ className }: { className?: string }) {
             minWidth="80px"
           />
           <FractionStat
-            label="Rate"
+            label="Used"
             numerator={usedBytes}
             denominator={sizeBytes}
             minWidth="225px"
