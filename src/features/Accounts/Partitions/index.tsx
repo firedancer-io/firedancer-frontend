@@ -81,7 +81,14 @@ function DataRow({ partition }: { partition: Partition }) {
   return (
     <Table.Row className={tableStyles.dataRow}>
       <Table.Cell>
-        <PartitionUtilization partition={partition} />
+        <PartitionUtilization
+          usedFrac={partition.used_frac}
+          fragmentedFrac={partition.fragmented_frac}
+          compactionTriggerFrac={partition.compaction_trigger_frac}
+          compactionFrac={partition.compaction_frac}
+          compactionState={partition.compaction_state}
+          isWriteHead={partition.is_write_head}
+        />
       </Table.Cell>
       <Table.Cell align="right">
         {`${Math.round(partition.fragmented_frac * 100)}%`}

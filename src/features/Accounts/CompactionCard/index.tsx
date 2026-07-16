@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { PropsWithChildren } from "react";
 import { Flex, Text } from "@radix-ui/themes";
 import Card from "../../../components/Card";
@@ -7,12 +8,9 @@ import { useAtomValue } from "jotai";
 import Stat from "../Stat";
 import PartitionUtilization from "../PartitionUtilization";
 import { formatSIBytes, getSafePct } from "../../../utils";
-import type { AccountsStats } from "../../../api/types";
 import { accountsPartitionCompactionColor } from "../../../colors";
 import styles from "./compactionCard.module.css";
 import { PartitionTier } from "../consts";
-
-type Partition = AccountsStats["partitions"][number];
 
 function fmtPct(pct: number) {
   return `${Math.round(pct)}%`;
@@ -46,7 +44,14 @@ export default function CompactionCard({ className }: { className?: string }) {
           />
           {nextCompactionPartition && (
             <NextCompactionPartitionUtilization
-              partition={nextCompactionPartition}
+              usedFrac={nextCompactionPartition.used_frac}
+              fragmentedFrac={nextCompactionPartition.fragmented_frac}
+              compactionTriggerFrac={
+                nextCompactionPartition.compaction_trigger_frac
+              }
+              compactionFrac={nextCompactionPartition.compaction_frac}
+              compactionState={nextCompactionPartition.compaction_state}
+              isWriteHead={nextCompactionPartition.is_write_head}
             />
           )}
         </Flex>
@@ -61,27 +66,61 @@ export default function CompactionCard({ className }: { className?: string }) {
   );
 }
 
-function NextCompactionPartitionUtilization({
-  partition,
-}: {
-  partition: Partition;
-}) {
-  return (
-    <Flex direction="column" gap="5px">
-      <PartitionUtilization partition={partition} showPct={false} />
-      <PartitionLegend partition={partition} />
-    </Flex>
-  );
+interface NextCompactionProps {
+  usedFrac: number;
+  fragmentedFrac: number;
+  compactionTriggerFrac: number;
+  compactionFrac: number;
+  compactionState: number;
+  isWriteHead: boolean;
 }
 
-function PartitionLegend({ partition }: { partition: Partition }) {
-  const usedPct = fmtPct(partition.used_frac * 100);
-  const fragPct = fmtPct(partition.fragmented_frac * 100);
-  const triggerPct = fmtPct(partition.compaction_trigger_frac * 100);
-  const compactionPct = getSafePct(
-    partition.compaction_frac,
-    partition.used_frac + partition.fragmented_frac,
-  );
+const NextCompactionPartitionUtilization = memo(
+  function NextCompactionPartitionUtilization({
+    usedFrac,
+    fragmentedFrac,
+    compactionTriggerFrac,
+    compactionFrac,
+    compactionState,
+    isWriteHead,
+  }: NextCompactionProps) {
+    return (
+      <Flex direction="column" gap="5px">
+        <PartitionUtilization
+          usedFrac={usedFrac}
+          fragmentedFrac={fragmentedFrac}
+          compactionTriggerFrac={compactionTriggerFrac}
+          compactionFrac={compactionFrac}
+          compactionState={compactionState}
+          isWriteHead={isWriteHead}
+          showPct={false}
+        />
+        <PartitionLegend
+          usedFrac={usedFrac}
+          fragmentedFrac={fragmentedFrac}
+          compactionTriggerFrac={compactionTriggerFrac}
+          compactionFrac={compactionFrac}
+        />
+      </Flex>
+    );
+  },
+);
+
+const PartitionLegend = memo(function PartitionLegend({
+  usedFrac,
+  fragmentedFrac,
+  compactionTriggerFrac,
+  compactionFrac,
+}: {
+  usedFrac: number;
+  fragmentedFrac: number;
+  compactionTriggerFrac: number;
+  compactionFrac: number;
+}) {
+  const usedPct = fmtPct(usedFrac * 100);
+  const fragPct = fmtPct(fragmentedFrac * 100);
+  const triggerPct = fmtPct(compactionTriggerFrac * 100);
+  const compactionPct = getSafePct(compactionFrac, usedFrac + fragmentedFrac);
   return (
     <Flex gap="10px">
       <LegendItem label="Used" value={usedPct}>
@@ -104,7 +143,7 @@ function PartitionLegend({ partition }: { partition: Partition }) {
       </LegendItem>
     </Flex>
   );
-}
+});
 
 function LegendItem({
   children,
