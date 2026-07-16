@@ -1,34 +1,23 @@
 import { sortedIndex } from "lodash";
 import { getSlotGroupLeader } from "../../utils";
 import {
-  YOUR_CURRENT_HEIGHT,
-  YOUR_NEXT_LEADER_HEIGHT,
-  YOUR_NON_NEXT_FUTURE_HEIGHT,
-  YOUR_PAST_HEIGHT,
-  type OffsetHelpers,
+  ItemHeightType,
+  itemHeightByType,
+  type ListHelpers,
   type SlotsIndexProps,
 } from "./const";
 import { getHeightSum, type Counts } from "./utils";
 
-export function getMySlotsOffsetHelpers(
+export function getMySlotsListHelpers(
   mySlots: number[],
-  currentSlot: number,
-  nextLeaderSlot: number | undefined,
+  ascendingLeaderSlotsSet: Set<number>,
+  currentLeaderSlot: number,
+  yourNextLeaderSlot: number | undefined,
   isCurrentlyLeader: boolean,
   nextLeaderSlotIndex: number | undefined,
-  getSlotAtIndex: (index: number) => number | undefined,
-  getClosestIndexForSlot: (slot: number) => number,
-): OffsetHelpers {
-  const currentLeaderSlot = getSlotGroupLeader(currentSlot);
-
-  const counts = getTypeCountsForLeaderIndices(
-    0,
-    mySlots.length - 1,
-    isCurrentlyLeader,
-    nextLeaderSlotIndex,
-    mySlots.length,
-  );
-  const totalHeight = getHeightSum(counts);
+  yourLeaderSlotCounts: { past: number; current: number; future: number },
+): ListHelpers {
+  const totalHeight = getTotalHeight(yourLeaderSlotCounts);
 
   const getIndexTopOffset = (index: number) => {
     if (index === 0) return 0;
@@ -37,7 +26,7 @@ export function getMySlotsOffsetHelpers(
     const leaderStartIdx = mySlots.length - index;
     const leaderEndIdx = mySlots.length - 1;
 
-    const countsAbove = getTypeCountsForLeaderIndices(
+    const countsAbove = getTypeCountsForRange(
       leaderStartIdx,
       leaderEndIdx,
       isCurrentlyLeader,
@@ -48,33 +37,22 @@ export function getMySlotsOffsetHelpers(
     return getHeightSum(countsAbove);
   };
 
-  const getSlotTopOffset = (slot: number) => {
-    const idx = getClosestIndexForSlot(slot);
-    return getIndexTopOffset(idx);
-  };
-
-  const getSlotHeight = (yourSlot: number) => {
-    const slot = getSlotGroupLeader(yourSlot);
-    if (slot < currentLeaderSlot) return YOUR_PAST_HEIGHT;
-    if (slot === currentLeaderSlot) return YOUR_CURRENT_HEIGHT;
-    return slot === nextLeaderSlot
-      ? YOUR_NEXT_LEADER_HEIGHT
-      : YOUR_NON_NEXT_FUTURE_HEIGHT;
-  };
-
-  const getIndexHeight = (index: number) => {
-    const slot = getSlotAtIndex(index);
-    if (slot == null) return;
-    return getSlotHeight(slot);
-  };
+  const getSlotHeight = (slotGroupLeader: number): number =>
+    itemHeightByType[
+      getSlotHeightType(
+        slotGroupLeader,
+        ascendingLeaderSlotsSet,
+        currentLeaderSlot,
+        yourNextLeaderSlot,
+      )
+    ];
 
   return {
     totalHeight,
-    offsetSnapshotCurrentSlot: currentSlot,
-    getSlotTopOffset,
+    offsetSnapshotCurrentSlot: currentLeaderSlot,
+    yourNextLeaderSlot: yourNextLeaderSlot,
     getSlotHeight,
     getIndexTopOffset,
-    getIndexHeight,
   };
 }
 
@@ -84,12 +62,16 @@ export function getMySlotsOffsetHelpers(
  */
 export function getMySlotsListProps(
   mySlots: number[] | undefined,
-  currentSlot: number | undefined,
+  ascendingLeaderSlotsSet: Set<number> | undefined,
+  currentLeaderSlot: number | undefined,
   nextLeaderSlot: number | undefined,
   isCurrentlyLeader: boolean,
   nextLeaderSlotIndex: number | undefined,
+  yourLeaderSlotCounts:
+    | { past: number; current: number; future: number }
+    | undefined,
 ): SlotsIndexProps | undefined {
-  if (mySlots == null) return;
+  if (mySlots == null || !yourLeaderSlotCounts) return;
 
   // Optimized index lookup of My slots
   const slotToIndexMapping = mySlots.reduce<Record<number, number>>(
@@ -117,16 +99,16 @@ export function getMySlotsListProps(
     );
   };
 
-  const offsetHelpers =
-    currentSlot != null
-      ? getMySlotsOffsetHelpers(
+  const listHelpers =
+    currentLeaderSlot != null && ascendingLeaderSlotsSet != null
+      ? getMySlotsListHelpers(
           mySlots,
-          currentSlot,
+          ascendingLeaderSlotsSet,
+          currentLeaderSlot,
           nextLeaderSlot,
           isCurrentlyLeader,
           nextLeaderSlotIndex,
-          getSlotAtIndex,
-          getClosestIndexForSlot,
+          yourLeaderSlotCounts,
         )
       : undefined;
 
@@ -134,11 +116,28 @@ export function getMySlotsListProps(
     getSlotAtIndex,
     getIndexForSlot: getClosestIndexForSlot,
     itemsCount: mySlots.length,
-    offsetHelpers,
+    listHelpers,
   };
 }
 
-function getTypeCountsForLeaderIndices(
+function getTotalHeight(yourLeaderSlotCounts: {
+  past: number;
+  current: number;
+  future: number;
+}): number {
+  const nextFutureCount = yourLeaderSlotCounts.future > 0 ? 1 : 0;
+  const nonNextFutureCount = yourLeaderSlotCounts.future - nextFutureCount;
+
+  const counts = {
+    [ItemHeightType.YourPast]: yourLeaderSlotCounts.past,
+    [ItemHeightType.YourCurrent]: yourLeaderSlotCounts.current,
+    [ItemHeightType.YourNextLeader]: nextFutureCount,
+    [ItemHeightType.YourNonNextFuture]: nonNextFutureCount,
+  };
+  return getHeightSum(counts);
+}
+
+function getTypeCountsForRange(
   startLeadersIdx: number,
   endLeadersIdx: number,
   isCurrentlyLeader: boolean,
@@ -169,13 +168,10 @@ function getTypeCountsForLeaderIndices(
   const nonNextFutureCount = futureCount - nextFutureCount;
 
   return {
-    otherPastCount: 0,
-    otherCurrentCount: 0,
-    otherFutureCount: 0,
-    yourPastCount: pastCount,
-    yourCurrentCount: currentCount,
-    yourNextFutureCount: nextFutureCount,
-    yourNonNextFutureCount: nonNextFutureCount,
+    [ItemHeightType.YourPast]: pastCount,
+    [ItemHeightType.YourCurrent]: currentCount,
+    [ItemHeightType.YourNextLeader]: nextFutureCount,
+    [ItemHeightType.YourNonNextFuture]: nonNextFutureCount,
   };
 }
 
@@ -195,4 +191,18 @@ function isCurrentLeaderAndInRange(
   if (currentIndex < 0) return false;
 
   return currentIndex >= startIdx && currentIndex <= endIdx;
+}
+
+function getSlotHeightType(
+  slotGroupleader: number,
+  yourLeaderSlotsSet: Set<number>,
+  currentLeaderSlot: number,
+  yourNextLeaderSlot: number | undefined,
+): ItemHeightType {
+  if (yourLeaderSlotsSet.has(slotGroupleader)) return ItemHeightType.NotInList;
+  if (slotGroupleader < currentLeaderSlot) return ItemHeightType.YourPast;
+  if (slotGroupleader === currentLeaderSlot) return ItemHeightType.YourCurrent;
+  if (slotGroupleader === yourNextLeaderSlot)
+    return ItemHeightType.YourNextLeader;
+  return ItemHeightType.YourNonNextFuture;
 }

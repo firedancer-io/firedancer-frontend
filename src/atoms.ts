@@ -413,6 +413,22 @@ export const nextLeaderSlotAtom = atom(
   },
 );
 
+export const yourLeaderSlotCountsAtom = atom<
+  { past: number; current: number; future: number } | undefined
+>((get) => {
+  const leaderSlots = get(leaderSlotsAtom);
+  if (!leaderSlots) return;
+
+  const isCurrentlyLeader = get(isCurrentlyLeaderAtom);
+  const current = isCurrentlyLeader ? 1 : 0;
+  const nextLeaderSlotIndex = get(nextLeaderSlotIndexAtom);
+
+  const future =
+    nextLeaderSlotIndex == null ? 0 : leaderSlots.length - nextLeaderSlotIndex;
+  const past = leaderSlots.length - current - future;
+  return { past, current, future };
+});
+
 export const nextEpochLeaderSlotAtom = atom((get) => {
   const leaderSlots = get(nextEpochLeaderSlotsAtom);
   if (!leaderSlots) return;

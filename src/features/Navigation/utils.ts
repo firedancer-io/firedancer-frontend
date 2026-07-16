@@ -1,43 +1,15 @@
-import {
-  YOUR_PAST_HEIGHT,
-  OTHER_PAST_HEIGHT,
-  YOUR_CURRENT_HEIGHT,
-  OTHER_CURRENT_HEIGHT,
-  OTHER_FUTURE_HEIGHT,
-  YOUR_NEXT_LEADER_HEIGHT,
-  YOUR_NON_NEXT_FUTURE_HEIGHT,
-  MAX_GROUP_HEIGHT,
-  MIN_GROUP_HEIGHT,
-} from "./const";
+import { slotsListTopPaddingIndex } from "../../consts";
+import type { ItemHeightType, SlotsIndexProps } from "./const";
+import { MAX_GROUP_HEIGHT, MIN_GROUP_HEIGHT, itemHeightByType } from "./const";
 
-export interface Counts {
-  otherPastCount: number;
-  otherCurrentCount: number;
-  otherFutureCount: number;
-  yourPastCount: number;
-  yourCurrentCount: number;
-  yourNextFutureCount: number;
-  yourNonNextFutureCount: number;
-}
+export type Counts = Partial<Record<ItemHeightType, number>>;
 
-export function getHeightSum({
-  otherPastCount,
-  otherCurrentCount,
-  otherFutureCount,
-  yourPastCount,
-  yourCurrentCount,
-  yourNextFutureCount,
-  yourNonNextFutureCount,
-}: Counts) {
-  return (
-    otherPastCount * OTHER_PAST_HEIGHT +
-    otherCurrentCount * OTHER_CURRENT_HEIGHT +
-    otherFutureCount * OTHER_FUTURE_HEIGHT +
-    yourPastCount * YOUR_PAST_HEIGHT +
-    yourCurrentCount * YOUR_CURRENT_HEIGHT +
-    yourNextFutureCount * YOUR_NEXT_LEADER_HEIGHT +
-    yourNonNextFutureCount * YOUR_NON_NEXT_FUTURE_HEIGHT
-  );
+export function getHeightSum(counts: Counts) {
+  let sum = 0;
+  for (const [type, count] of Object.entries(counts)) {
+    sum += count * itemHeightByType[type as ItemHeightType];
+  }
+  return sum;
 }
 
 /**
@@ -67,37 +39,24 @@ export function findMinVisibleIdx(
   return lo;
 }
 
-export enum ItemType {
-  Past,
-  Current,
-  Future,
-}
-
-function getItemType(slot: number, currentSlot: number) {
-  if (slot < currentSlot) return ItemType.Past;
-  if (slot === currentSlot) return ItemType.Current;
-  return ItemType.Future;
-}
-
 export interface BaseItemInfo {
   idx: number;
   slot: number;
   bottomOffset: number;
   height: number;
-  type: ItemType;
+  isPast: boolean;
 }
 export interface ItemInfo extends BaseItemInfo {
   topOffset: number;
-  type: ItemType;
 }
 
 export function getItemInfo(
   idx: number | undefined,
+  currentLeaderSlot: number,
   getSlotAtIndex: (idx: number) => number | undefined,
   getIndexTopOffset: (idx: number) => number | undefined,
   getSlotHeight: (slot: number) => number | undefined,
   totalListHeight: number,
-  currentLeaderSlot: number,
 ): ItemInfo | undefined {
   if (idx == null) return;
 
@@ -116,57 +75,222 @@ export function getItemInfo(
     topOffset,
     bottomOffset: totalListHeight - topOffset - height,
     height,
-    type: getItemType(slot, currentLeaderSlot),
+    isPast: slot < currentLeaderSlot,
   };
 }
 
 export function getItemBelowInfo(
   currentItem: ItemInfo,
+  currentLeaderSlot: number,
   getSlotAtIndex: (idx: number) => number | undefined,
   getSlotHeight: (slot: number) => number | undefined,
-  currentLeaderSlot: number,
 ): ItemInfo | undefined {
   const idx = currentItem.idx + 1;
   const slot = getSlotAtIndex(idx);
   if (slot == null) return;
+
   const topOffset = currentItem.topOffset + currentItem.height;
   const height = getSlotHeight(slot);
+
   if (height == null) return;
   const bottomOffset = currentItem.bottomOffset - height;
-
   return {
     idx,
     slot,
     topOffset,
     bottomOffset,
     height,
-    type: getItemType(slot, currentLeaderSlot),
+    isPast: slot < currentLeaderSlot,
   };
 }
 
-export interface OffsetType {
-  offset: number;
-  isBottomOffset: boolean;
-}
+export function getItemAboveInfo(
+  currentItem: ItemInfo,
+  currentLeaderSlot: number,
+  getSlotAtIndex: (idx: number) => number | undefined,
+  getSlotHeight: (slot: number) => number | undefined,
+): ItemInfo | undefined {
+  const idx = currentItem.idx - 1;
+  const slot = getSlotAtIndex(idx);
+  if (slot == null) return;
 
-/**
- * Position past slots are offset from the bottom, and others from the top
- * to minimize position changes when current slot progresses.
- */
-export function getSlotOffsetType(
-  currentSlot: number,
-  slot: number,
-  topOffset: number,
-  totalHeight: number,
-): OffsetType {
-  if (slot < currentSlot) {
-    return {
-      offset: totalHeight - topOffset,
-      isBottomOffset: true,
-    };
-  }
+  const height = getSlotHeight(slot);
+  if (height == null) return;
+
+  const topOffset = currentItem.topOffset - height;
+  const bottomOffset = currentItem.bottomOffset + currentItem.height;
   return {
-    offset: topOffset,
-    isBottomOffset: false,
+    idx,
+    slot,
+    topOffset,
+    bottomOffset,
+    height,
+    isPast: slot < currentLeaderSlot,
   };
 }
+
+export function filterStillVisibleItems(
+  items: ItemInfo[],
+  scrollTop: number,
+  visibleHeight: number,
+) {
+  const visibleTop = scrollTop;
+  const visibleBottom = scrollTop + visibleHeight;
+
+  const stillVisible: ItemInfo[] = [];
+  for (const item of items) {
+    const itemTop = item.topOffset;
+    const itemBottom = item.topOffset + item.height;
+
+    if (itemTop < visibleBottom && itemBottom > visibleTop) {
+      stillVisible.push(item);
+    }
+  }
+  return stillVisible;
+}
+
+export function addVisibleItemsBelow(
+  _nextItem: ItemInfo | undefined,
+  visibleItems: ItemInfo[],
+  endVisibleOffset: number,
+  getItemBelow: (currentItem: ItemInfo) => ItemInfo | undefined,
+) {
+  let nextItem = _nextItem;
+  while (nextItem && nextItem.topOffset < endVisibleOffset) {
+    visibleItems.push(nextItem);
+    nextItem = getItemBelow(nextItem);
+  }
+  return visibleItems;
+}
+
+export function addVisibleItemsAbove(
+  _prevItem: ItemInfo | undefined,
+  visibleItems: ItemInfo[],
+  scrollTop: number,
+  getItemAbove: (currentItem: ItemInfo) => ItemInfo | undefined,
+) {
+  let prevItem = _prevItem;
+  while (prevItem && prevItem.topOffset + prevItem.height >= scrollTop) {
+    visibleItems.unshift(prevItem);
+    prevItem = getItemAbove(prevItem);
+  }
+  return visibleItems;
+}
+
+export function getInitialVisibleItems(
+  scrollTop: number,
+  endVisibleOffset: number,
+  getItemBelow: (currentItem: ItemInfo) => ItemInfo | undefined,
+  getFirstVisibleItem: (scrollTop: number) => ItemInfo | undefined,
+) {
+  const visibleItems: ItemInfo[] = [];
+  const nextItem = getFirstVisibleItem(scrollTop);
+
+  addVisibleItemsBelow(nextItem, visibleItems, endVisibleOffset, getItemBelow);
+  return visibleItems;
+}
+
+export function getOffsetHelpers(
+  listHelpers: SlotsIndexProps["listHelpers"],
+  getIndexForSlot: SlotsIndexProps["getIndexForSlot"],
+  getSlotAtIndex: SlotsIndexProps["getSlotAtIndex"],
+  itemsCount: number,
+) {
+  if (!listHelpers) return;
+
+  const {
+    totalHeight,
+    offsetSnapshotCurrentSlot,
+    yourNextLeaderSlot,
+    getSlotHeight,
+    getIndexTopOffset,
+  } = listHelpers;
+
+  const getPaddedSlotTopOffset = (slot: number) => {
+    const slotIdx = getIndexForSlot(slot);
+    if (slotIdx == null) return;
+
+    const topIdx = Math.max(0, slotIdx - slotsListTopPaddingIndex);
+    return getIndexTopOffset(topIdx);
+  };
+
+  const getPaddedSlotAtOffset = (offset: number) => {
+    const topIdxAtOffset = findMinVisibleIdx(
+      offset,
+      itemsCount,
+      getIndexTopOffset,
+    );
+    if (topIdxAtOffset == null) return;
+
+    const pinnedIdx = Math.min(
+      topIdxAtOffset + slotsListTopPaddingIndex,
+      itemsCount - 1,
+    );
+    return getSlotAtIndex(pinnedIdx);
+  };
+
+  const getMinVisibleIdx = (scrollTop: number) => {
+    return findMinVisibleIdx(scrollTop, itemsCount, getIndexTopOffset);
+  };
+
+  const getFirstVisibleItem = (scrollTop: number) => {
+    const firstIdx = getMinVisibleIdx(scrollTop);
+    return getItemInfo(
+      firstIdx,
+      offsetSnapshotCurrentSlot,
+      getSlotAtIndex,
+      getIndexTopOffset,
+      getSlotHeight,
+      totalHeight,
+    );
+  };
+
+  const getItemBelow = (currentItem: ItemInfo) => {
+    return getItemBelowInfo(
+      currentItem,
+      offsetSnapshotCurrentSlot,
+      getSlotAtIndex,
+      getSlotHeight,
+    );
+  };
+
+  const getItemAbove = (currentItem: ItemInfo) => {
+    return getItemAboveInfo(
+      currentItem,
+      offsetSnapshotCurrentSlot,
+      getSlotAtIndex,
+      getSlotHeight,
+    );
+  };
+
+  const updateItem = (
+    item: ItemInfo,
+    heightDeltaEntries: [slot: number, delta: number][],
+    currentLeaderSlot: number,
+  ) => {
+    item.isPast = item.slot < currentLeaderSlot;
+    for (const [slot, delta] of heightDeltaEntries) {
+      if (slot > item.slot) {
+        item.topOffset += delta;
+      } else if (slot === item.slot) {
+        item.height += delta;
+      } else {
+        item.bottomOffset += delta;
+      }
+    }
+  };
+
+  return {
+    totalHeight,
+    offsetSnapshotCurrentSlot,
+    yourNextLeaderSlot,
+    getPaddedSlotTopOffset,
+    getPaddedSlotAtOffset,
+    getFirstVisibleItem,
+    getItemBelow,
+    getItemAbove,
+    updateItem,
+  };
+}
+
+export type OffsetHelpers = ReturnType<typeof getOffsetHelpers>;

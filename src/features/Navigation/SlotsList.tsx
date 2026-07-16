@@ -1,7 +1,7 @@
 import { useAtomValue } from "jotai";
 import {
   ascendingLeaderSlotsSetAtom,
-  currentSlotAtom,
+  currentLeaderSlotAtom,
   epochAtom,
   isCurrentlyLeaderAtom,
   leaderSlotsAtom,
@@ -9,6 +9,7 @@ import {
   nextLeaderSlotIndexAtom,
   SlotNavFilter,
   slotNavFilterAtom,
+  yourLeaderSlotCountsAtom,
 } from "../../atoms";
 import { Flex, Text } from "@radix-ui/themes";
 import { memo, useMemo, type CSSProperties } from "react";
@@ -18,6 +19,8 @@ import VirtualSlotsList from "./VirtualSlotsList";
 import { slotGroupCssVars, type SlotsIndexProps } from "./const";
 import { getAllSlotsListProps } from "./allSlotsUtils";
 import { getMySlotsListProps } from "./mySlotsUtils";
+import { useHeightDeltas } from "./useHeightDeltas";
+import { getOffsetHelpers, type OffsetHelpers } from "./utils";
 
 interface SlotsListProps {
   width: number;
@@ -37,14 +40,18 @@ export default function SlotsList({ width, height }: SlotsListProps) {
   );
 }
 
+interface InnerSlotsListProps {
+  heightDeltas: Map<number, number> | undefined;
+}
 const MInnerSlotsList = memo(function InnerSlotsList({
   width,
   height,
+  heightDeltas,
   itemsCount,
   getSlotAtIndex,
   getIndexForSlot,
-  offsetHelpers,
-}: SlotsIndexProps & SlotsListProps) {
+  listHelpers,
+}: InnerSlotsListProps & SlotsIndexProps & SlotsListProps) {
   const style: CSSProperties = useMemo(() => {
     return {
       ...slotGroupCssVars,
@@ -54,16 +61,25 @@ const MInnerSlotsList = memo(function InnerSlotsList({
     };
   }, [height, width]);
 
+  const offsetHelpers: OffsetHelpers = useMemo(
+    () =>
+      getOffsetHelpers(
+        listHelpers,
+        getIndexForSlot,
+        getSlotAtIndex,
+        itemsCount,
+      ),
+    [listHelpers, getIndexForSlot, getSlotAtIndex, itemsCount],
+  );
+
   return (
     <div style={style}>
       <ResetLive />
       <VirtualSlotsList
         visibleWidth={width}
         visibleHeight={height}
-        itemsCount={itemsCount}
-        getSlotAtIndex={getSlotAtIndex}
-        getIndexForSlot={getIndexForSlot}
         offsetHelpers={offsetHelpers}
+        heightDeltas={heightDeltas}
       />
     </div>
   );
@@ -74,24 +90,46 @@ const MAllSlotsList = memo(function AllSlotsList({
   height,
 }: SlotsListProps) {
   const epoch = useAtomValue(epochAtom);
-  const currentSlot = useAtomValue(currentSlotAtom);
+  const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
   const ascendingLeaderSlotsSet = useAtomValue(ascendingLeaderSlotsSetAtom);
   const nextLeaderSlot = useAtomValue(nextLeaderSlotAtom);
+  const yourLeaderSlotCounts = useAtomValue(yourLeaderSlotCountsAtom);
 
   const slotsListProps = useMemo(
     () =>
       getAllSlotsListProps(
         epoch,
-        currentSlot,
+        currentLeaderSlot,
         ascendingLeaderSlotsSet,
         nextLeaderSlot,
+        yourLeaderSlotCounts,
       ),
-    [epoch, currentSlot, ascendingLeaderSlotsSet, nextLeaderSlot],
+    [
+      epoch,
+      currentLeaderSlot,
+      ascendingLeaderSlotsSet,
+      nextLeaderSlot,
+      yourLeaderSlotCounts,
+    ],
+  );
+
+  const heightDeltas = useHeightDeltas(
+    false,
+    currentLeaderSlot,
+    slotsListProps?.listHelpers?.yourNextLeaderSlot,
+    ascendingLeaderSlotsSet,
   );
 
   if (!slotsListProps) return null;
 
-  return <MInnerSlotsList width={width} height={height} {...slotsListProps} />;
+  return (
+    <MInnerSlotsList
+      width={width}
+      height={height}
+      {...slotsListProps}
+      heightDeltas={heightDeltas?.slotHeightDeltas}
+    />
+  );
 });
 
 const MMySlotsList = memo(function MySlotsList({
@@ -99,27 +137,40 @@ const MMySlotsList = memo(function MySlotsList({
   height,
 }: SlotsListProps) {
   const mySlots = useAtomValue(leaderSlotsAtom);
-  const currentSlot = useAtomValue(currentSlotAtom);
+  const ascendingLeaderSlotsSet = useAtomValue(ascendingLeaderSlotsSetAtom);
+  const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
   const nextLeaderSlot = useAtomValue(nextLeaderSlotAtom);
   const isCurrentlyLeader = useAtomValue(isCurrentlyLeaderAtom);
   const nextLeaderSlotIndex = useAtomValue(nextLeaderSlotIndexAtom);
+  const yourLeaderSlotCounts = useAtomValue(yourLeaderSlotCountsAtom);
 
   const slotsListProps = useMemo(
     () =>
       getMySlotsListProps(
         mySlots,
-        currentSlot,
+        ascendingLeaderSlotsSet,
+        currentLeaderSlot,
         nextLeaderSlot,
         isCurrentlyLeader,
         nextLeaderSlotIndex,
+        yourLeaderSlotCounts,
       ),
     [
       mySlots,
-      currentSlot,
+      ascendingLeaderSlotsSet,
+      currentLeaderSlot,
       nextLeaderSlot,
       isCurrentlyLeader,
       nextLeaderSlotIndex,
+      yourLeaderSlotCounts,
     ],
+  );
+
+  const heightDeltas = useHeightDeltas(
+    true,
+    currentLeaderSlot,
+    slotsListProps?.listHelpers?.yourNextLeaderSlot,
+    ascendingLeaderSlotsSet,
   );
 
   if (!slotsListProps) return null;
@@ -141,5 +192,12 @@ const MMySlotsList = memo(function MySlotsList({
     );
   }
 
-  return <MInnerSlotsList width={width} height={height} {...slotsListProps} />;
+  return (
+    <MInnerSlotsList
+      width={width}
+      height={height}
+      {...slotsListProps}
+      heightDeltas={heightDeltas?.slotHeightDeltas}
+    />
+  );
 });

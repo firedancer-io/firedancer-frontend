@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { getAllSlotsListProps } from "../allSlotsUtils";
 import { getMySlotsListProps } from "../mySlotsUtils";
@@ -20,6 +21,7 @@ describe("navigation utils", () => {
         undefined,
         undefined,
         undefined,
+        { past: 0, current: 0, future: 0 },
       );
 
       expect(result).not.toBeUndefined();
@@ -46,6 +48,7 @@ describe("navigation utils", () => {
         undefined,
         undefined,
         undefined,
+        { past: 0, current: 0, future: 0 },
       );
       expect(result).toBeUndefined();
     });
@@ -57,8 +60,10 @@ describe("navigation utils", () => {
         [4, 12, 20, 40, 44, 48],
         undefined,
         undefined,
+        undefined,
         false,
         undefined,
+        { past: 0, current: 0, future: 0 },
       );
 
       expect(result).not.toBeUndefined();

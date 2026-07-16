@@ -5,58 +5,47 @@ import {
   slotOverrideAtom,
 } from "../../atoms";
 import type { PropsWithChildren, RefObject } from "react";
-import {
-  memo,
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { slotsListTopPaddingIndex } from "../../consts";
+import { memo, useCallback, useLayoutEffect, useRef, useState } from "react";
 import { throttle } from "lodash";
-import SlotsRenderer, { MSlotsPlaceholder } from "./SlotsRenderer";
+import { MSlotsPlaceholder } from "./SlotsRenderer";
 import {
   useDebouncedCallback,
   useThrottledCallback,
   type DebouncedState,
 } from "use-debounce";
 import {
-  findMinVisibleIdx,
-  getItemInfo,
-  getItemBelowInfo,
-  ItemType,
-  type BaseItemInfo,
+  type ItemInfo,
+  filterStillVisibleItems,
+  addVisibleItemsBelow,
+  getInitialVisibleItems,
+  addVisibleItemsAbove,
+  type OffsetHelpers,
 } from "./utils";
-import type { SlotsIndexProps } from "./const";
-import { getSlotGroupLeader } from "../../utils";
+import { MItems } from "./ListItem";
 
 const noop = () => {};
 
 const SCROLL_THROTTLE = 50;
 
-type VisibleItem = BaseItemInfo &
-  (
-    | { topOffset: number; type: ItemType.Future | ItemType.Current }
-    | { topOffset?: number; type: ItemType.Past }
-  );
-
-interface VirtualSlotsListProps extends SlotsIndexProps {
+interface VirtualSlotsListProps {
   visibleWidth: number;
   visibleHeight: number;
+  offsetHelpers: OffsetHelpers;
+  heightDeltas: Map<number, number> | undefined;
 }
 
 export default function VirtualSlotsList({
   visibleWidth,
   visibleHeight,
-  getSlotAtIndex,
-  getIndexForSlot,
-  itemsCount,
   offsetHelpers,
+  heightDeltas,
 }: VirtualSlotsListProps) {
-  const visibleItemsRef = useRef<VisibleItem[]>();
+  const visibleItemsRef = useRef<{
+    currentSlot: number;
+    yourNextLeaderSlot: number | undefined;
+    items: ItemInfo[];
+  }>();
   const containerRef = useRef<HTMLDivElement>(null);
-  const previousTotalHeightRef = useRef<number | undefined>();
   const [scrollTop, setScrollTop] = useState<number | undefined>();
 
   const throttledSetScrollTop = useThrottledCallback(
@@ -67,72 +56,107 @@ export default function VirtualSlotsList({
     { trailing: true },
   );
 
-  const calcHelpers = useMemo(
-    () =>
-      getCalcHelpers(
-        offsetHelpers,
-        getIndexForSlot,
-        getSlotAtIndex,
-        itemsCount,
-      ),
-    [offsetHelpers, getIndexForSlot, getSlotAtIndex, itemsCount],
-  );
-
-  // prevent visual shifting on height change as current slot progresses
-  useLayoutEffect(() => {
-    const newTotalHeight = calcHelpers?.totalHeight;
-    const previousTotalHeight = previousTotalHeightRef.current;
-    previousTotalHeightRef.current = newTotalHeight;
-
-    if (
-      !containerRef.current ||
-      previousTotalHeight == null ||
-      newTotalHeight == null ||
-      previousTotalHeight === newTotalHeight
-    )
-      return;
-
-    const currentSlotOffset = calcHelpers?.offsetSnapshotCurrentSlotOffset;
-
-    if (
-      currentSlotOffset == null ||
-      containerRef.current.scrollTop <= currentSlotOffset
-    )
-      return;
-
-    const newScrollTop =
-      containerRef.current.scrollTop + (newTotalHeight - previousTotalHeight);
-    containerRef.current.scrollTop = newScrollTop;
-    setScrollTop(newScrollTop);
-  }, [calcHelpers]);
-
-  if (scrollTop != null && calcHelpers != null && offsetHelpers != null) {
-    const visibleItems: VisibleItem[] = [];
+  if (scrollTop != null && offsetHelpers != null && containerRef.current) {
     const endVisibleOffset = scrollTop + visibleHeight;
+    const setVisibleItems = (
+      value: NonNullable<typeof visibleItemsRef.current>,
+    ) => {
+      visibleItemsRef.current = value;
+    };
 
-    const firstIdx = calcHelpers.getMinVisibleIdx(scrollTop);
-    const currentLeaderSlot = getSlotGroupLeader(
-      offsetHelpers.offsetSnapshotCurrentSlot,
-    );
-    let currentItem = getItemInfo(
-      firstIdx,
-      getSlotAtIndex,
-      calcHelpers.getIndexTopOffset,
-      offsetHelpers.getSlotHeight,
-      offsetHelpers.totalHeight,
-      currentLeaderSlot,
-    );
+    if (visibleItemsRef.current && heightDeltas && containerRef.current) {
+      const topItem = visibleItemsRef.current.items[0];
+      const prevTopOffset = topItem.topOffset;
+      // if visible items are still in the visible range, use those
+      if (heightDeltas.size) {
+        const heightDeltaEntries = [...heightDeltas.entries()];
+        for (const item of visibleItemsRef.current.items) {
+          offsetHelpers.updateItem(
+            item,
+            heightDeltaEntries,
+            offsetHelpers.offsetSnapshotCurrentSlot,
+          );
+        }
+      }
 
-    while (currentItem && currentItem.topOffset < endVisibleOffset) {
-      visibleItems.push(currentItem);
-      currentItem = getItemBelowInfo(
-        currentItem,
-        getSlotAtIndex,
-        offsetHelpers.getSlotHeight,
-        currentLeaderSlot,
+      const topOffsetDelta = topItem.topOffset - prevTopOffset;
+      const elScrollTop = containerRef.current.scrollTop;
+      const effectiveScrollTop = elScrollTop + topOffsetDelta;
+      const effectiveEndVisibleOffset = effectiveScrollTop + visibleHeight;
+
+      // scroll to prevent visual shift if only the area above visible window grew
+      if (topOffsetDelta) {
+        containerRef.current.scrollTop = effectiveScrollTop;
+        setScrollTop(effectiveScrollTop);
+      }
+
+      const visibleItems = filterStillVisibleItems(
+        visibleItemsRef.current.items,
+        effectiveScrollTop,
+        visibleHeight,
       );
+
+      if (visibleItems.length) {
+        const prevItem = offsetHelpers.getItemAbove(visibleItems[0]);
+        addVisibleItemsAbove(
+          prevItem,
+          visibleItems,
+          effectiveScrollTop,
+          offsetHelpers.getItemAbove,
+        );
+
+        const nextItem = offsetHelpers.getItemBelow(
+          visibleItems[visibleItems.length - 1],
+        );
+        addVisibleItemsBelow(
+          nextItem,
+          visibleItems,
+          effectiveEndVisibleOffset,
+          offsetHelpers.getItemBelow,
+        );
+
+        setVisibleItems({
+          currentSlot: offsetHelpers.offsetSnapshotCurrentSlot,
+          yourNextLeaderSlot: offsetHelpers.yourNextLeaderSlot,
+          items: visibleItems,
+        });
+      } else {
+        const visibleItems = getInitialVisibleItems(
+          effectiveScrollTop,
+          endVisibleOffset,
+          offsetHelpers.getItemBelow,
+          offsetHelpers.getFirstVisibleItem,
+        );
+        if (!visibleItems.length) {
+          visibleItemsRef.current = undefined;
+        } else {
+          setVisibleItems({
+            currentSlot: offsetHelpers.offsetSnapshotCurrentSlot,
+            yourNextLeaderSlot: offsetHelpers.yourNextLeaderSlot,
+            // topOffsetRange: visibleItems.length ? visibleItems[0].topOffset, visibleItems[] : undefined
+            items: visibleItems,
+          });
+        }
+      }
+    } else {
+      const visibleItems = getInitialVisibleItems(
+        scrollTop,
+        endVisibleOffset,
+        offsetHelpers.getItemBelow,
+        offsetHelpers.getFirstVisibleItem,
+      );
+      if (!visibleItems.length) {
+        visibleItemsRef.current = undefined;
+      } else {
+        setVisibleItems({
+          currentSlot: offsetHelpers.offsetSnapshotCurrentSlot,
+          yourNextLeaderSlot: offsetHelpers.yourNextLeaderSlot,
+          items: visibleItems,
+        });
+      }
     }
-    visibleItemsRef.current = visibleItems;
+
+    heightDeltas?.clear();
   }
 
   const getPaddedSlotTopOffsetRef = useRef<
@@ -143,12 +167,12 @@ export default function VirtualSlotsList({
   >(() => undefined);
 
   getPaddedSlotTopOffsetRef.current = (slot: number) => {
-    return calcHelpers?.getPaddedSlotTopOffset(slot);
+    return offsetHelpers?.getPaddedSlotTopOffset(slot);
   };
 
-  if (!calcHelpers) return;
+  if (!offsetHelpers) return;
 
-  const { totalHeight, getPaddedSlotAtOffset } = calcHelpers;
+  const { totalHeight, getPaddedSlotAtOffset } = offsetHelpers;
 
   getPaddedSlotAtOffsetRef.current = getPaddedSlotAtOffset;
 
@@ -167,88 +191,12 @@ export default function VirtualSlotsList({
       >
         <div style={{ height: totalHeight, position: "relative" }}>
           {visibleItemsRef.current != null && (
-            <MItems visibleItems={visibleItemsRef.current} />
+            <MItems visibleItems={visibleItemsRef.current.items} />
           )}
         </div>
       </MScrollContainer>
     </>
   );
-}
-
-function getCalcHelpers(
-  offsetHelpers: SlotsIndexProps["offsetHelpers"],
-  getIndexForSlot: SlotsIndexProps["getIndexForSlot"],
-  getSlotAtIndex: SlotsIndexProps["getSlotAtIndex"],
-  itemsCount: number,
-) {
-  if (!offsetHelpers) return;
-
-  const {
-    totalHeight,
-    offsetSnapshotCurrentSlot,
-    getSlotHeight,
-    getIndexTopOffset,
-  } = offsetHelpers;
-
-  const getPaddedSlotTopOffset = (slot: number) => {
-    const slotIdx = getIndexForSlot(slot);
-    if (slotIdx == null) return;
-
-    const topIdx = Math.max(0, slotIdx - slotsListTopPaddingIndex);
-    return getIndexTopOffset(topIdx);
-  };
-
-  const getPaddedSlotAtOffset = (offset: number) => {
-    const topIdxAtOffset = findMinVisibleIdx(
-      offset,
-      itemsCount,
-      getIndexTopOffset,
-    );
-    if (topIdxAtOffset == null) return;
-
-    const pinnedIdx = Math.min(
-      topIdxAtOffset + slotsListTopPaddingIndex,
-      itemsCount - 1,
-    );
-    return getSlotAtIndex(pinnedIdx);
-  };
-
-  const getTopOffset = (
-    idx: number,
-    prevSlot: number | null,
-    prevIdxOffset: number | null,
-  ) => {
-    if (prevIdxOffset == null || prevSlot == null) {
-      return getIndexTopOffset(idx);
-    }
-
-    const prevSlotHeight = getSlotHeight(prevSlot);
-    if (prevSlotHeight == null) return;
-
-    return prevIdxOffset + prevSlotHeight;
-  };
-
-  const getMinVisibleIdx = (scrollTop: number) => {
-    return findMinVisibleIdx(scrollTop, itemsCount, getIndexTopOffset);
-  };
-
-  const offsetSnapshotCurrentSlotIdx = getIndexForSlot(
-    offsetSnapshotCurrentSlot,
-  );
-  const offsetSnapshotCurrentSlotOffset =
-    offsetSnapshotCurrentSlotIdx != null
-      ? getIndexTopOffset(offsetSnapshotCurrentSlotIdx)
-      : undefined;
-
-  return {
-    totalHeight,
-    offsetSnapshotCurrentSlotOffset,
-    getIndexTopOffset,
-    getPaddedSlotTopOffset,
-    getPaddedSlotAtOffset,
-    getTopOffset,
-    getMinVisibleIdx,
-  };
 }
 
 interface ScrollContainerProps {
@@ -402,44 +350,4 @@ const MScrollToSlotOverride = memo(function SlotOverrideScroll({
   }, [isManualScrolling, scrollToSlotPinnedPosition, slotOverride]);
 
   return null;
-});
-
-interface ItemsProps {
-  visibleItems: VisibleItem[];
-}
-const MItems = memo(function Items({ visibleItems }: ItemsProps) {
-  console.log("visibleItems", visibleItems);
-  return visibleItems.map(({ slot, topOffset, bottomOffset, type }) => (
-    <MItem
-      key={slot}
-      slot={slot}
-      offset={type === ItemType.Past ? bottomOffset : topOffset}
-      isBottomOffset={type === ItemType.Past}
-    />
-  ));
-});
-
-interface ItemProps {
-  slot: number;
-  offset: number;
-  isBottomOffset: boolean;
-}
-const MItem = memo(function Item({ slot, offset, isBottomOffset }: ItemProps) {
-  const anchorStyle = isBottomOffset
-    ? { bottom: 0, transform: `translateY(-${offset}px)` }
-    : { top: 0, transform: `translateY(${offset}px)` };
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        width: "100%",
-        ...anchorStyle,
-        // prevent browser snapping to document's pixel grid
-        willChange: "transform",
-      }}
-    >
-      <SlotsRenderer leaderSlotForGroup={slot} />
-    </div>
-  );
 });
