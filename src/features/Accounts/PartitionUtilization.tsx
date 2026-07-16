@@ -1,32 +1,44 @@
+import { memo } from "react";
 import { Tooltip, Flex, Text } from "@radix-ui/themes";
 import { accountsPartitionCompactionColor } from "../../colors";
 import styles from "./partitionUtilization.module.css";
 import type { PropsWithChildren } from "react";
-import type { AccountsStats } from "../../api/types";
 
 function fmtPct(pct: number) {
   return `${pct.toFixed(2)}%`;
 }
 
-export default function PartitionUtilization({
-  partition,
-  showPct = true,
-}: {
-  partition: AccountsStats["partitions"][number];
+interface PartitionUtilizationProps {
+  usedFrac: number;
+  fragmentedFrac: number;
+  compactionTriggerFrac: number;
+  compactionFrac: number;
+  compactionState: number;
+  isWriteHead: boolean;
   showPct?: boolean;
-}) {
-  const fragPct = partition.fragmented_frac * 100;
-  const usedPct = partition.used_frac * 100;
+}
+
+const PartitionUtilization = memo(function PartitionUtilization({
+  usedFrac,
+  fragmentedFrac,
+  compactionTriggerFrac,
+  compactionFrac,
+  compactionState,
+  isWriteHead,
+  showPct = true,
+}: PartitionUtilizationProps) {
+  const fragPct = fragmentedFrac * 100;
+  const usedPct = usedFrac * 100;
   const headPct = fragPct + usedPct;
   const unusedPct = 100 - headPct;
-  const compactionTriggerPct = partition.compaction_trigger_frac * 100;
-  const compactionPct = partition.compaction_frac * 100;
-  const isCompacting = partition.compaction_state === 2;
+  const compactionTriggerPct = compactionTriggerFrac * 100;
+  const compactionPct = compactionFrac * 100;
+  const isCompacting = compactionState === 2;
 
   return (
     <PartitionUtilizationTooltip
-      fragmentedFrac={partition.fragmented_frac}
-      compactionTriggerFrac={partition.compaction_trigger_frac}
+      fragmentedFrac={fragmentedFrac}
+      compactionTriggerFrac={compactionTriggerFrac}
       headPct={headPct}
     >
       <Flex align="center" gap="8px">
@@ -35,7 +47,7 @@ export default function PartitionUtilization({
             className={styles.triggerMarker}
             left={fmtPct(compactionTriggerPct)}
           />
-          {partition.is_write_head && (
+          {isWriteHead && (
             <Flex className={styles.writeHeadMarker} left={fmtPct(headPct)} />
           )}
           {isCompacting && (
@@ -64,7 +76,9 @@ export default function PartitionUtilization({
       </Flex>
     </PartitionUtilizationTooltip>
   );
-}
+});
+
+export default PartitionUtilization;
 
 interface PartitionUtilizationTooltipProps {
   fragmentedFrac: number;
