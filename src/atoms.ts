@@ -7,6 +7,7 @@ import {
   identityKeyAtom,
   serverTimeNanosAtom,
   skippedSlotsAtom,
+  slotRankingsAtom,
   startupProgressAtom,
 } from "./api/atoms";
 import type {
@@ -232,6 +233,16 @@ export const slotPublishAtomFamily = atomFamily((slot?: number) =>
 export const slotResponseAtomFamily = atomFamily((slot?: number) =>
   atom((get) => (slot !== undefined ? get(slotResponseAtom)[slot] : undefined)),
 );
+
+/** Cached slots this node produced, per the server-stamped `mine` flag. */
+export const cachedMineSlotsAtom = atom((get) => {
+  const responses = get(slotResponseAtom);
+  const slots: number[] = [];
+  for (const key in responses) {
+    if (responses[key].publish.mine) slots.push(Number(key));
+  }
+  return slots;
+});
 
 export const setSlotResponseAtom = atom(
   null,
@@ -942,23 +953,55 @@ export const [
   ];
 })();
 
-export const quickSearchSlotsAtom = atom((get) => {
-  const leaderSlots = get(leaderSlotsAtom);
-  const firstProcessedLeaderIndex = get(firstProcessedLeaderIndexAtom);
-  const nextLeaderIndex = get(nextLeaderSlotIndexAtom);
-
-  if (!leaderSlots || firstProcessedLeaderIndex === undefined) {
-    return {};
+/**
+ * Processed slots this node produced this epoch, unioned from the cache and the
+ * mine rankings. Partial (the server exposes no full list) but never includes
+ * slots the identity produced on another node after an identity switch.
+ */
+export const mineProcessedSlotsAtom = atom((get) => {
+  const epoch = get(epochAtom);
+  const currentSlot = get(currentSlotAtom);
+  const firstProcessedSlot = get(firstProcessedSlotAtom);
+  if (!epoch || currentSlot === undefined || firstProcessedSlot === undefined) {
+    return [];
   }
 
-  const pastProcessedSlots = leaderSlots.slice(
-    firstProcessedLeaderIndex,
-    nextLeaderIndex,
-  );
+  const rankings = get(slotRankingsAtom);
+  const rankingSlots = rankings
+    ? [
+        ...rankings.slots_largest_tips,
+        ...rankings.slots_smallest_tips,
+        ...rankings.slots_largest_fees,
+        ...rankings.slots_smallest_fees,
+        ...rankings.slots_largest_rewards,
+        ...rankings.slots_smallest_rewards,
+        ...rankings.slots_largest_duration,
+        ...rankings.slots_smallest_duration,
+        ...rankings.slots_largest_compute_units,
+        ...rankings.slots_smallest_compute_units,
+      ]
+    : [];
+
+  const slots = new Set<number>();
+  for (const slot of [...get(cachedMineSlotsAtom), ...rankingSlots]) {
+    if (
+      slot >= epoch.start_slot &&
+      slot <= epoch.end_slot &&
+      slot >= firstProcessedSlot &&
+      slot < currentSlot
+    ) {
+      slots.add(slot);
+    }
+  }
+  return [...slots].sort((a, b) => a - b);
+});
+
+export const quickSearchSlotsAtom = atom((get) => {
+  const mineSlots = get(mineProcessedSlotsAtom);
+  if (!mineSlots.length) return {};
+
   return {
-    earliestQuickSlots: pastProcessedSlots.slice(0, numQuickSearchSlots),
-    mostRecentQuickSlots: pastProcessedSlots
-      .slice(-numQuickSearchSlots)
-      .toReversed(),
+    earliestQuickSlots: mineSlots.slice(0, numQuickSearchSlots),
+    mostRecentQuickSlots: mineSlots.slice(-numQuickSearchSlots).toReversed(),
   };
 });
