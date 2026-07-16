@@ -67,17 +67,15 @@ export default function CacheCard({ className }: { className?: string }) {
 
         <Flex gap="17px" align="baseline">
           <Stat
-            label="Reads"
+            label="R/S"
             value={`${readsPerSec.value}${readsPerSec.unit}`}
             color={accountsReadColor}
-            suffix="r/s"
             minWidth="80px"
           />
           <Stat
-            label="Writes"
+            label="W/S"
             value={`${writesPerSec.value}${writesPerSec.unit}`}
             color={accountsWriteColor}
-            suffix="w/s"
             minWidth="80px"
           />
         </Flex>

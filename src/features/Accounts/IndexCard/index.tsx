@@ -22,7 +22,7 @@ export default function IndexCard() {
 
   return (
     <Card>
-      <Flex direction="column" justify="between" height="100%">
+      <Flex direction="column" justify="between" height="100%" gap="5px">
         <CardHeader text="Index" />
         <Flex gap="16px">
           <Flex direction="column" gap="15px">
