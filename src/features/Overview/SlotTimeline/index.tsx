@@ -33,6 +33,7 @@ import { clamp } from "lodash";
 import { showStartupProgressAtom } from "../../StartupProgress/atoms";
 import MonoText from "../../../components/MonoText";
 import AnimatedInteger from "../../../components/AnimatedInteger";
+import VoteStatusBadge from "./VoteStatusBadge";
 import Progress from "../../../components/Progress";
 
 const barTrackGapValue = 2;
@@ -69,14 +70,17 @@ export default function SlotTimeline() {
   return (
     <Card>
       <Flex direction="column" height="100%" gap={headerGap}>
-        <Text
-          style={{
-            color: "var(--primary-text-color)",
-            fontSize: "18px",
-          }}
-        >
-          Slots
-        </Text>
+        <Flex justify="between" align="center" gap="3" wrap="wrap">
+          <Text
+            style={{
+              color: "var(--primary-text-color)",
+              fontSize: "18px",
+            }}
+          >
+            Slots
+          </Text>
+          <VoteStatusBadge />
+        </Flex>
         <SlotBars />
       </Flex>
     </Card>
