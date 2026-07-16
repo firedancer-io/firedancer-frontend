@@ -5,6 +5,7 @@ import {
   tileTimerValueAtomFamily,
   type TileRowMetrics,
 } from "./atoms";
+import { type WriteEl, useRowState, writeRow } from "./utils";
 import { Flex, Table, Text } from "@radix-ui/themes";
 import tableStyles from "../../../components/dataTable.module.css";
 import { Bars } from "../../StartupProgress/Firedancer/Bars";
@@ -28,46 +29,14 @@ import { PriorityEnum } from "../../../api/entities";
 
 const store = getDefaultStore();
 
-/**
- * Each component subscribes to the relevant state in the Jotai store.
- * This allows for fine-grained updates without re-rendering through react.
- */
-
-type CellWrite<E extends HTMLElement> = (
-  el: E,
-  cur: TileRowMetrics | undefined,
-  prev: TileRowMetrics | undefined,
-) => void;
-
-function useStateCell<E extends HTMLElement>(
-  idx: number,
-  ref: { current: E | null },
-  write: CellWrite<E>,
-) {
-  useLayoutEffect(() => {
-    const rowAtom = liveTileRowAtomFamily(idx);
-    let prev = store.get(rowAtom);
-
-    const handleUpdate = () => {
-      const cur = store.get(rowAtom);
-      if (ref.current) write(ref.current, cur, prev);
-      prev = cur;
-    };
-
-    const unsub = store.sub(rowAtom, handleUpdate);
-    handleUpdate();
-    return unsub;
-  }, [idx, ref, write]);
-}
-
 interface LiveCellProps {
   idx: number;
-  write: CellWrite<HTMLTableCellElement>;
+  write: WriteEl<HTMLTableCellElement>;
 }
 
 function LiveCell({ idx, write, ...cellProps }: LiveCellProps & CellProps) {
   const ref = useRef<HTMLTableCellElement>(null);
-  useStateCell(idx, ref, write);
+  useRowState(idx, ref, write);
   return <Table.Cell ref={ref} {...cellProps} />;
 }
 
@@ -85,68 +54,59 @@ const priorityLabels: Record<Priority, string> = {
   critical: "Critical",
 };
 
-const writeCpu: CellWrite<HTMLTableCellElement> = (el, c, p) => {
+const writeCpu: WriteEl<HTMLTableCellElement> = (el, c, p) => {
   el.textContent = `${c?.last_cpu ?? p?.last_cpu ?? ""}`;
 };
 
-const writeAlive: CellWrite<HTMLTableCellElement> = (el, c, p) => {
+const writeAlive: WriteEl<HTMLTableCellElement> = (el, c, p) => {
   const alive = c?.alive ?? p?.alive;
   el.textContent = alive ? "Live" : "Dead";
   el.classList.toggle(tableStyles.green, !!alive);
   el.classList.toggle(tableStyles.red, !alive);
 };
 
-const writePriority: CellWrite<HTMLTableCellElement> = (el, c, p) => {
+const writePriority: WriteEl<HTMLTableCellElement> = (el, c, p) => {
   const priority = c?.priority ?? p?.priority;
   el.textContent = priority ? priorityLabels[priority] : "-";
   el.classList.toggle(tableStyles.critical, priority === PriorityEnum.critical);
 };
 
-const writeInBackp: CellWrite<HTMLTableCellElement> = (el, c, p) => {
+const writeInBackp: WriteEl<HTMLTableCellElement> = (el, c, p) => {
   const inBackp = c?.in_backp ?? p?.in_backp;
   el.textContent = inBackp ? "Yes" : "-";
   el.classList.toggle(tableStyles.red, !!inBackp);
 };
 
-const writeHKeep: CellWrite<HTMLTableCellElement> = (el, c, p) => {
+const writeHKeep: WriteEl<HTMLTableCellElement> = (el, c, p) => {
   const t = normTimers(c, p);
   const v = t[0] + t[1] + t[2];
   el.textContent = pctText(v);
   el.classList.toggle(tableStyles.red, v > 1);
 };
 
-const writeWait: CellWrite<HTMLTableCellElement> = (el, c, p) => {
+const writeWait: WriteEl<HTMLTableCellElement> = (el, c, p) => {
   el.textContent = pctText(normTimers(c, p)[6]);
 };
 
-const writeBackpPct: CellWrite<HTMLTableCellElement> = (el, c, p) => {
+const writeBackpPct: WriteEl<HTMLTableCellElement> = (el, c, p) => {
   const v = normTimers(c, p)[5];
   el.textContent = pctText(v);
   el.classList.toggle(tableStyles.red, v > 0);
 };
 
-const writeWork: CellWrite<HTMLTableCellElement> = (el, c, p) => {
+const writeWork: WriteEl<HTMLTableCellElement> = (el, c, p) => {
   const t = normTimers(c, p);
   const v = t[3] + t[4] + t[7];
   el.textContent = pctText(v);
   el.style.setProperty("--pct", `${v}%`);
 };
 
-const writeMinflt: CellWrite<HTMLTableCellElement> = (el, c, p) => {
+const writeMinflt: WriteEl<HTMLTableCellElement> = (el, c, p) => {
   el.textContent = (c?.minflt ?? p?.minflt)?.toLocaleString() ?? "-";
 };
 
-const writeMajflt: CellWrite<HTMLTableCellElement> = (el, c, p) => {
+const writeMajflt: WriteEl<HTMLTableCellElement> = (el, c, p) => {
   el.textContent = (c?.majflt ?? p?.majflt)?.toLocaleString() ?? "-";
-};
-
-// alive === 2 (shutdown) or no timers -> row hidden.
-const writeRow: CellWrite<HTMLTableRowElement> = (el, c, p) => {
-  const alive = c?.alive ?? p?.alive;
-  const hasTimers = !!(c?.timers || p?.timers);
-  const priority = c?.priority ?? p?.priority;
-  el.style.display = alive === 2 || !hasTimers ? "none" : "";
-  el.classList.toggle(tableStyles.faded, priority === PriorityEnum.floating);
 };
 
 type RowPick = (row: TileRowMetrics | undefined) => number | null | undefined;
@@ -386,7 +346,7 @@ interface DataRowProps {
 
 export const DataRow = memo(function DataRow({ idx }: DataRowProps) {
   const rowRef = useRef<HTMLTableRowElement>(null);
-  useStateCell(idx, rowRef, writeRow);
+  useRowState(idx, rowRef, writeRow);
 
   return (
     <Table.Row ref={rowRef} className={tableStyles.dataRow}>

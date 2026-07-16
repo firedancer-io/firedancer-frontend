@@ -1,10 +1,6 @@
 import { useAtomValue } from "jotai";
 import { tilesAtom } from "../../../api/atoms";
-import {
-  hasLiveTileMetricsAtom,
-  liveTileRowAtomFamily,
-  tilePriorityCountsAtom,
-} from "./atoms";
+import { hasLiveTileMetricsAtom, tilePriorityCountsAtom } from "./atoms";
 import Card from "../../../components/Card";
 import { Flex, Table, Text } from "@radix-ui/themes";
 import tableStyles from "../../../components/dataTable.module.css";
@@ -12,7 +8,6 @@ import styles from "./liveTileMetrics.module.css";
 import { headerGap } from "../../Gossip/consts";
 import type { Tile } from "../../../api/types";
 import clsx from "clsx";
-import { usePreviousDistinct } from "react-use";
 import { memo, useMemo, type CSSProperties } from "react";
 import TableDescriptionDialog from "../../../components/TableDescriptionDialog";
 import {
@@ -24,6 +19,7 @@ import {
 } from "./consts";
 import { PriorityEnum } from "../../../api/entities";
 import { DataRow } from "./DataRow";
+import { PinnedRow } from "./PinnedRow";
 import { TableHeader } from "../../../components/DataTable";
 
 export default memo(function LiveTileMetrics() {
@@ -111,52 +107,7 @@ const TableRow = memo(function TableRow({
     return <DataRow idx={idx} />;
   }
 
-  return <PinnedTableRow tile={tile} idx={idx} />;
-});
-
-interface PinnedTableRowProps {
-  tile: Tile;
-  idx: number;
-}
-
-const PinnedTableRow = memo(function PinnedTableRow({
-  tile,
-  idx,
-}: PinnedTableRowProps) {
-  const cur = useAtomValue(liveTileRowAtomFamily(idx));
-  const prev = usePreviousDistinct(cur);
-
-  const alive = cur?.alive ?? prev?.alive;
-  // Meaning tile has shut down, no need to list it in the table
-  if (alive === 2) return;
-
-  const timers = cur?.timers || prev?.timers;
-  if (!timers) return;
-
-  const isFloating =
-    (cur?.priority ?? prev?.priority) === PriorityEnum.floating;
-
-  return <PinnedTableRowContent tile={tile} isFloating={isFloating} />;
-});
-
-interface PinnedTableRowContentProps {
-  tile: Tile;
-  isFloating: boolean;
-}
-
-const PinnedTableRowContent = memo(function PinnedTableRowContent({
-  tile,
-  isFloating,
-}: PinnedTableRowContentProps) {
-  return (
-    <Table.Row
-      className={clsx(tableStyles.dataRow, { [tableStyles.faded]: isFloating })}
-    >
-      <Table.Cell className={tableStyles.rightBorder}>
-        {tile.kind}:{tile.kind_id}
-      </Table.Cell>
-    </Table.Row>
-  );
+  return <PinnedRow tile={tile} idx={idx} />;
 });
 
 function PriorityCountCell() {
