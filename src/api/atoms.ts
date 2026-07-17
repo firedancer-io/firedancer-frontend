@@ -119,7 +119,7 @@ export const liveTilePrimaryMetricAtom = atom<
   LiveTilePrimaryMetric | undefined
 >(undefined);
 
-export const liveTileMetricsAtom = atom<TileMetrics | undefined>(undefined);
+export const liveTileMetricsAtom = rafAtom<TileMetrics | undefined>(undefined);
 
 export const tileTimerAtom = atom<number[] | undefined>(undefined);
 
