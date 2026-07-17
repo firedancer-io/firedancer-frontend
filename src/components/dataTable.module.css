@@ -51,7 +51,9 @@
 
     .data-row {
       &.faded {
-        filter: brightness(0.55);
+        td:not(.no-fade-cell) {
+          filter: brightness(0.55);
+        }
       }
 
       .green {
