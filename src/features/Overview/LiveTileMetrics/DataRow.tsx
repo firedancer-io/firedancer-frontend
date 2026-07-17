@@ -354,7 +354,9 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
 
   return (
     <>
-      <Table.Cell className={tableStyles.noPadding}>
+      <Table.Cell
+        className={clsx(tableStyles.noPadding, tableStyles.noFadeCell)}
+      >
         <Flex align="center" ref={barsWrapRef}>
           <Bars
             value={initialPct >= 0 ? initialPct : (prevPctRef.current ?? 0)}
@@ -364,7 +366,11 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
         </Flex>
       </Table.Cell>
       <Table.Cell
-        className={clsx(tableStyles.noPadding, tableStyles.rightBorder)}
+        className={clsx(
+          tableStyles.noPadding,
+          tableStyles.rightBorder,
+          tableStyles.noFadeCell,
+        )}
       >
         <TileSparkLine
           value={avgValue}
