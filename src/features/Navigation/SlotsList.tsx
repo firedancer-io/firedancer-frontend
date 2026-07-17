@@ -1,36 +1,26 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import {
-  autoScrollAtom,
+  ascendingLeaderSlotsSetAtom,
   currentLeaderSlotAtom,
   epochAtom,
+  isCurrentlyLeaderAtom,
   leaderSlotsAtom,
+  nextLeaderSlotAtom,
+  nextLeaderSlotIndexAtom,
   SlotNavFilter,
   slotNavFilterAtom,
-  slotOverrideAtom,
+  yourLeaderSlotCountsAtom,
 } from "../../atoms";
-import { Box, Flex, Text } from "@radix-ui/themes";
-import type { RefObject } from "react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Flex, Text } from "@radix-ui/themes";
+import { memo, useMemo, type CSSProperties } from "react";
 import styles from "./slotsList.module.css";
-import { slotsListPinnedSlotOffset } from "../../consts";
-import { throttle } from "lodash";
-import SlotsRenderer, { MSlotsPlaceholder } from "./SlotsRenderer";
-import type { ScrollSeekConfiguration, VirtuosoHandle } from "react-virtuoso";
-import { Virtuoso } from "react-virtuoso";
 import ResetLive from "./ResetLive";
-import type { DebouncedState } from "use-debounce";
-import { useDebouncedCallback } from "use-debounce";
-import clsx from "clsx";
-import {
-  getAllSlotsListProps,
-  getMySlotsListProps,
-  type SlotsIndexProps,
-} from "./utils";
-
-const computeItemKey = (slot: number) => slot;
-
-// Add one future slot to prevent current leader transition from flickering
-const increaseViewportBy = { top: 24, bottom: 0 };
+import VirtualSlotsList from "./VirtualSlotsList";
+import { slotGroupCssVars, type SlotsIndexProps } from "./const";
+import { getAllSlotsListProps } from "./allSlotsUtils";
+import { getMySlotsListProps } from "./mySlotsUtils";
+import { useHeightDeltas } from "./useHeightDeltas";
+import { getOffsetHelpers, type OffsetHelpers } from "./utils";
 
 interface SlotsListProps {
   width: number;
@@ -44,244 +34,144 @@ export default function SlotsList({ width, height }: SlotsListProps) {
   if (!epoch) return null;
 
   return navFilter === SlotNavFilter.MySlots ? (
-    <MySlotsList key={epoch.epoch} width={width} height={height} />
+    <MMySlotsList key={epoch.epoch} width={width} height={height} />
   ) : (
-    <AllSlotsList key={epoch.epoch} width={width} height={height} />
+    <MAllSlotsList key={epoch.epoch} width={width} height={height} />
   );
 }
 
-function InnerSlotsList({
+interface InnerSlotsListProps {
+  heightDeltas: Map<number, number> | undefined;
+}
+const MInnerSlotsList = memo(function InnerSlotsList({
   width,
   height,
+  heightDeltas,
   itemsCount,
   getSlotAtIndex,
   getIndexForSlot,
-}: SlotsIndexProps & SlotsListProps) {
-  const listContainerRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<VirtuosoHandle>(null);
-  const visibleStartIndexRef = useRef<number | null>(null);
-
-  const [hideList, setHideList] = useState(true);
-  const [showPlaceholder, setShowPlaceholder] = useState(true);
-
-  useEffect(() => {
-    // initially hide list to
-    const timeout = setTimeout(() => {
-      setHideList(false);
-    }, 100);
-
-    return () => clearTimeout(timeout);
-  }, []);
-
-  const setSlotOverride = useSetAtom(slotOverrideAtom);
-
-  const debouncedScroll = useDebouncedCallback(() => {}, 100);
-
-  const { rangeChanged, scrollSeekConfiguration } = useMemo(() => {
-    const rangeChangedFn = ({ startIndex }: { startIndex: number }) => {
-      // account for increaseViewportBy
-      visibleStartIndexRef.current = startIndex + 1;
+  listHelpers,
+}: InnerSlotsListProps & SlotsIndexProps & SlotsListProps) {
+  const style: CSSProperties = useMemo(() => {
+    return {
+      ...slotGroupCssVars,
+      position: "relative",
+      width,
+      height,
     };
+  }, [height, width]);
 
-    const config: ScrollSeekConfiguration = {
-      enter: (velocity) => Math.abs(velocity) > 1500,
-      exit: (velocity) => Math.abs(velocity) < 500,
-      change: (_, range) => rangeChangedFn(range),
-    };
-    return { rangeChanged: rangeChangedFn, scrollSeekConfiguration: config };
-  }, [visibleStartIndexRef]);
-
-  // Setup user scroll handling
-  useEffect(() => {
-    if (!listContainerRef.current) return;
-    const container = listContainerRef.current;
-
-    const handleSlotOverride = throttle(
-      () => {
-        if (visibleStartIndexRef.current === null) return;
-
-        debouncedScroll();
-
-        const slotIndex = Math.min(
-          visibleStartIndexRef.current + slotsListPinnedSlotOffset,
-          itemsCount - 1,
-        );
-
-        const slot = getSlotAtIndex(slotIndex);
-        setSlotOverride(slot);
-      },
-      50,
-      { leading: true, trailing: true },
-    );
-
-    const handleScroll = () => {
-      handleSlotOverride();
-    };
-
-    container.addEventListener("wheel", handleScroll);
-    container.addEventListener("touchmove", handleScroll);
-
-    return () => {
-      container.removeEventListener("wheel", handleScroll);
-      container.removeEventListener("touchmove", handleScroll);
-    };
-  }, [
-    getSlotAtIndex,
-    debouncedScroll,
-    setSlotOverride,
-    itemsCount,
-    visibleStartIndexRef,
-  ]);
-
-  const getItemContent = useCallback(
-    (index: number) => {
-      const leader = getSlotAtIndex(index);
-      if (leader == null) return null;
-      return <SlotsRenderer leaderSlotForGroup={leader} />;
-    },
-    [getSlotAtIndex],
-  );
-
-  const totalListHeightChanged = useCallback(
-    (totalListHeight: number) => setShowPlaceholder(totalListHeight >= height),
-    [height],
+  const offsetHelpers: OffsetHelpers = useMemo(
+    () =>
+      getOffsetHelpers(
+        listHelpers,
+        getIndexForSlot,
+        getSlotAtIndex,
+        itemsCount,
+      ),
+    [listHelpers, getIndexForSlot, getSlotAtIndex, itemsCount],
   );
 
   return (
-    <Box
-      ref={listContainerRef}
-      position="relative"
-      width={`${width}px`}
-      height={`${height}px`}
-    >
-      <MRtAutoScroll listRef={listRef} getIndexForSlot={getIndexForSlot} />
-      <MSlotOverrideScroll
-        listRef={listRef}
-        getIndexForSlot={getIndexForSlot}
-        debouncedScroll={debouncedScroll}
-      />
-      {showPlaceholder && <MSlotsPlaceholder width={width} height={height} />}
+    <div style={style}>
       <ResetLive />
-      <Virtuoso
-        ref={listRef}
-        className={clsx(styles.slotsList, { [styles.hidden]: hideList })}
-        width={width}
-        height={height}
-        totalCount={itemsCount}
-        increaseViewportBy={increaseViewportBy}
-        // height of past slots that the user is most likely to scroll through
-        defaultItemHeight={42}
-        skipAnimationFrameInResizeObserver
-        computeItemKey={computeItemKey}
-        itemContent={getItemContent}
-        rangeChanged={rangeChanged}
-        components={{ ScrollSeekPlaceholder: MScrollSeekPlaceHolder }}
-        scrollSeekConfiguration={scrollSeekConfiguration}
-        totalListHeightChanged={totalListHeightChanged}
+      <VirtualSlotsList
+        visibleWidth={width}
+        visibleHeight={height}
+        offsetHelpers={offsetHelpers}
+        heightDeltas={heightDeltas}
       />
-    </Box>
+    </div>
   );
-}
-
-// Render nothing when scrolling quickly to improve performance
-const MScrollSeekPlaceHolder = memo(function ScrollSeekPlaceholder() {
-  return null;
 });
 
-interface RTAutoScrollProps {
-  listRef: RefObject<VirtuosoHandle>;
-  getIndexForSlot: (slot: number) => number | undefined;
-}
-const MRtAutoScroll = memo(function RTAutoScroll({
-  listRef,
-  getIndexForSlot,
-}: RTAutoScrollProps) {
-  const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
-  const autoScroll = useAtomValue(autoScrollAtom);
-
-  useEffect(() => {
-    if (!autoScroll || currentLeaderSlot === undefined || !listRef.current)
-      return;
-
-    // scroll to new current leader slot
-    const slotIndex = getIndexForSlot(currentLeaderSlot);
-    const visibleStartIndex = slotIndex
-      ? Math.max(0, slotIndex - slotsListPinnedSlotOffset)
-      : 0;
-
-    listRef.current.scrollToIndex({
-      index: visibleStartIndex,
-      align: "start",
-    });
-  }, [autoScroll, currentLeaderSlot, getIndexForSlot, listRef]);
-
-  return null;
-});
-
-interface SlotOverrideScrollProps {
-  listRef: RefObject<VirtuosoHandle>;
-  getIndexForSlot: (slot: number) => number | undefined;
-  debouncedScroll: DebouncedState<() => void>;
-}
-const MSlotOverrideScroll = memo(function SlotOverrideScroll({
-  listRef,
-  getIndexForSlot,
-  debouncedScroll,
-}: SlotOverrideScrollProps) {
-  const rafIdRef = useRef<number | null>(null);
-  const slotOverride = useAtomValue(slotOverrideAtom);
-
-  useEffect(() => {
-    if (
-      slotOverride === undefined ||
-      !listRef.current ||
-      debouncedScroll.isPending()
-    ) {
-      return;
-    }
-
-    const slotIndex = getIndexForSlot(slotOverride);
-    const targetIndex = slotIndex
-      ? Math.max(0, slotIndex - slotsListPinnedSlotOffset)
-      : 0;
-
-    const prevRafId = rafIdRef.current;
-    rafIdRef.current = requestAnimationFrame(() => {
-      if (prevRafId !== null) {
-        cancelAnimationFrame(prevRafId);
-      }
-
-      listRef.current?.scrollToIndex({
-        index: targetIndex,
-        align: "start",
-      });
-    });
-
-    return () => {
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-    };
-  }, [getIndexForSlot, slotOverride, listRef, debouncedScroll]);
-
-  return null;
-});
-
-function AllSlotsList({ width, height }: SlotsListProps) {
+const MAllSlotsList = memo(function AllSlotsList({
+  width,
+  height,
+}: SlotsListProps) {
   const epoch = useAtomValue(epochAtom);
+  const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
+  const ascendingLeaderSlotsSet = useAtomValue(ascendingLeaderSlotsSetAtom);
+  const nextLeaderSlot = useAtomValue(nextLeaderSlotAtom);
+  const yourLeaderSlotCounts = useAtomValue(yourLeaderSlotCountsAtom);
 
-  const slotsListProps = useMemo(() => getAllSlotsListProps(epoch), [epoch]);
+  const slotsListProps = useMemo(
+    () =>
+      getAllSlotsListProps(
+        epoch,
+        currentLeaderSlot,
+        ascendingLeaderSlotsSet,
+        nextLeaderSlot,
+        yourLeaderSlotCounts,
+      ),
+    [
+      epoch,
+      currentLeaderSlot,
+      ascendingLeaderSlotsSet,
+      nextLeaderSlot,
+      yourLeaderSlotCounts,
+    ],
+  );
+
+  const heightDeltas = useHeightDeltas(
+    false,
+    currentLeaderSlot,
+    slotsListProps?.listHelpers?.yourNextLeaderSlot,
+    ascendingLeaderSlotsSet,
+  );
 
   if (!slotsListProps) return null;
 
-  return <InnerSlotsList width={width} height={height} {...slotsListProps} />;
-}
+  return (
+    <MInnerSlotsList
+      width={width}
+      height={height}
+      {...slotsListProps}
+      heightDeltas={heightDeltas?.slotHeightDeltas}
+    />
+  );
+});
 
-function MySlotsList({ width, height }: SlotsListProps) {
+const MMySlotsList = memo(function MySlotsList({
+  width,
+  height,
+}: SlotsListProps) {
   const mySlots = useAtomValue(leaderSlotsAtom);
+  const ascendingLeaderSlotsSet = useAtomValue(ascendingLeaderSlotsSetAtom);
+  const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
+  const nextLeaderSlot = useAtomValue(nextLeaderSlotAtom);
+  const isCurrentlyLeader = useAtomValue(isCurrentlyLeaderAtom);
+  const nextLeaderSlotIndex = useAtomValue(nextLeaderSlotIndexAtom);
+  const yourLeaderSlotCounts = useAtomValue(yourLeaderSlotCountsAtom);
 
-  const slotsListProps = useMemo(() => getMySlotsListProps(mySlots), [mySlots]);
+  const slotsListProps = useMemo(
+    () =>
+      getMySlotsListProps(
+        mySlots,
+        ascendingLeaderSlotsSet,
+        currentLeaderSlot,
+        nextLeaderSlot,
+        isCurrentlyLeader,
+        nextLeaderSlotIndex,
+        yourLeaderSlotCounts,
+      ),
+    [
+      mySlots,
+      ascendingLeaderSlotsSet,
+      currentLeaderSlot,
+      nextLeaderSlot,
+      isCurrentlyLeader,
+      nextLeaderSlotIndex,
+      yourLeaderSlotCounts,
+    ],
+  );
+
+  const heightDeltas = useHeightDeltas(
+    true,
+    currentLeaderSlot,
+    slotsListProps?.listHelpers?.yourNextLeaderSlot,
+    ascendingLeaderSlotsSet,
+  );
 
   if (!slotsListProps) return null;
 
@@ -302,5 +192,12 @@ function MySlotsList({ width, height }: SlotsListProps) {
     );
   }
 
-  return <InnerSlotsList width={width} height={height} {...slotsListProps} />;
-}
+  return (
+    <MInnerSlotsList
+      width={width}
+      height={height}
+      {...slotsListProps}
+      heightDeltas={heightDeltas?.slotHeightDeltas}
+    />
+  );
+});

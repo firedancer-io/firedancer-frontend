@@ -1,20 +1,28 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { getAllSlotsListProps, getMySlotsListProps } from "../utils";
+import { getAllSlotsListProps } from "../allSlotsUtils";
+import { getMySlotsListProps } from "../mySlotsUtils";
 
 describe("navigation utils", () => {
   describe("getAllSlotsListProps", () => {
     it("gets correct values", () => {
-      const result = getAllSlotsListProps({
-        epoch: 1,
-        start_time_nanos: null,
-        end_time_nanos: null,
-        start_slot: 4,
-        end_slot: 15,
-        excluded_stake_lamports: 0n,
-        staked_pubkeys: [],
-        staked_lamports: [],
-        leader_slots: [],
-      });
+      const result = getAllSlotsListProps(
+        {
+          epoch: 1,
+          start_time_nanos: null,
+          end_time_nanos: null,
+          start_slot: 4,
+          end_slot: 15,
+          excluded_stake_lamports: 0n,
+          staked_pubkeys: [],
+          staked_lamports: [],
+          leader_slots: [],
+        },
+        undefined,
+        undefined,
+        undefined,
+        { past: 0, current: 0, future: 0 },
+      );
 
       expect(result).not.toBeUndefined();
       const { itemsCount, getSlotAtIndex, getIndexForSlot } = result!;
@@ -35,14 +43,28 @@ describe("navigation utils", () => {
     });
 
     it("handles undefined epoch", () => {
-      const result = getAllSlotsListProps(undefined);
+      const result = getAllSlotsListProps(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { past: 0, current: 0, future: 0 },
+      );
       expect(result).toBeUndefined();
     });
   });
 
   describe("getMySlotsListProps", () => {
     it("gets correct values and gives the index for the closest smaller my slot leader", () => {
-      const result = getMySlotsListProps([4, 12, 20, 40, 44, 48]);
+      const result = getMySlotsListProps(
+        [4, 12, 20, 40, 44, 48],
+        undefined,
+        undefined,
+        undefined,
+        false,
+        undefined,
+        { past: 0, current: 0, future: 0 },
+      );
 
       expect(result).not.toBeUndefined();
       const { itemsCount, getSlotAtIndex, getIndexForSlot } = result!;

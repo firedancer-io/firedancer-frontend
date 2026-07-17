@@ -368,6 +368,16 @@ export const leaderSlotsAtom = atom((get) => {
   return getLeaderSlots(epoch, pubkey);
 });
 
+/**
+ * Set of your leader slots, in ascending order
+ */
+export const ascendingLeaderSlotsSetAtom = atom((get) => {
+  const leaderSlots = get(leaderSlotsAtom);
+  if (!leaderSlots) return;
+
+  return new Set(leaderSlots);
+});
+
 /** In order array of your leader slots (only first slot in group of 4) */
 export const nextEpochLeaderSlotsAtom = atom((get) => {
   const epoch = get(nextEpochAtom);
@@ -402,6 +412,22 @@ export const nextLeaderSlotAtom = atom(
     });
   },
 );
+
+export const yourLeaderSlotCountsAtom = atom<
+  { past: number; current: number; future: number } | undefined
+>((get) => {
+  const leaderSlots = get(leaderSlotsAtom);
+  if (!leaderSlots) return;
+
+  const isCurrentlyLeader = get(isCurrentlyLeaderAtom);
+  const current = isCurrentlyLeader ? 1 : 0;
+  const nextLeaderSlotIndex = get(nextLeaderSlotIndexAtom);
+
+  const future =
+    nextLeaderSlotIndex == null ? 0 : leaderSlots.length - nextLeaderSlotIndex;
+  const past = leaderSlots.length - current - future;
+  return { past, current, future };
+});
 
 export const nextEpochLeaderSlotAtom = atom((get) => {
   const leaderSlots = get(nextEpochLeaderSlotsAtom);
