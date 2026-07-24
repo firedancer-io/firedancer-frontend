@@ -2,22 +2,14 @@
   grid-template-columns: minmax(300px, 1fr);
 }
 
-.txns-card {
-  grid-column: 1 / -1;
-}
-
 @media (min-width: 900px) {
   .cards {
     grid-template-columns: 1fr 1fr;
   }
 
-  .txns-card {
-    grid-column: 1 / -1;
-  }
-
   .frankendancer {
     .txns-card {
-      grid-column: 2;
+      grid-column: span 2;
     }
   }
 }
@@ -28,26 +20,12 @@
   }
 
   .txns-card {
-    grid-column: span 2;
+    grid-column: span 3;
   }
 
   .frankendancer {
     .txns-card {
-      grid-column: span 3;
+      grid-column: span 1;
     }
-  }
-}
-
-@media (min-width: 1850px) {
-  .cards {
-    grid-template-columns: 1fr 1.5fr 1.7fr 2fr;
-
-    &.frankendancer {
-      grid-template-columns: 1fr 1fr 1fr;
-    }
-  }
-
-  .txns-card {
-    grid-column: 1 / -1;
   }
 }
