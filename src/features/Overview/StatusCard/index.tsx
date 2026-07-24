@@ -4,33 +4,34 @@ import Card from "../../../components/Card";
 import CardStat from "../../../components/CardStat";
 import { useAtomValue } from "jotai";
 import styles from "./statusCard.module.css";
-import { currentSlotAtom } from "../../../atoms";
-import useNextSlot from "../../../hooks/useNextSlot";
+import { currentSlotAtom, epochAtom, slotDurationAtom } from "../../../atoms";
 import { voteDistanceAtom, voteStateAtom } from "../../../api/atoms";
 import {
   failureColor,
   headerColor,
   mySlotsColor,
-  nextColor,
   regularTextColor,
+  overviewTextColor,
   successColor,
   voteDistanceColor,
 } from "../../../colors";
 import { useMemo } from "react";
 import Progress from "../../../components/Progress";
+import { getDurationText } from "../../../utils";
+import { Duration } from "luxon";
 
-export default function SlotStatusCard() {
+export default function StatusCard() {
   return (
     <Card>
       <Flex direction="column" height="100%" gap="2" align="start">
         <CardHeader text="Status" />
         <div className={styles.statRow}>
           <CurrentSlotText />
-          <NextSlotTimeText />
+          <CurrentEpochText />
         </div>
         <div className={styles.statRow}>
           <VotingStatusText />
-          <UpcomingSlotText />
+          <NextEpochTimeText />
         </div>
       </Flex>
     </Card>
@@ -53,35 +54,51 @@ function CurrentSlotText() {
   );
 }
 
-function UpcomingSlotText() {
-  const { nextLeaderSlot } = useNextSlot({
-    showNowIfCurrent: true,
-  });
+function CurrentEpochText() {
+  const epoch = useAtomValue(epochAtom);
 
   return (
-    <CardStat
-      label="Next leader slot"
-      value={nextLeaderSlot?.toString() ?? "∞"}
-      valueColor={nextColor}
-      valueSize={nextLeaderSlot === undefined ? "large" : "small"}
-    />
+    <Box>
+      <CardStat
+        label="Current Epoch"
+        value={epoch?.epoch?.toString() ?? ""}
+        valueColor={overviewTextColor}
+        valueSize="medium"
+      />
+    </Box>
   );
 }
 
-function NextSlotTimeText() {
-  const { progressSinceLastLeader, nextSlotText } = useNextSlot({
-    showNowIfCurrent: true,
-  });
+function NextEpochTimeText() {
+  const slot = useAtomValue(currentSlotAtom);
+  const epoch = useAtomValue(epochAtom);
+  const slotDuration = useAtomValue(slotDurationAtom);
+
+  const nextEpochText = useMemo(() => {
+    if (epoch === undefined || slot === undefined) return "";
+    const endDiffMs = (epoch.end_slot - slot) * slotDuration;
+    const durationLeft = Duration.fromMillis(endDiffMs).rescale();
+    return getDurationText(durationLeft);
+  }, [epoch, slot, slotDuration]);
+
+  const progressSinceLastEpoch = useMemo(() => {
+    if (epoch === undefined || slot === undefined) return 0;
+    const currentSlotDiff = slot - epoch.start_slot;
+    const epochDiff = epoch.end_slot - epoch.start_slot;
+    const progress = (currentSlotDiff / epochDiff) * 100;
+    if (progress < 0 || progress > 100) return 0;
+    return progress;
+  }, [epoch, slot]);
 
   return (
     <Flex direction="column">
       <CardStat
-        label="Time until leader"
-        value={nextSlotText}
-        valueColor={headerColor}
-        valueSize="medium"
+        label="Time to Next Epoch"
+        value={nextEpochText}
+        valueColor={overviewTextColor}
+        valueSize="small"
       />
-      <Progress value={progressSinceLastLeader} />
+      <Progress className={styles.progress} value={progressSinceLastEpoch} />
     </Flex>
   );
 }
@@ -111,8 +128,8 @@ function VotingStatusText() {
 
   return (
     <CardStat
-      label="Vote Status"
-      value={voteState ?? "Unknown"}
+      label="Voting"
+      value={voteState === "voting" ? "Healthy" : (voteState ?? "Unknown")}
       valueColor={voteColor}
       valueSize="small"
       appendValue={voteDistanceText}

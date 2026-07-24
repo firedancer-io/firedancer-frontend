@@ -2,8 +2,7 @@ import { Flex, Grid } from "@radix-ui/themes";
 import TransactionsCard from "./TransactionsCard";
 import SlotPerformance from "./SlotPerformance";
 import ValidatorsCard from "./ValidatorsCard";
-import SlotStatusCard from "./StatusCard";
-import EpochCard from "./EpochCard";
+import StatusCard from "./StatusCard";
 import ShredsProgression from "./ShredsProgression";
 import LiveNetworkMetrics from "./LiveNetworkMetrics";
 import LiveTileMetrics from "./LiveTileMetrics";
@@ -23,8 +22,7 @@ export default function Overview() {
         })}
         gap="4"
       >
-        <EpochCard />
-        <SlotStatusCard />
+        <StatusCard />
         <ValidatorsCard />
         {!isFrankendancer && <ProgramCacheCard />}
         <TransactionsCard className={styles.txnsCard} />

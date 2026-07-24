@@ -144,6 +144,7 @@ export const averageUnchangedColor = "#714C32";
 export const badChangedColor = "#DC6869";
 export const badUnchangedColor = "#7A3B40";
 export const headerColor = "#BDF3FF";
+export const overviewTextColor = "#B4B4B4";
 export const nonDelinquentColor = "#6F77C0";
 export const nonDelinquentChartColor = "#363A63";
 export const totalValidatorsColor = "#20788C";
