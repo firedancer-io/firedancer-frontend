@@ -69,7 +69,7 @@ export default function Search() {
     <Flex className={styles.container} gap="2" wrap="wrap">
       <Box className={styles.searchBox}>
         <TextField.Root
-          placeholder="Name, Client Id, Pubkey, or Slot (use , for multiple)"
+          placeholder="Name, Client Id, Pubkey, Version, or Slot (use , for multiple)"
           variant="soft"
           color="gray"
           onChange={(e) => {

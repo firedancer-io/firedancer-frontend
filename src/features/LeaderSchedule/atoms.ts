@@ -60,10 +60,13 @@ export const setSearchLeaderSlotsAtom = atom(
     const leaders = get(allLeaderNamesClientIdsAtom);
     const searchPubkeys = leaders
       ?.filter(
-        ({ name, pubkey, clientId }) =>
+        ({ name, pubkey, clientId, version }) =>
           (clientId != null && matchingClientIds.has(clientId)) ||
           searchTextParts.some(
-            (s) => name?.includes(s) || pubkey.toLowerCase().includes(s),
+            (s) =>
+              name?.includes(s) ||
+              pubkey.toLowerCase().includes(s) ||
+              (version != null && `v${version}`.includes(s)),
           ),
       )
       .map(({ pubkey }) => pubkey);

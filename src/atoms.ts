@@ -580,6 +580,7 @@ export const allLeaderNamesClientIdsAtom = atom((get) => {
     pubkey: pubkey,
     name: peers[pubkey]?.info?.name?.toLowerCase(),
     clientId: peers[pubkey]?.gossip?.client_id,
+    version: peers[pubkey]?.gossip?.version,
   }));
 });
 
