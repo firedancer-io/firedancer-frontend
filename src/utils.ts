@@ -557,10 +557,17 @@ export function formatTimeNanos(
 }
 
 export function hasLateVote(publish: SlotPublish) {
+  if (publish.level !== "rooted") return false;
+  if (publish.is_voter === false) return false;
+  if (publish.vote_latency_exact !== undefined) {
+    if (publish.skipped) return false;
+    return (
+      publish.vote_latency_exact === null || publish.vote_latency_exact > 1
+    );
+  }
   return (
-    publish.level === "rooted" &&
-    ((publish.vote_latency && publish.vote_latency > 1) ||
-      (publish.vote_latency === null && !publish.skipped))
+    (publish.vote_latency != null && publish.vote_latency > 1) ||
+    (publish.vote_latency === null && !publish.skipped)
   );
 }
 

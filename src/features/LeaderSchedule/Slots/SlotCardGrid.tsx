@@ -248,20 +248,27 @@ function getRowValues(
         100
       : 0;
 
-  const voteLatency =
-    publish.vote_latency != null
-      ? {
-          text: getDiscountedVoteLatency(
+  const discountedLatency =
+    publish.vote_latency_exact != null
+      ? publish.vote_latency_exact
+      : publish.vote_latency != null
+        ? getDiscountedVoteLatency(
             publish.slot,
             publish.vote_latency,
             skippedClusterSlots,
-          ).toLocaleString(),
-        }
-      : publish.skipped
-        ? { text: "" }
-        : publish.level === "rooted"
-          ? { text: "✕", color: "#FF3C3C" }
-          : { text: "-" };
+          )
+        : null;
+
+  const voteLatency =
+    publish.is_voter === false
+      ? { text: "-" }
+      : discountedLatency != null
+        ? { text: discountedLatency.toLocaleString() }
+        : publish.skipped
+          ? { text: "-" }
+          : publish.level === "rooted"
+            ? { text: "✕", color: "#FF3C3C" }
+            : { text: "-" };
 
   return {
     voteTxns: (voteTxnsSuccess + voteTxnsFailure).toLocaleString(),

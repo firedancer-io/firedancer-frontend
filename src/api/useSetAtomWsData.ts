@@ -44,6 +44,7 @@ import {
 } from "../features/Overview/ShredsProgression/atoms";
 import { xRangeMs } from "./worker/cache/shreds/shredsCalc";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
+import { isFrankendancer } from "../client";
 import {
   addTurbineSlotsAtom,
   addRepairSlotsAtom,
@@ -371,7 +372,10 @@ function useUpdateAtoms() {
 
       if (value.publish.level === "rooted") {
         if (hasLateVote(value.publish)) {
-          addLateVoteSlots(value.publish.slot, value.publish.vote_latency);
+          addLateVoteSlots(
+            value.publish.slot,
+            value.publish.vote_latency ?? null,
+          );
         } else {
           deleteLateVoteSlot(value.publish.slot);
         }
@@ -738,7 +742,10 @@ function useUpdateAtoms() {
               break;
             }
             case "late_votes_history": {
-              setLateVoteHistory(value);
+              if (isFrankendancer && "latency" in value)
+                setLateVoteHistory(value);
+              else if (!isFrankendancer && "latency_exact" in value)
+                setLateVoteHistory(value);
               break;
             }
           }

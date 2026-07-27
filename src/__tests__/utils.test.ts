@@ -499,4 +499,78 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       ),
     ).toBe(1);
   });
+
+  const exactPublish = (overrides: Partial<SlotPublish>): SlotPublish => ({
+    slot: 1,
+    mine: false,
+    skipped: false,
+    level: "rooted",
+    success_nonvote_transaction_cnt: null,
+    failed_nonvote_transaction_cnt: null,
+    success_vote_transaction_cnt: null,
+    failed_vote_transaction_cnt: null,
+    priority_fee: null,
+    transaction_fee: null,
+    tips: null,
+    max_compute_units: null,
+    compute_units: null,
+    duration_nanos: null,
+    completed_time_nanos: null,
+    vote_latency: null,
+    vote_latency_exact: null,
+    is_voter: true,
+    ...overrides,
+  });
+
+  it("exact: voter with discounted latency > 1 is late", () => {
+    expect(
+      hasLateVote(exactPublish({ vote_latency: 5, vote_latency_exact: 2 })),
+    ).toBeTruthy();
+  });
+
+  it("exact: voter with discounted latency 1 is not late", () => {
+    expect(
+      hasLateVote(exactPublish({ vote_latency: 5, vote_latency_exact: 1 })),
+    ).toBeFalsy();
+  });
+
+  it("exact: voter that never voted is late", () => {
+    expect(
+      hasLateVote(
+        exactPublish({ vote_latency: null, vote_latency_exact: null }),
+      ),
+    ).toBeTruthy();
+  });
+
+  it("exact: non-voter is never late", () => {
+    expect(
+      hasLateVote(exactPublish({ is_voter: false, vote_latency_exact: null })),
+    ).toBeFalsy();
+    expect(
+      hasLateVote(
+        exactPublish({
+          is_voter: false,
+          vote_latency: 5,
+          vote_latency_exact: 3,
+        }),
+      ),
+    ).toBeFalsy();
+  });
+
+  it("exact: skipped slot is not late", () => {
+    expect(
+      hasLateVote(exactPublish({ skipped: true, vote_latency_exact: null })),
+    ).toBeFalsy();
+  });
+
+  it("exact: non-rooted is not late", () => {
+    expect(
+      hasLateVote(
+        exactPublish({
+          level: "optimistically_confirmed",
+          vote_latency_exact: 5,
+        }),
+      ),
+    ).toBeFalsy();
+  });
 });
