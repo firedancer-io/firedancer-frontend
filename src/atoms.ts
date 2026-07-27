@@ -863,33 +863,20 @@ export const serverTimeMsAtom = atom((get) => {
   return Math.round(serverTimeNanos / nsPerMs);
 });
 
-export const [
-  discountedLateVoteSlotsAtom,
-  addLateVoteSlotAtom,
-  deleteLateVoteSlotAtom,
-  clearLateVoteSlotsAtom,
-  setLateVoteHistoryAtom,
-] = (function getLateVoteSlotsAtom() {
+function getFrankendancerLateVoteSlotsAtom() {
   const _lateVotesMapAtom = atomWithImmer(new Map<number, number | null>());
+
   return [
     atom((get) => {
       const lateVotesMap = get(_lateVotesMapAtom);
       const skippedClusterSlots = get(skippedClusterSlotsAtom);
-
       const discountedLateVoteSlots = new Set<number>();
 
       for (const [slot, latency] of lateVotesMap) {
-        if (latency === null) {
-          discountedLateVoteSlots.add(slot);
-          continue;
-        }
-
-        const discountedLatency = getDiscountedVoteLatency(
-          slot,
-          latency,
-          skippedClusterSlots,
-        );
-        if (discountedLatency > 1) {
+        if (
+          latency === null ||
+          getDiscountedVoteLatency(slot, latency, skippedClusterSlots) > 1
+        ) {
           discountedLateVoteSlots.add(slot);
         }
       }
@@ -940,8 +927,76 @@ export const [
         set(_lateVotesMapAtom, newLateVotesMap);
       },
     ),
-  ];
-})();
+  ] as const;
+}
+
+function getFiredancerLateVoteSlotsAtom() {
+  const _lateVoteSlotsAtom = atomWithImmer(new Set<number>());
+
+  return [
+    atom((get) => get(_lateVoteSlotsAtom)),
+
+    atom(null, (_get, set, slot: number, _latency: number | null) => {
+      set(_lateVoteSlotsAtom, (draft) => {
+        draft.add(slot);
+      });
+    }),
+
+    atom(null, (_get, set, slot: number) => {
+      set(_lateVoteSlotsAtom, (draft) => {
+        draft.delete(slot);
+      });
+    }),
+
+    atom(null, (_get, set, keep?: { startSlot: number; endSlot: number }) => {
+      set(_lateVoteSlotsAtom, (draft) => {
+        if (!keep) {
+          draft.clear();
+          return;
+        }
+
+        for (const slot of draft) {
+          if (slot < keep.startSlot || keep.endSlot < slot) {
+            draft.delete(slot);
+          }
+        }
+      });
+    }),
+
+    atom(
+      null,
+      (
+        _get,
+        set,
+        value: { slot: number[]; latency_exact: (number | null)[] },
+      ) => {
+        const newLateVoteSlots = new Set<number>();
+        for (let run = 0; run * 2 < value.slot.length; run++) {
+          const latencyExact = value.latency_exact[run];
+          if (latencyExact != null && latencyExact <= 1) continue;
+
+          const runStart = value.slot[run * 2];
+          const runEnd = value.slot[run * 2 + 1];
+          for (let slot = runStart; slot <= runEnd; slot++) {
+            newLateVoteSlots.add(slot);
+          }
+        }
+        set(_lateVoteSlotsAtom, newLateVoteSlots);
+      },
+    ),
+  ] as const;
+}
+
+const frankendancerLateVoteAtoms = getFrankendancerLateVoteSlotsAtom();
+const firedancerLateVoteAtoms = getFiredancerLateVoteSlotsAtom();
+
+export const [
+  discountedLateVoteSlotsAtom,
+  addLateVoteSlotAtom,
+  deleteLateVoteSlotAtom,
+  clearLateVoteSlotsAtom,
+  setLateVoteHistoryAtom,
+] = isFrankendancer ? frankendancerLateVoteAtoms : firedancerLateVoteAtoms;
 
 export const quickSearchSlotsAtom = atom((get) => {
   const leaderSlots = get(leaderSlotsAtom);
