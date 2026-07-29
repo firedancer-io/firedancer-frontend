@@ -10,7 +10,7 @@ export const nsPerMs = 1_000_000;
 
 /** Max compute units is dynamic and pulled from the server,
  * this default should only be used as a fallback  */
-export const defaultMaxComputeUnits = 60_000_000;
+export const defaultMaxComputeUnits = 100_000_000;
 
 export const txnErrorCodeMap: Record<string, string> = {
   0: "Success", //	The transaction successfully executed
