@@ -5,7 +5,7 @@ import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
 import { ShredsChartLegend } from "./ShredsChartLegend";
 import { isFrankendancer } from "../../../client";
-import { isWebgl2SupportedAtom } from "./atoms";
+import { isWebgl2SupportedAtom } from "../../WebGl/atoms";
 
 // Lazy-load so Three.js is split into its own chunk, downloaded only when the
 // WebGL shreds chart mounts.
