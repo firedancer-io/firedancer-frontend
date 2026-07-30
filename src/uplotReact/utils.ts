@@ -62,7 +62,7 @@ export function clamp(
   fRange: number,
   fMin: number,
   fMax: number,
-) {
+): [number, number] {
   if (nRange > fRange) {
     nMin = fMin;
     nMax = fMax;

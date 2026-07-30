@@ -12,11 +12,10 @@ import {
   liveShredsDataAtom,
   liveShredsPostStartupRangeAtom,
   minDirtySlotByChartAtom,
-  isWebgl2SupportedAtom,
 } from "../atoms";
 import { shredEventDescPriorities } from "../const";
 import { updateLabels } from "../shredsProgressionPlugin";
-import type { SlotMesh, WebglResources } from "../webglUtils";
+import type { SlotMesh, WebglResources } from "../../../WebGl/webglUtils";
 import {
   createSlotMesh,
   updateSlotMeshCounts,
@@ -24,7 +23,8 @@ import {
   addRectangleToMesh,
   convertToWebGlColor,
   createWebglResources,
-} from "../webglUtils";
+  disposeWebglResources,
+} from "../../../WebGl/webglUtils";
 import {
   shredPublishedColor,
   shredReceivedRepairColor,
@@ -42,11 +42,13 @@ import {
   type LabelsState,
   type XRange,
 } from "../utils";
+import { MAX_WEBGL_PX_RATIO, msPerDay } from "../../../../consts";
+import type { ContextHelpers } from "../../../WebGl/useWebGlEventHandlers";
+import { isWebgl2SupportedAtom } from "../../../WebGl/atoms";
 
 const store = getDefaultStore();
 
 const SKIPPED_SLOT_DOT_DURATION_MS = 10;
-const msPerDay = 24 * 60 * 60 * 1000;
 
 const tempEventPositions = new Map<
   Exclude<ShredEvent, ShredEvent.slot_complete>,
@@ -62,9 +64,8 @@ export type RendererObj = {
   worldTsRange: TsRange;
   // resources shared by this renderer's slot meshes
   resources: WebglResources;
+  cleanUpRenderer: () => void;
 };
-
-const MAX_PIXEL_RATIO = 2;
 
 const colors = {
   skipped: convertToWebGlColor(shredSkippedColor),
@@ -80,7 +81,12 @@ const colors = {
 /**
  * Set up renderer world, setup according to shred reference ts
  */
-export function setUpRenderer(canvasWidth: number, canvasHeight: number) {
+export function setUpRenderer(
+  canvasWidth: number,
+  canvasHeight: number,
+  setUpContextListeners: ContextHelpers["setUpContextListeners"],
+  getWasContextLost: ContextHelpers["getWasContextLost"],
+): RendererObj | undefined {
   const serverTimeMs = store.get(serverTimeMsAtom);
   if (serverTimeMs == null) return;
 
@@ -98,7 +104,9 @@ export function setUpRenderer(canvasWidth: number, canvasHeight: number) {
 
   try {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
+    renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio, MAX_WEBGL_PX_RATIO),
+    );
     renderer.setSize(canvasWidth, canvasHeight);
     renderer.setClearColor(0x000000, 0);
 
@@ -106,6 +114,33 @@ export function setUpRenderer(canvasWidth: number, canvasHeight: number) {
     const availableMeshes: SlotMesh[] = [];
     const resources = createWebglResources();
     renderer.render(scene, camera);
+    const clearContextListeners = setUpContextListeners(renderer.domElement);
+
+    const cleanUpRenderer = () => {
+      // If context was lost at some point, its GPU objects are already gone so skip objects disposal,
+      // to prevent warnings e.g. WebGL: INVALID_OPERATION: delete: object does not belong to this context
+      // Three doesn't restore GPU objects for restored contexts unless there's a render.
+      // Remount on restore to reset the context listeners state
+      if (!getWasContextLost()) {
+        for (const slotMesh of meshes.values()) {
+          slotMesh.mesh.geometry.dispose();
+        }
+        for (const slotMesh of availableMeshes) {
+          slotMesh.mesh.geometry.dispose();
+        }
+        // dispose this chart's own unitQuad / sharedMaterial
+        disposeWebglResources(resources);
+
+        renderer.dispose();
+      }
+
+      // release currently live context (may be the restored one)
+      // make sure context listeners are removed beforehand
+      clearContextListeners();
+      if (!renderer.getContext().isContextLost()) {
+        renderer.forceContextLoss();
+      }
+    };
 
     return {
       renderer,
@@ -115,6 +150,7 @@ export function setUpRenderer(canvasWidth: number, canvasHeight: number) {
       availableMeshes,
       worldTsRange,
       resources,
+      cleanUpRenderer,
     };
   } catch {
     // context creation can still fail despite the probe (e.g. too many live
