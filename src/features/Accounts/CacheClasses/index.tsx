@@ -12,6 +12,7 @@ import {
   cacheClassUnusedColors,
   cacheClassList,
 } from "../consts";
+import { hitRateClass } from "../../../hitRate";
 import type { AccountsStats } from "../../../api/types";
 import tableStyles from "../../../components/dataTable.module.css";
 import styles from "./cacheClasses.module.css";
@@ -142,13 +143,7 @@ function DataRow({
       </Table.Cell>
       <Table.Cell
         align="right"
-        className={
-          cacheClass.hit_rate_ema >= 1
-            ? tableStyles.green
-            : cacheClass.hit_rate_ema > 0.999
-              ? tableStyles.orange
-              : tableStyles.red
-        }
+        className={hitRateClass(cacheClass.hit_rate_ema)}
       >
         {formatHitRate(cacheClass.hit_rate_ema)}%
       </Table.Cell>

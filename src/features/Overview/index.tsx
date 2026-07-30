@@ -8,6 +8,7 @@ import LiveNetworkMetrics from "./LiveNetworkMetrics";
 import LiveTileMetrics from "./LiveTileMetrics";
 import SlotTimeline from "./SlotTimeline";
 import ProgramCacheCard from "./ProgramCacheCard";
+import AccountsCard from "./AccountsCard";
 import styles from "./overview.module.css";
 import { isFrankendancer } from "../../client";
 import clsx from "clsx";
@@ -23,8 +24,11 @@ export default function Overview() {
         gap="4"
       >
         <StatusCard />
-        <ValidatorsCard />
-        {!isFrankendancer && <ProgramCacheCard />}
+        <ValidatorsCard className={styles.validatorsCard} />
+        {!isFrankendancer && (
+          <ProgramCacheCard className={styles.programCacheCard} />
+        )}
+        {!isFrankendancer && <AccountsCard className={styles.accountsCard} />}
         <TransactionsCard className={styles.txnsCard} />
       </Grid>
       <ShredsProgression />

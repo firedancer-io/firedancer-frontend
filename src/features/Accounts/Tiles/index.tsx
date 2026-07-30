@@ -18,6 +18,7 @@ import {
 } from "../../../utils";
 import HistorySparkline from "./HistorySparkline";
 import { accountsReadColor, accountsWriteColor } from "../../../colors";
+import { hitRateClass } from "../../../hitRate";
 
 export default function Tiles() {
   return (
@@ -82,15 +83,7 @@ function DataRow({ tile }: { tile: Tile }) {
       <MemoCell>{tile.joiner_type}</MemoCell>
       <MemoCell align="right">
         {hasReads ? (
-          <Text
-            className={
-              tile.hit_rate_ema >= 1
-                ? tableStyles.green
-                : tile.hit_rate_ema > 0.999
-                  ? tableStyles.orange
-                  : tableStyles.red
-            }
-          >
+          <Text className={hitRateClass(tile.hit_rate_ema)}>
             {formatHitRate(tile.hit_rate_ema)}%
           </Text>
         ) : (

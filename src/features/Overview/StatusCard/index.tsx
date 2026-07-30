@@ -20,9 +20,9 @@ import Progress from "../../../components/Progress";
 import { getDurationText } from "../../../utils";
 import { Duration } from "luxon";
 
-export default function StatusCard() {
+export default function StatusCard({ className }: { className?: string }) {
   return (
-    <Card>
+    <Card className={className}>
       <Flex direction="column" height="100%" gap="2" align="start">
         <CardHeader text="Status" />
         <div className={styles.statRow}>

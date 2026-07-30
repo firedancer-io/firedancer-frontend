@@ -2,48 +2,24 @@ import { Flex, Text } from "@radix-ui/themes";
 import cardStatStyles from "../../../components/cardStat.module.css";
 import styles from "./hitRateStat.module.css";
 import clsx from "clsx";
+import { unknownChangedColor, unknownUnchangedColor } from "../../../colors";
 import {
-  goodChangedColor,
-  goodUnchangedColor,
-  badChangedColor,
-  badUnchangedColor,
-  unknownChangedColor,
-  unknownUnchangedColor,
-  averageChangedColor,
-  averageUnchangedColor,
-} from "../../../colors";
+  hitRateChangedColor,
+  hitRateUnchangedColor,
+  getHitRateStatus,
+  type HitRateStatus,
+} from "../../../hitRate";
 import { formatHitRate } from "../../../utils";
 import ColorText from "../../../components/ColorText";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { liveProgramCacheAtom } from "../../../api/atoms";
 
-type Status = "Unknown" | "Good" | "Average" | "Bad";
-
 type HitRateValues = {
   percentage: string;
   hits: string;
   misses: string;
-  status: Status;
-};
-
-const colorsMap: Record<Status, { changed: string; unchanged: string }> = {
-  Unknown: {
-    changed: unknownChangedColor,
-    unchanged: unknownUnchangedColor,
-  },
-  Good: {
-    changed: goodChangedColor,
-    unchanged: goodUnchangedColor,
-  },
-  Average: {
-    changed: averageChangedColor,
-    unchanged: averageUnchangedColor,
-  },
-  Bad: {
-    changed: badChangedColor,
-    unchanged: badUnchangedColor,
-  },
+  status: HitRateStatus;
 };
 
 export default function HitRateStat() {
@@ -61,18 +37,11 @@ export default function HitRateStat() {
 
     const { hits, lookups } = liveProgramCache;
 
-    const fraction = lookups === 0 ? 0 : hits / lookups;
-    const status =
-      lookups === 0
-        ? "Unknown"
-        : fraction < 0.9995
-          ? "Bad"
-          : fraction < 0.99999
-            ? "Average"
-            : "Good";
+    const fraction = lookups === 0 ? null : hits / lookups;
+    const status = getHitRateStatus(fraction);
 
     return {
-      percentage: formatHitRate(fraction),
+      percentage: fraction === null ? "-" : formatHitRate(fraction),
       hits: hits.toLocaleString(),
       misses: (lookups - hits).toLocaleString(),
       status,
@@ -89,14 +58,14 @@ export default function HitRateStat() {
       <Text className={cardStatStyles.label}>
         <Text>Hit Rate</Text>{" "}
         <Text className={styles.trailing}>Trailing 1m</Text>{" "}
-        <Text style={{ color: colorsMap[status].unchanged }}>{status}</Text>
+        <Text style={{ color: hitRateUnchangedColor(status) }}>{status}</Text>
       </Text>
       <Flex gap="2" align="center">
         <Flex align="baseline" gap="1" minWidth="70px">
           <ColorText
             value={percentage}
-            changedColor={colorsMap[status].changed}
-            unchangedColor={colorsMap[status].unchanged}
+            changedColor={hitRateChangedColor(status)}
+            unchangedColor={hitRateUnchangedColor(status)}
             className={clsx(cardStatStyles.value, cardStatStyles.small)}
           />
           <Text className={cardStatStyles.appendValue}>%</Text>

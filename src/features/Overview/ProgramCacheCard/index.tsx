@@ -11,9 +11,13 @@ import HitRateStat from "./HitRateStat";
 import StorageStat from "./StorageStat";
 import { programCacheColor } from "../../../colors";
 
-export default function ProgramCacheCard() {
+export default function ProgramCacheCard({
+  className,
+}: {
+  className?: string;
+}) {
   return (
-    <Card>
+    <Card className={className}>
       <Flex direction="column" height="100%" gap="2" align="start">
         <CardHeader text="Program Cache" />
         <div className={styles.statRow}>
