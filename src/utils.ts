@@ -58,10 +58,11 @@ function getUnitValues(
   options?: DurationOptions,
 ): [number, string][] {
   if (options?.showOnlyTwoSignificantUnits) {
-    const firstUnitIndex = descendingUnits.findIndex(
-      ({ unit }) => !!duration[unit],
-    );
-    return descendingUnits
+    const units = options.omitSeconds
+      ? descendingUnits.filter(({ unit }) => unit !== "seconds")
+      : descendingUnits;
+    const firstUnitIndex = units.findIndex(({ unit }) => !!duration[unit]);
+    return units
       .slice(firstUnitIndex, firstUnitIndex + 2)
       .map(({ unit, suffix }) => [duration[unit], suffix]);
   }
@@ -82,10 +83,11 @@ export function getDurationValues(
 ): [number, string][] | undefined {
   if (!duration) return;
 
-  if (duration.toMillis() < 1000) return [[0, "s"]];
+  if (duration.toMillis() === 0) return [[0, "s"]];
 
   const units = getUnitValues(duration, options);
-  return units.length ? units : [[0, "s"]];
+  if (units.length) return units;
+  return options?.omitSeconds ? [[1, "m"]] : [[1, "s"]];
 }
 
 export function getDurationText(

@@ -14,6 +14,7 @@ interface StatProps {
   color?: CSSProperties["color"];
   suffix?: string;
   minWidth?: string;
+  align?: "start" | "end";
 }
 
 export default function Stat({
@@ -24,9 +25,15 @@ export default function Stat({
   color,
   suffix,
   minWidth,
+  align,
 }: StatProps) {
   return (
-    <Flex className={className} direction="column" minWidth={minWidth}>
+    <Flex
+      className={className}
+      direction="column"
+      minWidth={minWidth}
+      align={align}
+    >
       {label && <Text className={styles.label}>{label}</Text>}
       <Flex
         className={clsx(styles.valuesContainer, { [styles.lg]: size === "lg" })}

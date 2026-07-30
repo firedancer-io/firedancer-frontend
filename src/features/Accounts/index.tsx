@@ -1,6 +1,6 @@
 import { Flex } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
-import { hasAccountStatsAtom } from "../../api/atoms";
+import { hasAccountsStatsAtom } from "../../atoms";
 import styles from "./accounts.module.css";
 import DiskCard from "./DiskCard";
 import IndexCard from "./IndexCard";
@@ -11,7 +11,7 @@ import Tiles from "./Tiles";
 import Partitions from "./Partitions";
 
 export default function Accounts() {
-  const hasAccountStats = useAtomValue(hasAccountStatsAtom);
+  const hasAccountStats = useAtomValue(hasAccountsStatsAtom);
   if (!hasAccountStats) return;
 
   return (

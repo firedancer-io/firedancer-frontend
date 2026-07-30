@@ -99,6 +99,7 @@ import {
   healthAtom,
   accountsStatsAtom,
 } from "./atoms";
+import { accountsNextCompactionAtom } from "../atoms";
 import {
   estimatedTpsDebounceMs,
   liveNetworkMetricsDebounceMs,
@@ -449,6 +450,9 @@ function useUpdateAtoms() {
   const setHealth = useSetAtom(healthAtom);
 
   const setAccountsStats = useSetAtom(accountsStatsAtom);
+  const updateAccountsNextCompactionCandidates = useSetAtom(
+    accountsNextCompactionAtom,
+  );
 
   const peersBuffer = useRef(new Map<string, Peer>());
   const removePeersBuffer = useRef(new Map<string, PeerRemove>());
@@ -780,6 +784,7 @@ function useUpdateAtoms() {
           switch (key) {
             case "stats": {
               setAccountsStats(value);
+              updateAccountsNextCompactionCandidates(value.partitions);
               break;
             }
           }
@@ -841,6 +846,7 @@ function useUpdateAtoms() {
       setVoteSlot,
       setVoteState,
       setAccountsStats,
+      updateAccountsNextCompactionCandidates,
     ],
   );
 
