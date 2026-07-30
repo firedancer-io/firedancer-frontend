@@ -10,7 +10,7 @@ import {
   skippedClusterSlotsAtom,
 } from "../../../atoms";
 import { slotCaughtUpAtom } from "../../../api/atoms";
-import { isWebGl2Available } from "./webglSupport";
+import { isWebGl2Available } from "../../WebGl/webGlSupport";
 
 type ShredEventTsDeltaMs = number | undefined;
 /**

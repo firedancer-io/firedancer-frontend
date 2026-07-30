@@ -1,51 +1,54 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 import { useMeasure, useRafLoop } from "react-use";
 import { Box, Flex } from "@radix-ui/themes";
 import type { FlexProps } from "@radix-ui/themes";
 import { useShredsChartScale } from "../useShredsChartScale";
 import { useSetAtom } from "jotai";
-import { isWebgl2SupportedAtom, minDirtySlotByChartAtom } from "../atoms";
+import { minDirtySlotByChartAtom } from "../atoms";
 import type { RendererObj, TsRange } from "./chartUtils";
 import { setUpRenderer, draw } from "./chartUtils";
 import ShredsSlotLabels from "../ShredsSlotLabels";
 import { MChartAxes, xAxisHeight } from "./ChartAxes";
 import { createLabelsState, type LabelsState } from "../utils";
-import { disposeWebglResources } from "../webglUtils";
+import { disposeWebglResources } from "../../../WebGl/webglUtils";
+import WebGlEventHandler, {
+  type WebGlEventHandlerChildProps,
+} from "../../../WebGl/WebGlEventHandler";
 
 const REDRAW_INTERVAL_MS = 15;
-/**
- * How long to wait for the GPU to restore a lost WebGL context before falling back to the canvas chart.
- * Context loss is usually transient (tab backgrounded, GPU reset, driver hiccup) and the browser restores it within
- * 1 ~ 2 frames.
- */
-const CONTEXT_RESTORE_TIMEOUT_MS = 10_000;
 
 interface ShredsChartProps
   extends Pick<FlexProps, "height" | "minHeight" | "flexGrow"> {
   chartId: string;
 }
 export default function ShredsChart(props: ShredsChartProps) {
-  const [key, setKey] = useState(0);
-  const triggerRemount = useCallback(() => {
-    setKey((prev) => prev + 1);
-  }, [setKey]);
   return (
-    <ShredsChartInner key={key} {...props} triggerRemount={triggerRemount} />
+    <WebGlEventHandler>
+      {({
+        setUpCanvasListeners,
+        resetContextStateAndListeners,
+        getIsContextLost,
+      }) => (
+        <ShredsChartBody
+          {...props}
+          setUpCanvasListeners={setUpCanvasListeners}
+          resetContextStateAndListeners={resetContextStateAndListeners}
+          getIsContextLost={getIsContextLost}
+        />
+      )}
+    </WebGlEventHandler>
   );
 }
 
-interface ShredsChartInnerProps extends ShredsChartProps {
-  triggerRemount: () => void;
-}
-
-export function ShredsChartInner({
+function ShredsChartBody({
   chartId,
-  triggerRemount,
+  setUpCanvasListeners,
+  resetContextStateAndListeners,
+  getIsContextLost,
   ...flexProps
-}: ShredsChartInnerProps) {
+}: ShredsChartProps & WebGlEventHandlerChildProps) {
   const setMinDirtySlotByChart = useSetAtom(minDirtySlotByChartAtom);
-  const setWebgl2Supported = useSetAtom(isWebgl2SupportedAtom);
 
   const prevTimeDiffsRef = useRef<number[]>([]);
   const lastRedrawRef = useRef(0);
@@ -63,32 +66,8 @@ export function ShredsChartInner({
     prevLabels: createLabelsState(),
     tempNewLabels: createLabelsState(),
   });
-  /**
-   * timeout to use canvas chart fallback when context is lost and not restored
-   */
-  const contextLostTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const scale = useShredsChartScale();
-
-  const handleContextLost = useCallback(
-    (event: Event) => {
-      // preventDefault so that the browser fires webglcontextrestored
-      event.preventDefault();
-
-      clearTimeout(contextLostTimeoutRef.current);
-      contextLostTimeoutRef.current = setTimeout(() => {
-        setWebgl2Supported(false);
-      }, CONTEXT_RESTORE_TIMEOUT_MS);
-    },
-    [setWebgl2Supported],
-  );
-
-  const handleContextRestored = useCallback(() => {
-    clearTimeout(contextLostTimeoutRef.current);
-    // clear so unmount cleans up resources
-    contextLostTimeoutRef.current = undefined;
-    triggerRemount();
-  }, [triggerRemount]);
 
   useLayoutEffect(() => {
     // setup dirty slot tracking
@@ -104,23 +83,11 @@ export function ShredsChartInner({
         return prev;
       });
 
-      const isContextLost = contextLostTimeoutRef.current != null;
-      clearTimeout(contextLostTimeoutRef.current);
-
       const obj = rendererRef.current;
       if (!obj) return;
 
-      obj.renderer.domElement.removeEventListener(
-        "webglcontextlost",
-        handleContextLost,
-      );
-      obj.renderer.domElement.removeEventListener(
-        "webglcontextrestored",
-        handleContextRestored,
-      );
-
       // When the context is lost, its GPU objects are already gone so skip GL cleanup
-      if (!isContextLost) {
+      if (!getIsContextLost()) {
         for (const slotMesh of obj.meshes.values()) {
           slotMesh.mesh.geometry.dispose();
         }
@@ -131,29 +98,32 @@ export function ShredsChartInner({
         disposeWebglResources(obj.resources);
 
         obj.renderer.dispose();
-        // force release of GL context on repeated mount / unmounts
+        // force release of GL context on repeated mount / unmounts.
+        // remove listener for context loss beforehand
+        resetContextStateAndListeners();
         obj.renderer.forceContextLoss();
+      } else {
+        resetContextStateAndListeners();
       }
-
-      obj.renderer.domElement.remove();
       rendererRef.current = undefined;
     };
   }, [
     chartId,
-    handleContextLost,
-    handleContextRestored,
+    resetContextStateAndListeners,
+    getIsContextLost,
     setMinDirtySlotByChart,
   ]);
 
   // handle chart resize
   useLayoutEffect(() => {
     // skip while the context is lost. Remount on restore will handle resizing
-    if (!rendererRef.current || contextLostTimeoutRef.current != null) return;
+    if (!rendererRef.current || getIsContextLost()) return;
 
     // skip until valid size is initialized
     if (width <= 0 || height <= 0) return;
     const { renderer } = rendererRef.current;
     renderer.setSize(width, height);
+
     draw(
       chartId,
       prevTimeDiffsRef,
@@ -164,43 +134,46 @@ export function ShredsChartInner({
       true /* force redraw */,
       [0, width],
     );
-  }, [scale, width, height, chartId]);
+  }, [scale, width, height, chartId, getIsContextLost]);
 
   useRafLoop(function drawShredsLoop(time: number) {
     // Don't draw while waiting for context restore.
     // but keep canvas mounted to listen for restore event.
-    if (contextLostTimeoutRef.current != null) return;
+    if (getIsContextLost()) return;
 
     // skip until valid size is initialized
     if (width <= 0 || height <= 0) return;
 
     if (
-      lastRedrawRef.current == null ||
-      time - lastRedrawRef.current >= REDRAW_INTERVAL_MS
+      lastRedrawRef.current != null &&
+      time - lastRedrawRef.current < REDRAW_INTERVAL_MS
     ) {
-      lastRedrawRef.current = time;
-      if (!rendererRef.current) {
-        const rendererObj = setUpRenderer(width, height);
-        if (!rendererObj) return;
-
-        rendererRef.current = rendererObj;
-        const canvas = rendererObj.renderer.domElement;
-        canvas.addEventListener("webglcontextlost", handleContextLost);
-        canvas.addEventListener("webglcontextrestored", handleContextRestored);
-        containerRef.current?.replaceChildren(canvas);
-      } else {
-        draw(
-          chartId,
-          prevTimeDiffsRef,
-          rendererRef.current,
-          visibleTsRangeRef,
-          labelsRef,
-          scale,
-          false,
-          [0, width],
-        );
-      }
+      return;
     }
+
+    lastRedrawRef.current = time;
+    if (rendererRef.current) {
+      draw(
+        chartId,
+        prevTimeDiffsRef,
+        rendererRef.current,
+        visibleTsRangeRef,
+        labelsRef,
+        scale,
+        false,
+        [0, width],
+      );
+      return;
+    }
+
+    // set up renderer
+    const rendererObj = setUpRenderer(width, height);
+    if (!rendererObj) return;
+
+    rendererRef.current = rendererObj;
+    const canvas = rendererObj.renderer.domElement;
+    setUpCanvasListeners(canvas);
+    containerRef.current?.replaceChildren(canvas);
   });
 
   return (

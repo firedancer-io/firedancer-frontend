@@ -16,7 +16,7 @@ import {
 } from "../atoms";
 import { shredEventDescPriorities } from "../const";
 import { updateLabels } from "../shredsProgressionPlugin";
-import type { SlotMesh, WebglResources } from "../webglUtils";
+import type { SlotMesh, WebglResources } from "../../../WebGl/webglUtils";
 import {
   createSlotMesh,
   updateSlotMeshCounts,
@@ -24,7 +24,7 @@ import {
   addRectangleToMesh,
   convertToWebGlColor,
   createWebglResources,
-} from "../webglUtils";
+} from "../../../WebGl/webglUtils";
 import {
   shredPublishedColor,
   shredReceivedRepairColor,
@@ -42,11 +42,11 @@ import {
   type LabelsState,
   type XRange,
 } from "../utils";
+import { MAX_WEBGL_PX_RATIO, msPerDay } from "../../../../consts";
 
 const store = getDefaultStore();
 
 const SKIPPED_SLOT_DOT_DURATION_MS = 10;
-const msPerDay = 24 * 60 * 60 * 1000;
 
 const tempEventPositions = new Map<
   Exclude<ShredEvent, ShredEvent.slot_complete>,
@@ -63,8 +63,6 @@ export type RendererObj = {
   // resources shared by this renderer's slot meshes
   resources: WebglResources;
 };
-
-const MAX_PIXEL_RATIO = 2;
 
 const colors = {
   skipped: convertToWebGlColor(shredSkippedColor),
@@ -98,7 +96,9 @@ export function setUpRenderer(canvasWidth: number, canvasHeight: number) {
 
   try {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
+    renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio, MAX_WEBGL_PX_RATIO),
+    );
     renderer.setSize(canvasWidth, canvasHeight);
     renderer.setClearColor(0x000000, 0);
 
