@@ -8,6 +8,7 @@ import {
   serverTimeNanosAtom,
   skippedSlotsAtom,
   startupProgressAtom,
+  accountsStatsAtom,
 } from "./api/atoms";
 import type {
   Epoch,
@@ -17,10 +18,12 @@ import type {
   SlotLevel,
   SlotResponse,
   SupermajorityEpoch,
+  AccountsPartition,
 } from "./api/types";
 import { clamp, merge } from "lodash";
 import {
   getDiscountedVoteLatency,
+  getDurationText,
   getLeaderSlots,
   getSlotGroupLeader,
   getStake,
@@ -30,7 +33,9 @@ import { selectedSlotAtom } from "./features/Overview/SlotPerformance/atoms";
 import { atomFamily } from "jotai/utils";
 import memoize from "micro-memoize";
 import { isFrankendancer } from "./client";
+import { CompactionState } from "./api/entities";
 import { numQuickSearchSlots } from "./features/SlotDetails/const";
+import { Duration } from "luxon";
 
 export const isDocumentVisibleAtom = atom<boolean>(
   document.visibilityState === "visible",
@@ -1018,3 +1023,122 @@ export const quickSearchSlotsAtom = atom((get) => {
       .toReversed(),
   };
 });
+
+export const hasAccountsStatsAtom = atom((get) => !!get(accountsStatsAtom));
+
+export type PartitionCandidate = Pick<
+  AccountsPartition,
+  | "partition_idx"
+  | "tier"
+  | "compaction_state"
+  | "used_frac"
+  | "fragmented_frac"
+  | "compaction_trigger_frac"
+> & { estimate: number };
+type PartitionCompactionMap = Map<number, PartitionCandidate>;
+
+export const accountsNextCompactionAtom =
+  (function getAccountsNextCompactionAtom() {
+    const _accountsNextCompactionCandidatesAtom = atom<PartitionCompactionMap>(
+      new Map(),
+    );
+
+    return atom(
+      (get) => {
+        const nextCandidates = get(_accountsNextCompactionCandidatesAtom);
+
+        let nextCandidate: PartitionCandidate | undefined;
+        for (const candidate of nextCandidates.values()) {
+          if (
+            !nextCandidate ||
+            candidate.compaction_state > nextCandidate.compaction_state ||
+            (candidate.compaction_state === nextCandidate.compaction_state &&
+              candidate.estimate < nextCandidate.estimate)
+          ) {
+            nextCandidate = candidate;
+          }
+        }
+
+        if (!nextCandidate) return undefined;
+
+        const timeLabel =
+          nextCandidate.compaction_state !== CompactionState.Idle ||
+          nextCandidate.estimate === 0
+            ? "Now"
+            : nextCandidate.estimate === Infinity
+              ? "--"
+              : `~${getDurationText(
+                  Duration.fromObject({
+                    seconds: nextCandidate.estimate,
+                  }).rescale(),
+                  { showOnlyTwoSignificantUnits: true, omitSeconds: true },
+                )} left`;
+
+        return { partitionIdx: nextCandidate.partition_idx, timeLabel };
+      },
+      (get, set, partitions: AccountsPartition[]) => {
+        const prev = get(_accountsNextCompactionCandidatesAtom);
+        const candidates =
+          partitions?.filter(
+            (p) =>
+              p.is_write_head || p.compaction_state !== CompactionState.Idle,
+          ) ?? [];
+
+        // Update the next compaction estimate only when certain fields update
+        // Excludes age_seconds to avoid noisy updates for newly active write heads
+        const hasChanged =
+          prev.size !== candidates.length ||
+          candidates.some((p) => {
+            const snap = prev.get(p.partition_idx);
+            return (
+              !snap ||
+              snap.compaction_state !== p.compaction_state ||
+              snap.used_frac !== p.used_frac ||
+              snap.fragmented_frac !== p.fragmented_frac ||
+              snap.compaction_trigger_frac !== p.compaction_trigger_frac
+            );
+          });
+
+        if (!hasChanged) return;
+
+        const next: PartitionCompactionMap = new Map(
+          candidates.map((p) => {
+            let estimate: number;
+            if (p.compaction_state !== CompactionState.Idle) {
+              estimate = 0;
+            } else {
+              const headFrac = p.used_frac + p.fragmented_frac;
+              const rate = p.age_seconds > 0 ? 1 / p.age_seconds : 0;
+              const remainingForHead =
+                headFrac >= 1
+                  ? 0
+                  : headFrac > 0 && rate > 0
+                    ? (1 - headFrac) / (headFrac * rate)
+                    : Infinity;
+              const remainingForFrag =
+                p.fragmented_frac >= p.compaction_trigger_frac
+                  ? 0
+                  : p.fragmented_frac > 0 && rate > 0
+                    ? (p.compaction_trigger_frac - p.fragmented_frac) /
+                      (p.fragmented_frac * rate)
+                    : Infinity;
+              estimate = Math.max(remainingForHead, remainingForFrag);
+            }
+            return [
+              p.partition_idx,
+              {
+                partition_idx: p.partition_idx,
+                tier: p.tier,
+                compaction_state: p.compaction_state,
+                used_frac: p.used_frac,
+                fragmented_frac: p.fragmented_frac,
+                compaction_trigger_frac: p.compaction_trigger_frac,
+                estimate,
+              },
+            ];
+          }),
+        );
+        set(_accountsNextCompactionCandidatesAtom, next);
+      },
+    );
+  })();

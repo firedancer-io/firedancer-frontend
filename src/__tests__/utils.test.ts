@@ -150,14 +150,29 @@ describe("getDurationText", () => {
     expect(getDurationText(undefined)).toEqual("Never");
   });
 
-  it("shows 0s if duration is less than a second", () => {
+  it("shows 0s if duration is exactly 0", () => {
+    expect(getDurationText(Duration.fromObject({ millisecond: 0 }))).toEqual(
+      "0s",
+    );
+  });
+
+  it("shows 1s if duration is less than a second but not 0", () => {
+    expect(getDurationText(Duration.fromObject({ millisecond: 999 }))).toEqual(
+      "1s",
+    );
+  });
+
+  it("shows 1m if duration is less than a minute but not 0 with omitSeconds", () => {
     expect(
-      getDurationText(
-        Duration.fromObject({
-          millisecond: 999,
-        }),
-      ),
-    ).toEqual("0s");
+      getDurationText(Duration.fromObject({ millisecond: 59999 }), {
+        omitSeconds: true,
+      }),
+    ).toEqual("1m");
+    expect(
+      getDurationText(Duration.fromObject({ millisecond: 999 }), {
+        omitSeconds: true,
+      }),
+    ).toEqual("1m");
   });
 
   it("shows full duration", () => {

@@ -8,9 +8,10 @@ import { useAtomValue } from "jotai";
 import Stat from "../Stat";
 import PartitionUtilization from "../PartitionUtilization";
 import { formatSIBytes, getSafePct } from "../../../utils";
-import { accountsPartitionCompactionColor } from "../../../colors";
 import styles from "./compactionCard.module.css";
-import { PartitionTier } from "../consts";
+import { partitionTierLabel, partitionTierColor } from "../consts";
+import { CompactionState } from "../../../api/entities";
+import { accountsNextCompactionAtom } from "../../../atoms";
 
 function fmtPct(pct: number) {
   return `${Math.round(pct)}%`;
@@ -18,47 +19,78 @@ function fmtPct(pct: number) {
 
 export default function CompactionCard({ className }: { className?: string }) {
   const accountStats = useAtomValue(accountsStatsAtom);
+  const nextCompaction = useAtomValue(accountsNextCompactionAtom);
+
   if (!accountStats) return;
 
-  const isCompacting = accountStats.compaction.in_compaction;
   const relocatedPerSec = formatSIBytes(
     accountStats.compaction.relocated_bytes_per_sec,
   );
 
-  // TODO: calculate the next compaction time for all partitions
-  // For now, assume the hot partition is the next to compact
-  const nextCompactionPartition = accountStats.partitions?.find(
-    (p) => p.tier === PartitionTier.Hot,
-  );
+  const nextPartition =
+    nextCompaction !== undefined
+      ? accountStats.partitions[nextCompaction.partitionIdx]
+      : undefined;
+  const compactionState =
+    nextPartition?.compaction_state ?? CompactionState.Idle;
 
   return (
     <Card className={className}>
       <Flex direction="column" minWidth="300px" height="100%" gap="5px">
         <CardHeader text="Compaction" />
         <Flex direction="column" gap="5px" height="100%">
-          <Stat
-            label="State"
-            value={isCompacting ? "Compacting..." : "Idle"}
-            color={isCompacting ? accountsPartitionCompactionColor : undefined}
-            size="lg"
-          />
-          {nextCompactionPartition && (
-            <NextCompactionPartitionUtilization
-              usedFrac={nextCompactionPartition.used_frac}
-              fragmentedFrac={nextCompactionPartition.fragmented_frac}
-              compactionTriggerFrac={
-                nextCompactionPartition.compaction_trigger_frac
+          <Flex justify="between" gap="5px">
+            <Stat
+              label="State"
+              value={
+                compactionState === CompactionState.Queued
+                  ? "Queued"
+                  : compactionState === CompactionState.Compacting
+                    ? "Compacting..."
+                    : "Idle"
               }
-              compactionFrac={nextCompactionPartition.compaction_frac}
-              compactionState={nextCompactionPartition.compaction_state}
-              isWriteHead={nextCompactionPartition.is_write_head}
+              color={
+                compactionState === CompactionState.Queued
+                  ? "var(--yellow-9)"
+                  : compactionState === CompactionState.Compacting
+                    ? "var(--amber-9)"
+                    : undefined
+              }
+              size="lg"
             />
-          )}
+            <Stat
+              label="Next Partition"
+              value={
+                nextPartition ? partitionTierLabel[nextPartition.tier] : "--"
+              }
+              color={
+                nextPartition
+                  ? partitionTierColor[nextPartition.tier]
+                  : "var(--gray-7)"
+              }
+              align="end"
+              size="lg"
+            />
+          </Flex>
+          <NextCompactionPartitionUtilization
+            usedFrac={nextPartition?.used_frac ?? 0}
+            fragmentedFrac={nextPartition?.fragmented_frac ?? 0}
+            compactionTriggerFrac={nextPartition?.compaction_trigger_frac ?? 0}
+            compactionFrac={nextPartition?.compaction_frac ?? 0}
+            compactionState={compactionState}
+            isWriteHead={nextPartition?.is_write_head ?? false}
+          />
         </Flex>
         <Flex justify="between" gap="5px">
           <Stat
             label="Relocated"
             value={`${relocatedPerSec.value} ${relocatedPerSec.unit}/s`}
+          />
+          <Stat
+            label="Next Compaction"
+            value={nextCompaction?.timeLabel ?? "--"}
+            align="end"
+            color={nextCompaction ? "#EEE" : "var(--gray-7)"}
           />
         </Flex>
       </Flex>

@@ -1,9 +1,4 @@
-export enum PartitionTier {
-  Hot = 0,
-  Warm = 1,
-  Cold = 2,
-  Off = 255,
-}
+import { PartitionTier } from "../../api/entities";
 
 export const partitionTierLabel: Record<number, string> = {
   [PartitionTier.Hot]: "Hot",

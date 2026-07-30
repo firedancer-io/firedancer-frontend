@@ -7,13 +7,11 @@ import DataTable from "../../../components/DataTable";
 import TableDescriptionDialog from "../../../components/TableDescriptionDialog";
 import { partitionGroups } from "./consts";
 import { partitionTierLabel, partitionTierColor } from "../consts";
-import type { AccountsStats } from "../../../api/types";
 import tableStyles from "../../../components/dataTable.module.css";
 import accountStyles from "../accounts.module.css";
 import { formatRate, formatSIBytes, formatSIBytesRate } from "../../../utils";
 import PartitionUtilization from "../PartitionUtilization";
-
-type Partition = AccountsStats["partitions"][number];
+import type { AccountsPartition } from "../../../api/types";
 
 export default function Partitions() {
   return (
@@ -52,7 +50,7 @@ function PartitionsTableBody({ isPinned }: { isPinned?: boolean }) {
   );
 }
 
-function PinnedRow({ partition }: { partition: Partition }) {
+function PinnedRow({ partition }: { partition: AccountsPartition }) {
   const offset = formatSIBytes(partition.file_offset, 0);
 
   return (
@@ -70,7 +68,7 @@ function PinnedRow({ partition }: { partition: Partition }) {
   );
 }
 
-function DataRow({ partition }: { partition: Partition }) {
+function DataRow({ partition }: { partition: AccountsPartition }) {
   const isCompacting = partition.compaction_state === 2;
   const filledFrac = partition.used_frac + partition.fragmented_frac;
   const compactionPct =

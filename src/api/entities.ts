@@ -1161,10 +1161,25 @@ const accountsTileSchema = z.object({
   acquired_writable_history: z.array(z.number()),
 });
 
-const accountsPartitionSchema = z.object({
+export const partitionTierSchema = z.union([
+  z.literal(0),
+  z.literal(1),
+  z.literal(2),
+  z.literal(255),
+]);
+export const PartitionTier = { Hot: 0, Warm: 1, Cold: 2, Off: 255 } as const;
+
+export const compactionStateSchema = z.union([
+  z.literal(0),
+  z.literal(1),
+  z.literal(2),
+]);
+export const CompactionState = { Idle: 0, Queued: 1, Compacting: 2 } as const;
+
+export const accountsPartitionSchema = z.object({
   partition_idx: z.number(),
   file_offset: z.number(),
-  tier: z.number(),
+  tier: partitionTierSchema,
   write_offset: z.number(),
   bytes_freed: z.number(),
   read_ops: z.number(),
@@ -1182,7 +1197,7 @@ const accountsPartitionSchema = z.object({
   compaction_trigger_frac: z.number(),
   age_seconds: z.number(),
   filled_seconds: z.number(),
-  compaction_state: z.number(),
+  compaction_state: compactionStateSchema,
   compaction_frac: z.number(),
   is_write_head: z.boolean(),
 });
