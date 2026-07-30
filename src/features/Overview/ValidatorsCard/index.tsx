@@ -5,12 +5,12 @@ import { useAtomValue } from "jotai";
 import { peerStatsAtom } from "../../../atoms";
 import ValidatorsStatsContent from "./ValidatorsStatsContent";
 
-export default function ValidatorsCard() {
+export default function ValidatorsCard({ className }: { className?: string }) {
   const peerStats = useAtomValue(peerStatsAtom);
   if (!peerStats) return null;
 
   return (
-    <Card>
+    <Card className={className}>
       <Flex direction="column" height="100%" gap="2">
         <CardHeader text="Validators" />
         <ValidatorsStatsContent />

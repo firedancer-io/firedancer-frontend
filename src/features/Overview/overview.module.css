@@ -2,30 +2,64 @@
   grid-template-columns: minmax(300px, 1fr);
 }
 
-@media (min-width: 900px) {
-  .cards {
-    grid-template-columns: 1fr 1fr;
-  }
+/* Firedancer */
 
-  .frankendancer {
+@media (900px <= width < 1450px) {
+  .cards:not(.frankendancer) {
+    grid-template-columns: repeat(2, 1fr);
+
+    .program-cache-card,
+    .accounts-card,
     .txns-card {
       grid-column: span 2;
     }
   }
 }
 
-@media (min-width: 1512px) {
-  .cards {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
+@media (1450px <= width < 1770px) {
+  .cards:not(.frankendancer) {
+    grid-template-columns: repeat(3, 1fr);
 
-  .txns-card {
-    grid-column: span 3;
-  }
-
-  .frankendancer {
-    .txns-card {
-      grid-column: span 1;
+    .validators-card,
+    .accounts-card {
+      grid-column: span 2;
     }
+
+    .txns-card {
+      grid-column: span 3;
+    }
+  }
+}
+
+@media (1770px <= width) {
+  .cards:not(.frankendancer) {
+    grid-template-columns: repeat(6, 1fr);
+
+    > * {
+      grid-column: span 2;
+    }
+
+    .accounts-card,
+    .txns-card {
+      grid-column: span 3;
+    }
+  }
+}
+
+/* Frankendancer */
+
+@media (910px <= width < 1850px) {
+  .frankendancer {
+    grid-template-columns: repeat(2, 1fr);
+
+    .txns-card {
+      grid-column: span 2;
+    }
+  }
+}
+
+@media (1850px <= width) {
+  .frankendancer {
+    grid-template-columns: 1fr 1.1fr 2fr;
   }
 }
