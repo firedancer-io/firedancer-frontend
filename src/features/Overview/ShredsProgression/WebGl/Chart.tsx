@@ -11,44 +11,24 @@ import { setUpRenderer, draw } from "./chartUtils";
 import ShredsSlotLabels from "../ShredsSlotLabels";
 import { MChartAxes, xAxisHeight } from "./ChartAxes";
 import { createLabelsState, type LabelsState } from "../utils";
-import { disposeWebglResources } from "../../../WebGl/webglUtils";
-import WebGlEventHandler, {
-  type WebGlEventHandlerChildProps,
-} from "../../../WebGl/WebGlEventHandler";
+import withWebGlRemount, {
+  type WebGlRemountProps,
+} from "../../../WebGl/withWebGlRemount";
+import { useWebGlEventHandlers } from "../../../WebGl/useWebGlEventHandlers";
 
 const REDRAW_INTERVAL_MS = 15;
 
 interface ShredsChartProps
-  extends Pick<FlexProps, "height" | "minHeight" | "flexGrow"> {
+  extends WebGlRemountProps,
+    Pick<FlexProps, "height" | "minHeight" | "flexGrow"> {
   chartId: string;
 }
-export default function ShredsChart(props: ShredsChartProps) {
-  return (
-    <WebGlEventHandler>
-      {({
-        setUpCanvasListeners,
-        resetContextStateAndListeners,
-        getIsContextLost,
-      }) => (
-        <ShredsChartBody
-          {...props}
-          setUpCanvasListeners={setUpCanvasListeners}
-          resetContextStateAndListeners={resetContextStateAndListeners}
-          getIsContextLost={getIsContextLost}
-        />
-      )}
-    </WebGlEventHandler>
-  );
-}
 
-function ShredsChartBody({
-  chartId,
-  setUpCanvasListeners,
-  resetContextStateAndListeners,
-  getIsContextLost,
-  ...flexProps
-}: ShredsChartProps & WebGlEventHandlerChildProps) {
+function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
   const setMinDirtySlotByChart = useSetAtom(minDirtySlotByChartAtom);
+  const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
+    remount,
+  });
 
   const prevTimeDiffsRef = useRef<number[]>([]);
   const lastRedrawRef = useRef(0);
@@ -83,41 +63,17 @@ function ShredsChartBody({
         return prev;
       });
 
-      const obj = rendererRef.current;
-      if (!obj) return;
+      if (!rendererRef.current) return;
 
-      // When the context is lost, its GPU objects are already gone so skip GL cleanup
-      if (!getIsContextLost()) {
-        for (const slotMesh of obj.meshes.values()) {
-          slotMesh.mesh.geometry.dispose();
-        }
-        for (const slotMesh of obj.availableMeshes) {
-          slotMesh.mesh.geometry.dispose();
-        }
-        // dispose this chart's own unitQuad / sharedMaterial
-        disposeWebglResources(obj.resources);
-
-        obj.renderer.dispose();
-        // force release of GL context on repeated mount / unmounts.
-        // remove listener for context loss beforehand
-        resetContextStateAndListeners();
-        obj.renderer.forceContextLoss();
-      } else {
-        resetContextStateAndListeners();
-      }
+      rendererRef.current.cleanUpRenderer();
       rendererRef.current = undefined;
     };
-  }, [
-    chartId,
-    resetContextStateAndListeners,
-    getIsContextLost,
-    setMinDirtySlotByChart,
-  ]);
+  }, [chartId, setMinDirtySlotByChart]);
 
   // handle chart resize
   useLayoutEffect(() => {
     // skip while the context is lost. Remount on restore will handle resizing
-    if (!rendererRef.current || getIsContextLost()) return;
+    if (!rendererRef.current || getWasContextLost()) return;
 
     // skip until valid size is initialized
     if (width <= 0 || height <= 0) return;
@@ -134,12 +90,12 @@ function ShredsChartBody({
       true /* force redraw */,
       [0, width],
     );
-  }, [scale, width, height, chartId, getIsContextLost]);
+  }, [scale, width, height, chartId, getWasContextLost]);
 
   useRafLoop(function drawShredsLoop(time: number) {
     // Don't draw while waiting for context restore.
     // but keep canvas mounted to listen for restore event.
-    if (getIsContextLost()) return;
+    if (getWasContextLost()) return;
 
     // skip until valid size is initialized
     if (width <= 0 || height <= 0) return;
@@ -167,13 +123,16 @@ function ShredsChartBody({
     }
 
     // set up renderer
-    const rendererObj = setUpRenderer(width, height);
+    const rendererObj = setUpRenderer(
+      width,
+      height,
+      setUpContextListeners,
+      getWasContextLost,
+    );
     if (!rendererObj) return;
 
     rendererRef.current = rendererObj;
-    const canvas = rendererObj.renderer.domElement;
-    setUpCanvasListeners(canvas);
-    containerRef.current?.replaceChildren(canvas);
+    containerRef.current?.replaceChildren(rendererObj.renderer.domElement);
   });
 
   return (
@@ -191,3 +150,6 @@ function ShredsChartBody({
     </Flex>
   );
 }
+
+const ShredsChartWithRemount = withWebGlRemount(ShredsChart);
+export default ShredsChartWithRemount;

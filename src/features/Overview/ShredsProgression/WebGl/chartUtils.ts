@@ -24,6 +24,7 @@ import {
   addRectangleToMesh,
   convertToWebGlColor,
   createWebglResources,
+  disposeWebglResources,
 } from "../../../WebGl/webglUtils";
 import {
   shredPublishedColor,
@@ -43,6 +44,7 @@ import {
   type XRange,
 } from "../utils";
 import { MAX_WEBGL_PX_RATIO, msPerDay } from "../../../../consts";
+import type { ContextHelpers } from "../../../WebGl/useWebGlEventHandlers";
 
 const store = getDefaultStore();
 
@@ -62,6 +64,7 @@ export type RendererObj = {
   worldTsRange: TsRange;
   // resources shared by this renderer's slot meshes
   resources: WebglResources;
+  cleanUpRenderer: () => void;
 };
 
 const colors = {
@@ -78,7 +81,12 @@ const colors = {
 /**
  * Set up renderer world, setup according to shred reference ts
  */
-export function setUpRenderer(canvasWidth: number, canvasHeight: number) {
+export function setUpRenderer(
+  canvasWidth: number,
+  canvasHeight: number,
+  setUpContextListeners: ContextHelpers["setUpContextListeners"],
+  getWasContextLost: ContextHelpers["getWasContextLost"],
+): RendererObj | undefined {
   const serverTimeMs = store.get(serverTimeMsAtom);
   if (serverTimeMs == null) return;
 
@@ -106,6 +114,30 @@ export function setUpRenderer(canvasWidth: number, canvasHeight: number) {
     const availableMeshes: SlotMesh[] = [];
     const resources = createWebglResources();
     renderer.render(scene, camera);
+    const clearContextListeners = setUpContextListeners(renderer.domElement);
+
+    const cleanUpRenderer = () => {
+      // If context was lost, its GPU objects are already gone so skip objects disposal
+      if (!getWasContextLost()) {
+        for (const slotMesh of meshes.values()) {
+          slotMesh.mesh.geometry.dispose();
+        }
+        for (const slotMesh of availableMeshes) {
+          slotMesh.mesh.geometry.dispose();
+        }
+        // dispose this chart's own unitQuad / sharedMaterial
+        disposeWebglResources(resources);
+
+        renderer.dispose();
+      }
+
+      // release currently live context (may be the restored one)
+      // make sure context listeners are removed beforehand
+      clearContextListeners();
+      if (!renderer.getContext().isContextLost()) {
+        renderer.forceContextLoss();
+      }
+    };
 
     return {
       renderer,
@@ -115,6 +147,7 @@ export function setUpRenderer(canvasWidth: number, canvasHeight: number) {
       availableMeshes,
       worldTsRange,
       resources,
+      cleanUpRenderer,
     };
   } catch {
     // context creation can still fail despite the probe (e.g. too many live
