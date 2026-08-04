@@ -156,6 +156,10 @@ export function ensureCapacity(slotMesh: SlotMesh, needed: number) {
   const geometry = slotMesh.mesh.geometry as THREE.InstancedBufferGeometry;
   geometry.setAttribute("instanceRect", slotMesh.rectAttr);
   geometry.setAttribute("instanceColor", slotMesh.colorAttr);
+  // clear private field _maxInstanceCount for recomputation,
+  // instead of allocating a new geometry
+  // @ts-expect-error
+  geometry._maxInstanceCount = undefined;
 }
 
 export function addRectangleToMesh(
