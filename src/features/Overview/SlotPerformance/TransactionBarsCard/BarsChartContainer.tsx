@@ -95,12 +95,14 @@ export default function BarsChartContainer() {
         />
       </Flex>
       {new Array(bankTileCount).fill(0).map((_, bankIdx) => {
-        if (!query.response?.transactions) return;
-        if (selected !== undefined && selected !== bankIdx) return;
+        const isSelected = selected === bankIdx;
+        if (selected !== undefined && !isSelected) return;
+
+        const hasTopAxis = bankIdx === 0 || isSelected;
 
         return (
           <div key={bankIdx} style={{ position: "relative" }}>
-            {(selected === undefined || selected === bankIdx) && (
+            {(selected === undefined || isSelected) && (
               <BarChartFloatingAction
                 bankIdx={bankIdx}
                 setSelected={() =>
@@ -108,7 +110,8 @@ export default function BarsChartContainer() {
                     prev === undefined ? bankIdx : undefined,
                   )
                 }
-                isSelected={selected === bankIdx}
+                isSelected={isSelected}
+                hasTopAxis={hasTopAxis}
               />
             )}
             <BarsChart
