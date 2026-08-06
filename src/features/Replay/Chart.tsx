@@ -31,6 +31,7 @@ import {
   getUpdatedLiveVisibleRange,
 } from "./utils.ts";
 import clsx from "clsx";
+import FeesTrack from "./FeesTrack/FeesTrack.tsx";
 
 const PAN_THRESHOLD_PX = 0;
 // Zoom scales by exp(deltaY * intensity): symmetric (in/out are exact inverses)
@@ -409,6 +410,12 @@ export default function Chart({ startupTimeNs }: ChartProps) {
           <Flex direction="column" gapY="4" position="relative">
             {!isLive && <MResetLiveButton onClick={switchToLive} />}
             <SlotsTrack
+              width={width}
+              {...subscriberProps}
+              {...explorableChartProps}
+              {...markerLinesProps}
+            />
+            <FeesTrack
               width={width}
               {...subscriberProps}
               {...explorableChartProps}

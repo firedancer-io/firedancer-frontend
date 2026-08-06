@@ -1155,5 +1155,12 @@ export interface ReplaySlot {
   endTsMs: number;
 }
 
+export interface ReplayFee {
+  startTsMs: number;
+  endTsMs: number;
+  value: number;
+}
+
 export const replayEpochsAtom = atom<ReplayEpoch[]>([]);
 export const replaySlotsAtom = atom<ReplaySlot[]>([]);
+export const replayFeesAtom = atom<ReplayFee[]>([]);
