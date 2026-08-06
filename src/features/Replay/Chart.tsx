@@ -23,6 +23,7 @@ import clsx from "clsx";
 import VisibleRange from "./VisibleRangeInfo.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
 import { currentSlotAtom } from "../../atoms.ts";
+import FeesTrack from "./FeesTrack/FeesTrack.tsx";
 
 const PAN_THRESHOLD_PX = 0;
 // Zoom scales by exp(deltaY * intensity): symmetric (in/out are exact inverses)
@@ -388,6 +389,12 @@ export default function Chart({ startupTimeNs }: ChartProps) {
           <Flex direction="column" gapY="4" position="relative">
             {!isLive && <ResetLiveButton onClick={switchToLive} />}
             <SlotsTrack
+              width={width}
+              {...subscriberProps}
+              {...explorableChartProps}
+              {...markerLinesProps}
+            />
+            <FeesTrack
               width={width}
               {...subscriberProps}
               {...explorableChartProps}
