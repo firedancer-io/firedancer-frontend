@@ -273,7 +273,7 @@ function addSeriesAtom(
         u.addSeries({ ...u.series[1], label: `${filterEnum}` }, sidx);
         setBarCount(u.series.filter((s) => s.show).length - 1);
         u.setData(u.data, false);
-        if (get(selectedBankAtom) === undefined) u.redraw(true, true);
+        u.redraw(true, true);
       }
 
       addSeriesFunc[filterEnum] = addSeries;
@@ -328,7 +328,7 @@ export const removeSeriesAtom = atom(
     u.data.splice(sidx, 1);
     setBarCount(u.data.length - 1);
     u.setData(u.data, false);
-    if (get(selectedBankAtom) === undefined) u.redraw(true, true);
+    u.redraw(true, true);
 
     delete addSeriesFunc[filterEnum];
   },
