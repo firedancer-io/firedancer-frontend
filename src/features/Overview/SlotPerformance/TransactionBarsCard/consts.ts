@@ -54,3 +54,5 @@ export const enum FilterEnum {
 export const txnBarsUplotIdPrefix = "bank-";
 
 export const revenueLogBase = 1.7;
+
+export const barChartAxisSize = 40;

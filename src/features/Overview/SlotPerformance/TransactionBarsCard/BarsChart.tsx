@@ -21,6 +21,7 @@ import { chartAxisColor, chartGridStrokeColor } from "../../../../colors";
 import { banksXScaleKey } from "../ComputeUnitsCard/consts";
 import { getTxnBundleStats } from "../../../../transactionUtils";
 import clsx from "clsx";
+import { barChartAxisSize } from "./consts";
 
 /** Buffer of the canvas past the axes of the chart to prevent the first and last tick labels from being cut off */
 const xBuffer = 20;
@@ -107,7 +108,7 @@ export default function BarsChart({
               ? ticks.map((rawValue) => safeDivide(rawValue, 1_000_000) + "ms")
               : [];
           },
-          size: isFirstOrLastChart ? 40 : 0,
+          size: isFirstOrLastChart ? barChartAxisSize : 0,
           space: 100,
           grid: { stroke: chartGridStrokeColor },
           border: {
@@ -179,7 +180,7 @@ export default function BarsChart({
         marginRight: `${rightAxisSize}px`,
         display: hide ? "none" : "block",
         height: isSelected
-          ? `${Math.max(2, barCount) * 90 + 40}px`
+          ? `${Math.max(2, barCount) * 90 + barChartAxisSize}px`
           : // Only the first and last charts have a visible labeled x axis
             isFirstOrLastChart
             ? "170px"
