@@ -11,6 +11,8 @@ export type SlotMesh = {
   colorAttr: THREE.InstancedBufferAttribute;
   capacity: number;
   count: number;
+  /** optionally store mesh positions relative to referenceX. This allows GPU to see small coordinates */
+  referenceX: number | undefined;
 };
 
 const vertexShader = /* glsl */ `
@@ -128,6 +130,7 @@ export function createSlotMesh(resources: WebglResources): SlotMesh {
     colorAttr,
     capacity: INITIAL_CAPACITY,
     count: 0,
+    referenceX: undefined,
   };
 }
 

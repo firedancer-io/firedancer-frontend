@@ -1142,3 +1142,18 @@ export const accountsNextCompactionAtom =
       },
     );
   })();
+
+export interface ReplayEpoch {
+  epoch: number;
+  startTsMs: number;
+  endTsMs: number;
+}
+
+export interface ReplaySlot {
+  slot: number;
+  startTsMs: number;
+  endTsMs: number;
+}
+
+export const replayEpochsAtom = atom<ReplayEpoch[]>([]);
+export const replaySlotsAtom = atom<ReplaySlot[]>([]);
