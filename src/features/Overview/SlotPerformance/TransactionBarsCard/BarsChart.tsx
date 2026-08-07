@@ -5,7 +5,8 @@ import "uplot/dist/uPlot.min.css";
 import { txnBarsPlugin } from "./txnBarsPlugin";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import UplotReact from "../../../../uplotReact/UplotReact";
-import AutoSizer from "react-virtualized-auto-sizer";
+import { useMeasure } from "react-use";
+import { useDebounce } from "use-debounce";
 import type { SlotTransactions } from "../../../../api/types";
 import { tooltipTxnIdxAtom, tooltipTxnStateAtom } from "./chartTooltipAtoms";
 import { timeScaleDragPlugin } from "./scaleDragPlugin";
@@ -21,40 +22,50 @@ import { chartAxisColor, chartGridStrokeColor } from "../../../../colors";
 import { banksXScaleKey } from "../ComputeUnitsCard/consts";
 import { getTxnBundleStats } from "../../../../transactionUtils";
 import clsx from "clsx";
-import { barChartAxisSize } from "./consts";
+import { barChartAxisSize, barChartXBuffer } from "./consts";
 
-/** Buffer of the canvas past the axes of the chart to prevent the first and last tick labels from being cut off */
-const xBuffer = 20;
+const store = getDefaultStore();
 
 interface BarsChartProps {
   bankIdx: number;
   transactions: SlotTransactions;
   maxTs: number;
-  isFirstChart?: boolean;
-  isLastChart?: boolean;
-  hide?: boolean;
-  isSelected?: boolean;
+  rowHeight: number;
+  hasAxis?: boolean;
+  hasTopAxis?: boolean;
   isFocused?: boolean;
 }
+
+const resizeDebounceMs = 500;
 
 export default function BarsChart({
   bankIdx,
   transactions,
   maxTs,
-  isFirstChart,
-  isLastChart,
-  hide,
-  isSelected,
+  rowHeight,
+  hasAxis,
+  hasTopAxis,
   isFocused,
 }: BarsChartProps) {
-  const isFirstOrLastChart = isFirstChart || isLastChart;
-  const leftAxisSize = useAtomValue(leftAxisSizeAtom) - xBuffer;
-  const rightAxisSize = useAtomValue(rightAxisSizeAtom) - xBuffer;
+  const leftAxisSize = Math.max(
+    0,
+    useAtomValue(leftAxisSizeAtom) - barChartXBuffer,
+  );
+  const rightAxisSize = Math.max(
+    0,
+    useAtomValue(rightAxisSizeAtom) - barChartXBuffer,
+  );
+  const yAxisHeight = hasAxis ? barChartAxisSize : 0;
 
   const setTxnIdx = useSetAtom(tooltipTxnIdxAtom);
   const setTxnState = useSetAtom(tooltipTxnStateAtom);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerRef, { width: measuredWidth }] = useMeasure<HTMLDivElement>();
+  const [width] = useDebounce(measuredWidth, resizeDebounceMs, {
+    leading: true,
+    trailing: true,
+    maxWait: resizeDebounceMs,
+  });
   const transactionsRef = useRef<SlotTransactions>(transactions);
   transactionsRef.current = transactions;
   const chartData = useMemo<uPlot.AlignedData | undefined>(() => {
@@ -62,7 +73,7 @@ export default function BarsChart({
       transactions,
       bankIdx,
       maxTs,
-      Object.values(getDefaultStore().get(chartFiltersAtom)),
+      Object.values(store.get(chartFiltersAtom)),
     );
   }, [bankIdx, maxTs, transactions]);
 
@@ -74,7 +85,7 @@ export default function BarsChart({
           transactions,
           bankIdx,
           maxTs,
-          Object.values(getDefaultStore().get(chartFiltersAtom)),
+          Object.values(store.get(chartFiltersAtom)),
         ),
         false,
       );
@@ -104,11 +115,11 @@ export default function BarsChart({
           scale: banksXScaleKey,
           stroke: chartAxisColor,
           values: (self, ticks) => {
-            return isFirstOrLastChart
+            return hasAxis
               ? ticks.map((rawValue) => safeDivide(rawValue, 1_000_000) + "ms")
               : [];
           },
-          size: isFirstOrLastChart ? barChartAxisSize : 0,
+          size: yAxisHeight,
           space: 100,
           grid: { stroke: chartGridStrokeColor },
           border: {
@@ -121,7 +132,7 @@ export default function BarsChart({
             stroke: chartAxisColor,
             size: 5,
           },
-          side: isFirstChart ? 0 : 2,
+          side: hasTopAxis ? 0 : 2,
         },
         {
           border: {
@@ -133,7 +144,7 @@ export default function BarsChart({
         },
       ],
       legend: { markers: { width: 0 }, show: false },
-      padding: [0, xBuffer, 0, xBuffer],
+      padding: [0, barChartXBuffer, 0, barChartXBuffer],
       series: [{ scale: banksXScaleKey }, { label: `Bank ${bankIdx}` }, {}],
       plugins: [
         txnBarsPlugin(transactionsRef, transactionsBundleStats),
@@ -161,8 +172,9 @@ export default function BarsChart({
   }, [
     bankIdx,
     chartData?.length,
-    isFirstChart,
-    isFirstOrLastChart,
+    yAxisHeight,
+    hasTopAxis,
+    hasAxis,
     setTxnIdx,
     setTxnState,
     transactionsBundleStats,
@@ -170,7 +182,11 @@ export default function BarsChart({
 
   const barCount = useAtomValue(barCountAtom);
 
-  if (!chartData || !options || hide) return null;
+  if (!chartData || !options) return null;
+
+  const chartHeight = Math.max(1, barCount) * rowHeight + yAxisHeight;
+  options.width = width;
+  options.height = chartHeight;
 
   return (
     <div
@@ -178,33 +194,20 @@ export default function BarsChart({
         flex: 1,
         marginLeft: `${leftAxisSize}px`,
         marginRight: `${rightAxisSize}px`,
-        display: hide ? "none" : "block",
-        height: isSelected
-          ? `${Math.max(2, barCount) * 90 + barChartAxisSize}px`
-          : // Only the first and last charts have a visible labeled x axis
-            isFirstOrLastChart
-            ? "170px"
-            : "130px",
+        height: `${chartHeight}px`,
       }}
       ref={containerRef}
     >
-      <AutoSizer>
-        {({ height, width }) => {
-          options.width = width;
-          options.height = height;
-          return (
-            <>
-              <UplotReact
-                id={getUplotId(bankIdx)}
-                className={clsx(isFocused && styles.focused)}
-                options={options}
-                data={chartData}
-                onCreate={handleCreate}
-              />
-            </>
-          );
-        }}
-      </AutoSizer>
+      {width > 0 && (
+        <UplotReact
+          id={getUplotId(bankIdx)}
+          className={clsx(isFocused && styles.focused)}
+          options={options}
+          data={chartData}
+          onCreate={handleCreate}
+          setSizeDebounceMs={resizeDebounceMs}
+        />
+      )}
     </div>
   );
 }
