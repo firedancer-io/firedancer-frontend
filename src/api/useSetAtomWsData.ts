@@ -41,6 +41,7 @@ import {
 import {
   shredsAtoms,
   setDirtySlotOnSkippedChangeAtom,
+  timelineShredsAtoms,
 } from "../features/Overview/ShredsProgression/atoms";
 import { xRangeMs } from "./worker/cache/shreds/shredsCalc";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
@@ -318,6 +319,7 @@ function useUpdateAtoms() {
   const setSlotRankings = useSetAtom(slotRankingsAtom);
 
   const [epoch, setEpoch] = useAtom(epochAtom);
+  const addTimelineShreds = useSetAtom(timelineShredsAtoms.addShredEvents);
 
   const setSlotStatus = useSetAtom(setSlotStatusAtom);
 
@@ -693,6 +695,13 @@ function useUpdateAtoms() {
               break;
           }
           break;
+        case "timeline":
+          switch (key) {
+            case "query_shreds":
+              addTimelineShreds(value);
+              break;
+          }
+          break;
         case "gossip":
           switch (key) {
             case "network_stats": {
@@ -793,58 +802,59 @@ function useUpdateAtoms() {
       }
     },
     [
-      addLiveShreds,
-      addRepairSlot,
-      addRepairSlots,
-      addSkippedClusterSlots,
       addToPeersBuffer,
-      addToSupermajorityPeersBuffers,
-      addTurbineSlot,
-      addTurbineSlots,
-      handleSlotUpdate,
-      setBlockEngine,
-      setBootProgress,
+      setSlotCaughtUp,
+      setDbLiveTileMetrics,
+      setLiveProgramCache,
+      setHealth,
+      setVersion,
       setCluster,
       setCommitHash,
-      setCompletedSlot,
+      setIdentityKey,
+      setVoteBalance,
+      setStartupTime,
+      setTiles,
+      setScheduleStrategy,
+      setIdentityBalance,
       setDbEstimatedSlotDuration,
       setDbEstimatedTps,
-      setDbGossipNetworkStats,
-      setDbGossipPeersSize,
-      setDbLiveNetworkMetrics,
       setDbLivePrimaryMetrics,
-      setDbLiveTileMetrics,
       setDbLiveTxnWaterfall,
       setDbTileTimer,
-      setEpoch,
-      setGossipPeersCells,
-      setGossipPeersRows,
-      setHealth,
-      setIdentityBalance,
-      setIdentityKey,
-      setLateVoteHistory,
-      setLiveProgramCache,
-      setOptimisticallyConfirmedSlot,
-      setResetSlot,
-      setRootSlot,
-      setScheduleStrategy,
-      setServerTimeNanos,
-      setSkipRate,
-      setSkippedSlots,
-      setSlotCaughtUp,
-      setSlotRankings,
-      setSlotResponse,
+      setBootProgress,
       setStartupProgress,
-      setStartupTime,
-      setStorageSlot,
-      setSupermajorityEpoch,
-      setTiles,
       setTpsHistory,
-      setVersion,
-      setVoteBalance,
-      setVoteDistance,
-      setVoteSlot,
       setVoteState,
+      setVoteDistance,
+      setSkipRate,
+      setCompletedSlot,
+      addTurbineSlot,
+      addRepairSlot,
+      setResetSlot,
+      setStorageSlot,
+      setVoteSlot,
+      setRootSlot,
+      setOptimisticallyConfirmedSlot,
+      addTurbineSlots,
+      addRepairSlots,
+      setServerTimeNanos,
+      setDbLiveNetworkMetrics,
+      setEpoch,
+      addTimelineShreds,
+      setDbGossipNetworkStats,
+      setDbGossipPeersSize,
+      setGossipPeersRows,
+      setGossipPeersCells,
+      setSkippedSlots,
+      addSkippedClusterSlots,
+      setSlotResponse,
+      handleSlotUpdate,
+      setSlotRankings,
+      addLiveShreds,
+      setLateVoteHistory,
+      setBlockEngine,
+      setSupermajorityEpoch,
+      addToSupermajorityPeersBuffers,
       setAccountsStats,
       updateAccountsNextCompactionCandidates,
     ],

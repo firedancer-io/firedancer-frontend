@@ -23,6 +23,10 @@ const slotTopicSchema = z.object({
   topic: z.literal("slot"),
 });
 
+const timelineTopicSchema = z.object({
+  topic: z.literal("timeline"),
+});
+
 const blockEngineTopicSchema = z.object({
   topic: z.literal("block_engine"),
 });
@@ -1216,5 +1220,12 @@ export const accountsSchema = z.discriminatedUnion("key", [
   accountsTopicSchema.extend({
     key: z.literal("stats"),
     value: accountsStatsSchema,
+  }),
+]);
+
+export const timelineSchema = z.discriminatedUnion("key", [
+  timelineTopicSchema.extend({
+    key: z.literal("query_shreds"),
+    value: liveShredsSchema,
   }),
 ]);
