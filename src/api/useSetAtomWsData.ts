@@ -41,6 +41,7 @@ import {
 import {
   shredsAtoms,
   setDirtySlotOnSkippedChangeAtom,
+  timelineShredsAtoms,
 } from "../features/Overview/ShredsProgression/atoms";
 import { xRangeMs } from "./worker/cache/shreds/shredsCalc";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
@@ -320,6 +321,7 @@ function useUpdateAtoms() {
   const setSlotRankings = useSetAtom(slotRankingsAtom);
 
   const [epoch, setEpoch] = useAtom(epochAtom);
+  const addTimelineShreds = useSetAtom(timelineShredsAtoms.addShredEvents);
 
   const setSlotStatus = useSetAtom(setSlotStatusAtom);
 
@@ -778,6 +780,10 @@ function useUpdateAtoms() {
               setAggRevenue(value);
               break;
             }
+            case "query_shreds": {
+              addTimelineShreds(value);
+              break;
+            }
           }
           break;
         }
@@ -849,6 +855,7 @@ function useUpdateAtoms() {
       setServerTimeNanos,
       setDbLiveNetworkMetrics,
       setEpoch,
+      addTimelineShreds,
       setDbGossipNetworkStats,
       setDbGossipPeersSize,
       setGossipPeersRows,

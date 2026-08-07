@@ -1265,4 +1265,8 @@ export const timelineSchema = z.discriminatedUnion("key", [
     key: z.literal("query_agg_revenue"),
     value: aggRevenueSchema,
   }),
+  timelineTopicSchema.extend({
+    key: z.literal("query_shreds"),
+    value: liveShredsSchema,
+  }),
 ]);

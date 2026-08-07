@@ -16,13 +16,13 @@ import type { LiveShredsData } from "./cache/shreds/types";
 export const WsMessageSchema = z.discriminatedUnion("topic", [
   summarySchema,
   epochSchema,
+  timelineSchema,
   gossipSchema,
   peersSchema,
   slotSchema,
   blockEngineSchema,
   supermajoritySchema,
   accountsSchema,
-  timelineSchema,
 ]);
 
 export type WsMessage = z.infer<typeof WsMessageSchema>;
@@ -42,13 +42,13 @@ export type ToWorkerMessage =
 export type WsEntity =
   | KvFrom<typeof summarySchema, "summary">
   | KvFrom<typeof epochSchema, "epoch">
+  | KvFrom<typeof timelineSchema, "timeline">
   | KvFrom<typeof gossipSchema, "gossip">
   | KvFrom<typeof peersSchema, "peers">
   | KvFrom<typeof slotSchema, "slot">
   | KvFrom<typeof blockEngineSchema, "block_engine">
   | KvFrom<typeof supermajoritySchema, "wait_for_supermajority">
-  | KvFrom<typeof accountsSchema, "accounts">
-  | KvFrom<typeof timelineSchema, "timeline">;
+  | KvFrom<typeof accountsSchema, "accounts">;
 
 export type FromWorkerMessage =
   | { type: "connecting" }

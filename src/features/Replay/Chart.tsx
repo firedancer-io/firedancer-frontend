@@ -25,6 +25,7 @@ import ResetLiveButton from "./ResetLiveButton.tsx";
 import { currentSlotAtom } from "../../atoms.ts";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
 import { RevenueType } from "../../api/entities.ts";
+import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 
 const PAN_THRESHOLD_PX = 0;
 // Zoom scales by exp(deltaY * intensity): symmetric (in/out are exact inverses)
@@ -390,6 +391,12 @@ export default function Chart({ startupTimeNs }: ChartProps) {
           <Flex direction="column" gapY="4" position="relative">
             {!isLive && <ResetLiveButton onClick={switchToLive} />}
             <SlotsTrack
+              width={width}
+              {...subscriberProps}
+              {...explorableChartProps}
+              {...markerLinesProps}
+            />
+            <ShredsTrack
               width={width}
               {...subscriberProps}
               {...explorableChartProps}

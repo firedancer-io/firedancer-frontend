@@ -7,7 +7,7 @@ import { useShredsChartScale } from "../useShredsChartScale";
 import { useSetAtom } from "jotai";
 import { minDirtySlotByChartAtom } from "../atoms";
 import type { RendererObj, TsRange } from "./chartUtils";
-import { setUpRenderer, draw } from "./chartUtils";
+import { setUpRenderer, drawLiveShreds } from "./chartUtils";
 import ShredsSlotLabels from "../ShredsSlotLabels";
 import { MChartAxes, xAxisHeight } from "./ChartAxes";
 import { createLabelsState, type LabelsState } from "../utils";
@@ -80,7 +80,7 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
     const { renderer } = rendererRef.current;
     renderer.setSize(width, height);
 
-    draw(
+    drawLiveShreds(
       chartId,
       prevTimeDiffsRef,
       rendererRef.current,
@@ -106,7 +106,7 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
 
     lastRedrawRef.current = time;
     if (rendererRef.current) {
-      draw(
+      drawLiveShreds(
         chartId,
         prevTimeDiffsRef,
         rendererRef.current,

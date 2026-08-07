@@ -46,6 +46,7 @@ export interface LiveShredsData {
  * Use reference / delta slot number and timestamp to minimize memory usage
  */
 export function createLiveShredsAtoms() {
+  const _lastUpdateTsAtom = atom<number>(performance.now());
   const _minCompletedSlotAtom = atom<number>();
   const _liveShredsAtom = atom<SlotsShreds>();
   const _slotRangeAtom = atom<{
@@ -66,6 +67,7 @@ export function createLiveShredsAtoms() {
     };
   });
   return {
+    lastUpdateTs: atom((get) => get(_lastUpdateTsAtom)),
     /**
      * min completed slot we've seen since we started collecting data
      */
@@ -113,7 +115,7 @@ export function createLiveShredsAtoms() {
 
         set(_liveShredsAtom, (prev) => {
           const updated: SlotsShreds = prev ?? {
-            referenceTs: Math.round(Number(reference_ts) / nsPerMs),
+            referenceTs: Math.round(Number(reference_ts / BigInt(nsPerMs))),
             slots: new Map(),
           };
 
@@ -174,6 +176,7 @@ export function createLiveShredsAtoms() {
 
         // mark slot for redraw
         set(setMinDirtySlotByChartIfSmaller, minEventSlot);
+        set(_lastUpdateTsAtom, performance.now());
       },
     ),
 
@@ -288,6 +291,19 @@ function isBeforeChartX(tsDelta: number, now: number, referenceTs: number) {
 }
 
 export const shredsAtoms = createLiveShredsAtoms();
+
+export const timelineShredsAtoms = createLiveShredsAtoms();
+
+export const timelineShredsDataAtom = atom<LiveShredsData>((get) => ({
+  slotsShreds: get(timelineShredsAtoms.slotsShreds),
+  range: get(timelineShredsAtoms.range),
+  minCompletedSlot: get(timelineShredsAtoms.minCompletedSlot),
+  lastUpdateTs: get(timelineShredsAtoms.lastUpdateTs),
+}));
+
+export const shredsTimelineReferenceTsAtom = atom((get) => {
+  return get(timelineShredsDataAtom).slotsShreds?.referenceTs;
+});
 
 /**
  * Live shreds data assembled from the main-thread atoms
