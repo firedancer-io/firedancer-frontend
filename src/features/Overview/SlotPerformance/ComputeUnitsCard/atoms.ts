@@ -5,8 +5,9 @@ import { ScheduleStrategyEnum } from "../../../../api/entities";
 
 export const cuChartTooltipDataAtom = atom<CuChartTooltipData>();
 
-export const leftAxisSizeAtom = atom(0);
-export const rightAxisSizeAtom = atom(0);
+// seed with estimates to reduce shift on load before the real sizes are measured
+export const leftAxisSizeAtom = atom(45);
+export const rightAxisSizeAtom = atom(60);
 
 export const isFullXRangeAtom = atom(true);
 

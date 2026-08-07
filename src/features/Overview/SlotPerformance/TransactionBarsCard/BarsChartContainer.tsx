@@ -1,14 +1,20 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useMeasure, useWindowSize } from "react-use";
+import { clamp } from "lodash";
 import { selectedSlotAtom, tileCountAtom } from "../atoms";
-import type { SlotTransactions } from "../../../../api/types";
 import ChartControls from "./ChartControls";
 import { Flex } from "@radix-ui/themes";
 import BarsChart from "./BarsChart";
+import {
+  barChartAxisSize,
+  barChartMaxHeight,
+  barChartMinRowHeight,
+} from "./consts";
 import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
-import { baseChartDataAtom, selectedBankAtom } from "./atoms";
+import { baseChartDataAtom, barCountAtom, selectedBankAtom } from "./atoms";
 import { getChartData } from "./chartUtils";
 import BarChartFloatingAction from "./BarChartFloatingAction";
 import CardHeader from "../../../../components/CardHeader";
@@ -38,10 +44,7 @@ export default function BarsChartContainer() {
   const slot = useAtomValue(selectedSlotAtom);
 
   const query = useSlotQueryResponseTransactions(slot);
-  const queryTxsRef = useRef<SlotTransactions | null | undefined>(
-    query.response?.transactions,
-  );
-  queryTxsRef.current = query.response?.transactions;
+  const transactions = query.response?.transactions;
 
   const tileCount = useAtomValue(tileCountAtom);
   const bankTileCount = tileCount[tileNames.bank];
@@ -49,32 +52,54 @@ export default function BarsChartContainer() {
   const setBaseChartDataAtom = useSetAtom(baseChartDataAtom);
 
   const maxTs = useMemo(() => {
-    if (!query.response?.transactions) return 0;
+    if (!transactions) return 0;
 
-    return getMaxTs(query.response.transactions, true);
-  }, [query.response?.transactions]);
+    return getMaxTs(transactions, true);
+  }, [transactions]);
 
   useMemo(() => {
-    if (!query.response?.transactions) return;
+    if (!transactions) return;
     const chartData: uPlot.AlignedData[] = [];
     for (let i = 0; i < bankTileCount; i++) {
-      chartData.push(getChartData(query.response.transactions, i, maxTs));
+      chartData.push(getChartData(transactions, i, maxTs));
     }
     setBaseChartDataAtom(chartData);
-  }, [
-    bankTileCount,
-    maxTs,
-    query.response?.transactions,
-    setBaseChartDataAtom,
-  ]);
+  }, [bankTileCount, maxTs, transactions, setBaseChartDataAtom]);
 
   const [selected, setSelected] = useAtom(selectedBankAtom);
 
-  if (!query.response?.transactions) return null;
+  const { height: windowHeight } = useWindowSize();
+  const [controlsRef, { height: controlsHeight }] =
+    useMeasure<HTMLDivElement>();
+
+  const barCount = useAtomValue(barCountAtom);
+
+  const rowHeight = useMemo(() => {
+    const rows = Math.max(1, barCount);
+    const visibleBankCount =
+      selected !== undefined ? 1 : Math.max(1, bankTileCount);
+    const availableForCharts =
+      windowHeight -
+      txnBarsControlsStickyTop -
+      controlsHeight -
+      barChartAxisSize * Math.min(visibleBankCount, 2);
+    const maxRowHeight = Math.max(
+      barChartMaxHeight / rows,
+      barChartMinRowHeight,
+    );
+    return clamp(
+      availableForCharts / (visibleBankCount * rows),
+      barChartMinRowHeight,
+      maxRowHeight,
+    );
+  }, [windowHeight, controlsHeight, bankTileCount, barCount, selected]);
+
+  if (!transactions) return null;
 
   return (
     <Flex direction="column" height="100%">
       <Flex
+        ref={controlsRef}
         id="transaction-bars-controls"
         gap="2"
         position="sticky"
@@ -89,16 +114,14 @@ export default function BarsChartContainer() {
         }}
       >
         <CardHeader text="Banks" />
-        <ChartControls
-          transactions={query.response.transactions}
-          maxTs={maxTs}
-        />
+        <ChartControls transactions={transactions} maxTs={maxTs} />
       </Flex>
       {new Array(bankTileCount).fill(0).map((_, bankIdx) => {
         const isSelected = selected === bankIdx;
         if (selected !== undefined && !isSelected) return;
 
         const hasTopAxis = bankIdx === 0 || isSelected;
+        const hasAxis = hasTopAxis || bankIdx === bankTileCount - 1;
 
         return (
           <div key={bankIdx} style={{ position: "relative" }}>
@@ -117,15 +140,12 @@ export default function BarsChartContainer() {
             <BarsChart
               key={`${bankIdx}`}
               bankIdx={bankIdx}
-              transactions={query.response.transactions}
+              transactions={transactions}
               maxTs={maxTs}
-              isFirstChart={bankIdx === 0 && bankTileCount > 1}
-              isLastChart={
-                bankIdx === bankTileCount - 1 || selected !== undefined
-              }
-              isSelected={selected === bankIdx}
-              hide={selected !== undefined && selected !== bankIdx}
+              hasAxis={hasAxis}
+              hasTopAxis={hasTopAxis}
               isFocused={focusedBankIdx === bankIdx}
+              rowHeight={rowHeight}
             />
           </div>
         );

@@ -55,4 +55,8 @@ export const txnBarsUplotIdPrefix = "bank-";
 
 export const revenueLogBase = 1.7;
 
+/** Buffer of the canvas past the axes of the chart to prevent the first and last tick labels from being cut off */
+export const barChartXBuffer = 20;
 export const barChartAxisSize = 40;
+export const barChartMinRowHeight = 30;
+export const barChartMaxHeight = 130;
