@@ -1,7 +1,7 @@
 import { useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
-import { isWebgl2SupportedAtom } from "../Overview/ShredsProgression/atoms";
 import type { WebGlRemountProps } from "./withWebGlRemount";
+import { isWebgl2SupportedAtom } from "./atoms";
 
 /**
  * How long to wait for the GPU to restore a lost WebGL context before falling back to the canvas chart.
@@ -12,10 +12,11 @@ const CONTEXT_RESTORE_TIMEOUT_MS = 10_000;
 
 export function useWebGlEventHandlers({ remount }: WebGlRemountProps) {
   const setWebgl2Supported = useSetAtom(isWebgl2SupportedAtom);
-  const wasContextLostRef = useRef(false);
+
   /**
-   * was context ever lost since mount
+   * whether the context was ever lost during this mount
    */
+  const wasContextLostRef = useRef(false);
   const getWasContextLost = useCallback(() => wasContextLostRef.current, []);
 
   /**

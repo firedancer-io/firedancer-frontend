@@ -12,7 +12,6 @@ import {
   liveShredsDataAtom,
   liveShredsPostStartupRangeAtom,
   minDirtySlotByChartAtom,
-  isWebgl2SupportedAtom,
 } from "../atoms";
 import { shredEventDescPriorities } from "../const";
 import { updateLabels } from "../shredsProgressionPlugin";
@@ -45,6 +44,7 @@ import {
 } from "../utils";
 import { MAX_WEBGL_PX_RATIO, msPerDay } from "../../../../consts";
 import type { ContextHelpers } from "../../../WebGl/useWebGlEventHandlers";
+import { isWebgl2SupportedAtom } from "../../../WebGl/atoms";
 
 const store = getDefaultStore();
 
@@ -117,7 +117,10 @@ export function setUpRenderer(
     const clearContextListeners = setUpContextListeners(renderer.domElement);
 
     const cleanUpRenderer = () => {
-      // If context was lost, its GPU objects are already gone so skip objects disposal
+      // If context was lost at some point, its GPU objects are already gone so skip objects disposal,
+      // to prevent warnings e.g. WebGL: INVALID_OPERATION: delete: object does not belong to this context
+      // Three doesn't restore GPU objects for restored contexts unless there's a render.
+      // Remount on restore to reset the context listeners state
       if (!getWasContextLost()) {
         for (const slotMesh of meshes.values()) {
           slotMesh.mesh.geometry.dispose();
