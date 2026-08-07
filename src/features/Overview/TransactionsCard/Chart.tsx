@@ -1,7 +1,6 @@
-import AutoSizer from "react-virtualized-auto-sizer";
-import { useMemo, useRef } from "react";
-import { isDefined } from "../../../utils";
-import { useAtomValue } from "jotai";
+import { useLayoutEffect, useRef } from "react";
+import { getDefaultStore } from "jotai";
+import { useMeasure, useRafLoop } from "react-use";
 import { tpsDataAtom } from "./atoms";
 import {
   regularTextColor,
@@ -9,123 +8,128 @@ import {
   transactionNonVotePathColor,
   transactionVotePathColor,
 } from "../../../colors";
+import { WINDOW_MS } from "./consts";
 
-const getPath = (points: { x: number; y: number }[], height: number) => {
-  if (!points.length) return "";
+const TOP_PADDING = 10;
 
-  const path = points.map(({ x, y }) => `L ${x} ${height - y}`).join(" ");
-
-  return (
-    "M" +
-    path.slice(1) +
-    `L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height}, L ${points[0].x} ${points[0].y}`
-  );
-};
+const store = getDefaultStore();
 
 export default function Chart() {
-  const tpsData = useAtomValue(tpsDataAtom);
-  const sizeRefs = useRef<{ height: number; width: number }>();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [measureRef, { width, height }] = useMeasure<HTMLDivElement>();
 
-  const maxTotalTps = Math.max(...tpsData.map((d) => d?.total ?? 0));
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !width || !height) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
 
-  const scaledPaths = useMemo(() => {
-    if (!sizeRefs.current) return;
-    if (!tpsData.length) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }, [width, height]);
 
-    const { height, width } = sizeRefs.current;
-    const maxLength = tpsData.length;
-    const xRatio = (width + 2) / maxLength;
-    const yRatio = (height - 10) / (maxTotalTps || 1);
+  useRafLoop(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !width || !height) return;
 
-    const points = tpsData
-      .map((d, i) => {
-        if (d === undefined) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-        return {
-          x: i * xRatio,
-          voteY: d.vote * yRatio,
-          nonvoteFailedY: (d.nonvote_failed + d.vote) * yRatio,
-          nonvoteY: (d.nonvote_success + d.nonvote_failed + d.vote) * yRatio,
-        };
-      })
-      .filter(isDefined);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const maxTotalY = height - maxTotalTps * yRatio;
+    const data = store.get(tpsDataAtom);
+    if (!data.length) return;
 
-    return {
-      votePath: getPath(
-        points.map((p) => ({ x: p.x, y: p.voteY })),
-        height,
-      ),
-      failedPath: getPath(
-        points.map((p) => ({ x: p.x, y: p.nonvoteFailedY })),
-        height,
-      ),
-      nonvotePath: getPath(
-        points.map((p) => ({ x: p.x, y: p.nonvoteY })),
-        height,
-      ),
-      totalTpsY: isNaN(maxTotalY) ? undefined : maxTotalY,
-    };
-  }, [maxTotalTps, tpsData]);
+    const maxTotalY = data.reduce((max, p) => Math.max(max, p.tps.total), 0);
+    if (maxTotalY === 0) return;
+
+    const yRatio = (height - TOP_PADDING) / maxTotalY;
+    const now = performance.now();
+
+    const points = data.map((p) => ({
+      x: width * (1 - (now - p.ts) / WINDOW_MS),
+      voteY: p.tps.vote * yRatio,
+      nonvoteFailedY: (p.tps.nonvote_failed + p.tps.vote) * yRatio,
+      nonvoteY:
+        (p.tps.nonvote_success + p.tps.nonvote_failed + p.tps.vote) * yRatio,
+    }));
+
+    drawArea(
+      ctx,
+      points,
+      width,
+      height,
+      "nonvoteY",
+      transactionNonVotePathColor,
+    );
+    drawArea(
+      ctx,
+      points,
+      width,
+      height,
+      "nonvoteFailedY",
+      transactionFailedPathColor,
+    );
+    drawArea(ctx, points, width, height, "voteY", transactionVotePathColor);
+
+    drawPeakLine(ctx, width, height, maxTotalY * yRatio, maxTotalY);
+  });
 
   return (
-    <>
-      <AutoSizer>
-        {({ height, width }) => {
-          sizeRefs.current = { height, width };
-          if (!scaledPaths) return null;
-          return (
-            <>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width={width}
-                height={height}
-                fill="none"
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d={scaledPaths.nonvotePath}
-                  fill={transactionNonVotePathColor}
-                />
-                <path
-                  d={scaledPaths.failedPath}
-                  fill={transactionFailedPathColor}
-                />
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  fill={transactionVotePathColor}
-                  d={scaledPaths.votePath}
-                />
-
-                {scaledPaths.totalTpsY && (
-                  <>
-                    <line
-                      x1="0"
-                      y1={scaledPaths.totalTpsY}
-                      x2={width}
-                      y2={scaledPaths.totalTpsY}
-                      strokeDasharray="4"
-                      stroke="rgba(255, 255, 255, 0.30)"
-                    />
-                    <text
-                      x="0"
-                      y={scaledPaths.totalTpsY - 3}
-                      fill={regularTextColor}
-                      fontSize="8"
-                      fontFamily="Inter Tight"
-                    >
-                      {maxTotalTps.toLocaleString()}
-                    </text>
-                  </>
-                )}
-              </svg>
-            </>
-          );
-        }}
-      </AutoSizer>
-    </>
+    <div ref={measureRef} style={{ position: "absolute", inset: 0 }}>
+      <canvas ref={canvasRef} style={{ display: "block", width, height }} />
+    </div>
   );
+}
+
+type Point = {
+  x: number;
+  voteY: number;
+  nonvoteFailedY: number;
+  nonvoteY: number;
+};
+
+function drawArea(
+  ctx: CanvasRenderingContext2D,
+  points: Point[],
+  canvasWidth: number,
+  canvasHeight: number,
+  heightKey: keyof Omit<Point, "x">,
+  color: string,
+) {
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, canvasHeight - points[0][heightKey]);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, canvasHeight - points[i][heightKey]);
+  }
+  ctx.lineTo(canvasWidth, canvasHeight - points[points.length - 1][heightKey]);
+  ctx.lineTo(canvasWidth, canvasHeight);
+  ctx.lineTo(points[0].x, canvasHeight);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawPeakLine(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  peakPixelHeight: number,
+  peakTps: number,
+) {
+  const y = height - peakPixelHeight;
+  ctx.beginPath();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.30)";
+  ctx.lineWidth = 1;
+  ctx.moveTo(0, y);
+  ctx.lineTo(width, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = regularTextColor;
+  ctx.font = "8px 'Inter Tight'";
+  ctx.fillText(peakTps.toLocaleString(), 0, y - 3);
 }

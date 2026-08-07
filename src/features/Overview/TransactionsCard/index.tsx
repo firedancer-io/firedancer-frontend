@@ -17,7 +17,13 @@ export default function TransactionsCard({
         <Flex gap="4" flexGrow="1">
           <TransactionStats />
           <Flex direction="column" flexGrow="1">
-            <Box flexGrow="1" minWidth="180px" overflow="hidden">
+            <Box
+              flexGrow="1"
+              minWidth="180px"
+              minHeight="80px"
+              overflow="hidden"
+              position="relative"
+            >
               <Chart />
             </Box>
             <Flex justify="between">

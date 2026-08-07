@@ -1,11 +1,12 @@
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { estimatedTpsAtom, tpsHistoryAtom } from "../../../api/atoms";
+import { tpsSampleIntervalMs } from "../../../api/consts";
 import { useEffect, useRef } from "react";
 import { tpsDataAtom } from "./atoms";
-import type { EstimatedTps } from "../../../api/types";
-import { maxTransactionChartPoints } from "./consts";
+import { WINDOW_MS } from "./consts";
 
 const store = getDefaultStore();
+const MAX_HISTORY_POINTS = Math.ceil(WINDOW_MS / tpsSampleIntervalMs);
 
 export default function useUpdateTransactions() {
   const tpsHistory = useAtomValue(tpsHistoryAtom);
@@ -14,53 +15,27 @@ export default function useUpdateTransactions() {
   useEffect(() => {
     if (!tpsHistory) return;
 
-    const empty: undefined[] = new Array<undefined>(
-      maxTransactionChartPoints,
-    ).fill(undefined);
+    const now = performance.now();
 
-    const tps = [
-      ...empty,
-      ...tpsHistory.flatMap<EstimatedTps>(
-        ([total, vote, nonvote_success, nonvote_failed]) => [
-          {
-            total,
-            vote,
-            nonvote_success,
-            nonvote_failed,
-          },
-          {
-            total,
-            vote,
-            nonvote_success,
-            nonvote_failed,
-          },
-          {
-            total,
-            vote,
-            nonvote_success,
-            nonvote_failed,
-          },
-          {
-            total,
-            vote,
-            nonvote_success,
-            nonvote_failed,
-          },
-        ],
-      ),
-    ];
-    setTpsData(tps.slice(tps.length - maxTransactionChartPoints));
+    const timestampedHistory = tpsHistory
+      .slice(-MAX_HISTORY_POINTS)
+      .map(([total, vote, nonvote_success, nonvote_failed], i, arr) => ({
+        ts: now - (arr.length - 1 - i) * tpsSampleIntervalMs,
+        tps: { total, vote, nonvote_success, nonvote_failed },
+      }));
+
+    setTpsData(timestampedHistory);
   }, [setTpsData, tpsHistory]);
 
   const pushTpsData = () => {
-    if (!tpsHistory) return;
-
     const tps = store.get(estimatedTpsAtom);
     if (tps === undefined) return;
 
+    const ts = performance.now();
     setTpsData((draft) => {
-      draft.push(tps);
-      if (draft.length > maxTransactionChartPoints) draft.shift();
+      draft.push({ ts, tps });
+      const windowStart = ts - WINDOW_MS;
+      while (draft.length > 1 && draft[1].ts < windowStart) draft.shift();
     });
   };
 
@@ -71,7 +46,7 @@ export default function useUpdateTransactions() {
     let timeout: NodeJS.Timeout;
     function tick() {
       pushTpsDataRef.current();
-      timeout = setTimeout(tick, 100);
+      timeout = setTimeout(tick, tpsSampleIntervalMs);
     }
     tick();
     return () => clearTimeout(timeout);

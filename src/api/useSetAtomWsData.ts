@@ -101,7 +101,7 @@ import {
 } from "./atoms";
 import { accountsNextCompactionAtom } from "../atoms";
 import {
-  estimatedTpsDebounceMs,
+  tpsSampleIntervalMs,
   liveNetworkMetricsDebounceMs,
   liveTileMetricsDebounceMs,
   liveMetricsDebounceMs,
@@ -260,7 +260,7 @@ function useUpdateAtoms() {
     (value?: EstimatedTps) => {
       setEstimatedTps(value);
     },
-    estimatedTpsDebounceMs,
+    tpsSampleIntervalMs,
   );
 
   const setLiveNetworkMetrics = useSetAtom(liveNetworkMetricsAtom);
