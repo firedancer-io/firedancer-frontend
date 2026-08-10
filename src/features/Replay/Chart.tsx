@@ -33,6 +33,7 @@ import {
 import clsx from "clsx";
 import FeesTrack from "./FeesTrack/FeesTrack.tsx";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
+import LinesTrack from "./LinesTrack/LinesTrack.tsx";
 
 const PAN_THRESHOLD_PX = 0;
 // Zoom scales by exp(deltaY * intensity): symmetric (in/out are exact inverses)
@@ -423,6 +424,12 @@ export default function Chart({ startupTimeNs }: ChartProps) {
               {...markerLinesProps}
             />
             <FeesTrack
+              width={width}
+              {...subscriberProps}
+              {...explorableChartProps}
+              {...markerLinesProps}
+            />
+            <LinesTrack
               width={width}
               {...subscriberProps}
               {...explorableChartProps}

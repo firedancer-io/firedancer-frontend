@@ -1161,6 +1161,13 @@ export interface ReplayFee {
   value: number;
 }
 
+interface ReplayLinePoint {
+  tsMs: number;
+  value: number;
+}
+export type ReplayLine = ReplayLinePoint[];
+
 export const replayEpochsAtom = atom<ReplayEpoch[]>([]);
 export const replaySlotsAtom = atom<ReplaySlot[]>([]);
 export const replayFeesAtom = atom<ReplayFee[]>([]);
+export const replayLinesAtom = atom<ReplayLine[]>([]);
