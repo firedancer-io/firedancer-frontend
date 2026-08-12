@@ -42,6 +42,7 @@ import type {
   SlotCaughtUp,
   Health,
   AccountsStats,
+  VoteCommission,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 import type { ValuesWithHistory } from "./worker/types";
@@ -67,6 +68,8 @@ export const scheduleStrategyAtom = atom<ScheduleStrategy | undefined>(
 );
 
 export const identityBalanceAtom = atom<IdentityBalance | undefined>(undefined);
+
+export const voteCommissionAtom = atom<VoteCommission | undefined>(undefined);
 
 export const voteBalanceAtom = atom<VoteBalance | undefined>(undefined);
 

@@ -77,6 +77,7 @@ import type {
   accountsPartitionSchema,
   partitionTierSchema,
   compactionStateSchema,
+  voteCommissionSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -96,6 +97,8 @@ export type Tile = z.infer<typeof tileSchema>;
 export type ScheduleStrategy = z.infer<typeof scheduleStrategySchema>;
 
 export type IdentityBalance = z.infer<typeof identityBalanceSchema>;
+
+export type VoteCommission = z.infer<typeof voteCommissionSchema>;
 
 export type VoteBalance = z.infer<typeof voteBalanceSchema>;
 
