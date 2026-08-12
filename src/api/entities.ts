@@ -111,6 +111,8 @@ export const tileSchema = z.object({
 
 export const identityBalanceSchema = z.coerce.bigint();
 
+export const voteCommissionSchema = z.number().nullable();
+
 export const voteBalanceSchema = z.coerce.bigint();
 
 export const rootSlotSchema = z.number();
@@ -594,6 +596,10 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("identity_balance"),
     value: identityBalanceSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("vote_commission"),
+    value: voteCommissionSchema,
   }),
   summaryTopicSchema.extend({
     key: z.literal("vote_balance"),

@@ -1,5 +1,9 @@
 import { useAtomValue } from "jotai";
-import { identityBalanceAtom, voteBalanceAtom } from "../../api/atoms";
+import {
+  identityBalanceAtom,
+  voteBalanceAtom,
+  voteCommissionAtom,
+} from "../../api/atoms";
 import { Text, Flex } from "@radix-ui/themes";
 import styles from "./identityKey.module.css";
 import PeerIcon from "../../components/PeerIcon";
@@ -16,7 +20,7 @@ import { identityIconOnlyWidth, maxZIndex } from "../../consts";
 import { useUptimeDuration } from "../../hooks/useUptime";
 import CopyButton from "../../components/CopyButton";
 import ConditionalTooltip from "../../components/ConditionalTooltip";
-import { client } from "../../client";
+import { client, isFiredancer } from "../../client";
 
 export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
@@ -196,6 +200,18 @@ function StakeValue({ showTooltip }: TooltipProps) {
 }
 
 function Commission() {
+  return (
+    <Label label="Commission">
+      {isFiredancer ? (
+        <FiredancerCommissionValue />
+      ) : (
+        <FrankendancerCommissionValue />
+      )}
+    </Label>
+  );
+}
+
+function FrankendancerCommissionValue() {
   const { peer } = useIdentityPeer();
 
   const maxCommission = peer?.vote.reduce<{
@@ -210,14 +226,18 @@ function Commission() {
     },
     { maxStake: 0n, commission: undefined },
   );
-
   return (
-    <Label label="Commission">
-      <ValueWithSuffix
-        value={maxCommission?.commission?.toLocaleString()}
-        suffix="%"
-      />
-    </Label>
+    <ValueWithSuffix
+      value={maxCommission?.commission?.toLocaleString()}
+      suffix="%"
+    />
+  );
+}
+
+function FiredancerCommissionValue() {
+  const voteCommission = useAtomValue(voteCommissionAtom);
+  return (
+    <ValueWithSuffix value={voteCommission?.toLocaleString()} suffix="%" />
   );
 }
 
