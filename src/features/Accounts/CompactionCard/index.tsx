@@ -28,7 +28,7 @@ export default function CompactionCard({ className }: { className?: string }) {
   );
 
   const nextPartition =
-    nextCompaction !== undefined
+    nextCompaction != null
       ? accountStats.partitions[nextCompaction.partitionIdx]
       : undefined;
   const compactionState =
