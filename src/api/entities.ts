@@ -1094,6 +1094,8 @@ const accountsCompactionSchema = z.object({
   compactions_completed: z.number(),
   accounts_relocated_bytes: z.number(),
   relocated_bytes_per_sec: z.number(),
+  next_compaction_remaining_seconds: z.number().nullable(),
+  next_compaction_partition_idx: z.number().nullable(),
 });
 
 const accountsCacheClassSchema = z.object({
