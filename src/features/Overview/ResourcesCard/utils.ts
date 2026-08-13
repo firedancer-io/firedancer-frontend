@@ -1,23 +1,25 @@
 import type { SystemLive } from "../../../api/types";
-import { formatSIBytes } from "../../../utils";
 
 export interface ResourceSegment {
   key: string;
   label: string;
   bytes: number;
   color: string;
+  /** Set for per-tile segments so the bar can drive tile cross-highlighting. */
+  tileIdx?: number;
 }
 
 export const resourceColors = {
-  firedancer: "#2DA9D7",
-  other: "#765A62",
-  available: "#303134",
-  accounts: "#459D69",
-  shreds: "#C88C32",
-  snapshots: "#459D69",
-  gui: "#786AC6",
-  logs: "#A563B5",
-  unknown: "#60798B",
+  firedancer: "var(--blue-8)",
+  shared: "var(--gray-8)",
+  other: "var(--gray-7)",
+  available: "var(--gray-4)",
+  accounts: "var(--teal-8)",
+  shreds: "var(--yellow-8)",
+  snapshots: "var(--indigo-8)",
+  gui: "var(--purple-8)",
+  logs: "var(--red-8)",
+  unknown: "var(--gray-8)",
 } as const;
 
 const diskCategoryColors: Record<string, string> = {
@@ -28,80 +30,134 @@ const diskCategoryColors: Record<string, string> = {
   logs: resourceColors.logs,
 };
 
+// Radix accent tokens, aligned with the accounts cache-class palette, cycled by
+// tile index so per-tile colors read as part of the app-wide scheme. Excludes
+// blue (reserved for the Firedancer overview segment) and gray (Shared/Other).
+const tileColors = [
+  "var(--indigo-8)",
+  "var(--cyan-8)",
+  "var(--teal-8)",
+  "var(--lime-8)",
+  "var(--yellow-8)",
+  "var(--brown-8)",
+  "var(--red-8)",
+  "var(--purple-8)",
+  "var(--orange-8)",
+  "var(--pink-8)",
+  "var(--grass-8)",
+  "var(--crimson-8)",
+] as const;
+
 const nonNegative = (value: number) => Math.max(value, 0);
 
-export function formatResourceUsage(
-  firedancerBytes: number,
-  usedBytes: number,
-  totalBytes: number,
-) {
-  return [firedancerBytes, usedBytes, totalBytes]
-    .map((bytes) => {
-      const formatted = formatSIBytes(bytes);
-      return `${formatted.value} ${formatted.unit}`;
-    })
-    .join(" / ");
+/** Stable per-tile color, shared between the CPU grid and the memory bar. */
+export function getTileColor(tileIdx: number) {
+  return tileColors[tileIdx % tileColors.length];
 }
 
-export function getMemorySummary(memory: SystemLive["memory"]) {
-  const tiles = new Map<number, number>();
-  let sharedBytes = 0;
-  for (const node of memory.nodes) {
-    sharedBytes += nonNegative(node.shared_bytes);
-    for (const tile of node.tiles) {
-      tiles.set(
-        tile.tile_idx,
-        (tiles.get(tile.tile_idx) ?? 0) + nonNegative(tile.bytes),
-      );
-    }
-  }
+export interface NumaNodeMemory {
+  totalBytes: number;
+  usedBytes: number;
+  firedancerBytes: number;
+  sharedBytes: number;
+  otherBytes: number;
+  freeBytes: number;
+  tiles: { tileIdx: number; bytes: number }[];
+}
 
-  const totalBytes = memory.nodes.reduce(
-    (total, node) => total + nonNegative(node.total_bytes),
-    0,
+export interface NumaNode {
+  node: number;
+  cpuIdxs: number[];
+  cpuGroups: number[][];
+  pinned: number;
+  unpinned: number;
+  offline: number;
+  totalCpus: number;
+  memory?: NumaNodeMemory;
+}
+
+/**
+ * Joins CPU topology and per-node memory into one descriptor per NUMA node.
+ * A node is included if it appears in either `cpus` or `memory.nodes`, so a
+ * mismatch between the two sources still renders from whichever side has data.
+ */
+export function getNumaNodes(
+  cpus: SystemLive["cpus"] | undefined,
+  memory: SystemLive["memory"] | undefined,
+): NumaNode[] {
+  const nodeIds = new Set<number>();
+  cpus?.forEach((cpu) => nodeIds.add(cpu.numa_node));
+  memory?.nodes.forEach((node) => nodeIds.add(node.node));
+
+  const memoryByNode = new Map(
+    memory?.nodes.map((node) => [node.node, node]) ?? [],
   );
-  const tileBytes = Array.from(tiles.values()).reduce(
-    (total, bytes) => total + bytes,
-    0,
-  );
-  const firedancerBytes = sharedBytes + tileBytes;
-  const availableBytes = Math.min(
-    nonNegative(memory.available_bytes),
-    totalBytes,
-  );
-  const usedBytes = nonNegative(totalBytes - availableBytes);
-  const firedancerBarBytes = Math.min(firedancerBytes, usedBytes);
-  const otherBytes = nonNegative(usedBytes - firedancerBarBytes);
+
+  return Array.from(nodeIds)
+    .sort((a, b) => a - b)
+    .map((nodeId) => {
+      const cpuIdxs: number[] = [];
+      cpus?.forEach((cpu, cpuIdx) => {
+        if (cpu.numa_node === nodeId) cpuIdxs.push(cpuIdx);
+      });
+      const memoryNode = memoryByNode.get(nodeId);
+
+      const pinned = cpuIdxs.filter(
+        (idx) => cpus?.[idx].online && cpus[idx].tile_idxs.length > 0,
+      ).length;
+      const offline = cpuIdxs.filter((idx) => !cpus?.[idx].online).length;
+
+      return {
+        node: nodeId,
+        cpuIdxs,
+        cpuGroups: cpus ? getCpuGroups(cpus, cpuIdxs) : [],
+        pinned,
+        unpinned: cpuIdxs.length - pinned - offline,
+        offline,
+        totalCpus: cpuIdxs.length,
+        memory: memoryNode ? getNumaNodeMemory(memoryNode) : undefined,
+      };
+    });
+}
+
+export function getNumaNodeMemory(
+  node: SystemLive["memory"]["nodes"][number],
+): NumaNodeMemory {
+  const totalBytes = nonNegative(node.total_bytes);
+  const freeBytes = Math.min(nonNegative(node.free_bytes), totalBytes);
+  const usedBytes = nonNegative(totalBytes - freeBytes);
+  const sharedBytes = nonNegative(node.shared_bytes);
+  const tiles = node.tiles.map((tile) => ({
+    tileIdx: tile.tile_idx,
+    bytes: nonNegative(tile.bytes),
+  }));
+  const residentBytes =
+    sharedBytes + tiles.reduce((sum, tile) => sum + tile.bytes, 0);
+  const firedancerBytes = Math.min(residentBytes, usedBytes);
 
   return {
     totalBytes,
     usedBytes,
     firedancerBytes,
     sharedBytes: Math.min(sharedBytes, usedBytes),
-    otherBytes,
-    availableBytes,
-    tiles: Array.from(tiles, ([tileIdx, bytes]) => ({ tileIdx, bytes })),
-    nodes: memory.nodes.map((node) => ({
-      node: node.node,
-      bytes:
-        nonNegative(node.shared_bytes) +
-        node.tiles.reduce((sum, tile) => sum + nonNegative(tile.bytes), 0),
-    })),
+    otherBytes: nonNegative(usedBytes - firedancerBytes),
+    freeBytes,
+    tiles,
   };
 }
 
-export function getCpuSummary(cpus: SystemLive["cpus"]) {
-  return {
-    total: cpus.length,
-    pinned: cpus.filter((cpu) => cpu.online && cpu.tile_idxs.length > 0).length,
-  };
-}
-
-export function getCpuGroups(cpus: SystemLive["cpus"]) {
+/**
+ * Pairs hyperthread siblings into physical-core cells. When `cpuIdxs` is given,
+ * only those logical CPUs are grouped (used to scope grouping to one NUMA node);
+ * siblings never straddle nodes, so this stays correct.
+ */
+export function getCpuGroups(cpus: SystemLive["cpus"], cpuIdxs?: number[]) {
   const grouped = new Set<number>();
   const groups: number[][] = [];
+  const order = cpuIdxs ?? cpus.map((_, idx) => idx);
 
-  cpus.forEach((cpu, cpuIdx) => {
+  order.forEach((cpuIdx) => {
+    const cpu = cpus[cpuIdx];
     if (grouped.has(cpuIdx)) return;
 
     const referencedBy = cpus.findIndex(
@@ -125,7 +181,16 @@ export function getCpuGroups(cpus: SystemLive["cpus"]) {
   return groups;
 }
 
-export function getDiskSummary(mount: SystemLive["disk"][number]) {
+export interface DiskSummary {
+  totalBytes: number;
+  usedBytes: number;
+  firedancerBytes: number;
+  nonFiredancerBytes: number;
+  freeBytes: number;
+  firedancerSegments: ResourceSegment[];
+}
+
+export function getDiskSummary(mount: SystemLive["disk"][number]): DiskSummary {
   const totalBytes = nonNegative(mount.total_bytes);
   const usedBytes = Math.min(nonNegative(mount.used_bytes), totalBytes);
   const grouped = new Map<string, number>();

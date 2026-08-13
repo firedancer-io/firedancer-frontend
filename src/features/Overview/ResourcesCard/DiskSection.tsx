@@ -2,7 +2,8 @@ import { Flex, Text, Tooltip } from "@radix-ui/themes";
 import type { SystemLive } from "../../../api/types";
 import { formatSIBytesStr } from "../../../utils";
 import SegmentedBar from "./SegmentedBar";
-import { formatResourceUsage, getDiskSummary, resourceColors } from "./utils";
+import LegendItem from "./LegendItem";
+import { getDiskSummary, resourceColors } from "./utils";
 import styles from "./resourcesCard.module.css";
 
 export default function DiskSection({
@@ -21,11 +22,6 @@ export default function DiskSection({
         <Flex direction="column" gap="3">
           {mounts.map((mount) => {
             const summary = getDiskSummary(mount);
-            const value = formatResourceUsage(
-              summary.firedancerBytes,
-              summary.usedBytes,
-              summary.totalBytes,
-            );
             const segments = [
               ...summary.firedancerSegments,
               {
@@ -44,20 +40,30 @@ export default function DiskSection({
 
             return (
               <Flex key={mount.name} direction="column" gap="1">
-                <Flex justify="between" align="baseline" gap="3">
-                  <Tooltip content={mount.name}>
-                    <Text className={styles.mountName}>{mount.name}</Text>
-                  </Tooltip>
-                  <Text className={styles.sectionValue}>{value}</Text>
-                </Flex>
+                <Tooltip content={mount.name}>
+                  <Text className={styles.mountName}>{mount.name}</Text>
+                </Tooltip>
                 <SegmentedBar
                   segments={segments}
                   total={summary.totalBytes}
-                  ariaLabel={`${mount.name} disk usage: ${value}`}
+                  ariaLabel={`${mount.name} disk usage`}
                 />
-                <Text className={styles.diskDetail}>
-                  Firedancer: {formatSIBytesStr(summary.firedancerBytes)}
-                </Text>
+                <Flex gap="10px" wrap="wrap">
+                  {segments
+                    .filter((segment) => segment.bytes > 0)
+                    .map((segment) => (
+                      <LegendItem
+                        key={segment.key}
+                        label={segment.label}
+                        value={formatSIBytesStr(segment.bytes)}
+                        color={segment.color}
+                      />
+                    ))}
+                  <LegendItem
+                    label="Total"
+                    value={formatSIBytesStr(summary.totalBytes)}
+                  />
+                </Flex>
               </Flex>
             );
           })}
