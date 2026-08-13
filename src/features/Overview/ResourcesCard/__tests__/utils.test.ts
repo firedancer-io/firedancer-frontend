@@ -1,30 +1,69 @@
 import { describe, expect, it } from "vitest";
 import type { SystemLive } from "../../../../api/types";
 import {
-  formatResourceUsage,
   getCpuGroups,
-  getCpuSummary,
   getDiskSummary,
-  getMemorySummary,
+  getNumaNodeMemory,
+  getNumaNodes,
 } from "../utils";
 
 type Memory = SystemLive["memory"];
+type MemoryNode = Memory["nodes"][number];
 type DiskMount = SystemLive["disk"][number];
 
 describe("resource summaries", () => {
-  it("formats Firedancer, used, and total resource values", () => {
-    expect(formatResourceUsage(500_000_000, 2_000_000_000, 4_000_000_000)).toBe(
-      "500.0 MB / 2.0 GB / 4.0 GB",
-    );
+  it("summarizes per-node memory into resident, shared, other, and free", () => {
+    const node: MemoryNode = {
+      node: 0,
+      total_bytes: 500,
+      free_bytes: 100,
+      shared_bytes: 20,
+      tiles: [
+        { tile_idx: 0, bytes: 80 },
+        { tile_idx: 1, bytes: 50 },
+      ],
+    };
+
+    expect(getNumaNodeMemory(node)).toEqual({
+      totalBytes: 500,
+      usedBytes: 400,
+      firedancerBytes: 150,
+      sharedBytes: 20,
+      otherBytes: 250,
+      freeBytes: 100,
+      tiles: [
+        { tileIdx: 0, bytes: 80 },
+        { tileIdx: 1, bytes: 50 },
+      ],
+    });
   });
 
-  it("uses a smaller unit instead of a fractional larger unit", () => {
-    expect(
-      formatResourceUsage(300_000_000_000, 700_000_000_000, 2_000_000_000_000),
-    ).toBe("300.0 GB / 700.0 GB / 2.0 TB");
+  it("clamps lagging per-node memory counters to valid bar geometry", () => {
+    const memory = getNumaNodeMemory({
+      node: 0,
+      total_bytes: 100,
+      free_bytes: 0,
+      shared_bytes: 200,
+      tiles: [{ tile_idx: 0, bytes: 50 }],
+    });
+
+    expect(memory).toEqual({
+      totalBytes: 100,
+      usedBytes: 100,
+      firedancerBytes: 100,
+      sharedBytes: 100,
+      otherBytes: 0,
+      freeBytes: 0,
+      tiles: [{ tileIdx: 0, bytes: 50 }],
+    });
   });
 
-  it("partitions host memory and includes shared and tile memory per NUMA node", () => {
+  it("joins CPU topology and memory into one descriptor per NUMA node", () => {
+    const cpus: SystemLive["cpus"] = [
+      { online: true, numa_node: 0, sibling_cpu: 2, tile_idxs: [0, 3] },
+      { online: true, numa_node: 1, sibling_cpu: null, tile_idxs: [1] },
+      { online: true, numa_node: 0, sibling_cpu: 0, tile_idxs: [] },
+    ];
     const memory: Memory = {
       available_bytes: 300,
       free_bytes: 200,
@@ -34,53 +73,84 @@ describe("resource summaries", () => {
           total_bytes: 500,
           free_bytes: 100,
           shared_bytes: 20,
-          tiles: [
-            { tile_idx: 0, bytes: 80 },
-            { tile_idx: 1, bytes: 50 },
-          ],
+          tiles: [{ tile_idx: 0, bytes: 80 }],
         },
         {
           node: 1,
           total_bytes: 500,
           free_bytes: 100,
           shared_bytes: 10,
-          tiles: [{ tile_idx: 2, bytes: 40 }],
+          tiles: [{ tile_idx: 1, bytes: 40 }],
         },
       ],
     };
 
-    expect(getMemorySummary(memory)).toEqual({
-      totalBytes: 1000,
-      usedBytes: 700,
-      firedancerBytes: 200,
-      sharedBytes: 30,
-      otherBytes: 500,
-      availableBytes: 300,
-      tiles: [
-        { tileIdx: 0, bytes: 80 },
-        { tileIdx: 1, bytes: 50 },
-        { tileIdx: 2, bytes: 40 },
-      ],
-      nodes: [
-        { node: 0, bytes: 150 },
-        { node: 1, bytes: 50 },
-      ],
+    const nodes = getNumaNodes(cpus, memory);
+    expect(nodes.map((n) => n.node)).toEqual([0, 1]);
+    expect(nodes[0]).toMatchObject({
+      node: 0,
+      cpuIdxs: [0, 2],
+      cpuGroups: [[0, 2]],
+      pinned: 1,
+      unpinned: 1,
+      offline: 0,
+      totalCpus: 2,
+    });
+    expect(nodes[0].memory?.firedancerBytes).toBe(100);
+    expect(nodes[1]).toMatchObject({
+      node: 1,
+      cpuIdxs: [1],
+      cpuGroups: [[1]],
+      pinned: 1,
+      unpinned: 0,
+      offline: 0,
+      totalCpus: 1,
     });
   });
 
-  it("counts only online CPUs with configured tiles as pinned", () => {
-    expect(
-      getCpuSummary([
+  it("counts pinned, unpinned, and offline CPUs per node", () => {
+    const cpus: SystemLive["cpus"] = [
+      { online: true, numa_node: 0, sibling_cpu: null, tile_idxs: [0] },
+      { online: true, numa_node: 0, sibling_cpu: null, tile_idxs: [] },
+      { online: false, numa_node: 0, sibling_cpu: null, tile_idxs: [] },
+      { online: false, numa_node: 0, sibling_cpu: null, tile_idxs: [1] },
+    ];
+
+    expect(getNumaNodes(cpus, undefined)[0]).toMatchObject({
+      pinned: 1,
+      unpinned: 1,
+      offline: 2,
+      totalCpus: 4,
+    });
+  });
+
+  it("includes a node present in only one of cpus or memory", () => {
+    const cpus: SystemLive["cpus"] = [
+      { online: true, numa_node: 0, sibling_cpu: null, tile_idxs: [0] },
+    ];
+    const memory: Memory = {
+      available_bytes: 100,
+      free_bytes: 50,
+      nodes: [
         {
-          online: true,
-          numa_node: 0,
-          sibling_cpu: 1,
-          tile_idxs: [0, 3],
+          node: 1,
+          total_bytes: 500,
+          free_bytes: 100,
+          shared_bytes: 0,
+          tiles: [],
         },
-        { online: true, numa_node: 0, sibling_cpu: 0, tile_idxs: [] },
-        { online: false, numa_node: 1, sibling_cpu: null, tile_idxs: [2] },
-      ]),
-    ).toEqual({ total: 3, pinned: 1 });
+      ],
+    };
+
+    const nodes = getNumaNodes(cpus, memory);
+    expect(nodes.map((n) => n.node)).toEqual([0, 1]);
+    expect(nodes[0].memory).toBeUndefined();
+    expect(nodes[1].cpuIdxs).toEqual([]);
+    expect(nodes[1].memory?.totalBytes).toBe(500);
+  });
+
+  it("returns no nodes when there is no data", () => {
+    expect(getNumaNodes(undefined, undefined)).toEqual([]);
   });
 
   it("groups hyperthread siblings into one physical-core cell", () => {
@@ -100,6 +170,17 @@ describe("resource summaries", () => {
         { online: true, numa_node: 0, sibling_cpu: 0, tile_idxs: [0] },
       ]),
     ).toEqual([[0, 1]]);
+  });
+
+  it("scopes sibling grouping to a subset of logical CPUs", () => {
+    const cpus: SystemLive["cpus"] = [
+      { online: true, numa_node: 0, sibling_cpu: 2, tile_idxs: [] },
+      { online: true, numa_node: 1, sibling_cpu: 3, tile_idxs: [] },
+      { online: true, numa_node: 0, sibling_cpu: 0, tile_idxs: [] },
+      { online: true, numa_node: 1, sibling_cpu: 1, tile_idxs: [] },
+    ];
+    expect(getCpuGroups(cpus, [0, 2])).toEqual([[0, 2]]);
+    expect(getCpuGroups(cpus, [1, 3])).toEqual([[1, 3]]);
   });
 
   it("groups disk categories and computes non-Firedancer and free usage", () => {
@@ -130,7 +211,7 @@ describe("resource summaries", () => {
     ]);
   });
 
-  it("clamps lagging disk and memory counters to valid bar geometry", () => {
+  it("clamps lagging disk counters to valid bar geometry", () => {
     const disk = getDiskSummary({
       name: "/data",
       total_bytes: 100,
@@ -142,27 +223,5 @@ describe("resource summaries", () => {
     expect(disk.firedancerBytes).toBe(100);
     expect(disk.nonFiredancerBytes).toBe(0);
     expect(disk.freeBytes).toBe(0);
-
-    const memory = getMemorySummary({
-      available_bytes: 200,
-      free_bytes: 0,
-      nodes: [
-        {
-          node: 0,
-          total_bytes: 100,
-          free_bytes: 0,
-          shared_bytes: 0,
-          tiles: [],
-        },
-      ],
-    });
-    expect(memory).toMatchObject({
-      totalBytes: 100,
-      usedBytes: 0,
-      availableBytes: 100,
-      otherBytes: 0,
-      sharedBytes: 0,
-      tiles: [],
-    });
   });
 });
