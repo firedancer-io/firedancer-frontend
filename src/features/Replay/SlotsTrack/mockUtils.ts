@@ -91,7 +91,10 @@ export function getEpochColor(epoch: number): RgbColor {
 /**
  * Build the list of slots for the time range, but never past mockMaxSlotCompletedTsNs
  */
-function buildMockSlots(startTsMs: number, endTsMs: number): ReplaySlot[] {
+export function buildMockSlots(
+  startTsMs: number,
+  endTsMs: number,
+): ReplaySlot[] {
   const mockWorldEndNs = store.get(mockMaxSlotCompletedTsNsAtom) ?? 0n;
   const maxCompletedTsMs = Number(mockWorldEndNs / BigInt(nsPerMs));
   const maxCompletedSlot = mockTsToSlot(maxCompletedTsMs) - 1;

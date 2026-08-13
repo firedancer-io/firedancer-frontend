@@ -75,7 +75,7 @@ function RevenueTrack({
       aggQuery(visibleRangeMs, worldRangeMs, queryGranularity);
       setGranularity(queryGranularity);
     },
-    200,
+    100,
     { leading: true, trailing: true },
   );
 

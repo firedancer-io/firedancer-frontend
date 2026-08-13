@@ -186,10 +186,29 @@ export function addRectangleToMesh(
   slotMesh.colorArray[ci + 2] = color[2];
 }
 
-export function updateSlotMeshCounts(slotMesh: SlotMesh, count: number) {
+export function updateSlotMeshCounts(
+  slotMesh: SlotMesh,
+  count: number,
+  updatedRange?: { startIdx: number; endIdx: number },
+) {
   slotMesh.count = count;
   (slotMesh.mesh.geometry as THREE.InstancedBufferGeometry).instanceCount =
     count;
+
+  if (
+    updatedRange &&
+    updatedRange.endIdx >= updatedRange.startIdx &&
+    updatedRange.startIdx >= 0
+  ) {
+    const { startIdx, endIdx } = updatedRange;
+    const rectCount = endIdx - startIdx + 1;
+
+    slotMesh.rectAttr.clearUpdateRanges();
+    slotMesh.rectAttr.addUpdateRange(startIdx * 4, rectCount * 4);
+    slotMesh.colorAttr.clearUpdateRanges();
+    slotMesh.colorAttr.addUpdateRange(startIdx * 3, rectCount * 3);
+  }
+
   slotMesh.rectAttr.needsUpdate = true;
   slotMesh.colorAttr.needsUpdate = true;
 }

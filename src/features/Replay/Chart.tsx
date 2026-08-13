@@ -26,6 +26,7 @@ import { currentSlotAtom } from "../../atoms.ts";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
 import { RevenueType } from "../../api/entities.ts";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
+import MiniMap from "./MiniMap/MiniMap.tsx";
 
 const PAN_THRESHOLD_PX = 0;
 // Zoom scales by exp(deltaY * intensity): symmetric (in/out are exact inverses)
@@ -78,7 +79,8 @@ export default function Chart({ startupTimeNs }: ChartProps) {
   const dragStartRef = useRef<{
     clientX: number;
     ts: number;
-    window: TsRange;
+    draggableWindow: TsRange;
+    startVisibleRange: TsRange;
   }>();
   const isPanningRef = useRef(false);
 
@@ -89,6 +91,7 @@ export default function Chart({ startupTimeNs }: ChartProps) {
     subscriberProps,
     explorableChartProps,
     markerLinesProps,
+    setUpMiniMapListeners,
   } = useMemo(() => {
     const setMarkerLinePosition = (pct: number) => {
       if (!containerRef.current) return;
@@ -207,32 +210,53 @@ export default function Chart({ startupTimeNs }: ChartProps) {
       return tsWindow[0] + fraction * (tsWindow[1] - tsWindow[0]);
     };
 
-    const startDrag = (trackEl: HTMLDivElement, clientX: number) => {
+    const startDrag = (
+      trackEl: HTMLDivElement,
+      draggingEl: HTMLDivElement,
+      clientX: number,
+      isWorld: boolean,
+    ) => {
       if (!rangeRef.current) return;
-      const window = rangeRef.current.visibleRangeMs;
+
+      const window = isWorld
+        ? ([0, rangeRef.current.worldEndMs] satisfies TsRange)
+        : rangeRef.current.visibleRangeMs;
+      const ts = clientXToTs(trackEl, clientX, window);
+
       dragStartRef.current = {
         clientX,
-        ts: clientXToTs(trackEl, clientX, window),
-        window: [...window],
+        ts,
+        draggableWindow: [...window],
+        startVisibleRange: [...rangeRef.current.visibleRangeMs],
       };
-      setIsPanning(trackEl, false);
+
+      setIsPanning(draggingEl, false);
       setSelectedMs(dragStartRef.current.ts);
       setIsLive(false);
     };
 
-    const moveDrag = (trackEl: HTMLDivElement, clientX: number) => {
+    const moveDrag = (
+      trackEl: HTMLDivElement,
+      draggingEl: HTMLDivElement,
+      clientX: number,
+      isWorld: boolean,
+    ) => {
       if (
         !dragStartRef.current ||
         Math.abs(clientX - dragStartRef.current.clientX) < PAN_THRESHOLD_PX
       ) {
         return;
       }
-      setIsPanning(trackEl, true);
-      const xTs = clientXToTs(trackEl, clientX, dragStartRef.current.window);
-      const diff = xTs - dragStartRef.current.ts;
+      setIsPanning(draggingEl, true);
+      const xTs = clientXToTs(
+        trackEl,
+        clientX,
+        dragStartRef.current.draggableWindow,
+      );
+      const diff = (isWorld ? -1 : 1) * (xTs - dragStartRef.current.ts);
       setVisibleRange([
-        dragStartRef.current.window[0] - diff,
-        dragStartRef.current.window[1] - diff,
+        dragStartRef.current.startVisibleRange[0] - diff,
+        dragStartRef.current.startVisibleRange[1] - diff,
       ]);
     };
 
@@ -268,21 +292,21 @@ export default function Chart({ startupTimeNs }: ChartProps) {
 
       const onMouseDown = (e: MouseEvent) => {
         if (e.button !== 0) return;
-        startDrag(trackEl, e.clientX);
+        startDrag(trackEl, trackEl, e.clientX, false);
         e.preventDefault();
       };
       const onMouseMove = (e: MouseEvent) => {
         if (!(e.buttons & 1)) return;
-        moveDrag(trackEl, e.clientX);
+        moveDrag(trackEl, trackEl, e.clientX, false);
       };
       const onTouchStart = (e: TouchEvent) => {
         if (e.touches.length !== 1) return;
-        startDrag(trackEl, e.touches[0].clientX);
+        startDrag(trackEl, trackEl, e.touches[0].clientX, false);
         e.preventDefault();
       };
       const onTouchMove = (e: TouchEvent) => {
         if (e.touches.length !== 1) return;
-        moveDrag(trackEl, e.touches[0].clientX);
+        moveDrag(trackEl, trackEl, e.touches[0].clientX, false);
         e.preventDefault();
       };
       const onWheel = (e: WheelEvent) => {
@@ -321,6 +345,69 @@ export default function Chart({ startupTimeNs }: ChartProps) {
       markerLinesClassName: styles.withMarkerLines,
     };
 
+    const setUpMiniMapListeners = (
+      trackEl: HTMLDivElement,
+      visibleRangeEl: HTMLDivElement,
+    ) => {
+      visibleRangeEl.style.cursor = "grab";
+
+      const endDrag = (e: Event) => {
+        dragStartRef.current = undefined;
+        setIsPanning(visibleRangeEl, false);
+        trackEl.style.cursor = "auto";
+      };
+
+      const onMouseDown = (e: MouseEvent) => {
+        if (e.button !== 0) return;
+        startDrag(trackEl, visibleRangeEl, e.clientX, true);
+        trackEl.style.cursor = "grabbing";
+        e.preventDefault();
+      };
+      const onMouseMove = (e: MouseEvent) => {
+        if (!(e.buttons & 1)) return;
+        moveDrag(trackEl, visibleRangeEl, e.clientX, true);
+      };
+      const onTouchStart = (e: TouchEvent) => {
+        if (e.touches.length !== 1) return;
+        startDrag(trackEl, visibleRangeEl, e.touches[0].clientX, true);
+        trackEl.style.cursor = "grabbing";
+        e.preventDefault();
+      };
+      const onTouchMove = (e: TouchEvent) => {
+        if (e.touches.length !== 1) return;
+        moveDrag(trackEl, visibleRangeEl, e.touches[0].clientX, true);
+        e.preventDefault();
+      };
+      const onWheel = (e: WheelEvent) => {
+        e.preventDefault();
+        zoom(trackEl, e.clientX, e.deltaY);
+      };
+
+      visibleRangeEl.addEventListener("mousedown", onMouseDown);
+      trackEl.addEventListener("mousemove", onMouseMove);
+      trackEl.addEventListener("mouseup", endDrag);
+      trackEl.addEventListener("mouseleave", endDrag);
+      visibleRangeEl.addEventListener("touchstart", onTouchStart, {
+        passive: false,
+      });
+      trackEl.addEventListener("touchmove", onTouchMove, { passive: false });
+      trackEl.addEventListener("touchend", endDrag);
+      trackEl.addEventListener("touchcancel", endDrag);
+      trackEl.addEventListener("wheel", onWheel, { passive: false });
+
+      return () => {
+        visibleRangeEl.removeEventListener("mousedown", onMouseDown);
+        trackEl.removeEventListener("mousemove", onMouseMove);
+        trackEl.removeEventListener("mouseup", endDrag);
+        trackEl.removeEventListener("mouseleave", endDrag);
+        visibleRangeEl.removeEventListener("touchstart", onTouchStart);
+        trackEl.removeEventListener("touchmove", onTouchMove);
+        trackEl.removeEventListener("touchend", endDrag);
+        trackEl.removeEventListener("touchcancel", endDrag);
+        trackEl.removeEventListener("wheel", onWheel);
+      };
+    };
+
     return {
       setSelectedMs,
       switchToLive,
@@ -329,6 +416,7 @@ export default function Chart({ startupTimeNs }: ChartProps) {
       subscriberProps,
       explorableChartProps,
       markerLinesProps,
+      setUpMiniMapListeners,
     };
   }, []);
 
@@ -385,9 +473,17 @@ export default function Chart({ startupTimeNs }: ChartProps) {
       className={clsx(styles.container, { [styles.live]: isLive })}
       ref={setContainerRefs}
     >
-      {!!width && (
+      {!!width && rangeRef.current && (
         <>
           <VisibleRange {...subscriberProps} />
+          <MiniMap
+            width={width}
+            {...subscriberProps}
+            {...markerLinesProps}
+            setUpMiniMapListeners={setUpMiniMapListeners}
+            selectedMs={selectedMsRef.current}
+            worldEndMs={rangeRef.current.worldEndMs}
+          />
           <Flex direction="column" gapY="4" position="relative">
             {!isLive && <ResetLiveButton onClick={switchToLive} />}
             <SlotsTrack
