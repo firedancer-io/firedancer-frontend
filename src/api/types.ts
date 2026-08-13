@@ -59,6 +59,7 @@ import type {
   schedulerCountsSchema,
   serverTimeNanosSchema,
   liveNetworkMetricsSchema,
+  systemLiveSchema,
   tileMetricsSchema,
   resetSlotSchema,
   storageSlotSchema,
@@ -126,6 +127,8 @@ export type EstimatedSlotDuration = z.infer<typeof estimatedSlotDurationSchema>;
 export type EstimatedTps = z.infer<typeof estimatedTpsSchema>;
 
 export type LiveNetworkMetrics = z.infer<typeof liveNetworkMetricsSchema>;
+
+export type SystemLive = z.infer<typeof systemLiveSchema>;
 
 export type LiveTxnWaterfall = z.infer<typeof liveTxnWaterfallSchema>;
 

@@ -65,6 +65,7 @@ import {
   estimatedSlotDurationAtom,
   estimatedTpsAtom,
   liveNetworkMetricsAtom,
+  liveSystemResourcesAtom,
   networkMetricsEmaIngressAtom,
   networkMetricsEmaEgressAtom,
   gossipHealthEmaAtom,
@@ -266,6 +267,7 @@ function useUpdateAtoms() {
   );
 
   const setLiveNetworkMetrics = useSetAtom(liveNetworkMetricsAtom);
+  const setLiveSystemResources = useSetAtom(liveSystemResourcesAtom);
   const setDbLiveNetworkMetrics = useThrottledCallbackIfVisible(
     (value?: LiveNetworkMetrics) => {
       setLiveNetworkMetrics(value);
@@ -676,6 +678,10 @@ function useUpdateAtoms() {
               setDbLiveNetworkMetrics(value);
               break;
             }
+            case "live_system_resources": {
+              setLiveSystemResources(value);
+              break;
+            }
             case "live_tile_metrics":
               setDbLiveTileMetrics(value);
               break;
@@ -837,6 +843,7 @@ function useUpdateAtoms() {
       addRepairSlots,
       setServerTimeNanos,
       setDbLiveNetworkMetrics,
+      setLiveSystemResources,
       setEpoch,
       setDbGossipNetworkStats,
       setDbGossipPeersSize,

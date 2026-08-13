@@ -154,6 +154,50 @@ export const liveNetworkMetricsSchema = z.object({
   egress_max_5m: z.number(),
 });
 
+export const systemCpuSchema = z.object({
+  online: z.boolean(),
+  numa_node: z.number(),
+  sibling_cpu: z.number().nullable(),
+  tile_idxs: z.number().array(),
+});
+
+export const systemLiveMemoryTileSchema = z.object({
+  tile_idx: z.number(),
+  bytes: z.number(),
+});
+
+export const systemLiveMemoryNodeSchema = z.object({
+  node: z.number(),
+  total_bytes: z.number(),
+  free_bytes: z.number(),
+  shared_bytes: z.number(),
+  tiles: systemLiveMemoryTileSchema.array(),
+});
+
+export const systemLiveMemorySchema = z.object({
+  available_bytes: z.number(),
+  free_bytes: z.number(),
+  nodes: systemLiveMemoryNodeSchema.array(),
+});
+
+export const systemDiskUsageSchema = z.object({
+  category: z.string(),
+  bytes: z.number(),
+});
+
+export const systemDiskMountSchema = z.object({
+  name: z.string(),
+  total_bytes: z.number(),
+  used_bytes: z.number(),
+  firedancer: systemDiskUsageSchema.array(),
+});
+
+export const systemLiveSchema = z.object({
+  cpus: systemCpuSchema.array(),
+  memory: systemLiveMemorySchema,
+  disk: systemDiskMountSchema.array(),
+});
+
 export const txnWaterfallInSchema = z.object({
   pack_cranked: z.number(),
   pack_retained: z.number(),
@@ -652,6 +696,10 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("live_network_metrics"),
     value: liveNetworkMetricsSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("live_system_resources"),
+    value: systemLiveSchema,
   }),
   summaryTopicSchema.extend({
     key: z.literal("live_txn_waterfall"),
