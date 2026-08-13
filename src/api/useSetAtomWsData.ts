@@ -98,6 +98,7 @@ import {
   slotCaughtUpAtom,
   healthAtom,
   accountsStatsAtom,
+  aggSlotsAtom,
 } from "./atoms";
 import { accountsNextCompactionAtom } from "../atoms";
 import {
@@ -536,6 +537,8 @@ function useUpdateAtoms() {
     [dbFlushSupermajorityPeersBuffers],
   );
 
+  const setAggSlots = useSetAtom(aggSlotsAtom);
+
   const updateAtoms = useCallback(
     (item: WsEntity) => {
       const { topic, key, value } = item;
@@ -763,6 +766,15 @@ function useUpdateAtoms() {
           }
           break;
         }
+        case "timeline": {
+          switch (key) {
+            case "query_agg_slots": {
+              setAggSlots(value);
+              break;
+            }
+          }
+          break;
+        }
         case "wait_for_supermajority": {
           switch (key) {
             case "stakes": {
@@ -793,58 +805,59 @@ function useUpdateAtoms() {
       }
     },
     [
-      addLiveShreds,
-      addRepairSlot,
-      addRepairSlots,
-      addSkippedClusterSlots,
       addToPeersBuffer,
-      addToSupermajorityPeersBuffers,
-      addTurbineSlot,
-      addTurbineSlots,
-      handleSlotUpdate,
-      setBlockEngine,
-      setBootProgress,
+      setSlotCaughtUp,
+      setDbLiveTileMetrics,
+      setLiveProgramCache,
+      setHealth,
+      setVersion,
       setCluster,
       setCommitHash,
-      setCompletedSlot,
+      setIdentityKey,
+      setVoteBalance,
+      setStartupTime,
+      setTiles,
+      setScheduleStrategy,
+      setIdentityBalance,
       setDbEstimatedSlotDuration,
       setDbEstimatedTps,
-      setDbGossipNetworkStats,
-      setDbGossipPeersSize,
-      setDbLiveNetworkMetrics,
       setDbLivePrimaryMetrics,
-      setDbLiveTileMetrics,
       setDbLiveTxnWaterfall,
       setDbTileTimer,
-      setEpoch,
-      setGossipPeersCells,
-      setGossipPeersRows,
-      setHealth,
-      setIdentityBalance,
-      setIdentityKey,
-      setLateVoteHistory,
-      setLiveProgramCache,
-      setOptimisticallyConfirmedSlot,
-      setResetSlot,
-      setRootSlot,
-      setScheduleStrategy,
-      setServerTimeNanos,
-      setSkipRate,
-      setSkippedSlots,
-      setSlotCaughtUp,
-      setSlotRankings,
-      setSlotResponse,
+      setBootProgress,
       setStartupProgress,
-      setStartupTime,
-      setStorageSlot,
-      setSupermajorityEpoch,
-      setTiles,
       setTpsHistory,
-      setVersion,
-      setVoteBalance,
-      setVoteDistance,
-      setVoteSlot,
       setVoteState,
+      setVoteDistance,
+      setSkipRate,
+      setCompletedSlot,
+      addTurbineSlot,
+      addRepairSlot,
+      setResetSlot,
+      setStorageSlot,
+      setVoteSlot,
+      setRootSlot,
+      setOptimisticallyConfirmedSlot,
+      addTurbineSlots,
+      addRepairSlots,
+      setServerTimeNanos,
+      setDbLiveNetworkMetrics,
+      setEpoch,
+      setDbGossipNetworkStats,
+      setDbGossipPeersSize,
+      setGossipPeersRows,
+      setGossipPeersCells,
+      setSkippedSlots,
+      addSkippedClusterSlots,
+      setSlotResponse,
+      handleSlotUpdate,
+      setSlotRankings,
+      addLiveShreds,
+      setLateVoteHistory,
+      setBlockEngine,
+      setAggSlots,
+      setSupermajorityEpoch,
+      addToSupermajorityPeersBuffers,
       setAccountsStats,
       updateAccountsNextCompactionCandidates,
     ],

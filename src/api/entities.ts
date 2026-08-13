@@ -23,6 +23,10 @@ const slotTopicSchema = z.object({
   topic: z.literal("slot"),
 });
 
+const timelineTopicSchema = z.object({
+  topic: z.literal("timeline"),
+});
+
 const blockEngineTopicSchema = z.object({
   topic: z.literal("block_engine"),
 });
@@ -1216,5 +1220,28 @@ export const accountsSchema = z.discriminatedUnion("key", [
   accountsTopicSchema.extend({
     key: z.literal("stats"),
     value: accountsStatsSchema,
+  }),
+]);
+
+export const aggGranularitySchema = z.enum([
+  "1s",
+  "30s",
+  "1m",
+  "30m",
+  "1h",
+  "1d",
+]);
+
+export const aggSlotsSchema = z.object({
+  granularity: aggGranularitySchema,
+  reference_ts_ns: z.coerce.bigint(),
+  start_slot: z.array(z.number().nullable()),
+  end_slot: z.array(z.number().nullable()),
+});
+
+export const timelineSchema = z.discriminatedUnion("key", [
+  timelineTopicSchema.extend({
+    key: z.literal("query_agg_slots"),
+    value: aggSlotsSchema,
   }),
 ]);

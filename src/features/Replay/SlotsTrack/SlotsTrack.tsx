@@ -1,9 +1,7 @@
 import { useAtomValue } from "jotai";
-import { useRef, useCallback, useLayoutEffect } from "react";
-import { replayEpochsAtom, replaySlotsAtom } from "../../../atoms.ts";
-import useReplaySlotsQuery from "./useReplaySlotsQuery.ts";
+import { useRef, useCallback, useLayoutEffect, useState } from "react";
+import useReplaySlotsQuery, { getGranularity } from "./useAggSlotsQuery.ts";
 import {
-  slotsThreshold,
   type ExplorableChartProps,
   type MarkerLinesProps,
   type RangeChangeSubscriberProps,
@@ -14,17 +12,17 @@ import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import {
-  drawEpochs,
   drawSlots,
   moveCamera,
   render,
   setUpRenderer,
   type RendererObj,
 } from "./utils.ts";
-import { MOCK_SLOT_DURATION_MS } from "./mockUtils.ts";
+import { aggSlotsAtom } from "../../../api/atoms.ts";
+import type { AggGranularity } from "../../../api/types.ts";
 
 const height = 150;
-const chartId = "slots-track";
+const subscriberId = "slots-track";
 
 interface SlotsTrackProps
   extends WebGlRemountProps,
@@ -44,8 +42,10 @@ function SlotsTrack({
   markerLinesClassName,
   width,
 }: SlotsTrackProps) {
-  const replaySlots = useAtomValue(replaySlotsAtom);
-  const replayEpochs = useAtomValue(replayEpochsAtom);
+  const [granularity, setGranularity] = useState<AggGranularity | undefined>(
+    undefined,
+  );
+  const aggSlots = useAtomValue(aggSlotsAtom);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<RendererObj | undefined>();
@@ -58,17 +58,20 @@ function SlotsTrack({
     remount,
   });
 
-  const replayQuery = useReplaySlotsQuery();
-  const query = replayQuery?.query;
+  const aggQuery = useReplaySlotsQuery();
 
   const throttledRelativeTsQuery = useThrottledCallback(
     (relativeVisibleRange: TsRange, relativeWorldRange: TsRange) => {
-      if (!query) return;
+      if (!aggQuery) return;
       const visibleRangeMs = relativeVisibleRange.map(getAbsoluteMs) as TsRange;
       const worldRangeMs = relativeWorldRange.map(getAbsoluteMs) as TsRange;
-      query(visibleRangeMs, worldRangeMs);
+      const queryGranularity = getGranularity(
+        visibleRangeMs[1] - visibleRangeMs[0],
+      );
+      aggQuery(visibleRangeMs, worldRangeMs, queryGranularity);
+      setGranularity(queryGranularity);
     },
-    100,
+    200,
     { leading: true, trailing: true },
   );
 
@@ -101,14 +104,14 @@ function SlotsTrack({
     rendererRef.current = rendererObj;
     containerRef.current?.replaceChildren(rendererObj.renderer.domElement);
 
-    subscribeRangeChange(chartId, onRangeChange);
+    subscribeRangeChange(subscriberId, onRangeChange);
     const cleanupExploreListeners = containerRef.current
       ? setUpExploreListeners(containerRef.current)
       : undefined;
 
     // cleanup
     return () => {
-      unsubscribeRangeChange(chartId);
+      unsubscribeRangeChange(subscriberId);
       rendererRef.current?.cleanUpRenderer();
       rendererRef.current = undefined;
       cleanupExploreListeners?.();
@@ -132,29 +135,32 @@ function SlotsTrack({
 
   // trigger draw
   useLayoutEffect(() => {
-    if (!rendererRef.current) return;
-    const visibleSpanMs =
-      rendererRef.current.camera.right - rendererRef.current.camera.left;
-
-    // determine draw granularity
-    if (visibleSpanMs > MOCK_SLOT_DURATION_MS * slotsThreshold) {
-      drawEpochs(rendererRef.current, replayEpochs, getRelativeMs);
-    } else {
-      drawSlots(rendererRef.current, replaySlots, getRelativeMs);
-    }
+    if (!rendererRef.current || !aggSlots) return;
+    drawSlots(rendererRef.current, aggSlots, getRelativeMs);
     render(rendererRef.current);
-  }, [replayEpochs, replaySlots, getRelativeMs]);
+  }, [aggSlots, getRelativeMs]);
 
   return (
     <div
-      ref={containerRef}
-      className={markerLinesClassName}
       style={{
         position: "relative",
         width: "100%",
         height: `${height}px`,
       }}
-    />
+    >
+      <div
+        ref={containerRef}
+        className={markerLinesClassName}
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+        }}
+      />
+      <div style={{ position: "absolute", top: 0, left: "5px" }}>
+        Bucket size: {granularity ?? "-"}
+      </div>
+    </div>
   );
 }
 

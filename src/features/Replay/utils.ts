@@ -1,20 +1,26 @@
 import { nsPerMs } from "../../consts.ts";
 import { DateTime } from "luxon";
 import { defaultWindowMs, type TsRange } from "./const.ts";
+import { clamp } from "../../uplotReact/utils.ts";
 
 export function getInitVisibleRange(
-  selectedTs: number | undefined,
-  worldEndTs: number,
+  selectedMs: number | undefined,
+  worldEndMs: number,
 ): TsRange {
-  if (selectedTs == null) {
+  if (selectedMs == null) {
     // show right most data
-    return [Math.max(0, worldEndTs - defaultWindowMs), worldEndTs];
+    return [Math.max(0, worldEndMs - defaultWindowMs), worldEndMs];
   }
 
   // try to center around selected ts
-  const endTs = Math.min(worldEndTs, selectedTs + defaultWindowMs / 2);
-  const startTs = Math.max(0, endTs - defaultWindowMs);
-  return [startTs, endTs];
+  return clamp(
+    defaultWindowMs,
+    selectedMs - defaultWindowMs / 2,
+    selectedMs + defaultWindowMs / 2,
+    worldEndMs,
+    0,
+    worldEndMs,
+  );
 }
 
 /**
@@ -42,3 +48,13 @@ export const formatAbsoluteTs = (absoluteMs: number) => {
     DateTime.DATETIME_MED_WITH_SECONDS,
   );
 };
+
+export function getNsStringFromMs(tsMs: number, round: "floor" | "ceil") {
+  const intMs = Math.trunc(tsMs);
+  // Keep at most 6 fractional digits of ms (ns resolution); round the rest.
+  const raw = (tsMs - intMs) * nsPerMs;
+  const fracNs = round === "floor" ? Math.floor(raw) : Math.ceil(raw);
+  const ns = BigInt(intMs) * 1_000_000n + BigInt(fracNs);
+
+  return ns.toString();
+}

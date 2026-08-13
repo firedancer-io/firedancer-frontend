@@ -2,7 +2,6 @@ import { Flex } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
 import { useRef, useState, useLayoutEffect, useMemo, useCallback } from "react";
 import { useMeasure } from "react-use";
-import { mockMaxSlotCompletedTsNsAtom } from "./SlotsTrack/mockUtils.ts";
 import styles from "./chart.module.css";
 import {
   type ExplorableChartProps,
@@ -23,12 +22,15 @@ import {
 import clsx from "clsx";
 import VisibleRange from "./VisibleRangeInfo.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
+import { currentSlotAtom } from "../../atoms.ts";
 
 const PAN_THRESHOLD_PX = 0;
 // Zoom scales by exp(deltaY * intensity): symmetric (in/out are exact inverses)
 // and proportional to scroll magnitude so trackpad and mouse feel consistent.
 const ZOOM_INTENSITY = 0.002;
 const MIN_VISIBLE_MS = 600;
+
+const DELAY_MS = 500;
 
 interface ChartProps {
   /**
@@ -43,7 +45,7 @@ interface ChartProps {
  * Informs subscribers of visible range changes.
  */
 export default function Chart({ startupTimeNs }: ChartProps) {
-  const mockWorldEndNs = useAtomValue(mockMaxSlotCompletedTsNsAtom);
+  const currentSlot = useAtomValue(currentSlotAtom);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [measureRef, { width }] = useMeasure<HTMLDivElement>();
   const setContainerRefs = useCallback(
@@ -173,12 +175,9 @@ export default function Chart({ startupTimeNs }: ChartProps) {
       return calcAbsoluteMs(rangeRef.current.referenceNs, relativeMs);
     };
 
-    const getRelativeMs = (absoluteMs: number) => {
+    const getRelativeMs = (absoluteNs: bigint) => {
       if (!rangeRef.current) return 0;
-      const referenceMs = Number(
-        rangeRef.current.referenceNs / BigInt(nsPerMs),
-      );
-      return absoluteMs - referenceMs;
+      return calcRelativeMs(rangeRef.current.referenceNs, absoluteNs);
     };
 
     const subscriberProps: RangeChangeSubscriberProps = {
@@ -332,41 +331,35 @@ export default function Chart({ startupTimeNs }: ChartProps) {
 
   // refresh range
   useLayoutEffect(() => {
-    if (mockWorldEndNs == null) return;
+    const newWorldEndNs =
+      BigInt(new Date().getTime() - DELAY_MS) * BigInt(nsPerMs);
+    const referenceNs = rangeRef.current?.referenceNs ?? startupTimeNs;
+    const newWorldEndMs = calcRelativeMs(referenceNs, newWorldEndNs);
+
     if (!rangeRef.current) {
       // initialize range
       const referenceNs = startupTimeNs;
-      const worldEndMs = calcRelativeMs(referenceNs, mockWorldEndNs);
       const visibleRangeMs = getInitVisibleRange(
         selectedMsRef.current,
-        worldEndMs,
+        newWorldEndMs,
       );
       rangeRef.current = {
         referenceNs,
-        worldEndMs,
+        worldEndMs: newWorldEndMs,
         visibleRangeMs,
       };
       broadcastRangeChange();
       return;
     }
 
-    const {
-      worldEndMs: prevWorldEndMs,
-      referenceNs,
-      visibleRangeMs,
-    } = rangeRef.current;
-    const newWorldEndMs = Math.max(
-      prevWorldEndMs,
-      calcRelativeMs(referenceNs, mockWorldEndNs),
-    );
-
+    const { worldEndMs: prevWorldEndMs, visibleRangeMs } = rangeRef.current;
     if (prevWorldEndMs === newWorldEndMs) return;
     rangeRef.current.worldEndMs = newWorldEndMs;
 
     if (!isLive) return;
     setVisibleRange(getUpdatedLiveVisibleRange(visibleRangeMs, newWorldEndMs));
   }, [
-    mockWorldEndNs,
+    currentSlot,
     startupTimeNs,
     isLive,
     setVisibleRange,

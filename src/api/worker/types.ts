@@ -8,6 +8,7 @@ import {
   slotSchema,
   summarySchema,
   supermajoritySchema,
+  timelineSchema,
 } from "../entities";
 import type { GossipHealthEma } from "../atoms";
 import type { LiveShredsData } from "./cache/shreds/types";
@@ -21,6 +22,7 @@ export const WsMessageSchema = z.discriminatedUnion("topic", [
   blockEngineSchema,
   supermajoritySchema,
   accountsSchema,
+  timelineSchema,
 ]);
 
 export type WsMessage = z.infer<typeof WsMessageSchema>;
@@ -45,7 +47,8 @@ export type WsEntity =
   | KvFrom<typeof slotSchema, "slot">
   | KvFrom<typeof blockEngineSchema, "block_engine">
   | KvFrom<typeof supermajoritySchema, "wait_for_supermajority">
-  | KvFrom<typeof accountsSchema, "accounts">;
+  | KvFrom<typeof accountsSchema, "accounts">
+  | KvFrom<typeof timelineSchema, "timeline">;
 
 export type FromWorkerMessage =
   | { type: "connecting" }

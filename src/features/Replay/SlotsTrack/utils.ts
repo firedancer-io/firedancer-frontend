@@ -12,10 +12,10 @@ import {
   updateSlotMeshCounts,
 } from "../../WebGl/webglUtils.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
-import type { ReplayEpoch, ReplaySlot } from "../../../atoms.ts";
-import type { RgbColor, TsRange } from "../const.ts";
-import { getEpochColor, getSlotColor } from "./mockUtils.ts";
+import { msBucketSizes, type TsRange } from "../const.ts";
+import { getSlotColor } from "./mockUtils.ts";
 import { isWebgl2SupportedAtom } from "../../WebGl/atoms.ts";
+import type { AggSlots } from "../../../api/types.ts";
 
 const store = getDefaultStore();
 
@@ -112,39 +112,24 @@ export function render(rendererObj: RendererObj) {
 
 export function drawSlots(
   rendererObj: RendererObj,
-  replaySlots: ReplaySlot[],
-  getRelativeMs: (absoluteMs: number) => number,
+  aggSlots: AggSlots,
+  getRelativeMs: (absoluteMs: bigint) => number,
 ) {
-  const data: { id: number; startTsMs: number; endTsMs: number }[] =
-    replaySlots.map((e) => ({
-      id: e.slot,
-      startTsMs: getRelativeMs(e.startTsMs),
-      endTsMs: getRelativeMs(e.endTsMs),
-    }));
+  const { granularity, reference_ts_ns, start_slot, end_slot } = aggSlots;
+  const referenceMs = getRelativeMs(reference_ts_ns);
+  const bucketMs = msBucketSizes[granularity];
 
-  return draw(rendererObj, data, getSlotColor);
-}
+  const data = start_slot.reduce<
+    [startSlot: number, endSlot: number, startMs: number][]
+  >((acc, startSlot, i) => {
+    const endSlot = end_slot[i];
+    if (startSlot != null && endSlot != null) {
+      const startMs = referenceMs + i * bucketMs;
+      acc.push([startSlot, endSlot, startMs]);
+    }
+    return acc;
+  }, []);
 
-export function drawEpochs(
-  rendererObj: RendererObj,
-  replayEpochs: ReplayEpoch[],
-  getRelativeMs: (absoluteMs: number) => number,
-) {
-  const data: { id: number; startTsMs: number; endTsMs: number }[] =
-    replayEpochs.map((e) => ({
-      id: e.epoch,
-      startTsMs: getRelativeMs(e.startTsMs),
-      endTsMs: getRelativeMs(e.endTsMs),
-    }));
-
-  return draw(rendererObj, data, getEpochColor);
-}
-
-export function draw(
-  rendererObj: RendererObj,
-  data: { id: number; startTsMs: number; endTsMs: number }[],
-  getColor: (id: number) => RgbColor,
-) {
   const { cameraReferenceMs, scene } = rendererObj;
 
   const mesh = rendererObj.prevMesh;
@@ -156,19 +141,21 @@ export function draw(
 
   ensureCapacity(mesh, data.length);
   for (let rectangleIdx = 0; rectangleIdx < data.length; rectangleIdx++) {
-    const { id, startTsMs, endTsMs } = data[rectangleIdx];
-    const centerX = (startTsMs + endTsMs) / 2;
+    const [startSlot, endSlot, startMs] = data[rectangleIdx];
+    const endMs = startMs + bucketMs;
+    const centerX = (startMs + endMs) / 2;
     const adjustedCenterX = centerX - mesh.referenceX;
-    const w = endTsMs - startTsMs;
-    const paddedWidth = Math.max(0, w - SLOT_PADDING_MS);
-    const color = getColor(id);
+    const w = endMs - startMs;
+    const width = Math.max(0, w - SLOT_PADDING_MS);
+    const centerSlot = Math.round((startSlot + endSlot) / 2);
+    const color = getSlotColor(centerSlot);
 
     addRectangleToMesh(
       mesh,
       rectangleIdx,
-      adjustedCenterX - paddedWidth / 2,
+      adjustedCenterX - width / 2,
       minY,
-      paddedWidth,
+      width,
       maxY - minY,
       color,
     );
