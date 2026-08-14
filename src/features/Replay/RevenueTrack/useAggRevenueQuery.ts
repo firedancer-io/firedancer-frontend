@@ -1,10 +1,11 @@
 import { useCallback } from "react";
 import { ascBucketGranularities, msBucketSizes, type TsRange } from "../const";
+import type { AggGranularity } from "../../../api/types";
 import { useWebSocketSend } from "../../../api/ws/utils";
 import { getNsStringFromMs } from "../utils";
-import type { AggGranularity } from "../../../api/types";
 
-export default function useAggSlotsQuery() {
+// TODO: throttle across revenue types
+export default function useAggRevenueQuery() {
   const wsSend = useWebSocketSend();
 
   return useCallback(
@@ -16,7 +17,7 @@ export default function useAggSlotsQuery() {
       const [visibleStart, visibleEnd] = visibleRangeMs;
       wsSend({
         topic: "timeline",
-        key: "query_agg_slots",
+        key: "query_agg_revenue",
         id: 32,
         params: {
           start_ns: getNsStringFromMs(visibleStart, "ceil"),

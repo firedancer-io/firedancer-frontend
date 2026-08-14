@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import useReplaySlotsQuery, { getGranularity } from "./useAggSlotsQuery.ts";
+import useAggSlotsQuery, { getGranularity } from "./useAggSlotsQuery.ts";
 import {
   type ExplorableChartProps,
   type MarkerLinesProps,
@@ -58,7 +58,7 @@ function SlotsTrack({
     remount,
   });
 
-  const aggQuery = useReplaySlotsQuery();
+  const aggQuery = useAggSlotsQuery();
 
   const throttledRelativeTsQuery = useThrottledCallback(
     (relativeVisibleRange: TsRange, relativeWorldRange: TsRange) => {

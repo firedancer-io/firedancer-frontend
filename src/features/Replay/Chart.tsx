@@ -23,7 +23,8 @@ import clsx from "clsx";
 import VisibleRange from "./VisibleRangeInfo.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
 import { currentSlotAtom } from "../../atoms.ts";
-import FeesTrack from "./FeesTrack/FeesTrack.tsx";
+import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
+import { RevenueType } from "../../api/entities.ts";
 
 const PAN_THRESHOLD_PX = 0;
 // Zoom scales by exp(deltaY * intensity): symmetric (in/out are exact inverses)
@@ -394,7 +395,8 @@ export default function Chart({ startupTimeNs }: ChartProps) {
               {...explorableChartProps}
               {...markerLinesProps}
             />
-            <FeesTrack
+            <RevenueTrack
+              type={RevenueType.TxnFees}
               width={width}
               {...subscriberProps}
               {...explorableChartProps}

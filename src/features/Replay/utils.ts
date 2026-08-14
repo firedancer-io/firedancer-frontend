@@ -58,3 +58,9 @@ export function getNsStringFromMs(tsMs: number, round: "floor" | "ceil") {
 
   return ns.toString();
 }
+
+export function getBigIntFrac(numerator: bigint, denominator: bigint) {
+  const digits = String(denominator).length;
+  const multiplier = 10 ** Math.min(digits, 15); // within max safe integer
+  return Number((numerator * BigInt(multiplier)) / denominator) / multiplier;
+}

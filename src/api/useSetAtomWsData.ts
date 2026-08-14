@@ -99,6 +99,7 @@ import {
   healthAtom,
   accountsStatsAtom,
   aggSlotsAtom,
+  aggRevenueAtom,
 } from "./atoms";
 import { accountsNextCompactionAtom } from "../atoms";
 import {
@@ -538,6 +539,7 @@ function useUpdateAtoms() {
   );
 
   const setAggSlots = useSetAtom(aggSlotsAtom);
+  const setAggRevenue = useSetAtom(aggRevenueAtom);
 
   const updateAtoms = useCallback(
     (item: WsEntity) => {
@@ -772,6 +774,10 @@ function useUpdateAtoms() {
               setAggSlots(value);
               break;
             }
+            case "query_agg_revenue": {
+              setAggRevenue(value);
+              break;
+            }
           }
           break;
         }
@@ -856,6 +862,7 @@ function useUpdateAtoms() {
       setLateVoteHistory,
       setBlockEngine,
       setAggSlots,
+      setAggRevenue,
       setSupermajorityEpoch,
       addToSupermajorityPeersBuffers,
       setAccountsStats,

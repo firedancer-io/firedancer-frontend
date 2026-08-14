@@ -12,9 +12,11 @@ import {
   updateSlotMeshCounts,
 } from "../../WebGl/webglUtils.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
-import type { ReplayFee } from "../../../atoms.ts";
-import type { RgbColor, TsRange } from "../const.ts";
+import { msBucketSizes, type RgbColor, type TsRange } from "../const.ts";
 import { isWebgl2SupportedAtom } from "../../WebGl/atoms.ts";
+import type { RevenueType } from "../../../api/entities.ts";
+import type { AggRevenue } from "../../../api/types.ts";
+import { getBigIntFrac } from "../utils.ts";
 
 const store = getDefaultStore();
 
@@ -108,11 +110,33 @@ export function render(rendererObj: RendererObj) {
   renderer.render(scene, camera);
 }
 
-export function drawFees(
+export function drawRevenue(
   rendererObj: RendererObj,
-  data: ReplayFee[],
-  getRelativeMs: (absoluteMs: number) => number,
+  type: RevenueType,
+  aggRevenue: AggRevenue,
+  getRelativeMs: (absoluteMs: bigint) => number,
 ) {
+  const { granularity, reference_ts_ns } = aggRevenue;
+  const referenceMs = getRelativeMs(reference_ts_ns);
+  const bucketMs = msBucketSizes[granularity];
+
+  // TODO: store max value on mesh
+  let maxValue = 0n;
+  const data = aggRevenue[type].reduce<[value: bigint, startMs: number][]>(
+    (acc, value, i) => {
+      if (value != null) {
+        const startMs = referenceMs + i * bucketMs;
+        acc.push([value, startMs]);
+
+        if (value > maxValue) {
+          maxValue = value;
+        }
+      }
+      return acc;
+    },
+    [],
+  );
+
   const { cameraReferenceMs, scene } = rendererObj;
 
   const mesh = rendererObj.prevMesh;
@@ -124,18 +148,15 @@ export function drawFees(
 
   ensureCapacity(mesh, data.length);
   for (let rectangleIdx = 0; rectangleIdx < data.length; rectangleIdx++) {
-    const { startTsMs, endTsMs, value } = data[rectangleIdx];
-    const centerX = (getRelativeMs(startTsMs) + getRelativeMs(endTsMs)) / 2;
-    const adjustedCenterX = centerX - mesh.referenceX;
-    const w = endTsMs - startTsMs;
-
+    const [value, startMs] = data[rectangleIdx];
+    const endMs = startMs + bucketMs;
     addRectangleToMesh(
       mesh,
       rectangleIdx,
-      adjustedCenterX - w / 2,
+      startMs - mesh.referenceX,
       minY,
-      w,
-      value / 100,
+      endMs - startMs,
+      getBigIntFrac(value, maxValue),
       FEE_COLOR,
     );
   }

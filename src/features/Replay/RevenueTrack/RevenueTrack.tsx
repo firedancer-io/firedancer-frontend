@@ -1,6 +1,5 @@
 import { useAtomValue } from "jotai";
-import { useRef, useCallback, useLayoutEffect } from "react";
-import { replayFeesAtom } from "../../../atoms.ts";
+import { useRef, useCallback, useLayoutEffect, useState } from "react";
 import {
   type ExplorableChartProps,
   type MarkerLinesProps,
@@ -12,26 +11,30 @@ import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import {
-  drawFees,
+  drawRevenue,
   moveCamera,
   render,
   setUpRenderer,
   type RendererObj,
 } from "./utils.ts";
-import useReplayFeesQuery from "./useReplayFeesQuery.ts";
+import useAggRevenueQuery, { getGranularity } from "./useAggRevenueQuery.ts";
+import type { RevenueType } from "../../../api/entities.ts";
+import { aggRevenueAtom } from "../../../api/atoms.ts";
+import type { AggGranularity } from "../../../api/types.ts";
 
 const height = 150;
-const chartId = "fees-track";
+const baseSubscriptionId = "revenue-track";
 
-interface FeesTrackProps
+interface RevenueTrackProps
   extends WebGlRemountProps,
     RangeChangeSubscriberProps,
     ExplorableChartProps,
     MarkerLinesProps {
   width: number;
+  type: RevenueType;
 }
 
-function FeesTrack({
+function RevenueTrack({
   remount,
   subscribeRangeChange,
   unsubscribeRangeChange,
@@ -40,8 +43,13 @@ function FeesTrack({
   setUpExploreListeners,
   markerLinesClassName,
   width,
-}: FeesTrackProps) {
-  const replayFees = useAtomValue(replayFeesAtom);
+  type,
+}: RevenueTrackProps) {
+  const subscriptionId = `${type}-${baseSubscriptionId}`;
+  const [granularity, setGranularity] = useState<AggGranularity | undefined>(
+    undefined,
+  );
+  const aggRevenue = useAtomValue(aggRevenueAtom);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<RendererObj | undefined>();
@@ -54,16 +62,20 @@ function FeesTrack({
     remount,
   });
 
-  const query = useReplayFeesQuery();
+  const aggQuery = useAggRevenueQuery();
 
   const throttledRelativeTsQuery = useThrottledCallback(
     (relativeVisibleRange: TsRange, relativeWorldRange: TsRange) => {
-      if (!query) return;
+      if (!aggQuery) return;
       const visibleRangeMs = relativeVisibleRange.map(getAbsoluteMs) as TsRange;
       const worldRangeMs = relativeWorldRange.map(getAbsoluteMs) as TsRange;
-      query(visibleRangeMs, worldRangeMs);
+      const queryGranularity = getGranularity(
+        visibleRangeMs[1] - visibleRangeMs[0],
+      );
+      aggQuery(visibleRangeMs, worldRangeMs, queryGranularity);
+      setGranularity(queryGranularity);
     },
-    100,
+    200,
     { leading: true, trailing: true },
   );
 
@@ -96,14 +108,14 @@ function FeesTrack({
     rendererRef.current = rendererObj;
     containerRef.current?.replaceChildren(rendererObj.renderer.domElement);
 
-    subscribeRangeChange(chartId, onRangeChange);
+    subscribeRangeChange(subscriptionId, onRangeChange);
     const cleanupExploreListeners = containerRef.current
       ? setUpExploreListeners(containerRef.current)
       : undefined;
 
     // cleanup
     return () => {
-      unsubscribeRangeChange(chartId);
+      unsubscribeRangeChange(subscriptionId);
       rendererRef.current?.cleanUpRenderer();
       rendererRef.current = undefined;
       cleanupExploreListeners?.();
@@ -116,6 +128,7 @@ function FeesTrack({
     setUpContextListeners,
     getWasContextLost,
     hasWidth,
+    subscriptionId,
   ]);
 
   // handle chart resize
@@ -127,23 +140,34 @@ function FeesTrack({
 
   // trigger draw
   useLayoutEffect(() => {
-    if (!rendererRef.current) return;
-    drawFees(rendererRef.current, replayFees, getRelativeMs);
+    if (!rendererRef.current || !aggRevenue) return;
+    drawRevenue(rendererRef.current, type, aggRevenue, getRelativeMs);
     render(rendererRef.current);
-  }, [replayFees, getRelativeMs]);
+  }, [aggRevenue, getRelativeMs, type]);
 
   return (
     <div
-      ref={containerRef}
-      className={markerLinesClassName}
       style={{
         position: "relative",
         width: "100%",
         height: `${height}px`,
       }}
-    />
+    >
+      <div
+        ref={containerRef}
+        className={markerLinesClassName}
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+        }}
+      />
+      <div style={{ position: "absolute", top: 0, left: "5px" }}>
+        Bucket size: {granularity ?? "-"}
+      </div>
+    </div>
   );
 }
 
-const FeesTrackWithRemount = withWebGlRemount(FeesTrack);
-export default FeesTrackWithRemount;
+const RevenueTrackWithRemount = withWebGlRemount(RevenueTrack);
+export default RevenueTrackWithRemount;

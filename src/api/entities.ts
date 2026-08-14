@@ -1239,9 +1239,30 @@ export const aggSlotsSchema = z.object({
   end_slot: z.array(z.number().nullable()),
 });
 
+export enum RevenueType {
+  TxnFees = "txn_fees",
+  PrioFees = "prio_fees",
+  Tips = "tips",
+}
+
+export const revenueTypeSchema = z.enum(["txn_fees", "prio_fees", "tips"]);
+
+export const aggRevenueSchema = z.object({
+  granularity: aggGranularitySchema,
+  reference_ts_ns: z.coerce.bigint(),
+  root_slot: z.number().nullable(),
+  [RevenueType.TxnFees]: z.array(z.coerce.bigint().nullable()),
+  [RevenueType.PrioFees]: z.array(z.coerce.bigint().nullable()),
+  [RevenueType.Tips]: z.array(z.coerce.bigint().nullable()),
+});
+
 export const timelineSchema = z.discriminatedUnion("key", [
   timelineTopicSchema.extend({
     key: z.literal("query_agg_slots"),
     value: aggSlotsSchema,
+  }),
+  timelineTopicSchema.extend({
+    key: z.literal("query_agg_revenue"),
+    value: aggRevenueSchema,
   }),
 ]);
