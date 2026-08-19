@@ -69,7 +69,7 @@ function Root() {
 
 function OutletContainer() {
   const isSchedule = useCurrentRoute() === "Schedule";
-  const { setIsNavCollapsed, isNarrowScreen, occupyRowWidth, blurBackground } =
+  const { setIsNavCollapsed, isNarrowScreen, occupyRowWidth } =
     useSlotsNavigation();
 
   useEffect(() => {
@@ -90,7 +90,7 @@ function OutletContainer() {
       }
     >
       <Outlet />
-      {blurBackground && <NavBlur />}
+      <NavBlur />
     </Box>
   );
 }

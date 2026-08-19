@@ -42,7 +42,7 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
     `(max-width: ${identityIconOnlyWidth})`,
   );
 
-  const { isNarrowScreen, blurBackground, showNav, showOnlyEpochBar } =
+  const { noNav, isNarrowScreen, showNav, showOnlyEpochBar } =
     useSlotsNavigation();
 
   const useExtraNarrowGap = !showNav && isXNarrow;
@@ -74,7 +74,7 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
             ml={`${-epochThumbPadding}px`}
             pl={`${epochThumbPadding}px`}
           >
-            {!isStartup && isNarrowScreen && !showNav && (
+            {!noNav && !isStartup && isNarrowScreen && !showNav && (
               <NavCollapseToggle isLarge />
             )}
             <Logo />
@@ -130,11 +130,11 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
               </Flex>
             </Flex>
 
-            {blurBackground && <NavBlur />}
+            <NavBlur />
           </Flex>
         </Flex>
 
-        {!isStartup && !isNarrowScreen && (
+        {!noNav && !isStartup && !isNarrowScreen && (
           <div
             style={{
               position: "relative",

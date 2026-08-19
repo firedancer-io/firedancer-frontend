@@ -38,15 +38,18 @@ const top = clusterIndicatorHeight + headerHeight;
 export default function Navigation() {
   const isNarrow = useMedia(narrowNavMedia);
 
-  const { showNav, occupyRowWidth, showOnlyEpochBar } = useSlotsNavigation();
-
-  // padding to make sure epoch thumb is visible,
-  // as it is positioned slightly outside of the container
-  const thumbPadding = showNav ? epochThumbPadding : 0;
+  const { noNav, showNav, occupyRowWidth, showOnlyEpochBar } =
+    useSlotsNavigation();
 
   const width = useMemo(() => {
     return showOnlyEpochBar ? slotNavWithoutListWidth : slotNavWidth;
   }, [showOnlyEpochBar]);
+
+  if (noNav) return;
+
+  // padding to make sure epoch thumb is visible,
+  // as it is positioned slightly outside of the container
+  const thumbPadding = showNav ? epochThumbPadding : 0;
 
   return (
     <>
