@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SlotDetailsRouteImport } from './routes/slotDetails'
+import { Route as ReplayRouteImport } from './routes/replay'
 import { Route as LeaderScheduleRouteImport } from './routes/leaderSchedule'
 import { Route as GossipRouteImport } from './routes/gossip'
 import { Route as AccountsRouteImport } from './routes/accounts'
@@ -19,6 +20,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const SlotDetailsRoute = SlotDetailsRouteImport.update({
   id: '/slotDetails',
   path: '/slotDetails',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReplayRoute = ReplayRouteImport.update({
+  id: '/replay',
+  path: '/replay',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaderScheduleRoute = LeaderScheduleRouteImport.update({
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/accounts': typeof AccountsRoute
   '/gossip': typeof GossipRoute
   '/leaderSchedule': typeof LeaderScheduleRoute
+  '/replay': typeof ReplayRoute
   '/slotDetails': typeof SlotDetailsRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/accounts': typeof AccountsRoute
   '/gossip': typeof GossipRoute
   '/leaderSchedule': typeof LeaderScheduleRoute
+  '/replay': typeof ReplayRoute
   '/slotDetails': typeof SlotDetailsRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/accounts': typeof AccountsRoute
   '/gossip': typeof GossipRoute
   '/leaderSchedule': typeof LeaderScheduleRoute
+  '/replay': typeof ReplayRoute
   '/slotDetails': typeof SlotDetailsRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/gossip'
     | '/leaderSchedule'
+    | '/replay'
     | '/slotDetails'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/gossip'
     | '/leaderSchedule'
+    | '/replay'
     | '/slotDetails'
   id:
     | '__root__'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/gossip'
     | '/leaderSchedule'
+    | '/replay'
     | '/slotDetails'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +117,7 @@ export interface RootRouteChildren {
   AccountsRoute: typeof AccountsRoute
   GossipRoute: typeof GossipRoute
   LeaderScheduleRoute: typeof LeaderScheduleRoute
+  ReplayRoute: typeof ReplayRoute
   SlotDetailsRoute: typeof SlotDetailsRoute
 }
 
@@ -115,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/slotDetails'
       fullPath: '/slotDetails'
       preLoaderRoute: typeof SlotDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/replay': {
+      id: '/replay'
+      path: '/replay'
+      fullPath: '/replay'
+      preLoaderRoute: typeof ReplayRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leaderSchedule': {
@@ -161,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountsRoute: AccountsRoute,
   GossipRoute: GossipRoute,
   LeaderScheduleRoute: LeaderScheduleRoute,
+  ReplayRoute: ReplayRoute,
   SlotDetailsRoute: SlotDetailsRoute,
 }
 export const routeTree = rootRouteImport
