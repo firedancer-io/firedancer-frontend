@@ -2,7 +2,8 @@ import { maxZIndex } from "../../consts";
 import { useSlotsNavigation } from "../../hooks/useSlotsNavigation";
 
 export default function NavBlur() {
-  const { setIsNavCollapsed } = useSlotsNavigation();
+  const { setIsNavCollapsed, blurBackground } = useSlotsNavigation();
+  if (!blurBackground) return null;
 
   return (
     <div
