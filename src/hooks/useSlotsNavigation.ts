@@ -7,17 +7,22 @@ import { useMedia } from "react-use";
 export function useSlotsNavigation() {
   const isNarrowScreen = useMedia(narrowNavMedia);
   const [isNavCollapsed, setIsNavCollapsed] = useAtom(_isNavCollapsedAtom);
-  const isLeaderSchedule = useCurrentRoute() === "Schedule";
+  const currentRoute = useCurrentRoute();
 
-  const showNav = isLeaderSchedule || !isNavCollapsed;
-  const showOnlyEpochBar = isLeaderSchedule;
+  const noNav = currentRoute === "Replay";
+  const showOnlyEpochBar = currentRoute === "Schedule";
+
+  const showNav = !noNav && (showOnlyEpochBar || !isNavCollapsed);
 
   return {
+    noNav,
     isNarrowScreen,
     showNav,
     setIsNavCollapsed,
     showOnlyEpochBar,
-    blurBackground: isNarrowScreen && !isNavCollapsed && !showOnlyEpochBar,
-    occupyRowWidth: showOnlyEpochBar || (!isNarrowScreen && !isNavCollapsed),
+    blurBackground:
+      !noNav && isNarrowScreen && !isNavCollapsed && !showOnlyEpochBar,
+    occupyRowWidth:
+      !noNav && (showOnlyEpochBar || (!isNarrowScreen && !isNavCollapsed)),
   };
 }
