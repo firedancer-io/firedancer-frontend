@@ -6,13 +6,15 @@ export type RouteLabel =
   | "Schedule"
   | "Gossip"
   | "Slot Details"
-  | "Accounts";
+  | "Accounts"
+  | "Replay";
 export const RouteLabelToPath: Record<RouteLabel, string> = {
   Overview: "/",
   "Slot Details": "/slotDetails",
   Schedule: "/leaderSchedule",
   Gossip: "/gossip",
   Accounts: "/accounts",
+  Replay: "/replay",
 };
 
 export function useCurrentRoute() {
