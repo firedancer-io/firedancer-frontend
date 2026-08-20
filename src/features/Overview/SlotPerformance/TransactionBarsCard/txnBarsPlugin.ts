@@ -6,10 +6,10 @@ import { pointWithin, Quadtree } from "./quadTree";
 import type { MutableRefObject } from "react";
 import type { SlotTransactions } from "../../../../api/types";
 import { getDefaultStore } from "jotai";
-import { logRatio } from "../../../../mathUtils";
+import { clampNonZeroValue, logRatio } from "../../../../mathUtils";
 import { slotDurationAtom } from "../../../../atoms";
 import { barCountAtom } from "./atoms";
-import { FilterEnum, stateColors, TxnState } from "./consts";
+import { FilterEnum, revenueLogBase, stateColors, TxnState } from "./consts";
 import {
   getMaxFees,
   getMaxTips,
@@ -33,6 +33,12 @@ let stateSeriesHgt = 0;
 
 const outOfFocusBrightness = 0.5;
 const focusBrightness = 1.3;
+
+function getRevenueRatio(maxValue: bigint, value: bigint) {
+  if (maxValue === 0n) return 0;
+  const ratio = 1 / logRatio(Number(maxValue), Number(value), revenueLogBase);
+  return clampNonZeroValue(ratio, 0.1, 0.9);
+}
 
 export let focusedErrorCode: number;
 export function highlightErrorCode(errorCode: number) {
@@ -330,9 +336,7 @@ export function txnBarsPlugin(
           transactionsRef.current.txn_priority_fee[txnIdx] +
           transactionsRef.current.txn_transaction_fee[txnIdx];
         if (fees !== undefined) {
-          let ratio = 1 / logRatio(Number(maxFees), Number(fees), 1.7);
-          if (ratio > 0.9) ratio = 0.9;
-          if (ratio < 0.1) ratio = 0.1;
+          const ratio = getRevenueRatio(maxFees, fees);
           const ratioHgt = hgt * ratio;
           const diff = hgt - ratioHgt;
           hgt -= diff;
@@ -343,10 +347,7 @@ export function txnBarsPlugin(
       if (value === FilterEnum.TIPS) {
         const tips = transactionsRef.current?.txn_tips[txnIdx];
         if (tips !== undefined) {
-          let ratio = 1 / logRatio(Number(maxTips), Number(tips), 1.7);
-
-          if (ratio > 0.9) ratio = 0.9;
-          if (ratio < 0.1) ratio = 0.1;
+          const ratio = getRevenueRatio(maxTips, tips);
           const ratioHgt = hgt * ratio;
           const diff = hgt - ratioHgt;
           hgt -= diff;
