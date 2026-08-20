@@ -10,6 +10,8 @@ import {
 } from "../../../colors";
 import { convertToWebGlColor } from "../../WebGl/webglUtils";
 
+export const SHREDS_OPACITY = 0.8;
+
 export const colors = {
   skipped: convertToWebGlColor(shredSkippedColor),
   repairRequested: convertToWebGlColor(shredRepairRequestedColor),

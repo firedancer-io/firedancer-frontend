@@ -1,8 +1,10 @@
 import { clamp } from "lodash";
+import { nsPerMs } from "./consts";
 
 export function logRatio(a: number, b: number, base = Math.E) {
   if (b === 0) return Infinity;
   if (a === 0) return 0;
+
   if (a <= 0 || b <= 0) {
     console.error(a, b);
     console.error("Logarithms are only defined for positive numbers.");
@@ -48,4 +50,14 @@ export function safeDivide(a: number, b: number) {
 export function clampNonZeroValue(value: number, lower: number, upper: number) {
   if (value === 0) return 0;
   return clamp(value, lower, upper);
+}
+
+/**
+ * Convert ms timestamp to ns timestamp while keeping as much
+ * precision as possible
+ */
+export function convertToNsTimestamp(msTimestamp: number): bigint {
+  const wholeMs = Math.trunc(msTimestamp);
+  const fracNs = Math.round((msTimestamp - wholeMs) * nsPerMs);
+  return BigInt(wholeMs) * BigInt(nsPerMs) + BigInt(fracNs);
 }

@@ -82,6 +82,8 @@ import type {
   voteCommissionSchema,
   isAlpenglowSchema,
   finalizedSlotSchema,
+  aggGranularitySchema,
+  aggRevenueSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -227,3 +229,6 @@ export type AccountsStats = z.infer<typeof accountsStatsSchema>;
 export type AccountsPartition = z.infer<typeof accountsPartitionSchema>;
 export type PartitionTier = z.infer<typeof partitionTierSchema>;
 export type CompactionState = z.infer<typeof compactionStateSchema>;
+
+export type AggGranularity = z.infer<typeof aggGranularitySchema>;
+export type AggRevenue = z.infer<typeof aggRevenueSchema>;

@@ -1,4 +1,5 @@
-import type { SlotsShreds, TsRange } from "./types";
+import type { TsRange } from "../WebGl/webglUtils";
+import type { SlotsShreds } from "./types";
 
 /**
  * Get slots in draw order

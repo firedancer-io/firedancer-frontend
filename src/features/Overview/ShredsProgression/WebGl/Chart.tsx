@@ -6,7 +6,7 @@ import type { FlexProps } from "@radix-ui/themes";
 import { useShredsChartScale } from "../useShredsChartScale";
 import { useSetAtom } from "jotai";
 import { minDirtySlotByChartAtom } from "../../../Shreds/atoms";
-import type { RendererObj, TsRange } from "../../../Shreds/types";
+import type { RendererObj } from "../../../Shreds/types";
 import { draw } from "../../../Shreds/WebGl/drawUtils";
 import { setUpRenderer } from "../../../Shreds/WebGl/setupUtils";
 import ShredsSlotLabels from "../ShredsSlotLabels";
@@ -16,6 +16,7 @@ import withWebGlRemount, {
   type WebGlRemountProps,
 } from "../../../WebGl/withWebGlRemount";
 import { useWebGlEventHandlers } from "../../../WebGl/useWebGlEventHandlers";
+import type { TsRange } from "../../../WebGl/webglUtils";
 
 const REDRAW_INTERVAL_MS = 15;
 
