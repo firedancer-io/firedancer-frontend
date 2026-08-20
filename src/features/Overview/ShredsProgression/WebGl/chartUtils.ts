@@ -15,7 +15,11 @@ import {
 } from "../atoms";
 import { shredEventDescPriorities } from "../const";
 import { updateLabels } from "../shredsProgressionPlugin";
-import type { SlotMesh, WebglResources } from "../../../WebGl/webglUtils";
+import type {
+  SlotMesh,
+  TsRange,
+  WebglResources,
+} from "../../../WebGl/webglUtils";
 import {
   createSlotMesh,
   updateSlotMeshCounts,
@@ -48,6 +52,7 @@ import { isWebgl2SupportedAtom } from "../../../WebGl/atoms";
 
 const store = getDefaultStore();
 
+const SHREDS_OPACITY = 0.8;
 const SKIPPED_SLOT_DOT_DURATION_MS = 10;
 
 const tempEventPositions = new Map<
@@ -112,7 +117,7 @@ export function setUpRenderer(
 
     const meshes = new Map<number, SlotMesh>();
     const availableMeshes: SlotMesh[] = [];
-    const resources = createWebglResources();
+    const resources = createWebglResources(SHREDS_OPACITY);
     renderer.render(scene, camera);
     const clearContextListeners = setUpContextListeners(renderer.domElement);
 
@@ -336,8 +341,6 @@ function updateVisibleXRange(
   camera.updateProjectionMatrix();
   return true;
 }
-
-export type TsRange = [startTs: number, endTs: number];
 
 interface AddEventsForRowArgs {
   tempEventPositions: Map<

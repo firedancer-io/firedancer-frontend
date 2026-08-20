@@ -1,7 +1,12 @@
 import * as THREE from "three";
 import { SHRED_EVENT_TYPES_COUNT } from "../../api/entities";
+import type { ContextHelpers } from "./useWebGlEventHandlers";
+import { isWebgl2SupportedAtom } from "./atoms";
+import { getDefaultStore } from "jotai";
 
-const SHREDS_OPACITY = 0.8;
+export type TsRange = [startTs: number, endTs: number];
+export type NsTsRange = [startTs: bigint, endTs: bigint];
+export type RgbColor = [r: number, g: number, b: number];
 
 export type SlotMesh = {
   mesh: THREE.Mesh;
@@ -11,6 +16,8 @@ export type SlotMesh = {
   colorAttr: THREE.InstancedBufferAttribute;
   capacity: number;
   count: number;
+  /** optionally store mesh positions relative to referenceX. This allows GPU to see small coordinates */
+  referenceX: number | undefined;
 };
 
 const vertexShader = /* glsl */ `
@@ -41,6 +48,52 @@ void main() {
 }
 `;
 
+const store = getDefaultStore();
+
+export function createRenderer(
+  canvasWidth: number,
+  canvasHeight: number,
+  maxWebGlPixelRatio: number,
+  setUpContextListeners: ContextHelpers["setUpContextListeners"],
+  getWasContextLost: ContextHelpers["getWasContextLost"],
+) {
+  try {
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio, maxWebGlPixelRatio),
+    );
+    renderer.setSize(canvasWidth, canvasHeight);
+    renderer.setClearColor(0x000000, 0);
+
+    const clearContextListeners = setUpContextListeners(renderer.domElement);
+    const cleanUpRenderer = () => {
+      // If context was lost at some point, its GPU objects are already gone so skip objects disposal,
+      // to prevent warnings e.g. WebGL: INVALID_OPERATION: delete: object does not belong to this context
+      // Three doesn't restore GPU objects for restored contexts unless there's a render.
+      // Remount on restore to reset the context listeners state
+      if (!getWasContextLost()) {
+        renderer.dispose();
+      }
+
+      // release currently live context (may be the restored one)
+      // make sure context listeners are removed beforehand
+      clearContextListeners();
+      if (!renderer.getContext().isContextLost()) {
+        renderer.forceContextLoss();
+      }
+    };
+
+    return {
+      renderer,
+      cleanUpRenderer,
+    };
+  } catch {
+    // context creation can still fail despite the probe (e.g. too many live
+    // contexts, driver crash). Mark as unsupported to trigger fallback to canvas chart
+    store.set(isWebgl2SupportedAtom, false);
+  }
+}
+
 /**
  * Resources shared by all slot meshes of a single chart / renderer.
  * Compiled shaders / uploaded buffers are bound to a specific GL
@@ -65,22 +118,22 @@ function createUnitQuad() {
   return geometry;
 }
 
-function createSharedMaterial() {
+function createSharedMaterial(opacity: number) {
   return new THREE.RawShaderMaterial({
     vertexShader,
     fragmentShader,
     side: THREE.FrontSide,
     transparent: true,
     uniforms: {
-      uOpacity: { value: SHREDS_OPACITY },
+      uOpacity: { value: opacity },
     },
   });
 }
 
-export function createWebglResources(): WebglResources {
+export function createWebglResources(opacity: number): WebglResources {
   return {
     unitQuad: createUnitQuad(),
-    sharedMaterial: createSharedMaterial(),
+    sharedMaterial: createSharedMaterial(opacity),
   };
 }
 
@@ -128,6 +181,7 @@ export function createSlotMesh(resources: WebglResources): SlotMesh {
     colorAttr,
     capacity: INITIAL_CAPACITY,
     count: 0,
+    referenceX: undefined,
   };
 }
 
@@ -169,7 +223,7 @@ export function addRectangleToMesh(
   y: number,
   w: number,
   h: number,
-  color: [r: number, g: number, b: number],
+  color: RgbColor,
 ) {
   const ri = rectangleIdx * 4;
   slotMesh.rectArray[ri] = x;
@@ -198,9 +252,7 @@ const tmpRgb = { r: 0, g: 0, b: 0 };
  * Convert hex color to sRGB values for the shader, instead of
  * Three.js's default linear working color space
  */
-export function convertToWebGlColor(
-  hex: string,
-): [r: number, g: number, b: number] {
+export function convertToWebGlColor(hex: string): RgbColor {
   tmpColor.setHex(parseInt(hex.replace("#", ""), 16), THREE.SRGBColorSpace);
   tmpColor.getRGB(tmpRgb, THREE.SRGBColorSpace);
   return [tmpRgb.r, tmpRgb.g, tmpRgb.b];
