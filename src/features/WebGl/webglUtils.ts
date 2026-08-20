@@ -1,9 +1,14 @@
 import * as THREE from "three";
 import { SHRED_EVENT_TYPES_COUNT } from "../../api/entities";
+import type { ContextHelpers } from "./useWebGlEventHandlers";
+import { isWebgl2SupportedAtom } from "./atoms";
+import { getDefaultStore } from "jotai";
 
-const SHREDS_OPACITY = 0.8;
+export type TsRange = [startTs: number, endTs: number];
+export type NsTsRange = [startTs: bigint, endTs: bigint];
+export type RgbColor = [r: number, g: number, b: number];
 
-export type SlotMesh = {
+export type RectMesh = {
   mesh: THREE.Mesh;
   rectArray: Float32Array;
   colorArray: Float32Array;
@@ -11,6 +16,8 @@ export type SlotMesh = {
   colorAttr: THREE.InstancedBufferAttribute;
   capacity: number;
   count: number;
+  /** optionally store mesh positions relative to referenceX. This allows GPU to see small coordinates */
+  referenceX: number | undefined;
 };
 
 const vertexShader = /* glsl */ `
@@ -41,6 +48,52 @@ void main() {
 }
 `;
 
+const store = getDefaultStore();
+
+export function createRenderer(
+  canvasWidth: number,
+  canvasHeight: number,
+  maxWebGlPixelRatio: number,
+  setUpContextListeners: ContextHelpers["setUpContextListeners"],
+  getWasContextLost: ContextHelpers["getWasContextLost"],
+) {
+  try {
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio, maxWebGlPixelRatio),
+    );
+    renderer.setSize(canvasWidth, canvasHeight);
+    renderer.setClearColor(0x000000, 0);
+
+    const clearContextListeners = setUpContextListeners(renderer.domElement);
+    const cleanUpRenderer = () => {
+      // If context was lost at some point, its GPU objects are already gone so skip objects disposal,
+      // to prevent warnings e.g. WebGL: INVALID_OPERATION: delete: object does not belong to this context
+      // Three doesn't restore GPU objects for restored contexts unless there's a render.
+      // Remount on restore to reset the context listeners state
+      if (!getWasContextLost()) {
+        renderer.dispose();
+      }
+
+      // release currently live context (may be the restored one)
+      // make sure context listeners are removed beforehand
+      clearContextListeners();
+      if (!renderer.getContext().isContextLost()) {
+        renderer.forceContextLoss();
+      }
+    };
+
+    return {
+      renderer,
+      cleanUpRenderer,
+    };
+  } catch {
+    // context creation can still fail despite the probe (e.g. too many live
+    // contexts, driver crash). Mark as unsupported to trigger fallback to canvas chart
+    store.set(isWebgl2SupportedAtom, false);
+  }
+}
+
 /**
  * Resources shared by all slot meshes of a single chart / renderer.
  * Compiled shaders / uploaded buffers are bound to a specific GL
@@ -65,22 +118,22 @@ function createUnitQuad() {
   return geometry;
 }
 
-function createSharedMaterial() {
+function createSharedMaterial(opacity: number) {
   return new THREE.RawShaderMaterial({
     vertexShader,
     fragmentShader,
     side: THREE.FrontSide,
     transparent: true,
     uniforms: {
-      uOpacity: { value: SHREDS_OPACITY },
+      uOpacity: { value: opacity },
     },
   });
 }
 
-export function createWebglResources(): WebglResources {
+export function createWebglResources(opacity: number): WebglResources {
   return {
     unitQuad: createUnitQuad(),
-    sharedMaterial: createSharedMaterial(),
+    sharedMaterial: createSharedMaterial(opacity),
   };
 }
 
@@ -93,10 +146,9 @@ export function disposeWebglResources(resources: WebglResources) {
 const INITIAL_CAPACITY = 700 * (SHRED_EVENT_TYPES_COUNT - 1);
 
 /**
- * Create one mesh per slot. That way, we can easily add / delete slots without updating
- * unchanged slots.
+ * Create a mesh to draw 2D rectangles
  */
-export function createSlotMesh(resources: WebglResources): SlotMesh {
+export function createRectMesh(resources: WebglResources): RectMesh {
   const rectArray = new Float32Array(INITIAL_CAPACITY * 4);
   const colorArray = new Float32Array(INITIAL_CAPACITY * 3);
 
@@ -128,34 +180,35 @@ export function createSlotMesh(resources: WebglResources): SlotMesh {
     colorAttr,
     capacity: INITIAL_CAPACITY,
     count: 0,
+    referenceX: undefined,
   };
 }
 
 /**
  * Bump up capacity for slot as needed
  */
-export function ensureCapacity(slotMesh: SlotMesh, needed: number) {
-  if (needed <= slotMesh.capacity) return;
+export function ensureCapacity(rectMesh: RectMesh, needed: number) {
+  if (needed <= rectMesh.capacity) return;
 
-  let newCapacity = slotMesh.capacity || INITIAL_CAPACITY;
+  let newCapacity = rectMesh.capacity || INITIAL_CAPACITY;
   while (newCapacity < needed) newCapacity *= 2;
 
   const rectArray = new Float32Array(newCapacity * 4);
   const colorArray = new Float32Array(newCapacity * 3);
-  rectArray.set(slotMesh.rectArray);
-  colorArray.set(slotMesh.colorArray);
+  rectArray.set(rectMesh.rectArray);
+  colorArray.set(rectMesh.colorArray);
 
-  slotMesh.rectArray = rectArray;
-  slotMesh.colorArray = colorArray;
-  slotMesh.rectAttr = new THREE.InstancedBufferAttribute(rectArray, 4);
-  slotMesh.colorAttr = new THREE.InstancedBufferAttribute(colorArray, 3);
-  slotMesh.rectAttr.setUsage(THREE.DynamicDrawUsage);
-  slotMesh.colorAttr.setUsage(THREE.DynamicDrawUsage);
-  slotMesh.capacity = newCapacity;
+  rectMesh.rectArray = rectArray;
+  rectMesh.colorArray = colorArray;
+  rectMesh.rectAttr = new THREE.InstancedBufferAttribute(rectArray, 4);
+  rectMesh.colorAttr = new THREE.InstancedBufferAttribute(colorArray, 3);
+  rectMesh.rectAttr.setUsage(THREE.DynamicDrawUsage);
+  rectMesh.colorAttr.setUsage(THREE.DynamicDrawUsage);
+  rectMesh.capacity = newCapacity;
 
-  const geometry = slotMesh.mesh.geometry as THREE.InstancedBufferGeometry;
-  geometry.setAttribute("instanceRect", slotMesh.rectAttr);
-  geometry.setAttribute("instanceColor", slotMesh.colorAttr);
+  const geometry = rectMesh.mesh.geometry as THREE.InstancedBufferGeometry;
+  geometry.setAttribute("instanceRect", rectMesh.rectAttr);
+  geometry.setAttribute("instanceColor", rectMesh.colorAttr);
   // clear private field _maxInstanceCount for recomputation,
   // instead of allocating a new geometry
   // @ts-expect-error
@@ -163,32 +216,32 @@ export function ensureCapacity(slotMesh: SlotMesh, needed: number) {
 }
 
 export function addRectangleToMesh(
-  slotMesh: SlotMesh,
+  rectMesh: RectMesh,
   rectangleIdx: number,
   x: number,
   y: number,
   w: number,
   h: number,
-  color: [r: number, g: number, b: number],
+  color: RgbColor,
 ) {
   const ri = rectangleIdx * 4;
-  slotMesh.rectArray[ri] = x;
-  slotMesh.rectArray[ri + 1] = y;
-  slotMesh.rectArray[ri + 2] = w;
-  slotMesh.rectArray[ri + 3] = h;
+  rectMesh.rectArray[ri] = x;
+  rectMesh.rectArray[ri + 1] = y;
+  rectMesh.rectArray[ri + 2] = w;
+  rectMesh.rectArray[ri + 3] = h;
 
   const ci = rectangleIdx * 3;
-  slotMesh.colorArray[ci] = color[0];
-  slotMesh.colorArray[ci + 1] = color[1];
-  slotMesh.colorArray[ci + 2] = color[2];
+  rectMesh.colorArray[ci] = color[0];
+  rectMesh.colorArray[ci + 1] = color[1];
+  rectMesh.colorArray[ci + 2] = color[2];
 }
 
-export function updateSlotMeshCounts(slotMesh: SlotMesh, count: number) {
-  slotMesh.count = count;
-  (slotMesh.mesh.geometry as THREE.InstancedBufferGeometry).instanceCount =
+export function updateRectMeshCounts(rectMesh: RectMesh, count: number) {
+  rectMesh.count = count;
+  (rectMesh.mesh.geometry as THREE.InstancedBufferGeometry).instanceCount =
     count;
-  slotMesh.rectAttr.needsUpdate = true;
-  slotMesh.colorAttr.needsUpdate = true;
+  rectMesh.rectAttr.needsUpdate = true;
+  rectMesh.colorAttr.needsUpdate = true;
 }
 
 const tmpColor = new THREE.Color();
@@ -198,9 +251,7 @@ const tmpRgb = { r: 0, g: 0, b: 0 };
  * Convert hex color to sRGB values for the shader, instead of
  * Three.js's default linear working color space
  */
-export function convertToWebGlColor(
-  hex: string,
-): [r: number, g: number, b: number] {
+export function convertToWebGlColor(hex: string): RgbColor {
   tmpColor.setHex(parseInt(hex.replace("#", ""), 16), THREE.SRGBColorSpace);
   tmpColor.getRGB(tmpRgb, THREE.SRGBColorSpace);
   return [tmpRgb.r, tmpRgb.g, tmpRgb.b];
