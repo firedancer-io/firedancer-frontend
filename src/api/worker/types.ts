@@ -8,6 +8,7 @@ import {
   slotSchema,
   summarySchema,
   supermajoritySchema,
+  timelineSchema,
 } from "../entities";
 import type { GossipHealthEma } from "../atoms";
 import type { LiveShredsData } from "./cache/shreds/types";
@@ -15,6 +16,7 @@ import type { LiveShredsData } from "./cache/shreds/types";
 export const WsMessageSchema = z.discriminatedUnion("topic", [
   summarySchema,
   epochSchema,
+  timelineSchema,
   gossipSchema,
   peersSchema,
   slotSchema,
@@ -40,6 +42,7 @@ export type ToWorkerMessage =
 export type WsEntity =
   | KvFrom<typeof summarySchema, "summary">
   | KvFrom<typeof epochSchema, "epoch">
+  | KvFrom<typeof timelineSchema, "timeline">
   | KvFrom<typeof gossipSchema, "gossip">
   | KvFrom<typeof peersSchema, "peers">
   | KvFrom<typeof slotSchema, "slot">
