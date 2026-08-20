@@ -1,7 +1,8 @@
+import { clamp } from "lodash";
+
 export function logRatio(a: number, b: number, base = Math.E) {
-  if (a === 0 || b === 0) {
-    return 0;
-  }
+  if (b === 0) return Infinity;
+  if (a === 0) return 0;
   if (a <= 0 || b <= 0) {
     console.error(a, b);
     console.error("Logarithms are only defined for positive numbers.");
@@ -42,4 +43,9 @@ export function safeDivide(a: number, b: number) {
   } else {
     return a / b;
   }
+}
+
+export function clampNonZeroValue(value: number, lower: number, upper: number) {
+  if (value === 0) return 0;
+  return clamp(value, lower, upper);
 }
