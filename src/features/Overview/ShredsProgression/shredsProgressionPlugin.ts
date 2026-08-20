@@ -36,11 +36,8 @@ import { getDrawInfo } from "../../Shreds/chartUtils";
 import styles from "./shreds.module.css";
 
 import { slotsPerLeader } from "../../../consts";
-import type {
-  SlotsShreds,
-  ShredEventTsDeltas,
-  TsRange,
-} from "../../Shreds/types";
+import type { SlotsShreds, ShredEventTsDeltas } from "../../Shreds/types";
+import type { TsRange } from "../../WebGl/webglUtils";
 
 const store = getDefaultStore();
 

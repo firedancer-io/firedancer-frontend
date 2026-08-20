@@ -1,5 +1,6 @@
 import { Card, Flex } from "@radix-ui/themes";
 import CardHeader from "../../components/CardHeader";
+import Chart from "./Chart";
 import { useAtomValue } from "jotai";
 import { isWebgl2SupportedAtom } from "../WebGl/atoms";
 
@@ -11,7 +12,7 @@ export default function Replay() {
         <Card>
           <CardHeader text="Replay" />
           <Flex direction="column" gap="4" mt="2">
-            Replay Chart
+            <Chart />
           </Flex>
         </Card>
       ) : (

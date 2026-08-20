@@ -5,14 +5,15 @@ import { xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import { shredsAtoms } from "../../Overview/ShredsProgression/atoms";
 import { getDelayedNow } from "../../Overview/ShredsProgression/utils";
 import { MAX_WEBGL_PX_RATIO, msPerDay } from "../../../consts";
-import type { SlotMesh } from "../../WebGl/webglUtils";
+import type { RectMesh, TsRange } from "../../WebGl/webglUtils";
 import {
   createWebglResources,
   disposeWebglResources,
 } from "../../WebGl/webglUtils";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers";
 import { isWebgl2SupportedAtom } from "../../WebGl/atoms";
-import type { RendererObj, TsRange } from "../types";
+import type { RendererObj } from "../types";
+import { SHREDS_OPACITY } from "./const";
 
 const store = getDefaultStore();
 
@@ -50,9 +51,9 @@ export function setUpRenderer(
     renderer.setSize(canvasWidth, canvasHeight);
     renderer.setClearColor(0x000000, 0);
 
-    const meshes = new Map<number, SlotMesh>();
-    const availableMeshes: SlotMesh[] = [];
-    const resources = createWebglResources();
+    const meshes = new Map<number, RectMesh>();
+    const availableMeshes: RectMesh[] = [];
+    const resources = createWebglResources(SHREDS_OPACITY);
     renderer.render(scene, camera);
     const clearContextListeners = setUpContextListeners(renderer.domElement);
 

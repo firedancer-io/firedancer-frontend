@@ -1,14 +1,12 @@
 import type * as THREE from "three";
-import type { SlotMesh, WebglResources } from "../WebGl/webglUtils";
-
-export type TsRange = [startTs: number, endTs: number];
+import type { RectMesh, TsRange, WebglResources } from "../WebGl/webglUtils";
 
 export type RendererObj = {
   renderer: THREE.WebGLRenderer;
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
-  meshes: Map<number, SlotMesh>;
-  availableMeshes: SlotMesh[];
+  meshes: Map<number, RectMesh>;
+  availableMeshes: RectMesh[];
   worldTsRange: TsRange;
   // resources shared by this renderer's slot meshes
   resources: WebglResources;

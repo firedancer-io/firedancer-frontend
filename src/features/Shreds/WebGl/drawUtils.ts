@@ -10,7 +10,7 @@ import {
   liveShredsPostStartupRangeAtom,
 } from "../../Overview/ShredsProgression/atoms";
 import { minDirtySlotByChartAtom } from "../atoms";
-import type { RendererObj, TsRange } from "../types";
+import type { RendererObj } from "../types";
 import {
   shredEventDescPriorities,
   SKIPPED_SLOT_DOT_DURATION_MS,
@@ -18,12 +18,13 @@ import {
 import { colors } from "./const";
 import { updateLabels } from "../../Overview/ShredsProgression/shredsProgressionPlugin";
 import { getDrawInfo } from "../chartUtils";
-import type { SlotMesh } from "../../WebGl/webglUtils";
 import {
-  createSlotMesh,
-  updateSlotMeshCounts,
+  createRectMesh,
+  updateRectMeshCounts,
   ensureCapacity,
   addRectangleToMesh,
+  type TsRange,
+  type RectMesh,
 } from "../../WebGl/webglUtils";
 import { getDefaultStore } from "jotai";
 import {
@@ -107,7 +108,7 @@ export function draw(
     const isNewMesh = !slotMesh;
     if (!slotMesh) {
       const lastMesh = rendererObj.availableMeshes.pop();
-      slotMesh = lastMesh ?? createSlotMesh(rendererObj.resources);
+      slotMesh = lastMesh ?? createRectMesh(rendererObj.resources);
       rendererObj.meshes.set(slotNumber, slotMesh);
       rendererObj.scene.add(slotMesh.mesh);
     }
@@ -140,7 +141,7 @@ export function draw(
         anythingDrawn = true;
       }
     }
-    updateSlotMeshCounts(slotMesh, rectangleIdx);
+    updateRectMeshCounts(slotMesh, rectangleIdx);
   }
 
   store.set(minDirtySlotByChartAtom, (prev) => {
@@ -209,7 +210,7 @@ interface AddEventsForRowArgs {
     Exclude<ShredEvent, ShredEvent.slot_complete>,
     { x: number; w: number }
   >;
-  slotMesh: SlotMesh;
+  slotMesh: RectMesh;
   startRectangleIdx: number;
   eventTsDeltas: ShredEventTsDeltas;
   slotCompletionTsDelta: number | undefined;
