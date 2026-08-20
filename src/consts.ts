@@ -7,7 +7,9 @@ export const maxSolDecimals = 9;
 export const lamportsPerSol = 1_000_000_000;
 
 export const nsPerMs = 1_000_000;
-export const msPerDay = 24 * 60 * 60 * 1000;
+export const msPerMinute = 60_000;
+export const msPerHour = msPerMinute * 60;
+export const msPerDay = 24 * msPerHour;
 export const MAX_WEBGL_PX_RATIO = 2;
 
 /** Max compute units is dynamic and pulled from the server,

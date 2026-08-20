@@ -45,6 +45,7 @@ import type {
   VoteCommission,
   IsAlpenglow,
   FinalizedSlot,
+  AggRevenue,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 import type { ValuesWithHistory } from "./worker/types";
@@ -205,3 +206,5 @@ export const healthAtom = atom<Health | undefined>(undefined);
 export const isAlpenglowAtom = atom<IsAlpenglow | undefined>(undefined);
 
 export const accountsStatsAtom = atom<AccountsStats | undefined>(undefined);
+
+export const aggRevenueAtom = atom<AggRevenue | undefined>(undefined);
