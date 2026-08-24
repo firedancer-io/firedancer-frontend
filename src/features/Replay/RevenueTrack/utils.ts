@@ -2,7 +2,7 @@ import { MAX_WEBGL_PX_RATIO } from "../../../consts.ts";
 import * as THREE from "three";
 import {
   createWebglResources,
-  createSlotMesh,
+  createRectMesh,
   disposeWebglResources,
   type SlotMesh,
   type WebglResources,
@@ -42,8 +42,7 @@ export interface AggResources {
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
   resources: WebglResources;
-  prevMesh: SlotMesh;
-  currentMesh: SlotMesh;
+  mesh: SlotMesh;
   /**
    * origin ms subtracted from both the camera bounds and
    * the rectangle geometry so the GPU works with small, float32-precise coordinates
@@ -93,8 +92,9 @@ export function setUpAggResources(
   camera.position.z = 1;
 
   const resources = createWebglResources(REVENUE_OPACITY);
-  const prevMesh = createSlotMesh(resources);
-  const currentMesh = createSlotMesh(resources);
+  const mesh = createRectMesh(resources);
+
+  scene.add(mesh.mesh);
 
   const cleanUpResources = () => {
     // If context was lost at some point, its GPU objects are already gone so skip objects disposal,
@@ -102,9 +102,7 @@ export function setUpAggResources(
     // Three doesn't restore GPU objects for restored contexts unless there's a render.
     // Remount on restore to reset the context listeners state
     if (!getWasContextLost()) {
-      for (const slotMesh of [prevMesh, currentMesh]) {
-        slotMesh.mesh.geometry.dispose();
-      }
+      mesh.mesh.geometry.dispose();
       // dispose this chart's own unitQuad / sharedMaterial
       disposeWebglResources(resources);
     }
@@ -114,8 +112,7 @@ export function setUpAggResources(
     camera,
     scene,
     resources,
-    prevMesh,
-    currentMesh,
+    mesh,
     cameraReferenceMs: 0,
     cleanUpResources,
   };
@@ -131,7 +128,7 @@ export function drawAggRevenue(
   rendererObj: RendererObj,
   type: RevenueType,
   aggRevenue: AggRevenue,
-  getRelativeMs: (absoluteMs: bigint) => number,
+  getRelativeMs: (absoluteNs: bigint) => number,
 ) {
   const { granularity, reference_ts_ns } = aggRevenue;
   const referenceMs = getRelativeMs(reference_ts_ns);
@@ -153,11 +150,9 @@ export function drawAggRevenue(
     [],
   );
 
-  const { cameraReferenceMs, scene, currentMesh, prevMesh } =
-    rendererObj.aggResources;
-  const mesh = prevMesh;
+  const { cameraReferenceMs, mesh } = rendererObj.aggResources;
 
-  /** store mesh positions relative to referenceX. This allows CPU to see small coordinates */
+  /** store mesh positions relative to referenceX. This allows GPU to see small coordinates */
   if (mesh.referenceX == null) {
     mesh.referenceX = cameraReferenceMs;
   }
@@ -181,25 +176,16 @@ export function drawAggRevenue(
       REVENUE_COLOR,
     );
   }
-
-  // switch out the prev mesh content
-  const newPrevMesh = currentMesh;
-  newPrevMesh.referenceX = undefined;
-  scene.remove(newPrevMesh.mesh);
-  rendererObj.aggResources.prevMesh = newPrevMesh;
-
-  scene.add(mesh.mesh);
-  rendererObj.aggResources.currentMesh = mesh;
 }
 
 /**
- * Move camera and and update camera and current mesh reference x
+ * Move camera and and update camera and mesh reference x
  */
 export function moveAggCamera(
   rendererObj: RendererObj,
   visibleRangeMs: TsRange,
 ) {
-  const { camera, currentMesh } = rendererObj.aggResources;
+  const { camera, mesh } = rendererObj.aggResources;
 
   // Store a camera reference to make mesh coordinates smaller for GPU
   const cameraReferenceMs = visibleRangeMs[0];
@@ -210,8 +196,8 @@ export function moveAggCamera(
 
   // Mesh point coordinates are already set. Move them to match camera reference
   // by manipulating mesh position.x
-  if (currentMesh.referenceX != null) {
-    currentMesh.mesh.position.x = currentMesh.referenceX - cameraReferenceMs;
+  if (mesh.referenceX != null) {
+    mesh.mesh.position.x = mesh.referenceX - cameraReferenceMs;
   }
 }
 

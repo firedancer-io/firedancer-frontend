@@ -14,21 +14,20 @@ const formatAbsoluteTs = (absoluteNs: bigint) => {
 const subscriberId = "visible-range";
 export default memo(function VisibleRangeInfo({
   subscribeRangeChange,
-  unsubscribeRangeChange,
   getAbsoluteNs,
 }: RangeChangeSubscriberProps) {
   const [absoluteVisibleRangeNs, setAbsoluteVisibleRangeNs] =
     useState<NsTsRange>();
 
   useLayoutEffect(() => {
-    subscribeRangeChange(subscriberId, (visibleRangeMs) => {
+    const unsubscribe = subscribeRangeChange(subscriberId, (visibleRangeMs) => {
       setAbsoluteVisibleRangeNs([
         getAbsoluteNs(visibleRangeMs[0]),
         getAbsoluteNs(visibleRangeMs[1]),
       ]);
     });
-    return () => unsubscribeRangeChange(subscriberId);
-  }, [subscribeRangeChange, unsubscribeRangeChange, getAbsoluteNs]);
+    return () => unsubscribe?.();
+  }, [subscribeRangeChange, getAbsoluteNs]);
 
   if (!absoluteVisibleRangeNs) return null;
 

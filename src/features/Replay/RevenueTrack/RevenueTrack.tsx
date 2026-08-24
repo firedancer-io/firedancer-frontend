@@ -10,7 +10,7 @@ import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import {
-  drawAggRevenue as drawAggRevenue,
+  drawAggRevenue,
   isAggregate,
   moveAggCamera,
   setUpRenderers,
@@ -37,7 +37,6 @@ interface RevenueTrackProps
 function RevenueTrack({
   remount,
   subscribeRangeChange,
-  unsubscribeRangeChange,
   getAbsoluteNs,
   getRelativeMs,
   setUpExploreListeners,
@@ -129,13 +128,13 @@ function RevenueTrack({
     rendererRef.current = rendererObj;
     containerRef.current.replaceChildren(rendererObj.renderer.domElement);
 
-    subscribeRangeChange(subscriptionId, onRangeChange);
+    const unsubscribe = subscribeRangeChange(subscriptionId, onRangeChange);
     const cleanUpExploreListeners = setUpExploreListeners(containerRef.current);
     const cleanUpRenderer = rendererRef.current.cleanUp;
 
     // cleanup
     return () => {
-      unsubscribeRangeChange(subscriptionId);
+      unsubscribe?.();
       cleanUpRenderer();
       rendererRef.current = undefined;
       cleanUpExploreListeners();
@@ -144,7 +143,6 @@ function RevenueTrack({
     onRangeChange,
     setUpExploreListeners,
     subscribeRangeChange,
-    unsubscribeRangeChange,
     setUpContextListeners,
     getWasContextLost,
     hasWidth,

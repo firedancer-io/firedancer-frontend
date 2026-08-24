@@ -21,7 +21,7 @@ import type {
   WebglResources,
 } from "../../../WebGl/webglUtils";
 import {
-  createSlotMesh,
+  createRectMesh,
   updateSlotMeshCounts,
   ensureCapacity,
   addRectangleToMesh,
@@ -246,7 +246,7 @@ export function draw(
     const isNewMesh = !slotMesh;
     if (!slotMesh) {
       const lastMesh = rendererObj.availableMeshes.pop();
-      slotMesh = lastMesh ?? createSlotMesh(rendererObj.resources);
+      slotMesh = lastMesh ?? createRectMesh(rendererObj.resources);
       rendererObj.meshes.set(slotNumber, slotMesh);
       rendererObj.scene.add(slotMesh.mesh);
     }

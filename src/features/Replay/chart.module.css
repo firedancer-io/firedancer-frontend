@@ -1,8 +1,6 @@
 .container {
   padding: 32px;
   border-radius: 8px;
-  border: 4px solid rgb(42, 53, 72);
-  background: rgb(34, 44, 61);
   flex-shrink: 0;
 }
 

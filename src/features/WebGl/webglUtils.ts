@@ -146,10 +146,9 @@ export function disposeWebglResources(resources: WebglResources) {
 const INITIAL_CAPACITY = 700 * (SHRED_EVENT_TYPES_COUNT - 1);
 
 /**
- * Create one mesh per slot. That way, we can easily add / delete slots without updating
- * unchanged slots.
+ * Create a mesh to draw 2D rectangles
  */
-export function createSlotMesh(resources: WebglResources): SlotMesh {
+export function createRectMesh(resources: WebglResources): SlotMesh {
   const rectArray = new Float32Array(INITIAL_CAPACITY * 4);
   const colorArray = new Float32Array(INITIAL_CAPACITY * 3);
 

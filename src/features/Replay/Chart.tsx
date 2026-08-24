@@ -59,8 +59,11 @@ export default function Chart({ startupTimeNs }: ChartProps) {
   const [isRangeInitialized, setIsRangeInitialized] = useState(false);
   const selectedMsRef = useRef<number | undefined>();
 
-  const { broadcastVisibleRangeChange, visibleRangeSubscriberProps } =
-    useVisibleRangeSubscribers({ rangeRef, selectedMsRef });
+  const {
+    broadcastVisibleRangeChange,
+    broadcastSelectedMsChange,
+    visibleRangeSubscriberProps,
+  } = useVisibleRangeSubscribers({ rangeRef, selectedMsRef });
 
   const { refreshSelectedMarkerLine, setVisibleRange, setSelectedMs } =
     useMemo(() => {
@@ -79,6 +82,7 @@ export default function Chart({ startupTimeNs }: ChartProps) {
       };
 
       const setSelectedMs = (ts: number | undefined) => {
+        broadcastSelectedMsChange();
         selectedMsRef.current = ts;
         refreshSelectedMarkerLine();
       };
@@ -113,7 +117,7 @@ export default function Chart({ startupTimeNs }: ChartProps) {
         setSelectedMs,
         setVisibleRange,
       };
-    }, [broadcastVisibleRangeChange]);
+    }, [broadcastSelectedMsChange, broadcastVisibleRangeChange]);
 
   const explorableChartProps = useExplorableChart({
     rangeRef,
@@ -152,7 +156,6 @@ export default function Chart({ startupTimeNs }: ChartProps) {
   }, [
     currentSlot,
     startupTimeNs,
-    setVisibleRange,
     broadcastVisibleRangeChange,
     refreshSelectedMarkerLine,
   ]);

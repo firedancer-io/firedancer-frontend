@@ -1,9 +1,29 @@
-import { useMemo, useRef, type RefObject } from "react";
+import { useCallback, useMemo, useRef, type RefObject } from "react";
 import type { TsRange } from "../WebGl/webglUtils";
 import { MIN_VISIBLE_MS, type ExplorableChartProps } from "./const";
 
 const PAN_THRESHOLD_PX = 0;
 const ZOOM_INTENSITY = 0.002;
+
+function clientXToTs(
+  trackEl: HTMLDivElement,
+  clientX: number,
+  tsWindow: TsRange,
+) {
+  const trackRect = trackEl.getBoundingClientRect();
+  const fraction = (clientX - trackRect.left) / trackRect.width;
+  return tsWindow[0] + fraction * (tsWindow[1] - tsWindow[0]);
+}
+
+function addListener<K extends keyof HTMLElementEventMap>(
+  el: HTMLElement,
+  type: K,
+  listener: (event: HTMLElementEventMap[K]) => void,
+  options?: AddEventListenerOptions,
+): () => void {
+  el.addEventListener(type, listener, options);
+  return () => el.removeEventListener(type, listener, options);
+}
 
 interface UseExplorableChartProps {
   rangeRef: RefObject<
@@ -31,147 +51,140 @@ export function useExplorableChart({
   }>();
   const isPanningRef = useRef(false);
 
+  const createCallbacks = useCallback(
+    (
+      trackEl: HTMLDivElement,
+      refreshCursor: () => void,
+      isWorldTrack: boolean,
+    ) => {
+      const startDrag = (clientX: number) => {
+        if (!rangeRef.current) return;
+
+        const window = isWorldTrack
+          ? ([0, rangeRef.current.worldEndMs] satisfies TsRange)
+          : rangeRef.current.visibleRangeMs;
+        const ts = clientXToTs(trackEl, clientX, window);
+
+        dragStartRef.current = {
+          clientX,
+          ts,
+          draggableWindow: [...window],
+          startVisibleRange: [...rangeRef.current.visibleRangeMs],
+        };
+
+        isPanningRef.current = false;
+        refreshCursor();
+        setSelectedMs(dragStartRef.current.ts);
+      };
+
+      const moveDrag = (clientX: number) => {
+        if (
+          !dragStartRef.current ||
+          Math.abs(clientX - dragStartRef.current.clientX) < PAN_THRESHOLD_PX
+        ) {
+          return;
+        }
+        isPanningRef.current = true;
+        refreshCursor();
+        const xTs = clientXToTs(
+          trackEl,
+          clientX,
+          dragStartRef.current.draggableWindow,
+        );
+        const diff = (isWorldTrack ? -1 : 1) * (xTs - dragStartRef.current.ts);
+        setVisibleRange([
+          dragStartRef.current.startVisibleRange[0] - diff,
+          dragStartRef.current.startVisibleRange[1] - diff,
+        ]);
+      };
+
+      const zoom = (clientX: number, deltaY: number) => {
+        const prevWindow = rangeRef.current?.visibleRangeMs;
+        if (!prevWindow) return;
+
+        const [startTs, endTs] = prevWindow;
+        const span = endTs - startTs;
+        const isZoomingOut = deltaY > 0;
+
+        const cursorTs = clientXToTs(trackEl, clientX, prevWindow);
+        // larger deltaY = faster zoom
+        let scale = Math.exp(deltaY * ZOOM_INTENSITY);
+        // don't zoom in past the minimum span (clamp to it instead of overshooting)
+        if (!isZoomingOut && span * scale < MIN_VISIBLE_MS) {
+          scale = MIN_VISIBLE_MS / span;
+        }
+        setVisibleRange([
+          cursorTs - (cursorTs - startTs) * scale,
+          cursorTs + (endTs - cursorTs) * scale,
+        ]);
+      };
+
+      return {
+        endDrag: () => {
+          dragStartRef.current = undefined;
+          isPanningRef.current = false;
+          refreshCursor();
+        },
+        onMouseDown: (e: MouseEvent) => {
+          if (e.button !== 0) return;
+          startDrag(e.clientX);
+          e.preventDefault();
+        },
+        onMouseMove: (e: MouseEvent) => {
+          if (!(e.buttons & 1)) return;
+          moveDrag(e.clientX);
+        },
+        onTouchStart: (e: TouchEvent) => {
+          if (e.touches.length !== 1) return;
+          startDrag(e.touches[0].clientX);
+          e.preventDefault();
+        },
+        onTouchMove: (e: TouchEvent) => {
+          if (e.touches.length !== 1) return;
+          moveDrag(e.touches[0].clientX);
+          e.preventDefault();
+        },
+        onWheel: (e: WheelEvent) => {
+          e.preventDefault();
+          zoom(e.clientX, e.deltaY);
+        },
+      };
+    },
+    [rangeRef, setSelectedMs, setVisibleRange],
+  );
+
   return useMemo(() => {
-    const setIsPanning = (trackEl: HTMLDivElement, isPanning: boolean) => {
-      isPanningRef.current = isPanning;
-      trackEl.style.cursor = isPanning ? "grabbing" : "grab";
-    };
-
-    const clientXToTs = (
-      trackEl: HTMLDivElement,
-      clientX: number,
-      tsWindow: TsRange,
-    ) => {
-      const rect = trackEl.getBoundingClientRect();
-      const fraction = (clientX - rect.left) / rect.width;
-      return tsWindow[0] + fraction * (tsWindow[1] - tsWindow[0]);
-    };
-
-    const startDrag = (
-      trackEl: HTMLDivElement,
-      draggingEl: HTMLDivElement,
-      clientX: number,
-      isWorld: boolean,
-    ) => {
-      if (!rangeRef.current) return;
-
-      const window = isWorld
-        ? ([0, rangeRef.current.worldEndMs] satisfies TsRange)
-        : rangeRef.current.visibleRangeMs;
-      const ts = clientXToTs(trackEl, clientX, window);
-
-      dragStartRef.current = {
-        clientX,
-        ts,
-        draggableWindow: [...window],
-        startVisibleRange: [...rangeRef.current.visibleRangeMs],
-      };
-
-      setIsPanning(draggingEl, false);
-      setSelectedMs(dragStartRef.current.ts);
-    };
-
-    const moveDrag = (
-      trackEl: HTMLDivElement,
-      draggingEl: HTMLDivElement,
-      clientX: number,
-      isWorld: boolean,
-    ) => {
-      if (
-        !dragStartRef.current ||
-        Math.abs(clientX - dragStartRef.current.clientX) < PAN_THRESHOLD_PX
-      ) {
-        return;
-      }
-      setIsPanning(draggingEl, true);
-      const xTs = clientXToTs(
-        trackEl,
-        clientX,
-        dragStartRef.current.draggableWindow,
-      );
-      const diff = (isWorld ? -1 : 1) * (xTs - dragStartRef.current.ts);
-      setVisibleRange([
-        dragStartRef.current.startVisibleRange[0] - diff,
-        dragStartRef.current.startVisibleRange[1] - diff,
-      ]);
-    };
-
-    const zoom = (trackEl: HTMLDivElement, clientX: number, deltaY: number) => {
-      const prevWindow = rangeRef.current?.visibleRangeMs;
-      if (!prevWindow) return;
-
-      const [startTs, endTs] = prevWindow;
-      const span = endTs - startTs;
-      const isZoomingOut = deltaY > 0;
-
-      const cursorTs = clientXToTs(trackEl, clientX, prevWindow);
-      // exp keeps in/out symmetric and reversible; larger deltaY = faster zoom
-      let scale = Math.exp(deltaY * ZOOM_INTENSITY);
-      // don't zoom in past the minimum span (clamp to it instead of overshooting)
-      if (!isZoomingOut && span * scale < MIN_VISIBLE_MS) {
-        scale = MIN_VISIBLE_MS / span;
-      }
-      setVisibleRange([
-        cursorTs - (cursorTs - startTs) * scale,
-        cursorTs + (endTs - cursorTs) * scale,
-      ]);
-    };
-
     const setUpExploreListeners = (trackEl: HTMLDivElement) => {
-      trackEl.style.cursor = "grab";
-
-      const endDrag = () => {
-        dragStartRef.current = undefined;
-        setIsPanning(trackEl, false);
+      const refreshCursor = () => {
+        const cursor = isPanningRef.current ? "grabbing" : "grab";
+        trackEl.style.cursor = cursor;
       };
 
-      const onMouseDown = (e: MouseEvent) => {
-        if (e.button !== 0) return;
-        startDrag(trackEl, trackEl, e.clientX, false);
-        e.preventDefault();
-      };
-      const onMouseMove = (e: MouseEvent) => {
-        if (!(e.buttons & 1)) return;
-        moveDrag(trackEl, trackEl, e.clientX, false);
-      };
-      const onTouchStart = (e: TouchEvent) => {
-        if (e.touches.length !== 1) return;
-        startDrag(trackEl, trackEl, e.touches[0].clientX, false);
-        e.preventDefault();
-      };
-      const onTouchMove = (e: TouchEvent) => {
-        if (e.touches.length !== 1) return;
-        moveDrag(trackEl, trackEl, e.touches[0].clientX, false);
-        e.preventDefault();
-      };
-      const onWheel = (e: WheelEvent) => {
-        e.preventDefault();
-        zoom(trackEl, e.clientX, e.deltaY);
-      };
+      refreshCursor();
 
-      trackEl.addEventListener("mousedown", onMouseDown);
-      trackEl.addEventListener("mousemove", onMouseMove);
-      trackEl.addEventListener("mouseup", endDrag);
-      trackEl.addEventListener("mouseleave", endDrag);
-      trackEl.addEventListener("touchstart", onTouchStart, { passive: false });
-      trackEl.addEventListener("touchmove", onTouchMove, { passive: false });
-      trackEl.addEventListener("touchend", endDrag);
-      trackEl.addEventListener("touchcancel", endDrag);
-      trackEl.addEventListener("wheel", onWheel, { passive: false });
+      const {
+        endDrag,
+        onMouseDown,
+        onMouseMove,
+        onTouchStart,
+        onTouchMove,
+        onWheel,
+      } = createCallbacks(trackEl, refreshCursor, false);
 
-      return () => {
-        trackEl.removeEventListener("mousedown", onMouseDown);
-        trackEl.removeEventListener("mousemove", onMouseMove);
-        trackEl.removeEventListener("mouseup", endDrag);
-        trackEl.removeEventListener("mouseleave", endDrag);
-        trackEl.removeEventListener("touchstart", onTouchStart);
-        trackEl.removeEventListener("touchmove", onTouchMove);
-        trackEl.removeEventListener("touchend", endDrag);
-        trackEl.removeEventListener("touchcancel", endDrag);
-        trackEl.removeEventListener("wheel", onWheel);
-      };
+      const cleanups = [
+        addListener(trackEl, "mousedown", onMouseDown),
+        addListener(trackEl, "mousemove", onMouseMove),
+        addListener(trackEl, "mouseup", endDrag),
+        addListener(trackEl, "mouseleave", endDrag),
+        addListener(trackEl, "touchstart", onTouchStart, { passive: false }),
+        addListener(trackEl, "touchmove", onTouchMove, { passive: false }),
+        addListener(trackEl, "touchend", endDrag),
+        addListener(trackEl, "touchcancel", endDrag),
+        addListener(trackEl, "wheel", onWheel, { passive: false }),
+      ];
+
+      return () => cleanups.forEach((off) => off());
     };
-
     return { setUpExploreListeners };
-  }, [rangeRef, setSelectedMs, setVisibleRange]);
+  }, [createCallbacks]);
 }

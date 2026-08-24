@@ -41,9 +41,9 @@ export type RangeChangeHandler = (
 export interface RangeChangeSubscriberProps {
   subscribeRangeChange: (
     subscriberId: string,
-    onRangeChange: RangeChangeHandler,
-  ) => void;
-  unsubscribeRangeChange: (subscriberId: string) => void;
+    onVisibleRangeChange: RangeChangeHandler,
+    onSelectedMsChange?: RangeChangeHandler,
+  ) => (() => void) | undefined;
   getAbsoluteNs: (relativeMs: number) => bigint;
   getRelativeMs: (absoluteNs: bigint) => number;
 }

@@ -22,14 +22,22 @@ export function useVisibleRangeSubscribers({
   rangeRef,
   selectedMsRef,
 }: UseVisibleRangeSubscribersProps) {
-  const visibleRangeSubscribersRef = useRef<Map<string, RangeChangeHandler>>(
-    new Map(),
-  );
+  const visibleRangeSubscribersRef = useRef<
+    Map<
+      string,
+      {
+        onRangeChange: RangeChangeHandler;
+        onSelectedMsChange?: RangeChangeHandler;
+      }
+    >
+  >(new Map());
 
   return useMemo(() => {
     const broadcastVisibleRangeChange = () => {
       if (!rangeRef.current) return;
-      for (const onRangeChange of visibleRangeSubscribersRef.current.values()) {
+      for (const {
+        onRangeChange,
+      } of visibleRangeSubscribersRef.current.values()) {
         onRangeChange(
           rangeRef.current.visibleRangeMs,
           [0, rangeRef.current.worldEndMs],
@@ -38,20 +46,33 @@ export function useVisibleRangeSubscribers({
       }
     };
 
+    const broadcastSelectedMsChange = () => {
+      if (!rangeRef.current) return;
+      for (const {
+        onSelectedMsChange,
+      } of visibleRangeSubscribersRef.current.values()) {
+        onSelectedMsChange?.(
+          rangeRef.current.visibleRangeMs,
+          [0, rangeRef.current.worldEndMs],
+          selectedMsRef.current,
+        );
+      }
+    };
+
     const subscribeRangeChange: RangeChangeSubscriberProps["subscribeRangeChange"] =
-      (chartId, onRangeChange) => {
-        visibleRangeSubscribersRef.current.set(chartId, onRangeChange);
+      (chartId, onRangeChange, onSelectedMsChange) => {
+        visibleRangeSubscribersRef.current.set(chartId, {
+          onRangeChange,
+          onSelectedMsChange,
+        });
         if (!rangeRef.current) return;
         onRangeChange(
           rangeRef.current.visibleRangeMs,
           [0, rangeRef.current.worldEndMs],
           selectedMsRef.current,
         );
-      };
 
-    const unsubscribeRangeChange: RangeChangeSubscriberProps["unsubscribeRangeChange"] =
-      (chartId) => {
-        visibleRangeSubscribersRef.current.delete(chartId);
+        return () => visibleRangeSubscribersRef.current.delete(chartId);
       };
 
     const getAbsoluteNs = (relativeMs: number) => {
@@ -66,13 +87,13 @@ export function useVisibleRangeSubscribers({
 
     const visibleRangeSubscriberProps: RangeChangeSubscriberProps = {
       subscribeRangeChange,
-      unsubscribeRangeChange,
       getAbsoluteNs,
       getRelativeMs,
     };
 
     return {
       broadcastVisibleRangeChange,
+      broadcastSelectedMsChange,
       visibleRangeSubscriberProps,
     };
   }, [rangeRef, selectedMsRef]);
