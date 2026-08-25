@@ -6,6 +6,7 @@ import type {
   IdentityKey,
   RootSlot,
   OptimisticallyConfirmedSlot,
+  FinalizedSlot,
   CompletedSlot,
   EstimatedSlot,
   EstimatedTps,
@@ -78,6 +79,7 @@ export const rootSlotAtom = atom<RootSlot | undefined>(undefined);
 export const optimisticallyConfirmedSlotAtom = atom<
   OptimisticallyConfirmedSlot | undefined
 >(undefined);
+export const finalizedSlotAtom = atom<FinalizedSlot | undefined>(undefined);
 
 export const completedSlotAtom = atom<CompletedSlot | undefined>(undefined);
 export const serverTimeNanosAtom = atom<ServerTimeNanos | undefined>(undefined);

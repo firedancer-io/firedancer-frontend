@@ -1,7 +1,7 @@
 import { useAtomValue } from "jotai";
 import {
   completedSlotAtom,
-  optimisticallyConfirmedSlotAtom,
+  finalizedSlotAtom,
   repairSlotAtom,
   rootSlotAtom,
   storageSlotAtom,
@@ -50,7 +50,7 @@ const voteLabelColor = "#4AA7C1";
 const replayLabelColor = "#08A24D";
 const repairLabelColor = "#AC4902";
 const turbineLabelColor = "#3F7BF4";
-const confirmedLabelColor = "#AF49F2";
+const finalizedLabelColor = "#AF49F2";
 const nextLeaderLabelColor = "#2497EE";
 
 const storageBarColor = "#A09000";
@@ -59,7 +59,7 @@ const voteBarColor = "#4AA7C1";
 const replayBarColor = "#08A24D";
 const repairBarColor = "#AC4902";
 const turbineBarColor = "#3F7BF4";
-const confirmedBarColor = "#AF49F2";
+const finalizedBarColor = "#AF49F2";
 const nextLeaderBarColor = "#2497EE";
 
 export default function SlotTimeline() {
@@ -122,9 +122,7 @@ function SlotBars() {
   const repairSlot = useAtomValue(repairSlotAtom);
   const turbineSlot = useAtomValue(turbineSlotAtom);
   const replaySlot = useAtomValue(completedSlotAtom);
-  const optimisticallyConfirmedSlot = useAtomValue(
-    optimisticallyConfirmedSlotAtom,
-  );
+  const finalizedSlot = useAtomValue(finalizedSlotAtom);
   const nextLeaderSlot = useAtomValue(nextLeaderSlotAtom);
 
   const shrinkSlotsLabel = useMedia("(max-width: 1300px)");
@@ -137,7 +135,7 @@ function SlotBars() {
     repairSlotBar,
     turbineSlotBar,
     replaySlotBar,
-    optimisticallyConfirmedBar,
+    finalizedSlotBar,
     nextLeaderSlotBar,
   } = useMemo(() => {
     const storageSlotBar = getSlotBarInfo(
@@ -182,12 +180,12 @@ function SlotBars() {
       replayLabelColor,
       replayBarColor,
     );
-    const optimisticallyConfirmedBar = getSlotBarInfo(
-      "Confirmed",
-      optimisticallyConfirmedSlot,
+    const finalizedSlotBar = getSlotBarInfo(
+      "Finalized",
+      finalizedSlot,
       replaySlot,
-      confirmedLabelColor,
-      confirmedBarColor,
+      finalizedLabelColor,
+      finalizedBarColor,
     );
     const nextLeaderSlotBar = getSlotBarInfo(
       "Next Leader",
@@ -204,12 +202,12 @@ function SlotBars() {
       repairSlotBar,
       turbineSlotBar,
       replaySlotBar,
-      optimisticallyConfirmedBar,
+      finalizedSlotBar,
       nextLeaderSlotBar,
     };
   }, [
     nextLeaderSlot,
-    optimisticallyConfirmedSlot,
+    finalizedSlot,
     repairSlot,
     replaySlot,
     rootSlot,
@@ -230,7 +228,7 @@ function SlotBars() {
     repairSlotBar.slot,
     turbineSlotBar.slot,
     replaySlotBar.slot,
-    optimisticallyConfirmedBar.slot,
+    finalizedSlotBar.slot,
   ]);
 
   // Sized to default the root to turbine as minCurrentSlots slots, and half that width for the next slots portion
@@ -256,7 +254,7 @@ function SlotBars() {
           voteSlotBar={voteSlotBar}
           repairSlotBar={repairSlotBar}
           turbineSlotBar={turbineSlotBar}
-          confirmedSlotBar={optimisticallyConfirmedBar}
+          finalizedSlotBar={finalizedSlotBar}
           replaySlotBar={replaySlotBar}
           nextLeaderSlotBar={nextLeaderSlotBar}
         />
@@ -277,7 +275,7 @@ function SlotBars() {
             repairSlotBar={repairSlotBar}
             turbineSlotBar={turbineSlotBar}
             replaySlotBar={replaySlotBar}
-            confirmedSlotBar={optimisticallyConfirmedBar}
+            finalizedSlotBar={finalizedSlotBar}
             minSlot={rootSlot ?? replaySlot - 32}
             maxSlot={maxCurrentSlot}
             setBarWidth={setBarWidth}
@@ -392,7 +390,7 @@ interface CurrentSlotsProps {
   repairSlotBar: SlotBarInfo;
   turbineSlotBar: SlotBarInfo;
   replaySlotBar: SlotBarInfo;
-  confirmedSlotBar: SlotBarInfo;
+  finalizedSlotBar: SlotBarInfo;
   minSlot: number;
   maxSlot: number;
   setBarWidth: (barWidth: number) => void;
@@ -403,7 +401,7 @@ function CurrentSlots({
   repairSlotBar,
   turbineSlotBar,
   replaySlotBar,
-  confirmedSlotBar,
+  finalizedSlotBar,
   maxSlot,
   minSlot,
   setBarWidth,
@@ -414,13 +412,13 @@ function CurrentSlots({
   const slotBarsArr = useMemo(
     () => [
       voteSlotBar,
-      confirmedSlotBar,
+      finalizedSlotBar,
       replaySlotBar,
       repairSlotBar,
       turbineSlotBar,
     ],
     [
-      confirmedSlotBar,
+      finalizedSlotBar,
       repairSlotBar,
       replaySlotBar,
       turbineSlotBar,
@@ -698,7 +696,7 @@ interface LabelsGridProps {
   repairSlotBar: SlotBarInfo;
   turbineSlotBar: SlotBarInfo;
   replaySlotBar: SlotBarInfo;
-  confirmedSlotBar: SlotBarInfo;
+  finalizedSlotBar: SlotBarInfo;
   nextLeaderSlotBar: SlotBarInfo;
 }
 
@@ -709,7 +707,7 @@ function LabelsGrid({
   repairSlotBar,
   turbineSlotBar,
   replaySlotBar,
-  confirmedSlotBar,
+  finalizedSlotBar,
   nextLeaderSlotBar,
 }: LabelsGridProps) {
   return (
@@ -717,7 +715,7 @@ function LabelsGrid({
       <MSlotLabel slotBarInfo={storageSlotBar} />
       <MSlotLabel slotBarInfo={rootSlotBar} />
       <MSlotLabel slotBarInfo={voteSlotBar} />
-      <MSlotLabel slotBarInfo={confirmedSlotBar} />
+      <MSlotLabel slotBarInfo={finalizedSlotBar} />
       <MSlotLabel slotBarInfo={replaySlotBar} />
       <MSlotLabel slotBarInfo={repairSlotBar} />
       <MSlotLabel slotBarInfo={turbineSlotBar} />

@@ -94,6 +94,7 @@ import {
   voteSlotAtom,
   rootSlotAtom,
   optimisticallyConfirmedSlotAtom,
+  finalizedSlotAtom,
   liveProgramCacheAtom,
   slotCaughtUpAtom,
   healthAtom,
@@ -442,6 +443,7 @@ function useUpdateAtoms() {
   const setOptimisticallyConfirmedSlot = useSetAtom(
     optimisticallyConfirmedSlotAtom,
   );
+  const setFinalizedSlot = useSetAtom(finalizedSlotAtom);
   const setSlotCaughtUp = useSetAtom(slotCaughtUpAtom);
 
   const addLiveShreds = useSetAtom(shredsAtoms.addShredEvents);
@@ -656,6 +658,10 @@ function useUpdateAtoms() {
               setOptimisticallyConfirmedSlot(value);
               break;
             }
+            case "finalized_slot": {
+              setFinalizedSlot(value);
+              break;
+            }
             case "slot_caught_up":
               setSlotCaughtUp(value);
               break;
@@ -828,6 +834,7 @@ function useUpdateAtoms() {
       setVoteSlot,
       setRootSlot,
       setOptimisticallyConfirmedSlot,
+      setFinalizedSlot,
       addTurbineSlots,
       addRepairSlots,
       setServerTimeNanos,

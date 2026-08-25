@@ -10,6 +10,7 @@ import type {
   estimatedSlotDurationSchema,
   estimatedSlotSchema,
   estimatedTpsSchema,
+  finalizedSlotSchema,
   commitHashSchema,
   identityKeySchema,
   liveTilePrimaryMetricSchema,
@@ -107,6 +108,7 @@ export type RootSlot = z.infer<typeof rootSlotSchema>;
 export type OptimisticallyConfirmedSlot = z.infer<
   typeof optimisticallyConfirmedSlotSchema
 >;
+export type FinalizedSlot = z.infer<typeof finalizedSlotSchema>;
 
 export type CompletedSlot = z.infer<typeof completedSlotSchema>;
 

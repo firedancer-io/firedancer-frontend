@@ -118,6 +118,7 @@ export const voteBalanceSchema = z.coerce.bigint();
 export const rootSlotSchema = z.number();
 
 export const optimisticallyConfirmedSlotSchema = z.number();
+export const finalizedSlotSchema = z.number();
 
 export const completedSlotSchema = z.number();
 export const turbineSlotSchema = z.number().nullable();
@@ -612,6 +613,10 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("optimistically_confirmed_slot"),
     value: optimisticallyConfirmedSlotSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("finalized_slot"),
+    value: finalizedSlotSchema,
   }),
   summaryTopicSchema.extend({
     key: z.literal("completed_slot"),
