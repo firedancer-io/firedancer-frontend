@@ -8,6 +8,34 @@ import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
 import svgr from "vite-plugin-svgr";
 import { visualizer } from "rollup-plugin-visualizer";
+import type { Plugin } from "vite";
+
+// Drop index.html logo preloads belonging to the client not being built.
+function stripOtherClientPreloads(): Plugin {
+  const client = process.env.VITE_VALIDATOR_CLIENT?.trim();
+  const strip =
+    client === "Firedancer"
+      ? "frankendancer"
+      : client === "Frankendancer"
+        ? "firedancer"
+        : undefined;
+  return {
+    name: "strip-other-client-preloads",
+    transformIndexHtml: {
+      order: "pre",
+      handler: (html) =>
+        strip
+          ? html.replace(
+              new RegExp(
+                `<link[^>]*href="[^"]*assets/${strip}[^>]*/>\\s*`,
+                "g",
+              ),
+              "",
+            )
+          : html,
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -61,6 +89,7 @@ export default defineConfig({
         : [],
   },
   plugins: [
+    stripOtherClientPreloads(),
     react(),
     svgr(),
     TanStackRouterVite(),
