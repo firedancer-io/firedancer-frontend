@@ -1,6 +1,9 @@
 // Pulled from https://github.com/skalinichev/uplot-wrappers
 import { useCallback, useEffect, useRef } from "react";
 import uPlot from "uplot";
+// structural css (.u-wrap/.u-over/.u-axis positioning); imported here so
+// it ships with every chunk that renders a uplot chart
+import "uplot/dist/uPlot.min.css";
 import { dataMatch, optionsUpdateState } from "./utils";
 import { useThrottledCallback } from "use-debounce";
 import { uplotChartsAtom } from "./uplotAtoms";

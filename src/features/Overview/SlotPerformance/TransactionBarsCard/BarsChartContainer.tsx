@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import type uPlot from "uplot";
-import "uplot/dist/uPlot.min.css";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useMeasure, useWindowSize } from "react-use";
 import clamp from "lodash/clamp";

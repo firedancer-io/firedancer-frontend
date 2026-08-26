@@ -1,7 +1,6 @@
 import styles from "./barsChart.module.css";
 import { useCallback, useMemo, useRef } from "react";
 import type uPlot from "uplot";
-import "uplot/dist/uPlot.min.css";
 import { txnBarsPlugin } from "./txnBarsPlugin";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import UplotReact from "../../../../uplotReact/UplotReact";
