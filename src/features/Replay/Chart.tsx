@@ -3,7 +3,7 @@ import { useAtomValue } from "jotai";
 import { useRef, useLayoutEffect, useMemo, useCallback, useState } from "react";
 import { useMeasure } from "react-use";
 import styles from "./chart.module.css";
-import { type MarkerLinesProps } from "./const.ts";
+import type { MarkerLinesProps } from "./const.ts";
 import { nsPerMs } from "../../consts.ts";
 import { clamp } from "../../uplotReact/utils.ts";
 import { calcRelativeMs, getInitVisibleRange } from "./utils.ts";
@@ -14,11 +14,15 @@ import { RevenueType } from "../../api/entities.ts";
 import type { TsRange } from "../WebGl/webglUtils.ts";
 import { useExplorableChart } from "./useExplorableChart.ts";
 import { useVisibleRangeSubscribers } from "./useVisibleRangeSubscribers.ts";
+import MiniMap from "./MiniMap/MiniMap.tsx";
 
 const LIVE_CHART_DELAY_MS = 500;
 const MARKER_PCT_VAR = "--marker-lines-pct";
+const WORLD_MARKER_PCT_VAR = "--world-marker-lines-pct";
+
 const markerLinesProps: MarkerLinesProps = {
   markerLinesClassName: styles.withMarkerLines,
+  miniMapMarkerLinesClassName: styles.withWorldMarkerLines,
 };
 
 interface ChartProps {
@@ -62,6 +66,7 @@ export default function Chart({ startupTimeNs }: ChartProps) {
   const {
     broadcastVisibleRangeChange,
     broadcastSelectedMsChange,
+    broadcastWorldRangeChange,
     visibleRangeSubscriberProps,
   } = useVisibleRangeSubscribers({ rangeRef, selectedMsRef });
 
@@ -72,6 +77,7 @@ export default function Chart({ startupTimeNs }: ChartProps) {
         if (selectedMsRef.current == null) {
           // off screen
           containerRef.current.style.setProperty(MARKER_PCT_VAR, "-300%");
+          containerRef.current.style.setProperty(WORLD_MARKER_PCT_VAR, "-300%");
           return;
         }
 
@@ -79,6 +85,13 @@ export default function Chart({ startupTimeNs }: ChartProps) {
         const [start, end] = rangeRef.current.visibleRangeMs;
         const pct = (100 * (selectedMsRef.current - start)) / (end - start);
         containerRef.current.style.setProperty(MARKER_PCT_VAR, `${pct}%`);
+
+        const worldPct =
+          (100 * selectedMsRef.current) / rangeRef.current.worldEndMs;
+        containerRef.current.style.setProperty(
+          WORLD_MARKER_PCT_VAR,
+          `${worldPct}%`,
+        );
       };
 
       const setSelectedMs = (ts: number | undefined) => {
@@ -119,7 +132,7 @@ export default function Chart({ startupTimeNs }: ChartProps) {
       };
     }, [broadcastSelectedMsChange, broadcastVisibleRangeChange]);
 
-  const explorableChartProps = useExplorableChart({
+  const { explorableChartProps, miniMapProps } = useExplorableChart({
     rangeRef,
     setSelectedMs,
     setVisibleRange,
@@ -137,6 +150,7 @@ export default function Chart({ startupTimeNs }: ChartProps) {
 
     if (rangeRef.current) {
       rangeRef.current.worldEndMs = newWorldEndMs;
+      broadcastWorldRangeChange();
       return;
     }
 
@@ -158,6 +172,7 @@ export default function Chart({ startupTimeNs }: ChartProps) {
     startupTimeNs,
     broadcastVisibleRangeChange,
     refreshSelectedMarkerLine,
+    broadcastWorldRangeChange,
   ]);
 
   return (
@@ -165,6 +180,12 @@ export default function Chart({ startupTimeNs }: ChartProps) {
       {!!width && isRangeInitialized && (
         <>
           <VisibleRange {...visibleRangeSubscriberProps} />
+          <MiniMap
+            width={width}
+            {...visibleRangeSubscriberProps}
+            {...miniMapProps}
+            {...markerLinesProps}
+          />
           <Flex direction="column" gapY="4" position="relative">
             <RevenueTrack
               type={RevenueType.TxnFees}

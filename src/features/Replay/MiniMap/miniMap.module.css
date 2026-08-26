@@ -1,0 +1,33 @@
+.visible-range-box {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: calc(100% + 4px);
+  margin: -3px;
+  border: 2px solid white;
+}
+
+.handle {
+  display: none;
+  --width: 6px;
+  --border-width: 2px;
+  box-sizing: content-box;
+  position: absolute;
+  top: calc(25% - var(--border-width));
+  height: 50%;
+  width: 6px;
+  border: var(--border-width) solid white;
+  background-color: grey;
+  &.left {
+    z-index: 2;
+    left: calc(-1 * var(--width) + var(--border-width) / 2);
+  }
+  &.right {
+    z-index: 1;
+    right: calc(-1 * var(--width) + var(--border-width) / 2);
+  }
+}
+
+.visible-range-box:hover .handle {
+  display: block;
+}
