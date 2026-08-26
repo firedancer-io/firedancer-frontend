@@ -9,6 +9,7 @@ import topLevelAwait from "vite-plugin-top-level-await";
 import svgr from "vite-plugin-svgr";
 import { visualizer } from "rollup-plugin-visualizer";
 import type { Plugin } from "vite";
+import { createHash } from "node:crypto";
 
 // Drop index.html logo preloads belonging to the client not being built.
 function stripOtherClientPreloads(client: string | undefined): Plugin {
@@ -51,6 +52,47 @@ function stripStaticSplash(client: string | undefined): Plugin {
               /[ \t]*<!-- fd-splash-start -->[\s\S]*?<!-- fd-splash-end -->\n/g,
               "",
             ),
+    },
+  };
+}
+
+// Extract the zstd wasm that @oneidentity/zstd-js inlines as a base64 data
+// URI into a binary asset fetched in parallel with worker startup.  The
+// package's ZstdInit calls its emscripten factory with no Module argument,
+// so wasmBinary/locateFile cannot be injected; instead swap the data URI
+// for a bare hashed filename, which emscripten resolves against the worker
+// script's own directory (both land in assets/) and fetches.  ZstdInit
+// still rejects on fetch/instantiate failure, preserving the uncompressed
+// fallback.
+function zstdWasmAsset(): Plugin {
+  return {
+    name: "zstd-wasm-asset",
+    apply: "build",
+    transform(code, id) {
+      if (!id.replace(/\?.*$/, "").endsWith("zstd-js/decompress/index.js"))
+        return;
+
+      // AGFzbQ is base64 "\0asm"
+      const match = code.match(
+        /"data:application\/octet-stream;base64,(AGFzbQ[A-Za-z0-9+/=]+)"/,
+      );
+      if (!match) {
+        this.warn("zstd wasm data URI not found; leaving base64 inline");
+        return;
+      }
+
+      const wasm = Buffer.from(match[1], "base64");
+      const hash = createHash("sha256").update(wasm).digest("hex").slice(0, 8);
+      const fileName = `zstd-dec-${hash}.wasm`;
+      this.emitFile({
+        type: "asset",
+        fileName: `assets/${fileName}`,
+        source: wasm,
+      });
+      return {
+        code: code.replace(match[0], JSON.stringify(fileName)),
+        map: null,
+      };
     },
   };
 }
@@ -102,8 +144,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     worker: {
-      plugins: () =>
-        process.env.ANALYZE
+      plugins: () => [
+        zstdWasmAsset(),
+        ...(process.env.ANALYZE
           ? [
               visualizer({
                 filename: "bundle-stats-worker.json",
@@ -112,7 +155,8 @@ export default defineConfig(({ mode }) => {
                 emitFile: false,
               }) as never,
             ]
-          : [],
+          : []),
+      ],
     },
     plugins: [
       stripOtherClientPreloads(client),
