@@ -23,7 +23,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import {
   expandStartupProgressElAtom,
   isStartupProgressExpandedAtom,
-  showStartupProgressAtom,
+  showStartupButtonsAtom,
 } from "../StartupProgress/atoms";
 import { Cross1Icon, InfoCircledIcon, TimerIcon } from "@radix-ui/react-icons";
 import { bootProgressContainerElAtom } from "../../atoms";
@@ -171,7 +171,9 @@ function Attribution() {
 }
 
 function ExpandStartupProgressButton() {
-  const showStartupProgress = useAtomValue(showStartupProgressAtom);
+  // phase-keyed tri-state: hidden while the phase is unknown, so a
+  // running validator never flashes the button in the first commit
+  const showStartupButtons = useAtomValue(showStartupButtonsAtom);
   const setIsStartupProgressExpanded = useSetAtom(
     isStartupProgressExpandedAtom,
   );
@@ -183,7 +185,7 @@ function ExpandStartupProgressButton() {
       variant="ghost"
       color="gray"
       // keep mounted so the identity key doesn't shift when startup ends
-      style={showStartupProgress ? undefined : { visibility: "hidden" }}
+      style={showStartupButtons ? undefined : { visibility: "hidden" }}
       onClick={() => setIsStartupProgressExpanded(true)}
     >
       <TimerIcon />
@@ -192,7 +194,7 @@ function ExpandStartupProgressButton() {
 }
 
 function CollapseStartupProgressButton() {
-  const showStartupProgress = useAtomValue(showStartupProgressAtom);
+  const showStartupButtons = useAtomValue(showStartupButtonsAtom);
   const setIsStartupProgressExpanded = useSetAtom(
     isStartupProgressExpandedAtom,
   );
@@ -217,7 +219,7 @@ function CollapseStartupProgressButton() {
       variant="ghost"
       color="gray"
       // keep mounted so the identity key doesn't shift when startup ends
-      style={showStartupProgress ? undefined : { visibility: "hidden" }}
+      style={showStartupButtons ? undefined : { visibility: "hidden" }}
       onClick={onClick}
     >
       <Cross1Icon color="white" />

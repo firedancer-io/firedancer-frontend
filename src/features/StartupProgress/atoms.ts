@@ -101,6 +101,15 @@ export const isStartupPhaseAtom = atom((get) =>
     : get(bootProgressPhaseAtom) !== BootPhaseEnum.running,
 );
 
+// Header startup buttons: hidden until the phase is known (unlike
+// isStartupPhaseAtom, which counts unknown as startup), so a running
+// validator never paints them for a beat before the mirror catches up
+export const showStartupButtonsAtom = atom((get) => {
+  if (isFrankendancer) return get(showStartupProgressAtom);
+  const phase = get(bootProgressPhaseAtom);
+  return phase !== undefined && phase !== BootPhaseEnum.running;
+});
+
 export const isStartupProgressExpandedAtom = atom(true);
 export const expandStartupProgressElAtom = atom<HTMLButtonElement | null>(null);
 
