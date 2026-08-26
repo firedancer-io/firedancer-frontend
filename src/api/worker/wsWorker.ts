@@ -6,6 +6,18 @@ import { createMessageHandler } from "./messageHandler";
 const reconnectDelayMs = 3_000;
 const flushDelayMs = 32; // ~30fps
 
+// Fired at module load so wasm compile overlaps the WS handshake
+const zstdPromise: Promise<ZstdDec | undefined> = ZstdInit().catch(
+  (e: unknown) => {
+    logError(
+      "WS",
+      "Failed to initialize Zstd, falling back to uncompressed",
+      e,
+    );
+    return undefined;
+  },
+);
+
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout>;
@@ -134,19 +146,7 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
   switch (msg.type) {
     case "connect":
       void (async () => {
-        let zstd: ZstdDec | undefined;
-        if (msg.compress) {
-          try {
-            zstd = await ZstdInit();
-          } catch (e) {
-            logError(
-              "WS",
-              "Failed to initialize Zstd, falling back to uncompressed",
-              e,
-            );
-          }
-        }
-        connect(msg.websocketUrl, zstd);
+        connect(msg.websocketUrl, msg.compress ? await zstdPromise : undefined);
       })();
       break;
     case "disconnect":

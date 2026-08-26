@@ -8,12 +8,18 @@ import WsWorker from "./wsWorker?worker";
 import { logError } from "../../logger";
 import { getDefaultStore } from "jotai";
 import { isDocumentVisibleAtom } from "../../atoms";
+import { websocketCompress, websocketUrl } from "../consts";
 
 const store = getDefaultStore();
 
 let worker: TypedWorker<ToWorkerMessage, FromWorkerMessage> | null = null;
 // Singleton so existing listeners keep receiving events if the worker is recreated
-const emitter = new EventEmitter().setMaxListeners(1e3) as MessageEmitter;
+const rawEmitter = new EventEmitter().setMaxListeners(1e3);
+// Flush messages buffered before the first subscriber attached
+rawEmitter.on("newListener", (type: string | symbol) => {
+  if (type === messageEventType) scheduleFlush();
+});
+const emitter = rawEmitter as MessageEmitter;
 
 /**
  * Buffer worker messages and flush once per frame to prevent worker
@@ -28,6 +34,8 @@ let timeoutId: number | null = null;
 function flushBuffer() {
   rafId = null;
   timeoutId = null;
+  // Hold messages until the first subscriber attaches
+  if (emitter.listenerCount(messageEventType) === 0) return;
   const messages = buffer;
   buffer = [];
   for (const msg of messages) {
@@ -68,8 +76,16 @@ const unsubscribeVisibility = store.sub(isDocumentVisibleAtom, () => {
   }
 });
 
+const maxPreSubscribeBuffer = 10_000;
+
 function onMessage(e: MessageEvent<FromWorkerMessage>) {
   buffer.push(e.data);
+  if (
+    buffer.length > maxPreSubscribeBuffer &&
+    emitter.listenerCount(messageEventType) === 0
+  ) {
+    buffer.shift();
+  }
   scheduleFlush();
 }
 
@@ -91,6 +107,10 @@ function stopWorker() {
     worker = null;
   }
 }
+
+// Start during main-bundle evaluation so the worker fetch, zstd init and WS
+// handshake overlap bundle parse and React mount
+if (typeof Worker !== "undefined") startWorker(websocketUrl, websocketCompress);
 
 export function useWsWorker({
   websocketUrl,
