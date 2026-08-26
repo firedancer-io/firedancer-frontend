@@ -123,6 +123,9 @@ function EpochSlider() {
   const epoch = useAtomValue(epochAtom);
   const setSlotOverride = useSetAtom(slotOverrideAtom);
   const [value, setValue] = useState([0]);
+  // CLS: the thumb renders hidden at the track bottom until the first
+  // data-driven position lands, so it never teleports on first data
+  const [thumbPositioned, setThumbPositioned] = useState(false);
   const isSliderChangingValueRef = useRef(false);
   const setIsScrolling = useSetAtom(isScrollingAtom);
 
@@ -198,12 +201,13 @@ function EpochSlider() {
             key={epoch?.epoch}
             isSliderChangingValueRef={isSliderChangingValueRef}
             setSliderValue={setValue}
+            setThumbPositioned={setThumbPositioned}
           />
           <MSliderLeaderSlots updateSlot={updateSlot} slotHeight={slotHeight} />
           <MSliderSkippedSlots updateSlot={updateSlot} />
           <MSliderFirstProcessedSlot updateSlot={updateSlot} />
         </Slider.Track>
-        <SliderThumbTooltip isOpen={tooltipOpen} />
+        <SliderThumbTooltip isOpen={tooltipOpen} positioned={thumbPositioned} />
       </Slider.Root>
     </Flex>
   );
@@ -212,9 +216,11 @@ function EpochSlider() {
 function SliderEpochProgress({
   isSliderChangingValueRef,
   setSliderValue,
+  setThumbPositioned,
 }: {
   isSliderChangingValueRef: RefObject<boolean>;
   setSliderValue: React.Dispatch<React.SetStateAction<number[]>>;
+  setThumbPositioned: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const epoch = useAtomValue(epochAtom);
   const lastProcessedLeader = useAtomValue(lastProcessedLeaderAtom);
@@ -269,12 +275,27 @@ function SliderEpochProgress({
     setSliderValue((prev) => {
       return prev[0] === value ? prev : [value];
     });
+
+    // reveal the thumb once the value came from real data, two frames
+    // later: unhiding in the frame that moves it still counts the old
+    // position as a layout shift
+    if (
+      epoch?.start_slot !== undefined &&
+      (slotOverride !== undefined ||
+        (navFilter === SlotNavFilter.MySlots
+          ? lastProcessedLeader !== undefined
+          : epochProgressPct > 0))
+    )
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => setThumbPositioned(true)),
+      );
   }, [
     epoch?.end_slot,
     epoch?.start_slot,
     epochProgressPct,
     isSliderChangingValueRef,
     setSliderValue,
+    setThumbPositioned,
     slotOverride,
     navFilter,
     lastProcessedLeader,
@@ -289,7 +310,13 @@ function SliderEpochProgress({
 }
 const MSliderEpochProgress = memo(SliderEpochProgress);
 
-function SliderThumbTooltip({ isOpen }: { isOpen: boolean }) {
+function SliderThumbTooltip({
+  isOpen,
+  positioned,
+}: {
+  isOpen: boolean;
+  positioned: boolean;
+}) {
   const slotOverride = useAtomValue(slotOverrideAtom);
   const { showNav } = useSlotsNavigation();
 
@@ -297,6 +324,7 @@ function SliderThumbTooltip({ isOpen }: { isOpen: boolean }) {
     <Slider.Thumb
       className={clsx(styles.sliderThumb, {
         [styles.collapsed]: !showNav,
+        [styles.unpositioned]: !positioned,
       })}
     >
       <Text

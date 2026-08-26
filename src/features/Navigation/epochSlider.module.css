@@ -93,6 +93,17 @@
     border-left-width: 0;
     transition: border-width 0s linear 0.2s;
   }
+
+  /* hidden until the first data-driven position (no teleport on load) */
+  &.unpositioned {
+    visibility: hidden;
+  }
+}
+
+/* radix positions the thumb through an unclassed wrapper span; hide it
+   too pre-position, or its move still counts as a layout shift */
+.slider-root :has(> .slider-thumb.unpositioned) {
+  visibility: hidden;
 }
 
 .slider-thumb:hover {
