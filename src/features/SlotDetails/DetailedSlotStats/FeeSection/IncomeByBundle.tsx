@@ -1,9 +1,9 @@
+import { groupBy } from "../../../../utils";
+import { sum } from "../../../../mathUtils";
 import type { SlotTransactions } from "../../../../api/types";
 import DistributionBar from "./DistributionBars";
 import { useCallback, useContext, useMemo } from "react";
 import { getTxnIncome } from "../../../../utils";
-import groupBy from "lodash/groupBy";
-import sum from "lodash/sum";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import {
   BUNDLE_CONTROL_KEY,

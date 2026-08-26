@@ -1,3 +1,4 @@
+import { sum } from "../../../../mathUtils";
 import { useAtomValue } from "jotai";
 import styles from "./chartTooltip.module.css";
 import { tooltipTxnIdxAtom, tooltipTxnStateAtom } from "./chartTooltipAtoms";
@@ -32,8 +33,6 @@ import {
   getTxnStateDurations,
 } from "../../../../transactionUtils";
 import { isFiredancer } from "../../../../client";
-import sum from "lodash/sum";
-import values from "lodash/values";
 import CopyButton from "../../../../components/CopyButton";
 
 export default function ChartTooltip() {
@@ -289,7 +288,7 @@ function StateDurationDisplay({
   const durationRatios = useMemo(() => {
     if (!durations) return;
 
-    const total = sum(values(durations).map((n) => Number(n)));
+    const total = sum(Object.values(durations).map((n) => Number(n)));
     const preLoading = Math.max(
       0,
       (Number(durations.preLoading) / total) * 100,
@@ -311,7 +310,7 @@ function StateDurationDisplay({
   const durationUnits = useMemo(() => {
     if (!durations) return;
 
-    const _total = sum(values(durations).map((n) => Number(n)));
+    const _total = sum(Object.values(durations).map((n) => Number(n)));
 
     const preLoading = getDurationWithUnits(durations.preLoading);
     const validating = getDurationWithUnits(durations.validating);

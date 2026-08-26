@@ -1,3 +1,4 @@
+import { clamp } from "../../../../mathUtils";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import type { CatchingUpBars } from "./CatchingUpBars";
 import { BarsFooter } from "./BarsFooter";
@@ -20,7 +21,6 @@ import { completedSlotAtom } from "../../../../api/atoms";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import type { ComponentProps, ComponentType } from "react";
 import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
-import clamp from "lodash/clamp";
 // Deferred (preload-and-reveal, not lazy/Suspense, so mounting under
 // catch-up data flushes can't starve in Suspense retry lanes): keeps
 // uplot out of the main chunk

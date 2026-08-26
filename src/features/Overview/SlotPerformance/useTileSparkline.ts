@@ -1,4 +1,4 @@
-import mean from "lodash/mean";
+import { mean } from "../../../mathUtils";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useInterval } from "react-use";
 import { createClock } from "../../../clockUtils";
@@ -45,7 +45,7 @@ export function useTileSparkline({
   });
 
   const busy = (isLive ? liveBusyPerTile : aggQueryBusyPerTile)?.filter(
-    (b) => b !== undefined && b <= 1,
+    (b): b is number => b !== undefined && b <= 1,
   );
   const avgBusy = busy?.length ? mean(busy) : undefined;
 

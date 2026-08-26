@@ -1,3 +1,4 @@
+import { clamp } from "../../../../mathUtils";
 import { Flex } from "@radix-ui/themes";
 import styles from "./progressBar.module.css";
 import { BootPhaseEnum } from "../../../../api/entityEnums";
@@ -7,7 +8,6 @@ import {
   bootProgressPhaseAtom,
   bootProgressPhasesAtom,
 } from "../../atoms";
-import clamp from "lodash/clamp";
 import clsx from "clsx";
 import type { BootPhase } from "../../../../api/types";
 import { useEffect, useState } from "react";

@@ -1,3 +1,4 @@
+import { clamp } from "../../../mathUtils";
 import { Flex, Text } from "@radix-ui/themes";
 import cardStatStyles from "../../../components/cardStat.module.css";
 import clsx from "clsx";
@@ -8,7 +9,6 @@ import { useAtomValue } from "jotai";
 import { liveProgramCacheAtom } from "../../../api/atoms";
 import { formatSIBytesFraction } from "../../../utils";
 import type { ValueWithUnit } from "../../../utils";
-import clamp from "lodash/clamp";
 import styles from "./programCacheCard.module.css";
 
 type StorageValues = {

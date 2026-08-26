@@ -1,9 +1,9 @@
+import { clamp } from "../../../../mathUtils";
 import type { SlotTransactions } from "../../../../api/types";
 import DistributionBar from "./DistributionBars";
 import { useMemo } from "react";
 import { getTxnIncome } from "../../../../utils";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
-import clamp from "lodash/clamp";
 
 function percentileSpread(values: number[], percentiles: number[] = [1, 10]) {
   const n = values.length;

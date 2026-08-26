@@ -1,3 +1,4 @@
+import { clamp } from "../../../mathUtils";
 import type uPlot from "uplot";
 import { getDefaultStore } from "jotai";
 import {
@@ -19,7 +20,6 @@ import {
   shredSkippedColor,
 } from "../../../colors";
 import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
-import clamp from "lodash/clamp";
 import { ShredEvent } from "../../../api/entityEnums";
 import {
   createLabelsState,

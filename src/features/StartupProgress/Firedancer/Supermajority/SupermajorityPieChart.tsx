@@ -1,8 +1,8 @@
+import { clamp } from "../../../../mathUtils";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import styles from "./supermajority.module.css";
 import supermajorityPointerIcon from "../../../../assets/supermajority_pointer.svg";
 import { useMemo, type CSSProperties } from "react";
-import clamp from "lodash/clamp";
 import clsx from "clsx";
 import { bootProgressAtom } from "../../../../api/atoms";
 import { useAtomValue } from "jotai";

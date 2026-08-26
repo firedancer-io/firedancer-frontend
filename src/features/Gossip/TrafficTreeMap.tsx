@@ -1,3 +1,5 @@
+import { shuffle } from "../../utils";
+import { sum } from "../../mathUtils";
 import {
   useCallback,
   useMemo,
@@ -11,8 +13,6 @@ import { treemap, hierarchy, treemapSquarify } from "d3-hierarchy";
 import type { HierarchyRectangularNode } from "d3-hierarchy";
 import { useAtomValue } from "jotai";
 import { peersAtom, totalActivePeersStakeAtom } from "../../atoms";
-import shuffle from "lodash/shuffle";
-import sum from "lodash/sum";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { headerGap } from "./consts";
 import styles from "./trafficTreeMap.module.css";

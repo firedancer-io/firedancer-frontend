@@ -1,8 +1,8 @@
+import { clamp } from "../../../../mathUtils";
 import { useMemo, useState } from "react";
 import type uPlot from "uplot";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useMeasure, useWindowSize } from "react-use";
-import clamp from "lodash/clamp";
 import { selectedSlotAtom, tileCountAtom } from "../atoms";
 import ChartControls from "./ChartControls";
 import { Flex } from "@radix-ui/themes";

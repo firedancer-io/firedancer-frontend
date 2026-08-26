@@ -1,3 +1,4 @@
+import { clamp } from "./mathUtils";
 import { atom } from "jotai";
 import { nsPerMs, slotsPerLeader } from "./consts";
 import { atomWithImmer } from "jotai-immer";
@@ -22,7 +23,6 @@ import type {
   SlotResponse,
   SupermajorityEpoch,
 } from "./api/types";
-import clamp from "lodash/clamp";
 import {
   getDiscountedVoteLatency,
   getDurationText,

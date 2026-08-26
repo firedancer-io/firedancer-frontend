@@ -1,8 +1,18 @@
 import { useMemo } from "react";
-import get from "lodash/get";
 
 // Local stand-ins for the @nivo/core / @nivo/colors utilities the sankey
 // fork used, matching nivo behavior for the configurations this app passes.
+
+// dot-path subset of lodash get; this app's accessors are plain
+// property names / dot paths
+function get(datum: unknown, path: string): unknown {
+  let current: unknown = datum;
+  for (const part of path.split(".")) {
+    if (current == null) return undefined;
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
 
 export type Box = Partial<{
   top: number;
@@ -91,7 +101,7 @@ export function useOrdinalColorScale<Datum>(
     const palette = Array.isArray(config) ? (config as string[]) : nivoScheme;
     const assigned = new Map<unknown, string>();
     return (datum: Datum) => {
-      const key = get(datum, identity) as unknown;
+      const key = get(datum, identity);
       let color = assigned.get(key);
       if (color === undefined) {
         color = palette[assigned.size % palette.length];

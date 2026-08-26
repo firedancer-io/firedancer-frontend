@@ -1,8 +1,7 @@
+import { ceil, round } from "../../../../mathUtils";
 import type { AlignedData, RectH } from "uplot";
 import { distr, SPACE_BETWEEN } from "./distr";
 import uPlot from "uplot";
-import ceil from "lodash/ceil";
-import round from "lodash/round";
 import { pointWithin, Quadtree } from "./quadTree";
 import type { MutableRefObject } from "react";
 import type { SlotTransactions } from "../../../../api/types";

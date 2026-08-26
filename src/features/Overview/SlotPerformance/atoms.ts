@@ -1,3 +1,4 @@
+import { countBy } from "../../../utils";
 import { atom } from "jotai";
 import { atomFamily, selectAtom } from "jotai/utils";
 import {
@@ -8,7 +9,6 @@ import {
 import type { Epoch, TileType, TxnWaterfall } from "../../../api/types";
 import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
-import countBy from "lodash/countBy";
 import isEqual from "lodash/isEqual";
 import { TILE_TYPES } from "../../../api/entityEnums";
 import {
@@ -266,7 +266,7 @@ export const rateLiveWaterfallAtom = atom(
  * */
 export const tileCountAtom = atom<Record<TileType, number>>((get) => {
   const tiles = get(tilesAtom);
-  const counts = countBy(tiles, (t) => t.kind);
+  const counts = countBy(tiles ?? [], (t) => t.kind);
   return Object.fromEntries(
     TILE_TYPES.map((kind) => [kind, counts[kind] ?? 0]),
   ) as Record<TileType, number>;

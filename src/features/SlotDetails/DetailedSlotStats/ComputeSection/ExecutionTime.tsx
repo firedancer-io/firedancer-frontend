@@ -1,3 +1,4 @@
+import { sum } from "../../../../mathUtils";
 import { Grid, Text } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
@@ -14,8 +15,6 @@ import {
   getTxnBundleStats,
   getTxnStateDurations,
 } from "../../../../transactionUtils";
-import sum from "lodash/sum";
-import values from "lodash/values";
 
 export default function ExecutionTime() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
@@ -44,7 +43,7 @@ export default function ExecutionTime() {
         bundleStats.bundleTxnIdx,
       );
 
-      const totalNum = sum(values(duration).map((n) => Number(n)));
+      const totalNum = sum(Object.values(duration).map((n) => Number(n)));
 
       if (transactions.txn_is_simple_vote?.[i]) {
         vote.total += totalNum;

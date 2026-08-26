@@ -1,4 +1,4 @@
-import sortedIndex from "lodash/sortedIndex";
+import { sortedIndex } from "../../mathUtils";
 import type { Epoch } from "../../api/types";
 import { slotsPerLeader } from "../../consts";
 import { getSlotGroupLeader } from "../../utils";

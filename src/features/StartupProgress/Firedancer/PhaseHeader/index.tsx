@@ -1,3 +1,4 @@
+import { clamp } from "../../../../mathUtils";
 import styles from "./phaseHeader.module.css";
 import { useEffect, useMemo, useState } from "react";
 import { Box, Flex, Spinner, Text } from "@radix-ui/themes";
@@ -7,7 +8,6 @@ import { getDurationText, getTimeTillText } from "../../../../utils";
 import { useUptimeDuration } from "../../../../hooks/useUptime";
 import { Duration } from "../../../../timeUtils";
 import { useThrottledCallback } from "use-debounce";
-import clamp from "lodash/clamp";
 import { BootPhaseEnum } from "../../../../api/entityEnums";
 import { useAtomValue } from "jotai";
 import { bootProgressPhaseAtom } from "../../atoms";

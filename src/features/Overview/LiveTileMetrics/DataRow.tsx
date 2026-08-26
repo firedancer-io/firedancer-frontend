@@ -1,3 +1,4 @@
+import { clamp } from "../../../mathUtils";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { liveTileMetricsAtom, tileTimerHistoryAtom } from "../../../api/atoms";
 import {
@@ -12,7 +13,6 @@ import { Bars } from "../../StartupProgress/Firedancer/Bars";
 import TileSparkLine from "../SlotPerformance/TileSparkLine";
 import type { Priority } from "../../../api/types";
 import clsx from "clsx";
-import clamp from "lodash/clamp";
 import { useHarmonicIntervalFn } from "react-use";
 import {
   memo,

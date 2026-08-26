@@ -1,9 +1,9 @@
+import { mean } from "../../../mathUtils";
 import { Button, Flex, Popover } from "@radix-ui/themes";
 import type { PropsWithChildren, ReactNode } from "react";
 import styles from "./tileSparkLineExpandedContainer.module.css";
 import TileSparkLine from "./TileSparkLine";
 import TileBusy from "./TileBusy";
-import mean from "lodash/mean";
 import { isDefined } from "../../../utils";
 import { useLastDefinedValue } from "./useTileSparkline";
 

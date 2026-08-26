@@ -1,3 +1,4 @@
+import { clamp, sum } from "../../../mathUtils";
 import { useAtomValue } from "jotai";
 import {
   bootProgressCompletedPhasesAtom,
@@ -5,8 +6,6 @@ import {
   bootProgressPhasesAtom,
 } from "../atoms";
 import { useMemo } from "react";
-import clamp from "lodash/clamp";
-import sum from "lodash/sum";
 
 export function useOverallCompleteFraction(
   currentPhaseCompleteFraction: number,

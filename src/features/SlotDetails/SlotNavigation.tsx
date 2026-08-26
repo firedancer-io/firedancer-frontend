@@ -1,3 +1,4 @@
+import { clamp } from "../../mathUtils";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
 import type React from "react";
@@ -30,7 +31,6 @@ import { skippedSlotsAtom } from "../../api/atoms";
 import { SkippedIcon, StatusIcon } from "../../components/StatusIcon";
 import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
 import { getSlotGroupLeader } from "../../utils";
-import clamp from "lodash/clamp";
 
 const navigationTop = clusterIndicatorHeight + headerHeight;
 const itemGroupContainerGap = 4;

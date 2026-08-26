@@ -1,3 +1,5 @@
+import { groupBy } from "../../../../../utils";
+import { max } from "../../../../../mathUtils";
 import {
   Flex,
   IconButton,
@@ -34,8 +36,6 @@ import {
   filterArrivalDataAtom,
   filteredTxnIdxAtom,
 } from "../atoms";
-import groupBy from "lodash/groupBy";
-import max from "lodash/max";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ToggleGroupControl from "./ToggleGroupControl";

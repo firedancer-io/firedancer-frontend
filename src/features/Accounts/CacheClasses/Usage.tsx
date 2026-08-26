@@ -1,5 +1,5 @@
+import { clamp } from "../../../mathUtils";
 import { Flex, Tooltip, Text } from "@radix-ui/themes";
-import clamp from "lodash/clamp";
 import styles from "./usage.module.css";
 import { getSafePct } from "../../../utils";
 import type { PropsWithChildren } from "react";

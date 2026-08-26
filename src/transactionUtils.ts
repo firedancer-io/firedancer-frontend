@@ -1,4 +1,4 @@
-import max from "lodash/max";
+import { max } from "./mathUtils";
 import type { SlotTransactions } from "./api/types";
 import { TxnState } from "./features/Overview/SlotPerformance/TransactionBarsCard/consts";
 import { isFiredancer, isFrankendancer } from "./client";

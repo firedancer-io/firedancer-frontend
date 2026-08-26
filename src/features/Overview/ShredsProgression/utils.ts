@@ -1,4 +1,4 @@
-import sum from "lodash/sum";
+import { sum } from "../../../mathUtils";
 import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import { getSlotGroupLeader } from "../../../utils";
 import type { SlotsShreds } from "./atoms";

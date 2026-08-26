@@ -1,3 +1,4 @@
+import { sum } from "../../../mathUtils";
 import { useAtomValue } from "jotai";
 import {
   liveNetworkMetricsAtom,
@@ -14,7 +15,6 @@ import TileSparkLine from "../SlotPerformance/TileSparkLine";
 import { headerGap } from "../../Gossip/consts";
 import { useMemo, useRef, type CSSProperties } from "react";
 import styles from "./liveNetworkMetrics.module.css";
-import sum from "lodash/sum";
 import { tileChartDarkBackground } from "../../../colors";
 import { isFrankendancer } from "../../../client";
 import type { HistoryEntry } from "../../../api/worker/types";

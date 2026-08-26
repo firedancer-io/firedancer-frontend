@@ -1,3 +1,4 @@
+import { sum } from "../../../../mathUtils";
 import { useMemo } from "react";
 import { DisplayType, Sankey } from "../../../../sankey";
 import type { SankeyLinkDatum, DefaultLink } from "../../../../sankey";
@@ -21,7 +22,6 @@ import {
   successfulSlotNodes,
   tileNodes,
 } from "./consts";
-import sum from "lodash/sum";
 import { useSlotQueryResponseDetailed } from "../../../../hooks/useSlotQuery";
 import {
   failureColor,

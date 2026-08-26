@@ -1,6 +1,6 @@
+import { sum } from "../../mathUtils";
 import { useMemo } from "react";
 import { formatNumberLamports } from "../Overview/ValidatorsCard/formatAmt";
-import sum from "lodash/sum";
 import {
   failureColor,
   nonDelinquentChartColor,

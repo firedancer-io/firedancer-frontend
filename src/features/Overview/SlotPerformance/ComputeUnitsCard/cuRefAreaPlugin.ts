@@ -1,8 +1,8 @@
+import { round } from "../../../../mathUtils";
 import uPlot from "uplot";
 import type { SlotTransactions } from "../../../../api/types";
 import type { RefObject } from "react";
 import { computeUnitsScaleKey, banksXScaleKey } from "./consts";
-import round from "lodash/round";
 import { getDefaultStore } from "jotai";
 import { showChartProjectionsAtom } from "./atoms";
 

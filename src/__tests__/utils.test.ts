@@ -1,13 +1,17 @@
 import { expect, describe, it } from "vitest";
 import {
+  countBy,
   formatSIBytes,
   formatTimeNanos,
   getDiscountedVoteLatency,
   getDurationText,
+  groupBy,
   hasLateVote,
   kebabCase,
+  shuffle,
   startCase,
 } from "../utils";
+import { ceil, clamp, max, mean, round, sortedIndex, sum } from "../mathUtils";
 import { Duration } from "../timeUtils";
 import type { SlotPublish } from "../api/types";
 
@@ -626,5 +630,88 @@ describe("kebabCase/startCase match lodash on their real inputs", () => {
     for (const value of options) {
       expect(startCase(value), value).toBe(lodashStartCase(value));
     }
+  });
+});
+
+describe("local lodash equivalents match lodash", () => {
+  it("number helpers over a value grid", async () => {
+    const lodash = {
+      clamp: (await import("lodash/clamp")).default,
+      sum: (await import("lodash/sum")).default,
+      mean: (await import("lodash/mean")).default,
+      max: (await import("lodash/max")).default,
+      round: (await import("lodash/round")).default,
+      ceil: (await import("lodash/ceil")).default,
+      sortedIndex: (await import("lodash/sortedIndex")).default,
+    };
+
+    const grid = [
+      0,
+      1,
+      -1,
+      0.5,
+      -0.5,
+      1.005,
+      -1.005,
+      2.675,
+      42.4242,
+      1234.5678,
+      1e6 + 0.123456,
+      -0.000123,
+      5061,
+      0.1 + 0.2,
+    ];
+    for (const n of grid) {
+      for (const p of [0, 1, 2, 4]) {
+        expect(round(n, p), `round(${n}, ${p})`).toBe(lodash.round(n, p));
+        expect(ceil(n, p), `ceil(${n}, ${p})`).toBe(lodash.ceil(n, p));
+      }
+      expect(clamp(n, -1, 1), `clamp(${n})`).toBe(lodash.clamp(n, -1, 1));
+      expect(clamp(n, 0.25, 100)).toBe(lodash.clamp(n, 0.25, 100));
+    }
+
+    const arrays = [[], [1], [3, 1, 2], [0, -0.5, 7.25], grid];
+    for (const a of arrays) {
+      expect(sum(a), `sum([${a.join()}])`).toBe(a.length ? lodash.sum(a) : 0);
+      expect(mean(a), `mean([${a.join()}])`).toBe(lodash.mean(a));
+      expect(max(a), `max([${a.join()}])`).toBe(lodash.max(a));
+    }
+
+    const sorted = [[], [4], [1, 2, 2, 2, 9], [0, 10, 20, 30]];
+    for (const a of sorted) {
+      for (const v of [-1, 0, 2, 5, 20, 25, 31]) {
+        expect(sortedIndex(a, v), `sortedIndex([${a.join()}], ${v})`).toBe(
+          lodash.sortedIndex(a, v),
+        );
+      }
+    }
+  });
+
+  it("groupBy/countBy/shuffle over representative inputs", async () => {
+    const lodash = {
+      groupBy: (await import("lodash/groupBy")).default,
+      countBy: (await import("lodash/countBy")).default,
+    };
+
+    const codes = [7, 3, 7, null, 3, 7, null, 12];
+    expect(groupBy(codes)).toEqual(lodash.groupBy(codes));
+
+    const rows = [
+      { label: "a", value: 1 },
+      { label: "b", value: 2 },
+      { label: "a", value: 3 },
+    ];
+    expect(groupBy(rows, ({ label }) => label)).toEqual(
+      lodash.groupBy(rows, ({ label }) => label),
+    );
+    expect(countBy(rows, (r) => r.label)).toEqual(
+      lodash.countBy(rows, (r) => r.label),
+    );
+
+    const input = ["x", "y", "z", "w"];
+    const shuffled = shuffle(input);
+    expect(shuffled).toHaveLength(input.length);
+    expect([...shuffled].sort()).toEqual([...input].sort());
+    expect(input).toEqual(["x", "y", "z", "w"]); // input untouched
   });
 });

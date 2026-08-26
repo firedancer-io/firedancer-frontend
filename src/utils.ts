@@ -50,6 +50,41 @@ export function startCase(name = "") {
     .join(" ");
 }
 
+// lodash collection-function equivalents (string-keyed like lodash);
+// pinned by tests against lodash
+export function groupBy<T>(
+  items: readonly T[],
+  getKey: (item: T) => unknown = (item) => item,
+): Record<string, T[]> {
+  const groups: Record<string, T[]> = {};
+  for (const item of items) {
+    (groups[String(getKey(item))] ??= []).push(item);
+  }
+  return groups;
+}
+
+export function countBy<T>(
+  items: readonly T[],
+  getKey: (item: T) => unknown,
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const item of items) {
+    const key = String(getKey(item));
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** Fisher-Yates copy */
+export function shuffle<T>(items: readonly T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 export function getSlotGroupLeader(slot: number) {
   return slot - (slot % slotsPerLeader);
 }
