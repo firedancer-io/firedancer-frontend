@@ -36,16 +36,26 @@ interface PhaseHeaderProps {
   phaseCompleteFraction: number;
   overallCompleteFraction: number;
   remainingSeconds?: number;
+  /** Phase produces an ETA: keep the Remaining slot reserved (hidden)
+      while it is still unknown so it never pops the layout */
+  reserveRemaining?: boolean;
   showLoadingIcon?: boolean;
 }
 export default function PhaseHeader({
   phaseCompleteFraction,
   overallCompleteFraction,
   remainingSeconds,
+  reserveRemaining = false,
   showLoadingIcon = false,
 }: PhaseHeaderProps) {
   const phase = useAtomValue(bootProgressPhaseAtom);
-  const [remaining, setRemaining] = useState<number>();
+  // initialize from the prop so a first-frame estimate shows on the
+  // mount commit instead of one throttled commit later
+  const [remaining, setRemaining] = useState<number | undefined>(() =>
+    remainingSeconds == null
+      ? undefined
+      : Math.max(Math.round(remainingSeconds), 0),
+  );
 
   const setRemainingThrottled = useThrottledCallback((value?: number) => {
     const updatedRemaining =
@@ -85,11 +95,14 @@ export default function PhaseHeader({
         </span>
         <span>
           <Text className={styles.phaseName}>{phaseNames[phase]}... </Text>
-          {formattedRemaining && (
-            <span className={styles.noWrap}>
+          {(formattedRemaining || reserveRemaining) && (
+            <span
+              className={styles.noWrap}
+              style={formattedRemaining ? undefined : { visibility: "hidden" }}
+            >
               <Text className={styles.secondaryText}>Remaining </Text>
               <Text style={{ display: "inline-block", minWidth: "120px" }}>
-                ~{formattedRemaining}
+                ~{formattedRemaining ?? "0m 0s"}
               </Text>
             </span>
           )}

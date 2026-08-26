@@ -49,6 +49,7 @@ export default function Gossip() {
         phaseCompleteFraction={phaseCompleteFraction}
         overallCompleteFraction={overallCompleteFraction}
         remainingSeconds={remainingSeconds}
+        reserveRemaining
       />
 
       <Flex

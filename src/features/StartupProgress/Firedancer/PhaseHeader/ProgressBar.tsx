@@ -26,8 +26,11 @@ interface ProgressBarProps {
 }
 
 export function ProgressBar({ phaseCompleteFraction }: ProgressBarProps) {
-  // initialize progress animation at 0, even if phase begins with some progress already
-  const [displayFraction, setDisplayFraction] = useState(0);
+  // first render paints directly at the live fraction (no transition on a
+  // fresh element); later updates keep the CSS-transitioned animation
+  const [displayFraction, setDisplayFraction] = useState(() =>
+    clamp(phaseCompleteFraction, 0, 1),
+  );
 
   useEffect(() => {
     setDisplayFraction(clamp(phaseCompleteFraction, 0, 1));

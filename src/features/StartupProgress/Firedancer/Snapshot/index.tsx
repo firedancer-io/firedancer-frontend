@@ -213,6 +213,7 @@ export default function Snapshot() {
         phaseCompleteFraction={phaseCompleteFraction}
         overallCompleteFraction={overallCompleteFraction}
         remainingSeconds={remainingSeconds}
+        reserveRemaining
       />
       <Flex
         mt="52px"

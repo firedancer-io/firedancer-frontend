@@ -60,6 +60,7 @@ export default function CatchingUp() {
         phaseCompleteFraction={phaseCompleteFraction}
         overallCompleteFraction={overallCompleteFraction}
         remainingSeconds={catchingUpRatesRef.current.remainingSeconds}
+        reserveRemaining
       />
       <Flex
         direction="column"
