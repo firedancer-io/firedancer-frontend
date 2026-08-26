@@ -1,18 +1,20 @@
 import { Flex, Grid } from "@radix-ui/themes";
 import TransactionsCard from "./TransactionsCard";
-import SlotPerformance from "./SlotPerformance";
 import ValidatorsCard from "./ValidatorsCard";
 import StatusCard from "./StatusCard";
 import ShredsProgression from "./ShredsProgression";
-import LiveNetworkMetrics from "./LiveNetworkMetrics";
-import LiveTileMetrics from "./LiveTileMetrics";
 import SlotTimeline from "./SlotTimeline";
 import ProgramCacheCard from "./ProgramCacheCard";
 import AccountsCard from "./AccountsCard";
 import styles from "./overview.module.css";
 import { isFrankendancer } from "../../client";
 import clsx from "clsx";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+
+// Lazy: their eval leaves the critical window along with their mount
+const SlotPerformance = lazy(() => import("./SlotPerformance"));
+const LiveNetworkMetrics = lazy(() => import("./LiveNetworkMetrics"));
+const LiveTileMetrics = lazy(() => import("./LiveTileMetrics"));
 
 export default function Overview() {
   // Mount the below-fold sections one frame after the gated first commit
@@ -43,13 +45,25 @@ export default function Overview() {
       </Grid>
       <ShredsProgression />
       <div className={clsx(styles.belowFold, styles.slotPerformanceSection)}>
-        {renderBelowFold && <SlotPerformance />}
+        {renderBelowFold && (
+          <Suspense fallback={null}>
+            <SlotPerformance />
+          </Suspense>
+        )}
       </div>
       <div className={clsx(styles.belowFold, styles.networkMetricsSection)}>
-        {renderBelowFold && <LiveNetworkMetrics />}
+        {renderBelowFold && (
+          <Suspense fallback={null}>
+            <LiveNetworkMetrics />
+          </Suspense>
+        )}
       </div>
       <div className={clsx(styles.belowFold, styles.tileMetricsSection)}>
-        {renderBelowFold && <LiveTileMetrics />}
+        {renderBelowFold && (
+          <Suspense fallback={null}>
+            <LiveTileMetrics />
+          </Suspense>
+        )}
       </div>
     </Flex>
   );
