@@ -81,6 +81,7 @@ import type {
   aggGranularitySchema,
   aggRevenueSchema,
   txnMetaResponseSchema,
+  aggSlotsSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -221,5 +222,6 @@ export type PartitionTier = z.infer<typeof partitionTierSchema>;
 export type CompactionState = z.infer<typeof compactionStateSchema>;
 
 export type AggGranularity = z.infer<typeof aggGranularitySchema>;
+export type AggSlots = z.infer<typeof aggSlotsSchema>;
 export type AggRevenue = z.infer<typeof aggRevenueSchema>;
 export type TimelineTxnMeta = z.infer<typeof txnMetaResponseSchema>;

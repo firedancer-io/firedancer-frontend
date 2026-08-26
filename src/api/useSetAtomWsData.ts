@@ -784,6 +784,10 @@ function useUpdateAtoms() {
         }
         case "timeline": {
           switch (key) {
+            case "query_agg_slots": {
+              // listen in component
+              break;
+            }
             case "query_agg_revenue": {
               setAggRevenue(value);
               break;
