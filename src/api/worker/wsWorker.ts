@@ -1,3 +1,4 @@
+import "./zstdWasmPrefetch";
 import { ZstdInit, type ZstdDec } from "@oneidentity/zstd-js/decompress";
 import { logDebug, logError, logWarning } from "../../logger";
 import type {

@@ -10,6 +10,8 @@ import svgr from "vite-plugin-svgr";
 import { visualizer } from "rollup-plugin-visualizer";
 import type { Plugin } from "vite";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { earlyWsWorkerMain } from "./src/api/worker/earlyWsWorker";
 
 // Drop index.html logo preloads belonging to the client not being built.
@@ -46,33 +48,66 @@ function stripOtherClientPreloads(client: string | undefined): Plugin {
 // script's own directory (both land in assets/) and fetches.  ZstdInit
 // still rejects on fetch/instantiate failure, preserving the uncompressed
 // fallback.
+// The package's wasm fetch sites are additionally rewired to consume the
+// worker's top-level prefetch (zstdWasmPrefetch.ts, whose placeholder is
+// filled in here), so the download runs while the worker bundle is still
+// evaluating and ZstdInit starts at streaming compile.
 function zstdWasmAsset(): Plugin {
+  // AGFzbQ is base64 "\0asm"
+  const dataUriRe =
+    /"data:application\/octet-stream;base64,(AGFzbQ[A-Za-z0-9+/=]+)"/;
+  const nameOf = (wasm: Buffer) =>
+    `zstd-dec-${createHash("sha256").update(wasm).digest("hex").slice(0, 8)}.wasm`;
   return {
     name: "zstd-wasm-asset",
     apply: "build",
     transform(code, id) {
-      if (!id.replace(/\?.*$/, "").endsWith("zstd-js/decompress/index.js"))
-        return;
+      const file = id.replace(/\?.*$/, "");
 
-      // AGFzbQ is base64 "\0asm"
-      const match = code.match(
-        /"data:application\/octet-stream;base64,(AGFzbQ[A-Za-z0-9+/=]+)"/,
-      );
+      if (file.endsWith("src/api/worker/zstdWasmPrefetch.ts")) {
+        // order-independent of the package transform: recompute the
+        // hashed name from the package source on disk
+        const match = readFileSync(
+          fileURLToPath(
+            new URL(
+              "./node_modules/@oneidentity/zstd-js/decompress/index.js",
+              import.meta.url,
+            ),
+          ),
+          "utf8",
+        ).match(dataUriRe);
+        if (!match) return;
+        return {
+          code: code.replace(
+            '"__FD_ZSTD_WASM_FILE__"',
+            JSON.stringify(nameOf(Buffer.from(match[1], "base64"))),
+          ),
+          map: null,
+        };
+      }
+
+      if (!file.endsWith("zstd-js/decompress/index.js")) return;
+
+      const match = code.match(dataUriRe);
       if (!match) {
         this.warn("zstd wasm data URI not found; leaving base64 inline");
         return;
       }
 
       const wasm = Buffer.from(match[1], "base64");
-      const hash = createHash("sha256").update(wasm).digest("hex").slice(0, 8);
-      const fileName = `zstd-dec-${hash}.wasm`;
+      const fileName = nameOf(wasm);
       this.emitFile({
         type: "asset",
         fileName: `assets/${fileName}`,
         source: wasm,
       });
       return {
-        code: code.replace(match[0], JSON.stringify(fileName)),
+        code: code
+          .replace(match[0], JSON.stringify(fileName))
+          .replace(
+            /fetch\(([A-Za-z_$][\w$]*),\{credentials:"same-origin"\}\)/g,
+            '(self.__fdZstdWasmFetch?self.__fdZstdWasmFetch():fetch($1,{credentials:"same-origin"}))',
+          ),
         map: null,
       };
     },
