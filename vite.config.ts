@@ -7,6 +7,7 @@ import license from "rollup-plugin-license";
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
 import svgr from "vite-plugin-svgr";
+import { visualizer } from "rollup-plugin-visualizer";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -34,8 +35,30 @@ export default defineConfig({
             },
           },
         }),
+        ...(process.env.ANALYZE
+          ? [
+              visualizer({
+                filename: "bundle-stats.json",
+                template: "raw-data",
+                gzipSize: true,
+              }),
+            ]
+          : []),
       ],
     },
+  },
+  worker: {
+    plugins: () =>
+      process.env.ANALYZE
+        ? [
+            visualizer({
+              filename: "bundle-stats-worker.json",
+              template: "raw-data",
+              gzipSize: true,
+              emitFile: false,
+            }) as never,
+          ]
+        : [],
   },
   plugins: [
     react(),

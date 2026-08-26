@@ -27,3 +27,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Bundle analysis output (ANALYZE=1)
+bundle-stats*.json
