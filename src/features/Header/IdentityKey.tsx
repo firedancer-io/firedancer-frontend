@@ -22,6 +22,10 @@ import CopyButton from "../../components/CopyButton";
 import ConditionalTooltip from "../../components/ConditionalTooltip";
 import { client, isFiredancer } from "../../client";
 
+// Reserves the identity-key column before summary.identity_key arrives:
+// base58 alphabet, same 44-glyph length as the key (within ~3px)
+const identityKeyPlaceholder = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijk";
+
 export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
 
@@ -39,7 +43,7 @@ export default function IdentityKey() {
       <div className={clsx(styles.container, styles.horizontal)}>
         <PeerIcon url={peer?.info?.icon_url} size={28} isYou />
 
-        {isXXNarrowScreen && <ValidatorName shouldShrink />}
+        {isXXNarrowScreen && <ValidatorName shouldShrink reserve />}
         {isXNarrowScreen && (
           <>
             <StakeValue showTooltip />
@@ -50,7 +54,7 @@ export default function IdentityKey() {
           <>
             <Commission />
             <IdentityBalance showTooltip />
-            <StartupTime />
+            <StartupTime reserve />
           </>
         )}
       </div>
@@ -107,7 +111,13 @@ interface TooltipProps {
   showTooltip?: boolean;
 }
 
-function ValidatorName({ shouldShrink }: { shouldShrink?: boolean }) {
+function ValidatorName({
+  shouldShrink,
+  reserve,
+}: {
+  shouldShrink?: boolean;
+  reserve?: boolean;
+}) {
   const { identityKey } = useIdentityPeer();
 
   return (
@@ -115,6 +125,7 @@ function ValidatorName({ shouldShrink }: { shouldShrink?: boolean }) {
       label="Validator Name"
       copyValue={identityKey}
       shouldShrink={shouldShrink}
+      placeholder={reserve ? identityKeyPlaceholder : undefined}
     >
       {identityKey}
     </Label>
@@ -248,7 +259,7 @@ function FiredancerCommissionValue() {
   return <ValueWithSuffix value={value} suffix="%" />;
 }
 
-function StartupTime() {
+function StartupTime({ reserve }: { reserve?: boolean }) {
   const uptimeDuration = useUptimeDuration(60_000);
 
   const values = uptimeDuration
@@ -258,7 +269,7 @@ function StartupTime() {
     : undefined;
 
   return (
-    <Label label="Uptime">
+    <Label label="Uptime" placeholder={reserve ? "0m" : undefined}>
       {values?.map(([value, suffix], i) => {
         return (
           <Fragment key={`${value}${suffix}`}>
@@ -276,6 +287,8 @@ interface LabelProps {
   tooltip?: string;
   shouldShrink?: boolean;
   copyValue?: string;
+  /** Reserve the filled column's size invisibly while children are empty */
+  placeholder?: string;
 }
 function Label({
   label,
@@ -283,8 +296,10 @@ function Label({
   shouldShrink = false,
   children,
   copyValue,
+  placeholder,
 }: PropsWithChildren<LabelProps>) {
-  if (!children) return null;
+  if (!children && placeholder === undefined) return null;
+  const reserved = !children;
 
   return (
     <ConditionalTooltip content={tooltip}>
@@ -292,18 +307,19 @@ function Label({
         direction="column"
         minWidth="0"
         flexShrink={shouldShrink ? "1" : "0"}
+        style={reserved ? { visibility: "hidden" } : undefined}
       >
         <Text truncate className={styles.label}>
           {label}
         </Text>
         <CopyButton
-          value={copyValue}
+          value={reserved ? undefined : copyValue}
           color="white"
           size="10px"
           hideIconUntilHover
         >
           <Text truncate className={styles.value}>
-            {children}
+            {reserved ? placeholder : children}
           </Text>
         </CopyButton>
       </Flex>
