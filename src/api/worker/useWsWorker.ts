@@ -118,6 +118,19 @@ function stopWorker() {
 // handshake overlap bundle parse and React mount
 if (typeof Worker !== "undefined") startWorker(websocketUrl, websocketCompress);
 
+/**
+ * Open a port over which wsWorker pumps slot:live_shreds values directly
+ * to the offscreen shreds chart worker, bypassing the main thread.
+ */
+export function openShredsChartPort(): MessagePort | null {
+  if (!worker) return null;
+  const channel = new MessageChannel();
+  worker.postMessage({ type: "shredsPort", port: channel.port1 }, [
+    channel.port1,
+  ]);
+  return channel.port2;
+}
+
 export function useWsWorker({
   websocketUrl,
   compress,

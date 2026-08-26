@@ -34,7 +34,10 @@ export type ToWorkerMessage =
       port: MessagePort;
     }
   | { type: "disconnect" }
-  | { type: "send"; value: unknown };
+  | { type: "send"; value: unknown }
+  // offscreen shreds chart: forward slot:live_shreds values directly to
+  // the chart worker over this port (main thread bypassed)
+  | { type: "shredsPort"; port: MessagePort };
 
 /**
  * Port protocol between the early blob worker (earlyWsWorker.ts, socket

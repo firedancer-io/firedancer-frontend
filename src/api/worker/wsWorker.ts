@@ -52,8 +52,15 @@ function getZodFailureKey(json: unknown): string | null {
 
 const handler = createMessageHandler((msg) => ctx.postMessage(msg));
 
+// offscreen shreds chart port: live_shreds skip the main thread entirely
+let shredsPort: MessagePort | null = null;
+
 function enqueue(item: WsEntity) {
   handler.onMessage(item);
+
+  if (shredsPort && item.topic === "slot" && item.key === "live_shreds") {
+    shredsPort.postMessage(item.value);
+  }
 
   const key = `${item.topic}:${item.key}`;
   if (pendingBatches.has(key)) {
@@ -251,6 +258,10 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
       handler.onConnectionChange({ type: "connecting" });
       break;
     }
+    case "shredsPort":
+      shredsPort?.close();
+      shredsPort = msg.port;
+      break;
     case "disconnect":
       if (adopt) {
         adopt.port.close();

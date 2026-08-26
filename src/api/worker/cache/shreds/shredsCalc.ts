@@ -218,8 +218,17 @@ export function createShredsCalc(getValidatorState: () => ValidatorState) {
     deleteTimeoutId = undefined;
   }
 
+  /** Replace state wholesale (offscreen chart worker snapshot handoff) */
+  function seed(newData: LiveShredsData) {
+    data = newData;
+    if (deleteTimeoutId == null && data.slotsShreds) {
+      setRecursiveDeleteTimeout();
+    }
+  }
+
   return {
     add,
+    seed,
     resetDataAndClearDeleteTimeout,
     get data() {
       return data;
