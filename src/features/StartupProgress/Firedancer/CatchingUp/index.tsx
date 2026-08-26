@@ -9,7 +9,6 @@ import {
   hasCatchingUpDataAtom,
   latestTurbineSlotAtom,
 } from "./atoms";
-import ShredsChart from "../../../Overview/ShredsProgression/ShredsChart";
 import styles from "./catchingUp.module.css";
 import bodyStyles from "../body.module.css";
 import CatchingUpTiles from "./CatchingUpTiles";
@@ -18,9 +17,14 @@ import useEstimateTotalSlots from "./useCatchingUpRates";
 import { BarsStats } from "./BarsStats";
 import { ShredsChartLegend } from "../../../Overview/ShredsProgression/ShredsChartLegend";
 import { completedSlotAtom } from "../../../../api/atoms";
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
 import clamp from "lodash/clamp";
+
+// lazy so ShredsChart stays code-split (also lazy in Overview/ShredsProgression)
+const ShredsChart = lazy(
+  () => import("../../../Overview/ShredsProgression/ShredsChart"),
+);
 
 export default function CatchingUp() {
   const setContainerEl = useSetAtom(catchingUpContainerElAtom);
@@ -78,12 +82,14 @@ export default function CatchingUp() {
             <Text className={styles.title}>Shreds</Text>
             <ShredsChartLegend />
           </Flex>
-          <ShredsChart
-            flexGrow="1"
-            minHeight="280px"
-            chartId="catching-up-shreds"
-            isOnStartupScreen
-          />
+          <Suspense fallback={<Flex flexGrow="1" minHeight="280px" />}>
+            <ShredsChart
+              flexGrow="1"
+              minHeight="280px"
+              chartId="catching-up-shreds"
+              isOnStartupScreen
+            />
+          </Suspense>
         </Flex>
 
         <CatchingUpTiles />
