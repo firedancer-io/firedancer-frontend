@@ -31,6 +31,7 @@ let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout>;
 
 let scheduled = false;
+let batchStartedAt = 0;
 const pendingBatches = new Map<string, WsEntity[]>();
 
 const loggedZodFailures = new Set<string>();
@@ -66,6 +67,7 @@ function enqueue(item: WsEntity) {
   if (pendingBatches.has(key)) {
     pendingBatches.get(key)?.push(item);
   } else {
+    if (!pendingBatches.size) batchStartedAt = performance.now();
     pendingBatches.set(key, [item]);
   }
 
@@ -123,7 +125,45 @@ function connect(url: string, zstd: ZstdDec | undefined) {
 
 const decoder = new TextDecoder();
 
+/**
+ * Frames at least this size (wire bytes) decode long enough that the
+ * already-decoded batch ships first: the connect burst opens with small
+ * frames (boot, summary, epoch, leaders, slot replay, stats) followed by
+ * multi-MB ones (live_shreds, peers update), and the reveal gates on the
+ * first batch. Sized between the largest small frame (~31KB compressed
+ * epoch:new; ~100KB on mainnet) and the multi-MB frames' wire size.
+ */
+const largeFrameBytes = 262_144;
+/**
+ * Age backstop for the in-frame flush: the burst decodes in an unbroken
+ * run of message tasks that starves the flush timer, which would
+ * otherwise hold the first batch until the entire backlog is through.
+ * Long enough that the whole small-frame opening run (well under 250ms
+ * even on slow hardware) ships as one reveal-gating batch, with the
+ * size trigger as the primary splitter.
+ */
+const starvedBatchMs = 250;
+
 function handleFrame(message: unknown, zstd: ZstdDec | undefined) {
+  // Ship the pending batch before starting a large decode, and whenever
+  // the flush timer has been starved well past its cadence. Frames
+  // decode in arrival order; flushing early only makes batches smaller,
+  // never reordered.
+  if (pendingBatches.size) {
+    const bytes =
+      typeof message === "string"
+        ? message.length
+        : message instanceof ArrayBuffer
+          ? message.byteLength
+          : 0;
+    if (
+      bytes >= largeFrameBytes ||
+      performance.now() - batchStartedAt >= starvedBatchMs
+    ) {
+      flush();
+    }
+  }
+
   try {
     let json = undefined;
     if (typeof message === "string") {
