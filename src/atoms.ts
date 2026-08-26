@@ -22,7 +22,6 @@ import type {
   SupermajorityEpoch,
 } from "./api/types";
 import clamp from "lodash/clamp";
-import merge from "lodash/merge";
 import {
   getDiscountedVoteLatency,
   getDurationText,
@@ -454,23 +453,73 @@ export const peersAtomFamily = atomFamily((peer?: string) =>
   atom((get) => (peer !== undefined ? get(peersAtom)[peer] : undefined)),
 );
 
-export const updatePeersAtom = atom(null, (_, set, peers?: Peer[]) => {
+export interface PeerStats {
+  rpcCount: number;
+  validatorCount: number;
+  activeStake: bigint;
+  delinquentStake: bigint;
+}
+
+const _peerStatsAtom = atom<PeerStats>({
+  rpcCount: 0,
+  validatorCount: 0,
+  activeStake: 0n,
+  delinquentStake: 0n,
+});
+
+/** Add (sign 1) or subtract (sign -1) one peer's stats contribution */
+function addPeerStats(acc: PeerStats, peer: Peer | undefined, sign: 1 | -1) {
+  if (!peer || peer.removed) return;
+
+  const bigSign = BigInt(sign);
+  let staked = false;
+  for (const v of peer.vote) {
+    if (v.delinquent) acc.delinquentStake += bigSign * v.activated_stake;
+    else acc.activeStake += bigSign * v.activated_stake;
+    if (v.activated_stake) staked = true;
+  }
+  if (staked) acc.validatorCount += sign;
+  else if (peer.gossip) acc.rpcCount += sign;
+}
+
+export const updatePeersAtom = atom(null, (get, set, peers?: Peer[]) => {
   if (!peers?.length) return;
 
+  // Backend add/update entries are full snapshots; assign, don't merge
+  const prev = get(peersAtom);
+  const stats = { ...get(_peerStatsAtom) };
+  const next = new Map<string, Peer>();
+  for (const peer of peers) {
+    const old = next.get(peer.identity_pubkey) ?? prev[peer.identity_pubkey];
+    const value = old?.removed ? { ...peer, removed: true } : peer;
+    addPeerStats(stats, old, -1);
+    addPeerStats(stats, value, 1);
+    next.set(peer.identity_pubkey, value);
+  }
+
   set(peersAtom, (draft) => {
-    for (const peer of peers) {
-      if (draft[peer.identity_pubkey]) {
-        draft[peer.identity_pubkey] = merge(draft[peer.identity_pubkey], peer);
-      } else {
-        draft[peer.identity_pubkey] = peer;
-      }
-    }
+    for (const [key, peer] of next) draft[key] = peer;
   });
+  set(_peerStatsAtom, stats);
 });
 
 const removePeerDelay = 60_000 * 5;
-export const removePeersAtom = atom(null, (_, set, peers?: PeerRemove[]) => {
+export const removePeersAtom = atom(null, (get, set, peers?: PeerRemove[]) => {
   if (!peers?.length) return;
+
+  const prev = get(peersAtom);
+  const stats = { ...get(_peerStatsAtom) };
+  const seen = new Set<string>();
+  let changed = false;
+  for (const peer of peers) {
+    if (seen.has(peer.identity_pubkey)) continue;
+    seen.add(peer.identity_pubkey);
+    const old = prev[peer.identity_pubkey];
+    if (old && !old.removed) {
+      addPeerStats(stats, old, -1);
+      changed = true;
+    }
+  }
 
   set(peersAtom, (draft) => {
     for (const peer of peers) {
@@ -480,8 +529,24 @@ export const removePeersAtom = atom(null, (_, set, peers?: PeerRemove[]) => {
       }
     }
   });
+  if (changed) set(_peerStatsAtom, stats);
 
   setTimeout(() => {
+    // A peer re-added since an earlier timer deleted it is active again
+    const current = get(peersAtom);
+    const stats = { ...get(_peerStatsAtom) };
+    const deleted = new Set<string>();
+    let subtracted = false;
+    for (const peer of peers) {
+      if (deleted.has(peer.identity_pubkey)) continue;
+      deleted.add(peer.identity_pubkey);
+      const old = current[peer.identity_pubkey];
+      if (old && !old.removed) {
+        addPeerStats(stats, old, -1);
+        subtracted = true;
+      }
+    }
+
     set(peersAtom, (draft) => {
       for (const peer of peers) {
         if (draft[peer.identity_pubkey]) {
@@ -489,44 +554,11 @@ export const removePeersAtom = atom(null, (_, set, peers?: PeerRemove[]) => {
         }
       }
     });
+    if (subtracted) set(_peerStatsAtom, stats);
   }, removePeerDelay);
 });
 
-export const peerStatsAtom = atom((get) => {
-  const peers = get(peersAtom);
-  if (!peers) return;
-
-  const activePeers = Object.values(peers).filter((p) => !p.removed);
-  const rpc = activePeers.filter(
-    (p) => p.vote.every((v) => !v.activated_stake) && !!p.gossip,
-  );
-  const validators = activePeers.filter((p) =>
-    p.vote.some((v) => v.activated_stake),
-  );
-  const activeStake = activePeers.reduce(
-    (stake, p) =>
-      p.vote.reduce(
-        (acc, v) => (v.delinquent ? acc : acc + v.activated_stake),
-        0n,
-      ) + stake,
-    0n,
-  );
-  const delinquentStake = activePeers.reduce(
-    (stake, p) =>
-      p.vote.reduce(
-        (acc, v) => (v.delinquent ? acc + v.activated_stake : acc),
-        0n,
-      ) + stake,
-    0n,
-  );
-
-  return {
-    rpcCount: rpc.length,
-    validatorCount: validators.length,
-    activeStake,
-    delinquentStake,
-  };
-});
+export const peerStatsAtom = atom((get) => get(_peerStatsAtom));
 
 export const totalActivePeersStakeAtom = atom((get) => {
   const peerStats = get(peerStatsAtom);
