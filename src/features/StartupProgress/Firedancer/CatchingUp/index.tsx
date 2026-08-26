@@ -17,14 +17,13 @@ import useEstimateTotalSlots from "./useCatchingUpRates";
 import { BarsStats } from "./BarsStats";
 import { ShredsChartLegend } from "../../../Overview/ShredsProgression/ShredsChartLegend";
 import { completedSlotAtom } from "../../../../api/atoms";
-import { lazy, Suspense, useMemo } from "react";
+import { useMemo } from "react";
 import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
 import clamp from "lodash/clamp";
-
-// lazy so ShredsChart stays code-split (also lazy in Overview/ShredsProgression)
-const ShredsChart = lazy(
-  () => import("../../../Overview/ShredsProgression/ShredsChart"),
-);
+// Eager: tiny chunk (uplot is in the main bundle), and it mounts while
+// catch-up data is flushing, where a lazy mount can starve in Suspense
+// retry lanes.
+import ShredsChart from "../../../Overview/ShredsProgression/ShredsChart";
 
 export default function CatchingUp() {
   const setContainerEl = useSetAtom(catchingUpContainerElAtom);
@@ -82,14 +81,12 @@ export default function CatchingUp() {
             <Text className={styles.title}>Shreds</Text>
             <ShredsChartLegend />
           </Flex>
-          <Suspense fallback={<Flex flexGrow="1" minHeight="280px" />}>
-            <ShredsChart
-              flexGrow="1"
-              minHeight="280px"
-              chartId="catching-up-shreds"
-              isOnStartupScreen
-            />
-          </Suspense>
+          <ShredsChart
+            flexGrow="1"
+            minHeight="280px"
+            chartId="catching-up-shreds"
+            isOnStartupScreen
+          />
         </Flex>
 
         <CatchingUpTiles />

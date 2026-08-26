@@ -32,42 +32,6 @@ let buffer: FromWorkerMessage[] = [];
 let rafId: number | null = null;
 let timeoutId: number | null = null;
 
-/**
- * First-flush idle gate: with the worker booted at page start the data
- * stream is already live when React mounts, and per-frame flushes on a
- * saturated main thread starve React's Suspense retries indefinitely
- * (retry lanes have no expiration and an interrupted retry restarts
- * from scratch), leaving the lazy overview chart chunks unmounted.
- * Hold the stream until the main thread has genuinely gone idle twice
- * after the first subscriber (lazy retries committed), with a timeout
- * cap so data is never held longer than the pre-early-worker boot ever
- * took.
- */
-let flushGateOpen = false;
-let flushGatePending = false;
-const flushGateIdleTimeoutMs = 1_500;
-
-function openFlushGate() {
-  flushGateOpen = true;
-  flushBuffer();
-}
-
-function armFlushGate() {
-  if (flushGatePending) return;
-  flushGatePending = true;
-  if (typeof requestIdleCallback !== "function") {
-    setTimeout(openFlushGate, flushGateIdleTimeoutMs);
-    return;
-  }
-  // two chained idle periods: the first can fire in the gap before the
-  // lazy-chunk retry is even scheduled
-  requestIdleCallback(
-    () =>
-      requestIdleCallback(openFlushGate, { timeout: flushGateIdleTimeoutMs }),
-    { timeout: flushGateIdleTimeoutMs },
-  );
-}
-
 function flushBuffer() {
   rafId = null;
   timeoutId = null;
@@ -98,11 +62,6 @@ function cancelPendingFlush() {
 function scheduleFlush() {
   if (rafId !== null || timeoutId !== null) return;
   if (!buffer.length) return;
-
-  if (!flushGateOpen) {
-    armFlushGate();
-    return;
-  }
 
   if (store.get(isDocumentVisibleAtom)) {
     rafId = requestAnimationFrame(flushBuffer);
