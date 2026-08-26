@@ -24,32 +24,47 @@ export default function AccountsCard({ className }: { className?: string }) {
   const accountStats = useAtomValue(accountsStatsAtom);
   const nextCompaction = useAtomValue(accountsNextCompactionAtom);
 
-  if (!accountStats) return null;
+  // Reserved (hidden, digit-free placeholders) until stats arrive so the
+  // card never inserts into the grid and shifts it
+  const hitRateStatus =
+    accountStats && getHitRateStatus(accountStats.cache.hit_rate_ema);
+  const hitRateColor = hitRateStatus
+    ? hitRateChangedColor(hitRateStatus)
+    : undefined;
 
-  const hitRateStatus = getHitRateStatus(accountStats.cache.hit_rate_ema);
-  const hitRateColor = hitRateChangedColor(hitRateStatus);
+  const readsPerSec =
+    accountStats &&
+    formatCount(
+      Math.max(
+        0,
+        accountStats.io.acquired_per_sec -
+          accountStats.io.acquired_writable_per_sec,
+      ),
+    );
+  const writesPerSec =
+    accountStats && formatCount(accountStats.io.acquired_writable_per_sec);
 
-  const readsPerSec = formatCount(
-    Math.max(
-      0,
-      accountStats.io.acquired_per_sec -
-        accountStats.io.acquired_writable_per_sec,
-    ),
-  );
-  const writesPerSec = formatCount(accountStats.io.acquired_writable_per_sec);
-
-  const used = formatSIBytes(accountStats.disk.used_bytes);
-  const fragBytes = Math.max(
-    0,
-    accountStats.disk.current_bytes - accountStats.disk.used_bytes,
-  );
-  const frag = formatSIBytes(fragBytes);
-  const readPerSec = formatSIBytes(accountStats.io.bytes_read_per_sec);
-  const writePerSec = formatSIBytes(accountStats.io.bytes_written_per_sec);
-  const allocated = formatSIBytes(accountStats.disk.allocated_bytes);
+  const used = accountStats && formatSIBytes(accountStats.disk.used_bytes);
+  const frag =
+    accountStats &&
+    formatSIBytes(
+      Math.max(
+        0,
+        accountStats.disk.current_bytes - accountStats.disk.used_bytes,
+      ),
+    );
+  const readPerSec =
+    accountStats && formatSIBytes(accountStats.io.bytes_read_per_sec);
+  const writePerSec =
+    accountStats && formatSIBytes(accountStats.io.bytes_written_per_sec);
+  const allocated =
+    accountStats && formatSIBytes(accountStats.disk.allocated_bytes);
 
   return (
-    <Card className={className}>
+    <Card
+      className={className}
+      style={accountStats ? undefined : { visibility: "hidden" }}
+    >
       <Flex direction="column" gap="2">
         <CardHeader text="Accounts" />
 
@@ -58,7 +73,11 @@ export default function AccountsCard({ className }: { className?: string }) {
             <div className={styles.sectionLabel}>Cache</div>
             <Stat
               label="Hit Rate"
-              value={formatHitRate(accountStats.cache.hit_rate_ema)}
+              value={
+                accountStats
+                  ? formatHitRate(accountStats.cache.hit_rate_ema)
+                  : "--"
+              }
               size="lg"
               color={hitRateColor}
               suffix="%"
@@ -66,13 +85,19 @@ export default function AccountsCard({ className }: { className?: string }) {
             <Flex gap="2">
               <Stat
                 label="R/S"
-                value={`${readsPerSec.value}${readsPerSec.unit}`}
+                value={
+                  readsPerSec ? `${readsPerSec.value}${readsPerSec.unit}` : "--"
+                }
                 color={accountsReadColor}
                 minWidth={cacheStatsMinWidth}
               />
               <Stat
                 label="W/S"
-                value={`${writesPerSec.value}${writesPerSec.unit}`}
+                value={
+                  writesPerSec
+                    ? `${writesPerSec.value}${writesPerSec.unit}`
+                    : "--"
+                }
                 color={accountsWriteColor}
                 minWidth={cacheStatsMinWidth}
               />
@@ -86,27 +111,27 @@ export default function AccountsCard({ className }: { className?: string }) {
                 <Flex gap="2" wrap="wrap">
                   <Stat
                     label="Used"
-                    value={used.value}
+                    value={used ? used.value : "--"}
                     size="lg"
                     color={accountsUsedColor}
-                    suffix={used.unit}
+                    suffix={used?.unit}
                     minWidth={storageStatsMinWidth}
                   />
                   <Stat
                     label="Fragmented"
-                    value={frag.value}
+                    value={frag ? frag.value : "--"}
                     size="lg"
                     color={accountsFragmentedColor}
-                    suffix={frag.unit}
+                    suffix={frag?.unit}
                     minWidth={storageStatsMinWidth}
                   />
                 </Flex>
                 <Flex gap="2" wrap="wrap">
                   <Stat
                     label="Allocated"
-                    value={allocated.value}
+                    value={allocated ? allocated.value : "--"}
                     color={accountsSecondaryColor}
-                    suffix={allocated.unit}
+                    suffix={allocated?.unit}
                     minWidth={storageStatsMinWidth}
                   />
                   {nextCompaction && (
@@ -123,35 +148,43 @@ export default function AccountsCard({ className }: { className?: string }) {
                 <Flex gap="2" wrap="wrap">
                   <Stat
                     label="Read"
-                    value={readPerSec.value}
+                    value={readPerSec ? readPerSec.value : "--"}
                     size="lg"
                     color={accountsReadColor}
-                    suffix={`${readPerSec.unit}/s`}
+                    suffix={readPerSec && `${readPerSec.unit}/s`}
                     minWidth={readWriteStatsMinWidth}
                   />
                   <Stat
                     label="Write"
-                    value={writePerSec.value}
+                    value={writePerSec ? writePerSec.value : "--"}
                     size="lg"
                     color={accountsWriteColor}
-                    suffix={`${writePerSec.unit}/s`}
+                    suffix={writePerSec && `${writePerSec.unit}/s`}
                     minWidth={readWriteStatsMinWidth}
                   />
                 </Flex>
                 <Flex gap="2" wrap="wrap">
                   <Stat
                     label="R/S"
-                    value={Math.round(
-                      accountStats.io.read_ops_per_sec,
-                    ).toLocaleString()}
+                    value={
+                      accountStats
+                        ? Math.round(
+                            accountStats.io.read_ops_per_sec,
+                          ).toLocaleString()
+                        : "--"
+                    }
                     color={accountsReadColor}
                     minWidth={readWriteStatsMinWidth}
                   />
                   <Stat
                     label="W/S"
-                    value={Math.round(
-                      accountStats.io.write_ops_per_sec,
-                    ).toLocaleString()}
+                    value={
+                      accountStats
+                        ? Math.round(
+                            accountStats.io.write_ops_per_sec,
+                          ).toLocaleString()
+                        : "--"
+                    }
                     color={accountsWriteColor}
                     minWidth={readWriteStatsMinWidth}
                   />
