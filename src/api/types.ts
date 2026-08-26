@@ -169,7 +169,11 @@ export type VoteDistance = z.infer<typeof voteDistanceSchema>;
 
 export type SkipRate = z.infer<typeof skipRateSchema>;
 
-export type Epoch = z.infer<typeof epochNewSchema>;
+// leader_slots is optional on the wire; the ws worker derives and
+// fills it before posting, so the main thread always sees it set.
+export type Epoch = z.infer<typeof epochNewSchema> & {
+  leader_slots: number[];
+};
 
 export type SlotLevel = z.infer<typeof slotLevelSchema>;
 

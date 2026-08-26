@@ -2,6 +2,7 @@ import { ZstdInit, type ZstdDec } from "@oneidentity/zstd-js/decompress";
 import { logDebug, logError, logWarning } from "../../logger";
 import { WsMessageSchema, type WsEntity, type ToWorkerMessage } from "./types";
 import { createMessageHandler } from "./messageHandler";
+import { fillEpochLeaderSlots } from "./epochLeaderSlots";
 
 const reconnectDelayMs = 3_000;
 const flushDelayMs = 32; // ~30fps
@@ -118,7 +119,7 @@ function connect(url: string, zstd: ZstdDec | undefined) {
         const result = WsMessageSchema.safeParse(json);
 
         if (result.success) {
-          enqueue(result.data);
+          enqueue(fillEpochLeaderSlots(result.data));
           return;
         }
 

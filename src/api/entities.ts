@@ -846,7 +846,16 @@ export const epochNewSchema = z.object({
   excluded_stake_lamports: z.coerce.bigint(),
   staked_pubkeys: z.string().array(),
   staked_lamports: z.coerce.bigint().array(),
-  leader_slots: z.number().array(),
+  // Omitted by backends that let the client derive the schedule from
+  // staked_lamports (worker/leaderSchedule.ts); the ws worker fills it
+  // in before posting, so downstream always sees it populated.
+  leader_slots: z.number().array().optional(),
+  // Optional check hash of the derived schedule: FNV-1a-64 over the
+  // sched array (one u32 staked_pubkeys index per 4-slot rotation,
+  // ceil(slot_cnt/4) entries), each entry hashed as 4 little-endian
+  // bytes; h = 0xcbf29ce484222325, per byte: h ^= byte, then
+  // h *= 0x100000001b3 (mod 2^64); rendered as 16 lowercase hex chars.
+  leader_slots_hash: z.string().optional(),
   target_slot_duration_nanos: z.number().optional(),
 });
 
