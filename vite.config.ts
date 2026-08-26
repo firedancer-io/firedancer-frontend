@@ -179,6 +179,11 @@ export default defineConfig(({ mode }) => {
       process.env.VITE_WEBSOCKET_COMPRESS ?? env.VITE_WEBSOCKET_COMPRESS
     )?.trim() !== "false";
   return {
+    resolve: {
+      // lodash/foo -> lodash-es/foo: same 4.17.21 sources as ESM, so the
+      // bundle tree-shakes to the functions actually used
+      alias: [{ find: "lodash", replacement: "lodash-es" }],
+    },
     server: {
       host: "0.0.0.0",
       // port: 5301
