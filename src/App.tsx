@@ -8,7 +8,7 @@ import { getDefaultStore, useSetAtom } from "jotai";
 import { containerElAtom, isDocumentVisibleAtom } from "./atoms";
 import { useCallback, useLayoutEffect } from "react";
 import * as colors from "./colors";
-import { kebabCase } from "lodash";
+import kebabCase from "lodash/kebabCase";
 import FiredancerLogo from "./assets/firedancer_logo.svg";
 import FrankendancerLogo from "./assets/frankendancer_logo.svg";
 import { enableMapSet } from "immer";

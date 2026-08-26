@@ -14,7 +14,8 @@ import {
   getTxnBundleStats,
   getTxnStateDurations,
 } from "../../../../transactionUtils";
-import { sum, values } from "lodash";
+import sum from "lodash/sum";
+import values from "lodash/values";
 
 export default function ExecutionTime() {
   const selectedSlot = useAtomValue(selectedSlotAtom);

@@ -21,7 +21,8 @@ import type {
   SlotResponse,
   SupermajorityEpoch,
 } from "./api/types";
-import { clamp, merge } from "lodash";
+import clamp from "lodash/clamp";
+import merge from "lodash/merge";
 import {
   getDiscountedVoteLatency,
   getDurationText,

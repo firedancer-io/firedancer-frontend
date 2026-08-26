@@ -16,7 +16,7 @@ import type {
   TurbineHealth,
   VoteHealth,
 } from "../../api/types";
-import { startCase } from "lodash";
+import startCase from "lodash/startCase";
 
 enum HealthStatus {
   Healthy,

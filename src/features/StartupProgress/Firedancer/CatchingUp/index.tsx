@@ -20,7 +20,7 @@ import { ShredsChartLegend } from "../../../Overview/ShredsProgression/ShredsCha
 import { completedSlotAtom } from "../../../../api/atoms";
 import { useMemo } from "react";
 import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
-import { clamp } from "lodash";
+import clamp from "lodash/clamp";
 
 export default function CatchingUp() {
   const setContainerEl = useSetAtom(catchingUpContainerElAtom);

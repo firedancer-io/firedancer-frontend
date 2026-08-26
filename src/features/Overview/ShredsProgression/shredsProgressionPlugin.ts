@@ -19,7 +19,7 @@ import {
   shredSkippedColor,
 } from "../../../colors";
 import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
-import { clamp } from "lodash";
+import clamp from "lodash/clamp";
 import { ShredEvent } from "../../../api/entities";
 import {
   createLabelsState,

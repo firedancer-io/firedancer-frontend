@@ -8,7 +8,8 @@ import {
 import type { Epoch, TileType, TxnWaterfall } from "../../../api/types";
 import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
-import { countBy, isEqual } from "lodash";
+import countBy from "lodash/countBy";
+import isEqual from "lodash/isEqual";
 import { tileTypeSchema } from "../../../api/entities";
 import {
   currentSlotAtom,

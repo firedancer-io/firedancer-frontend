@@ -7,7 +7,7 @@ import { getDurationText, getTimeTillText } from "../../../../utils";
 import { useUptimeDuration } from "../../../../hooks/useUptime";
 import { Duration } from "luxon";
 import { useThrottledCallback } from "use-debounce";
-import { clamp } from "lodash";
+import clamp from "lodash/clamp";
 import { BootPhaseEnum } from "../../../../api/entities";
 import { useAtomValue } from "jotai";
 import { bootProgressPhaseAtom } from "../../atoms";

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { ComputedDatum } from "@nivo/pie";
 import { formatNumberLamports } from "../Overview/ValidatorsCard/formatAmt";
-import { sum } from "lodash";
+import sum from "lodash/sum";
 import {
   failureColor,
   nonDelinquentChartColor,

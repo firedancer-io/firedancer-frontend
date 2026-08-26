@@ -3,7 +3,7 @@ import type uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useMeasure, useWindowSize } from "react-use";
-import { clamp } from "lodash";
+import clamp from "lodash/clamp";
 import { selectedSlotAtom, tileCountAtom } from "../atoms";
 import ChartControls from "./ChartControls";
 import { Flex } from "@radix-ui/themes";

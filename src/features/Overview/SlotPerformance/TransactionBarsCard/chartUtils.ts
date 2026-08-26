@@ -2,7 +2,7 @@ import type { SlotTransactions } from "../../../../api/types";
 import type uPlot from "uplot";
 import { chartBufferMs } from "../../../../transactionUtils";
 import { txnBarsUplotIdPrefix } from "./consts";
-import { round } from "lodash";
+import round from "lodash/round";
 
 export function getUplotId(bankIdx: number) {
   return `${txnBarsUplotIdPrefix}${bankIdx}`;

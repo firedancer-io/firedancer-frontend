@@ -2,7 +2,7 @@ import { Card, Flex, Grid, Text } from "@radix-ui/themes";
 import { type PropsWithChildren, useMemo, useRef } from "react";
 import { compactSingleDecimalFormatter } from "../../../numUtils";
 import GossipHealthSparklines from "./GossipHealthSparklines";
-import { clamp } from "lodash";
+import clamp from "lodash/clamp";
 import {
   gossipHealthPublishIntervalMs,
   gossipHealthRenderWindowMs,

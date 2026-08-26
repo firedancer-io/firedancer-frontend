@@ -13,7 +13,7 @@ import type { RefObject } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./slotsList.module.css";
 import { slotsListPinnedSlotOffset } from "../../consts";
-import { throttle } from "lodash";
+import throttle from "lodash/throttle";
 import SlotsRenderer, { MSlotsPlaceholder } from "./SlotsRenderer";
 import type { ScrollSeekConfiguration, VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";

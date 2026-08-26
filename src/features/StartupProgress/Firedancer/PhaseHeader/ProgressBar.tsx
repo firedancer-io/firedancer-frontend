@@ -7,7 +7,7 @@ import {
   bootProgressPhaseAtom,
   bootProgressPhasesAtom,
 } from "../../atoms";
-import { clamp } from "lodash";
+import clamp from "lodash/clamp";
 import clsx from "clsx";
 import type { BootPhase } from "../../../../api/types";
 import { useEffect, useState } from "react";

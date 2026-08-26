@@ -5,7 +5,8 @@ import {
   bootProgressPhasesAtom,
 } from "../atoms";
 import { useMemo } from "react";
-import { clamp, sum } from "lodash";
+import clamp from "lodash/clamp";
+import sum from "lodash/sum";
 
 export function useOverallCompleteFraction(
   currentPhaseCompleteFraction: number,

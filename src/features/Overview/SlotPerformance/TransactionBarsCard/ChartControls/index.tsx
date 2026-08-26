@@ -34,7 +34,8 @@ import {
   filterArrivalDataAtom,
   filteredTxnIdxAtom,
 } from "../atoms";
-import { groupBy, max } from "lodash";
+import groupBy from "lodash/groupBy";
+import max from "lodash/max";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ToggleGroupControl from "./ToggleGroupControl";

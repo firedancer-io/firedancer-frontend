@@ -1,4 +1,4 @@
-import { clamp } from "lodash";
+import clamp from "lodash/clamp";
 
 export function logRatio(a: number, b: number, base = Math.E) {
   if (b === 0) return Infinity;

@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useWebSocketSend } from "../api/ws/utils";
 import memoize from "micro-memoize";
 import type { SendMessage } from "../api/ws/types";
-import { throttle } from "lodash";
+import throttle from "lodash/throttle";
 import { useUnmount } from "react-use";
 
 enum SlotQueryType {

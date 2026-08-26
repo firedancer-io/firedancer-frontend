@@ -1,5 +1,5 @@
 import styles from "./bars.module.css";
-import { clamp } from "lodash";
+import clamp from "lodash/clamp";
 import type { CSSProperties } from "react";
 
 const _barWidth = 2;

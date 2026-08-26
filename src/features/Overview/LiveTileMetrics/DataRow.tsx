@@ -12,7 +12,7 @@ import { Bars } from "../../StartupProgress/Firedancer/Bars";
 import TileSparkLine from "../SlotPerformance/TileSparkLine";
 import type { Priority } from "../../../api/types";
 import clsx from "clsx";
-import { clamp } from "lodash";
+import clamp from "lodash/clamp";
 import { useHarmonicIntervalFn } from "react-use";
 import {
   memo,

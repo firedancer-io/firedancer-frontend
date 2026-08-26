@@ -1,6 +1,6 @@
 import type uPlot from "uplot";
 import placement from "../uplot/placement";
-import { throttle } from "lodash";
+import throttle from "lodash/throttle";
 
 const CLOSEST_IDX_SERIES = 1;
 

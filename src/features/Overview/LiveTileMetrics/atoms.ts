@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 import { atomFamily, selectAtom } from "jotai/utils";
-import { isEqual } from "lodash";
+import isEqual from "lodash/isEqual";
 import { liveTileMetricsAtom, tileTimerAtom } from "../../../api/atoms";
 import type { Priority, TileMetrics } from "../../../api/types";
 

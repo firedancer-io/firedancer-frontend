@@ -1,4 +1,4 @@
-import { mean } from "lodash";
+import mean from "lodash/mean";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useInterval } from "react-use";
 import { createClock } from "../../../clockUtils";

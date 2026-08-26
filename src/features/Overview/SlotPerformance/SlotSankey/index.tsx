@@ -21,7 +21,7 @@ import {
   successfulSlotNodes,
   tileNodes,
 } from "./consts";
-import { sum } from "lodash";
+import sum from "lodash/sum";
 import { useSlotQueryResponseDetailed } from "../../../../hooks/useSlotQuery";
 import {
   failureColor,

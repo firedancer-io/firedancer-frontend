@@ -32,7 +32,8 @@ import {
   getTxnStateDurations,
 } from "../../../../transactionUtils";
 import { isFiredancer } from "../../../../client";
-import { sum, values } from "lodash";
+import sum from "lodash/sum";
+import values from "lodash/values";
 import CopyButton from "../../../../components/CopyButton";
 
 export default function ChartTooltip() {
