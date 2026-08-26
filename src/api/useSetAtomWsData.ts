@@ -478,6 +478,7 @@ function useUpdateAtoms() {
   const peersBuffer = useRef(new Map<string, Peer>());
   const removePeersBuffer = useRef(new Map<string, PeerRemove>());
 
+  // Leading edge so the initial peers snapshot applies without the 1s delay
   const dbFlushBuffer = useDebouncedCallbackIfVisible(
     () => {
       updatePeers([...peersBuffer.current.values()]);
@@ -486,7 +487,7 @@ function useUpdateAtoms() {
       removePeersBuffer.current.clear();
     },
     1_000,
-    { maxWait: 1_000 },
+    { leading: true, trailing: true, maxWait: 1_000 },
   );
 
   const addToPeersBuffer = useCallback(
