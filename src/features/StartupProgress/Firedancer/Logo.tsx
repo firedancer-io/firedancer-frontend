@@ -1,5 +1,4 @@
 import { Flex } from "@radix-ui/themes";
-import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { useLayoutEffect, useState } from "react";
 import styles from "./logo.module.css";
@@ -38,12 +37,11 @@ export default function Logo() {
     setShowInitialLogo(false);
   }
 
+  // unmounted in the same commit the first phase applies: instant reveal
+  if (!showInitialLogo) return null;
+
   return (
-    <Flex
-      className={clsx(styles.logoContainer, {
-        [styles.hidden]: !showInitialLogo,
-      })}
-    >
+    <Flex className={styles.logoContainer}>
       <img src={fdLogo} alt="fd" />
     </Flex>
   );

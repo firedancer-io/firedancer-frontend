@@ -1,5 +1,4 @@
 .logo-container {
-  --logo-transition-time: 0.1s;
   z-index: 20;
   position: fixed;
   top: 0;
@@ -21,15 +20,7 @@
   background-position: center;
   background-repeat: repeat;
 
-  transition: opacity var(--logo-transition-time) linear;
-
   img {
     height: 76px;
-  }
-
-  &.hidden {
-    opacity: 0;
-    pointer-events: none;
-    user-select: none;
   }
 }
