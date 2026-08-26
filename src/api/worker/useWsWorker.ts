@@ -4,7 +4,7 @@ import { adoptEarlyWs, attachMainWs, closeEarlyWs } from "./earlyWs";
 import { createTypedWorker, type TypedWorker } from "./typedWorker";
 import type { SendMessage } from "../ws/types";
 import { messageEventType, type MessageEmitter } from "../ws/ConnectionContext";
-import EventEmitter from "events";
+import { MiniEmitter } from "../ws/miniEmitter";
 import WsWorker from "./wsWorker?worker";
 import { logError } from "../../logger";
 import { getDefaultStore } from "jotai";
@@ -15,12 +15,11 @@ const store = getDefaultStore();
 
 let worker: TypedWorker<ToWorkerMessage, FromWorkerMessage> | null = null;
 // Singleton so existing listeners keep receiving events if the worker is recreated
-const rawEmitter = new EventEmitter().setMaxListeners(1e3);
+const emitter: MessageEmitter = new MiniEmitter();
 // Flush messages buffered before the first subscriber attached
-rawEmitter.on("newListener", (type: string | symbol) => {
+emitter.on("newListener", (type) => {
   if (type === messageEventType) scheduleFlush();
 });
-const emitter = rawEmitter as MessageEmitter;
 
 /**
  * Buffer worker messages and flush once per frame to prevent worker

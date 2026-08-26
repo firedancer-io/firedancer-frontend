@@ -1,12 +1,12 @@
-import EventEmitter from "events";
 import { createContext } from "react";
 import type { SendMessage } from "./types";
-import type TypedEmitter from "typed-emitter";
 import type { FromWorkerMessage } from "../worker/types";
+import { MiniEmitter } from "./miniEmitter";
 
 export const messageEventType = "m";
-export type MessageEmitter = TypedEmitter<{
-  [messageEventType]: (msg: FromWorkerMessage) => void;
+export type MessageEmitter = MiniEmitter<{
+  [messageEventType]: [msg: FromWorkerMessage];
+  newListener: [type: string];
 }>;
 
 export interface ConnectionContextType {
@@ -15,7 +15,7 @@ export interface ConnectionContextType {
 }
 
 export const defaultCtxValue: ConnectionContextType = {
-  emitter: new EventEmitter().setMaxListeners(1e3) as MessageEmitter,
+  emitter: new MiniEmitter(),
   sendMessage(_msg) {
     // noop
   },
