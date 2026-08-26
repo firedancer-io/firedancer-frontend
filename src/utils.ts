@@ -470,8 +470,9 @@ export function getMin(arr: (number | undefined | null)[]) {
 
 let flagFontRequested = false;
 
-// defer the large flag font until a flag glyph is actually produced
-function loadFlagFont() {
+// fetched eagerly once the app is interactive (App.tsx); the on-demand
+// call on the first flag glyph remains as a fallback
+export function loadFlagFont() {
   if (flagFontRequested) return;
   flagFontRequested = true;
   if (typeof document === "undefined" || !("fonts" in document)) return;

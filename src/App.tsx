@@ -6,7 +6,8 @@ import { routeTree } from "./routeTree.gen";
 import { ConnectionProvider } from "./api/ws/ConnectionProvider";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { containerElAtom, isDocumentVisibleAtom } from "./atoms";
-import { useCallback, useLayoutEffect } from "react";
+import { useCallback, useEffect, useLayoutEffect } from "react";
+import { loadFlagFont } from "./utils";
 import * as colors from "./colors";
 import kebabCase from "lodash/kebabCase";
 import FiredancerLogo from "./assets/firedancer_logo.svg";
@@ -54,6 +55,16 @@ export default function App() {
         "visibilitychange",
         onDocumentVisibilityChange,
       );
+  }, []);
+
+  // start the 795KB flag font fetch right after the first commit so the
+  // swap repaint lands before the first flag glyph renders
+  useEffect(() => {
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(() => loadFlagFont());
+    } else {
+      setTimeout(loadFlagFont, 0);
+    }
   }, []);
 
   return (
