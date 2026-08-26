@@ -83,6 +83,16 @@ function OffscreenShredsChart({
     const container = containerRef.current;
     if (!container) return;
 
+    // useMeasure's first ResizeObserver pass can land >1s after mount under
+    // load; measure synchronously so the first worker frame is full-size
+    const rect = container.parentElement?.getBoundingClientRect();
+    if (rect && rect.width > 0 && rect.height > xAxisHeight) {
+      sizeRef.current = {
+        width: rect.width,
+        height: rect.height - xAxisHeight,
+      };
+    }
+
     const canvas = document.createElement("canvas");
     canvas.style.display = "block";
     canvas.style.width = "100%";
