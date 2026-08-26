@@ -44,9 +44,11 @@ export default function ColorText({
 
   const prevValue = prevValueRef.current;
   const chars = value.split("");
+  // A value's first appearance (fresh mount, or replacing a digitless
+  // placeholder like "-") is not a change: only genuine movement lights up
   const firstChangedIdx =
-    prevValue === undefined
-      ? 0
+    prevValue === undefined || !/\d/.test(prevValue)
+      ? -1
       : chars.findIndex((_, idx) => isCharChanged(idx, value, prevValue));
 
   return (
