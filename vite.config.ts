@@ -181,28 +181,6 @@ function earlyWebsocket(
   };
 }
 
-// Swap the render-blocking main stylesheet for a preloaded async one so
-// first paint is the inline-styled static splash.  Firedancer-only: the
-// opaque static splash covers the app until Logo removes it, and Logo
-// gates that removal on this link having applied (via data-main-css).
-// noscript keeps a render-blocking fallback.
-function asyncMainStylesheet(client: string | undefined): Plugin {
-  return {
-    name: "async-main-stylesheet",
-    apply: "build",
-    transformIndexHtml: {
-      order: "post",
-      handler: (html) =>
-        client === "Firedancer"
-          ? html.replace(
-              /<link rel="stylesheet"([^>]*)>/g,
-              '<link rel="preload" as="style" data-main-css$1 onload="this.onload=null;this.rel=\'stylesheet\'"><noscript><link rel="stylesheet"$1></noscript>',
-            )
-          : html,
-    },
-  };
-}
-
 // https://vitejs.dev/config/
 // Function form: the client must come from loadEnv, not process.env --
 // `make frontend` selects it via .env.production, which is invisible to
@@ -275,7 +253,6 @@ export default defineConfig(({ mode }) => {
       stripOtherClientPreloads(client),
       stripStaticSplash(client),
       earlyWebsocket(client, devWsUrl, wsCompress),
-      asyncMainStylesheet(client),
       react(),
       svgr(),
       TanStackRouterVite({ quoteStyle: "double", semicolons: true }),
