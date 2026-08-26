@@ -9,7 +9,8 @@ import { minDirtySlotByChartAtom } from "../atoms";
 import type { RendererObj, TsRange } from "./chartUtils";
 import { setUpRenderer, draw } from "./chartUtils";
 import ShredsSlotLabels from "../ShredsSlotLabels";
-import { MChartAxes, xAxisHeight } from "./ChartAxes";
+import { MChartAxes } from "./ChartAxes";
+import { xAxisHeight } from "../utils";
 import { createLabelsState, type LabelsState } from "../utils";
 import withWebGlRemount, {
   type WebGlRemountProps,

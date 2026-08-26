@@ -7,7 +7,8 @@ import ChartWorker from "./chartWorker?worker";
 import type { FromChartWorker, ToChartWorker } from "./protocol";
 import { useShredsChartScale } from "../../useShredsChartScale";
 import ShredsSlotLabels from "../../ShredsSlotLabels";
-import { MChartAxes, xAxisHeight } from "../ChartAxes";
+import { MChartAxesDeferred } from "../ChartAxesDeferred";
+import { xAxisHeight } from "../../utils";
 import { applyLabelFrame } from "../../labelsApply";
 import { createLabelsState } from "../../utils";
 import { liveShredsDataAtom } from "../../atoms";
@@ -223,7 +224,7 @@ function OffscreenShredsChart({
     <Flex direction="column" gap="2px" {...flexProps}>
       <ShredsSlotLabels />
       <Box flexGrow="1" minHeight="0" position="relative" ref={measureRef}>
-        <MChartAxes
+        <MChartAxesDeferred
           chartId={`${chartId}-axes`}
           scale={scale}
           containerWidth={width}

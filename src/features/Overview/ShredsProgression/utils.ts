@@ -18,6 +18,10 @@ export function getSlotGroupNameId(slot: number) {
 // prevent x axis tick labels from being cut off
 export const chartXPadding = 15;
 
+// lives here, not in ChartAxes, so consumers of the constant alone don't
+// pull uplot into their chunk
+export const xAxisHeight = 30;
+
 export const minXIncrRange = {
   min: 200,
   max: 1_600,

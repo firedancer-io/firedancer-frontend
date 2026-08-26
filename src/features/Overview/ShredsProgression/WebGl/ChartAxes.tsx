@@ -9,11 +9,9 @@ import {
 } from "../../../../colors";
 import UplotReact from "../../../../uplotReact/UplotReact";
 import { shredsXScaleKey } from "../shredsProgressionPlugin";
-import { getXIncrs, chartXPadding } from "../utils";
+import { getXIncrs, chartXPadding, xAxisHeight } from "../utils";
 
-export const xAxisHeight = 30;
-
-interface ChartAxesProps {
+export interface ChartAxesProps {
   chartId: string;
   scale: number;
   containerWidth: number;

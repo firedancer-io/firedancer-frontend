@@ -11,11 +11,13 @@ import {
   isWebgl2SupportedAtom,
   offscreenChartFailedAtom,
 } from "../../WebGl/atoms";
-// Eager: both are small (three.js lives in the chart worker chunk, uplot
-// is already in the main bundle), and a lazy chunk mounting under live
-// data flushes can starve in Suspense retry lanes indefinitely.
+// Eager: small (three.js lives in the chart worker chunk), and a lazy
+// chunk mounting under live data flushes can starve in Suspense retry
+// lanes indefinitely.
 import ShredsChartOffscreen from "./WebGl/offscreen/OffscreenChart";
-import ShredsChartCanvas from "./ShredsChart";
+// Deferred (preload-and-reveal, not lazy/Suspense): keeps uplot out of
+// the main chunk
+import ShredsChartCanvas from "./ShredsChartDeferred";
 
 interface WebGlChartProps
   extends Pick<FlexProps, "height" | "minHeight" | "flexGrow"> {
