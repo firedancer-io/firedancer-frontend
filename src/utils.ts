@@ -468,6 +468,26 @@ export function getMin(arr: (number | undefined | null)[]) {
   return max;
 }
 
+let flagFontRequested = false;
+
+// defer the large flag font until a flag glyph is actually produced
+function loadFlagFont() {
+  if (flagFontRequested) return;
+  flagFontRequested = true;
+  if (typeof document === "undefined" || !("fonts" in document)) return;
+  const notoFlagsOnly = new FontFace(
+    "NotoFlagsOnly",
+    "url(assets/NotoFlagsOnly.woff2)",
+    { weight: "normal", style: "normal", display: "swap" },
+  );
+  notoFlagsOnly
+    .load()
+    .then((loadedFont) => {
+      document.fonts.add(loadedFont);
+    })
+    .catch(console.error);
+}
+
 export const getCountryFlagEmoji = memoize(
   (countryCode?: string | null) => {
     // Unicode offset for Regional Indicator Symbol Letter A
@@ -476,6 +496,7 @@ export const getCountryFlagEmoji = memoize(
     const ASCII_A = 65;
 
     if (!countryCode) return;
+    loadFlagFont();
     return countryCode
       .toUpperCase()
       .split("")

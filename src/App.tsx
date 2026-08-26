@@ -12,7 +12,6 @@ import kebabCase from "lodash/kebabCase";
 import FiredancerLogo from "./assets/firedancer_logo.svg";
 import FrankendancerLogo from "./assets/frankendancer_logo.svg";
 import { enableMapSet } from "immer";
-import { useMount } from "react-use";
 import { isFiredancer } from "./client";
 
 const router = createRouter({ routeTree });
@@ -47,23 +46,6 @@ export default function App() {
     },
     [setContainerEl],
   );
-
-  useMount(() => {
-    if ("fonts" in document) {
-      const notoFlagsOnly = new FontFace(
-        "NotoFlagsOnly",
-        "url(assets/NotoFlagsOnly.woff2)",
-        { weight: "normal", style: "normal", display: "swap" },
-      );
-
-      notoFlagsOnly
-        .load()
-        .then((loadedFont) => {
-          document.fonts.add(loadedFont);
-        })
-        .catch(console.error);
-    }
-  });
 
   useLayoutEffect(() => {
     document.addEventListener("visibilitychange", onDocumentVisibilityChange);
