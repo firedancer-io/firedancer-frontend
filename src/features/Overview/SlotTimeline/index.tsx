@@ -7,10 +7,11 @@ import SlotLanes from "./SlotLanes";
 
 export default function SlotTimeline() {
   const isStartupRunning = useAtomValue(showStartupProgressAtom);
-  if (isStartupRunning) return;
 
   return (
-    <Card>
+    // Stays in flow (hidden) during startup so the cards grid below
+    // renders at its final position from the first paint
+    <Card style={isStartupRunning ? { visibility: "hidden" } : undefined}>
       <Flex direction="column" height="100%" gap={headerGap}>
         <Text
           style={{
