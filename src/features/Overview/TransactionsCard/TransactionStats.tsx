@@ -1,7 +1,8 @@
 import { Flex } from "@radix-ui/themes";
 import CardStat from "../../../components/CardStat";
 import { useAtomValue } from "jotai";
-import { estimatedTpsAtom, isAlpenglowAtom } from "../../../api/atoms";
+import { isAlpenglowAtom } from "../../../api/atoms";
+import { estimatedTpsSeededAtom } from "./atoms";
 import {
   failureColor,
   headerColor,
@@ -18,7 +19,7 @@ const formatTps = (value?: number) =>
 
 export default function TransactionStats() {
   const isAlpenglow = useAtomValue(isAlpenglowAtom);
-  const tps = useAtomValue(estimatedTpsAtom);
+  const tps = useAtomValue(estimatedTpsSeededAtom);
   return (
     <Flex direction="column" gap="2" minWidth="100px">
       <CardStat
