@@ -5,6 +5,12 @@ interface UseEmaOptions {
   halfLifeMs?: number;
   /** How many cumulative value changes need to happen before first initializing ema */
   initMinSamples?: number;
+  /**
+   * Rate to initialize the ema with on the first sample (e.g. the
+   * cumulative average derived from the backend's elapsed time),
+   * instead of staying undefined for initMinSamples changes
+   */
+  seedRate?: number | null;
 }
 
 const defaultUseEmaOptions = {
@@ -17,7 +23,7 @@ export function useEma(
   cumulativeValue: number | null | undefined,
   _options?: UseEmaOptions,
 ) {
-  const { forceUpdateIntervalMs, halfLifeMs, initMinSamples } = {
+  const { forceUpdateIntervalMs, halfLifeMs, initMinSamples, seedRate } = {
     ...defaultUseEmaOptions,
     ..._options,
   };
@@ -33,6 +39,8 @@ export function useEma(
 
   const cumulativeValueRef = useRef(cumulativeValue);
   cumulativeValueRef.current = cumulativeValue;
+  const seedRateRef = useRef(seedRate);
+  seedRateRef.current = seedRate;
   const firstSampleRef = useRef<{ value: number; tsMs: number }>();
   const sampleCountRef = useRef(0);
   const hasEmaRef = useRef(false);
@@ -59,6 +67,8 @@ export function useEma(
       if (prevValueRef.current === undefined) {
         if (value != null) {
           prevValueRef.current = { value, tsMs };
+          const seed = sanitizeSeed(seedRateRef.current);
+          if (!hasEmaRef.current && seed !== undefined) setEma(seed);
         }
         return;
       }
@@ -146,7 +156,13 @@ export function useEma(
     };
   }, [forceUpdateIntervalMs, tick, cumulativeValue]);
 
-  return { ema, reset };
+  // fall back to the seed so the first commit already shows a rate; the
+  // seeded state takes over from the first tick
+  return { ema: ema ?? sanitizeSeed(seedRate), reset };
+}
+
+function sanitizeSeed(seed: number | null | undefined) {
+  return seed != null && isFinite(seed) && seed > 0 ? seed : undefined;
 }
 
 export function useEmaValue(

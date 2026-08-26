@@ -13,6 +13,15 @@ export function getProgress(
   };
 }
 
+/** Cumulative average rate, available from the first frame; seeds the
+    throughput emas so the bars never mount empty */
+export function getSeedRate(
+  cumulative: number | null | undefined,
+  elapsedSeconds: number | null | undefined,
+) {
+  return cumulative && elapsedSeconds ? cumulative / elapsedSeconds : undefined;
+}
+
 export function getThroughputCompleteCorrected(
   isComplete: boolean,
   emaThroughput: number | null | undefined,

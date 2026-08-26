@@ -27,6 +27,8 @@ function addNewValueAndShift(
 export function useValuePerSecond(
   cumulativeValue?: number | null,
   windowMs = 500,
+  /** Rate to report until a second sample allows a real calc */
+  seedValuePerSecond?: number | null,
 ) {
   // array of [cumulative value, time]
   const [values, setValues] = useState<[number, number][]>([]);
@@ -55,13 +57,13 @@ export function useValuePerSecond(
   }, []);
 
   const valuePerSecond = useMemo(() => {
-    if (values.length <= 1) return;
+    if (values.length <= 1) return seedValuePerSecond ?? undefined;
 
     return (
       (1_000 * (values[values.length - 1][0] - values[0][0])) /
       (values[values.length - 1][1] - values[0][1])
     );
-  }, [values]);
+  }, [values, seedValuePerSecond]);
 
   return {
     valuePerSecond,

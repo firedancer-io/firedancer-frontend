@@ -6,12 +6,14 @@ interface SnapshotInsertingCardProps {
   decompressedCompleted?: number | null;
   decompressedTotal?: number | null;
   cumulativeAccounts?: number | null;
+  seedAccountsPerSecond?: number | null;
 }
 export function SnapshotInsertingCard({
   emaDecompressedThroughput,
   decompressedCompleted,
   decompressedTotal,
   cumulativeAccounts,
+  seedAccountsPerSecond,
 }: SnapshotInsertingCardProps) {
   const { isComplete, progressPct } = getProgress(
     decompressedCompleted,
@@ -34,6 +36,7 @@ export function SnapshotInsertingCard({
         <AccountsRate
           isComplete={isComplete}
           cumulativeAccounts={cumulativeAccounts}
+          seedPerSecond={seedAccountsPerSecond}
         />
       }
     />

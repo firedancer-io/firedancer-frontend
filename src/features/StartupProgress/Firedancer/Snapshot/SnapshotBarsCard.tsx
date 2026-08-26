@@ -98,16 +98,19 @@ function SnapshotTitle({ text }: SnapshotTitleProps) {
 interface AccountsRateProps {
   isComplete: boolean;
   cumulativeAccounts?: number | null;
+  seedPerSecond?: number | null;
 }
 export function AccountsRate({
   isComplete,
   cumulativeAccounts,
+  seedPerSecond,
 }: AccountsRateProps) {
   const phase = useAtomValue(bootProgressPhaseAtom);
 
   const { valuePerSecond: accountsPerSecond, reset } = useValuePerSecond(
     cumulativeAccounts,
     1_000,
+    seedPerSecond,
   );
 
   useEffect(() => {

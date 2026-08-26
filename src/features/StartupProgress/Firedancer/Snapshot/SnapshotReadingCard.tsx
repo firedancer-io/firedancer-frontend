@@ -3,16 +3,22 @@ import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { SnapshotBarsCard, SnapshotThroughput } from "./SnapshotBarsCard";
 import { useEma } from "../../../../hooks/useEma";
-import { getProgress, getThroughputCompleteCorrected } from "./utils";
+import {
+  getProgress,
+  getSeedRate,
+  getThroughputCompleteCorrected,
+} from "./utils";
 
 interface SnapshotReadingCardProps {
   compressedCompleted?: number | null;
   compressedTotal?: number | null;
+  elapsedSeconds?: number | null;
   path?: string | null;
 }
 export function SnapshotReadingCard({
   compressedCompleted,
   compressedTotal,
+  elapsedSeconds,
   path,
 }: SnapshotReadingCardProps) {
   const phase = useAtomValue(bootProgressPhaseAtom);
@@ -21,7 +27,9 @@ export function SnapshotReadingCard({
     compressedTotal,
   );
 
-  const { ema: emaThroughput, reset } = useEma(compressedCompleted);
+  const { ema: emaThroughput, reset } = useEma(compressedCompleted, {
+    seedRate: getSeedRate(compressedCompleted, elapsedSeconds),
+  });
   const throughput = getThroughputCompleteCorrected(isComplete, emaThroughput);
 
   useEffect(() => {

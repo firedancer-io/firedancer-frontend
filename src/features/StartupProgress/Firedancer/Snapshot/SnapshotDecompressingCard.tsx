@@ -3,25 +3,33 @@ import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { SnapshotBarsCard, SnapshotThroughput } from "./SnapshotBarsCard";
 import { useEma } from "../../../../hooks/useEma";
-import { getProgress, getThroughputCompleteCorrected } from "./utils";
+import {
+  getProgress,
+  getSeedRate,
+  getThroughputCompleteCorrected,
+} from "./utils";
 
 interface SnapshotDecompressingCardProps {
   compressedCompleted?: number | null;
   decompressedCompleted?: number | null;
   compressedTotal?: number | null;
+  elapsedSeconds?: number | null;
 }
 export function SnapshotDecompressingCard({
   compressedCompleted,
   decompressedCompleted,
   compressedTotal,
+  elapsedSeconds,
 }: SnapshotDecompressingCardProps) {
   const phase = useAtomValue(bootProgressPhaseAtom);
   const { isComplete, progressPct } = getProgress(
     compressedCompleted,
     compressedTotal,
   );
-  const { ema: emaCompressedThroughput, reset: resetCompressed } =
-    useEma(compressedCompleted);
+  const { ema: emaCompressedThroughput, reset: resetCompressed } = useEma(
+    compressedCompleted,
+    { seedRate: getSeedRate(compressedCompleted, elapsedSeconds) },
+  );
   const compressedThroughput = getThroughputCompleteCorrected(
     isComplete,
     emaCompressedThroughput,
@@ -29,6 +37,7 @@ export function SnapshotDecompressingCard({
 
   const { ema: emaDecompressedThroughput, reset: resetDecompressed } = useEma(
     decompressedCompleted,
+    { seedRate: getSeedRate(decompressedCompleted, elapsedSeconds) },
   );
   const decompressedThroughput = getThroughputCompleteCorrected(
     isComplete,

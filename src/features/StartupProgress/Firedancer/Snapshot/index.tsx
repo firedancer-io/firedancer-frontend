@@ -15,12 +15,14 @@ import { useEffect } from "react";
 import { useEma } from "../../../../hooks/useEma";
 import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
 import { SnapshotWritingCard } from "./SnapshotWritingCard";
+import { getSeedRate } from "./utils";
 
 const rowGap = "5";
 const columnGap = "26px";
 
 function getSnapshotValues(bootProgress: BootProgress) {
   const {
+    loading_full_snapshot_elapsed_seconds,
     loading_full_snapshot_total_bytes_compressed,
     loading_full_snapshot_read_bytes_compressed,
     loading_full_snapshot_decompress_bytes_compressed,
@@ -30,6 +32,7 @@ function getSnapshotValues(bootProgress: BootProgress) {
     loading_full_snapshot_insert_accounts,
     loading_full_snapshot_snapwr_in_bytes_decompressed,
 
+    loading_incremental_snapshot_elapsed_seconds,
     loading_incremental_snapshot_total_bytes_compressed,
     loading_incremental_snapshot_read_bytes_compressed,
     loading_incremental_snapshot_decompress_bytes_compressed,
@@ -46,6 +49,7 @@ function getSnapshotValues(bootProgress: BootProgress) {
     bootProgress.phase === BootPhaseEnum.loading_full_snapshot ||
     !loading_incremental_snapshot_total_bytes_compressed
       ? {
+          elapsedSeconds: loading_full_snapshot_elapsed_seconds,
           totalCompressedBytes: loading_full_snapshot_total_bytes_compressed,
           readCompressedBytes: loading_full_snapshot_read_bytes_compressed,
           readPath: loading_full_snapshot_read_path,
@@ -60,6 +64,7 @@ function getSnapshotValues(bootProgress: BootProgress) {
             loading_full_snapshot_snapwr_in_bytes_decompressed,
         }
       : {
+          elapsedSeconds: loading_incremental_snapshot_elapsed_seconds,
           totalCompressedBytes:
             loading_incremental_snapshot_total_bytes_compressed,
           readCompressedBytes:
@@ -113,10 +118,20 @@ export default function Snapshot() {
     : undefined;
 
   const { ema: decompressedInputThroughput, reset: resetInsertThroughput } =
-    useEma(snapshotValues?.insertDecompressedBytes);
+    useEma(snapshotValues?.insertDecompressedBytes, {
+      seedRate: getSeedRate(
+        snapshotValues?.insertDecompressedBytes,
+        snapshotValues?.elapsedSeconds,
+      ),
+    });
 
   const { ema: decompressedWriteInThroughput, reset: resetWriteInThroughput } =
-    useEma(snapshotValues?.writeInDecompressedBytes);
+    useEma(snapshotValues?.writeInDecompressedBytes, {
+      seedRate: getSeedRate(
+        snapshotValues?.writeInDecompressedBytes,
+        snapshotValues?.elapsedSeconds,
+      ),
+    });
 
   useEffect(() => {
     // reset throughput history on phase change
@@ -125,6 +140,7 @@ export default function Snapshot() {
   }, [bootProgress?.phase, resetInsertThroughput, resetWriteInThroughput]);
 
   const {
+    elapsedSeconds,
     totalCompressedBytes,
     readCompressedBytes,
     readPath,
@@ -208,6 +224,7 @@ export default function Snapshot() {
           <SnapshotReadingCard
             compressedCompleted={readCompressedBytes}
             compressedTotal={totalCompressedBytes}
+            elapsedSeconds={elapsedSeconds}
             path={readPath}
           />
           <SnapshotSparklineCard
@@ -226,6 +243,7 @@ export default function Snapshot() {
             compressedCompleted={decompressCompressedBytes}
             decompressedCompleted={decompressDecompressedBytes}
             compressedTotal={totalCompressedBytes}
+            elapsedSeconds={elapsedSeconds}
           />
           <SnapshotSparklineCard
             title="CPU Utilization"
@@ -244,6 +262,7 @@ export default function Snapshot() {
             decompressedCompleted={insertDecompressedBytes}
             decompressedTotal={totalDecompressedBytes}
             cumulativeAccounts={insertAccounts}
+            seedAccountsPerSecond={getSeedRate(insertAccounts, elapsedSeconds)}
           />
           <SnapshotSparklineCard
             title="CPU Utilization"
