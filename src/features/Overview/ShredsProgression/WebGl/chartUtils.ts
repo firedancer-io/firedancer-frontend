@@ -16,13 +16,13 @@ import {
 import { shredEventDescPriorities } from "../const";
 import { updateLabels } from "../shredsProgressionPlugin";
 import type {
-  SlotMesh,
+  RectMesh,
   TsRange,
   WebglResources,
 } from "../../../WebGl/webglUtils";
 import {
   createRectMesh,
-  updateSlotMeshCounts,
+  updateMeshCounts,
   ensureCapacity,
   addRectangleToMesh,
   convertToWebGlColor,
@@ -64,8 +64,8 @@ export type RendererObj = {
   renderer: THREE.WebGLRenderer;
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
-  meshes: Map<number, SlotMesh>;
-  availableMeshes: SlotMesh[];
+  meshes: Map<number, RectMesh>;
+  availableMeshes: RectMesh[];
   worldTsRange: TsRange;
   // resources shared by this renderer's slot meshes
   resources: WebglResources;
@@ -115,8 +115,8 @@ export function setUpRenderer(
     renderer.setSize(canvasWidth, canvasHeight);
     renderer.setClearColor(0x000000, 0);
 
-    const meshes = new Map<number, SlotMesh>();
-    const availableMeshes: SlotMesh[] = [];
+    const meshes = new Map<number, RectMesh>();
+    const availableMeshes: RectMesh[] = [];
     const resources = createWebglResources(SHREDS_OPACITY);
     renderer.render(scene, camera);
     const clearContextListeners = setUpContextListeners(renderer.domElement);
@@ -279,7 +279,7 @@ export function draw(
         anythingDrawn = true;
       }
     }
-    updateSlotMeshCounts(slotMesh, rectangleIdx);
+    updateMeshCounts(slotMesh, rectangleIdx);
   }
 
   store.set(minDirtySlotByChartAtom, (prev) => {
@@ -347,7 +347,7 @@ interface AddEventsForRowArgs {
     Exclude<ShredEvent, ShredEvent.slot_complete>,
     { x: number; w: number }
   >;
-  slotMesh: SlotMesh;
+  slotMesh: RectMesh;
   startRectangleIdx: number;
   eventTsDeltas: ShredEventTsDeltas;
   slotCompletionTsDelta: number | undefined;
