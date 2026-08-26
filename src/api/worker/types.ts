@@ -33,10 +33,36 @@ type KvFrom<TSchema extends z.ZodTypeAny, TTopic extends string> =
       : never
     : never;
 
+/** Frame of the early socket (binaryType arraybuffer, so never Blob) */
+export type EarlyWsFrame = string | ArrayBuffer;
+
 export type ToWorkerMessage =
   | { type: "connect"; websocketUrl: string; compress: boolean }
+  // early-socket adoption (earlyWs.ts): the main thread keeps socket
+  // ownership and forwards frames; open=false defers the negotiated
+  // protocol to a later adopt-open
+  | {
+      type: "adopt";
+      websocketUrl: string;
+      compress: boolean;
+      open: boolean;
+      protocol: string;
+      frames: EarlyWsFrame[];
+    }
+  | { type: "adopt-open"; protocol: string }
+  | { type: "frame"; data: EarlyWsFrame }
+  | { type: "adopt-closed" }
   | { type: "disconnect" }
   | { type: "send"; value: unknown };
+
+/**
+ * Adopt-mode requests from the worker to the main thread, which owns the
+ * socket. Intercepted in useWsWorker before the emitter buffer, so
+ * FromWorkerMessage consumers never see them.
+ */
+export type FromWorkerControlMessage =
+  | { type: "ws-send"; data: string }
+  | { type: "close-early" };
 
 export type WsEntity =
   | KvFrom<typeof summarySchema, "summary">

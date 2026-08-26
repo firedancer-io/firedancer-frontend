@@ -1,6 +1,12 @@
 import { ZstdInit, type ZstdDec } from "@oneidentity/zstd-js/decompress";
 import { logDebug, logError, logWarning } from "../../logger";
-import { WsMessageSchema, type WsEntity, type ToWorkerMessage } from "./types";
+import {
+  WsMessageSchema,
+  type EarlyWsFrame,
+  type FromWorkerControlMessage,
+  type WsEntity,
+  type ToWorkerMessage,
+} from "./types";
 import { createMessageHandler } from "./messageHandler";
 import { fillEpochLeaderSlots } from "./epochLeaderSlots";
 
@@ -101,45 +107,93 @@ function connect(url: string, zstd: ZstdDec | undefined) {
     reconnectTimer = setTimeout(() => connect(url, zstd), reconnectDelayMs);
   };
 
-  const decoder = new TextDecoder();
   ws.onmessage = function onmessage(ev: MessageEvent<unknown>) {
     if (this !== ws) return;
-    try {
-      const message = ev.data;
-      let json = undefined;
-      if (typeof message === "string") {
-        json = JSON.parse(message) as unknown;
-      } else if (message instanceof ArrayBuffer && zstd) {
-        json = JSON.parse(
-          decoder.decode(zstd.ZstdStream.decompress(new Uint8Array(message))),
-        ) as unknown;
-      }
-
-      if (json !== undefined) {
-        const result = WsMessageSchema.safeParse(json);
-
-        if (result.success) {
-          enqueue(fillEpochLeaderSlots(result.data));
-          return;
-        }
-
-        const failureKey = getZodFailureKey(json);
-        if (failureKey == null) {
-          logDebug("zod", json);
-          logDebug("Zod", result.error.message);
-          logDebug("Zod", result.error.issues);
-          return;
-        } else if (!loggedZodFailures.has(failureKey)) {
-          loggedZodFailures.add(failureKey);
-          logDebug("zod", json);
-          logDebug("Zod", result.error.message);
-          logDebug("Zod", result.error.issues);
-        }
-      }
-    } catch (e) {
-      logError("WS", e);
-    }
+    handleFrame(ev.data, zstd);
   };
+}
+
+const decoder = new TextDecoder();
+
+function handleFrame(message: unknown, zstd: ZstdDec | undefined) {
+  try {
+    let json = undefined;
+    if (typeof message === "string") {
+      json = JSON.parse(message) as unknown;
+    } else if (message instanceof ArrayBuffer && zstd) {
+      json = JSON.parse(
+        decoder.decode(zstd.ZstdStream.decompress(new Uint8Array(message))),
+      ) as unknown;
+    }
+
+    if (json !== undefined) {
+      const result = WsMessageSchema.safeParse(json);
+
+      if (result.success) {
+        enqueue(fillEpochLeaderSlots(result.data));
+        return;
+      }
+
+      const failureKey = getZodFailureKey(json);
+      if (failureKey == null) {
+        logDebug("zod", json);
+        logDebug("Zod", result.error.message);
+        logDebug("Zod", result.error.issues);
+        return;
+      } else if (!loggedZodFailures.has(failureKey)) {
+        loggedZodFailures.add(failureKey);
+        logDebug("zod", json);
+        logDebug("Zod", result.error.message);
+        logDebug("Zod", result.error.issues);
+      }
+    }
+  } catch (e) {
+    logError("WS", e);
+  }
+}
+
+/**
+ * Adopt mode: the main thread owns the socket opened by index.html
+ * (earlyWs.ts) and forwards its frames; the identical decode pipeline
+ * runs here, and sends are routed back via "ws-send". Frames arriving
+ * before the decode path is settled (zstd init) queue in pending.
+ */
+interface Adopt {
+  url: string;
+  compress: boolean;
+  zstd: ZstdDec | undefined;
+  ready: boolean;
+  pending: EarlyWsFrame[];
+}
+let adopt: Adopt | null = null;
+
+function adoptOpen(protocol: string) {
+  const a = adopt;
+  if (!a) return;
+  void (async () => {
+    let zstd: ZstdDec | undefined;
+    if (protocol === "compress-zstd") {
+      zstd = await zstdPromise;
+      if (adopt !== a) return;
+      if (!zstd) {
+        // mirror the init-failure fallback: drop the adopted socket and
+        // open a worker-owned uncompressed connection
+        adopt = null;
+        ctx.postMessage({
+          type: "close-early",
+        } satisfies FromWorkerControlMessage);
+        connect(a.url, undefined);
+        return;
+      }
+    }
+    a.zstd = zstd;
+    a.ready = true;
+    logDebug("WS", "Adopted API WebSocket connection");
+    handler.onConnectionChange({ type: "connected" });
+    const pending = a.pending;
+    a.pending = [];
+    for (const frame of pending) handleFrame(frame, zstd);
+  })();
 }
 
 ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
@@ -150,7 +204,46 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
         connect(msg.websocketUrl, msg.compress ? await zstdPromise : undefined);
       })();
       break;
+    case "adopt":
+      adopt = {
+        url: msg.websocketUrl,
+        compress: msg.compress,
+        zstd: undefined,
+        ready: false,
+        pending: msg.frames,
+      };
+      handler.onConnectionChange({ type: "connecting" });
+      if (msg.open) adoptOpen(msg.protocol);
+      break;
+    case "adopt-open":
+      adoptOpen(msg.protocol);
+      break;
+    case "frame":
+      if (!adopt) break;
+      if (adopt.ready) handleFrame(msg.data, adopt.zstd);
+      else adopt.pending.push(msg.data);
+      break;
+    case "adopt-closed":
+      // adoption is first-connection-only: the existing reconnect logic
+      // takes over with a worker-owned socket
+      if (adopt) {
+        const { url, compress } = adopt;
+        adopt = null;
+        logDebug(
+          "WS",
+          `Disconnected adopted WebSocket, reconnecting in ${reconnectDelayMs}ms`,
+        );
+        handler.onConnectionChange({ type: "disconnected" });
+        clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(() => {
+          void (async () => {
+            connect(url, compress ? await zstdPromise : undefined);
+          })();
+        }, reconnectDelayMs);
+      }
+      break;
     case "disconnect":
+      adopt = null;
       clearTimeout(reconnectTimer);
       if (ws) {
         try {
@@ -162,7 +255,13 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
       }
       break;
     case "send":
-      if (ws && ws.readyState === WebSocket.OPEN) {
+      if (adopt) {
+        // main thread owns the adopted socket
+        ctx.postMessage({
+          type: "ws-send",
+          data: JSON.stringify(msg.value),
+        } satisfies FromWorkerControlMessage);
+      } else if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(msg.value));
       } else {
         logWarning("WS", "Attempting to send on closed WebSocket", msg.value);

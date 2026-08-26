@@ -97,6 +97,52 @@ function zstdWasmAsset(): Plugin {
   };
 }
 
+// Open the WebSocket from a tiny inline script so the handshake and first
+// frames overlap main bundle fetch/eval; useWsWorker adopts the socket at
+// startup (earlyWs.ts) and any failure falls back to the worker opening
+// its own connection as before. Firedancer-only. URL and subprotocol
+// offer mirror src/api/consts.ts: same-origin ws(s)://host:port/websocket
+// in production, VITE_WEBSOCKET_URL when serving dev.
+function earlyWebsocket(
+  client: string | undefined,
+  devWsUrl: string | undefined,
+  compress: boolean,
+): Plugin {
+  return {
+    name: "early-websocket",
+    transformIndexHtml: {
+      order: "post",
+      handler(html, ctx) {
+        if (client !== "Firedancer") return html;
+        const urlExpr =
+          ctx.server && devWsUrl
+            ? JSON.stringify(devWsUrl)
+            : '(window.location.protocol.startsWith("https")?"wss":"ws")+"://"+window.location.hostname+":"+window.location.port+"/websocket"';
+        return {
+          html,
+          tags: [
+            {
+              tag: "script",
+              injectTo: "head-prepend",
+              children:
+                "(function(){try{" +
+                `var u=${urlExpr};` +
+                `var s=new WebSocket(u${compress ? ',["compress-zstd"]' : ""});` +
+                's.binaryType="arraybuffer";' +
+                `var e={socket:s,url:u,compress:${compress},frames:[],error:false,closed:false};` +
+                "s.onmessage=function(m){e.frames.push(m.data)};" +
+                "s.onerror=function(){e.error=true};" +
+                "s.onclose=function(){e.closed=true};" +
+                "window.__fdWsEarly=e" +
+                "}catch(x){}})();",
+            },
+          ],
+        };
+      },
+    },
+  };
+}
+
 // Swap the render-blocking main stylesheet for a preloaded async one so
 // first paint is the inline-styled static splash.  Firedancer-only: the
 // opaque static splash covers the app until Logo removes it, and Logo
@@ -124,10 +170,17 @@ function asyncMainStylesheet(client: string | undefined): Plugin {
 // `make frontend` selects it via .env.production, which is invisible to
 // process.env at config time.
 export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
   const client = (
-    process.env.VITE_VALIDATOR_CLIENT ??
-    loadEnv(mode, process.cwd(), "").VITE_VALIDATOR_CLIENT
+    process.env.VITE_VALIDATOR_CLIENT ?? env.VITE_VALIDATOR_CLIENT
   )?.trim();
+  const devWsUrl = (
+    process.env.VITE_WEBSOCKET_URL ?? env.VITE_WEBSOCKET_URL
+  )?.trim();
+  const wsCompress =
+    (
+      process.env.VITE_WEBSOCKET_COMPRESS ?? env.VITE_WEBSOCKET_COMPRESS
+    )?.trim() !== "false";
   return {
     server: {
       host: "0.0.0.0",
@@ -183,6 +236,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       stripOtherClientPreloads(client),
       stripStaticSplash(client),
+      earlyWebsocket(client, devWsUrl, wsCompress),
       asyncMainStylesheet(client),
       react(),
       svgr(),
