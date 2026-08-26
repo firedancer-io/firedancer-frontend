@@ -177,13 +177,13 @@ function ExpandStartupProgressButton() {
   );
   const setExpandStartupProgressEl = useSetAtom(expandStartupProgressElAtom);
 
-  if (!showStartupProgress) return null;
-
   return (
     <IconButton
       ref={setExpandStartupProgressEl}
       variant="ghost"
       color="gray"
+      // keep mounted so the identity key doesn't shift when startup ends
+      style={showStartupProgress ? undefined : { visibility: "hidden" }}
       onClick={() => setIsStartupProgressExpanded(true)}
     >
       <TimerIcon />
@@ -212,10 +212,14 @@ function CollapseStartupProgressButton() {
     setIsStartupProgressExpanded(false);
   }, [containerEl, expandStartupProgressEl, setIsStartupProgressExpanded]);
 
-  if (!showStartupProgress) return null;
-
   return (
-    <IconButton variant="ghost" color="gray" onClick={onClick}>
+    <IconButton
+      variant="ghost"
+      color="gray"
+      // keep mounted so the identity key doesn't shift when startup ends
+      style={showStartupProgress ? undefined : { visibility: "hidden" }}
+      onClick={onClick}
+    >
       <Cross1Icon color="white" />
     </IconButton>
   );

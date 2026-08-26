@@ -20,8 +20,6 @@ export function Cluster() {
   const version = useAtomValue(versionAtom);
   const commitHash = useAtomValue(commitHashAtom);
 
-  if (!cluster && !version) return null;
-
   let clusterText: string | undefined = cluster;
   if (cluster === "mainnet-beta") {
     clusterText = "mainnet";
@@ -34,6 +32,8 @@ export function Cluster() {
       gap="5px"
       ml={`-${offset}px`}
       p={`${offset}px 5px ${offset}px ${offset}px`}
+      // reserve width before data arrives so the nav row doesn't shift
+      style={!cluster && !version ? { visibility: "hidden" } : undefined}
     >
       <Flex
         className={styles.cluster}

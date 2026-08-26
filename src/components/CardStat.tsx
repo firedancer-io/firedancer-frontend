@@ -44,7 +44,10 @@ export default function CardStat({
         {typeof value === "number" && animateInteger ? (
           <AnimatedInteger value={value} className={valueClassName} />
         ) : (
-          <Text className={valueClassName}>{value}</Text>
+          // nbsp reserves the value line before data arrives (CLS)
+          <Text className={valueClassName}>
+            {value === "" ? "\u00a0" : value}
+          </Text>
         )}
 
         {appendValue && (
