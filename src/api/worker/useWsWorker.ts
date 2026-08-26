@@ -10,19 +10,18 @@ import { logError } from "../../logger";
 import { getDefaultStore } from "jotai";
 import { isDocumentVisibleAtom } from "../../atoms";
 import { websocketCompress, websocketUrl } from "../consts";
+import { applyWorkerMessage } from "../applyWsData";
 
 const store = getDefaultStore();
 
 let worker: TypedWorker<ToWorkerMessage, FromWorkerMessage> | null = null;
 // Singleton so existing listeners keep receiving events if the worker is recreated
 const emitter: MessageEmitter = new MiniEmitter();
-// Flush messages buffered before the first subscriber attached; the
-// microtask lands right after the listener registers (newListener fires
-// before that), applying the reveal-gating first kvb without waiting
-// out a frame of rAF batching
+// Drain messages buffered before the first subscriber attached (the
+// reveal-gating head up to the first kvb never waits here: it applies
+// straight into the module store on arrival, see flushFirstKvbSync)
 emitter.on("newListener", (type) => {
   if (type === messageEventType) {
-    queueMicrotask(flushFirstKvbSync);
     scheduleFlush();
   }
 });
@@ -70,18 +69,20 @@ function flushBuffer() {
 }
 
 /**
- * The first kvb gates the reveal, so it applies synchronously instead of
- * waiting out the rAF batching. Everything buffered behind it (the rest
- * of the backlog) is deferred past the next paint (rAF -> timeout) so
- * the reveal commit isn't blocked by its deserialize+apply; later
- * batches return to the normal per-frame cadence.
+ * The first kvb gates the reveal, so it applies synchronously on arrival
+ * instead of waiting out the rAF batching -- straight into the module
+ * store (applyWsData) when React hasn't attached its listener yet, so
+ * the mount commit renders with the data and doubles as the reveal.
+ * Everything buffered behind it (the rest of the backlog) is deferred
+ * past the next paint (rAF -> timeout) so the reveal commit isn't
+ * blocked by its deserialize+apply; later batches return to the normal
+ * per-frame cadence.
  */
 let firstKvbApplied = false;
 let postPaintFlushDone = false;
 
 function flushFirstKvbSync() {
   if (firstKvbApplied) return;
-  if (emitter.listenerCount(messageEventType) === 0) return;
   // touches data only up to the first kvb (all small pre-reveal frames);
   // the large batches behind it stay lazily undeserialized
   const i = buffer.findIndex((m) => m.data.type === "kvb");
@@ -89,7 +90,22 @@ function flushFirstKvbSync() {
   firstKvbApplied = true;
   const head = buffer.slice(0, i + 1);
   buffer = buffer.slice(i + 1);
-  emitMessages(head);
+  if (emitter.listenerCount(messageEventType) === 0) {
+    for (const e of head) {
+      try {
+        applyWorkerMessage(e.data);
+      } catch (err) {
+        logError(
+          "useWsWorker",
+          "Error applying worker message:",
+          e.data.type,
+          err,
+        );
+      }
+    }
+  } else {
+    emitMessages(head);
+  }
   cancelPendingFlush();
   scheduleFlush();
 }

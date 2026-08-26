@@ -1,15 +1,11 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { lazy, useEffect, useState } from "react";
+import { lazy, useEffect } from "react";
 import { Box, Flex } from "@radix-ui/themes";
 import StartupProgress from "../features/StartupProgress";
 import Toast from "../features/Toast";
 import Navigation from "../features/Navigation";
 import Header from "../features/Header";
-import {
-  firstFlushRevealCapMs,
-  headerSpacing,
-  slotsNavSpacing,
-} from "../consts";
+import { headerSpacing, slotsNavSpacing } from "../consts";
 import NavBlur from "../features/Navigation/NavBlur";
 import { useCurrentRoute } from "../hooks/useCurrentRoute";
 import { useSlotsNavigation } from "../hooks/useSlotsNavigation";
@@ -20,7 +16,7 @@ import {
 } from "../features/StartupProgress/atoms";
 import { baseSelectedSlotAtoms } from "../features/Overview/SlotPerformance/atoms";
 import { isFiredancer } from "../client";
-import { firstFlushAppliedAtom } from "../api/ws/atoms";
+import { useFirstFlushReveal } from "../hooks/useFirstFlushReveal";
 
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
@@ -47,21 +43,10 @@ export const Route = createRootRoute({
 function Root() {
   const isStartupProgressVisible = useAtomValue(isStartupProgressVisibleAtom);
 
-  // Merge the empty-chrome and first-data paints: keep the shell hidden
-  // (dark ground) until the first ws flush has applied, so the first
-  // visible commit already shows every first-flight value.  A slow
-  // origin paints the empty skeleton after the cap, as before.
-  const firstFlushApplied = useAtomValue(firstFlushAppliedAtom);
-  const [revealCapped, setRevealCapped] = useState(false);
-  useEffect(() => {
-    if (firstFlushApplied) return;
-    const timeout = window.setTimeout(
-      () => setRevealCapped(true),
-      firstFlushRevealCapMs,
-    );
-    return () => clearTimeout(timeout);
-  }, [firstFlushApplied]);
-  const revealed = firstFlushApplied || revealCapped;
+  // Merge the empty-chrome and first-data paints: with the pre-mount
+  // apply the first batch usually beats the mount, so the first commit
+  // renders revealed with every first-flight value already in the store
+  const revealed = useFirstFlushReveal();
 
   return (
     <>
