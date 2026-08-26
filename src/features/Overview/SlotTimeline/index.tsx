@@ -2,16 +2,19 @@ import { useAtomValue } from "jotai";
 import { Flex, Text } from "@radix-ui/themes";
 import Card from "../../../components/Card";
 import { headerGap } from "../../Gossip/consts";
-import { showStartupProgressAtom } from "../../StartupProgress/atoms";
+import { isStartupPhaseAtom } from "../../StartupProgress/atoms";
 import SlotLanes from "./SlotLanes";
 
 export default function SlotTimeline() {
-  const isStartupRunning = useAtomValue(showStartupProgressAtom);
+  // keys off the phase so the reveal lands in the same commit as the
+  // flush that populates the bars (the showStartupProgress mirror is set
+  // in an effect, one commit later)
+  const isStartup = useAtomValue(isStartupPhaseAtom);
 
   return (
     // Stays in flow (hidden) during startup so the cards grid below
     // renders at its final position from the first paint
-    <Card style={isStartupRunning ? { visibility: "hidden" } : undefined}>
+    <Card style={isStartup ? { visibility: "hidden" } : undefined}>
       <Flex direction="column" height="100%" gap={headerGap}>
         <Text
           style={{

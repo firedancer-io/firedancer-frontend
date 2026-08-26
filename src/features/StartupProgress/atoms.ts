@@ -92,6 +92,15 @@ export const bootProgressCompletedPhasesAtom = atom((get) => {
 
 export const showStartupProgressAtom = atom(true);
 
+// Same-commit view of "startup UI showing": keys off the phase directly,
+// where the showStartupProgressAtom mirror updates in an effect a commit
+// later; an unknown phase counts as startup (shell still dark)
+export const isStartupPhaseAtom = atom((get) =>
+  isFrankendancer
+    ? get(showStartupProgressAtom)
+    : get(bootProgressPhaseAtom) !== BootPhaseEnum.running,
+);
+
 export const isStartupProgressExpandedAtom = atom(true);
 export const expandStartupProgressElAtom = atom<HTMLButtonElement | null>(null);
 
