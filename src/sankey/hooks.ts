@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { useMemo } from "react";
-import cloneDeep from "lodash/cloneDeep";
 import {
   useOrdinalColorScale,
   usePropertyAccessor,
@@ -72,7 +71,7 @@ export const computeNodeAndLinks = <
 
   // deep clone is required as the sankey diagram mutates data
   // we need a different identity for correct updates
-  const data = cloneDeep(_data) as unknown as {
+  const data = structuredClone(_data) as unknown as {
     nodes: SankeyNodeDatum<N, L>[];
     links: SankeyLinkDatum<N, L>[];
   };

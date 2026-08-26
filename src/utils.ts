@@ -30,6 +30,24 @@ export function getLeaderSlots(epoch: Epoch, pubkey: string) {
   }, []);
 }
 
+// lodash kebabCase/startCase equivalents for ASCII identifier/enum
+// strings (the only inputs this app has); pinned by tests against lodash
+export function kebabCase(name: string) {
+  return name
+    .replace(/([a-z\d])([A-Z])/g, "$1-$2")
+    .replace(/([a-zA-Z])(\d)/g, "$1-$2")
+    .replace(/(\d)([a-zA-Z])/g, "$1-$2")
+    .toLowerCase();
+}
+
+export function startCase(name = "") {
+  return name
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export function getSlotGroupLeader(slot: number) {
   return slot - (slot % slotsPerLeader);
 }

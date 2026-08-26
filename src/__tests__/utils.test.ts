@@ -5,6 +5,8 @@ import {
   getDiscountedVoteLatency,
   getDurationText,
   hasLateVote,
+  kebabCase,
+  startCase,
 } from "../utils";
 import { Duration } from "../timeUtils";
 import type { SlotPublish } from "../api/types";
@@ -594,5 +596,35 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
         }),
       ),
     ).toBeFalsy();
+  });
+});
+
+describe("kebabCase/startCase match lodash on their real inputs", () => {
+  it("kebabCase over every colors.ts export name", async () => {
+    const { default: lodashKebabCase } = await import("lodash/kebabCase");
+    const colors = await import("../colors");
+    for (const name of Object.keys(colors)) {
+      expect(kebabCase(name), name).toBe(lodashKebabCase(name));
+    }
+  });
+
+  it("startCase over every health enum option", async () => {
+    const { default: lodashStartCase } = await import("lodash/startCase");
+    const {
+      voteHealthSchema,
+      bundleHealthSchema,
+      replayHealthSchema,
+      turbineHealthSchema,
+    } = await import("../api/entities");
+    const options = [
+      ...voteHealthSchema.options,
+      ...bundleHealthSchema.options,
+      ...replayHealthSchema.options,
+      ...turbineHealthSchema.options,
+    ];
+    expect(options.length).toBeGreaterThan(10);
+    for (const value of options) {
+      expect(startCase(value), value).toBe(lodashStartCase(value));
+    }
   });
 });

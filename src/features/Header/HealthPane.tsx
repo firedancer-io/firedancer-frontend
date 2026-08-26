@@ -1,4 +1,5 @@
 import { Flex, Text } from "@radix-ui/themes";
+import { startCase } from "../../utils";
 import HowToVoteIcon from "@material-design-icons/svg/filled/how_to_vote.svg?react";
 import LayersIcon from "@material-design-icons/svg/filled/layers.svg?react";
 import CycloneIcon from "@material-design-icons/svg/filled/cyclone.svg?react";
@@ -16,7 +17,6 @@ import type {
   TurbineHealth,
   VoteHealth,
 } from "../../api/types";
-import startCase from "lodash/startCase";
 
 enum HealthStatus {
   Healthy,
