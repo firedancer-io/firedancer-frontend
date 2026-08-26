@@ -37,7 +37,11 @@ export type WsError = z.infer<typeof WsErrorSchema>;
 type KvFrom<TSchema extends z.ZodTypeAny, TTopic extends string> =
   z.infer<TSchema> extends infer U
     ? U extends { key: infer K; value: infer V }
-      ? { topic: TTopic; key: K & string; value: V }
+      ? { topic: TTopic; key: K & string; value: V } & (U extends {
+          id: infer I;
+        }
+          ? { id: I }
+          : object)
       : never
     : never;
 

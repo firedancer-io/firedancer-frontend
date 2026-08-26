@@ -95,7 +95,7 @@ export function createRenderer(
 }
 
 /**
- * Resources shared by all slot meshes of a single chart / renderer.
+ * Resources shared by all rect meshes of a single chart / renderer.
  * Compiled shaders / uploaded buffers are bound to a specific GL
  * context, so a fresh renderer (e.g. after a context loss) needs its own copy.
  */
@@ -146,9 +146,12 @@ const INITIAL_CAPACITY = 700 * (SHRED_EVENT_TYPES_COUNT - 1);
 /**
  * Create a mesh to draw 2D rectangles
  */
-export function createRectMesh(resources: WebglResources): RectMesh {
-  const rectArray = new Float32Array(INITIAL_CAPACITY * 4);
-  const colorArray = new Float32Array(INITIAL_CAPACITY * 4);
+export function createRectMesh(
+  resources: WebglResources,
+  initialCapacity = INITIAL_CAPACITY,
+): RectMesh {
+  const rectArray = new Float32Array(initialCapacity * 4);
+  const colorArray = new Float32Array(initialCapacity * 4);
 
   const rectAttr = new THREE.InstancedBufferAttribute(rectArray, 4);
   const colorAttr = new THREE.InstancedBufferAttribute(colorArray, 4);
@@ -241,6 +244,24 @@ export function updateRectMeshCount(rectMesh: RectMesh, count: number) {
     count;
   rectMesh.rectAttr.needsUpdate = true;
   rectMesh.colorAttr.needsUpdate = true;
+}
+
+/**
+ * Mark a specific range as updated
+ */
+export function updateMeshRange(mesh: RectMesh, idxRange: [number, number]) {
+  const startIdx = idxRange[0];
+  const endIdx = Math.min(mesh.count - 1, idxRange[1]);
+  const instanceCount = endIdx - startIdx + 1;
+  if (instanceCount <= 0) return;
+
+  mesh.rectAttr.clearUpdateRanges();
+  mesh.rectAttr.addUpdateRange(startIdx * 4, instanceCount * 4);
+  mesh.rectAttr.needsUpdate = true;
+
+  mesh.colorAttr.clearUpdateRanges();
+  mesh.colorAttr.addUpdateRange(startIdx * 4, instanceCount * 4);
+  mesh.colorAttr.needsUpdate = true;
 }
 
 const tmpColor = new THREE.Color();

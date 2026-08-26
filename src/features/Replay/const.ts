@@ -43,6 +43,7 @@ export interface RangeChangeSubscriberProps {
     subscriberId: string,
     onVisibleRangeChange: RangeChangeHandler,
     onSelectedMsChange?: RangeChangeHandler,
+    onWorldRangeChange?: RangeChangeHandler,
   ) => (() => void) | undefined;
   getAbsoluteNs: (relativeMs: number) => bigint;
   getRelativeMs: (absoluteNs: bigint) => number;
@@ -52,6 +53,16 @@ export interface ExplorableChartProps {
   setUpExploreListeners: (trackEl: HTMLDivElement) => () => void;
 }
 
+export interface MiniMapSetupProps {
+  setUpMiniMap: (
+    trackEl: HTMLDivElement,
+    visibleRangeEl: HTMLDivElement,
+    leftHandleEl: HTMLDivElement,
+    rightHandleEl: HTMLDivElement,
+  ) => () => void;
+}
+
 export interface MarkerLinesProps {
   markerLinesClassName: string;
+  miniMapMarkerLinesClassName: string;
 }

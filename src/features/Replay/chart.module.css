@@ -4,15 +4,25 @@
   flex-shrink: 0;
 }
 
+.with-marker-lines,
+.with-world-marker-lines {
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-left: 3px solid yellow;
+  }
+}
+
 .with-marker-lines::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border-left: 3px solid yellow;
   transform: translateX(var(--marker-lines-pct)) translateX(-1.5px);
+}
+
+.with-world-marker-lines::after {
+  transform: translateX(var(--world-marker-lines-pct)) translateX(-1.5px);
 }
 
 .y-axis {

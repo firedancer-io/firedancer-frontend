@@ -1,6 +1,10 @@
 import { useCallback, useMemo, useRef, type RefObject } from "react";
 import type { TsRange } from "../WebGl/webglUtils";
-import { MIN_VISIBLE_MS, type ExplorableChartProps } from "./const";
+import {
+  MIN_VISIBLE_MS,
+  type ExplorableChartProps,
+  type MiniMapSetupProps,
+} from "./const";
 
 const PAN_THRESHOLD_PX = 0;
 const ZOOM_INTENSITY = 0.002;
@@ -42,7 +46,10 @@ export function useExplorableChart({
   rangeRef,
   setSelectedMs,
   setVisibleRange,
-}: UseExplorableChartProps): ExplorableChartProps {
+}: UseExplorableChartProps): {
+  explorableChartProps: ExplorableChartProps;
+  miniMapProps: MiniMapSetupProps;
+} {
   const dragStartRef = useRef<{
     clientX: number;
     ts: number;
@@ -50,6 +57,7 @@ export function useExplorableChart({
     startVisibleRange: TsRange;
   }>();
   const isPanningRef = useRef(false);
+  const resizeEdgeRef = useRef<"start" | "end">();
 
   const createCallbacks = useCallback(
     (
@@ -185,6 +193,139 @@ export function useExplorableChart({
 
       return () => cleanups.forEach((off) => off());
     };
-    return { setUpExploreListeners };
-  }, [createCallbacks]);
+
+    const setUpMiniMap = (
+      trackEl: HTMLDivElement,
+      visibleRangeEl: HTMLDivElement,
+      leftHandleEl: HTMLDivElement,
+      rightHandleEl: HTMLDivElement,
+    ) => {
+      const refreshCursor = () => {
+        if (resizeEdgeRef.current) {
+          visibleRangeEl.style.cursor = "ew-resize";
+          trackEl.style.cursor = "ew-resize";
+        }
+        if (isPanningRef.current) {
+          visibleRangeEl.style.cursor = "grabbing";
+          trackEl.style.cursor = "grabbing";
+        } else {
+          visibleRangeEl.style.cursor = "grab";
+          trackEl.style.cursor = "auto";
+        }
+      };
+      refreshCursor();
+
+      const {
+        endDrag,
+        onMouseDown,
+        onMouseMove,
+        onTouchStart,
+        onTouchMove,
+        onWheel,
+      } = createCallbacks(trackEl, refreshCursor, true);
+
+      const startResize = (edge: "start" | "end") => {
+        resizeEdgeRef.current = edge;
+        refreshCursor();
+      };
+
+      const moveResize = (clientX: number) => {
+        const edge = resizeEdgeRef.current;
+        if (!edge || !rangeRef.current) return;
+
+        const cursorTs = clientXToTs(trackEl, clientX, [
+          0,
+          rangeRef.current.worldEndMs,
+        ]);
+        const [start, end] = rangeRef.current.visibleRangeMs;
+
+        if (edge === "start") {
+          setVisibleRange([Math.min(cursorTs, end - MIN_VISIBLE_MS), end]);
+        } else {
+          setVisibleRange([start, Math.max(cursorTs, start + MIN_VISIBLE_MS)]);
+        }
+      };
+
+      const endResize = () => {
+        if (!resizeEdgeRef.current) return;
+        resizeEdgeRef.current = undefined;
+        refreshCursor();
+      };
+
+      const onHandleMouseDown = (edge: "start" | "end") => (e: MouseEvent) => {
+        if (e.button !== 0) return;
+        startResize(edge);
+        e.stopPropagation();
+        e.preventDefault();
+      };
+      const onHandleTouchStart = (edge: "start" | "end") => (e: TouchEvent) => {
+        if (e.touches.length !== 1) return;
+        startResize(edge);
+        e.stopPropagation();
+        e.preventDefault();
+      };
+
+      const cleanups = [
+        addListener(leftHandleEl, "mousedown", onHandleMouseDown("start")),
+        addListener(rightHandleEl, "mousedown", onHandleMouseDown("end")),
+        addListener(leftHandleEl, "touchstart", onHandleTouchStart("start"), {
+          passive: false,
+        }),
+        addListener(rightHandleEl, "touchstart", onHandleTouchStart("end"), {
+          passive: false,
+        }),
+
+        addListener(visibleRangeEl, "mousedown", onMouseDown),
+        addListener(visibleRangeEl, "touchstart", onTouchStart, {
+          passive: false,
+        }),
+        addListener(trackEl, "mousemove", (e) => {
+          if (resizeEdgeRef.current) {
+            moveResize(e.clientX);
+          } else {
+            onMouseMove(e);
+          }
+        }),
+        addListener(trackEl, "mouseup", () => {
+          endResize();
+          endDrag();
+        }),
+        addListener(trackEl, "mouseleave", () => {
+          endResize();
+          endDrag();
+        }),
+        addListener(
+          trackEl,
+          "touchmove",
+          (e) => {
+            if (resizeEdgeRef.current) {
+              if (e.touches.length === 1) {
+                moveResize(e.touches[0].clientX);
+                e.preventDefault();
+              }
+            } else {
+              onTouchMove(e);
+            }
+          },
+          { passive: false },
+        ),
+        addListener(trackEl, "touchend", () => {
+          endResize();
+          endDrag();
+        }),
+        addListener(trackEl, "touchcancel", () => {
+          endResize();
+          endDrag();
+        }),
+        addListener(trackEl, "wheel", onWheel, { passive: false }),
+      ];
+
+      return () => cleanups.forEach((off) => off());
+    };
+
+    return {
+      explorableChartProps: { setUpExploreListeners },
+      miniMapProps: { setUpMiniMap },
+    };
+  }, [createCallbacks, rangeRef, setVisibleRange]);
 }
