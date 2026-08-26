@@ -16,9 +16,15 @@ const store = getDefaultStore();
 let worker: TypedWorker<ToWorkerMessage, FromWorkerMessage> | null = null;
 // Singleton so existing listeners keep receiving events if the worker is recreated
 const emitter: MessageEmitter = new MiniEmitter();
-// Flush messages buffered before the first subscriber attached
+// Flush messages buffered before the first subscriber attached; the
+// microtask lands right after the listener registers (newListener fires
+// before that), applying the reveal-gating first kvb without waiting
+// out a frame of rAF batching
 emitter.on("newListener", (type) => {
-  if (type === messageEventType) scheduleFlush();
+  if (type === messageEventType) {
+    queueMicrotask(flushFirstKvbSync);
+    scheduleFlush();
+  }
 });
 
 /**
@@ -31,20 +37,53 @@ let buffer: FromWorkerMessage[] = [];
 let rafId: number | null = null;
 let timeoutId: number | null = null;
 
+function emitMessages(messages: FromWorkerMessage[]) {
+  for (const msg of messages) {
+    try {
+      emitter.emit(messageEventType, msg);
+    } catch (err) {
+      logError(
+        "useWsWorker",
+        "Error processing worker message:",
+        msg.type,
+        err,
+      );
+    }
+  }
+}
+
 function flushBuffer() {
   rafId = null;
   timeoutId = null;
   // Hold messages until the first subscriber attaches
   if (emitter.listenerCount(messageEventType) === 0) return;
+  if (firstKvbApplied) postPaintFlushDone = true;
   const messages = buffer;
   buffer = [];
-  for (const msg of messages) {
-    try {
-      emitter.emit(messageEventType, msg);
-    } catch (e) {
-      logError("useWsWorker", "Error processing worker message:", msg.type, e);
-    }
-  }
+  emitMessages(messages);
+}
+
+/**
+ * The first kvb gates the reveal, so it applies synchronously instead of
+ * waiting out the rAF batching. Everything buffered behind it (the rest
+ * of the backlog) is deferred past the next paint (rAF -> timeout) so
+ * the reveal commit isn't blocked by its apply; later batches return to
+ * the normal per-frame cadence.
+ */
+let firstKvbApplied = false;
+let postPaintFlushDone = false;
+
+function flushFirstKvbSync() {
+  if (firstKvbApplied) return;
+  if (emitter.listenerCount(messageEventType) === 0) return;
+  const i = buffer.findIndex((m) => m.type === "kvb");
+  if (i < 0) return;
+  firstKvbApplied = true;
+  const head = buffer.slice(0, i + 1);
+  buffer = buffer.slice(i + 1);
+  emitMessages(head);
+  cancelPendingFlush();
+  scheduleFlush();
 }
 
 function cancelPendingFlush() {
@@ -62,11 +101,19 @@ function scheduleFlush() {
   if (rafId !== null || timeoutId !== null) return;
   if (!buffer.length) return;
 
-  if (store.get(isDocumentVisibleAtom)) {
-    rafId = requestAnimationFrame(flushBuffer);
-  } else {
+  if (!store.get(isDocumentVisibleAtom)) {
     timeoutId = window.setTimeout(flushBuffer, 0);
+    return;
   }
+  if (firstKvbApplied && !postPaintFlushDone) {
+    // reveal commit in flight: hold the next flush past its paint
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      timeoutId = window.setTimeout(flushBuffer, 0);
+    });
+    return;
+  }
+  rafId = requestAnimationFrame(flushBuffer);
 }
 
 const unsubscribeVisibility = store.sub(isDocumentVisibleAtom, () => {
@@ -86,6 +133,7 @@ function onMessage(e: MessageEvent<FromWorkerMessage>) {
   ) {
     buffer.shift();
   }
+  if (!firstKvbApplied && e.data.type === "kvb") flushFirstKvbSync();
   scheduleFlush();
 }
 
