@@ -32,6 +32,11 @@ interface HealthData {
   description: string;
 }
 
+// Icons of the boxes shown by a typical voting validator without a
+// block engine (vote/turbine/replay); all the pane's icons are the same
+// size, so which three is cosmetic
+const placeholderIcons = [HowToVoteIcon, CycloneIcon, ReplayIcon];
+
 /**
  * Health pane with popover details. Combine popovers to a single large one
  * if the buttons are stacked.
@@ -40,12 +45,38 @@ export default function HealthPane() {
   const isStacked = useMedia("(max-width: 450px)");
   const isNarrow = useMedia("(max-width: 390px)");
 
+  const health = useAtomValue(healthAtom);
   const healthData = useHealthData();
 
   const ariaLabel = "Health Pane";
   const className = clsx(styles.healthPane, {
     [styles.narrow]: isNarrow,
   });
+
+  // How many boxes render depends on validator config (each health
+  // field reports "disabled" per config) and is only knowable from the
+  // first health message; until it arrives, reserve the width of the
+  // observed steady state (3 boxes) invisibly so the identity popover
+  // beside the pane doesn't shift when it populates
+  if (!health) {
+    return (
+      <div
+        aria-hidden
+        className={clsx(className, { [styles.vertical]: isStacked })}
+        style={{ visibility: "hidden" }}
+      >
+        {placeholderIcons.map((Icon, i) =>
+          isStacked ? (
+            <div key={i} className={clsx(styles.healthBox, styles.stacked)} />
+          ) : (
+            <button key={i} className={styles.healthBox}>
+              <Icon width="75%" />
+            </button>
+          ),
+        )}
+      </div>
+    );
+  }
 
   if (isStacked && healthData.length > 1) {
     return (
