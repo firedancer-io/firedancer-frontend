@@ -12,8 +12,18 @@ import AccountsCard from "./AccountsCard";
 import styles from "./overview.module.css";
 import { isFrankendancer } from "../../client";
 import clsx from "clsx";
+import { useEffect, useState } from "react";
 
 export default function Overview() {
+  // Mount the below-fold sections one frame after the gated first commit
+  // (sidebar follower pattern); their wrappers keep reserving space via
+  // contain-intrinsic-size so nothing shifts.
+  const [renderBelowFold, setRenderBelowFold] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setRenderBelowFold(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   return (
     <Flex direction="column" gap="4" flexGrow="1" className={styles.overview}>
       <SlotTimeline />
@@ -33,13 +43,13 @@ export default function Overview() {
       </Grid>
       <ShredsProgression />
       <div className={clsx(styles.belowFold, styles.slotPerformanceSection)}>
-        <SlotPerformance />
+        {renderBelowFold && <SlotPerformance />}
       </div>
       <div className={clsx(styles.belowFold, styles.networkMetricsSection)}>
-        <LiveNetworkMetrics />
+        {renderBelowFold && <LiveNetworkMetrics />}
       </div>
       <div className={clsx(styles.belowFold, styles.tileMetricsSection)}>
-        <LiveTileMetrics />
+        {renderBelowFold && <LiveTileMetrics />}
       </div>
     </Flex>
   );
