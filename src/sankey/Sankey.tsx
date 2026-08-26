@@ -1,5 +1,5 @@
 import { useRef, useMemo, useLayoutEffect } from "react";
-import { useDimensions } from "@nivo/core";
+import { useDimensions } from "./core";
 import { sankeyDefaultProps } from "./props";
 import { useSankey } from "./hooks";
 import { sankeyLinkHorizontal, sankeyLinkVertical } from "./links";

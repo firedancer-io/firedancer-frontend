@@ -3,8 +3,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { useMemo } from "react";
 import cloneDeep from "lodash/cloneDeep";
-import { usePropertyAccessor, useValueFormatter } from "@nivo/core";
-import { useOrdinalColorScale } from "@nivo/colors";
+import {
+  useOrdinalColorScale,
+  usePropertyAccessor,
+  useValueFormatter,
+} from "./core";
 import { sankeyAlignmentFromProp } from "./props";
 import { DisplayType } from "./types";
 import type {

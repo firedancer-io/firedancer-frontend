@@ -2,10 +2,10 @@ import type { AriaAttributes } from "react";
 import type {
   Box,
   Dimensions,
+  OrdinalColorScaleConfig,
   PropertyAccessor,
   ValueFormat,
-} from "@nivo/core";
-import type { OrdinalColorScaleConfig } from "@nivo/colors";
+} from "./core";
 import type { SankeyNodeMinimal } from "../d3Sankey";
 
 export interface DefaultNode {
