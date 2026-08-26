@@ -158,7 +158,7 @@ describe("peers atoms", () => {
           ? makePeer(999999, rand).gossip
           : rand() < 0.1
             ? null
-            : { ...p.gossip, wallclock: p.gossip.wallclock + 1 },
+            : { ...p.gossip, wallclock: (p.gossip.wallclock ?? 0) + 1 },
       vote: p.vote.map((v) => ({
         ...v,
         activated_stake: v.activated_stake + 17n,

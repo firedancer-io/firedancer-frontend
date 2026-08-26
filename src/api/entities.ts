@@ -892,10 +892,11 @@ export const gossipSchema = z.discriminatedUnion("key", [
 
 const peerUpdateGossipSchema = z.object({
   client_id: z.optional(z.nullable(z.number())),
-  wallclock: z.number(),
-  shred_version: z.number(),
+  // Frankendancer only, omitted by the Firedancer client
+  wallclock: z.optional(z.number()),
+  shred_version: z.optional(z.number()),
   version: z.nullable(z.string()),
-  feature_set: z.nullable(z.number()),
+  feature_set: z.optional(z.nullable(z.number())),
   sockets: z.record(z.string(), z.string()),
   country_code: z.optional(z.nullable(z.string())), // undefined for Frankendancer client
   city_name: z.optional(z.nullable(z.string())), // undefined for Frankendancer client
