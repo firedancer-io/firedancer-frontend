@@ -499,10 +499,18 @@ const litePeerViewsAtom = atom((get) => {
           sockets: {},
           country_code: lite.country_codes[i] ?? null,
         },
+        // the backend fills peer stake from the same epoch stake data,
+        // so the epoch join is identical by construction
         vote:
           delinquent == null
             ? []
-            : [{ vote_account: "", activated_stake: 0n, delinquent }],
+            : [
+                {
+                  vote_account: "",
+                  activated_stake: epoch.staked_lamports[i] ?? 0n,
+                  delinquent,
+                },
+              ],
       });
     }
   }
@@ -648,7 +656,9 @@ export const myStakeAmountAtom = atom((get) => {
 
   if (!peers || !idKey || !peerStats) return;
 
-  const myPeer = peers[idKey];
+  // lite view carries the epoch-joined stake first-flight; the full
+  // peer record wins once the big peers update lands
+  const myPeer = peers[idKey] ?? get(litePeerViewsAtom).get(idKey);
   if (!myPeer) return;
 
   return getStake(myPeer);

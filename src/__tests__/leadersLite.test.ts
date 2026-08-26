@@ -4,13 +4,21 @@ import { createStore } from "jotai";
 import {
   epochAtom,
   leadersLiteAtom,
+  myStakeAmountAtom,
+  myStakePctAtom,
   peersAtomFamily,
+  serverPeerStatsAtom,
   updatePeersAtom,
 } from "../atoms";
+import { identityKeyAtom } from "../api/atoms";
 import { peersSchema } from "../api/entities";
 import type { Epoch, Peer, PeersLeaders } from "../api/types";
 
-function makeEpoch(epoch: number, stakedPubkeys: string[]): Epoch {
+function makeEpoch(
+  epoch: number,
+  stakedPubkeys: string[],
+  stakedLamports?: bigint[],
+): Epoch {
   return {
     epoch,
     start_time_nanos: null,
@@ -19,7 +27,7 @@ function makeEpoch(epoch: number, stakedPubkeys: string[]): Epoch {
     end_slot: epoch * 1000 + 999,
     excluded_stake_lamports: 0n,
     staked_pubkeys: stakedPubkeys,
-    staked_lamports: stakedPubkeys.map(() => 1n),
+    staked_lamports: stakedLamports ?? stakedPubkeys.map(() => 1n),
     leader_slots: stakedPubkeys.map((_, i) => i),
   };
 }
@@ -112,8 +120,9 @@ describe("peers/leaders lite frame", () => {
     expect(peerA?.gossip?.country_code).toBe("US");
     expect(peerA?.gossip?.client_id).toBe(5);
     expect(peerA?.gossip?.version).toBeNull();
+    // stake joined from the epoch's staked_lamports (index-aligned)
     expect(peerA?.vote).toEqual([
-      { vote_account: "", activated_stake: 0n, delinquent: false },
+      { vote_account: "", activated_stake: 1n, delinquent: false },
     ]);
 
     // all-null entry still resolves, with no fabricated info/vote
@@ -142,6 +151,30 @@ describe("peers/leaders lite frame", () => {
     expect(store.get(peersAtomFamily("pkA"))?.gossip?.version).toBe("2.3.6");
     // pkB has no full record and stays on the lite view
     expect(store.get(peersAtomFamily("pkB"))?.info?.name).toBe("LiteBob");
+  });
+
+  it("header stake falls back to the epoch join and matches the full record", () => {
+    const store = createStore();
+    store.set(identityKeyAtom, "me");
+    store.set(epochAtom, makeEpoch(100, ["me", "other"], [42n, 7n]));
+    store.set(leadersLiteAtom, {
+      100: makeLeaders(100, [{ delinquent: false }, { delinquent: false }]),
+    });
+    store.set(serverPeerStatsAtom, {
+      rpcCount: 0,
+      validatorCount: 2,
+      activeStake: 40n,
+      delinquentStake: 9n,
+    });
+
+    // first-flight: no full peer record yet, stake joined from the epoch
+    const fallbackStake = store.get(myStakeAmountAtom);
+    expect(fallbackStake).toBe(42n);
+    expect(store.get(myStakePctAtom)).toBeCloseTo((42 / 49) * 100);
+
+    // the full record lands: same value by construction, no movement
+    store.set(updatePeersAtom, [makeFullPeer("me", "Me")]);
+    expect(store.get(myStakeAmountAtom)).toBe(fallbackStake);
   });
 
   it("aligns each lite frame with the staked_pubkeys of its own epoch", () => {
