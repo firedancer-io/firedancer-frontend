@@ -1,5 +1,5 @@
 .logo-container {
-  --logo-transition-time: 0.3s;
+  --logo-transition-time: 0.1s;
   z-index: 20;
   position: fixed;
   top: 0;
