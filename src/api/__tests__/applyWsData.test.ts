@@ -97,6 +97,24 @@ describe("applyWorkerMessage (module-level, no React)", () => {
     expect(store.get(wsAtoms.firstFlushAppliedAtom)).toBe(true);
   });
 
+  test("catch_up_history drafts Set atoms pre-mount without App's module eval", async () => {
+    // regression: enableMapSet lived in App.tsx, which evaluates after
+    // this module; a first-batch catch_up_history threw the immer
+    // MapSet-plugin error and dropped the rest of the kvb (epoch:new)
+    const { applyWorkerMessage, apiAtoms, store } = await boot();
+    applyWorkerMessage(
+      kvb([
+        {
+          topic: "summary",
+          key: "catch_up_history",
+          value: { repair: [5, 6], turbine: [7] },
+        },
+        { topic: "summary", key: "cluster", value: "mainnet-beta" },
+      ]),
+    );
+    expect(store.get(apiAtoms.clusterAtom)).toBe("mainnet-beta");
+  });
+
   test("socket state messages apply without a mounted hook", async () => {
     const { applyWorkerMessage, wsAtoms, store } = await boot();
     const { SocketState } = await import("../ws/types");

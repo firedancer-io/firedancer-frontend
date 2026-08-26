@@ -1,4 +1,5 @@
 import { getDefaultStore, type WritableAtom } from "jotai";
+import { enableMapSet } from "immer";
 import throttle from "lodash/throttle";
 import debounce from "lodash/debounce";
 import type { DebouncedFunc } from "lodash";
@@ -133,6 +134,13 @@ import type {
  * the same functions, keeping one throttle/buffer state machine across
  * the pre-mount/post-mount boundary.
  */
+
+// Applies can run at module level before React mounts (and before
+// App.tsx evaluates), so the immer plugin the Set-drafting atoms need
+// (catch_up_history -> turbine/repair slot sets) must load here, not in
+// App. Without it the first kvb apply throws mid-batch and drops the
+// once-per-connect frames behind it (epoch:new).
+enableMapSet();
 
 const store = getDefaultStore();
 

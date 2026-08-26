@@ -11,12 +11,12 @@ import { useEffect, useLayoutEffect } from "react";
 import { loadFlagFont } from "./utils";
 import FiredancerLogo from "./assets/firedancer_logo.svg";
 import FrankendancerLogo from "./assets/frankendancer_logo.svg";
-import { enableMapSet } from "immer";
 import { isFiredancer } from "./client";
 
-const router = createRouter({ routeTree });
+// immer's MapSet plugin loads in applyWsData.ts: it must be enabled
+// before the pre-mount first-batch apply, which runs before this module
 
-enableMapSet();
+const router = createRouter({ routeTree });
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {
