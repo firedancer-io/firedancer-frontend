@@ -23,11 +23,13 @@ import memoize from "micro-memoize";
 import { isFiredancer } from "./client";
 
 export function getLeaderSlots(epoch: Epoch, pubkey: string) {
-  return epoch.leader_slots.reduce<number[]>((leaderSlots, pubkeyIndex, i) => {
-    if (epoch.staked_pubkeys[pubkeyIndex] === pubkey)
+  const schedule = epoch.leader_slots;
+  const leaderSlots: number[] = [];
+  for (let i = 0; i < schedule.length; i++) {
+    if (epoch.staked_pubkeys[schedule[i]] === pubkey)
       leaderSlots.push(i * slotsPerLeader + epoch.start_slot);
-    return leaderSlots;
-  }, []);
+  }
+  return leaderSlots;
 }
 
 // lodash kebabCase/startCase equivalents for ASCII identifier/enum

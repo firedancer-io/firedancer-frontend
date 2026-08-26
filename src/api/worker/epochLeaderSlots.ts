@@ -34,5 +34,5 @@ export function fillEpochLeaderSlots(msg: WsMessage): WsEntity {
     }
   }
 
-  return { ...msg, value: { ...value, leader_slots: Array.from(sched) } };
+  return { ...msg, value: { ...value, leader_slots: sched } };
 }

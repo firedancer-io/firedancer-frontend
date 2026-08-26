@@ -171,9 +171,11 @@ export type VoteDistance = z.infer<typeof voteDistanceSchema>;
 export type SkipRate = z.infer<typeof skipRateSchema>;
 
 // leader_slots is optional on the wire; the ws worker derives and
-// fills it before posting, so the main thread always sees it set.
-export type Epoch = z.infer<typeof epochNewSchema> & {
-  leader_slots: number[];
+// fills it (as a transferred Uint32Array) before posting, so the main
+// thread always sees it set. number[] remains for the wire-provided
+// (Frankendancer / older backend) path.
+export type Epoch = Omit<z.infer<typeof epochNewSchema>, "leader_slots"> & {
+  leader_slots: number[] | Uint32Array;
 };
 
 export type SlotLevel = z.infer<typeof slotLevelSchema>;

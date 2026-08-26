@@ -110,8 +110,12 @@ describe("fillEpochLeaderSlots", () => {
     const filled = fillEpochLeaderSlots(msg);
     if (filled.topic !== "epoch") throw new Error("unreachable");
     const slots = filled.value.leader_slots;
+    // derived schedules stay typed for buffer transfer to the main thread
+    expect(slots).toBeInstanceOf(Uint32Array);
     expect(slots.length).toBe(ties.slotCnt / 4);
-    expect(slots.slice(0, ties.schedHead.length)).toEqual(ties.schedHead);
+    expect(Array.from(slots.slice(0, ties.schedHead.length))).toEqual(
+      ties.schedHead,
+    );
     expect(schedFnv1a64(Uint32Array.from(slots))).toBe(ties.fnv1a64);
     expect(filled.value).toMatchObject(parseEpochMessage(tiesValue).value);
     expect(errorSpy).not.toHaveBeenCalled();

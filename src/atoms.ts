@@ -695,7 +695,7 @@ export const allLeaderNamesClientIdsAtom = atom((get) => {
   const { epoch, peers } = dependencies;
 
   const uniquePubkeys = new Set(
-    epoch.leader_slots.map((i) => epoch.staked_pubkeys[i]),
+    Array.from(epoch.leader_slots, (i) => epoch.staked_pubkeys[i]),
   );
   return [...uniquePubkeys].map((pubkey) => ({
     pubkey: pubkey,

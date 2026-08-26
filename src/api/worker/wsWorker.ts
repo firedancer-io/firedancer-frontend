@@ -103,8 +103,17 @@ function flush() {
   pendingBatches.clear();
 
   if (items.length) {
+    // derived leader_slots move by buffer transfer (~108KB/epoch), not clone
+    const transfer: ArrayBuffer[] = [];
+    for (const item of items) {
+      if (
+        item.topic === "epoch" &&
+        item.value.leader_slots instanceof Uint32Array
+      )
+        transfer.push(item.value.leader_slots.buffer as ArrayBuffer);
+    }
     // latest kv type not implemented as everything defaults to batched kvb
-    ctx.postMessage({ type: "kvb", items });
+    ctx.postMessage({ type: "kvb", items }, transfer);
   }
 }
 
