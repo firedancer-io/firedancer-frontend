@@ -24,6 +24,7 @@ import {
   updatePeersAtom,
   removePeersAtom,
   serverPeerStatsAtom,
+  leadersLiteAtom,
   addSkippedClusterSlotsAtom,
   deleteSkippedClusterSlotAtom,
   addLateVoteSlotAtom,
@@ -359,6 +360,7 @@ function useUpdateAtoms() {
 
   const updatePeers = useSetAtom(updatePeersAtom);
   const removePeers = useSetAtom(removePeersAtom);
+  const setLeadersLite = useSetAtom(leadersLiteAtom);
 
   const setBlockEngine = useSetAtom(blockEngineAtom);
 
@@ -808,6 +810,12 @@ function useUpdateAtoms() {
                 delinquentStake: value.delinquent_stake,
               });
               break;
+            case "leaders":
+              // applied immediately (not buffered): the tiny epoch-keyed
+              // frame that gives the sidebar names/icons/flags with the
+              // first flush, long before the big peers update
+              setLeadersLite((prev) => ({ ...prev, [value.epoch]: value }));
+              break;
           }
           break;
         case "slot":
@@ -891,6 +899,7 @@ function useUpdateAtoms() {
     [
       addToPeersBuffer,
       setServerPeerStats,
+      setLeadersLite,
       setSlotCaughtUp,
       setDbLiveTileMetrics,
       setLiveProgramCache,

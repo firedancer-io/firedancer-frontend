@@ -17,6 +17,7 @@ import type {
   optimisticallyConfirmedSlotSchema,
   notarizedSlotSchema,
   peerRemoveSchema,
+  peersLeadersSchema,
   peerUpdateSchema,
   rootSlotSchema,
   skipRateSchema,
@@ -194,6 +195,8 @@ export interface Peer extends z.infer<typeof peerUpdateSchema> {
 }
 
 export type PeerRemove = z.infer<typeof peerRemoveSchema>;
+
+export type PeersLeaders = z.infer<typeof peersLeadersSchema>;
 
 export type SlotTransactions = z.infer<typeof slotTransactionsSchema>;
 

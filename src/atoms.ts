@@ -16,6 +16,7 @@ import type {
   Epoch,
   Peer,
   PeerRemove,
+  PeersLeaders,
   SkipRate,
   SlotLevel,
   SlotResponse,
@@ -76,12 +77,27 @@ export const epochAtom = atom(
 
 export const deletePreviousEpochsAtom = atom(
   null,
-  (_get, set, currentEpoch: number) => {
+  (get, set, currentEpoch: number) => {
     set(_epochsAtom, (draft) =>
       draft.filter(({ epoch }) => epoch >= currentEpoch),
     );
+    const leaders = get(leadersLiteAtom);
+    if (Object.keys(leaders).some((epoch) => Number(epoch) < currentEpoch)) {
+      set(
+        leadersLiteAtom,
+        Object.fromEntries(
+          Object.entries(leaders).filter(
+            ([epoch]) => Number(epoch) >= currentEpoch,
+          ),
+        ),
+      );
+    }
   },
 );
+
+/** Epoch-keyed lite leader metadata (peers/leaders frame), index-aligned
+    with that epoch's staked_pubkeys */
+export const leadersLiteAtom = atom<Record<number, PeersLeaders>>({});
 
 export const nextEpochAtom = atom((get) => {
   const currentEpoch = get(epochAtom);
@@ -449,8 +465,57 @@ export const peersListAtom = atom((get) => Object.values(get(peersAtom)));
 
 export const peersCountAtom = atom((get) => get(peersListAtom).length);
 
+/** Peer-shaped views built from the lite leaders frame, keyed by pubkey;
+    the fallback while the full peer record hasn't arrived */
+const litePeerViewsAtom = atom((get) => {
+  const leadersByEpoch = get(leadersLiteAtom);
+  const views = new Map<string, Peer>();
+  for (const epoch of get(_epochsAtom)) {
+    const lite = leadersByEpoch[epoch.epoch];
+    if (!lite) continue;
+    for (let i = 0; i < epoch.staked_pubkeys.length; i++) {
+      const pubkey = epoch.staked_pubkeys[i];
+      // insertion order starts at the current epoch; first mapping wins
+      if (views.has(pubkey)) continue;
+
+      const name = lite.names[i] ?? null;
+      const iconUrl = lite.icon_urls[i] ?? null;
+      const delinquent = lite.delinquent[i];
+      views.set(pubkey, {
+        identity_pubkey: pubkey,
+        info:
+          name == null && iconUrl == null
+            ? null
+            : {
+                name,
+                icon_url: iconUrl,
+                details: null,
+                website: null,
+                keybase_username: null,
+              },
+        gossip: {
+          client_id: lite.client_ids[i] ?? null,
+          version: null,
+          sockets: {},
+          country_code: lite.country_codes[i] ?? null,
+        },
+        vote:
+          delinquent == null
+            ? []
+            : [{ vote_account: "", activated_stake: 0n, delinquent }],
+      });
+    }
+  }
+  return views;
+});
+
 export const peersAtomFamily = atomFamily((peer?: string) =>
-  atom((get) => (peer !== undefined ? get(peersAtom)[peer] : undefined)),
+  atom((get) =>
+    peer !== undefined
+      ? // the full record always wins over the lite leaders view
+        (get(peersAtom)[peer] ?? get(litePeerViewsAtom).get(peer))
+      : undefined,
+  ),
 );
 
 export interface PeerStats {

@@ -946,6 +946,18 @@ const peersStatsSchema = z.object({
   delinquent_stake: z.coerce.bigint(),
 });
 
+// lite per-leader metadata, index-aligned with the same epoch's
+// staked_pubkeys in epoch:new; sent at ws open right after the current
+// epoch's epoch:new and rebroadcast on epoch-info ingest
+export const peersLeadersSchema = z.object({
+  epoch: z.number(),
+  names: z.array(z.nullable(z.string())),
+  icon_urls: z.array(z.nullable(z.string())),
+  delinquent: z.array(z.nullable(z.boolean())),
+  country_codes: z.array(z.nullable(z.string())),
+  client_ids: z.array(z.nullable(z.number())),
+});
+
 export const peersSchema = z.discriminatedUnion("key", [
   z.extend(peersTopicSchema, {
     key: z.literal("update"),
@@ -954,6 +966,10 @@ export const peersSchema = z.discriminatedUnion("key", [
   z.extend(peersTopicSchema, {
     key: z.literal("stats"),
     value: peersStatsSchema,
+  }),
+  z.extend(peersTopicSchema, {
+    key: z.literal("leaders"),
+    value: peersLeadersSchema,
   }),
 ]);
 
