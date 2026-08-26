@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import { socketStateAtom } from "./ws/atoms";
+import { firstFlushAppliedAtom, socketStateAtom } from "./ws/atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import type {
   EmaObjectItem,
@@ -144,6 +144,7 @@ import {
 
 export function useSetAtomWsData() {
   const setSocketState = useSetAtom(socketStateAtom);
+  const setFirstFlushApplied = useSetAtom(firstFlushAppliedAtom);
 
   const updateAtoms = useUpdateAtoms();
 
@@ -198,9 +199,11 @@ export function useSetAtomWsData() {
           for (const item of msg.items) {
             updateAtoms(item);
           }
+          setFirstFlushApplied(true);
           break;
         case "kv":
           updateAtoms(msg);
+          setFirstFlushApplied(true);
           break;
         // currently unused, would map to EmaCache object
         case "ema":
@@ -220,7 +223,13 @@ export function useSetAtomWsData() {
           break;
       }
     },
-    [setSocketState, updateAtoms, updateHistoryArray, updateEmaHistoryObject],
+    [
+      setSocketState,
+      setFirstFlushApplied,
+      updateAtoms,
+      updateHistoryArray,
+      updateEmaHistoryObject,
+    ],
   );
 
   useServerMessages(onMessage);

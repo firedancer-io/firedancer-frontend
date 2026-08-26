@@ -88,6 +88,10 @@ export const maxZIndex = 110;
 
 export const appMaxWidth = "1920px";
 
+/** Max time the shell stays hidden waiting for the first ws flush; past
+    it the empty skeleton paints as before */
+export const firstFlushRevealCapMs = 300;
+
 export enum ClientName {
   AgaveJito = "Agave Jito",
   Frankendancer = "Frankendancer",
