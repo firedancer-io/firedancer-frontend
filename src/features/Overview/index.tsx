@@ -15,7 +15,7 @@ import clsx from "clsx";
 
 export default function Overview() {
   return (
-    <Flex direction="column" gap="4" flexGrow="1">
+    <Flex direction="column" gap="4" flexGrow="1" className={styles.overview}>
       <SlotTimeline />
       <Grid
         className={clsx(styles.cards, {
@@ -32,9 +32,15 @@ export default function Overview() {
         <TransactionsCard className={styles.txnsCard} />
       </Grid>
       <ShredsProgression />
-      <SlotPerformance />
-      <LiveNetworkMetrics />
-      <LiveTileMetrics />
+      <div className={clsx(styles.belowFold, styles.slotPerformanceSection)}>
+        <SlotPerformance />
+      </div>
+      <div className={clsx(styles.belowFold, styles.networkMetricsSection)}>
+        <LiveNetworkMetrics />
+      </div>
+      <div className={clsx(styles.belowFold, styles.tileMetricsSection)}>
+        <LiveTileMetrics />
+      </div>
     </Flex>
   );
 }

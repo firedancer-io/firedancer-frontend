@@ -2,6 +2,33 @@
   grid-template-columns: minmax(300px, 1fr);
 }
 
+/* Isolate each section's layout/paint so data-driven commits inside one
+   card can't trigger full-page style/layout/paint work. Tooltips,
+   popovers and dropdowns all portal out of the cards. */
+.overview > *,
+.cards > * {
+  contain: content;
+}
+
+/* Below the fold at 1600x900: skip render work until scrolled near.
+   The estimates only steer the scrollbar until first render; auto keeps
+   the last measured size afterwards. */
+.below-fold {
+  content-visibility: auto;
+}
+
+.slot-performance-section {
+  contain-intrinsic-size: auto 850px;
+}
+
+.network-metrics-section {
+  contain-intrinsic-size: auto 260px;
+}
+
+.tile-metrics-section {
+  contain-intrinsic-size: auto 720px;
+}
+
 /* Firedancer */
 
 @media (900px <= width < 1450px) {

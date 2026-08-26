@@ -1,6 +1,9 @@
 .slot-group-container {
   padding-bottom: 5px;
   background: var(--slot-nav-background-color);
+  /* rows re-render every slot; tooltips portal out, borders/inset
+     shadows stay inside */
+  contain: content;
 }
 
 .slot-group {
