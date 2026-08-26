@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createStore } from "jotai";
 
 import {
+  currentSlotAtom,
   epochAtom,
   leadersLiteAtom,
   myStakeAmountAtom,
@@ -175,6 +176,48 @@ describe("peers/leaders lite frame", () => {
     // the full record lands: same value by construction, no movement
     store.set(updatePeersAtom, [makeFullPeer("me", "Me")]);
     expect(store.get(myStakeAmountAtom)).toBe(fallbackStake);
+  });
+
+  it("shows zero stake first-flight for an unstaked identity", () => {
+    const store = createStore();
+    store.set(identityKeyAtom, "me");
+    store.set(epochAtom, makeEpoch(100, ["pkA", "pkB"], [42n, 7n]));
+    store.set(currentSlotAtom, 100_005);
+    store.set(serverPeerStatsAtom, {
+      rpcCount: 0,
+      validatorCount: 2,
+      activeStake: 40n,
+      delinquentStake: 9n,
+    });
+
+    // not in the epoch's staked set: definitively unstaked, final
+    // display renders in the first commit without the full peers frame
+    expect(store.get(myStakeAmountAtom)).toBe(0n);
+    expect(store.get(myStakePctAtom)).toBe(0);
+
+    // the full record lands (identity in gossip, no vote accounts):
+    // same value, no movement
+    store.set(updatePeersAtom, [{ ...makeFullPeer("me", "Me"), vote: [] }]);
+    expect(store.get(myStakeAmountAtom)).toBe(0n);
+    expect(store.get(myStakePctAtom)).toBe(0);
+  });
+
+  it("keeps a staked identity's stake pending until its value arrives", () => {
+    const store = createStore();
+    store.set(identityKeyAtom, "me");
+    store.set(epochAtom, makeEpoch(100, ["me", "pkB"], [42n, 7n]));
+    store.set(currentSlotAtom, 100_005);
+    store.set(serverPeerStatsAtom, {
+      rpcCount: 0,
+      validatorCount: 2,
+      activeStake: 40n,
+      delinquentStake: 9n,
+    });
+
+    // in the staked set with no lite frame or full record yet: unknown,
+    // not zero
+    expect(store.get(myStakeAmountAtom)).toBeUndefined();
+    expect(store.get(myStakePctAtom)).toBeUndefined();
   });
 
   it("aligns each lite frame with the staked_pubkeys of its own epoch", () => {

@@ -659,9 +659,12 @@ export const myStakeAmountAtom = atom((get) => {
   // lite view carries the epoch-joined stake first-flight; the full
   // peer record wins once the big peers update lands
   const myPeer = peers[idKey] ?? get(litePeerViewsAtom).get(idKey);
-  if (!myPeer) return;
+  if (myPeer) return getStake(myPeer);
 
-  return getStake(myPeer);
+  // absent from the current epoch's known staked set: definitively
+  // unstaked this epoch, don't wait for the full peers frame
+  const epoch = get(epochAtom);
+  if (epoch && !epoch.staked_pubkeys.includes(idKey)) return 0n;
 });
 
 export const myStakePctAtom = atom((get) => {
