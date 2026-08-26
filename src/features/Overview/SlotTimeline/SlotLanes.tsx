@@ -2,8 +2,7 @@ import { Flex, Grid, Text } from "@radix-ui/themes";
 import { useSlotLanes } from "./useSlotLanes";
 import clsx from "clsx";
 import styles from "./slotLanes.module.css";
-import { memo } from "react";
-import { useMeasure } from "react-use";
+import { memo, useCallback, useRef, useState } from "react";
 import Progress from "../../../components/Progress";
 import useNextSlot from "../../../hooks/useNextSlot";
 import { getGridColumnsAndGap } from "./utils";
@@ -17,9 +16,30 @@ import { useAtomValue } from "jotai";
 import { epochAtom } from "../../../atoms";
 import { nsPerMs } from "../../../consts";
 
+/**
+ * Element width, measured synchronously on attach (the setState lands
+ * before the mount paint) and via ResizeObserver afterwards; useMeasure
+ * delivers even the first size a frame late, so bar geometry sized from
+ * it would paint at the default width and visibly snap.
+ */
+function useMeasuredWidth(): [(el: HTMLDivElement | null) => void, number] {
+  const [width, setWidth] = useState(0);
+  const observerRef = useRef<ResizeObserver | null>(null);
+  const ref = useCallback((el: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    if (!el) return;
+    setWidth(el.getBoundingClientRect().width);
+    observerRef.current = new ResizeObserver((entries) => {
+      if (entries[0]) setWidth(entries[0].contentRect.width);
+    });
+    observerRef.current.observe(el);
+  }, []);
+  return [ref, width];
+}
+
 export default function SlotLanes() {
-  const [measureRef, { width: barsContainerWidth }] =
-    useMeasure<HTMLDivElement>();
+  const [measureRef, barsContainerWidth] = useMeasuredWidth();
   const { lanes, leftRange } = useSlotLanes();
 
   if (leftRange == null) return null;
@@ -196,7 +216,7 @@ interface NextSlotsProps {
 }
 
 const MNextSlots = memo(function NextSlots({ count }: NextSlotsProps) {
-  const [measureRef, { width }] = useMeasure<HTMLDivElement>();
+  const [measureRef, width] = useMeasuredWidth();
   const maxBars = Math.trunc(
     (width + defaultBarsGap) / (nextSlotsBarMinWidth + defaultBarsGap),
   );
