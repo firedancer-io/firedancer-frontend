@@ -2,13 +2,13 @@ import "@radix-ui/themes/styles.css";
 import { Theme } from "@radix-ui/themes";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import "./app.css";
+import "./appColors.css";
 import { routeTree } from "./routeTree.gen";
 import { ConnectionProvider } from "./api/ws/ConnectionProvider";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { containerElAtom, isDocumentVisibleAtom } from "./atoms";
-import { useCallback, useEffect, useLayoutEffect } from "react";
-import { loadFlagFont, kebabCase } from "./utils";
-import * as colors from "./colors";
+import { useEffect, useLayoutEffect } from "react";
+import { loadFlagFont } from "./utils";
 import FiredancerLogo from "./assets/firedancer_logo.svg";
 import FrankendancerLogo from "./assets/frankendancer_logo.svg";
 import { enableMapSet } from "immer";
@@ -35,17 +35,8 @@ if (isFiredancer) {
 const store = getDefaultStore();
 
 export default function App() {
+  // palette custom properties ship statically in appColors.css
   const setContainerEl = useSetAtom(containerElAtom);
-
-  const setRefAndColors = useCallback(
-    (el: HTMLDivElement) => {
-      setContainerEl(el);
-      Object.entries(colors).forEach(([name, value]) => {
-        el.style.setProperty(`--${kebabCase(name)}`, value);
-      });
-    },
-    [setContainerEl],
-  );
 
   useLayoutEffect(() => {
     document.addEventListener("visibilitychange", onDocumentVisibilityChange);
@@ -67,7 +58,7 @@ export default function App() {
   }, []);
 
   return (
-    <Theme id="app" appearance="dark" ref={setRefAndColors} scaling="90%">
+    <Theme id="app" appearance="dark" ref={setContainerEl} scaling="90%">
       <ConnectionProvider>
         <RouterProvider router={router} />
       </ConnectionProvider>

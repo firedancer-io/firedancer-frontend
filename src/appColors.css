@@ -1,0 +1,305 @@
+/* GENERATED from colors.ts (names via kebabCase) - keep in sync;
+   pinned by src/__tests__/appColors.test.ts.
+   .radix-themes carries the radix tokens some values reference, so
+   the palette is declared there (and :root for plain values). */
+:root,
+.radix-themes {
+  --accounts-cache-class-low-water-color: var(--yellow-9);
+  --accounts-cache-class-low-water-empty-color: var(--yellow-5);
+  --accounts-cache-class-normal-color: var(--gray-8);
+  --accounts-cache-class-normal-empty-color: var(--gray-6);
+  --accounts-cache-class-target-color: var(--amber-8);
+  --accounts-cache-class-target-empty-color: var(--amber-5);
+  --accounts-fragmented-color: #f76b15;
+  --accounts-index-used-color: #ffa057;
+  --accounts-partition-compaction-color: var(--amber-9);
+  --accounts-partition-compaction-head-color: #d9d9d9;
+  --accounts-partition-compaction-trigger-color: var(--yellow-9);
+  --accounts-partition-write-head-color: #838383;
+  --accounts-read-color: #70b8ff;
+  --accounts-secondary-color: #b4b4b4;
+  --accounts-unused-color: #313131;
+  --accounts-used-color: #4c82a5;
+  --accounts-write-color: #9eb1ff;
+  --app-teal: #1ce7c2;
+  --average-changed-color: #c27b45;
+  --average-unchanged-color: #714c32;
+  --bad-changed-color: #dc6869;
+  --bad-unchanged-color: #7a3b40;
+  --boot-progress-catchup-background-color: #060e0e;
+  --boot-progress-full-snapshot-background-color: #020c12;
+  --boot-progress-gossip-background-color: #030312;
+  --boot-progress-gossip-bars-color: #252d2c;
+  --boot-progress-gossip-filled-bar-color: #175e51;
+  --boot-progress-gossip-high-bar-color: #2d2525;
+  --boot-progress-gossip-high-filled-bar-color: #5e1717;
+  --boot-progress-gossip-high-threshold-bar-color: #ce3636;
+  --boot-progress-gossip-mid-bar-color: #2d2b25;
+  --boot-progress-gossip-mid-filled-bar-color: #6a510c;
+  --boot-progress-gossip-mid-threshold-bar-color: #e6b11e;
+  --boot-progress-incr-snapshot-background-color: #020912;
+  --boot-progress-primary-text-color: #a2a2a2;
+  --boot-progress-secondary-text-color: #666;
+  --boot-progress-snapshot-units-color: #686868;
+  --boot-progress-supermajority-background-color: #120602;
+  --boot-progress-tertiary-color: #c8b3b3;
+  --card-background-color: #141720;
+  --chart-axis-color: #777b84;
+  --chart-grid-color: #2c3235;
+  --chart-grid-stroke-color: rgba(250, 250, 250, 0.05);
+  --circular-progress-path-color: #1d6286;
+  --circular-progress-trail-color: #666666;
+  --cluster-development-color: #1c96e7;
+  --cluster-devnet-color: #e7601c;
+  --cluster-mainnet-beta-color: #1ce7c2;
+  --cluster-pythnet-color: #9d1ce7;
+  --cluster-pythtest-color: #e71c88;
+  --cluster-testnet-color: #e7b81c;
+  --cluster-unknown-color: #898989;
+  --compute-units-color: #d19dff;
+  --container-background-color: rgba(250, 250, 250, 0.05);
+  --container-border-color: rgba(250, 250, 250, 0.12);
+  --dropdown-background-color: #24262b;
+  --dropdown-button-text-color: #f7f8f8;
+  --elapsed-time-color: #6a6a6e;
+  --epoch-not-live-color: #3cb4ff;
+  --epoch-skipped-slot-color: #ff5353;
+  --epoch-slider-progress-color: #142d53;
+  --epoch-text-color: #fafafa;
+  --error-toggle-color: #e5484d;
+  --faded-text: #84858a;
+  --failure-color: #e5484d;
+  --fees-color: #4ccce6;
+  --first-turbine-slot-color: #3972c9;
+  --focused-border-color: #1d6fba;
+  --good-changed-color: #56bf8c;
+  --good-unchanged-color: #4a7661;
+  --grid-line-color: #312d42;
+  --grid-ticks-color: #858585;
+  --header-color: #bdf3ff;
+  --header-label-text-color: #949494;
+  --high-increment-text-color: #e5484d;
+  --icon-button-color: #b4b4b4;
+  --income-per-cu-toggle-control-color: #9eb1ff;
+  --latest-turbine-slot-color: #74afea;
+  --low-increment-text-color: #e5b319;
+  --mid-increment-text-color: #e55a19;
+  --missing-slot-color: #0f1313;
+  --my-slots-color: #2a7edf;
+  --nav-button-inactive-text-color: #949494;
+  --nav-button-text-color: #f7f7f7;
+  --needs-replay-slot-color: #163454;
+  --next-color: #c567ea;
+  --next-slot-value-color: #cacaca;
+  --non-delinquent-chart-color: #363a63;
+  --non-delinquent-color: #6f77c0;
+  --non-vote-color: #67b873;
+  --overview-text-color: #b4b4b4;
+  --popover-background-color: var(--gray-1, #111);
+  --popover-primary-color: var(--gray-12, #eee);
+  --popover-secondary-color: var(--gray-10, #7b7b7b);
+  --primary-text-color: #b2bcc9;
+  --program-cache-color: #eee;
+  --progress-background-color: #37a4bc;
+  --progress-bar-complete-catchup-color: #0c6b5a;
+  --progress-bar-complete-full-snapshot-color: #0f3f57;
+  --progress-bar-complete-gossip-color: #0e0e8e;
+  --progress-bar-complete-inc-snapshot-color: #0e448b;
+  --progress-bar-complete-supermajority-color: #250c04;
+  --progress-bar-in-progress-catchup-background: linear-gradient(
+    270deg,
+    #1ce7c2 0%,
+    #0c6b5a 100%
+  );
+  --progress-bar-in-progress-catchup-border: #2ec9c9;
+  --progress-bar-in-progress-full-snapshot-background: linear-gradient(
+    270deg,
+    #1481b8 0%,
+    #093952 100%
+  );
+  --progress-bar-in-progress-full-snapshot-border: #47b4eb;
+  --progress-bar-in-progress-gossip-background: linear-gradient(
+    270deg,
+    #1414b8 0%,
+    #090952 100%
+  );
+  --progress-bar-in-progress-gossip-border: #8f8fed;
+  --progress-bar-in-progress-inc-snapshot-background: linear-gradient(
+    270deg,
+    #0e448b 0%,
+    #090e15 100%
+  );
+  --progress-bar-in-progress-inc-snapshot-border: #83b3f2;
+  --progress-bar-in-progress-supermajority-background: linear-gradient(
+    270deg,
+    #8b2b0e 0%,
+    #150c09 100%
+  );
+  --progress-bar-in-progress-supermajority-border: #f29d83;
+  --progress-bar-incomplete-catchup-color: #091515;
+  --progress-bar-incomplete-full-snapshot-color: #0c171d;
+  --progress-bar-incomplete-gossip-color: #171765ff;
+  --progress-bar-incomplete-inc-snapshot-color: #041225;
+  --progress-bar-incomplete-supermajority-color: #231511;
+  --progress-gutter-background-color: #303134;
+  --regular-text-color: #8e909d;
+  --repaired-needs-replay-slot-color: #89603e;
+  --repaired-slots-bold-text-color: #f76b15;
+  --repaired-slots-text-color: #ef5f00;
+  --replayed-missing-slot-color: #871616;
+  --replayed-slot-color: #118b74;
+  --replayed-slots-bold-text-color: #53b9ab;
+  --replayed-slots-text-color: #0d9b8a;
+  --requested-toggle-control-color: #ff8dcc;
+  --row-separator-background-color: #333333;
+  --sankey-base-label-color: #c6c6c6;
+  --sankey-dropped-link-color: #5c5555;
+  --sankey-incoming-link-color: #23639e;
+  --sankey-link-gradient-end-color: #183a5a;
+  --sankey-link-gradient-middle-color: #10273d;
+  --sankey-retained-link-color: #452909;
+  --sankey-start-end-node-color: #525463;
+  --sankey-success-rate-color: #7ce198;
+  --search-disabled-background-color: rgba(114, 114, 114, 0.15);
+  --search-disabled-border-color: rgba(178, 178, 178, 0.12);
+  --search-disabled-text-color: #424242;
+  --search-icon-color: #afb2c2;
+  --secondary-text-color: #67696a;
+  --shred-published-color: #82738c;
+  --shred-received-repair-color: #a67f59;
+  --shred-received-turbine-color: #597fa6;
+  --shred-repair-requested-color: #a66759;
+  --shred-replayed-nothing-color: #2f3842;
+  --shred-replayed-repair-color: #b2904d;
+  --shred-replayed-turbine-color: #366357;
+  --shred-skipped-color: #b23232;
+  --skip-rate-label-color: #646464;
+  --slot-card-header-text-color: #cbcbcb;
+  --slot-card-section-background-color: #676767;
+  --slot-card-section-primary-color: var(--gray-11);
+  --slot-card-section-secondary-color: var(--gray-10);
+  --slot-details-background-color: #15181e;
+  --slot-details-chart-controls-triggered: #70b8ff;
+  --slot-details-clickable-slot-color: var(--blue-9);
+  --slot-details-color: #9aabc3;
+  --slot-details-disabled-slot-border-color: #484d53b2;
+  --slot-details-earliest-slot-color: var(--teal-9);
+  --slot-details-fees-slot-color: var(--sky-8);
+  --slot-details-my-slots-not-selected-color: #19457a;
+  --slot-details-quick-search-text-color: var(--gray-10);
+  --slot-details-recent-slot-color: var(--cyan-9);
+  --slot-details-rewards-slot-color: var(--indigo-10);
+  --slot-details-search-label-color: #fff;
+  --slot-details-selected-background-color: #283551;
+  --slot-details-selected-color: #e3efff;
+  --slot-details-skipped-background-color: #250f0f;
+  --slot-details-skipped-selected-background-color: #3b0c0c;
+  --slot-details-skipped-slot-color: var(--red-8);
+  --slot-details-stats-primary: var(--gray-11);
+  --slot-details-stats-secondary: var(--gray-10);
+  --slot-details-stats-tertiary: var(--gray-12);
+  --slot-details-tips-slot-color: var(--green-9);
+  --slot-nav-background-color: #010102;
+  --slot-nav-filter-background-color: #00205f;
+  --slot-selector-item-background-color: #1b659933;
+  --slot-selector-text-color: #a4a3a3;
+  --slot-status-blue: #1d6286;
+  --slot-status-dull-teal: #076b59;
+  --slot-status-gray: #313131;
+  --slot-status-green: #1d863b;
+  --slot-status-red: #871616;
+  --slot-status-teal: #1ce7c2;
+  --slot-text-active-link-color: #6cb1d3;
+  --slot-text-link-color: #1190cf;
+  --slot-text-visited-link-color: #967dc8;
+  --slot-timeline-text-color: #b1b1b1;
+  --slots-list-background-color: #070a13;
+  --slots-list-current-slot-box-shadow-color: rgba(191, 135, 253, 0.13);
+  --slots-list-current-slot-number-background-color: #283551;
+  --slots-list-future-slot-background-color: #0d0d0d;
+  --slots-list-future-slot-color: #878787;
+  --slots-list-my-slot-background-color: #070b14;
+  --slots-list-my-slots-border-color: rgba(42, 126, 223, 0.5);
+  --slots-list-my-slots-selected-border-color: #2a7edf;
+  --slots-list-not-processed-my-slots-border-color: rgba(125, 125, 125, 0.5);
+  --slots-list-past-slot-color: #a0a0a0;
+  --slots-list-past-slot-number-color: #848484;
+  --slots-list-selected-background-color: #002163;
+  --slots-list-skipped-background-color: #250f0f;
+  --slots-list-skipped-selected-background-color: #3b0c0c;
+  --slots-list-slot-background-color: #070a13;
+  --slots-list-slot-color: #ccc;
+  --snapshot-area-chart-dark: rgba(16, 129, 108, 0.53);
+  --snapshot-area-chart-grid-line-color: #ffffff1a;
+  --start-line-color: #67696a;
+  --startup-background-color: #03030c;
+  --startup-complete-step-color: #3ba158;
+  --startup-progress-background-color: #121213;
+  --startup-progress-teal-color: #1ce7c2;
+  --startup-text-color: #a7a7a7;
+  --success-color: #67b873;
+  --success-toggle-color: #30a46c;
+  --summary-agave-text-color: #c6f06a;
+  --summary-bam-text-color: #ddd;
+  --summary-firedancer-text-color: #6befd7;
+  --summary-frankendancer-text-color: #c46bf0;
+  --summary-harmonic-text-color: #f5f2ec;
+  --summary-jito-text-color: #71ef9b;
+  --summary-my-slots-color: #41b9d3;
+  --summary-paladin-text-color: #6ac4f0;
+  --summary-primary-text-color: var(--gray-11);
+  --summary-raiku-text-color: #c0ff38;
+  --summary-rakurai-text-color: linear-gradient(
+    83.85deg,
+    #024eff 0.22%,
+    #3ce844 102.21%
+  );
+  --summary-secondary-text-color: var(--gray-10);
+  --summary-sig-text-color: #8fb6fc;
+  --supermajority-pie-chart-text-color: #cac4c4;
+  --supermajority-pie-chart-unfilled-color: #231f1f;
+  --supermajority-table-border-color: rgba(250, 250, 250, 0.12);
+  --supermajority-table-offline-primary-color: var(--gray-11);
+  --supermajority-table-offline-secondary-color: var(--gray-10);
+  --supermajority-table-online-primary-color: var(--gray-9);
+  --supermajority-table-online-secondary-color: var(--gray-7);
+  --table-body-color: #8a8a8a;
+  --table-header-color: #cbcbcb;
+  --tile-background-blue-color: #5f6fa9;
+  --tile-background-red-color: #e13131;
+  --tile-busy-green-color: #55ba83;
+  --tile-busy-red-color: #d94343;
+  --tile-chart-dark-background: #0000001f;
+  --tile-primary-stat-value-color: #db8f38;
+  --tile-sparkline-background-color: #232a38;
+  --tile-sparkline-range-text-color: #676767;
+  --tile-sub-header-color: #a2a2a2;
+  --tips-color: #1fd8a4;
+  --toast-connecting-end-color: #ffc267;
+  --toast-connecting-start-color: #ff9d0a;
+  --toast-disconnected-color: #ff7878;
+  --toggle-item-background-color: #292929;
+  --toggle-item-text-color: #9e9e9e;
+  --total-validators-color: #20788c;
+  --transaction-axis-text-color: #919191;
+  --transaction-default-color: rgba(0, 0, 0, 0.5);
+  --transaction-execute-color: rgba(96, 100, 108, 0.5);
+  --transaction-execute-text-color: #b5b2bc;
+  --transaction-failed-path-color: #743f4d;
+  --transaction-loading-color: rgba(158, 108, 0, 0.5);
+  --transaction-loading-text-color: #836a21;
+  --transaction-non-vote-path-color: #006851;
+  --transaction-post-execute-color: rgba(17, 50, 100, 0.5);
+  --transaction-post-execute-text-color: #0090ff;
+  --transaction-preloading-color: rgba(125, 94, 84, 0.5);
+  --transaction-preloading-text-color: #a18072;
+  --transaction-validate-color: #6c4e62;
+  --transaction-vote-path-color: #19307c;
+  --turbine-slots-bold-text-color: #0090ff;
+  --turbine-slots-text-color: #0588f0;
+  --unknown-changed-color: var(--gray-11);
+  --unknown-unchanged-color: var(--gray-9);
+  --vote-distance-color: #7b837c;
+  --vote-latency-color: #9982f0;
+  --votes-color: #557ae0;
+}
