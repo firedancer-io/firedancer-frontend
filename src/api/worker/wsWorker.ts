@@ -2,8 +2,9 @@ import { ZstdInit, type ZstdDec } from "@oneidentity/zstd-js/decompress";
 import { logDebug, logError, logWarning } from "../../logger";
 import {
   WsMessageSchema,
+  type EarlyPortMessage,
+  type EarlyPortRequest,
   type EarlyWsFrame,
-  type FromWorkerControlMessage,
   type WsEntity,
   type ToWorkerMessage,
 } from "./types";
@@ -153,14 +154,16 @@ function handleFrame(message: unknown, zstd: ZstdDec | undefined) {
 }
 
 /**
- * Adopt mode: the main thread owns the socket opened by index.html
- * (earlyWs.ts) and forwards its frames; the identical decode pipeline
- * runs here, and sends are routed back via "ws-send". Frames arriving
- * before the decode path is settled (zstd init) queue in pending.
+ * Adopt mode: the blob worker spawned by index.html (earlyWsWorker.ts)
+ * owns the early socket and pumps its frames over a MessagePort; the
+ * identical decode pipeline runs here, and sends are routed back via
+ * "ws-send" on the port. Frames arriving before the decode path is
+ * settled (zstd init) queue in pending.
  */
 interface Adopt {
   url: string;
   compress: boolean;
+  port: MessagePort;
   zstd: ZstdDec | undefined;
   ready: boolean;
   pending: EarlyWsFrame[];
@@ -179,9 +182,8 @@ function adoptOpen(protocol: string) {
         // mirror the init-failure fallback: drop the adopted socket and
         // open a worker-owned uncompressed connection
         adopt = null;
-        ctx.postMessage({
-          type: "close-early",
-        } satisfies FromWorkerControlMessage);
+        a.port.postMessage({ type: "close-early" } satisfies EarlyPortRequest);
+        a.port.close();
         connect(a.url, undefined);
         return;
       }
@@ -204,46 +206,56 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
         connect(msg.websocketUrl, msg.compress ? await zstdPromise : undefined);
       })();
       break;
-    case "adopt":
-      adopt = {
+    case "adopt": {
+      const a: Adopt = {
         url: msg.websocketUrl,
         compress: msg.compress,
+        port: msg.port,
         zstd: undefined,
         ready: false,
-        pending: msg.frames,
+        pending: [],
+      };
+      adopt = a;
+      // adopted-mode transport: the blob worker pumps adopt-open,
+      // frames and adopt-closed over the transferred port
+      a.port.onmessage = (e: MessageEvent<EarlyPortMessage>) => {
+        if (adopt !== a) return;
+        const pm = e.data;
+        switch (pm.type) {
+          case "adopt-open":
+            adoptOpen(pm.protocol);
+            break;
+          case "frame":
+            if (a.ready) handleFrame(pm.data, a.zstd);
+            else a.pending.push(pm.data);
+            break;
+          case "adopt-closed":
+            // adoption is first-connection-only: the existing reconnect
+            // logic takes over with a worker-owned socket
+            adopt = null;
+            a.port.close();
+            logDebug(
+              "WS",
+              `Disconnected adopted WebSocket, reconnecting in ${reconnectDelayMs}ms`,
+            );
+            handler.onConnectionChange({ type: "disconnected" });
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(() => {
+              void (async () => {
+                connect(a.url, a.compress ? await zstdPromise : undefined);
+              })();
+            }, reconnectDelayMs);
+            break;
+        }
       };
       handler.onConnectionChange({ type: "connecting" });
-      if (msg.open) adoptOpen(msg.protocol);
       break;
-    case "adopt-open":
-      adoptOpen(msg.protocol);
-      break;
-    case "frame":
-      if (!adopt) break;
-      if (adopt.ready) handleFrame(msg.data, adopt.zstd);
-      else adopt.pending.push(msg.data);
-      break;
-    case "adopt-closed":
-      // adoption is first-connection-only: the existing reconnect logic
-      // takes over with a worker-owned socket
-      if (adopt) {
-        const { url, compress } = adopt;
-        adopt = null;
-        logDebug(
-          "WS",
-          `Disconnected adopted WebSocket, reconnecting in ${reconnectDelayMs}ms`,
-        );
-        handler.onConnectionChange({ type: "disconnected" });
-        clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(() => {
-          void (async () => {
-            connect(url, compress ? await zstdPromise : undefined);
-          })();
-        }, reconnectDelayMs);
-      }
-      break;
+    }
     case "disconnect":
-      adopt = null;
+      if (adopt) {
+        adopt.port.close();
+        adopt = null;
+      }
       clearTimeout(reconnectTimer);
       if (ws) {
         try {
@@ -256,11 +268,11 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
       break;
     case "send":
       if (adopt) {
-        // main thread owns the adopted socket
-        ctx.postMessage({
+        // the blob worker owns the adopted socket
+        adopt.port.postMessage({
           type: "ws-send",
           data: JSON.stringify(msg.value),
-        } satisfies FromWorkerControlMessage);
+        } satisfies EarlyPortRequest);
       } else if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(msg.value));
       } else {

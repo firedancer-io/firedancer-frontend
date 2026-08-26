@@ -1,10 +1,6 @@
 import { useCallback, useEffect } from "react";
-import type {
-  FromWorkerControlMessage,
-  FromWorkerMessage,
-  ToWorkerMessage,
-} from "./types";
-import { adoptEarlyWs, closeEarlyWs, handleEarlyWsMessage } from "./earlyWs";
+import type { FromWorkerMessage, ToWorkerMessage } from "./types";
+import { adoptEarlyWs, closeEarlyWs } from "./earlyWs";
 import { createTypedWorker, type TypedWorker } from "./typedWorker";
 import type { SendMessage } from "../ws/types";
 import { messageEventType, type MessageEmitter } from "../ws/ConnectionContext";
@@ -17,10 +13,7 @@ import { websocketCompress, websocketUrl } from "../consts";
 
 const store = getDefaultStore();
 
-let worker: TypedWorker<
-  ToWorkerMessage,
-  FromWorkerMessage | FromWorkerControlMessage
-> | null = null;
+let worker: TypedWorker<ToWorkerMessage, FromWorkerMessage> | null = null;
 // Singleton so existing listeners keep receiving events if the worker is recreated
 const rawEmitter = new EventEmitter().setMaxListeners(1e3);
 // Flush messages buffered before the first subscriber attached
@@ -86,10 +79,7 @@ const unsubscribeVisibility = store.sub(isDocumentVisibleAtom, () => {
 
 const maxPreSubscribeBuffer = 10_000;
 
-function onMessage(
-  e: MessageEvent<FromWorkerMessage | FromWorkerControlMessage>,
-) {
-  if (handleEarlyWsMessage(e.data)) return;
+function onMessage(e: MessageEvent<FromWorkerMessage>) {
   buffer.push(e.data);
   if (
     buffer.length > maxPreSubscribeBuffer &&
@@ -104,13 +94,10 @@ function startWorker(websocketUrl: string, compress: boolean) {
   if (worker) return;
   if (!websocketUrl.trim()) return;
 
-  worker = createTypedWorker<
-    ToWorkerMessage,
-    FromWorkerMessage | FromWorkerControlMessage
-  >(WsWorker);
+  worker = createTypedWorker<ToWorkerMessage, FromWorkerMessage>(WsWorker);
   worker.onmessage = onMessage;
   const w = worker;
-  // Adopt the socket opened by the index.html inline script; otherwise
+  // Adopt the socket opened by the index.html blob worker; otherwise
   // the worker opens its own exactly as before
   if (!adoptEarlyWs(websocketUrl, compress, (msg, t) => w.postMessage(msg, t)))
     worker.postMessage({ type: "connect", websocketUrl, compress });

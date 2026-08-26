@@ -38,29 +38,30 @@ export type EarlyWsFrame = string | ArrayBuffer;
 
 export type ToWorkerMessage =
   | { type: "connect"; websocketUrl: string; compress: boolean }
-  // early-socket adoption (earlyWs.ts): the main thread keeps socket
-  // ownership and forwards frames; open=false defers the negotiated
-  // protocol to a later adopt-open
+  // early-socket adoption (earlyWs.ts): the blob worker spawned by
+  // index.html owns the socket and pumps frames to wsWorker over the
+  // transferred port
   | {
       type: "adopt";
       websocketUrl: string;
       compress: boolean;
-      open: boolean;
-      protocol: string;
-      frames: EarlyWsFrame[];
+      port: MessagePort;
     }
-  | { type: "adopt-open"; protocol: string }
-  | { type: "frame"; data: EarlyWsFrame }
-  | { type: "adopt-closed" }
   | { type: "disconnect" }
   | { type: "send"; value: unknown };
 
 /**
- * Adopt-mode requests from the worker to the main thread, which owns the
- * socket. Intercepted in useWsWorker before the emitter buffer, so
- * FromWorkerMessage consumers never see them.
+ * Port protocol between the early blob worker (earlyWsWorker.ts, socket
+ * owner) and wsWorker in adopted mode. The negotiated subprotocol is
+ * only known once open, so it rides adopt-open.
  */
-export type FromWorkerControlMessage =
+export type EarlyPortMessage =
+  | { type: "adopt-open"; protocol: string }
+  | { type: "frame"; data: EarlyWsFrame }
+  | { type: "adopt-closed" };
+
+/** Adopt-mode requests from wsWorker back to the blob worker */
+export type EarlyPortRequest =
   | { type: "ws-send"; data: string }
   | { type: "close-early" };
 

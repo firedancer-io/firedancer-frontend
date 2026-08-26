@@ -10,6 +10,7 @@ import svgr from "vite-plugin-svgr";
 import { visualizer } from "rollup-plugin-visualizer";
 import type { Plugin } from "vite";
 import { createHash } from "node:crypto";
+import { earlyWsWorkerMain } from "./src/api/worker/earlyWsWorker";
 
 // Drop index.html logo preloads belonging to the client not being built.
 function stripOtherClientPreloads(client: string | undefined): Plugin {
@@ -97,17 +98,23 @@ function zstdWasmAsset(): Plugin {
   };
 }
 
-// Open the WebSocket from a tiny inline script so the handshake and first
-// frames overlap main bundle fetch/eval; useWsWorker adopts the socket at
-// startup (earlyWs.ts) and any failure falls back to the worker opening
-// its own connection as before. Firedancer-only. URL and subprotocol
-// offer mirror src/api/consts.ts: same-origin ws(s)://host:port/websocket
-// in production, VITE_WEBSOCKET_URL when serving dev.
+// Open the WebSocket from a tiny dedicated worker spawned off a Blob URL
+// by an inline script, so the handshake and first frames overlap main
+// bundle fetch/eval AND frame consumption happens on an idle thread (a
+// blocked main thread would stall Chrome's websocket flow control).
+// useWsWorker adopts the socket at startup by wiring a MessageChannel
+// between the blob worker and wsWorker (earlyWs.ts); any failure falls
+// back to the worker opening its own connection as before.
+// Firedancer-only. URL and subprotocol offer mirror src/api/consts.ts:
+// same-origin ws(s)://host:port/websocket in production,
+// VITE_WEBSOCKET_URL when serving dev.
 function earlyWebsocket(
   client: string | undefined,
   devWsUrl: string | undefined,
   compress: boolean,
 ): Plugin {
+  // worker body shared with the earlyWs tests; stringified into the page
+  const workerFn = JSON.stringify(earlyWsWorkerMain.toString());
   return {
     name: "early-websocket",
     transformIndexHtml: {
@@ -127,12 +134,13 @@ function earlyWebsocket(
               children:
                 "(function(){try{" +
                 `var u=${urlExpr};` +
-                `var s=new WebSocket(u${compress ? ',["compress-zstd"]' : ""});` +
-                's.binaryType="arraybuffer";' +
-                `var e={socket:s,url:u,compress:${compress},frames:[],error:false,closed:false};` +
-                "s.onmessage=function(m){e.frames.push(m.data)};" +
-                "s.onerror=function(){e.error=true};" +
-                "s.onclose=function(){e.closed=true};" +
+                `var s="("+${workerFn}+")(self,WebSocket,"+JSON.stringify(u)+",${compress});";` +
+                'var r=URL.createObjectURL(new Blob([s],{type:"text/javascript"}));' +
+                "var w=new Worker(r);" +
+                "URL.revokeObjectURL(r);" +
+                `var e={worker:w,url:u,compress:${compress},error:false,closed:false};` +
+                "w.onmessage=function(m){if(m.data==='error')e.error=true;else if(m.data==='closed')e.closed=true};" +
+                "w.onerror=function(){e.error=true};" +
                 "window.__fdWsEarly=e" +
                 "}catch(x){}})();",
             },
