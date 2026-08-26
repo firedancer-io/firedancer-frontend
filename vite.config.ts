@@ -128,7 +128,9 @@ function earlyWebsocket(
             `mw.postMessage({type:"adopt",websocketUrl:u,compress:${compress},port:c.port2},[c.port2]);` +
             "w.postMessage(c.port1,[c.port1]);" +
             `var g={worker:mw,early:w,url:u,compress:${compress},error:false,pending:[]};` +
-            "mw.onmessage=function(m){if(g.pending.length<1e4)g.pending.push(m.data)};" +
+            // buffer the events, not data: clones deserialize lazily on
+            // first data access, so big batches don't stall attach
+            "mw.onmessage=function(m){if(g.pending.length<1e4)g.pending.push(m)};" +
             "mw.onerror=function(){g.error=true};" +
             "window.__fdWsMain=g;" +
             "delete window.__fdWsEarly" +

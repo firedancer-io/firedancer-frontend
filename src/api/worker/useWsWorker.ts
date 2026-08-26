@@ -28,17 +28,23 @@ emitter.on("newListener", (type) => {
 });
 
 /**
- * Buffer worker messages and flush once per frame to prevent worker
- * onmessage tasks from starving setTimeout/setInterval on slow machines.
- * RAF when visible; setTimeout(0) when hidden (RAF is suspended, but
- * browsers only throttle timers, bounding buffer growth).
+ * Buffer worker message EVENTS and flush once per frame to prevent
+ * worker onmessage tasks from starving setTimeout/setInterval on slow
+ * machines. RAF when visible; setTimeout(0) when hidden (RAF is
+ * suspended, but browsers only throttle timers, bounding buffer growth).
+ *
+ * Holding events, not data, matters: the browser deserializes a
+ * structured clone lazily on the first `data` access, so a multi-MB
+ * backlog batch only pays its 100ms+ deserialize when its flush emits
+ * it (post-paint for the reveal transition), not when it lands.
  */
-let buffer: FromWorkerMessage[] = [];
+let buffer: { data: FromWorkerMessage }[] = [];
 let rafId: number | null = null;
 let timeoutId: number | null = null;
 
-function emitMessages(messages: FromWorkerMessage[]) {
-  for (const msg of messages) {
+function emitMessages(messages: { data: FromWorkerMessage }[]) {
+  for (const e of messages) {
+    const msg = e.data;
     try {
       emitter.emit(messageEventType, msg);
     } catch (err) {
@@ -67,8 +73,8 @@ function flushBuffer() {
  * The first kvb gates the reveal, so it applies synchronously instead of
  * waiting out the rAF batching. Everything buffered behind it (the rest
  * of the backlog) is deferred past the next paint (rAF -> timeout) so
- * the reveal commit isn't blocked by its apply; later batches return to
- * the normal per-frame cadence.
+ * the reveal commit isn't blocked by its deserialize+apply; later
+ * batches return to the normal per-frame cadence.
  */
 let firstKvbApplied = false;
 let postPaintFlushDone = false;
@@ -76,7 +82,9 @@ let postPaintFlushDone = false;
 function flushFirstKvbSync() {
   if (firstKvbApplied) return;
   if (emitter.listenerCount(messageEventType) === 0) return;
-  const i = buffer.findIndex((m) => m.type === "kvb");
+  // touches data only up to the first kvb (all small pre-reveal frames);
+  // the large batches behind it stay lazily undeserialized
+  const i = buffer.findIndex((m) => m.data.type === "kvb");
   if (i < 0) return;
   firstKvbApplied = true;
   const head = buffer.slice(0, i + 1);
@@ -126,13 +134,15 @@ const unsubscribeVisibility = store.sub(isDocumentVisibleAtom, () => {
 const maxPreSubscribeBuffer = 10_000;
 
 function onMessage(e: MessageEvent<FromWorkerMessage>) {
-  buffer.push(e.data);
+  buffer.push(e);
   if (
     buffer.length > maxPreSubscribeBuffer &&
     emitter.listenerCount(messageEventType) === 0
   ) {
     buffer.shift();
   }
+  // short-circuit first: once the first kvb applied, later arrivals skip
+  // the data access so their deserialize stays deferred to their flush
   if (!firstKvbApplied && e.data.type === "kvb") flushFirstKvbSync();
   scheduleFlush();
 }

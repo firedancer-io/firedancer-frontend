@@ -17,9 +17,11 @@ export interface EarlyWs {
 /**
  * Handle to the real wsWorker when the index.html inline script (build
  * only) booted it and wired the early-socket adoption itself. pending
- * holds the messages the worker posted before the app attached (Worker
- * messages with no listener are lost, so the inline script buffers
- * them); error is set from the worker's error event pre-attach.
+ * holds the message EVENTS the worker posted before the app attached
+ * (Worker messages with no listener are lost, so the inline script
+ * buffers them; events rather than data, so structured clones stay
+ * lazily undeserialized until a flush reads them); error is set from
+ * the worker's error event pre-attach.
  */
 export interface MainWs {
   worker: Worker;
@@ -102,7 +104,7 @@ export function attachMainWs(
   }
 
   earlyWorker = main.early; // closeEarlyWs tears down the socket owner
-  for (const data of main.pending) onMessage({ data } as MessageEvent);
+  for (const ev of main.pending) onMessage(ev as MessageEvent);
   main.worker.onmessage = onMessage;
   return main.worker;
 }

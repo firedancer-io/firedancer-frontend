@@ -161,7 +161,10 @@ describe("attachMainWs", () => {
   test("attaches to the parked worker: pending drains in order, then live messages flow", () => {
     const connected = { type: "connected" };
     const kvb1 = { type: "kvb", items: ["a"] };
-    const { worker, early } = installMain({ pending: [connected, kvb1] });
+    // the inline script parks the message events themselves
+    const { worker, early } = installMain({
+      pending: [{ data: connected }, { data: kvb1 }],
+    });
     const { seen, onMessage } = makeSink();
 
     expect(attachMainWs(wsUrl, true, onMessage)).toBe(
@@ -201,7 +204,7 @@ describe("attachMainWs", () => {
     "tears both workers down and falls back when the parked worker is %s",
     (_name, overrides) => {
       const { worker, early } = installMain({
-        pending: [{ type: "connected" }],
+        pending: [{ data: { type: "connected" } }],
         ...overrides,
       });
       const { seen, onMessage } = makeSink();
