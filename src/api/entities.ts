@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 import {
   BootPhaseEnum,
   ClientEnum,
@@ -71,7 +71,7 @@ export const tileSchema = z.object({
 
 export const identityBalanceSchema = z.coerce.bigint();
 
-export const voteCommissionSchema = z.number().nullable();
+export const voteCommissionSchema = z.nullable(z.number());
 
 export const voteBalanceSchema = z.coerce.bigint();
 
@@ -82,49 +82,51 @@ export const notarizedSlotSchema = z.number();
 export const finalizedSlotSchema = z.number();
 
 export const completedSlotSchema = z.number();
-export const turbineSlotSchema = z.number().nullable();
-export const repairSlotSchema = z.number().nullable();
+export const turbineSlotSchema = z.nullable(z.number());
+export const repairSlotSchema = z.nullable(z.number());
 export const catchUpHistorySchema = z.object({
-  repair: z.number().array(),
-  turbine: z.number().array(),
+  repair: z.array(z.number()),
+  turbine: z.array(z.number()),
 });
 
 export const serverTimeNanosSchema = z.coerce.number();
 
 export const estimatedSlotSchema = z.number();
-export const resetSlotSchema = z.number().nullable();
-export const storageSlotSchema = z.number().nullable();
-export const voteSlotSchema = z.number().nullable();
-export const slotCaughtUpSchema = z.number().nullable();
+export const resetSlotSchema = z.nullable(z.number());
+export const storageSlotSchema = z.nullable(z.number());
+export const voteSlotSchema = z.nullable(z.number());
+export const slotCaughtUpSchema = z.nullable(z.number());
 export const activeForkCountSchema = z.number();
 
 export const estimatedSlotDurationSchema = z.number();
 
-export const towerEstimatedTpsSchema = z
-  .object({
+export const towerEstimatedTpsSchema = z.pipe(
+  z.object({
     total: z.number(),
     vote: z.number(),
     nonvote_success: z.number(),
     nonvote_failed: z.number(),
-  })
-  .transform(({ total, vote, nonvote_success, nonvote_failed }) => ({
+  }),
+  z.transform(({ total, vote, nonvote_success, nonvote_failed }) => ({
     total,
     vote,
     success: nonvote_success,
     failed: nonvote_failed,
-  }));
+  })),
+);
 
-export const alpenglowEstimatedTpsSchema = z
-  .object({
+export const alpenglowEstimatedTpsSchema = z.pipe(
+  z.object({
     success: z.number(),
     failed: z.number(),
-  })
-  .transform(({ success, failed }) => ({
+  }),
+  z.transform(({ success, failed }) => ({
     total: success + failed,
     vote: 0,
     success,
     failed,
-  }));
+  })),
+);
 
 export const estimatedTpsSchema = z.union([
   towerEstimatedTpsSchema,
@@ -188,7 +190,7 @@ export const txnWaterfallSchema = z.object({
 });
 
 export const liveTxnWaterfallSchema = z.object({
-  next_leader_slot: z.number().nullable(),
+  next_leader_slot: z.nullable(z.number()),
   waterfall: txnWaterfallSchema,
 });
 
@@ -208,26 +210,26 @@ export const tilePrimaryMetricSchema = z.object({
 });
 
 export const liveTilePrimaryMetricSchema = z.object({
-  next_leader_slot: z.number().nullable(),
+  next_leader_slot: z.nullable(z.number()),
   tile_primary_metric: tilePrimaryMetricSchema,
 });
 
 export const prioritySchema = z.enum(PriorityEnum);
 
 export const tileMetricsSchema = z.object({
-  timers: z.array(z.array(z.number()).nullable()),
-  sched_timers: z.array(z.array(z.number()).nullable()),
-  in_backp: z.array(z.boolean().nullable()),
-  backp_msgs: z.array(z.number().nullable()),
-  alive: z.array(z.number().nullable()),
-  nvcsw: z.array(z.number().nullable()),
-  nivcsw: z.array(z.number().nullable()),
-  last_cpu: z.array(z.number().nullable()),
-  minflt: z.array(z.number().nullable()),
-  majflt: z.array(z.number().nullable()),
-  interrupts: z.array(z.number().nullable()),
-  timer_ticks: z.array(z.number().nullable()),
-  tlb_shootdowns: z.array(z.number().nullable()),
+  timers: z.array(z.nullable(z.array(z.number()))),
+  sched_timers: z.array(z.nullable(z.array(z.number()))),
+  in_backp: z.array(z.nullable(z.boolean())),
+  backp_msgs: z.array(z.nullable(z.number())),
+  alive: z.array(z.nullable(z.number())),
+  nvcsw: z.array(z.nullable(z.number())),
+  nivcsw: z.array(z.nullable(z.number())),
+  last_cpu: z.array(z.nullable(z.number())),
+  minflt: z.array(z.nullable(z.number())),
+  majflt: z.array(z.nullable(z.number())),
+  interrupts: z.array(z.nullable(z.number())),
+  timer_ticks: z.array(z.nullable(z.number())),
+  tlb_shootdowns: z.array(z.nullable(z.number())),
   priority: z.array(prioritySchema),
 });
 
@@ -257,135 +259,119 @@ export const startupProgressSchema = z.object({
   phase: startupPhaseSchema,
 
   // downloading_full_snapshot
-  downloading_full_snapshot_slot: z.number().nullable(),
-  downloading_full_snapshot_peer: z.string().nullable(),
-  downloading_full_snapshot_elapsed_secs: z.number().nullable(),
-  downloading_full_snapshot_remaining_secs: z.number().nullable(),
-  downloading_full_snapshot_throughput: z.number().nullable(),
-  downloading_full_snapshot_total_bytes: z.coerce.number().nullable(),
-  downloading_full_snapshot_current_bytes: z.coerce.number().nullable(),
+  downloading_full_snapshot_slot: z.nullable(z.number()),
+  downloading_full_snapshot_peer: z.nullable(z.string()),
+  downloading_full_snapshot_elapsed_secs: z.nullable(z.number()),
+  downloading_full_snapshot_remaining_secs: z.nullable(z.number()),
+  downloading_full_snapshot_throughput: z.nullable(z.number()),
+  downloading_full_snapshot_total_bytes: z.nullable(z.coerce.number()),
+  downloading_full_snapshot_current_bytes: z.nullable(z.coerce.number()),
 
   // downloading incremental snapshot
-  downloading_incremental_snapshot_slot: z.number().nullable(),
-  downloading_incremental_snapshot_peer: z.string().nullable(),
-  downloading_incremental_snapshot_elapsed_secs: z.number().nullable(),
-  downloading_incremental_snapshot_remaining_secs: z.number().nullable(),
-  downloading_incremental_snapshot_throughput: z.number().nullable(),
-  downloading_incremental_snapshot_total_bytes: z.coerce.number().nullable(),
-  downloading_incremental_snapshot_current_bytes: z.coerce.number().nullable(),
+  downloading_incremental_snapshot_slot: z.nullable(z.number()),
+  downloading_incremental_snapshot_peer: z.nullable(z.string()),
+  downloading_incremental_snapshot_elapsed_secs: z.nullable(z.number()),
+  downloading_incremental_snapshot_remaining_secs: z.nullable(z.number()),
+  downloading_incremental_snapshot_throughput: z.nullable(z.number()),
+  downloading_incremental_snapshot_total_bytes: z.nullable(z.coerce.number()),
+  downloading_incremental_snapshot_current_bytes: z.nullable(z.coerce.number()),
 
   // processing ledger
-  ledger_slot: z.number().nullable(),
-  ledger_max_slot: z.number().nullable(),
+  ledger_slot: z.nullable(z.number()),
+  ledger_max_slot: z.nullable(z.number()),
 
   // waiting for supermajority
-  waiting_for_supermajority_slot: z.number().nullable(),
-  waiting_for_supermajority_stake_percent: z.number().nullable(),
+  waiting_for_supermajority_slot: z.nullable(z.number()),
+  waiting_for_supermajority_stake_percent: z.nullable(z.number()),
 });
 
 export const bootPhaseSchema = z.enum(BootPhaseEnum);
 
 export const bootProgressSchema = z.object({
   phase: bootPhaseSchema,
-  joining_gossip_elapsed_seconds: z.number().nullable().optional(),
-  loading_full_snapshot_elapsed_seconds: z.number().nullable().optional(),
-  loading_full_snapshot_reset_count: z.number().nullable().optional(),
-  loading_full_snapshot_slot: z.number().nullable().optional(),
-  loading_full_snapshot_total_bytes_compressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_full_snapshot_read_bytes_compressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_full_snapshot_read_path: z.string().nullable().optional(),
-  loading_full_snapshot_decompress_bytes_decompressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_full_snapshot_decompress_bytes_compressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_full_snapshot_insert_bytes_decompressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_full_snapshot_insert_accounts: z.number().nullable().optional(),
-  loading_full_snapshot_snapwr_in_bytes_decompressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_full_snapshot_snapwr_out_bytes_decompressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_full_snapshot_snapwr_accounts: z.number().nullable().optional(),
+  joining_gossip_elapsed_seconds: z.optional(z.nullable(z.number())),
+  loading_full_snapshot_elapsed_seconds: z.optional(z.nullable(z.number())),
+  loading_full_snapshot_reset_count: z.optional(z.nullable(z.number())),
+  loading_full_snapshot_slot: z.optional(z.nullable(z.number())),
+  loading_full_snapshot_total_bytes_compressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_full_snapshot_read_bytes_compressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_full_snapshot_read_path: z.optional(z.nullable(z.string())),
+  loading_full_snapshot_decompress_bytes_decompressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_full_snapshot_decompress_bytes_compressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_full_snapshot_insert_bytes_decompressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_full_snapshot_insert_accounts: z.optional(z.nullable(z.number())),
+  loading_full_snapshot_snapwr_in_bytes_decompressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_full_snapshot_snapwr_out_bytes_decompressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_full_snapshot_snapwr_accounts: z.optional(z.nullable(z.number())),
 
-  loading_incremental_snapshot_elapsed_seconds: z
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_reset_count: z.number().nullable().optional(),
-  loading_incremental_snapshot_slot: z.number().nullable().optional(),
-  loading_incremental_snapshot_total_bytes_compressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_read_bytes_compressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_read_path: z.string().nullable().optional(),
-  loading_incremental_snapshot_decompress_bytes_decompressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_decompress_bytes_compressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_insert_bytes_decompressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_insert_accounts: z
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_snapwr_in_bytes_decompressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_snapwr_out_bytes_decompressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_snapwr_accounts: z
-    .number()
-    .nullable()
-    .optional(),
+  loading_incremental_snapshot_elapsed_seconds: z.optional(
+    z.nullable(z.number()),
+  ),
+  loading_incremental_snapshot_reset_count: z.optional(z.nullable(z.number())),
+  loading_incremental_snapshot_slot: z.optional(z.nullable(z.number())),
+  loading_incremental_snapshot_total_bytes_compressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_incremental_snapshot_read_bytes_compressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_incremental_snapshot_read_path: z.optional(z.nullable(z.string())),
+  loading_incremental_snapshot_decompress_bytes_decompressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_incremental_snapshot_decompress_bytes_compressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_incremental_snapshot_insert_bytes_decompressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_incremental_snapshot_insert_accounts: z.optional(
+    z.nullable(z.number()),
+  ),
+  loading_incremental_snapshot_snapwr_in_bytes_decompressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_incremental_snapshot_snapwr_out_bytes_decompressed: z.optional(
+    z.nullable(z.coerce.number()),
+  ),
+  loading_incremental_snapshot_snapwr_accounts: z.optional(
+    z.nullable(z.number()),
+  ),
 
-  accounts_database_path: z.string().nullable().optional(),
+  accounts_database_path: z.optional(z.nullable(z.string())),
 
-  wait_for_supermajority_bank_hash: z.string().nullable().optional(),
-  wait_for_supermajority_shred_version: z.string().nullable().optional(),
-  wait_for_supermajority_attempt: z.number().nullable().optional(),
-  wait_for_supermajority_total_stake: z.coerce.bigint().nullable().optional(),
-  wait_for_supermajority_connected_stake: z.coerce
-    .bigint()
-    .nullable()
-    .optional(),
-  wait_for_supermajority_total_peers: z.number().nullable().optional(),
-  wait_for_supermajority_connected_peers: z.number().nullable().optional(),
+  wait_for_supermajority_bank_hash: z.optional(z.nullable(z.string())),
+  wait_for_supermajority_shred_version: z.optional(z.nullable(z.string())),
+  wait_for_supermajority_attempt: z.optional(z.nullable(z.number())),
+  wait_for_supermajority_total_stake: z.optional(z.nullable(z.coerce.bigint())),
+  wait_for_supermajority_connected_stake: z.optional(
+    z.nullable(z.coerce.bigint()),
+  ),
+  wait_for_supermajority_total_peers: z.optional(z.nullable(z.number())),
+  wait_for_supermajority_connected_peers: z.optional(z.nullable(z.number())),
 
-  catching_up_elapsed_seconds: z.number().nullable().optional(),
-  catching_up_first_replay_slot: z.number().nullable().optional(),
+  catching_up_elapsed_seconds: z.optional(z.nullable(z.number())),
+  catching_up_first_replay_slot: z.optional(z.nullable(z.number())),
 });
 
-export const slotTransactionsSchema = z.preprocess(
-  (data) => {
+// z.pipe(z.transform(fn), schema) is exactly classic z.preprocess(fn,
+// schema), which zod/mini does not re-export
+export const slotTransactionsSchema = z.pipe(
+  z.transform((data: unknown) => {
     if (!data || typeof data !== "object" || Array.isArray(data)) return data;
     const d = data as Record<string, unknown>;
     return {
@@ -401,32 +387,32 @@ export const slotTransactionsSchema = z.preprocess(
       txn_end_timestamps_nanos:
         d.txn_end_timestamps_nanos ?? d.txn_commit_start_timestamps_nanos,
     };
-  },
+  }),
   z.object({
     start_timestamp_nanos: z.coerce.bigint(),
     target_end_timestamp_nanos: z.coerce.bigint(),
-    txn_mb_start_timestamps_nanos: z.coerce.bigint().array(),
-    txn_mb_end_timestamps_nanos: z.coerce.bigint().array(),
-    txn_compute_units_requested: z.number().array(),
-    txn_compute_units_consumed: z.number().array(),
-    txn_transaction_fee: z.coerce.bigint().array(),
-    txn_priority_fee: z.coerce.bigint().array(),
-    txn_tips: z.coerce.bigint().array(),
-    txn_error_code: z.number().array(),
-    txn_from_bundle: z.boolean().array(),
-    txn_is_simple_vote: z.boolean().array().optional(),
-    txn_bank_idx: z.number().array(),
-    txn_preload_end_timestamps_nanos: z.coerce.bigint().array(),
-    txn_start_timestamps_nanos: z.coerce.bigint().array(),
-    txn_load_end_timestamps_nanos: z.coerce.bigint().array(),
-    txn_end_timestamps_nanos: z.coerce.bigint().array(),
-    txn_commit_end_timestamps_nanos: z.coerce.bigint().array().optional(),
-    txn_arrival_timestamps_nanos: z.coerce.bigint().array(),
-    txn_microblock_id: z.number().array(),
-    txn_landed: z.boolean().array(),
-    txn_signature: z.string().array(),
-    txn_source_ipv4: z.string().array(),
-    txn_source_tpu: z.string().array(),
+    txn_mb_start_timestamps_nanos: z.array(z.coerce.bigint()),
+    txn_mb_end_timestamps_nanos: z.array(z.coerce.bigint()),
+    txn_compute_units_requested: z.array(z.number()),
+    txn_compute_units_consumed: z.array(z.number()),
+    txn_transaction_fee: z.array(z.coerce.bigint()),
+    txn_priority_fee: z.array(z.coerce.bigint()),
+    txn_tips: z.array(z.coerce.bigint()),
+    txn_error_code: z.array(z.number()),
+    txn_from_bundle: z.array(z.boolean()),
+    txn_is_simple_vote: z.optional(z.array(z.boolean())),
+    txn_bank_idx: z.array(z.number()),
+    txn_preload_end_timestamps_nanos: z.array(z.coerce.bigint()),
+    txn_start_timestamps_nanos: z.array(z.coerce.bigint()),
+    txn_load_end_timestamps_nanos: z.array(z.coerce.bigint()),
+    txn_end_timestamps_nanos: z.array(z.coerce.bigint()),
+    txn_commit_end_timestamps_nanos: z.optional(z.array(z.coerce.bigint())),
+    txn_arrival_timestamps_nanos: z.array(z.coerce.bigint()),
+    txn_microblock_id: z.array(z.number()),
+    txn_landed: z.array(z.boolean()),
+    txn_signature: z.array(z.string()),
+    txn_source_ipv4: z.array(z.string()),
+    txn_source_tpu: z.array(z.string()),
   }),
 );
 
@@ -455,28 +441,28 @@ export const slotLevelSchema = z.union([
 const slotPublishBaseSchema = z.object({
   slot: z.number(),
   mine: z.boolean(),
-  priority_fee: z.coerce.bigint().nullable(),
-  transaction_fee: z.coerce.bigint().nullable(),
-  tips: z.coerce.bigint().nullable(),
-  max_compute_units: z.number().nullable(),
-  compute_units: z.number().nullable(),
-  duration_nanos: z.number().nullable(),
-  completed_time_nanos: z.coerce.bigint().nullable(),
-  is_voter: z.boolean().nullable().optional(),
+  priority_fee: z.nullable(z.coerce.bigint()),
+  transaction_fee: z.nullable(z.coerce.bigint()),
+  tips: z.nullable(z.coerce.bigint()),
+  max_compute_units: z.nullable(z.number()),
+  compute_units: z.nullable(z.number()),
+  duration_nanos: z.nullable(z.number()),
+  completed_time_nanos: z.nullable(z.coerce.bigint()),
+  is_voter: z.optional(z.nullable(z.boolean())),
 });
 
-export const towerSlotPublishSchema = slotPublishBaseSchema
-  .extend({
+export const towerSlotPublishSchema = z.pipe(
+  z.extend(slotPublishBaseSchema, {
     level: towerSlotLevelSchema,
     skipped: z.boolean(),
-    success_nonvote_transaction_cnt: z.number().nullable(),
-    failed_nonvote_transaction_cnt: z.number().nullable(),
-    success_vote_transaction_cnt: z.number().nullable(),
-    failed_vote_transaction_cnt: z.number().nullable(),
-    vote_latency: z.number().nullable().optional(),
-    vote_latency_exact: z.number().nullable().optional(),
-  })
-  .transform(
+    success_nonvote_transaction_cnt: z.nullable(z.number()),
+    failed_nonvote_transaction_cnt: z.nullable(z.number()),
+    success_vote_transaction_cnt: z.nullable(z.number()),
+    failed_vote_transaction_cnt: z.nullable(z.number()),
+    vote_latency: z.optional(z.nullable(z.number())),
+    vote_latency_exact: z.optional(z.nullable(z.number())),
+  }),
+  z.transform(
     ({
       success_nonvote_transaction_cnt,
       failed_nonvote_transaction_cnt,
@@ -487,59 +473,62 @@ export const towerSlotPublishSchema = slotPublishBaseSchema
       failed_transaction_cnt: failed_nonvote_transaction_cnt,
       vote_rewarded: null,
     }),
-  );
+  ),
+);
 
-export const alpenglowSlotPublishSchema = slotPublishBaseSchema
-  .extend({
+export const alpenglowSlotPublishSchema = z.pipe(
+  z.extend(slotPublishBaseSchema, {
     level: alpenglowSlotLevelSchema,
-    success_transaction_cnt: z.number().nullable(),
-    failed_transaction_cnt: z.number().nullable(),
-    notarization_kind: z.enum(["regular", "fallback"]).nullable().optional(),
-    finalization_kind: z
-      .enum(["fast", "slow", "implicit"])
-      .nullable()
-      .optional(),
-    vote_rewarded: z.boolean().nullable().optional(),
-  })
-  .transform((p) => ({
+    success_transaction_cnt: z.nullable(z.number()),
+    failed_transaction_cnt: z.nullable(z.number()),
+    notarization_kind: z.optional(z.nullable(z.enum(["regular", "fallback"]))),
+    finalization_kind: z.optional(
+      z.nullable(z.enum(["fast", "slow", "implicit"])),
+    ),
+    vote_rewarded: z.optional(z.nullable(z.boolean())),
+  }),
+  z.transform((p) => ({
     ...p,
     skipped: p.level === "skipped" || p.level === "skip_notarized",
     success_vote_transaction_cnt: null,
     failed_vote_transaction_cnt: null,
     vote_latency: null,
     vote_latency_exact: null,
-  }));
+  })),
+);
 
 export const slotPublishSchema = z.union([
   towerSlotPublishSchema,
   alpenglowSlotPublishSchema,
 ]);
 
-export const towerTpsSampleSchema = z
-  .tuple([
+export const towerTpsSampleSchema = z.pipe(
+  z.tuple([
     z.number(), // total
     z.number(), // vote
     z.number(), // nonvote_success
     z.number(), // nonvote_failed
-  ])
-  .transform(([total, vote, nonvote_success, nonvote_failed]) => ({
+  ]),
+  z.transform(([total, vote, nonvote_success, nonvote_failed]) => ({
     total,
     vote,
     success: nonvote_success,
     failed: nonvote_failed,
-  }));
+  })),
+);
 
-export const alpenglowTpsSampleSchema = z
-  .tuple([
+export const alpenglowTpsSampleSchema = z.pipe(
+  z.tuple([
     z.number(), // success
     z.number(), // failed
-  ])
-  .transform(([success, failed]) => ({
+  ]),
+  z.transform(([success, failed]) => ({
     total: success + failed,
     vote: 0,
     success,
     failed,
-  }));
+  })),
+);
 
 export const tpsHistorySchema = z.array(
   z.union([towerTpsSampleSchema, alpenglowTpsSampleSchema]),
@@ -606,176 +595,176 @@ export const healthSchema = z.object({
 export const isAlpenglowSchema = z.boolean();
 
 export const summarySchema = z.discriminatedUnion("key", [
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("ping"),
     value: z.null(),
     id: z.number(),
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("version"),
     value: versionSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("cluster"),
     value: clusterSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("commit_hash"),
     value: commitHashSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("identity_key"),
     value: identityKeySchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("vote_key"),
     value: voteKeySchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("startup_time_nanos"),
     value: startupTimeNanosSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("schedule_strategy"),
     value: scheduleStrategySchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("tiles"),
-    value: tileSchema.array(),
+    value: z.array(tileSchema),
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("identity_balance"),
     value: identityBalanceSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("vote_commission"),
     value: voteCommissionSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("vote_balance"),
     value: identityBalanceSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("root_slot"),
     value: rootSlotSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("optimistically_confirmed_slot"),
     value: optimisticallyConfirmedSlotSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("notarized_slot"),
     value: notarizedSlotSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("finalized_slot"),
     value: finalizedSlotSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("completed_slot"),
     value: completedSlotSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("estimated_slot"),
     value: estimatedSlotSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("reset_slot"),
     value: resetSlotSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("storage_slot"),
     value: storageSlotSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("vote_slot"),
     value: voteSlotSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("slot_caught_up"),
     value: slotCaughtUpSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("active_fork_count"),
     value: activeForkCountSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("estimated_slot_duration_nanos"),
     value: estimatedSlotDurationSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("estimated_tps"),
     value: estimatedTpsSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("live_network_metrics"),
     value: liveNetworkMetricsSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("live_txn_waterfall"),
     value: liveTxnWaterfallSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("live_tile_primary_metric"),
     value: liveTilePrimaryMetricSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("live_tile_metrics"),
     value: tileMetricsSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("live_tile_timers"),
-    value: z.number().array(),
+    value: z.array(z.number()),
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("startup_progress"),
     value: startupProgressSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("boot_progress"),
     value: bootProgressSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("tps_history"),
     value: tpsHistorySchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("vote_state"),
     value: voteStateSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("vote_distance"),
     value: voteDistanceSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("skip_rate"),
     value: skipRateSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("turbine_slot"),
     value: turbineSlotSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("repair_slot"),
     value: repairSlotSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("catch_up_history"),
     value: catchUpHistorySchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("server_time_nanos"),
     value: serverTimeNanosSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("live_program_cache"),
     value: liveProgramCacheSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("health"),
     value: healthSchema,
   }),
-  summaryTopicSchema.extend({
+  z.extend(summaryTopicSchema, {
     key: z.literal("is_alpenglow"),
     value: isAlpenglowSchema,
   }),
@@ -783,28 +772,28 @@ export const summarySchema = z.discriminatedUnion("key", [
 
 export const epochNewSchema = z.object({
   epoch: z.number(),
-  start_time_nanos: z.string().nullable(),
-  end_time_nanos: z.string().nullable(),
+  start_time_nanos: z.nullable(z.string()),
+  end_time_nanos: z.nullable(z.string()),
   start_slot: z.number(),
   end_slot: z.number(),
   excluded_stake_lamports: z.coerce.bigint(),
-  staked_pubkeys: z.string().array(),
-  staked_lamports: z.coerce.bigint().array(),
+  staked_pubkeys: z.array(z.string()),
+  staked_lamports: z.array(z.coerce.bigint()),
   // Omitted by backends that let the client derive the schedule from
   // staked_lamports (worker/leaderSchedule.ts); the ws worker fills it
   // in before posting, so downstream always sees it populated.
-  leader_slots: z.number().array().optional(),
+  leader_slots: z.optional(z.array(z.number())),
   // Optional check hash of the derived schedule: FNV-1a-64 over the
   // sched array (one u32 staked_pubkeys index per 4-slot rotation,
   // ceil(slot_cnt/4) entries), each entry hashed as 4 little-endian
   // bytes; h = 0xcbf29ce484222325, per byte: h ^= byte, then
   // h *= 0x100000001b3 (mod 2^64); rendered as 16 lowercase hex chars.
-  leader_slots_hash: z.string().optional(),
-  target_slot_duration_nanos: z.number().optional(),
+  leader_slots_hash: z.optional(z.string()),
+  target_slot_duration_nanos: z.optional(z.number()),
 });
 
 export const epochSchema = z.discriminatedUnion("key", [
-  epochTopicSchema.extend({
+  z.extend(epochTopicSchema, {
     key: z.literal("new"),
     value: epochNewSchema,
   }),
@@ -831,25 +820,25 @@ export const gossipNetworkHealthSchema = z.object({
 
 export const gossipNetworkTrafficSchema = z.object({
   total_throughput: z.number(),
-  peer_names: z.string().array(),
-  peer_identities: z.string().array(),
-  peer_throughput: z.number().array(),
+  peer_names: z.array(z.string()),
+  peer_identities: z.array(z.string()),
+  peer_throughput: z.array(z.number()),
 });
 
 export const gossipStorageStatsSchema = z.object({
   capacity: z.number(),
   expired_count: z.number(),
   evicted_count: z.number(),
-  count: z.number().array(),
-  count_tx: z.number().array(),
-  bytes_tx: z.number().array(),
+  count: z.array(z.number()),
+  count_tx: z.array(z.number()),
+  bytes_tx: z.array(z.number()),
 });
 
 export const gossipMessageStatsSchema = z.object({
-  num_bytes_rx: z.number().array(),
-  num_bytes_tx: z.number().array(),
-  num_messages_rx: z.number().array(),
-  num_messages_tx: z.number().array(),
+  num_bytes_rx: z.array(z.number()),
+  num_bytes_tx: z.array(z.number()),
+  num_messages_rx: z.array(z.number()),
+  num_messages_tx: z.array(z.number()),
 });
 
 export const gossipNetworkStatsSchema = z.object({
@@ -864,9 +853,9 @@ export const gossipPeersSizeUpdateSchema = z.number();
 
 export const gossipCellDataSchema = z.union([z.string(), z.number()]);
 
-export const gossipQueryRowsSchema = z
-  .record(z.string(), z.record(z.string(), gossipCellDataSchema))
-  .nullable();
+export const gossipQueryRowsSchema = z.nullable(
+  z.record(z.string(), z.record(z.string(), gossipCellDataSchema)),
+);
 
 export const gossipViewUpdateSchema = z.object({
   changes: z.array(
@@ -879,47 +868,47 @@ export const gossipViewUpdateSchema = z.object({
 });
 
 export const gossipSchema = z.discriminatedUnion("key", [
-  gossipTopicSchema.extend({
+  z.extend(gossipTopicSchema, {
     key: z.literal("network_stats"),
     value: gossipNetworkStatsSchema,
   }),
-  gossipTopicSchema.extend({
+  z.extend(gossipTopicSchema, {
     key: z.literal("peers_size_update"),
     value: gossipPeersSizeUpdateSchema,
   }),
-  gossipTopicSchema.extend({
+  z.extend(gossipTopicSchema, {
     key: z.literal("query_scroll"),
     value: gossipQueryRowsSchema,
   }),
-  gossipTopicSchema.extend({
+  z.extend(gossipTopicSchema, {
     key: z.literal("query_sort"),
     value: gossipQueryRowsSchema,
   }),
-  gossipTopicSchema.extend({
+  z.extend(gossipTopicSchema, {
     key: z.literal("view_update"),
     value: gossipViewUpdateSchema,
   }),
 ]);
 
 const peerUpdateGossipSchema = z.object({
-  client_id: z.number().nullable().optional(),
+  client_id: z.optional(z.nullable(z.number())),
   wallclock: z.number(),
   shred_version: z.number(),
-  version: z.string().nullable(),
-  feature_set: z.number().nullable(),
+  version: z.nullable(z.string()),
+  feature_set: z.nullable(z.number()),
   sockets: z.record(z.string(), z.string()),
-  country_code: z.string().nullable().optional(), // undefined for Frankendancer client
-  city_name: z.string().nullable().optional(), // undefined for Frankendancer client
+  country_code: z.optional(z.nullable(z.string())), // undefined for Frankendancer client
+  city_name: z.optional(z.nullable(z.string())), // undefined for Frankendancer client
 });
 
 const peerUpdateVoteAccountSchema = z.object({
   vote_account: z.string(),
   activated_stake: z.coerce.bigint(),
   // Frankendancer only, omitted by the Firedancer client
-  last_vote: z.nullable(z.number()).optional(),
-  root_slot: z.nullable(z.number()).optional(),
-  epoch_credits: z.number().optional(),
-  commission: z.number().optional(),
+  last_vote: z.optional(z.nullable(z.number())),
+  root_slot: z.optional(z.nullable(z.number())),
+  epoch_credits: z.optional(z.number()),
+  commission: z.optional(z.number()),
   delinquent: z.boolean(),
 });
 
@@ -943,13 +932,13 @@ export const peerRemoveSchema = z.object({
 });
 
 const peersUpdateSchema = z.object({
-  add: z.array(peerUpdateSchema).optional(),
-  update: z.array(peerUpdateSchema).optional(),
-  remove: z.array(peerRemoveSchema).optional(),
+  add: z.optional(z.array(peerUpdateSchema)),
+  update: z.optional(z.array(peerUpdateSchema)),
+  remove: z.optional(z.array(peerRemoveSchema)),
 });
 
 export const peersSchema = z.discriminatedUnion("key", [
-  peersTopicSchema.extend({
+  z.extend(peersTopicSchema, {
     key: z.literal("update"),
     value: peersUpdateSchema,
   }),
@@ -957,7 +946,7 @@ export const peersSchema = z.discriminatedUnion("key", [
 
 const tsTileTimersSchema = z.object({
   timestamp_nanos: z.string(),
-  tile_timers: z.number().array(),
+  tile_timers: z.array(z.number()),
 });
 
 export const schedulerCountsSchema = z.object({
@@ -976,7 +965,7 @@ const writeAcctCostSchema = z.object({
 const slotLimitsSchema = z.object({
   used_total_block_cost: z.number(),
   used_total_vote_cost: z.number(),
-  used_account_write_costs: writeAcctCostSchema.array(),
+  used_account_write_costs: z.array(writeAcctCostSchema),
   used_total_bytes: z.number(),
   used_total_microblocks: z.number(),
   max_total_block_cost: z.number(),
@@ -987,116 +976,116 @@ const slotLimitsSchema = z.object({
 });
 
 const slotScheduleStatsSchema = z.object({
-  block_hash: z.string().optional(), // undefined for Frankendancer client
-  end_slot_reason: z.string().optional(), // undefined for Frankendancer client
-  slot_schedule_counts: z.number().array(),
-  end_slot_schedule_counts: z.number().array(),
-  pending_smallest_cost: z.number().nullable(),
-  pending_smallest_bytes: z.number().nullable(),
-  pending_vote_smallest_cost: z.number().nullable(),
-  pending_vote_smallest_bytes: z.number().nullable(),
+  block_hash: z.optional(z.string()), // undefined for Frankendancer client
+  end_slot_reason: z.optional(z.string()), // undefined for Frankendancer client
+  slot_schedule_counts: z.array(z.number()),
+  end_slot_schedule_counts: z.array(z.number()),
+  pending_smallest_cost: z.nullable(z.number()),
+  pending_smallest_bytes: z.nullable(z.number()),
+  pending_vote_smallest_cost: z.nullable(z.number()),
+  pending_vote_smallest_bytes: z.nullable(z.number()),
 });
 
 export const slotResponseSchema = z.object({
   publish: slotPublishSchema,
-  waterfall: txnWaterfallSchema.nullable().optional(),
-  tile_primary_metric: tilePrimaryMetricSchema.nullable().optional(),
-  tile_timers: tsTileTimersSchema.array().nullable().optional(),
-  scheduler_counts: schedulerCountsSchema.array().nullable().optional(),
-  transactions: slotTransactionsSchema.nullable().optional(),
-  limits: slotLimitsSchema.nullable().optional(),
-  scheduler_stats: slotScheduleStatsSchema.nullable().optional(),
+  waterfall: z.optional(z.nullable(txnWaterfallSchema)),
+  tile_primary_metric: z.optional(z.nullable(tilePrimaryMetricSchema)),
+  tile_timers: z.optional(z.nullable(z.array(tsTileTimersSchema))),
+  scheduler_counts: z.optional(z.nullable(z.array(schedulerCountsSchema))),
+  transactions: z.optional(z.nullable(slotTransactionsSchema)),
+  limits: z.optional(z.nullable(slotLimitsSchema)),
+  scheduler_stats: z.optional(z.nullable(slotScheduleStatsSchema)),
 });
 
-export const slotSkippedHistorySchema = z.number().array();
-export const slotSkippedHistoryClusterSchema = z.number().array();
+export const slotSkippedHistorySchema = z.array(z.number());
+export const slotSkippedHistoryClusterSchema = z.array(z.number());
 
 export const slotRankingsSchema = z.object({
-  slots_largest_tips: z.number().array(),
-  vals_largest_tips: z.coerce.bigint().array(),
-  slots_smallest_tips: z.number().array(),
-  vals_smallest_tips: z.coerce.bigint().array(),
-  slots_largest_fees: z.number().array(),
-  vals_largest_fees: z.coerce.bigint().array(),
-  slots_smallest_fees: z.number().array(),
-  vals_smallest_fees: z.coerce.bigint().array(),
-  slots_largest_rewards: z.number().array(),
-  vals_largest_rewards: z.coerce.bigint().array(),
-  slots_smallest_rewards: z.number().array(),
-  vals_smallest_rewards: z.coerce.bigint().array(),
-  slots_largest_duration: z.number().array(),
-  vals_largest_duration: z.coerce.bigint().array(),
-  slots_smallest_duration: z.number().array(),
-  vals_smallest_duration: z.coerce.bigint().array(),
-  slots_largest_compute_units: z.number().array(),
-  vals_largest_compute_units: z.coerce.bigint().array(),
-  slots_smallest_compute_units: z.number().array(),
-  vals_smallest_compute_units: z.coerce.bigint().array(),
-  slots_largest_skipped: z.number().array(),
-  vals_largest_skipped: z.coerce.bigint().array(),
-  slots_smallest_skipped: z.number().array(),
-  vals_smallest_skipped: z.coerce.bigint().array(),
+  slots_largest_tips: z.array(z.number()),
+  vals_largest_tips: z.array(z.coerce.bigint()),
+  slots_smallest_tips: z.array(z.number()),
+  vals_smallest_tips: z.array(z.coerce.bigint()),
+  slots_largest_fees: z.array(z.number()),
+  vals_largest_fees: z.array(z.coerce.bigint()),
+  slots_smallest_fees: z.array(z.number()),
+  vals_smallest_fees: z.array(z.coerce.bigint()),
+  slots_largest_rewards: z.array(z.number()),
+  vals_largest_rewards: z.array(z.coerce.bigint()),
+  slots_smallest_rewards: z.array(z.number()),
+  vals_smallest_rewards: z.array(z.coerce.bigint()),
+  slots_largest_duration: z.array(z.number()),
+  vals_largest_duration: z.array(z.coerce.bigint()),
+  slots_smallest_duration: z.array(z.number()),
+  vals_smallest_duration: z.array(z.coerce.bigint()),
+  slots_largest_compute_units: z.array(z.number()),
+  vals_largest_compute_units: z.array(z.coerce.bigint()),
+  slots_smallest_compute_units: z.array(z.number()),
+  vals_smallest_compute_units: z.array(z.coerce.bigint()),
+  slots_largest_skipped: z.array(z.number()),
+  vals_largest_skipped: z.array(z.coerce.bigint()),
+  slots_smallest_skipped: z.array(z.number()),
+  vals_smallest_skipped: z.array(z.coerce.bigint()),
 });
 
 export const liveShredsSchema = z.object({
   reference_slot: z.number(),
   reference_ts: z.coerce.bigint(),
-  slot_delta: z.number().array(),
-  shred_idx: z.number().nullable().array(),
-  event: z.number().array(),
-  event_ts_delta: z.coerce.number().array(),
+  slot_delta: z.array(z.number()),
+  shred_idx: z.array(z.nullable(z.number())),
+  event: z.array(z.number()),
+  event_ts_delta: z.array(z.coerce.number()),
 });
 
 export const slotSchema = z.discriminatedUnion("key", [
-  slotTopicSchema.extend({
+  z.extend(slotTopicSchema, {
     key: z.literal("skipped_history"),
     value: slotSkippedHistorySchema,
   }),
-  slotTopicSchema.extend({
+  z.extend(slotTopicSchema, {
     key: z.literal("skipped_history_cluster"),
     value: slotSkippedHistoryClusterSchema,
   }),
-  slotTopicSchema.extend({
+  z.extend(slotTopicSchema, {
     key: z.literal("update"),
     value: slotResponseSchema,
   }),
-  slotTopicSchema.extend({
+  z.extend(slotTopicSchema, {
     key: z.literal("query"),
-    value: slotResponseSchema.nullable(),
+    value: z.nullable(slotResponseSchema),
   }),
-  slotTopicSchema.extend({
+  z.extend(slotTopicSchema, {
     key: z.literal("query_detailed"),
-    value: slotResponseSchema.nullable(),
+    value: z.nullable(slotResponseSchema),
   }),
-  slotTopicSchema.extend({
+  z.extend(slotTopicSchema, {
     key: z.literal("query_transactions"),
-    value: slotResponseSchema.nullable(),
+    value: z.nullable(slotResponseSchema),
   }),
-  slotTopicSchema.extend({
+  z.extend(slotTopicSchema, {
     key: z.literal("query_rankings"),
     value: slotRankingsSchema,
   }),
-  slotTopicSchema.extend({
+  z.extend(slotTopicSchema, {
     key: z.literal("live_shreds"),
     value: liveShredsSchema,
   }),
-  slotTopicSchema.extend({
+  z.extend(slotTopicSchema, {
     key: z.literal("late_votes_history"),
     value: z.union([
       z.object({
-        slot: z.number().array(),
-        latency: z.number().nullable().array(),
+        slot: z.array(z.number()),
+        latency: z.array(z.nullable(z.number())),
       }),
       z.object({
-        slot: z.number().array(),
-        latency_exact: z.number().nullable().array(),
+        slot: z.array(z.number()),
+        latency_exact: z.array(z.nullable(z.number())),
       }),
     ]),
   }),
-  slotTopicSchema.extend({
+  z.extend(slotTopicSchema, {
     key: z.literal("missed_vote_history"),
     value: z.object({
-      slot: z.number().array(),
+      slot: z.array(z.number()),
     }),
   }),
 ]);
@@ -1111,35 +1100,35 @@ export const blockEngineStatusSchema = z.enum([
 export const blockEngineUpdateSchema = z.object({
   name: z.string(),
   url: z.string(),
-  ip: z.string().optional(),
+  ip: z.optional(z.string()),
   status: blockEngineStatusSchema,
 });
 
 export const blockEngineSchema = z.discriminatedUnion("key", [
-  blockEngineTopicSchema.extend({
+  z.extend(blockEngineTopicSchema, {
     key: z.literal("update"),
     value: blockEngineUpdateSchema,
   }),
 ]);
 
 export const supermajorityEpochSchema = z.object({
-  staked_pubkeys: z.string().array(),
-  staked_lamports: z.coerce.bigint().array(),
-  infos: z.array(peerUpdateInfoSchema.nullable()),
+  staked_pubkeys: z.array(z.string()),
+  staked_lamports: z.array(z.coerce.bigint()),
+  infos: z.array(z.nullable(peerUpdateInfoSchema)),
 });
-const supermajorityPeerAddSchema = z.string().array();
-const supermajorityPeerRemoveSchema = z.string().array();
+const supermajorityPeerAddSchema = z.array(z.string());
+const supermajorityPeerRemoveSchema = z.array(z.string());
 
 export const supermajoritySchema = z.discriminatedUnion("key", [
-  supermajorityTopicSchema.extend({
+  z.extend(supermajorityTopicSchema, {
     key: z.literal("stakes"),
     value: supermajorityEpochSchema,
   }),
-  supermajorityTopicSchema.extend({
+  z.extend(supermajorityTopicSchema, {
     key: z.literal("peer_add"),
     value: supermajorityPeerAddSchema,
   }),
-  supermajorityTopicSchema.extend({
+  z.extend(supermajorityTopicSchema, {
     key: z.literal("peer_remove"),
     value: supermajorityPeerRemoveSchema,
   }),
@@ -1159,8 +1148,8 @@ const accountsCompactionSchema = z.object({
   compactions_completed: z.number(),
   accounts_relocated_bytes: z.number(),
   relocated_bytes_per_sec: z.number(),
-  next_compaction_remaining_seconds: z.number().nullable(),
-  next_compaction_partition_idx: z.number().nullable(),
+  next_compaction_remaining_seconds: z.nullable(z.number()),
+  next_compaction_partition_idx: z.nullable(z.number()),
 });
 
 const accountsCacheClassSchema = z.object({
@@ -1284,7 +1273,7 @@ export const accountsStatsSchema = z.object({
 });
 
 export const accountsSchema = z.discriminatedUnion("key", [
-  accountsTopicSchema.extend({
+  z.extend(accountsTopicSchema, {
     key: z.literal("stats"),
     value: accountsStatsSchema,
   }),

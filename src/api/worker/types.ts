@@ -12,7 +12,7 @@ import type { GossipHealthEma } from "../atoms";
 import type { Epoch } from "../types";
 import type { LiveShredsData } from "./cache/shreds/types";
 
-type KvFrom<TSchema extends z.ZodTypeAny, TTopic extends string> =
+type KvFrom<TSchema extends z.core.$ZodType, TTopic extends string> =
   z.infer<TSchema> extends infer U
     ? U extends { key: infer K; value: infer V }
       ? { topic: TTopic; key: K & string; value: V }
