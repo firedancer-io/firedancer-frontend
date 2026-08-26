@@ -92,7 +92,7 @@ export default defineConfig({
     stripOtherClientPreloads(),
     react(),
     svgr(),
-    TanStackRouterVite(),
+    TanStackRouterVite({ quoteStyle: "double", semicolons: true }),
     wasm(),
     topLevelAwait(),
 
