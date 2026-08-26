@@ -10,9 +10,28 @@ export default function Logo() {
   const phase = useAtomValue(bootProgressPhaseAtom);
   const [showInitialLogo, setShowInitialLogo] = useState(true);
 
-  // adopt the identical static splash from index.html in the same frame
+  // adopt the identical static splash from index.html, but only once the
+  // async main stylesheet (which styles this component) has applied
   useLayoutEffect(() => {
-    document.getElementById("static-splash")?.remove();
+    const remove = () => document.getElementById("static-splash")?.remove();
+    const link = document.querySelector<HTMLLinkElement>("link[data-main-css]");
+    if (!link || link.sheet) {
+      remove();
+      return;
+    }
+    let raf: number | null = null;
+    const onLoad = () => {
+      // rel flip -> sheet application can lag; rAF runs before paint
+      if (link.sheet) remove();
+      else raf = requestAnimationFrame(onLoad);
+    };
+    link.addEventListener("load", onLoad, { once: true });
+    link.addEventListener("error", remove, { once: true });
+    return () => {
+      link.removeEventListener("load", onLoad);
+      link.removeEventListener("error", remove);
+      if (raf != null) cancelAnimationFrame(raf);
+    };
   }, []);
 
   if (phase && showInitialLogo) {
