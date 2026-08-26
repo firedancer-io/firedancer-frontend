@@ -11,12 +11,12 @@ import {
 import type { GossipStorageStats } from "../../api/types";
 import { Box, Flex, Grid, Text } from "@radix-ui/themes";
 import { useValuePerSecond } from "../StartupProgress/Firedancer/useValuePerSecond";
-import type { ComputedDatum } from "@nivo/pie";
 import sum from "lodash/sum";
 import { StatCard } from "./StatCard";
 import { useHarmonicIntervalFn } from "react-use";
 import styles from "./storageStatsTable.module.css";
 import PieChart, {
+  type ComputedDatum,
   type PieCenteredMetricProps,
   PieCenteredMetric,
 } from "../../components/PieChart";

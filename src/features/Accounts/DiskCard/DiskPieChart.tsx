@@ -7,9 +7,9 @@ import {
 import { formatSIBytes, getSafePct } from "../../../utils";
 import PieChart, {
   PieCenteredMetric,
+  type ComputedDatum,
   type PieCenteredMetricProps,
 } from "../../../components/PieChart";
-import type { ComputedDatum } from "@nivo/pie";
 
 type DiskPieData = {
   id: string;

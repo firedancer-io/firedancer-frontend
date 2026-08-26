@@ -3,9 +3,9 @@ import { accountsIndexUsedColor, accountsUnusedColor } from "../../../colors";
 import { formatIndexCount, getSafePct } from "../../../utils";
 import PieChart, {
   PieCenteredMetric,
+  type ComputedDatum,
   type PieCenteredMetricProps,
 } from "../../../components/PieChart";
-import type { ComputedDatum } from "@nivo/pie";
 import { useMemo } from "react";
 
 type IndexPieData = {

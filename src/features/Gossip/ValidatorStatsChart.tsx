@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import type { ComputedDatum } from "@nivo/pie";
 import { formatNumberLamports } from "../Overview/ValidatorsCard/formatAmt";
 import sum from "lodash/sum";
 import {
@@ -8,6 +7,7 @@ import {
   nonDelinquentColor,
 } from "../../colors";
 import PieChart, {
+  type ComputedDatum,
   type PieCenteredMetricProps,
   PieCenteredMetric,
 } from "../../components/PieChart";
