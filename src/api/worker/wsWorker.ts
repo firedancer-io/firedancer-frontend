@@ -10,6 +10,7 @@ import type {
 import { WsMessageSchema } from "./wsMessage";
 import { createMessageHandler } from "./messageHandler";
 import { fillEpochLeaderSlots } from "./epochLeaderSlots";
+import { createShredsCalc } from "./cache/shreds/shredsCalc";
 
 const reconnectDelayMs = 3_000;
 const flushDelayMs = 32; // ~30fps
@@ -56,11 +57,26 @@ const handler = createMessageHandler((msg) => ctx.postMessage(msg));
 // offscreen shreds chart port: live_shreds skip the main thread entirely
 let shredsPort: MessagePort | null = null;
 
+/**
+ * Worker-side shreds cache: seeds the chart worker's port with the
+ * events that arrived before it attached (the connect backlog), and
+ * seeds the main atoms if a fallback chart re-enables the main feed.
+ */
+const shredsCalc = createShredsCalc(() => handler.getValidatorState());
+// main-thread charts asked for the feed (offscreen unsupported/failed)
+let mainShredsForced = false;
+
 function enqueue(item: WsEntity) {
   handler.onMessage(item);
 
-  if (shredsPort && item.topic === "slot" && item.key === "live_shreds") {
-    shredsPort.postMessage(item.value);
+  if (item.topic === "slot" && item.key === "live_shreds") {
+    shredsCalc.add(item.value);
+    shredsPort?.postMessage({ type: "shreds", value: item.value });
+    // once running, main only consumes shreds via fallback charts; not
+    // posting the values (multi-MB on the backlog) spares main their
+    // structured-clone deserialize and atom apply
+    if (!mainShredsForced && handler.getValidatorState().isStartup === false)
+      return;
   }
 
   const key = `${item.topic}:${item.key}`;
@@ -112,6 +128,7 @@ function connect(url: string, zstd: ZstdDec | undefined) {
       `Disconnected API WebSocket, reconnecting in ${reconnectDelayMs}ms`,
     );
     handler.onConnectionChange({ type: "disconnected" });
+    shredsCalc.resetDataAndClearDeleteTimeout();
 
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(() => connect(url, zstd), reconnectDelayMs);
@@ -286,6 +303,7 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
               `Disconnected adopted WebSocket, reconnecting in ${reconnectDelayMs}ms`,
             );
             handler.onConnectionChange({ type: "disconnected" });
+            shredsCalc.resetDataAndClearDeleteTimeout();
             clearTimeout(reconnectTimer);
             reconnectTimer = setTimeout(() => {
               void (async () => {
@@ -301,12 +319,22 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
     case "shredsPort":
       shredsPort?.close();
       shredsPort = msg.port;
+      // hand over everything that arrived before the chart attached
+      if (shredsCalc.data.slotsShreds)
+        shredsPort.postMessage({ type: "seed", data: shredsCalc.data });
+      break;
+    case "mainShreds":
+      mainShredsForced = msg.enabled;
+      // catch the fallback chart up with the events main never received
+      if (msg.enabled && shredsCalc.data.slotsShreds)
+        ctx.postMessage({ type: "shredsSeed", data: shredsCalc.data });
       break;
     case "disconnect":
       if (adopt) {
         adopt.port.close();
         adopt = null;
       }
+      shredsCalc.resetDataAndClearDeleteTimeout();
       clearTimeout(reconnectTimer);
       if (ws) {
         try {

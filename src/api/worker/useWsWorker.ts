@@ -11,6 +11,10 @@ import { getDefaultStore } from "jotai";
 import { isDocumentVisibleAtom } from "../../atoms";
 import { websocketCompress, websocketUrl } from "../consts";
 import { applyWorkerMessage } from "../applyWsData";
+import {
+  isOffscreenChartSupported,
+  offscreenChartFailedAtom,
+} from "../../features/WebGl/atoms";
 
 const store = getDefaultStore();
 
@@ -163,6 +167,19 @@ function onMessage(e: MessageEvent<FromWorkerMessage>) {
   scheduleFlush();
 }
 
+// The worker stops posting slot:live_shreds to main once the validator
+// runs; main-thread charts (Overview fallbacks when the offscreen chart
+// is unavailable) ask it to keep the feed on
+function sendMainShredsIfNeeded() {
+  if (!isOffscreenChartSupported || store.get(offscreenChartFailedAtom))
+    worker?.postMessage({ type: "mainShreds", enabled: true });
+}
+
+const unsubscribeOffscreenFailed = store.sub(
+  offscreenChartFailedAtom,
+  sendMainShredsIfNeeded,
+);
+
 function startWorker(websocketUrl: string, compress: boolean) {
   if (worker) return;
   if (!websocketUrl.trim()) return;
@@ -176,6 +193,7 @@ function startWorker(websocketUrl: string, compress: boolean) {
       ToWorkerMessage,
       FromWorkerMessage
     >;
+    sendMainShredsIfNeeded();
     return;
   }
 
@@ -186,6 +204,7 @@ function startWorker(websocketUrl: string, compress: boolean) {
   // the worker opens its own exactly as before
   if (!adoptEarlyWs(websocketUrl, compress, (msg, t) => w.postMessage(msg, t)))
     worker.postMessage({ type: "connect", websocketUrl, compress });
+  sendMainShredsIfNeeded();
 }
 
 function stopWorker() {
@@ -242,6 +261,7 @@ export function useWsWorker({
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     unsubscribeVisibility();
+    unsubscribeOffscreenFailed();
     stopWorker();
   });
 }

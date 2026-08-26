@@ -91,6 +91,17 @@ export function createLiveShredsAtoms() {
       return slots;
     }),
     slotsShreds: atom((get) => get(_liveShredsAtom)),
+    /**
+     * Replace state wholesale from the wsWorker cache snapshot
+     * (shredsSeed): catches a fallback chart up with the events main
+     * never received while its feed was off
+     */
+    seed: atom(null, (_get, set, data: LiveShredsData) => {
+      set(_liveShredsAtom, data.slotsShreds);
+      set(_slotRangeAtom, data.range);
+      set(_minCompletedSlotAtom, data.minCompletedSlot);
+      set(setMinDirtySlotByChartIfSmaller, -Infinity);
+    }),
     addShredEvents: atom(
       null,
       (
@@ -347,6 +358,23 @@ export const liveShredsPostStartupLeaderSlotsAtom = atom((get) => {
     max: getSlotGroupLeader(rangeAfterStartup.max),
   };
 });
+
+/**
+ * Leader range reported by the offscreen chart worker's label frames;
+ * the main shreds feed is off while that chart is active, so the main
+ * atoms can't derive it. Cleared on chart unmount.
+ */
+export const offscreenLeaderSlotsRangeAtom = atom<{
+  min: number;
+  max: number;
+}>();
+
+/** Label range from whichever side currently owns the shreds feed */
+export const leaderSlotsRangeAtom = atom(
+  (get) =>
+    get(offscreenLeaderSlotsRangeAtom) ??
+    get(liveShredsPostStartupLeaderSlotsAtom),
+);
 
 /**
  * Mutate shred by adding an event ts to event index

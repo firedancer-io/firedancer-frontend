@@ -19,6 +19,7 @@ import {
   defaultValidatorState,
   type FromWorkerMessage,
   type HistoryArrayKey,
+  type ValidatorState,
   type WsEntity,
 } from "./types";
 
@@ -63,6 +64,9 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
   let validatorState = { ...defaultValidatorState };
 
   return {
+    getValidatorState(): ValidatorState {
+      return validatorState;
+    },
     onConnectionChange(msg: {
       type: "connected" | "connecting" | "disconnected";
     }): void {

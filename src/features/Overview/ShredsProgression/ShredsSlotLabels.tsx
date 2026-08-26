@@ -12,7 +12,7 @@ import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import clsx from "clsx";
 import PeerIcon from "../../../components/PeerIcon";
 import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
-import { liveShredsPostStartupLeaderSlotsAtom } from "./atoms";
+import { leaderSlotsRangeAtom } from "./atoms";
 
 const extraGroups = 20;
 
@@ -41,7 +41,7 @@ function getRangeWithExtraLeaders(
  */
 export default function ShredsSlotLabels() {
   const isStartup = useAtomValue(isStartupProgressVisibleAtom);
-  const leaderSlotsRange = useAtomValue(liveShredsPostStartupLeaderSlotsAtom);
+  const leaderSlotsRange = useAtomValue(leaderSlotsRangeAtom);
   const [renderSlotRange, setRenderSlotRange] = useState(
     getRangeWithExtraLeaders(leaderSlotsRange),
   );

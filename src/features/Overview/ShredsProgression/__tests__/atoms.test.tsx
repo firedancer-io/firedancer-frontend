@@ -1,7 +1,11 @@
 import { expect, describe, it, afterEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { useAtomValue, useSetAtom } from "jotai";
-import { createLiveShredsAtoms } from "../atoms";
+import { createStore, useAtomValue, useSetAtom } from "jotai";
+import {
+  createLiveShredsAtoms,
+  leaderSlotsRangeAtom,
+  offscreenLeaderSlotsRangeAtom,
+} from "../atoms";
 import { Provider } from "jotai";
 import type { PropsWithChildren } from "react";
 import { ShredEvent } from "../../../../api/entityEnums";
@@ -571,5 +575,42 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
 
     expect(result.current.slotsShreds).toBeUndefined();
     expect(result.current.range).toBeUndefined();
+  });
+
+  it("seed replaces the state wholesale from a worker cache snapshot", () => {
+    const atoms = createLiveShredsAtoms();
+    const store = createStore();
+
+    store.set(atoms.seed, {
+      minCompletedSlot: 5,
+      range: { min: 3, max: 9 },
+      slotsShreds: {
+        referenceTs: 1_000,
+        slots: new Map([[5, { shreds: [] }]]),
+      },
+    });
+    expect(store.get(atoms.range)).toEqual({ min: 3, max: 9 });
+    expect(store.get(atoms.minCompletedSlot)).toBe(5);
+    expect(store.get(atoms.slotsShreds)?.slots.has(5)).toBe(true);
+
+    // empty snapshot clears
+    store.set(atoms.seed, {});
+    expect(store.get(atoms.range)).toBeUndefined();
+    expect(store.get(atoms.slotsShreds)).toBeUndefined();
+  });
+});
+
+describe("leaderSlotsRangeAtom", () => {
+  it("prefers the offscreen worker range, falls back to the main-derived one", () => {
+    const store = createStore();
+    // neither side has data
+    expect(store.get(leaderSlotsRangeAtom)).toBeUndefined();
+
+    store.set(offscreenLeaderSlotsRangeAtom, { min: 1000, max: 1016 });
+    expect(store.get(leaderSlotsRangeAtom)).toEqual({ min: 1000, max: 1016 });
+
+    // offscreen chart unmounted: back to the main-derived atom
+    store.set(offscreenLeaderSlotsRangeAtom, undefined);
+    expect(store.get(leaderSlotsRangeAtom)).toBeUndefined();
   });
 });

@@ -9,8 +9,6 @@ export type ToChartWorker =
       canvas: OffscreenCanvas;
       pixelRatio: number;
       scale: number;
-      /** shreds accumulated on the main thread before the chart mounted */
-      snapshot?: LiveShredsData;
     }
   | { type: "resize"; width: number; height: number }
   | { type: "scale"; scale: number }
@@ -27,7 +25,10 @@ export type ToChartWorker =
   | { type: "shredsPort"; port: MessagePort };
 
 /** Messages arriving on the wsWorker -> chart worker port */
-export type ShredsPortMessage = LiveShreds;
+export type ShredsPortMessage =
+  | { type: "shreds"; value: LiveShreds }
+  // wsWorker's cache of everything that arrived before the port attached
+  | { type: "seed"; data: LiveShredsData };
 
 /** Shreds chart worker -> main thread */
 export type FromChartWorker =
@@ -36,5 +37,11 @@ export type FromChartWorker =
   | { type: "initFailed" }
   | { type: "contextLost" }
   | { type: "contextRestored" }
-  // computed slot label positions for DOM application (labelsApply.ts)
-  | { type: "labels"; frame: LabelFrame };
+  // computed slot label positions for DOM application (labelsApply.ts),
+  // plus the leader-group range the DOM label skeleton renders from
+  // (main atoms stop carrying it once the main shreds feed is off)
+  | {
+      type: "labels";
+      frame: LabelFrame;
+      leaderRange: { min: number; max: number };
+    };

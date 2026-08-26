@@ -14,3 +14,9 @@ export const isWebgl2SupportedAtom = atom(isWebGl2Available());
  * charts.
  */
 export const offscreenChartFailedAtom = atom(false);
+
+export const isOffscreenChartSupported =
+  typeof Worker !== "undefined" &&
+  typeof OffscreenCanvas !== "undefined" &&
+  typeof HTMLCanvasElement !== "undefined" &&
+  !!HTMLCanvasElement.prototype.transferControlToOffscreen;

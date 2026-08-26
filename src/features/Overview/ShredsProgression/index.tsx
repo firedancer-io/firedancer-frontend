@@ -8,6 +8,7 @@ import CardHeader from "../../../components/CardHeader";
 import { ShredsChartLegend } from "./ShredsChartLegend";
 import { isFrankendancer } from "../../../client";
 import {
+  isOffscreenChartSupported,
   isWebgl2SupportedAtom,
   offscreenChartFailedAtom,
 } from "../../WebGl/atoms";
@@ -47,12 +48,6 @@ function ShredsChartWebGl(props: WebGlChartProps) {
   return Chart ? <Chart {...props} /> : <Box height={props.height} />;
 }
 
-const isOffscreenSupported =
-  typeof Worker !== "undefined" &&
-  typeof OffscreenCanvas !== "undefined" &&
-  typeof HTMLCanvasElement !== "undefined" &&
-  !!HTMLCanvasElement.prototype.transferControlToOffscreen;
-
 export default function ShredsProgression() {
   const webgl2Supported = useAtomValue(isWebgl2SupportedAtom);
   const offscreenFailed = useAtomValue(offscreenChartFailedAtom);
@@ -67,7 +62,7 @@ export default function ShredsProgression() {
           <CardHeader text="Shreds" />
           <ShredsChartLegend />
         </Flex>
-        {isOffscreenSupported && !offscreenFailed ? (
+        {isOffscreenChartSupported && !offscreenFailed ? (
           <ShredsChartOffscreen
             height="400px"
             chartId="overview-shreds-chart"

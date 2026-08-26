@@ -11,7 +11,7 @@ import { MChartAxesDeferred } from "../ChartAxesDeferred";
 import { xAxisHeight } from "../../utils";
 import { applyLabelFrame } from "../../labelsApply";
 import { createLabelsState } from "../../utils";
-import { liveShredsDataAtom } from "../../atoms";
+import { offscreenLeaderSlotsRangeAtom } from "../../atoms";
 import {
   serverTimeMsAtom,
   skippedClusterSlotsAtom,
@@ -120,7 +120,6 @@ function OffscreenShredsChart({
         canvas: offscreen,
         pixelRatio: Math.min(window.devicePixelRatio, MAX_WEBGL_PX_RATIO),
         scale: scaleRef.current,
-        snapshot: store.get(liveShredsDataAtom),
       },
       [offscreen],
     );
@@ -159,6 +158,15 @@ function OffscreenShredsChart({
       const msg = e.data;
       switch (msg.type) {
         case "labels": {
+          // feed the DOM label skeleton's range (equality-guarded: the
+          // frames arrive per draw tick, the range changes per leader)
+          const prevRange = store.get(offscreenLeaderSlotsRangeAtom);
+          if (
+            prevRange?.min !== msg.leaderRange.min ||
+            prevRange?.max !== msg.leaderRange.max
+          ) {
+            store.set(offscreenLeaderSlotsRangeAtom, msg.leaderRange);
+          }
           const { prevLabels, tempNewLabels } = labelsRef.current;
           applyLabelFrame(msg.frame, prevLabels, tempNewLabels);
           // switch map for reuse, don't create new maps each frame
@@ -200,6 +208,8 @@ function OffscreenShredsChart({
       workerRef.current = null;
       canvas.remove();
       canvasRef.current = null;
+      // fallback charts derive the label range from the main atoms
+      store.set(offscreenLeaderSlotsRangeAtom, undefined);
     };
   }, [remount]);
 

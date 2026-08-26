@@ -5,6 +5,7 @@ import { getSlotGroupLeader } from "../../../../../utils";
 import { createWebglResources } from "../../../../WebGl/webglUtils";
 import { computeLabelFrame } from "../../labelsCalc";
 import { drawScene, type SceneObjects, type TsRange } from "../drawCore";
+import type { LiveShreds } from "../../../../../api/types";
 import type {
   FromChartWorker,
   ShredsPortMessage,
@@ -101,7 +102,7 @@ function getRangeAfterStartup(range: { min: number; max: number }) {
   };
 }
 
-function addShreds(value: ShredsPortMessage) {
+function addShreds(value: LiveShreds) {
   shredsCalc.add(value);
   for (const delta of value.slot_delta) {
     const slotNumber = value.reference_slot + delta;
@@ -157,17 +158,18 @@ function tick(time: number) {
   forceDraw = false;
   minDirtySlot = Infinity;
 
+  const leaderRange = {
+    min: getSlotGroupLeader(rangeAfterStartup.min),
+    max: getSlotGroupLeader(rangeAfterStartup.max),
+  };
   const frame = computeLabelFrame(
     rangeAfterStartup,
-    {
-      min: getSlotGroupLeader(rangeAfterStartup.min),
-      max: getSlotGroupLeader(rangeAfterStartup.max),
-    },
+    leaderRange,
     liveShreds.slots,
     skippedSlots,
     xRange,
   );
-  post({ type: "labels", frame });
+  post({ type: "labels", frame, leaderRange });
 }
 
 scheduleFrame(tick);
@@ -178,9 +180,6 @@ ctx.onmessage = (e: MessageEvent<ToChartWorker>) => {
     case "init":
       pixelRatio = msg.pixelRatio;
       scale = msg.scale;
-      if (msg.snapshot) {
-        shredsCalc.seed(msg.snapshot);
-      }
       initRenderer(msg.canvas);
       break;
     case "resize":
@@ -217,7 +216,15 @@ ctx.onmessage = (e: MessageEvent<ToChartWorker>) => {
     }
     case "shredsPort":
       msg.port.onmessage = (pe: MessageEvent<ShredsPortMessage>) => {
-        addShreds(pe.data);
+        const pm = pe.data;
+        if (pm.type === "seed") {
+          // pre-attach backlog from wsWorker's cache
+          shredsCalc.seed(pm.data);
+          minDirtySlot = -Infinity;
+          forceDraw = true;
+        } else {
+          addShreds(pm.value);
+        }
       };
       break;
   }

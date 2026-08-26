@@ -238,16 +238,23 @@ describe("attachMainWs", () => {
     expect(window.__fdWsMain).toBeUndefined();
     expect(worker.onmessage).not.toBeNull();
 
+    // jsdom lacks OffscreenCanvas, so startWorker asks for the main feed
+    expect(worker.posted).toHaveLength(1);
+    expect(worker.posted[0].msg).toMatchObject({
+      type: "mainShreds",
+      enabled: true,
+    });
+
     // late chart mount: the shreds port reaches the inline-booted worker
     const port = mod.openShredsChartPort();
     expect(port).toMatchObject({ name: "port2" });
-    expect(worker.posted).toHaveLength(1);
-    expect(worker.posted[0].msg).toMatchObject({
+    expect(worker.posted).toHaveLength(2);
+    expect(worker.posted[1].msg).toMatchObject({
       type: "shredsPort",
       port: { name: "port1" },
     });
-    expect(worker.posted[0].transfer).toEqual([
-      (worker.posted[0].msg as { port: MessagePort }).port,
+    expect(worker.posted[1].transfer).toEqual([
+      (worker.posted[1].msg as { port: MessagePort }).port,
     ]);
   });
 });

@@ -775,6 +775,9 @@ export function applyWorkerMessage(msg: FromWorkerMessage) {
       applyWsEntity(msg);
       store.set(firstFlushAppliedAtom, true);
       break;
+    case "shredsSeed":
+      store.set(shredsAtoms.seed, msg.data);
+      break;
     // currently unused, would map to EmaCache object
     case "ema":
       break;

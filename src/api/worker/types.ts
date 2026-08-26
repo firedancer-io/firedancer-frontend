@@ -37,7 +37,10 @@ export type ToWorkerMessage =
   | { type: "send"; value: unknown }
   // offscreen shreds chart: forward slot:live_shreds values directly to
   // the chart worker over this port (main thread bypassed)
-  | { type: "shredsPort"; port: MessagePort };
+  | { type: "shredsPort"; port: MessagePort }
+  // main-thread charts in use (boot page always; Overview fallbacks):
+  // keep posting slot:live_shreds in kvbs even once the validator runs
+  | { type: "mainShreds"; enabled: boolean };
 
 /**
  * Port protocol between the early blob worker (earlyWsWorker.ts, socket
@@ -71,6 +74,9 @@ export type FromWorkerMessage =
   | { type: "disconnected" }
   | { type: "kvb"; items: WsEntity[] }
   | ({ type: "kv" } & WsEntity)
+  // worker-side shreds cache snapshot, posted when a fallback chart
+  // re-enables the main feed mid-session (mainShreds)
+  | { type: "shredsSeed"; data: LiveShredsData }
   // batch publisher caches
   | { type: "ema"; items: EmaItem[] }
   | {
