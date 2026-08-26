@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 import { startupTimeAtom } from "../api/atoms";
-import { DateTime } from "luxon";
+import { DateTime } from "../timeUtils";
 import { useUpdate, useInterval } from "react-use";
 import { slowDateTimeNow } from "../utils";
 

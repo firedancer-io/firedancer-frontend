@@ -1,4 +1,4 @@
-import type { DateTime } from "luxon";
+import type { DateTime } from "../../timeUtils";
 
 export interface LeaderScheduleSlot {
   name: string;

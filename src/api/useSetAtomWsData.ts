@@ -9,7 +9,7 @@ import type {
   WsEntity,
 } from "./worker/types";
 import { isEmaObjectKey } from "./worker/types";
-import { DateTime } from "luxon";
+import { DateTime } from "../timeUtils";
 import { useInterval, useUnmount } from "react-use";
 import {
   useThrottledCallbackIfVisible,

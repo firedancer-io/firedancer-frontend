@@ -9,7 +9,7 @@ import {
   slotDurationAtom,
 } from "../../../atoms";
 import { useReducer } from "react";
-import { Duration } from "luxon";
+import { Duration } from "../../../timeUtils";
 import { getDurationText, slowDateTimeNow } from "../../../utils";
 import PeerIcon from "../../../components/PeerIcon";
 import { useHarmonicIntervalFn, useMedia } from "react-use";

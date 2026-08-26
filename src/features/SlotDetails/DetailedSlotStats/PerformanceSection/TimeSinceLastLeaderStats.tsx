@@ -1,6 +1,6 @@
 import { Flex, Text } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
-import { Duration } from "luxon";
+import { Duration } from "../../../../timeUtils";
 import { useMemo } from "react";
 import { leaderSlotsAtom, slotDurationAtom } from "../../../../atoms";
 import { getDurationText, getSlotGroupLeader } from "../../../../utils";

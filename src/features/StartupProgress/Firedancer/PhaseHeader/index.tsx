@@ -5,7 +5,7 @@ import { ProgressBar } from "./ProgressBar";
 import { getDurationText, getTimeTillText } from "../../../../utils";
 
 import { useUptimeDuration } from "../../../../hooks/useUptime";
-import { Duration } from "luxon";
+import { Duration } from "../../../../timeUtils";
 import { useThrottledCallback } from "use-debounce";
 import clamp from "lodash/clamp";
 import { BootPhaseEnum } from "../../../../api/entityEnums";

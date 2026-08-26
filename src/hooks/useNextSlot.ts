@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { Duration } from "luxon";
+import { Duration } from "../timeUtils";
 import { useMemo, useState } from "react";
 import {
   prevLeaderSlotAtom,

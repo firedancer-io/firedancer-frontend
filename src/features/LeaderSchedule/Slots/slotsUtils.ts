@@ -1,4 +1,4 @@
-import { DateTime } from "luxon";
+import { DateTime } from "../../../timeUtils";
 import type { Epoch } from "../../../api/types";
 import { slotsPerLeader } from "../../../consts";
 import { SlotType } from "./types";

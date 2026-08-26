@@ -35,7 +35,7 @@ import { atomFamily } from "jotai/utils";
 import memoize from "micro-memoize";
 import { isFrankendancer } from "./client";
 import { numQuickSearchSlots } from "./features/SlotDetails/const";
-import { Duration } from "luxon";
+import { Duration } from "./timeUtils";
 
 export const isDocumentVisibleAtom = atom<boolean>(
   document.visibilityState === "visible",

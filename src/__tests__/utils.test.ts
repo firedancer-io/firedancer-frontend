@@ -6,7 +6,7 @@ import {
   getDurationText,
   hasLateVote,
 } from "../utils";
-import { Duration } from "luxon";
+import { Duration } from "../timeUtils";
 import type { SlotPublish } from "../api/types";
 
 describe("formatSIBytes", () => {

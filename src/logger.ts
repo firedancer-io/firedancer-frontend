@@ -1,4 +1,4 @@
-import { DateTime } from "luxon";
+import { DateTime } from "./timeUtils";
 
 function log(level: "debug" | "error" | "warn" | "info") {
   return (category: string, ...message: unknown[]) => {

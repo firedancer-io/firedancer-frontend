@@ -27,7 +27,7 @@ import {
 import { useMemo } from "react";
 import Progress from "../../../components/Progress";
 import { getDurationText } from "../../../utils";
-import { Duration } from "luxon";
+import { Duration } from "../../../timeUtils";
 
 export default function StatusCard({ className }: { className?: string }) {
   return (

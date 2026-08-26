@@ -1,6 +1,6 @@
 import { Box, Flex, Progress, Text } from "@radix-ui/themes";
 import styles from "./startupProgress.module.css";
-import { Duration } from "luxon";
+import { Duration } from "../../timeUtils";
 import { getDurationText } from "../../utils";
 import byteSize from "byte-size";
 
