@@ -95,6 +95,34 @@ describe("WsMessageSchema (zod/mini)", () => {
     ).toBe(false);
   });
 
+  it("parses the peers stats aggregate exactly as the backend prints it", () => {
+    // fd_gui_peers_printf_stats: counts as numbers, stakes as strings
+    const parsed = WsMessageSchema.safeParse(
+      frame("peers", "stats", {
+        validator_count: 1477,
+        rpc_count: 4310,
+        active_stake: "399941148700762892",
+        delinquent_stake: "725162624735358",
+      }),
+    );
+    expect(parsed.success).toBe(true);
+    if (parsed.data?.topic === "peers" && parsed.data.key === "stats") {
+      expect(parsed.data.value).toStrictEqual({
+        validator_count: 1477,
+        rpc_count: 4310,
+        active_stake: 399941148700762892n,
+        delinquent_stake: 725162624735358n,
+      });
+    } else {
+      expect.unreachable("peers:stats parsed into the wrong branch");
+    }
+    expect(
+      WsMessageSchema.safeParse(
+        frame("peers", "stats", { validator_count: 1, rpc_count: 2 }),
+      ).success,
+    ).toBe(false);
+  });
+
   it("exposes issues and message on failures for the worker's debug logs", () => {
     const failed = WsMessageSchema.safeParse(frame("summary", "version", 5));
     expect(failed.success).toBe(false);

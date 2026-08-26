@@ -23,6 +23,7 @@ import {
   setSlotStatusAtom,
   updatePeersAtom,
   removePeersAtom,
+  serverPeerStatsAtom,
   addSkippedClusterSlotsAtom,
   deleteSkippedClusterSlotAtom,
   addLateVoteSlotAtom,
@@ -505,8 +506,12 @@ function useUpdateAtoms() {
     if (first.timeout != null) clearTimeout(first.timeout);
   });
 
+  const setServerPeerStats = useSetAtom(serverPeerStatsAtom);
+
   const addToPeersBuffer = useCallback(
-    (value: z.infer<typeof peersSchema>["value"]) => {
+    (
+      value: Extract<z.infer<typeof peersSchema>, { key: "update" }>["value"],
+    ) => {
       if (value.add) {
         for (const add of value.add) {
           peersBuffer.current.set(add.identity_pubkey, add);
@@ -780,7 +785,21 @@ function useUpdateAtoms() {
           }
           break;
         case "peers":
-          addToPeersBuffer(value);
+          switch (key) {
+            case "update":
+              addToPeersBuffer(value);
+              break;
+            case "stats":
+              // applied immediately (not buffered) so the card renders
+              // from the first batch, ahead of the big peers update
+              setServerPeerStats({
+                validatorCount: value.validator_count,
+                rpcCount: value.rpc_count,
+                activeStake: value.active_stake,
+                delinquentStake: value.delinquent_stake,
+              });
+              break;
+          }
           break;
         case "slot":
           switch (key) {
@@ -862,6 +881,7 @@ function useUpdateAtoms() {
     },
     [
       addToPeersBuffer,
+      setServerPeerStats,
       setSlotCaughtUp,
       setDbLiveTileMetrics,
       setLiveProgramCache,

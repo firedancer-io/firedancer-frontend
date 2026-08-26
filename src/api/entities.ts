@@ -937,10 +937,22 @@ const peersUpdateSchema = z.object({
   remove: z.optional(z.array(peerRemoveSchema)),
 });
 
+// aggregate broadcast ahead of the first peers update and on change
+const peersStatsSchema = z.object({
+  validator_count: z.number(),
+  rpc_count: z.number(),
+  active_stake: z.coerce.bigint(),
+  delinquent_stake: z.coerce.bigint(),
+});
+
 export const peersSchema = z.discriminatedUnion("key", [
   z.extend(peersTopicSchema, {
     key: z.literal("update"),
     value: peersUpdateSchema,
+  }),
+  z.extend(peersTopicSchema, {
+    key: z.literal("stats"),
+    value: peersStatsSchema,
   }),
 ]);
 

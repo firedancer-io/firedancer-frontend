@@ -6,6 +6,7 @@ import merge from "lodash/merge";
 import {
   peersAtom,
   peerStatsAtom,
+  serverPeerStatsAtom,
   updatePeersAtom,
   removePeersAtom,
 } from "../atoms";
@@ -251,6 +252,48 @@ describe("peers atoms", () => {
 
     store.set(updatePeersAtom, [a, b]);
     expect(store.get(peersAtom)[a.identity_pubkey]).toEqual(b);
+    expectStatsInvariant(store);
+  });
+
+  it("serves the local aggregate until a pushed stats frame arrives", () => {
+    const store = createStore();
+    store.set(updatePeersAtom, makePeers(50, 8));
+    expectStatsInvariant(store);
+
+    const pushed = {
+      rpcCount: 4310,
+      validatorCount: 1477,
+      activeStake: 399941148700762892n,
+      delinquentStake: 725162624735358n,
+    };
+    store.set(serverPeerStatsAtom, pushed);
+    expect(store.get(peerStatsAtom)).toEqual(pushed);
+  });
+
+  it("pushed stats win over local increments; a newer push overwrites", () => {
+    const store = createStore();
+    const pushed = {
+      rpcCount: 1,
+      validatorCount: 2,
+      activeStake: 3n,
+      delinquentStake: 4n,
+    };
+    store.set(serverPeerStatsAtom, pushed);
+    expect(store.get(peerStatsAtom)).toEqual(pushed);
+
+    store.set(updatePeersAtom, makePeers(100, 9));
+    expect(store.get(peerStatsAtom)).toEqual(pushed);
+    store.set(removePeersAtom, [{ identity_pubkey: "peer-1" }]);
+    vi.advanceTimersByTime(60_000 * 5);
+    expect(store.get(peerStatsAtom)).toEqual(pushed);
+
+    const newer = { ...pushed, validatorCount: 5, activeStake: 6n };
+    store.set(serverPeerStatsAtom, newer);
+    expect(store.get(peerStatsAtom)).toEqual(newer);
+
+    // the incremental aggregate was maintained throughout, so a backend
+    // that stops pushing is the only unserved case (accepted: none exists)
+    store.set(serverPeerStatsAtom, undefined);
     expectStatsInvariant(store);
   });
 

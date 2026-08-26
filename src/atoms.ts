@@ -558,7 +558,16 @@ export const removePeersAtom = atom(null, (get, set, peers?: PeerRemove[]) => {
   }, removePeerDelay);
 });
 
-export const peerStatsAtom = atom((get) => get(_peerStatsAtom));
+/** Aggregate pushed by the backend as peers:stats (absent on Frankendancer) */
+export const serverPeerStatsAtom = atom<PeerStats | undefined>(undefined);
+
+// Precedence: once a pushed frame arrives it always wins (the backend
+// re-broadcasts on change, so it is at least as fresh as the local
+// aggregate); the incremental aggregate only serves backends that never
+// push. Mixing the two would double-count.
+export const peerStatsAtom = atom(
+  (get) => get(serverPeerStatsAtom) ?? get(_peerStatsAtom),
+);
 
 export const totalActivePeersStakeAtom = atom((get) => {
   const peerStats = get(peerStatsAtom);
