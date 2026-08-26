@@ -17,9 +17,9 @@ const LiveNetworkMetrics = lazy(() => import("./LiveNetworkMetrics"));
 const LiveTileMetrics = lazy(() => import("./LiveTileMetrics"));
 
 export default function Overview() {
-  // Mount the below-fold sections two frames after the gated first
-  // commit: one frame behind the sidebar follower, so the leader
-  // schedule owns the first post-reveal frame. Wrappers keep reserving
+  // Mount the below-fold sections two frames after the first data
+  // commit (which now carries the sidebar rows), leaving that commit's
+  // paint and the first flushes unopposed. Wrappers keep reserving
   // space via contain-intrinsic-size so nothing shifts.
   const [renderBelowFold, setRenderBelowFold] = useState(false);
   useEffect(() => {

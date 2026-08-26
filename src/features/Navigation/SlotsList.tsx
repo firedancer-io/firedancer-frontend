@@ -62,20 +62,10 @@ function InnerSlotsList({
 
   const [showPlaceholder, setShowPlaceholder] = useState(true);
 
-  // Mount the list one frame after the containing commit, already
-  // positioned at the live slot with the viewport's rows rendered
-  // synchronously (initialItemCount): no measure pass, no post-mount
-  // scroll settle, no hide-for-100ms jump hack.  Rendering the rows
-  // inside the first data commit itself measured +100ms on that commit
-  // at 4x CPU, and leaving them to the resize-observer pass let heavy
-  // post-reveal flushes starve them past 2.9s, so the deliberate
-  // one-frame follower is the fastest reliable variant.
-  const [renderList, setRenderList] = useState(false);
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => setRenderList(true));
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
+  // Rows render in the mounting commit itself, already positioned at the
+  // live slot (initialItemCount + initialScrollTop): no measure pass, no
+  // post-mount scroll settle, no follower-frame pop-in. The whole first
+  // frame pays for the rows, accepted so the page pops in as one piece.
   const [initialTopMostItemIndex] = useState(() => {
     const currentLeaderSlot = getDefaultStore().get(currentLeaderSlotAtom);
     const slotIndex =
@@ -175,30 +165,28 @@ function InnerSlotsList({
       />
       {showPlaceholder && <MSlotsPlaceholder width={width} height={height} />}
       <ResetLive />
-      {renderList && (
-        <Virtuoso
-          ref={listRef}
-          className={styles.slotsList}
-          width={width}
-          height={height}
-          totalCount={itemsCount}
-          initialTopMostItemIndex={initialTopMostItemIndex}
-          initialItemCount={initialItemCount}
-          // estimate-consistent offset so the rows are on screen in the
-          // mount paint, not after the async scroll-to-index settles
-          initialScrollTop={initialTopMostItemIndex * 42}
-          increaseViewportBy={increaseViewportBy}
-          // height of past slots that the user is most likely to scroll through
-          defaultItemHeight={42}
-          skipAnimationFrameInResizeObserver
-          computeItemKey={computeItemKey}
-          itemContent={getItemContent}
-          rangeChanged={rangeChanged}
-          components={{ ScrollSeekPlaceholder: MScrollSeekPlaceHolder }}
-          scrollSeekConfiguration={scrollSeekConfiguration}
-          totalListHeightChanged={totalListHeightChanged}
-        />
-      )}
+      <Virtuoso
+        ref={listRef}
+        className={styles.slotsList}
+        width={width}
+        height={height}
+        totalCount={itemsCount}
+        initialTopMostItemIndex={initialTopMostItemIndex}
+        initialItemCount={initialItemCount}
+        // estimate-consistent offset so the rows are on screen in the
+        // mount paint, not after the async scroll-to-index settles
+        initialScrollTop={initialTopMostItemIndex * 42}
+        increaseViewportBy={increaseViewportBy}
+        // height of past slots that the user is most likely to scroll through
+        defaultItemHeight={42}
+        skipAnimationFrameInResizeObserver
+        computeItemKey={computeItemKey}
+        itemContent={getItemContent}
+        rangeChanged={rangeChanged}
+        components={{ ScrollSeekPlaceholder: MScrollSeekPlaceHolder }}
+        scrollSeekConfiguration={scrollSeekConfiguration}
+        totalListHeightChanged={totalListHeightChanged}
+      />
     </Box>
   );
 }
