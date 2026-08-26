@@ -17,12 +17,15 @@ const LiveNetworkMetrics = lazy(() => import("./LiveNetworkMetrics"));
 const LiveTileMetrics = lazy(() => import("./LiveTileMetrics"));
 
 export default function Overview() {
-  // Mount the below-fold sections one frame after the gated first commit
-  // (sidebar follower pattern); their wrappers keep reserving space via
-  // contain-intrinsic-size so nothing shifts.
+  // Mount the below-fold sections two frames after the gated first
+  // commit: one frame behind the sidebar follower, so the leader
+  // schedule owns the first post-reveal frame. Wrappers keep reserving
+  // space via contain-intrinsic-size so nothing shifts.
   const [renderBelowFold, setRenderBelowFold] = useState(false);
   useEffect(() => {
-    const raf = requestAnimationFrame(() => setRenderBelowFold(true));
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => setRenderBelowFold(true));
+    });
     return () => cancelAnimationFrame(raf);
   }, []);
 
