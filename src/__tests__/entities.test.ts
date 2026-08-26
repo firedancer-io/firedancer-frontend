@@ -5,7 +5,12 @@
 // the app depends on pinned without that corpus.
 import { describe, expect, it } from "vitest";
 import { WsMessageSchema } from "../api/worker/wsMessage";
-import { slotTransactionsSchema } from "../api/entities";
+import {
+  catchUpHistorySchema,
+  liveShredsSchema,
+  slotTransactionsSchema,
+  tpsHistorySchema,
+} from "../api/entities";
 
 const frame = (topic: string, key: string, value: unknown) => ({
   topic,
@@ -67,7 +72,7 @@ describe("WsMessageSchema (zod/mini)", () => {
     expect(parsed.data).toStrictEqual(frame("summary", "version", "1.0"));
   });
 
-  it("enforces tuple arity in tps_history", () => {
+  it("enforces tuple arity in tps_history (2-, 3- and 4-column forms only)", () => {
     expect(
       WsMessageSchema.safeParse(frame("summary", "tps_history", [[1, 2, 3, 4]]))
         .success,
@@ -75,6 +80,19 @@ describe("WsMessageSchema (zod/mini)", () => {
     expect(
       WsMessageSchema.safeParse(frame("summary", "tps_history", [[1, 2, 3]]))
         .success,
+    ).toBe(true);
+    // alpenglow [success, failed]
+    expect(
+      WsMessageSchema.safeParse(frame("summary", "tps_history", [[1, 2]]))
+        .success,
+    ).toBe(true);
+    expect(
+      WsMessageSchema.safeParse(frame("summary", "tps_history", [[1]])).success,
+    ).toBe(false);
+    expect(
+      WsMessageSchema.safeParse(
+        frame("summary", "tps_history", [[1, 2, 3, 4, 5]]),
+      ).success,
     ).toBe(false);
   });
 
@@ -192,5 +210,73 @@ describe("slotTransactionsSchema preprocess pipe", () => {
 
   it("rejects when a required timestamp field is missing entirely", () => {
     expect(slotTransactionsSchema.safeParse(base).success).toBe(false);
+  });
+});
+
+// Dual-format tolerance for the next backend cycle: each schema accepts
+// today's wire format (parsing byte-identically) and the upcoming one.
+describe("dual-format wire tolerance", () => {
+  it("catch_up_history: flat lists, RLE [start,end] pairs, or a mix", () => {
+    const old = catchUpHistorySchema.safeParse({
+      repair: [5, 6, 9],
+      turbine: [],
+    });
+    expect(old.data).toStrictEqual({ repair: [5, 6, 9], turbine: [] });
+
+    const rle = catchUpHistorySchema.safeParse({
+      repair: [
+        [5, 7],
+        [9, 9],
+      ],
+      turbine: [[2, 3]],
+    });
+    expect(rle.data).toStrictEqual({ repair: [5, 6, 7, 9], turbine: [2, 3] });
+
+    const mixed = catchUpHistorySchema.safeParse({
+      repair: [1, [3, 4]],
+      turbine: [],
+    });
+    expect(mixed.data).toStrictEqual({ repair: [1, 3, 4], turbine: [] });
+
+    expect(
+      catchUpHistorySchema.safeParse({ repair: [[1]], turbine: [] }).success,
+    ).toBe(false);
+    expect(
+      catchUpHistorySchema.safeParse({ repair: [[1, 2, 3]], turbine: [] })
+        .success,
+    ).toBe(false);
+  });
+
+  it("tps_history: 3-column integer counts derive the 4-column TPS", () => {
+    expect(tpsHistorySchema.safeParse([[441, 2.5, 3, 4]]).data).toStrictEqual([
+      { total: 441, vote: 2.5, success: 3, failed: 4 },
+    ]);
+    // counts over the 10s window: total = sum, all divided by 10
+    expect(tpsHistorySchema.safeParse([[20, 30, 50]]).data).toStrictEqual([
+      { total: 10, vote: 2, success: 3, failed: 5 },
+    ]);
+  });
+
+  it("live_shreds event_ts_delta: quoted nanos or ms delta-of-deltas", () => {
+    const shreds = (event_ts_delta: unknown) => ({
+      reference_slot: 1,
+      reference_ts: "123",
+      slot_delta: [0, 0, 0],
+      shred_idx: [1, null, 2],
+      event: [0, 1, 2],
+      event_ts_delta,
+    });
+
+    const old = liveShredsSchema.safeParse(
+      shreds(["1000000", "2500000", "2500000"]),
+    );
+    expect(old.data?.event_ts_delta).toStrictEqual([1000000, 2500000, 2500000]);
+
+    // second-order ms deltas: steps 5, 7, 7 -> totals 5, 12, 19 (ms)
+    const dod = liveShredsSchema.safeParse(shreds([5, 2, 0]));
+    expect(dod.data?.event_ts_delta).toStrictEqual([5e6, 12e6, 19e6]);
+
+    expect(liveShredsSchema.safeParse(shreds(["abc"])).success).toBe(false);
+    expect(liveShredsSchema.safeParse(shreds([true])).success).toBe(false);
   });
 });

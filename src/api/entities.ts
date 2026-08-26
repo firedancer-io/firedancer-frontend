@@ -84,9 +84,24 @@ export const finalizedSlotSchema = z.number();
 export const completedSlotSchema = z.number();
 export const turbineSlotSchema = z.nullable(z.number());
 export const repairSlotSchema = z.nullable(z.number());
+// Both catch_up_history wire formats parse to the flat slot list: the
+// current exhaustive list, and the upcoming inclusive [start,end] RLE
+// pairs (2-element arrays, so the formats stay distinguishable
+// per-element and may even mix).
+const catchUpSlotsSchema = z.pipe(
+  z.array(z.union([z.number(), z.tuple([z.number(), z.number()])])),
+  z.transform((entries: (number | [number, number])[]) => {
+    const slots: number[] = [];
+    for (const entry of entries) {
+      if (typeof entry === "number") slots.push(entry);
+      else for (let slot = entry[0]; slot <= entry[1]; slot++) slots.push(slot);
+    }
+    return slots;
+  }),
+);
 export const catchUpHistorySchema = z.object({
-  repair: z.array(z.number()),
-  turbine: z.array(z.number()),
+  repair: catchUpSlotsSchema,
+  turbine: catchUpSlotsSchema,
 });
 
 export const serverTimeNanosSchema = z.coerce.number();
@@ -530,8 +545,29 @@ export const alpenglowTpsSampleSchema = z.pipe(
   })),
 );
 
+// Upcoming compact wire format: 3-column integer counts over the 10s
+// window with the derivable total dropped; parses to the same shape
+const tpsHistoryWindowSeconds = 10;
+export const compactTpsSampleSchema = z.pipe(
+  z.tuple([
+    z.number(), // vote count
+    z.number(), // nonvote_success count
+    z.number(), // nonvote_failed count
+  ]),
+  z.transform(([vote, success, failed]) => ({
+    total: (vote + success + failed) / tpsHistoryWindowSeconds,
+    vote: vote / tpsHistoryWindowSeconds,
+    success: success / tpsHistoryWindowSeconds,
+    failed: failed / tpsHistoryWindowSeconds,
+  })),
+);
+
 export const tpsHistorySchema = z.array(
-  z.union([towerTpsSampleSchema, alpenglowTpsSampleSchema]),
+  z.union([
+    towerTpsSampleSchema,
+    alpenglowTpsSampleSchema,
+    compactTpsSampleSchema,
+  ]),
 );
 
 export const voteStateSchema = z.enum(["voting", "non-voting", "delinquent"]);
@@ -1062,7 +1098,38 @@ export const liveShredsSchema = z.object({
   slot_delta: z.array(z.number()),
   shred_idx: z.array(z.nullable(z.number())),
   event: z.array(z.number()),
-  event_ts_delta: z.array(z.coerce.number()),
+  // Both event_ts_delta wire formats parse to absolute nanosecond
+  // deltas from reference_ts: strings carry them directly (current);
+  // numbers are ms-quantized second-order deltas (upcoming), decoded
+  // by double prefix sum then ms -> ns.
+  event_ts_delta: z.pipe(
+    z.array(z.union([z.string(), z.number()])),
+    z.transform((encoded: (string | number)[], ctx) => {
+      const deltas = new Array<number>(encoded.length);
+      let stepMs = 0;
+      let totalMs = 0;
+      for (let i = 0; i < encoded.length; i++) {
+        const value = encoded[i];
+        if (typeof value === "string") {
+          const parsed = Number(value);
+          if (Number.isNaN(parsed)) {
+            ctx.issues.push({
+              code: "custom",
+              message: "event_ts_delta: non-numeric string",
+              input: value,
+            });
+            return deltas;
+          }
+          deltas[i] = parsed;
+        } else {
+          stepMs += value;
+          totalMs += stepMs;
+          deltas[i] = totalMs * 1e6;
+        }
+      }
+      return deltas;
+    }),
+  ),
 });
 
 export const slotSchema = z.discriminatedUnion("key", [
