@@ -10,8 +10,12 @@ import NavBlur from "../features/Navigation/NavBlur";
 import { useCurrentRoute } from "../hooks/useCurrentRoute";
 import { useSlotsNavigation } from "../hooks/useSlotsNavigation";
 import { getDefaultStore, useAtomValue } from "jotai";
-import { isStartupProgressVisibleAtom } from "../features/StartupProgress/atoms";
+import {
+  bootProgressPhaseAtom,
+  isStartupProgressVisibleAtom,
+} from "../features/StartupProgress/atoms";
 import { baseSelectedSlotAtoms } from "../features/Overview/SlotPerformance/atoms";
+import { isFiredancer } from "../client";
 
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
@@ -72,6 +76,12 @@ function OutletContainer() {
   const { setIsNavCollapsed, isNarrowScreen, occupyRowWidth, blurBackground } =
     useSlotsNavigation();
 
+  // tri-state: until the first boot_progress frame names a phase, render
+  // neither the dashboard nor the boot page (header/nav/dark ground only).
+  // The frame's own commit picks the branch, so a running validator's
+  // cards still paint in the same flush that applies their data.
+  const bootPhaseKnown = useAtomValue(bootProgressPhaseAtom) !== undefined;
+
   useEffect(() => {
     // automatically open / close on narrow switch
     setIsNavCollapsed(isNarrowScreen);
@@ -89,7 +99,7 @@ function OutletContainer() {
           : `${headerSpacing - slotsNavSpacing}px`
       }
     >
-      <Outlet />
+      {(!isFiredancer || bootPhaseKnown) && <Outlet />}
       {blurBackground && <NavBlur />}
     </Box>
   );
