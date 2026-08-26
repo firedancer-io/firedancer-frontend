@@ -4,7 +4,6 @@ import {
   retainSearchParams,
   stripSearchParams,
 } from "@tanstack/react-router";
-import { LeaderSchedule } from "../features/LeaderSchedule";
 import { z } from "zod";
 
 const SearchTypeSchema = z.enum([
@@ -29,7 +28,6 @@ const searchParamsSchema = z.object({
 });
 
 export const Route = createFileRoute("/leaderSchedule")({
-  component: LeaderSchedule,
   validateSearch: searchParamsSchema,
   search: {
     middlewares: [
