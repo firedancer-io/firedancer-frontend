@@ -15,7 +15,6 @@ import LoadingLedgerProgress from "./LedgerProgress";
 import FullSnapshotProgress from "./FullSnapshotProgress";
 import { peersAtom } from "../../atoms";
 import IncrementalSnapshotProgress from "./IncrementalSnapshotProgress";
-import { animated, useSpring } from "@react-spring/web";
 import FullSnapshotStats from "./FullSnapshotStats";
 import {
   SupermajorityStakeProgress,
@@ -102,29 +101,17 @@ export default function Body() {
     steps.findIndex(({ step }) => step === startupProgress?.phase),
   );
 
-  const [springs, api] = useSpring(() => ({
-    from: {
-      opacity: showStartupProgress ? 1 : 0,
-      zIndex: showStartupProgress ? 1 : -1,
-    },
-  }));
-
-  useEffect(() => {
-    api.stop();
-    if (showStartupProgress) {
-      void api.start({
-        from: { opacity: 1, zIndex: 1 },
-      });
-    } else {
-      void api.start({
-        from: { opacity: 1, zIndex: 1 },
-        to: { opacity: 0, zIndex: -1 },
-      });
-    }
-  }, [api, showStartupProgress]);
+  // shown immediately; hidden with a fade, dropping z-index once faded
+  const style: React.CSSProperties = showStartupProgress
+    ? { opacity: 1, zIndex: 1 }
+    : {
+        opacity: 0,
+        zIndex: -1,
+        transition: "opacity 0.5s ease, z-index 0s linear 0.5s",
+      };
 
   return (
-    <animated.div className={styles.outerContainer} style={springs}>
+    <div className={styles.outerContainer} style={style}>
       <Flex direction="column" gap="4" className={styles.innerContainer}>
         <Box flexGrow="1" />
         <img
@@ -156,7 +143,7 @@ export default function Body() {
         })}
         <Box flexGrow="1" />
       </Flex>
-    </animated.div>
+    </div>
   );
 }
 

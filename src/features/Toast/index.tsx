@@ -1,9 +1,8 @@
 import styles from "./toast.module.css";
 import { Text } from "@radix-ui/themes";
 import { SocketState } from "../../api/ws/types";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMount, usePrevious } from "react-use";
-import { animated, useSpring } from "@react-spring/web";
 import { useAtomValue } from "jotai";
 import { socketStateAtom } from "../../api/ws/atoms";
 
@@ -40,31 +39,25 @@ export default function Toast() {
     setTimeout(() => setIsInit(false), 3_000);
   });
 
-  const [springs, api] = useSpring(() => ({
-    from: hiddenStyles,
-  }));
-
-  useEffect(() => {
-    if (isInit) return;
-
-    if (
-      socketState === SocketState.Connecting ||
-      socketState === SocketState.Disconnected
-    ) {
-      void api.start({ to: visibleStyles });
-    } else {
-      void api.start({ to: hiddenStyles });
-    }
-  }, [api, isInit, socketState]);
+  const isVisible =
+    !isInit &&
+    (socketState === SocketState.Connecting ||
+      socketState === SocketState.Disconnected);
 
   const props = getToastProps(socketState, prevSocketState);
   if (!props) return;
 
   return (
-    <animated.div className={styles.container} style={springs}>
+    <div
+      className={styles.container}
+      style={{
+        ...(isVisible ? visibleStyles : hiddenStyles),
+        transition: "opacity 0.5s ease, top 0.5s ease",
+      }}
+    >
       <div className={`${styles.toast} ${props.className}`}>
         <Text className={styles.text}>{props.text}</Text>
       </div>
-    </animated.div>
+    </div>
   );
 }
