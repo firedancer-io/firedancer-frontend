@@ -14,9 +14,26 @@ export interface EarlyWs {
   closed: boolean;
 }
 
+/**
+ * Handle to the real wsWorker when the index.html inline script (build
+ * only) booted it and wired the early-socket adoption itself. pending
+ * holds the messages the worker posted before the app attached (Worker
+ * messages with no listener are lost, so the inline script buffers
+ * them); error is set from the worker's error event pre-attach.
+ */
+export interface MainWs {
+  worker: Worker;
+  early: Worker;
+  url: string;
+  compress: boolean;
+  error: boolean;
+  pending: unknown[];
+}
+
 declare global {
   interface Window {
     __fdWsEarly?: EarlyWs;
+    __fdWsMain?: MainWs;
   }
 }
 
@@ -58,6 +75,36 @@ export function adoptEarlyWs(
     channel.port2,
   ]);
   return true;
+}
+
+/**
+ * Attach to the wsWorker the inline script booted (adoption already
+ * wired worker-to-worker). Drains the inline pending buffer through
+ * onMessage, then routes live messages to it; everything is synchronous
+ * so no message can interleave with the drain. Returns null when there
+ * is no usable parked worker (not spawned, errored pre-attach, or
+ * connection-parameter mismatch) after tearing both workers down; the
+ * caller then constructs its own wsWorker exactly as before.
+ */
+export function attachMainWs(
+  url: string,
+  compress: boolean,
+  onMessage: (e: MessageEvent) => void,
+): Worker | null {
+  const main = window.__fdWsMain;
+  if (!main) return null;
+  delete window.__fdWsMain; // attach is first-connection-only
+
+  if (main.error || main.url !== url || main.compress !== compress) {
+    main.worker.terminate();
+    main.early.terminate(); // the adopted socket dies with its owner
+    return null;
+  }
+
+  earlyWorker = main.early; // closeEarlyWs tears down the socket owner
+  for (const data of main.pending) onMessage({ data } as MessageEvent);
+  main.worker.onmessage = onMessage;
+  return main.worker;
 }
 
 /** Drop the early worker (and its socket) without notifying wsWorker */

@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { adoptEarlyWs, closeEarlyWs, type EarlyWs } from "../earlyWs";
+import {
+  adoptEarlyWs,
+  attachMainWs,
+  closeEarlyWs,
+  type EarlyWs,
+  type MainWs,
+} from "../earlyWs";
 import { earlyWsWorkerMain, type EarlyWsWorkerScope } from "../earlyWsWorker";
 import type { ToWorkerMessage } from "../types";
 
@@ -10,6 +16,7 @@ const wsUrl = "ws://validator:80/websocket";
 class MockWorker {
   posted: { msg: unknown; transfer?: Transferable[] }[] = [];
   terminateCalls = 0;
+  onmessage: ((e: MessageEvent) => void) | null = null;
   postMessage(msg: unknown, transfer?: Transferable[]) {
     this.posted.push({ msg, transfer });
   }
@@ -50,6 +57,26 @@ function installEarly(overrides?: Partial<Omit<EarlyWs, "worker">>) {
   return worker;
 }
 
+function installMain(overrides?: Partial<Omit<MainWs, "worker" | "early">>) {
+  const worker = new MockWorker();
+  const early = new MockWorker();
+  window.__fdWsMain = {
+    worker: worker as unknown as Worker,
+    early: early as unknown as Worker,
+    url: wsUrl,
+    compress: true,
+    error: false,
+    pending: [],
+    ...overrides,
+  };
+  return { worker, early };
+}
+
+function makeSink() {
+  const seen: unknown[] = [];
+  return { seen, onMessage: (e: MessageEvent) => seen.push(e.data) };
+}
+
 beforeEach(() => {
   vi.stubGlobal("MessageChannel", FakeChannel);
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -58,6 +85,7 @@ beforeEach(() => {
 afterEach(() => {
   closeEarlyWs();
   delete window.__fdWsEarly;
+  delete window.__fdWsMain;
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -126,6 +154,98 @@ describe("adoptEarlyWs", () => {
     expect(worker.terminateCalls).toBe(1);
     closeEarlyWs();
     expect(worker.terminateCalls).toBe(1);
+  });
+});
+
+describe("attachMainWs", () => {
+  test("attaches to the parked worker: pending drains in order, then live messages flow", () => {
+    const connected = { type: "connected" };
+    const kvb1 = { type: "kvb", items: ["a"] };
+    const { worker, early } = installMain({ pending: [connected, kvb1] });
+    const { seen, onMessage } = makeSink();
+
+    expect(attachMainWs(wsUrl, true, onMessage)).toBe(
+      worker as unknown as Worker,
+    );
+    expect(window.__fdWsMain).toBeUndefined();
+
+    // buffered messages replayed first, in order
+    expect(seen).toEqual([connected, kvb1]);
+
+    // live handler installed on the worker itself
+    const kvb2 = { type: "kvb", items: ["b"] };
+    worker.onmessage?.({ data: kvb2 } as MessageEvent);
+    expect(seen).toEqual([connected, kvb1, kvb2]);
+
+    expect(worker.terminateCalls).toBe(0);
+    expect(early.terminateCalls).toBe(0);
+    expect(worker.posted).toHaveLength(0); // adoption was wired inline
+  });
+
+  test("closeEarlyWs terminates the blob socket worker after attach, not the wsWorker", () => {
+    const { worker, early } = installMain();
+    expect(attachMainWs(wsUrl, true, makeSink().onMessage)).not.toBeNull();
+
+    closeEarlyWs();
+    expect(early.terminateCalls).toBe(1);
+    expect(worker.terminateCalls).toBe(0);
+    closeEarlyWs();
+    expect(early.terminateCalls).toBe(1);
+  });
+
+  test.each([
+    ["errored pre-attach", { error: true }],
+    ["url mismatch", { url: "ws://other:80/websocket" }],
+    ["compress mismatch", { compress: false }],
+  ] as const)(
+    "tears both workers down and falls back when the parked worker is %s",
+    (_name, overrides) => {
+      const { worker, early } = installMain({
+        pending: [{ type: "connected" }],
+        ...overrides,
+      });
+      const { seen, onMessage } = makeSink();
+
+      expect(attachMainWs(wsUrl, true, onMessage)).toBeNull();
+      expect(window.__fdWsMain).toBeUndefined();
+      expect(seen).toHaveLength(0); // nothing replayed from a dead pair
+      expect(worker.terminateCalls).toBe(1);
+      expect(early.terminateCalls).toBe(1);
+    },
+  );
+
+  test("returns null when the parked worker is missing or already taken", () => {
+    const { onMessage } = makeSink();
+    expect(attachMainWs(wsUrl, true, onMessage)).toBeNull();
+
+    installMain();
+    expect(attachMainWs(wsUrl, true, onMessage)).not.toBeNull();
+    expect(attachMainWs(wsUrl, true, onMessage)).toBeNull(); // single-shot
+  });
+
+  test("openShredsChartPort wires the chart port to the attached inline worker", async () => {
+    vi.stubGlobal("Worker", MockWorker); // module-eval startWorker runs
+    const url = `${window.location.protocol.startsWith("https") ? "wss" : "ws"}://${window.location.hostname}:${window.location.port}/websocket`;
+    const { worker } = installMain({ url });
+
+    vi.resetModules();
+    const mod = await import("../useWsWorker");
+
+    // module eval attached to the parked worker instead of spawning
+    expect(window.__fdWsMain).toBeUndefined();
+    expect(worker.onmessage).not.toBeNull();
+
+    // late chart mount: the shreds port reaches the inline-booted worker
+    const port = mod.openShredsChartPort();
+    expect(port).toMatchObject({ name: "port2" });
+    expect(worker.posted).toHaveLength(1);
+    expect(worker.posted[0].msg).toMatchObject({
+      type: "shredsPort",
+      port: { name: "port1" },
+    });
+    expect(worker.posted[0].transfer).toEqual([
+      (worker.posted[0].msg as { port: MessagePort }).port,
+    ]);
   });
 });
 

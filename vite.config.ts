@@ -102,9 +102,15 @@ function zstdWasmAsset(): Plugin {
 // by an inline script, so the handshake and first frames overlap main
 // bundle fetch/eval AND frame consumption happens on an idle thread (a
 // blocked main thread would stall Chrome's websocket flow control).
-// useWsWorker adopts the socket at startup by wiring a MessageChannel
-// between the blob worker and wsWorker (earlyWs.ts); any failure falls
-// back to the worker opening its own connection as before.
+// In build, where the hashed wsWorker asset name is known, the inline
+// script also boots the real wsWorker and wires the blob-worker adoption
+// (the same MessageChannel + "adopt" contract as earlyWs.ts) immediately,
+// so decode+parse completes while the main bundle is still fetching; the
+// worker handle plus its pre-attach messages park on window.__fdWsMain
+// for useWsWorker to attach to. Dev has no hashed names, so it keeps the
+// blob-only path with main-bundle adoption. Any failure falls back one
+// step: inline wsWorker spawn failure leaves window.__fdWsEarly for the
+// bundle to adopt; blob failure has the worker connect on its own.
 // Firedancer-only. URL and subprotocol offer mirror src/api/consts.ts:
 // same-origin ws(s)://host:port/websocket in production,
 // VITE_WEBSOCKET_URL when serving dev.
@@ -125,6 +131,29 @@ function earlyWebsocket(
           ctx.server && devWsUrl
             ? JSON.stringify(devWsUrl)
             : '(window.location.protocol.startsWith("https")?"wss":"ws")+"://"+window.location.hostname+":"+window.location.port+"/websocket"';
+        const wsWorkerFile = ctx.bundle
+          ? Object.keys(ctx.bundle).find((f) =>
+              /^assets\/wsWorker-[\w-]+\.js$/.test(f),
+            )
+          : undefined;
+        // port1 to the blob worker last: it is the commit point that
+        // switches the blob worker into port mode, so any earlier throw
+        // leaves __fdWsEarly adoptable by the bundle as before
+        const spawnMain = wsWorkerFile
+          ? "try{" +
+            `var mw=new Worker(${JSON.stringify("/" + wsWorkerFile)});` +
+            "try{" +
+            "var c=new MessageChannel();" +
+            `mw.postMessage({type:"adopt",websocketUrl:u,compress:${compress},port:c.port2},[c.port2]);` +
+            "w.postMessage(c.port1,[c.port1]);" +
+            `var g={worker:mw,early:w,url:u,compress:${compress},error:false,pending:[]};` +
+            "mw.onmessage=function(m){if(g.pending.length<1e4)g.pending.push(m.data)};" +
+            "mw.onerror=function(){g.error=true};" +
+            "window.__fdWsMain=g;" +
+            "delete window.__fdWsEarly" +
+            "}catch(x){mw.terminate()}" +
+            "}catch(x){}"
+          : "";
         return {
           html,
           tags: [
@@ -141,7 +170,8 @@ function earlyWebsocket(
                 `var e={worker:w,url:u,compress:${compress},error:false,closed:false};` +
                 "w.onmessage=function(m){if(m.data==='error')e.error=true;else if(m.data==='closed')e.closed=true};" +
                 "w.onerror=function(){e.error=true};" +
-                "window.__fdWsEarly=e" +
+                "window.__fdWsEarly=e;" +
+                spawnMain +
                 "}catch(x){}})();",
             },
           ],

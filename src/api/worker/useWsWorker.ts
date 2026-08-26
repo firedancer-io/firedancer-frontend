@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import type { FromWorkerMessage, ToWorkerMessage } from "./types";
-import { adoptEarlyWs, closeEarlyWs } from "./earlyWs";
+import { adoptEarlyWs, attachMainWs, closeEarlyWs } from "./earlyWs";
 import { createTypedWorker, type TypedWorker } from "./typedWorker";
 import type { SendMessage } from "../ws/types";
 import { messageEventType, type MessageEmitter } from "../ws/ConnectionContext";
@@ -31,6 +31,42 @@ const emitter = rawEmitter as MessageEmitter;
 let buffer: FromWorkerMessage[] = [];
 let rafId: number | null = null;
 let timeoutId: number | null = null;
+
+/**
+ * First-flush idle gate: with the worker booted at page start the data
+ * stream is already live when React mounts, and per-frame flushes on a
+ * saturated main thread starve React's Suspense retries indefinitely
+ * (retry lanes have no expiration and an interrupted retry restarts
+ * from scratch), leaving the lazy overview chart chunks unmounted.
+ * Hold the stream until the main thread has genuinely gone idle twice
+ * after the first subscriber (lazy retries committed), with a timeout
+ * cap so data is never held longer than the pre-early-worker boot ever
+ * took.
+ */
+let flushGateOpen = false;
+let flushGatePending = false;
+const flushGateIdleTimeoutMs = 1_500;
+
+function openFlushGate() {
+  flushGateOpen = true;
+  flushBuffer();
+}
+
+function armFlushGate() {
+  if (flushGatePending) return;
+  flushGatePending = true;
+  if (typeof requestIdleCallback !== "function") {
+    setTimeout(openFlushGate, flushGateIdleTimeoutMs);
+    return;
+  }
+  // two chained idle periods: the first can fire in the gap before the
+  // lazy-chunk retry is even scheduled
+  requestIdleCallback(
+    () =>
+      requestIdleCallback(openFlushGate, { timeout: flushGateIdleTimeoutMs }),
+    { timeout: flushGateIdleTimeoutMs },
+  );
+}
 
 function flushBuffer() {
   rafId = null;
@@ -63,6 +99,11 @@ function scheduleFlush() {
   if (rafId !== null || timeoutId !== null) return;
   if (!buffer.length) return;
 
+  if (!flushGateOpen) {
+    armFlushGate();
+    return;
+  }
+
   if (store.get(isDocumentVisibleAtom)) {
     rafId = requestAnimationFrame(flushBuffer);
   } else {
@@ -93,6 +134,18 @@ function onMessage(e: MessageEvent<FromWorkerMessage>) {
 function startWorker(websocketUrl: string, compress: boolean) {
   if (worker) return;
   if (!websocketUrl.trim()) return;
+
+  // Attach to the wsWorker the index.html inline script booted (build
+  // only); it adopted the early socket at page start, so decoded batches
+  // buffered pre-attach drain through onMessage first
+  const attached = attachMainWs(websocketUrl, compress, onMessage);
+  if (attached) {
+    worker = attached as unknown as TypedWorker<
+      ToWorkerMessage,
+      FromWorkerMessage
+    >;
+    return;
+  }
 
   worker = createTypedWorker<ToWorkerMessage, FromWorkerMessage>(WsWorker);
   worker.onmessage = onMessage;
