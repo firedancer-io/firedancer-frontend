@@ -10,7 +10,7 @@ import PartitionUtilization from "../PartitionUtilization";
 import { formatSIBytes, getSafePct } from "../../../utils";
 import styles from "./compactionCard.module.css";
 import { partitionTierLabel, partitionTierColor } from "../consts";
-import { CompactionState } from "../../../api/entities";
+import { CompactionState } from "../../../api/entityEnums";
 import { accountsNextCompactionAtom } from "../../../atoms";
 
 function fmtPct(pct: number) {

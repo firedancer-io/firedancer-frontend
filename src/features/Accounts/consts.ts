@@ -1,4 +1,4 @@
-import { PartitionTier } from "../../api/entities";
+import { PartitionTier } from "../../api/entityEnums";
 
 export const partitionTierLabel: Record<number, string> = {
   [PartitionTier.Hot]: "Hot",

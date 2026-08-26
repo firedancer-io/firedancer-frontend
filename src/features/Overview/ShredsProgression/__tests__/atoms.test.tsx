@@ -4,7 +4,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { createLiveShredsAtoms } from "../atoms";
 import { Provider } from "jotai";
 import type { PropsWithChildren } from "react";
-import { ShredEvent } from "../../../../api/entities";
+import { ShredEvent } from "../../../../api/entityEnums";
 import {
   xRangeMs,
   delayMs,

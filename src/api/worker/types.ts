@@ -1,8 +1,7 @@
-import z from "zod";
-import {
+import type z from "zod";
+import type {
   accountsSchema,
   blockEngineSchema,
-  epochSchema,
   gossipSchema,
   peersSchema,
   slotSchema,
@@ -12,19 +11,6 @@ import {
 import type { GossipHealthEma } from "../atoms";
 import type { Epoch } from "../types";
 import type { LiveShredsData } from "./cache/shreds/types";
-
-export const WsMessageSchema = z.discriminatedUnion("topic", [
-  summarySchema,
-  epochSchema,
-  gossipSchema,
-  peersSchema,
-  slotSchema,
-  blockEngineSchema,
-  supermajoritySchema,
-  accountsSchema,
-]);
-
-export type WsMessage = z.infer<typeof WsMessageSchema>;
 
 type KvFrom<TSchema extends z.ZodTypeAny, TTopic extends string> =
   z.infer<TSchema> extends infer U

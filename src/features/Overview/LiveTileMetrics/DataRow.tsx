@@ -25,7 +25,7 @@ import {
 import { tileChartDarkBackground } from "../../../colors";
 import type { CellProps } from "@radix-ui/themes/components/table";
 import { chartHeight } from "./consts";
-import { PriorityEnum } from "../../../api/entities";
+import { PriorityEnum } from "../../../api/entityEnums";
 
 const store = getDefaultStore();
 

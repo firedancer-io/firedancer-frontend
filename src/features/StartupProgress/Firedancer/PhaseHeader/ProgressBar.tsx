@@ -1,6 +1,6 @@
 import { Flex } from "@radix-ui/themes";
 import styles from "./progressBar.module.css";
-import { BootPhaseEnum } from "../../../../api/entities";
+import { BootPhaseEnum } from "../../../../api/entityEnums";
 import { useAtomValue } from "jotai";
 import {
   bootProgressCompletedPhasesAtom,

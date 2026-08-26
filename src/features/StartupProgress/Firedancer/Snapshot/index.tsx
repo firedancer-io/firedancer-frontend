@@ -4,7 +4,7 @@ import styles from "./snapshot.module.css";
 import { useMedia } from "react-use";
 import { useAtomValue } from "jotai";
 import { bootProgressAtom } from "../../../../api/atoms";
-import { BootPhaseEnum } from "../../../../api/entities";
+import { BootPhaseEnum } from "../../../../api/entityEnums";
 import type { BootProgress } from "../../../../api/types";
 import SnapshotSparklineCard from "./SnapshotSparklineCard";
 import { SnapshotReadingCard } from "./SnapshotReadingCard";

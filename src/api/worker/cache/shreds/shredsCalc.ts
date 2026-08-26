@@ -1,5 +1,5 @@
 import { nsPerMs } from "../../../../consts";
-import { ShredEvent } from "../../../entities";
+import { ShredEvent } from "../../../entityEnums";
 import type { LiveShreds } from "../../../types";
 import type { ValidatorState } from "../../types";
 import type {

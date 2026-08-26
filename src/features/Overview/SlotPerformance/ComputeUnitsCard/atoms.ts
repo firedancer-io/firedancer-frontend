@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 import type { CuChartTooltipData } from "./types";
 import { scheduleStrategyAtom } from "../../../../api/atoms";
-import { ScheduleStrategyEnum } from "../../../../api/entities";
+import { ScheduleStrategyEnum } from "../../../../api/entityEnums";
 
 export const cuChartTooltipDataAtom = atom<CuChartTooltipData>();
 

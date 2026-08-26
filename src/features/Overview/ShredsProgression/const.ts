@@ -1,4 +1,4 @@
-import { ShredEvent } from "../../../api/entities";
+import { ShredEvent } from "../../../api/entityEnums";
 import {
   shredPublishedColor,
   shredReceivedRepairColor,

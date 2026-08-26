@@ -9,7 +9,7 @@ import {
 } from "vitest";
 import { deriveLeaderSchedule, schedFnv1a64 } from "../leaderSchedule";
 import { fillEpochLeaderSlots } from "../epochLeaderSlots";
-import { WsMessageSchema } from "../types";
+import { WsMessageSchema } from "../wsMessage";
 
 // Vectors generated from Firedancer's fd_epoch_leaders_new; fnv1a64
 // covers the full sched array, schedHead the first 32 entries.

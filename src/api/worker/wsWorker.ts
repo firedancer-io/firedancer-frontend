@@ -1,13 +1,13 @@
 import { ZstdInit, type ZstdDec } from "@oneidentity/zstd-js/decompress";
 import { logDebug, logError, logWarning } from "../../logger";
-import {
-  WsMessageSchema,
-  type EarlyPortMessage,
-  type EarlyPortRequest,
-  type EarlyWsFrame,
-  type WsEntity,
-  type ToWorkerMessage,
+import type {
+  EarlyPortMessage,
+  EarlyPortRequest,
+  EarlyWsFrame,
+  WsEntity,
+  ToWorkerMessage,
 } from "./types";
+import { WsMessageSchema } from "./wsMessage";
 import { createMessageHandler } from "./messageHandler";
 import { fillEpochLeaderSlots } from "./epochLeaderSlots";
 

@@ -17,7 +17,7 @@ import {
   pinnedTableWidth,
   unpinnedGroups,
 } from "./consts";
-import { PriorityEnum } from "../../../api/entities";
+import { PriorityEnum } from "../../../api/entityEnums";
 import { DataRow } from "./DataRow";
 import { PinnedRow } from "./PinnedRow";
 import { TableHeader } from "../../../components/DataTable";

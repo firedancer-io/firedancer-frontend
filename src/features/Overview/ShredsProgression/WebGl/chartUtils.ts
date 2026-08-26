@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { MutableRefObject } from "react";
-import { ShredEvent } from "../../../../api/entities";
+import { ShredEvent } from "../../../../api/entityEnums";
 import {
   delayMs,
   xRangeMs,

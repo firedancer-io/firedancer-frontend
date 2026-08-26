@@ -8,7 +8,7 @@ import { useUptimeDuration } from "../../../../hooks/useUptime";
 import { Duration } from "luxon";
 import { useThrottledCallback } from "use-debounce";
 import clamp from "lodash/clamp";
-import { BootPhaseEnum } from "../../../../api/entities";
+import { BootPhaseEnum } from "../../../../api/entityEnums";
 import { useAtomValue } from "jotai";
 import { bootProgressPhaseAtom } from "../../atoms";
 import type { BootPhase } from "../../../../api/types";

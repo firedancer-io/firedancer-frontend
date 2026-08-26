@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 import { bootProgressAtom } from "../../api/atoms";
-import { BootPhaseEnum } from "../../api/entities";
+import { BootPhaseEnum } from "../../api/entityEnums";
 import type { BootPhase } from "../../api/types";
 import { isFrankendancer } from "../../client";
 

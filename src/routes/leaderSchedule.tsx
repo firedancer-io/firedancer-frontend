@@ -4,16 +4,17 @@ import {
   retainSearchParams,
   stripSearchParams,
 } from "@tanstack/react-router";
-import { z } from "zod";
+// zod/mini so only the checks used here land in the main bundle; the
+// classic zod runtime stays out of it (worker-only)
+import * as z from "zod/mini";
 
-const SearchTypeSchema = z.enum([
-  "mySlots",
-  "skippedSlots",
-  "lateVoteSlots",
-  "text",
-]);
-export const SearchTypeEnum = SearchTypeSchema.enum;
-export type SearchType = z.infer<typeof SearchTypeSchema>;
+export const SearchTypeEnum = {
+  mySlots: "mySlots",
+  skippedSlots: "skippedSlots",
+  lateVoteSlots: "lateVoteSlots",
+  text: "text",
+} as const;
+export type SearchType = (typeof SearchTypeEnum)[keyof typeof SearchTypeEnum];
 
 const defaultValues = {
   searchType: SearchTypeEnum.text,
@@ -21,10 +22,11 @@ const defaultValues = {
 };
 
 const searchParamsSchema = z.object({
-  searchType: SearchTypeSchema.default(SearchTypeEnum.text).catch(
+  searchType: z.catch(
+    z._default(z.enum(SearchTypeEnum), SearchTypeEnum.text),
     SearchTypeEnum.text,
   ),
-  searchText: z.string().default("").catch(""),
+  searchText: z.catch(z._default(z.string(), ""), ""),
 });
 
 export const Route = createFileRoute("/leaderSchedule")({

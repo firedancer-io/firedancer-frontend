@@ -118,7 +118,7 @@ import {
   gossipPeerSizeDebounceMs,
 } from "./consts";
 import type { peersSchema } from "./entities";
-import { BootPhaseEnum } from "./entities";
+import { BootPhaseEnum } from "./entityEnums";
 import type {
   EstimatedSlotDuration,
   EstimatedTps,

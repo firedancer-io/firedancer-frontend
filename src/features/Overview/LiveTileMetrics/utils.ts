@@ -1,7 +1,7 @@
 import { getDefaultStore } from "jotai";
 import { liveTileRowAtomFamily, type TileRowMetrics } from "./atoms";
 import tableStyles from "../../../components/dataTable.module.css";
-import { PriorityEnum } from "../../../api/entities";
+import { PriorityEnum } from "../../../api/entityEnums";
 import { useLayoutEffect } from "react";
 
 const store = getDefaultStore();

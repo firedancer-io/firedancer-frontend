@@ -1,12 +1,11 @@
-import { ClientEnum, clientSchema } from "./api/entities";
+import { ClientEnum } from "./api/entityEnums";
 
-const parsedClient = clientSchema.safeParse(
-  (import.meta.env.VITE_VALIDATOR_CLIENT as string)?.trim(),
-);
+const envClient = (import.meta.env.VITE_VALIDATOR_CLIENT as string)?.trim();
 
-export const client = parsedClient.error
-  ? ClientEnum.Frankendancer
-  : parsedClient.data;
+export const client =
+  envClient === ClientEnum.Firedancer || envClient === ClientEnum.Frankendancer
+    ? envClient
+    : ClientEnum.Frankendancer;
 
 export const isFrankendancer = client === ClientEnum.Frankendancer;
 export const isFiredancer = client === ClientEnum.Firedancer;

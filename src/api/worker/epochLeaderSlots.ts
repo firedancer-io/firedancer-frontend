@@ -1,6 +1,7 @@
 import { logDebug, logError } from "../../logger";
 import { deriveLeaderSchedule, schedFnv1a64 } from "./leaderSchedule";
-import type { WsEntity, WsMessage } from "./types";
+import type { WsEntity } from "./types";
+import type { WsMessage } from "./wsMessage";
 
 /* epoch.new without leader_slots: derive the schedule from
    staked_lamports so downstream sees an identical message either way.

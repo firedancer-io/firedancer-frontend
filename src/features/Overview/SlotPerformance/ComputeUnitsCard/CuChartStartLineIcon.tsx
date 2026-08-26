@@ -1,5 +1,5 @@
 import styles from "./cuChartIcon.module.css";
-import { ScheduleStrategyEnum } from "../../../../api/entities";
+import { ScheduleStrategyEnum } from "../../../../api/entityEnums";
 import { ScheduleStrategyIcon } from "../../../../components/ScheduleStrategyIcon";
 
 export const startLineIconId = "cu-chart-info-icon";

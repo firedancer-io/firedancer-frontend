@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { SHRED_EVENT_TYPES_COUNT } from "../../api/entities";
+import { SHRED_EVENT_TYPES_COUNT } from "../../api/entityEnums";
 
 const SHREDS_OPACITY = 0.8;
 

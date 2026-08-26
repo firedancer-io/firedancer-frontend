@@ -7,7 +7,7 @@ import {
 } from "../../api/atoms";
 import { Text, Tooltip, Flex } from "@radix-ui/themes";
 import styles from "./cluster.module.css";
-import { ScheduleStrategyEnum } from "../../api/entities";
+import { ScheduleStrategyEnum } from "../../api/entityEnums";
 import { ScheduleStrategyIcon } from "../../components/ScheduleStrategyIcon";
 import { clusterIndicatorHeight, slotsListWidth } from "../../consts";
 import { getClusterColor } from "../../utils";

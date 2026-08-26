@@ -1,7 +1,7 @@
 import { banksXScaleKey } from "./consts";
 import { startLineColor } from "../../../../colors";
 import { getDefaultStore } from "jotai";
-import { ScheduleStrategyEnum } from "../../../../api/entities";
+import { ScheduleStrategyEnum } from "../../../../api/entityEnums";
 import { scheduleStrategyAtom } from "../../../../api/atoms";
 import { iconSize, startLineIconId } from "./CuChartStartLineIcon";
 import placement from "../../../../uplot/placement";

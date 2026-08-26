@@ -1,7 +1,13 @@
 import { z } from "zod";
+import {
+  BootPhaseEnum,
+  ClientEnum,
+  PriorityEnum,
+  ScheduleStrategyEnum,
+  TILE_TYPES,
+} from "./entityEnums";
 
-export const clientSchema = z.enum(["Frankendancer", "Firedancer"]);
-export const ClientEnum = clientSchema.enum;
+export const clientSchema = z.enum(ClientEnum);
 
 const summaryTopicSchema = z.object({
   topic: z.literal("summary"),
@@ -54,56 +60,9 @@ export const voteKeySchema = z.string();
 
 export const startupTimeNanosSchema = z.coerce.bigint();
 
-export const scheduleStrategySchema = z.enum(["perf", "balanced", "revenue"]);
-export const ScheduleStrategyEnum = scheduleStrategySchema.enum;
+export const scheduleStrategySchema = z.enum(ScheduleStrategyEnum);
 
-export const tileTypeSchema = z.enum([
-  "sock",
-  "net",
-  "mlx5",
-  "quic",
-  "bundle",
-  "verify",
-  "dedup",
-  "resolv", // Firedancer
-  "resolh", // Frankendancer
-  "pack",
-  "execle", // Firedancer
-  "bank", // Frankendancer
-  "poh", // Firedancer
-  "pohh", // Frankendancer
-  "shred",
-  "store",
-
-  // snapshot
-  "snapct",
-  "snapld",
-  "snapdc",
-  "snapin",
-  "snapwr",
-
-  // shred tiles
-  "netlnk",
-  "metric",
-  "ipecho",
-  "gossvf",
-  "gossip",
-  "repair",
-  "replay",
-  "execrp",
-  "tower",
-  "txsend",
-  "sign",
-  "rpc",
-  "gui",
-
-  // others
-  "http",
-  "plugin",
-  "genesi",
-  "diag",
-  "event",
-]);
+export const tileTypeSchema = z.enum(TILE_TYPES);
 
 export const tileSchema = z.object({
   kind: z.string(),
@@ -253,13 +212,7 @@ export const liveTilePrimaryMetricSchema = z.object({
   tile_primary_metric: tilePrimaryMetricSchema,
 });
 
-export const prioritySchema = z.enum([
-  "floating",
-  "startup",
-  "normal",
-  "critical",
-]);
-export const PriorityEnum = prioritySchema.enum;
+export const prioritySchema = z.enum(PriorityEnum);
 
 export const tileMetricsSchema = z.object({
   timers: z.array(z.array(z.number()).nullable()),
@@ -330,16 +283,7 @@ export const startupProgressSchema = z.object({
   waiting_for_supermajority_stake_percent: z.number().nullable(),
 });
 
-export const bootPhaseSchema = z.enum([
-  "joining_gossip",
-  "loading_full_snapshot",
-  "loading_incremental_snapshot",
-  "catching_up",
-  "waiting_for_supermajority",
-  "running",
-]);
-
-export const BootPhaseEnum = bootPhaseSchema.enum;
+export const bootPhaseSchema = z.enum(BootPhaseEnum);
 
 export const bootProgressSchema = z.object({
   phase: bootPhaseSchema,
@@ -1094,19 +1038,6 @@ export const slotRankingsSchema = z.object({
   vals_smallest_skipped: z.coerce.bigint().array(),
 });
 
-export enum ShredEvent {
-  shred_repair_request = 0,
-  shred_received_turbine = 1,
-  shred_received_repair = 2,
-  shred_replayed = 3,
-  slot_complete = 4,
-  shred_published = 6,
-}
-
-export const SHRED_EVENT_TYPES_COUNT = Object.values(ShredEvent).filter(
-  (v) => typeof v === "number",
-).length;
-
 export const liveShredsSchema = z.object({
   reference_slot: z.number(),
   reference_ts: z.coerce.bigint(),
@@ -1309,14 +1240,12 @@ export const partitionTierSchema = z.union([
   z.literal(2),
   z.literal(255),
 ]);
-export const PartitionTier = { Hot: 0, Warm: 1, Cold: 2, Off: 255 } as const;
 
 export const compactionStateSchema = z.union([
   z.literal(0),
   z.literal(1),
   z.literal(2),
 ]);
-export const CompactionState = { Idle: 0, Queued: 1, Compacting: 2 } as const;
 
 export const accountsPartitionSchema = z.object({
   partition_idx: z.number(),

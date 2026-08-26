@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 import type { LiveShreds } from "../../../api/types";
-import { ShredEvent } from "../../../api/entities";
+import { ShredEvent } from "../../../api/entityEnums";
 import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
 import { getSlotGroupLeader } from "../../../utils";

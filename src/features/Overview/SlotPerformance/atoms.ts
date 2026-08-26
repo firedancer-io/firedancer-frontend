@@ -10,7 +10,7 @@ import { atomWithImmer } from "jotai-immer";
 import { produce } from "immer";
 import countBy from "lodash/countBy";
 import isEqual from "lodash/isEqual";
-import { tileTypeSchema } from "../../../api/entities";
+import { TILE_TYPES } from "../../../api/entityEnums";
 import {
   currentSlotAtom,
   epochAtom,
@@ -19,6 +19,8 @@ import {
 } from "../../../atoms";
 import { getSlotGroupLeader } from "../../../utils";
 import { DisplayType } from "../../../sankey";
+
+const tileTypeSet: ReadonlySet<string> = new Set(TILE_TYPES);
 
 export enum SelectedSlotValidityState {
   Valid = "valid",
@@ -113,13 +115,13 @@ export const groupedLiveIdlePerTileAtom = atom((get) => {
       const tile = tiles?.[i];
       if (!tile) return grouped;
 
-      const parsedTileKind = tileTypeSchema.safeParse(tile.kind);
-      if (parsedTileKind.error) {
+      if (!tileTypeSet.has(tile.kind)) {
         return grouped;
       }
 
-      grouped[parsedTileKind.data] ??= [];
-      grouped[parsedTileKind.data].push(timer);
+      const kind = tile.kind as TileType;
+      grouped[kind] ??= [];
+      grouped[kind].push(timer);
 
       return grouped;
     },
@@ -143,14 +145,14 @@ export const snapshotTimerIndicesAtom = atom(
     if (!tiles) return;
 
     const grouped = tiles.reduce((acc, tile, i) => {
-      const parsedTileKind = tileTypeSchema.safeParse(tile.kind);
-      if (parsedTileKind.error || !tileTypes.includes(parsedTileKind.data)) {
+      const kind = tile.kind as TileType;
+      if (!tileTypes.includes(kind)) {
         return acc;
       }
 
-      const indices = acc.get(parsedTileKind.data) ?? [];
+      const indices = acc.get(kind) ?? [];
       indices.push(i);
-      acc.set(parsedTileKind.data, indices);
+      acc.set(kind, indices);
       return acc;
     }, new Map<TileType, number[]>());
 
@@ -257,7 +259,7 @@ export const rateLiveWaterfallAtom = atom(
 );
 
 /**
- * Returns counts only for tile types defined in tileTypeSchema, ignoring any
+ * Returns counts only for tile types defined in TILE_TYPES, ignoring any
  * unknown types (e.g. new server-side tiles not yet added to the schema).
  * This ensures type-safe access to tile counts and catches errors at compile
  * time when tile types are renamed or removed.
@@ -266,6 +268,6 @@ export const tileCountAtom = atom<Record<TileType, number>>((get) => {
   const tiles = get(tilesAtom);
   const counts = countBy(tiles, (t) => t.kind);
   return Object.fromEntries(
-    tileTypeSchema.options.map((kind) => [kind, counts[kind] ?? 0]),
+    TILE_TYPES.map((kind) => [kind, counts[kind] ?? 0]),
   ) as Record<TileType, number>;
 });

@@ -9,7 +9,7 @@ import {
 import { Box, Flex } from "@radix-ui/themes";
 import clsx from "clsx";
 import Header from "../../Header/index";
-import { BootPhaseEnum } from "../../../api/entities";
+import { BootPhaseEnum } from "../../../api/entityEnums";
 import { bootProgressContainerElAtom } from "../../../atoms";
 import type { BootPhase } from "../../../api/types";
 import Logo from "./Logo";

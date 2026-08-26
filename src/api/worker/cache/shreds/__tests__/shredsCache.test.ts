@@ -1,5 +1,5 @@
 import { expect, describe, it, afterEach, beforeEach, vi } from "vitest";
-import { ShredEvent } from "../../../../entities";
+import { ShredEvent } from "../../../../entityEnums";
 import { createShredsCache } from "../shredsCache";
 import { nsPerMs } from "../../../../../consts";
 import { liveShredsKey } from "../../../types";

@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 import { clusterAtom } from "../api/atoms";
-import { ScheduleStrategyEnum } from "../api/entities";
+import { ScheduleStrategyEnum } from "../api/entityEnums";
 import type { ScheduleStrategy } from "../api/types";
 import Balanced from "../assets/balanced.svg?react";
 import Performance from "../assets/performance.svg?react";

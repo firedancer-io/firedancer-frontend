@@ -20,7 +20,7 @@ import {
 } from "../../../colors";
 import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
 import clamp from "lodash/clamp";
-import { ShredEvent } from "../../../api/entities";
+import { ShredEvent } from "../../../api/entityEnums";
 import {
   createLabelsState,
   getAdjustedNow,
