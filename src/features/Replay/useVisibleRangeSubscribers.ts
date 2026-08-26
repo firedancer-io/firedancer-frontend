@@ -22,12 +22,13 @@ export function useVisibleRangeSubscribers({
   rangeRef,
   selectedMsRef,
 }: UseVisibleRangeSubscribersProps) {
-  const visibleRangeSubscribersRef = useRef<
+  const rangeSubscribersRef = useRef<
     Map<
       string,
       {
-        onRangeChange: RangeChangeHandler;
+        onVisibleRangeChange: RangeChangeHandler;
         onSelectedMsChange?: RangeChangeHandler;
+        onWorldRangeChange?: RangeChangeHandler;
       }
     >
   >(new Map());
@@ -36,9 +37,9 @@ export function useVisibleRangeSubscribers({
     const broadcastVisibleRangeChange = () => {
       if (!rangeRef.current) return;
       for (const {
-        onRangeChange,
-      } of visibleRangeSubscribersRef.current.values()) {
-        onRangeChange(
+        onVisibleRangeChange,
+      } of rangeSubscribersRef.current.values()) {
+        onVisibleRangeChange(
           rangeRef.current.visibleRangeMs,
           [0, rangeRef.current.worldEndMs],
           selectedMsRef.current,
@@ -50,7 +51,7 @@ export function useVisibleRangeSubscribers({
       if (!rangeRef.current) return;
       for (const {
         onSelectedMsChange,
-      } of visibleRangeSubscribersRef.current.values()) {
+      } of rangeSubscribersRef.current.values()) {
         onSelectedMsChange?.(
           rangeRef.current.visibleRangeMs,
           [0, rangeRef.current.worldEndMs],
@@ -59,20 +60,39 @@ export function useVisibleRangeSubscribers({
       }
     };
 
+    const broadcastWorldRangeChange = () => {
+      if (!rangeRef.current) return;
+      for (const {
+        onWorldRangeChange,
+      } of rangeSubscribersRef.current.values()) {
+        onWorldRangeChange?.(
+          rangeRef.current.visibleRangeMs,
+          [0, rangeRef.current.worldEndMs],
+          selectedMsRef.current,
+        );
+      }
+    };
+
     const subscribeRangeChange: RangeChangeSubscriberProps["subscribeRangeChange"] =
-      (chartId, onRangeChange, onSelectedMsChange) => {
-        visibleRangeSubscribersRef.current.set(chartId, {
-          onRangeChange,
+      (
+        chartId,
+        onVisibleRangeChange,
+        onSelectedMsChange,
+        onWorldRangeChange,
+      ) => {
+        rangeSubscribersRef.current.set(chartId, {
+          onVisibleRangeChange,
           onSelectedMsChange,
+          onWorldRangeChange,
         });
         if (!rangeRef.current) return;
-        onRangeChange(
+        onVisibleRangeChange(
           rangeRef.current.visibleRangeMs,
           [0, rangeRef.current.worldEndMs],
           selectedMsRef.current,
         );
 
-        return () => visibleRangeSubscribersRef.current.delete(chartId);
+        return () => rangeSubscribersRef.current.delete(chartId);
       };
 
     const getAbsoluteNs = (relativeMs: number) => {
@@ -94,6 +114,7 @@ export function useVisibleRangeSubscribers({
     return {
       broadcastVisibleRangeChange,
       broadcastSelectedMsChange,
+      broadcastWorldRangeChange,
       visibleRangeSubscriberProps,
     };
   }, [rangeRef, selectedMsRef]);

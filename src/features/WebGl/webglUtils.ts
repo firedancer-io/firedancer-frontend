@@ -8,7 +8,7 @@ export type TsRange = [startTs: number, endTs: number];
 export type NsTsRange = [startTs: bigint, endTs: bigint];
 export type RgbColor = [r: number, g: number, b: number];
 
-export type SlotMesh = {
+export type RectMesh = {
   mesh: THREE.Mesh;
   rectArray: Float32Array;
   colorArray: Float32Array;
@@ -95,7 +95,7 @@ export function createRenderer(
 }
 
 /**
- * Resources shared by all slot meshes of a single chart / renderer.
+ * Resources shared by all rect meshes of a single chart / renderer.
  * Compiled shaders / uploaded buffers are bound to a specific GL
  * context, so a fresh renderer (e.g. after a context loss) needs its own copy.
  */
@@ -148,9 +148,12 @@ const INITIAL_CAPACITY = 700 * (SHRED_EVENT_TYPES_COUNT - 1);
 /**
  * Create a mesh to draw 2D rectangles
  */
-export function createRectMesh(resources: WebglResources): SlotMesh {
-  const rectArray = new Float32Array(INITIAL_CAPACITY * 4);
-  const colorArray = new Float32Array(INITIAL_CAPACITY * 3);
+export function createRectMesh(
+  resources: WebglResources,
+  initialCapacity = INITIAL_CAPACITY,
+): RectMesh {
+  const rectArray = new Float32Array(initialCapacity * 4);
+  const colorArray = new Float32Array(initialCapacity * 3);
 
   const rectAttr = new THREE.InstancedBufferAttribute(rectArray, 4);
   const colorAttr = new THREE.InstancedBufferAttribute(colorArray, 3);
@@ -185,30 +188,30 @@ export function createRectMesh(resources: WebglResources): SlotMesh {
 }
 
 /**
- * Bump up capacity for slot as needed
+ * Bump up capacity for rectangles as needed
  */
-export function ensureCapacity(slotMesh: SlotMesh, needed: number) {
-  if (needed <= slotMesh.capacity) return;
+export function ensureCapacity(rectMesh: RectMesh, needed: number) {
+  if (needed <= rectMesh.capacity) return;
 
-  let newCapacity = slotMesh.capacity || INITIAL_CAPACITY;
+  let newCapacity = rectMesh.capacity || INITIAL_CAPACITY;
   while (newCapacity < needed) newCapacity *= 2;
 
   const rectArray = new Float32Array(newCapacity * 4);
   const colorArray = new Float32Array(newCapacity * 3);
-  rectArray.set(slotMesh.rectArray);
-  colorArray.set(slotMesh.colorArray);
+  rectArray.set(rectMesh.rectArray);
+  colorArray.set(rectMesh.colorArray);
 
-  slotMesh.rectArray = rectArray;
-  slotMesh.colorArray = colorArray;
-  slotMesh.rectAttr = new THREE.InstancedBufferAttribute(rectArray, 4);
-  slotMesh.colorAttr = new THREE.InstancedBufferAttribute(colorArray, 3);
-  slotMesh.rectAttr.setUsage(THREE.DynamicDrawUsage);
-  slotMesh.colorAttr.setUsage(THREE.DynamicDrawUsage);
-  slotMesh.capacity = newCapacity;
+  rectMesh.rectArray = rectArray;
+  rectMesh.colorArray = colorArray;
+  rectMesh.rectAttr = new THREE.InstancedBufferAttribute(rectArray, 4);
+  rectMesh.colorAttr = new THREE.InstancedBufferAttribute(colorArray, 3);
+  rectMesh.rectAttr.setUsage(THREE.DynamicDrawUsage);
+  rectMesh.colorAttr.setUsage(THREE.DynamicDrawUsage);
+  rectMesh.capacity = newCapacity;
 
-  const geometry = slotMesh.mesh.geometry as THREE.InstancedBufferGeometry;
-  geometry.setAttribute("instanceRect", slotMesh.rectAttr);
-  geometry.setAttribute("instanceColor", slotMesh.colorAttr);
+  const geometry = rectMesh.mesh.geometry as THREE.InstancedBufferGeometry;
+  geometry.setAttribute("instanceRect", rectMesh.rectAttr);
+  geometry.setAttribute("instanceColor", rectMesh.colorAttr);
   // clear private field _maxInstanceCount for recomputation,
   // instead of allocating a new geometry
   // @ts-expect-error
@@ -216,7 +219,7 @@ export function ensureCapacity(slotMesh: SlotMesh, needed: number) {
 }
 
 export function addRectangleToMesh(
-  slotMesh: SlotMesh,
+  mesh: RectMesh,
   rectangleIdx: number,
   x: number,
   y: number,
@@ -225,23 +228,40 @@ export function addRectangleToMesh(
   color: RgbColor,
 ) {
   const ri = rectangleIdx * 4;
-  slotMesh.rectArray[ri] = x;
-  slotMesh.rectArray[ri + 1] = y;
-  slotMesh.rectArray[ri + 2] = w;
-  slotMesh.rectArray[ri + 3] = h;
+  mesh.rectArray[ri] = x;
+  mesh.rectArray[ri + 1] = y;
+  mesh.rectArray[ri + 2] = w;
+  mesh.rectArray[ri + 3] = h;
 
   const ci = rectangleIdx * 3;
-  slotMesh.colorArray[ci] = color[0];
-  slotMesh.colorArray[ci + 1] = color[1];
-  slotMesh.colorArray[ci + 2] = color[2];
+  mesh.colorArray[ci] = color[0];
+  mesh.colorArray[ci + 1] = color[1];
+  mesh.colorArray[ci + 2] = color[2];
 }
 
-export function updateSlotMeshCounts(slotMesh: SlotMesh, count: number) {
-  slotMesh.count = count;
-  (slotMesh.mesh.geometry as THREE.InstancedBufferGeometry).instanceCount =
-    count;
-  slotMesh.rectAttr.needsUpdate = true;
-  slotMesh.colorAttr.needsUpdate = true;
+export function updateMeshCounts(mesh: RectMesh, count: number) {
+  mesh.count = count;
+  (mesh.mesh.geometry as THREE.InstancedBufferGeometry).instanceCount = count;
+  mesh.rectAttr.needsUpdate = true;
+  mesh.colorAttr.needsUpdate = true;
+}
+
+/**
+ * Mark a specific range as updated
+ */
+export function updateMeshRange(mesh: RectMesh, idxRange: [number, number]) {
+  const startIdx = idxRange[0];
+  const endIdx = Math.min(mesh.count - 1, idxRange[1]);
+  const instanceCount = endIdx - startIdx + 1;
+  if (instanceCount <= 0) return;
+
+  mesh.rectAttr.clearUpdateRanges();
+  mesh.rectAttr.addUpdateRange(startIdx * 4, instanceCount * 4);
+  mesh.rectAttr.needsUpdate = true;
+
+  mesh.colorAttr.clearUpdateRanges();
+  mesh.colorAttr.addUpdateRange(startIdx * 3, instanceCount * 3);
+  mesh.colorAttr.needsUpdate = true;
 }
 
 const tmpColor = new THREE.Color();
