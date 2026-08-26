@@ -560,20 +560,27 @@ export const updatePeersAtom = atom(null, (get, set, peers?: Peer[]) => {
 
   // Backend add/update entries are full snapshots; assign, don't merge
   const prev = get(peersAtom);
-  const stats = { ...get(_peerStatsAtom) };
+  // once pushed stats seed, peerStatsAtom never reads the local
+  // aggregate again; skip maintaining it
+  const stats =
+    get(serverPeerStatsAtom) === undefined
+      ? { ...get(_peerStatsAtom) }
+      : undefined;
   const next = new Map<string, Peer>();
   for (const peer of peers) {
     const old = next.get(peer.identity_pubkey) ?? prev[peer.identity_pubkey];
     const value = old?.removed ? { ...peer, removed: true } : peer;
-    addPeerStats(stats, old, -1);
-    addPeerStats(stats, value, 1);
+    if (stats) {
+      addPeerStats(stats, old, -1);
+      addPeerStats(stats, value, 1);
+    }
     next.set(peer.identity_pubkey, value);
   }
 
   set(peersAtom, (draft) => {
     for (const [key, peer] of next) draft[key] = peer;
   });
-  set(_peerStatsAtom, stats);
+  if (stats) set(_peerStatsAtom, stats);
 });
 
 const removePeerDelay = 60_000 * 5;
@@ -581,16 +588,21 @@ export const removePeersAtom = atom(null, (get, set, peers?: PeerRemove[]) => {
   if (!peers?.length) return;
 
   const prev = get(peersAtom);
-  const stats = { ...get(_peerStatsAtom) };
-  const seen = new Set<string>();
+  const stats =
+    get(serverPeerStatsAtom) === undefined
+      ? { ...get(_peerStatsAtom) }
+      : undefined;
   let changed = false;
-  for (const peer of peers) {
-    if (seen.has(peer.identity_pubkey)) continue;
-    seen.add(peer.identity_pubkey);
-    const old = prev[peer.identity_pubkey];
-    if (old && !old.removed) {
-      addPeerStats(stats, old, -1);
-      changed = true;
+  if (stats) {
+    const seen = new Set<string>();
+    for (const peer of peers) {
+      if (seen.has(peer.identity_pubkey)) continue;
+      seen.add(peer.identity_pubkey);
+      const old = prev[peer.identity_pubkey];
+      if (old && !old.removed) {
+        addPeerStats(stats, old, -1);
+        changed = true;
+      }
     }
   }
 
@@ -602,21 +614,26 @@ export const removePeersAtom = atom(null, (get, set, peers?: PeerRemove[]) => {
       }
     }
   });
-  if (changed) set(_peerStatsAtom, stats);
+  if (stats && changed) set(_peerStatsAtom, stats);
 
   setTimeout(() => {
     // A peer re-added since an earlier timer deleted it is active again
     const current = get(peersAtom);
-    const stats = { ...get(_peerStatsAtom) };
-    const deleted = new Set<string>();
+    const stats =
+      get(serverPeerStatsAtom) === undefined
+        ? { ...get(_peerStatsAtom) }
+        : undefined;
     let subtracted = false;
-    for (const peer of peers) {
-      if (deleted.has(peer.identity_pubkey)) continue;
-      deleted.add(peer.identity_pubkey);
-      const old = current[peer.identity_pubkey];
-      if (old && !old.removed) {
-        addPeerStats(stats, old, -1);
-        subtracted = true;
+    if (stats) {
+      const deleted = new Set<string>();
+      for (const peer of peers) {
+        if (deleted.has(peer.identity_pubkey)) continue;
+        deleted.add(peer.identity_pubkey);
+        const old = current[peer.identity_pubkey];
+        if (old && !old.removed) {
+          addPeerStats(stats, old, -1);
+          subtracted = true;
+        }
       }
     }
 
@@ -627,7 +644,7 @@ export const removePeersAtom = atom(null, (get, set, peers?: PeerRemove[]) => {
         }
       }
     });
-    if (subtracted) set(_peerStatsAtom, stats);
+    if (stats && subtracted) set(_peerStatsAtom, stats);
   }, removePeerDelay);
 });
 

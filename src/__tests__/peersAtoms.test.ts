@@ -291,10 +291,16 @@ describe("peers atoms", () => {
     store.set(serverPeerStatsAtom, newer);
     expect(store.get(peerStatsAtom)).toEqual(newer);
 
-    // the incremental aggregate was maintained throughout, so a backend
-    // that stops pushing is the only unserved case (accepted: none exists)
+    // once a push seeds, the local aggregate is no longer maintained
+    // (the derived atom never reads it again); clearing the push exposes
+    // the frozen pre-seed aggregate (accepted: no backend stops pushing)
     store.set(serverPeerStatsAtom, undefined);
-    expectStatsInvariant(store);
+    expect(store.get(peerStatsAtom)).toEqual({
+      rpcCount: 0,
+      validatorCount: 0,
+      activeStake: 0n,
+      delinquentStake: 0n,
+    });
   });
 
   it("stats stay consistent through a randomized add/update/remove sequence", () => {
