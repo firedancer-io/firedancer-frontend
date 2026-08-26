@@ -10,7 +10,7 @@ import type {
 } from "./worker/types";
 import { isEmaObjectKey } from "./worker/types";
 import { DateTime } from "luxon";
-import { useInterval } from "react-use";
+import { useInterval, useUnmount } from "react-use";
 import {
   useThrottledCallbackIfVisible,
   useDebouncedCallbackIfVisible,
@@ -478,17 +478,32 @@ function useUpdateAtoms() {
   const peersBuffer = useRef(new Map<string, Peer>());
   const removePeersBuffer = useRef(new Map<string, PeerRemove>());
 
-  // Leading edge so the initial peers snapshot applies without the 1s delay
+  const flushPeersBuffers = useCallback(() => {
+    updatePeers([...peersBuffer.current.values()]);
+    removePeers([...removePeersBuffer.current.values()]);
+    peersBuffer.current.clear();
+    removePeersBuffer.current.clear();
+  }, [removePeers, updatePeers]);
+
   const dbFlushBuffer = useDebouncedCallbackIfVisible(
-    () => {
-      updatePeers([...peersBuffer.current.values()]);
-      removePeers([...removePeersBuffer.current.values()]);
-      peersBuffer.current.clear();
-      removePeersBuffer.current.clear();
-    },
+    flushPeersBuffers,
     1_000,
-    { leading: true, trailing: true, maxWait: 1_000 },
+    { maxWait: 1_000 },
   );
+
+  // First batch applies after the next paint (rAF -> timeout) so pending
+  // status-card renders aren't blocked by the large initial apply
+  const firstPeersFlush = useRef<{
+    pending: boolean;
+    raf: number | null;
+    timeout: number | null;
+  }>({ pending: true, raf: null, timeout: null });
+
+  useUnmount(() => {
+    const first = firstPeersFlush.current;
+    if (first.raf != null) cancelAnimationFrame(first.raf);
+    if (first.timeout != null) clearTimeout(first.timeout);
+  });
 
   const addToPeersBuffer = useCallback(
     (value: z.infer<typeof peersSchema>["value"]) => {
@@ -511,10 +526,23 @@ function useUpdateAtoms() {
         }
       }
 
+      const first = firstPeersFlush.current;
+      if (first.pending) {
+        first.pending = false;
+        first.raf = requestAnimationFrame(() => {
+          first.raf = null;
+          first.timeout = window.setTimeout(() => {
+            first.timeout = null;
+            flushPeersBuffers();
+          }, 0);
+        });
+        return;
+      }
+
       // only triggers when document is visible
       dbFlushBuffer();
     },
-    [dbFlushBuffer],
+    [dbFlushBuffer, flushPeersBuffers],
   );
 
   const updateSupermajorityOnlinePeers = useSetAtom(
