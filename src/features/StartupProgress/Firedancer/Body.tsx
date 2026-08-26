@@ -1,6 +1,6 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import styles from "./body.module.css";
-import { useEffect, useRef } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import {
   bootProgressPhaseAtom,
   isStartupProgressExpandedAtom,
@@ -13,10 +13,35 @@ import { BootPhaseEnum } from "../../../api/entityEnums";
 import { bootProgressContainerElAtom } from "../../../atoms";
 import type { BootPhase } from "../../../api/types";
 import { appMaxWidth } from "../../../consts";
-import Snapshot from "./Snapshot";
-import CatchingUp from "./CatchingUp";
 import { useMedia } from "react-use";
-import Supermajority from "./Supermajority";
+import type * as phaseBodiesModule from "./phaseBodies";
+
+type PhaseBodies = typeof phaseBodiesModule;
+
+/**
+ * Preload-and-reveal (never Suspense) of the phase bodies chunk: the
+ * fetch starts at module eval, in parallel with first render, and the
+ * bodies mount in a transition once loaded. The frame and header render
+ * without them.
+ */
+let loadedPhaseBodies: PhaseBodies | undefined;
+void import("./phaseBodies").then((m) => (loadedPhaseBodies = m));
+
+function usePhaseBodies() {
+  const [bodies, setBodies] = useState(() => loadedPhaseBodies);
+  useEffect(() => {
+    if (bodies) return;
+    let cancelled = false;
+    void import("./phaseBodies").then((m) => {
+      loadedPhaseBodies = m;
+      if (!cancelled) startTransition(() => setBodies(m));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bodies]);
+  return bodies;
+}
 
 const classNames: { [phase in BootPhase]?: string } = {
   [BootPhaseEnum.joining_gossip]: styles.gossip,
@@ -45,6 +70,7 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
   const setBootProgressContainerEl = useSetAtom(bootProgressContainerElAtom);
   const showStartupProgress = useAtomValue(showStartupProgressAtom);
   const isStartupProgressExpanded = useAtomValue(isStartupProgressExpandedAtom);
+  const bodies = usePhaseBodies();
 
   const phaseClass = phase ? classNames[phase] : "";
 
@@ -79,10 +105,18 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
         mx="auto"
         px={isNarrow ? "20px" : "89px"}
       >
-        {(phase === BootPhaseEnum.loading_full_snapshot ||
-          phase === BootPhaseEnum.loading_incremental_snapshot) && <Snapshot />}
-        {phase === BootPhaseEnum.catching_up && <CatchingUp />}
-        {phase === BootPhaseEnum.waiting_for_supermajority && <Supermajority />}
+        {bodies && (
+          <>
+            {(phase === BootPhaseEnum.loading_full_snapshot ||
+              phase === BootPhaseEnum.loading_incremental_snapshot) && (
+              <bodies.Snapshot />
+            )}
+            {phase === BootPhaseEnum.catching_up && <bodies.CatchingUp />}
+            {phase === BootPhaseEnum.waiting_for_supermajority && (
+              <bodies.Supermajority />
+            )}
+          </>
+        )}
 
         <Box pb="20px" />
       </Flex>
