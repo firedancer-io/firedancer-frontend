@@ -37,6 +37,25 @@ function stripOtherClientPreloads(): Plugin {
   };
 }
 
+// Drop the index.html static splash unless building Firedancer (the
+// React splash that adopts it is Firedancer-only).
+function stripStaticSplash(): Plugin {
+  const keep = process.env.VITE_VALIDATOR_CLIENT?.trim() === "Firedancer";
+  return {
+    name: "strip-static-splash",
+    transformIndexHtml: {
+      order: "pre",
+      handler: (html) =>
+        keep
+          ? html
+          : html.replace(
+              /[ \t]*<!-- fd-splash-start -->[\s\S]*?<!-- fd-splash-end -->\n/g,
+              "",
+            ),
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   server: {
@@ -90,6 +109,7 @@ export default defineConfig({
   },
   plugins: [
     stripOtherClientPreloads(),
+    stripStaticSplash(),
     react(),
     svgr(),
     TanStackRouterVite({ quoteStyle: "double", semicolons: true }),
