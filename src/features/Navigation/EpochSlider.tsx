@@ -2,7 +2,7 @@ import { Box, Flex, Text } from "@radix-ui/themes";
 import type { RefObject } from "react";
 import { memo, useCallback, useEffect } from "react";
 import type { Epoch } from "../../api/types";
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import {
   currentLeaderSlotAtom,
   epochAtom,
@@ -122,10 +122,20 @@ export default memo(EpochSlider);
 function EpochSlider() {
   const epoch = useAtomValue(epochAtom);
   const setSlotOverride = useSetAtom(slotOverrideAtom);
-  const [value, setValue] = useState([0]);
+  // position from live data on the mount commit when it is already
+  // known; the sync effect below only handles later movement
+  const [value, setValue] = useState(() => [
+    pctToValue(
+      slotToEpochPct({
+        slot: getDefaultStore().get(currentLeaderSlotAtom),
+        epochStartSlot: getDefaultStore().get(epochAtom)?.start_slot,
+        epochEndSlot: getDefaultStore().get(epochAtom)?.end_slot,
+      }),
+    ),
+  ]);
   // CLS: the thumb renders hidden at the track bottom until the first
   // data-driven position lands, so it never teleports on first data
-  const [thumbPositioned, setThumbPositioned] = useState(false);
+  const [thumbPositioned, setThumbPositioned] = useState(value[0] > 0);
   const isSliderChangingValueRef = useRef(false);
   const setIsScrolling = useSetAtom(isScrollingAtom);
 

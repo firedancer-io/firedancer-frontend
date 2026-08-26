@@ -1,8 +1,5 @@
 .slots-list {
   scrollbar-width: none;
-  &.hidden {
-    visibility: hidden;
-  }
 }
 
 .no-slots-text {

@@ -1,4 +1,4 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import {
   autoScrollAtom,
   currentLeaderSlotAtom,
@@ -20,7 +20,6 @@ import { Virtuoso } from "react-virtuoso";
 import ResetLive from "./ResetLive";
 import type { DebouncedState } from "use-debounce";
 import { useDebouncedCallback } from "use-debounce";
-import clsx from "clsx";
 import {
   getAllSlotsListProps,
   getMySlotsListProps,
@@ -61,17 +60,31 @@ function InnerSlotsList({
   const listRef = useRef<VirtuosoHandle>(null);
   const visibleStartIndexRef = useRef<number | null>(null);
 
-  const [hideList, setHideList] = useState(true);
   const [showPlaceholder, setShowPlaceholder] = useState(true);
 
+  // Mount the list one frame after the containing commit, already
+  // positioned at the live slot with the viewport's rows rendered
+  // synchronously (initialItemCount): no measure pass, no post-mount
+  // scroll settle, no hide-for-100ms jump hack.  Rendering the rows
+  // inside the first data commit itself measured +100ms on that commit
+  // at 4x CPU, and leaving them to the resize-observer pass let heavy
+  // post-reveal flushes starve them past 2.9s, so the deliberate
+  // one-frame follower is the fastest reliable variant.
+  const [renderList, setRenderList] = useState(false);
   useEffect(() => {
-    // initially hide list to
-    const timeout = setTimeout(() => {
-      setHideList(false);
-    }, 100);
-
-    return () => clearTimeout(timeout);
+    const raf = requestAnimationFrame(() => setRenderList(true));
+    return () => cancelAnimationFrame(raf);
   }, []);
+
+  const [initialTopMostItemIndex] = useState(() => {
+    const currentLeaderSlot = getDefaultStore().get(currentLeaderSlotAtom);
+    const slotIndex =
+      currentLeaderSlot === undefined
+        ? undefined
+        : getIndexForSlot(currentLeaderSlot);
+    return slotIndex ? Math.max(0, slotIndex - slotsListPinnedSlotOffset) : 0;
+  });
+  const initialItemCount = Math.min(itemsCount, Math.ceil(height / 42) + 1);
 
   const setSlotOverride = useSetAtom(slotOverrideAtom);
 
@@ -162,23 +175,30 @@ function InnerSlotsList({
       />
       {showPlaceholder && <MSlotsPlaceholder width={width} height={height} />}
       <ResetLive />
-      <Virtuoso
-        ref={listRef}
-        className={clsx(styles.slotsList, { [styles.hidden]: hideList })}
-        width={width}
-        height={height}
-        totalCount={itemsCount}
-        increaseViewportBy={increaseViewportBy}
-        // height of past slots that the user is most likely to scroll through
-        defaultItemHeight={42}
-        skipAnimationFrameInResizeObserver
-        computeItemKey={computeItemKey}
-        itemContent={getItemContent}
-        rangeChanged={rangeChanged}
-        components={{ ScrollSeekPlaceholder: MScrollSeekPlaceHolder }}
-        scrollSeekConfiguration={scrollSeekConfiguration}
-        totalListHeightChanged={totalListHeightChanged}
-      />
+      {renderList && (
+        <Virtuoso
+          ref={listRef}
+          className={styles.slotsList}
+          width={width}
+          height={height}
+          totalCount={itemsCount}
+          initialTopMostItemIndex={initialTopMostItemIndex}
+          initialItemCount={initialItemCount}
+          // estimate-consistent offset so the rows are on screen in the
+          // mount paint, not after the async scroll-to-index settles
+          initialScrollTop={initialTopMostItemIndex * 42}
+          increaseViewportBy={increaseViewportBy}
+          // height of past slots that the user is most likely to scroll through
+          defaultItemHeight={42}
+          skipAnimationFrameInResizeObserver
+          computeItemKey={computeItemKey}
+          itemContent={getItemContent}
+          rangeChanged={rangeChanged}
+          components={{ ScrollSeekPlaceholder: MScrollSeekPlaceHolder }}
+          scrollSeekConfiguration={scrollSeekConfiguration}
+          totalListHeightChanged={totalListHeightChanged}
+        />
+      )}
     </Box>
   );
 }
