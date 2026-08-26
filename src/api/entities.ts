@@ -962,10 +962,11 @@ const peerUpdateGossipSchema = z.object({
 const peerUpdateVoteAccountSchema = z.object({
   vote_account: z.string(),
   activated_stake: z.coerce.bigint(),
-  last_vote: z.nullable(z.number()),
-  root_slot: z.nullable(z.number()),
-  epoch_credits: z.number(),
-  commission: z.number(),
+  // Frankendancer only, omitted by the Firedancer client
+  last_vote: z.nullable(z.number()).optional(),
+  root_slot: z.nullable(z.number()).optional(),
+  epoch_credits: z.number().optional(),
+  commission: z.number().optional(),
   delinquent: z.boolean(),
 });
 
