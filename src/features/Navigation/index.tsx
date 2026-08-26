@@ -10,6 +10,7 @@ import {
   logoWidth,
   narrowNavMedia,
   slotsNavSpacing,
+  slotsNavBottomPadding,
   navToggleHeight,
   maxZIndex,
   slotsListWidth,
@@ -17,13 +18,12 @@ import {
   slotNavWidth,
   slotNavWithoutListWidth,
 } from "../../consts";
-import AutoSizer from "react-virtualized-auto-sizer";
 import NavFilterToggles from "./NavFilterToggles";
 import EpochSlider from "./EpochSlider";
 import clsx from "clsx";
 import styles from "./navigation.module.css";
 import NavCollapseToggle from "./NavCollapseToggle";
-import { useMedia } from "react-use";
+import { useMedia, useWindowSize } from "react-use";
 import { useSlotsNavigation } from "../../hooks/useSlotsNavigation";
 import { selectedSlotAtom } from "../Overview/SlotPerformance/atoms";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -48,6 +48,19 @@ export default function Navigation() {
     return showOnlyEpochBar ? slotNavWithoutListWidth : slotNavWidth;
   }, [showOnlyEpochBar]);
 
+  // everything around the list is fixed-size except the viewport, so
+  // its box derives from constants: no AutoSizer measure pass, no
+  // second commit before the rows can mount
+  const { height: windowHeight } = useWindowSize();
+  const listHeight = Math.max(
+    0,
+    windowHeight -
+      top -
+      slotsNavBottomPadding -
+      navToggleHeight -
+      slotsNavSpacing,
+  );
+
   return (
     <>
       <SyncSlotOverrideWithSelectedSlot />
@@ -67,12 +80,12 @@ export default function Navigation() {
           })}
           style={{
             zIndex: maxZIndex - 1,
+            paddingBottom: `${slotsNavBottomPadding}px`,
           }}
           top={`${top}px`}
           height={`calc(100vh - ${top}px)`}
           ml={`${-thumbPadding}px`}
           pl={`${thumbPadding}px`}
-          pb="2"
         >
           <Flex
             flexShrink="0"
@@ -100,11 +113,7 @@ export default function Navigation() {
             >
               <NavFilterToggles />
               <Flex flexGrow="1">
-                <AutoSizer>
-                  {({ height, width }) => (
-                    <SlotsList width={width} height={height} />
-                  )}
-                </AutoSizer>
+                <SlotsList width={slotsListWidth} height={listHeight} />
               </Flex>
             </Flex>
           )}

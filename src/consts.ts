@@ -71,6 +71,9 @@ export const headerSpacing = 13;
 export const navToggleHeight = 21;
 export const largeNavToggleHeight = 28;
 export const slotsNavSpacing = 5;
+// was radix pb="2" (7px at 90% scaling); explicit so the slots list
+// height derives from constants instead of an AutoSizer measure pass
+export const slotsNavBottomPadding = 7;
 
 export const logoWidth = 21;
 export const logoRightSpacing = 8;
