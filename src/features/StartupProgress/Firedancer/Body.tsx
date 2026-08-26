@@ -1,6 +1,6 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import styles from "./body.module.css";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   bootProgressPhaseAtom,
   isStartupProgressExpandedAtom,
@@ -12,7 +12,6 @@ import Header from "../../Header/index";
 import { BootPhaseEnum } from "../../../api/entityEnums";
 import { bootProgressContainerElAtom } from "../../../atoms";
 import type { BootPhase } from "../../../api/types";
-import Logo from "./Logo";
 import { appMaxWidth } from "../../../consts";
 import Snapshot from "./Snapshot";
 import CatchingUp from "./CatchingUp";
@@ -36,12 +35,7 @@ export default function Body() {
     setShowStartupProgress(phase !== "running");
   }, [setShowStartupProgress, phase]);
 
-  return (
-    <>
-      {phase && <BootProgressContent phase={phase} />}
-      <Logo />
-    </>
-  );
+  return phase ? <BootProgressContent phase={phase} /> : null;
 }
 
 interface BootProgressContentProps {
@@ -56,13 +50,22 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
 
   const isNarrow = useMedia("(max-width: 750px)");
 
+  // only expand once a boot phase is seen; a load into an already
+  // running validator stays collapsed from the mount commit (the
+  // showStartupProgress mirror lags a commit and would flash it)
+  const everBooting = useRef(false);
+  if (phase !== BootPhaseEnum.running) everBooting.current = true;
+
   return (
     <Flex
       direction="column"
       ref={(el: HTMLDivElement) => setBootProgressContainerEl(el)}
       overflowY="auto"
       className={clsx(styles.container, phaseClass, {
-        [styles.collapsed]: !showStartupProgress || !isStartupProgressExpanded,
+        [styles.collapsed]:
+          !everBooting.current ||
+          !showStartupProgress ||
+          !isStartupProgressExpanded,
       })}
     >
       <Header isStartup />

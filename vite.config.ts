@@ -38,25 +38,6 @@ function stripOtherClientPreloads(client: string | undefined): Plugin {
   };
 }
 
-// Drop the index.html static splash unless building Firedancer (the
-// React splash that adopts it is Firedancer-only).
-function stripStaticSplash(client: string | undefined): Plugin {
-  const keep = client === "Firedancer";
-  return {
-    name: "strip-static-splash",
-    transformIndexHtml: {
-      order: "pre",
-      handler: (html) =>
-        keep
-          ? html
-          : html.replace(
-              /[ \t]*<!-- fd-splash-start -->[\s\S]*?<!-- fd-splash-end -->\n/g,
-              "",
-            ),
-    },
-  };
-}
-
 // Extract the zstd wasm that @oneidentity/zstd-js inlines as a base64 data
 // URI into a binary asset fetched in parallel with worker startup.  The
 // package's ZstdInit calls its emscripten factory with no Module argument,
@@ -251,7 +232,6 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       stripOtherClientPreloads(client),
-      stripStaticSplash(client),
       earlyWebsocket(client, devWsUrl, wsCompress),
       react(),
       svgr(),
