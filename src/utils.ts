@@ -22,15 +22,20 @@ import {
 import memoize from "micro-memoize";
 import { isFiredancer } from "./client";
 
-export function getLeaderSlots(epoch: Epoch, pubkey: string) {
-  const schedule = epoch.leader_slots;
-  const leaderSlots: number[] = [];
-  for (let i = 0; i < schedule.length; i++) {
-    if (epoch.staked_pubkeys[schedule[i]] === pubkey)
-      leaderSlots.push(i * slotsPerLeader + epoch.start_slot);
-  }
-  return leaderSlots;
-}
+// memoized: the full leader_slots scan (~100k entries) is called
+// repeatedly with identical args in the reveal window (atoms + rows)
+export const getLeaderSlots = memoize(
+  (epoch: Epoch, pubkey: string) => {
+    const schedule = epoch.leader_slots;
+    const leaderSlots: number[] = [];
+    for (let i = 0; i < schedule.length; i++) {
+      if (epoch.staked_pubkeys[schedule[i]] === pubkey)
+        leaderSlots.push(i * slotsPerLeader + epoch.start_slot);
+    }
+    return leaderSlots;
+  },
+  { maxSize: 8 },
+);
 
 // lodash kebabCase/startCase equivalents for ASCII identifier/enum
 // strings (the only inputs this app has); pinned by tests against lodash
