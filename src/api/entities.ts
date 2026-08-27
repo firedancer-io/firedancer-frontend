@@ -139,12 +139,36 @@ export const activeForkCountSchema = z.number();
 
 export const estimatedSlotDurationSchema = z.number();
 
-export const estimatedTpsSchema = z.object({
-  total: z.number(),
-  vote: z.number(),
-  nonvote_success: z.number(),
-  nonvote_failed: z.number(),
-});
+export const towerEstimatedTpsSchema = z
+  .object({
+    total: z.number(),
+    vote: z.number(),
+    nonvote_success: z.number(),
+    nonvote_failed: z.number(),
+  })
+  .transform(({ total, vote, nonvote_success, nonvote_failed }) => ({
+    total,
+    vote,
+    success: nonvote_success,
+    failed: nonvote_failed,
+  }));
+
+export const alpenglowEstimatedTpsSchema = z
+  .object({
+    success: z.number(),
+    failed: z.number(),
+  })
+  .transform(({ success, failed }) => ({
+    total: success + failed,
+    vote: 0,
+    success,
+    failed,
+  }));
+
+export const estimatedTpsSchema = z.union([
+  towerEstimatedTpsSchema,
+  alpenglowEstimatedTpsSchema,
+]);
 
 export const liveNetworkMetricsSchema = z.object({
   ingress: z.array(z.number()),
@@ -545,13 +569,34 @@ export const slotPublishSchema = z.union([
   alpenglowSlotPublishSchema,
 ]);
 
-export const tpsHistorySchema = z.array(
-  z.tuple([
+export const towerTpsSampleSchema = z
+  .tuple([
     z.number(), // total
     z.number(), // vote
     z.number(), // nonvote_success
     z.number(), // nonvote_failed
-  ]),
+  ])
+  .transform(([total, vote, nonvote_success, nonvote_failed]) => ({
+    total,
+    vote,
+    success: nonvote_success,
+    failed: nonvote_failed,
+  }));
+
+export const alpenglowTpsSampleSchema = z
+  .tuple([
+    z.number(), // success
+    z.number(), // failed
+  ])
+  .transform(([success, failed]) => ({
+    total: success + failed,
+    vote: 0,
+    success,
+    failed,
+  }));
+
+export const tpsHistorySchema = z.array(
+  z.union([towerTpsSampleSchema, alpenglowTpsSampleSchema]),
 );
 
 export const voteStateSchema = z.enum(["voting", "non-voting", "delinquent"]);
