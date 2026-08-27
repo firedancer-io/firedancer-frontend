@@ -166,6 +166,59 @@ describe("applyWorkerMessage (module-level, no React)", () => {
     ]);
   });
 
+  test("lite accounts stats keep the previous tables until a full frame", async () => {
+    const { applyWorkerMessage, apiAtoms, store } = await boot();
+    const aggregates = {
+      sample_time_nanos: 1,
+      disk: {} as never,
+      compaction: {} as never,
+      cache: {} as never,
+      io: {} as never,
+    };
+    const tile = { name: "exec" } as never;
+    const partition = { partition_idx: 0 } as never;
+
+    // lite frame first (connect burst): tables default empty
+    applyWorkerMessage(
+      kvb([{ topic: "accounts", key: "stats", value: aggregates }]),
+    );
+    expect(store.get(apiAtoms.accountsStatsAtom)).toMatchObject({
+      tiles: [],
+      partitions: [],
+    });
+
+    // full frame carries tables
+    applyWorkerMessage(
+      kvb([
+        {
+          topic: "accounts",
+          key: "stats",
+          value: { ...aggregates, tiles: [tile], partitions: [partition] },
+        },
+      ]),
+    );
+    expect(store.get(apiAtoms.accountsStatsAtom)).toMatchObject({
+      tiles: [tile],
+      partitions: [partition],
+    });
+
+    // a later lite frame updates aggregates but keeps the tables
+    applyWorkerMessage(
+      kvb([
+        {
+          topic: "accounts",
+          key: "stats",
+          value: { ...aggregates, sample_time_nanos: 2 },
+        },
+      ]),
+    );
+    expect(store.get(apiAtoms.accountsStatsAtom)).toMatchObject({
+      sample_time_nanos: 2,
+      tiles: [tile],
+      partitions: [partition],
+    });
+  });
+
   test("later peers updates flow through the debounced buffer", async () => {
     const { applyWorkerMessage, rootAtoms, store } = await boot();
 

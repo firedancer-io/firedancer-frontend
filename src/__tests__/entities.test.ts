@@ -280,6 +280,68 @@ describe("dual-format wire tolerance", () => {
     expect(liveShredsSchema.safeParse(shreds([true])).success).toBe(false);
   });
 
+  it("accounts stats: tables optional (lite burst) or present (full)", () => {
+    const aggregates = {
+      sample_time_nanos: 1724800000000000,
+      disk: {
+        accounts_total: 4,
+        accounts_capacity: 8,
+        allocated_bytes: 100,
+        current_bytes: 90,
+        used_bytes: 80,
+      },
+      compaction: {
+        in_compaction: 0,
+        compactions_requested: 1,
+        compactions_completed: 1,
+        accounts_relocated_bytes: 2,
+        relocated_bytes_per_sec: 0.5,
+        next_compaction_remaining_seconds: null,
+        next_compaction_partition_idx: null,
+      },
+      cache: { hit_rate_ema: 0.99, size_bytes: 1024, classes: [] },
+      io: {
+        acquired: 1,
+        acquired_writable: 1,
+        bytes_read: 1,
+        bytes_copied: 1,
+        bytes_written: 1,
+        bytes_written_accdb: 1,
+        read_ops: 1,
+        write_ops: 1,
+        acquired_per_sec: 1,
+        acquired_writable_per_sec: 1,
+        bytes_read_per_sec: 1,
+        bytes_copied_per_sec: 1,
+        bytes_written_per_sec: 1,
+        read_ops_per_sec: 1,
+        write_ops_per_sec: 1,
+        prewrite_ratio: 0,
+      },
+    };
+    const lite = WsMessageSchema.safeParse(
+      frame("accounts", "stats", aggregates),
+    );
+    expect(lite.success).toBe(true);
+    if (lite.success && lite.data.topic === "accounts") {
+      expect(lite.data.value.tiles).toBeUndefined();
+      expect(lite.data.value.partitions).toBeUndefined();
+    }
+
+    const full = WsMessageSchema.safeParse(
+      frame("accounts", "stats", {
+        ...aggregates,
+        tiles: [],
+        partitions: [],
+      }),
+    );
+    expect(full.success).toBe(true);
+    if (full.success && full.data.topic === "accounts") {
+      expect(full.data.value.tiles).toEqual([]);
+      expect(full.data.value.partitions).toEqual([]);
+    }
+  });
+
   it("slot batch: columnar arrays become slot:update-shaped rows", () => {
     const cols = {
       slot: [331355000, 331355001],

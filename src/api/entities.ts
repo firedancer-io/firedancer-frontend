@@ -1429,14 +1429,18 @@ export const accountsPartitionSchema = z.object({
   is_write_head: z.boolean(),
 });
 
+// tiles/partitions optional: the upcoming backend's connect-burst frame
+// carries only the overview aggregates, with the tables riding the next
+// periodic full frame; the apply layer keeps the previous tables when a
+// frame omits them
 export const accountsStatsSchema = z.object({
   sample_time_nanos: z.number(),
   disk: accountsDiskSchema,
   compaction: accountsCompactionSchema,
   cache: accountsCacheSchema,
   io: accountsIoSchema,
-  tiles: z.array(accountsTileSchema),
-  partitions: z.array(accountsPartitionSchema),
+  tiles: z.optional(z.array(accountsTileSchema)),
+  partitions: z.optional(z.array(accountsPartitionSchema)),
 });
 
 export const accountsSchema = z.discriminatedUnion("key", [

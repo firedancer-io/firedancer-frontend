@@ -727,7 +727,14 @@ export function applyWsEntity(item: WsEntity) {
     case "accounts": {
       switch (key) {
         case "stats": {
-          store.set(accountsStatsAtom, value);
+          // lite frames (connect burst) omit the tables; keep the
+          // previous ones until the next full frame carries them
+          const prev = store.get(accountsStatsAtom);
+          store.set(accountsStatsAtom, {
+            ...value,
+            tiles: value.tiles ?? prev?.tiles ?? [],
+            partitions: value.partitions ?? prev?.partitions ?? [],
+          });
           break;
         }
       }

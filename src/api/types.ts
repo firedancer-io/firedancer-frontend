@@ -230,7 +230,10 @@ export type TurbineHealth = z.infer<typeof turbineHealthSchema>;
 
 export type IsAlpenglow = z.infer<typeof isAlpenglowSchema>;
 
-export type AccountsStats = z.infer<typeof accountsStatsSchema>;
+// Wire frames may omit the tables (lite burst frame); the apply layer
+// backfills them, so the stored shape always carries arrays
+export type AccountsStats = z.infer<typeof accountsStatsSchema> &
+  Required<Pick<z.infer<typeof accountsStatsSchema>, "tiles" | "partitions">>;
 export type AccountsPartition = z.infer<typeof accountsPartitionSchema>;
 export type PartitionTier = z.infer<typeof partitionTierSchema>;
 export type CompactionState = z.infer<typeof compactionStateSchema>;
