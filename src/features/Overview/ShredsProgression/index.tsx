@@ -48,8 +48,21 @@ function ShredsChartWebGl(props: WebGlChartProps) {
   return Chart ? <Chart {...props} /> : <Box height={props.height} />;
 }
 
-export default function ShredsProgression() {
+/**
+ * Mounted only when the offscreen path is unavailable, so the lazy
+ * WebGL2 probe behind isWebgl2SupportedAtom runs on first actual need
+ * rather than during the reveal render.
+ */
+function ShredsChartFallback(props: WebGlChartProps) {
   const webgl2Supported = useAtomValue(isWebgl2SupportedAtom);
+  return webgl2Supported ? (
+    <ShredsChartWebGl {...props} />
+  ) : (
+    <ShredsChartCanvas {...props} isOnStartupScreen={false} />
+  );
+}
+
+export default function ShredsProgression() {
   const offscreenFailed = useAtomValue(offscreenChartFailedAtom);
 
   if (isFrankendancer) return;
@@ -67,14 +80,8 @@ export default function ShredsProgression() {
             height="400px"
             chartId="overview-shreds-chart"
           />
-        ) : webgl2Supported ? (
-          <ShredsChartWebGl height="400px" chartId="overview-shreds-chart" />
         ) : (
-          <ShredsChartCanvas
-            height="400px"
-            chartId="overview-shreds-chart"
-            isOnStartupScreen={false}
-          />
+          <ShredsChartFallback height="400px" chartId="overview-shreds-chart" />
         )}
       </Flex>
     </Card>
