@@ -32,10 +32,11 @@ interface QueryBatch {
 export function useReplayShredsQuery(getWorldRangeNs: () => NsTsRange) {
   const wsSend = useWebSocketSend();
   const addTimelineShreds = useSetAtom(timelineShredsAtoms.addShredEvents);
+  const clearShreds = useSetAtom(timelineShredsAtoms.deleteSlots);
 
   const tilesRef = useRef<Record<ShredsGranularity, TilesState>>({
     [ShredsGranularityEnum.fec]: { fetched: new Set(), pending: new Set() },
-    [ShredsGranularityEnum.shreds]: { fetched: new Set(), pending: new Set() },
+    [ShredsGranularityEnum.shred]: { fetched: new Set(), pending: new Set() },
   });
 
   // TODO: cancel when validator disconnects
@@ -153,6 +154,25 @@ export function useReplayShredsQuery(getWorldRangeNs: () => NsTsRange) {
       const [startNs, endNs] = visibleRangeNs;
       if (endNs < startNs) return;
 
+      // On a granularity switch, the shared slot store and per-granularity tile
+      // cache fall out of sync: the store only holds one granularity per slot,
+      // and already-fetched tiles would short-circuit re-querying, leaving stale
+      // bars from the previous granularity. Wipe both so the new granularity
+      // fetches and renders fresh.
+      if (
+        lastQueryRef.current &&
+        lastQueryRef.current.granularity !== granularity
+      ) {
+        clearShreds(true, false, true);
+        for (const tiles of Object.values(tilesRef.current)) {
+          tiles.fetched.clear();
+          tiles.pending.clear();
+        }
+        // drop in-flight batches so late responses from the old granularity
+        // don't land in the freshly-cleared store
+        pendingBatchesRef.current.clear();
+      }
+
       lastQueryRef.current = { visibleRangeNs, granularity };
 
       // world tile bounds: never query outside the range where data exists
@@ -170,7 +190,7 @@ export function useReplayShredsQuery(getWorldRangeNs: () => NsTsRange) {
 
       queryTileRange(firstTile, lastTile, granularity);
     },
-    [queryTileRange],
+    [queryTileRange, clearShreds],
   );
 
   useTimelineServerMessage(
@@ -220,5 +240,5 @@ export function useReplayShredsQuery(getWorldRangeNs: () => NsTsRange) {
 export function getNonAggGranularity(windowSizeMs: number) {
   return windowSizeMs > 6_000
     ? ShredsGranularityEnum.fec
-    : ShredsGranularityEnum.shreds;
+    : ShredsGranularityEnum.shred;
 }

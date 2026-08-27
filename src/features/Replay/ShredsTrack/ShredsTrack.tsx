@@ -30,7 +30,7 @@ import type { AggGranularity, ShredsGranularity } from "../../../api/types.ts";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
 import { timelineShredsAtoms } from "./atoms.ts";
 
-const height = 500;
+const height = 200;
 const chartId = "shreds-track";
 
 interface ShredsTrackProps
