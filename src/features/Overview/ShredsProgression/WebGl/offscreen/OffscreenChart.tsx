@@ -229,28 +229,43 @@ function OffscreenShredsChart({
     sendState();
     sendSkipped();
 
+    // rAF-coalesced label application: frames arrive per worker timer
+    // tick, not per display frame -- latest frame wins, stale ones drop,
+    // and the DOM writes land frame-aligned instead of mid-task
+    let pendingLabels: Extract<FromChartWorker, { type: "labels" }> | null =
+      null;
+    let labelsRaf = 0;
+    const applyLabels = () => {
+      labelsRaf = 0;
+      const msg = pendingLabels;
+      pendingLabels = null;
+      if (!msg) return;
+      // feed the DOM label skeleton's range (equality-guarded: the
+      // frames arrive per draw tick, the range changes per leader)
+      const prevRange = store.get(offscreenLeaderSlotsRangeAtom);
+      if (
+        prevRange?.min !== msg.leaderRange.min ||
+        prevRange?.max !== msg.leaderRange.max
+      ) {
+        store.set(offscreenLeaderSlotsRangeAtom, msg.leaderRange);
+      }
+      const { prevLabels, tempNewLabels } = labelsRef.current;
+      applyLabelFrame(msg.frame, prevLabels, tempNewLabels);
+      // switch map for reuse, don't create new maps each frame
+      labelsRef.current = {
+        prevLabels: tempNewLabels,
+        tempNewLabels: prevLabels,
+      };
+      prevLabels.groups.clear();
+      prevLabels.slots.clear();
+    };
+
     worker.onmessage = (e: MessageEvent<FromChartWorker>) => {
       const msg = e.data;
       switch (msg.type) {
         case "labels": {
-          // feed the DOM label skeleton's range (equality-guarded: the
-          // frames arrive per draw tick, the range changes per leader)
-          const prevRange = store.get(offscreenLeaderSlotsRangeAtom);
-          if (
-            prevRange?.min !== msg.leaderRange.min ||
-            prevRange?.max !== msg.leaderRange.max
-          ) {
-            store.set(offscreenLeaderSlotsRangeAtom, msg.leaderRange);
-          }
-          const { prevLabels, tempNewLabels } = labelsRef.current;
-          applyLabelFrame(msg.frame, prevLabels, tempNewLabels);
-          // switch map for reuse, don't create new maps each frame
-          labelsRef.current = {
-            prevLabels: tempNewLabels,
-            tempNewLabels: prevLabels,
-          };
-          prevLabels.groups.clear();
-          prevLabels.slots.clear();
+          pendingLabels = msg;
+          if (!labelsRaf) labelsRaf = requestAnimationFrame(applyLabels);
           break;
         }
         case "initFailed":
@@ -276,6 +291,8 @@ function OffscreenShredsChart({
 
     return () => {
       for (const unsub of unsubs) unsub();
+      if (labelsRaf) cancelAnimationFrame(labelsRaf);
+      pendingLabels = null;
       clearTimeout(restoreTimerRef.current);
       restoreTimerRef.current = undefined;
       port?.close();
