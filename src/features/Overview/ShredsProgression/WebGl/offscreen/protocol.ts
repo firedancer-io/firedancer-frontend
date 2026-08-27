@@ -31,7 +31,11 @@ export type ToChartWorker =
 export type ShredsPortMessage =
   | { type: "shreds"; value: LiveShreds }
   // wsWorker's cache of everything that arrived before the port attached
-  | { type: "seed"; data: LiveShredsData };
+  | { type: "seed"; data: LiveShredsData }
+  // first server_time_nanos of the connection, sent at wire-decode time:
+  // the main-thread state relay lands ~30-90ms later on a cold boot and
+  // it is the last gate before the chart's first draw
+  | { type: "serverTime"; serverTimeMs: number };
 
 /** Shreds chart worker -> main thread */
 export type FromChartWorker =

@@ -133,9 +133,21 @@ const scheduleFrame: (cb: (time: number) => void) => void = (() => {
 function tick(time: number) {
   scheduleFrame(tick);
 
+  if (time - lastRedraw < REDRAW_INTERVAL_MS) return;
+  draw(time);
+}
+
+// The timer ladder adds up to a tick of latency after the last draw
+// gate unlocks; the gate-feeding messages call this so the first frame
+// presents in the same task instead.
+let presented = false;
+function presentNow() {
+  if (!presented) draw(performance.now());
+}
+
+function draw(time: number) {
   if (!objs || contextLost) return;
   if (width <= 0 || height <= 0) return;
-  if (time - lastRedraw < REDRAW_INTERVAL_MS) return;
   lastRedraw = time;
 
   const {
@@ -182,6 +194,7 @@ function tick(time: number) {
     skippedSlots,
     xRange,
   );
+  presented = true;
   post({ type: "labels", frame, leaderRange });
 }
 
@@ -207,17 +220,20 @@ const handleMessage = (e: MessageEvent<ToChartWorker>) => {
         forceDraw = true;
         minDirtySlot = -Infinity;
       }
+      presentNow();
       break;
     case "scale":
       scale = msg.scale;
       break;
     case "state":
-      serverTimeMs = msg.serverTimeMs;
+      // a pre-boot relay must not clear the port-bootstrapped time
+      if (msg.serverTimeMs != null) serverTimeMs = msg.serverTimeMs;
       showStartup = msg.showStartup;
       slotCaughtUp = msg.slotCaughtUp;
       if (msg.disconnected) {
         shredsCalc.resetDataAndClearDeleteTimeout();
       }
+      presentNow();
       break;
     case "skipped": {
       const next = new Set(msg.slots);
@@ -239,6 +255,10 @@ const handleMessage = (e: MessageEvent<ToChartWorker>) => {
           shredsCalc.seed(pm.data);
           minDirtySlot = -Infinity;
           forceDraw = true;
+          presentNow();
+        } else if (pm.type === "serverTime") {
+          serverTimeMs ??= pm.serverTimeMs;
+          presentNow();
         } else {
           addShreds(pm.value);
         }

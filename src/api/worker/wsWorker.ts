@@ -13,6 +13,7 @@ import { WsMessageSchema } from "./wsMessage";
 import { createMessageHandler } from "./messageHandler";
 import { fillEpochLeaderSlots } from "./epochLeaderSlots";
 import { createShredsCalc } from "./cache/shreds/shredsCalc";
+import { nsPerMs } from "../../consts";
 
 const reconnectDelayMs = 3_000;
 const flushDelayMs = 32; // ~30fps
@@ -69,6 +70,7 @@ function resetPeersHold() {
   mainSettled = false;
   peersRequested = false;
   revealRemaining = new Set(revealTokens);
+  shredsPortTimeSent = false;
 }
 
 /**
@@ -127,6 +129,9 @@ const handler = createMessageHandler((msg) => postMain(msg));
 
 // offscreen shreds chart port: live_shreds skip the main thread entirely
 let shredsPort: MessagePort | null = null;
+// one-shot serverTime bootstrap per connection/attach (steady-state
+// updates keep flowing via the main thread's state relay)
+let shredsPortTimeSent = false;
 
 /**
  * Worker-side shreds cache: seeds the chart worker's port with the
@@ -139,6 +144,19 @@ let mainShredsForced = false;
 
 function enqueue(item: WsEntity) {
   handler.onMessage(item);
+
+  if (
+    !shredsPortTimeSent &&
+    shredsPort &&
+    item.topic === "summary" &&
+    item.key === "server_time_nanos"
+  ) {
+    shredsPortTimeSent = true;
+    shredsPort.postMessage({
+      type: "serverTime",
+      serverTimeMs: Math.round(item.value / nsPerMs),
+    });
+  }
 
   if (item.topic === "peers") {
     if (item.key === "update") {
@@ -457,13 +475,21 @@ const onMainMessage = (e: MessageEvent<ToWorkerMessage>) => {
       handler.onConnectionChange({ type: "connecting" });
       break;
     }
-    case "shredsPort":
+    case "shredsPort": {
       shredsPort?.close();
       shredsPort = msg.port;
       // hand over everything that arrived before the chart attached
       if (shredsCalc.data.slotsShreds)
         shredsPort.postMessage({ type: "seed", data: shredsCalc.data });
+      const serverTimeNanos = handler.getValidatorState().serverTimeNanos;
+      shredsPortTimeSent = serverTimeNanos != null;
+      if (serverTimeNanos != null)
+        shredsPort.postMessage({
+          type: "serverTime",
+          serverTimeMs: Math.round(serverTimeNanos / nsPerMs),
+        });
       break;
+    }
     case "mainShreds":
       mainShredsForced = msg.enabled;
       // catch the fallback chart up with the events main never received
