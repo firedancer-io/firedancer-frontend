@@ -45,6 +45,7 @@ import type {
   VoteCommission,
   AggRevenue,
   TimelineTxnMeta,
+  AggShreds,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 import type { ValuesWithHistory } from "./worker/types";
@@ -204,9 +205,9 @@ export const healthAtom = atom<Health | undefined>(undefined);
 export const accountsStatsAtom = atom<AccountsStats | undefined>(undefined);
 
 export const aggRevenueAtom = atom<AggRevenue | undefined>(undefined);
-
 export const replayTxnMetaResponseAtom = atom<TimelineTxnMeta | undefined>(
   undefined,
 );
 
 export const replayTxnMetaErrorAtom = atom<string | undefined>(undefined);
+export const aggShredsAtom = atom<AggShreds | undefined>(undefined);

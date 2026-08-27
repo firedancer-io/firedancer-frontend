@@ -103,6 +103,7 @@ import {
   aggRevenueAtom,
   replayTxnMetaResponseAtom,
   replayTxnMetaErrorAtom,
+  aggShredsAtom,
 } from "./atoms";
 import {
   tpsSampleIntervalMs,
@@ -550,6 +551,7 @@ function useUpdateAtoms() {
 
   const setAggRevenue = useSetAtom(aggRevenueAtom);
   const setReplayTxnMeta = useSetAtom(replayTxnMetaResponseAtom);
+  const setAggShreds = useSetAtom(aggShredsAtom);
 
   const updateAtoms = useCallback(
     (item: WsEntity) => {
@@ -784,8 +786,9 @@ function useUpdateAtoms() {
         }
         case "timeline": {
           switch (key) {
-            case "query_agg_slots": {
-              // listen in component
+            case "query_agg_slots":
+            case "query_shreds": {
+              // handle in track components
               break;
             }
             case "query_agg_revenue": {
@@ -794,6 +797,10 @@ function useUpdateAtoms() {
             }
             case "query_txn_meta": {
               setReplayTxnMeta(value);
+              break;
+            }
+            case "query_agg_shreds": {
+              setAggShreds(value);
               break;
             }
           }
@@ -881,6 +888,7 @@ function useUpdateAtoms() {
       setBlockEngine,
       setAggRevenue,
       setReplayTxnMeta,
+      setAggShreds,
       setSupermajorityEpoch,
       addToSupermajorityPeersBuffers,
       setAccountsStats,

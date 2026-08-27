@@ -1,11 +1,10 @@
 import { useCallback } from "react";
 import { ascBucketGranularities, msBucketSizes } from "../const";
-import type { AggGranularity } from "../../../api/types";
 import { useWebSocketSend } from "../../../api/ws/utils";
+import type { AggGranularity } from "../../../api/types";
 import type { NsTsRange } from "../../WebGl/webglUtils";
 
-// TODO: throttle across revenue types
-export default function useAggRevenueQuery() {
+export default function useAggSlotsQuery() {
   const wsSend = useWebSocketSend();
 
   return useCallback(
@@ -13,7 +12,7 @@ export default function useAggRevenueQuery() {
       const [visibleStart, visibleEnd] = visibleRangeNs;
       wsSend({
         topic: "timeline",
-        key: "query_agg_revenue",
+        key: "query_agg_shreds",
         id: 32,
         params: {
           start_ns: visibleStart.toString(),
@@ -30,7 +29,7 @@ export default function useAggRevenueQuery() {
  * At most, how many buckets should be visible
  */
 const BUCKET_COUNT_THRESHOLD = 1000;
-export function getGranularity(windowSizeMs: number) {
+export function getAggGranularity(windowSizeMs: number) {
   return (
     ascBucketGranularities.find((g) => {
       return windowSizeMs < BUCKET_COUNT_THRESHOLD * msBucketSizes[g];

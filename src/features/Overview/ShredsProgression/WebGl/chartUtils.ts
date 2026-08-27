@@ -12,14 +12,11 @@ import {
   liveShredsDataAtom,
   liveShredsPostStartupRangeAtom,
   minDirtySlotByChartAtom,
+  type LiveShredsData,
 } from "../atoms";
 import { shredEventDescPriorities } from "../const";
 import { updateLabels } from "../shredsProgressionPlugin";
-import type {
-  RectMesh,
-  TsRange,
-  WebglResources,
-} from "../../../WebGl/webglUtils";
+import type { RectMesh, WebglResources } from "../../../WebGl/webglUtils";
 import {
   createRectMesh,
   updateRectMeshCount,
@@ -28,6 +25,7 @@ import {
   convertToWebGlColor,
   createWebglResources,
   disposeWebglResources,
+  createRenderer,
 } from "../../../WebGl/webglUtils";
 import {
   shredPublishedColor,
@@ -46,9 +44,8 @@ import {
   type LabelsState,
   type XRange,
 } from "../utils";
-import { MAX_WEBGL_PX_RATIO, msPerDay } from "../../../../consts";
+import { MAX_WEBGL_PX_RATIO } from "../../../../consts";
 import type { ContextHelpers } from "../../../WebGl/useWebGlEventHandlers";
-import { isWebgl2SupportedAtom } from "../../../WebGl/atoms";
 
 const store = getDefaultStore();
 
@@ -60,24 +57,26 @@ const tempEventPositions = new Map<
   { x: number; w: number }
 >();
 
-export type RendererObj = {
-  renderer: THREE.WebGLRenderer;
+export interface RendererResources {
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
   meshes: Map<number, RectMesh>;
   availableMeshes: RectMesh[];
-  worldTsRange: TsRange;
   // resources shared by this renderer's slot meshes
   resources: WebglResources;
-  cleanUpRenderer: () => void;
-};
+}
+
+export interface RendererObj extends RendererResources {
+  renderer: THREE.WebGLRenderer;
+  cleanUp: () => void;
+}
 
 const shredColor = (hex: string): [number, number, number, number] => [
   ...convertToWebGlColor(hex),
   SHREDS_OPACITY,
 ];
 
-const colors = {
+export const colors = {
   skipped: shredColor(shredSkippedColor),
   repairRequested: shredColor(shredRepairRequestedColor),
   receivedTurbine: shredColor(shredReceivedTurbineColor),
@@ -97,79 +96,109 @@ export function setUpRenderer(
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): RendererObj | undefined {
-  const serverTimeMs = store.get(serverTimeMsAtom);
-  if (serverTimeMs == null) return;
+  const rendererObj = createRenderer(
+    canvasHeight,
+    canvasWidth,
+    MAX_WEBGL_PX_RATIO,
+    setUpContextListeners,
+    getWasContextLost,
+  );
+  if (!rendererObj) return;
 
-  const referenceTs = store.get(liveShredsDataAtom)?.slotsShreds?.referenceTs;
-  if (referenceTs == null) return;
+  const { renderer, cleanUpRenderer } = rendererObj;
+  const {
+    camera,
+    scene,
+    meshes,
+    availableMeshes,
+    resources,
+    cleanUpResources,
+  } = setUpRendererResources(getWasContextLost);
 
-  const worldStartTs = serverTimeMs - xRangeMs - delayMs - referenceTs;
-  const worldEndTs = worldStartTs + 365 * msPerDay;
-  // store world range for future pause / pan
-  const worldTsRange: TsRange = [worldStartTs, worldEndTs];
+  const cleanUp = () => {
+    cleanUpResources();
+    cleanUpRenderer();
+  };
 
+  return {
+    renderer,
+    camera,
+    scene,
+    meshes,
+    availableMeshes,
+    resources,
+    cleanUp,
+  };
+}
+
+export function setUpRendererResources(
+  getWasContextLost: ContextHelpers["getWasContextLost"],
+) {
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(0, 0, 0, 0, 0.5, 10);
   camera.position.z = 1;
-
-  try {
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio, MAX_WEBGL_PX_RATIO),
-    );
-    renderer.setSize(canvasWidth, canvasHeight);
-    renderer.setClearColor(0x000000, 0);
-
-    const meshes = new Map<number, RectMesh>();
-    const availableMeshes: RectMesh[] = [];
-    const resources = createWebglResources();
-    renderer.render(scene, camera);
-    const clearContextListeners = setUpContextListeners(renderer.domElement);
-
-    const cleanUpRenderer = () => {
-      // If context was lost at some point, its GPU objects are already gone so skip objects disposal,
-      // to prevent warnings e.g. WebGL: INVALID_OPERATION: delete: object does not belong to this context
-      // Three doesn't restore GPU objects for restored contexts unless there's a render.
-      // Remount on restore to reset the context listeners state
-      if (!getWasContextLost()) {
-        for (const slotMesh of meshes.values()) {
-          slotMesh.mesh.geometry.dispose();
-        }
-        for (const slotMesh of availableMeshes) {
-          slotMesh.mesh.geometry.dispose();
-        }
-        // dispose this chart's own unitQuad / sharedMaterial
-        disposeWebglResources(resources);
-
-        renderer.dispose();
+  const meshes = new Map<number, RectMesh>();
+  const availableMeshes: RectMesh[] = [];
+  const resources = createWebglResources();
+  const cleanUpResources = () => {
+    // If context was lost at some point, its GPU objects are already gone so skip objects disposal,
+    // to prevent warnings e.g. WebGL: INVALID_OPERATION: delete: object does not belong to this context
+    // Three doesn't restore GPU objects for restored contexts unless there's a render.
+    // Remount on restore to reset the context listeners state
+    if (!getWasContextLost()) {
+      for (const slotMesh of meshes.values()) {
+        slotMesh.mesh.geometry.dispose();
       }
-
-      // release currently live context (may be the restored one)
-      // make sure context listeners are removed beforehand
-      clearContextListeners();
-      if (!renderer.getContext().isContextLost()) {
-        renderer.forceContextLoss();
+      for (const slotMesh of availableMeshes) {
+        slotMesh.mesh.geometry.dispose();
       }
-    };
+      disposeWebglResources(resources);
+    }
+  };
 
-    return {
-      renderer,
-      camera,
-      scene,
-      meshes,
-      availableMeshes,
-      worldTsRange,
-      resources,
-      cleanUpRenderer,
-    };
-  } catch {
-    // context creation can still fail despite the probe (e.g. too many live
-    // contexts, driver crash). Mark as unsupported to trigger fallback to canvas chart
-    store.set(isWebgl2SupportedAtom, false);
-  }
+  return {
+    camera,
+    scene,
+    meshes,
+    availableMeshes,
+    resources,
+    cleanUpResources,
+  };
 }
 
-export function draw(
+export function updateCameraXRange(
+  newVisibleTsRange: TsRange,
+  camera: THREE.OrthographicCamera,
+): boolean {
+  if (
+    camera.left === newVisibleTsRange[0] &&
+    camera.right === newVisibleTsRange[1]
+  ) {
+    return false;
+  }
+  camera.left = newVisibleTsRange[0];
+  camera.right = newVisibleTsRange[1];
+  camera.updateProjectionMatrix();
+  return true;
+}
+
+export function updateCameraYRange(
+  camera: THREE.OrthographicCamera,
+  maxShredCount: number,
+): boolean {
+  if (camera.bottom === -maxShredCount) return false;
+  camera.top = 0;
+  camera.bottom = -maxShredCount;
+  camera.updateProjectionMatrix();
+  return true;
+}
+
+export function render(rendererObj: RendererObj) {
+  const { renderer, scene, camera } = rendererObj;
+  renderer.render(scene, camera);
+}
+
+export function drawLiveShreds(
   chartId: string,
   prevTimeDiffsRef: MutableRefObject<number[]>,
   rendererObj: RendererObj,
@@ -182,14 +211,74 @@ export function draw(
   forceDraw: boolean,
   cssRange: [min: number, max: number],
 ) {
-  const {
-    slotsShreds: liveShreds,
-    range: slotRange,
-    minCompletedSlot,
-  } = store.get(liveShredsDataAtom) ?? {};
-  const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
+  const data = store.get(liveShredsDataAtom);
+  if (data.slotsShreds == null) return;
+
   const rangeAfterStartup = store.get(liveShredsPostStartupRangeAtom);
   const serverTimeMs = store.get(serverTimeMsAtom);
+  if (!rangeAfterStartup || serverTimeMs == null) return;
+
+  const adjustedNow = getAdjustedNow(serverTimeMs, prevTimeDiffsRef.current);
+  const maxReferenceTs = adjustedNow - data.slotsShreds.referenceTs;
+
+  const visibleTsRange: TsRange = [
+    maxReferenceTs - xRangeMs * scale,
+    maxReferenceTs,
+  ];
+
+  // update visible range
+  visibleTsRangeRef.current = visibleTsRange;
+  const cameraUpdated = updateCameraXRange(visibleTsRange, rendererObj.camera);
+
+  const xRange = drawShreds(
+    data,
+    visibleTsRange,
+    cssRange,
+    rendererObj,
+    forceDraw || cameraUpdated,
+    chartId,
+    store.get(skippedClusterSlotsAtom),
+  );
+
+  if (!xRange) return;
+
+  store.set(minDirtySlotByChartAtom, (prev) => {
+    prev.set(chartId, Infinity);
+    return prev;
+  });
+
+  const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
+  const { prevLabels, tempNewLabels } = labelsRef.current;
+  updateLabels(
+    rangeAfterStartup,
+    data.slotsShreds.slots,
+    skippedSlotsCluster,
+    xRange,
+    prevLabels,
+    tempNewLabels,
+  );
+  // switch map for reuse, don't create new maps each render
+  labelsRef.current = {
+    prevLabels: tempNewLabels,
+    tempNewLabels: prevLabels,
+  };
+  prevLabels.groups.clear();
+  prevLabels.slots.clear();
+}
+
+/**
+ * Assumes camera x values were already updated
+ */
+export function drawShreds(
+  data: LiveShredsData,
+  visibleTsRange: TsRange,
+  cssRange: [min: number, max: number],
+  rendererObj: RendererObj,
+  forceDraw: boolean,
+  chartId: string,
+  skippedSlots: Set<number>,
+) {
+  const { slotsShreds: liveShreds, range: slotRange, minCompletedSlot } = data;
 
   // if startup is running, prevent drawing non-startup screen chart
   // Sometimes we've missed the completion event for the first slots
@@ -199,19 +288,9 @@ export function draw(
     !liveShreds ||
     !slotRange ||
     store.get(showStartupProgressAtom) ||
-    minCompletedSlot == null ||
-    !rangeAfterStartup ||
-    serverTimeMs == null
+    minCompletedSlot == null
   )
     return;
-
-  const adjustedNow = getAdjustedNow(serverTimeMs, prevTimeDiffsRef.current);
-  const maxReferenceTs = adjustedNow - liveShreds.referenceTs;
-
-  const visibleTsRange: TsRange = [
-    maxReferenceTs - xRangeMs * scale,
-    maxReferenceTs,
-  ];
 
   // for now, use this xRange to be able to reuse the canvas helper functions
   const xRange: XRange = {
@@ -233,12 +312,7 @@ export function draw(
     xRange,
   );
 
-  const cameraChanged = updateVisibleXRange(
-    visibleTsRangeRef,
-    visibleTsRange,
-    rendererObj.camera,
-    maxShreds,
-  );
+  const cameraChanged = updateCameraYRange(rendererObj.camera, maxShreds);
 
   let anythingDrawn = false;
   const minDirtySlot = store.get(minDirtySlotByChartAtom).get(chartId);
@@ -261,7 +335,7 @@ export function draw(
       continue;
     }
 
-    const isSlotSkipped = skippedSlotsCluster.has(slotNumber);
+    const isSlotSkipped = skippedSlots.has(slotNumber);
 
     let rectangleIdx = 0;
     for (let shredIdx = 0; shredIdx < slot.shreds.length; shredIdx++) {
@@ -287,11 +361,6 @@ export function draw(
     updateRectMeshCount(slotMesh, rectangleIdx);
   }
 
-  store.set(minDirtySlotByChartAtom, (prev) => {
-    prev.set(chartId, Infinity);
-    return prev;
-  });
-
   const orderedSet = new Set(orderedSlotNumbers);
   for (const [slotNumber, slotMesh] of rendererObj.meshes.entries()) {
     if (!orderedSet.has(slotNumber)) {
@@ -302,50 +371,12 @@ export function draw(
   }
 
   if (forceDraw || anythingDrawn || cameraChanged) {
-    rendererObj.renderer.render(rendererObj.scene, rendererObj.camera);
+    render(rendererObj);
+    return xRange;
   }
-
-  const { prevLabels, tempNewLabels } = labelsRef.current;
-  updateLabels(
-    rangeAfterStartup,
-    liveShreds.slots,
-    skippedSlotsCluster,
-    xRange,
-    prevLabels,
-    tempNewLabels,
-  );
-  // switch map for reuse, don't create new maps each render
-  labelsRef.current = {
-    prevLabels: tempNewLabels,
-    tempNewLabels: prevLabels,
-  };
-  prevLabels.groups.clear();
-  prevLabels.slots.clear();
 }
 
-function updateVisibleXRange(
-  visibleTsRangeRef: MutableRefObject<TsRange | undefined>,
-  newVisibleTsRange: TsRange,
-  camera: THREE.OrthographicCamera,
-  maxShredCount: number,
-): boolean {
-  const prev = visibleTsRangeRef.current;
-  if (
-    prev &&
-    prev[0] === newVisibleTsRange[0] &&
-    prev[1] === newVisibleTsRange[1] &&
-    camera.bottom === -maxShredCount
-  ) {
-    return false;
-  }
-  visibleTsRangeRef.current = newVisibleTsRange;
-  camera.left = newVisibleTsRange[0];
-  camera.right = newVisibleTsRange[1];
-  camera.top = 0;
-  camera.bottom = -maxShredCount;
-  camera.updateProjectionMatrix();
-  return true;
-}
+export type TsRange = [startTs: number, endTs: number];
 
 interface AddEventsForRowArgs {
   tempEventPositions: Map<

@@ -6,8 +6,8 @@ import type { FlexProps } from "@radix-ui/themes";
 import { useShredsChartScale } from "../useShredsChartScale";
 import { useSetAtom } from "jotai";
 import { minDirtySlotByChartAtom } from "../atoms";
-import type { RendererObj } from "./chartUtils";
-import { setUpRenderer, draw } from "./chartUtils";
+import type { RendererObj, TsRange } from "./chartUtils";
+import { setUpRenderer, drawLiveShreds } from "./chartUtils";
 import ShredsSlotLabels from "../ShredsSlotLabels";
 import { MChartAxes, xAxisHeight } from "./ChartAxes";
 import { createLabelsState, type LabelsState } from "../utils";
@@ -15,7 +15,6 @@ import withWebGlRemount, {
   type WebGlRemountProps,
 } from "../../../WebGl/withWebGlRemount";
 import { useWebGlEventHandlers } from "../../../WebGl/useWebGlEventHandlers";
-import type { TsRange } from "../../../WebGl/webglUtils";
 
 const REDRAW_INTERVAL_MS = 15;
 
@@ -66,7 +65,7 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
 
       if (!rendererRef.current) return;
 
-      rendererRef.current.cleanUpRenderer();
+      rendererRef.current.cleanUp();
       rendererRef.current = undefined;
     };
   }, [chartId, setMinDirtySlotByChart]);
@@ -81,7 +80,7 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
     const { renderer } = rendererRef.current;
     renderer.setSize(width, height);
 
-    draw(
+    drawLiveShreds(
       chartId,
       prevTimeDiffsRef,
       rendererRef.current,
@@ -107,7 +106,7 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
 
     lastRedrawRef.current = time;
     if (rendererRef.current) {
-      draw(
+      drawLiveShreds(
         chartId,
         prevTimeDiffsRef,
         rendererRef.current,

@@ -15,6 +15,7 @@ import type { TsRange } from "../WebGl/webglUtils.ts";
 import { useExplorableChart } from "./useExplorableChart.ts";
 import { useVisibleRangeSubscribers } from "./useVisibleRangeSubscribers.ts";
 import MiniMap from "./MiniMap/MiniMap.tsx";
+import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 
 const LIVE_CHART_DELAY_MS = 500;
 const MARKER_PCT_VAR = "--marker-lines-pct";
@@ -187,6 +188,12 @@ export default function Chart({ startupTimeNs }: ChartProps) {
             {...markerLinesProps}
           />
           <Flex direction="column" gapY="4" position="relative">
+            <ShredsTrack
+              width={width}
+              {...visibleRangeSubscriberProps}
+              {...explorableChartProps}
+              {...markerLinesProps}
+            />
             <RevenueTrack
               type={RevenueType.TxnFees}
               width={width}
