@@ -46,6 +46,7 @@ import type {
   AggRevenue,
   TimelineTxnMeta,
   AggShreds,
+  TimelineTxnTimestamps,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 import type { ValuesWithHistory } from "./worker/types";
@@ -211,3 +212,9 @@ export const replayTxnMetaResponseAtom = atom<TimelineTxnMeta | undefined>(
 
 export const replayTxnMetaErrorAtom = atom<string | undefined>(undefined);
 export const aggShredsAtom = atom<AggShreds | undefined>(undefined);
+
+export const replayTxnTimestampsResponseAtom = atom<
+  TimelineTxnTimestamps | undefined
+>(undefined);
+
+export const replayTxnTimestampsErrorAtom = atom<string | undefined>(undefined);

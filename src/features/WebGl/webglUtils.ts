@@ -48,6 +48,59 @@ void main() {
 }
 `;
 
+const DEFAULT_OUTLINE_PX = 1;
+
+const outlineVertexShader = /* glsl */ `
+uniform mat4 projectionMatrix;
+uniform mat4 modelViewMatrix;
+uniform vec2 uResolution;     // drawing-buffer size in px
+
+attribute vec2 position;
+attribute vec4 instanceRect;  // x, y, w, h in world space
+attribute vec4 instanceColor; // r, g, b, a
+
+varying vec4 vColor;
+varying vec2 vLocal;          // unit-quad local coord in [-0.5, 0.5]
+varying vec2 vRectPx;         // instance size in screen px
+
+void main() {
+  vec2 world = position * instanceRect.zw + instanceRect.xy + instanceRect.zw * 0.5;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(world, 0.0, 1.0);
+  vColor = instanceColor;
+  vLocal = position;
+
+  // Orthographic, axis-aligned: NDC-per-world = projectionMatrix diagonal.
+  // px = ndcSize * 0.5 * resolution. modelViewMatrix only translates (no scale).
+  vRectPx = abs(vec2(
+    instanceRect.z * projectionMatrix[0][0],
+    instanceRect.w * projectionMatrix[1][1]
+  )) * 0.5 * uResolution;
+}
+`;
+
+const outlineFragmentShader = /* glsl */ `
+precision highp float;
+
+uniform float uBorderPx;
+
+varying vec4 vColor;
+varying vec2 vLocal;
+varying vec2 vRectPx;
+
+void main() {
+  // Distance to the nearest edge, in screen px, along each axis.
+  vec2 distPx = (0.5 - abs(vLocal)) * vRectPx;
+  float d = min(distPx.x, distPx.y);
+
+  // Keep the outer uBorderPx pixels, fade over ~1px, discard the interior.
+  float coverage = 1.0 - smoothstep(uBorderPx - 0.5, uBorderPx + 0.5, d);
+  if (coverage <= 0.0) discard;
+
+  // Premultiplied alpha (matches renderer's premultipliedAlpha + NormalBlending).
+  gl_FragColor = vec4(vColor.rgb * vColor.a, vColor.a) * coverage;
+}
+`;
+
 const store = getDefaultStore();
 
 export function createRenderer(
@@ -102,6 +155,7 @@ export function createRenderer(
 export type WebglResources = {
   unitQuad: THREE.BufferGeometry;
   sharedMaterial: THREE.RawShaderMaterial;
+  outlineMaterial: THREE.RawShaderMaterial;
 };
 
 function createUnitQuad() {
@@ -128,27 +182,45 @@ function createSharedMaterial() {
   });
 }
 
+function createOutlineMaterial() {
+  return new THREE.RawShaderMaterial({
+    vertexShader: outlineVertexShader,
+    fragmentShader: outlineFragmentShader,
+    side: THREE.FrontSide,
+    transparent: true,
+    depthWrite: false,
+    uniforms: {
+      uBorderPx: { value: DEFAULT_OUTLINE_PX },
+      uResolution: { value: new THREE.Vector2(1, 1) },
+    },
+  });
+}
+
 export function createWebglResources(): WebglResources {
   return {
     unitQuad: createUnitQuad(),
     sharedMaterial: createSharedMaterial(),
+    outlineMaterial: createOutlineMaterial(),
   };
 }
 
 export function disposeWebglResources(resources: WebglResources) {
   resources.unitQuad.dispose();
   resources.sharedMaterial.dispose();
+  resources.outlineMaterial.dispose();
 }
 
 // 700 shreds, all events except completion could have a rectangle
 const INITIAL_CAPACITY = 700 * (SHRED_EVENT_TYPES_COUNT - 1);
 
 /**
- * Create a mesh to draw 2D rectangles
+ * Create a mesh to draw 2D rectangles. Pass a material to draw with something
+ * other than the default filled-rect shader (e.g. the outline material).
  */
 export function createRectMesh(
   resources: WebglResources,
   initialCapacity = INITIAL_CAPACITY,
+  material: THREE.RawShaderMaterial = resources.sharedMaterial,
 ): RectMesh {
   const rectArray = new Float32Array(initialCapacity * 4);
   const colorArray = new Float32Array(initialCapacity * 4);
@@ -170,7 +242,7 @@ export function createRectMesh(
   geometry.instanceCount = 0;
   geometry.boundingSphere = new THREE.Sphere();
 
-  const mesh = new THREE.Mesh(geometry, resources.sharedMaterial);
+  const mesh = new THREE.Mesh(geometry, material);
   mesh.frustumCulled = false;
 
   return {
@@ -183,6 +255,28 @@ export function createRectMesh(
     count: 0,
     referenceX: undefined,
   };
+}
+
+/**
+ * An outline mesh shares the filled-rect instance layout (so it reuses
+ * ensureCapacity / addRectangleToMesh / updateRectMeshCount) but draws with the
+ * SDF border material, rendering each instance as a constant-pixel-width frame.
+ */
+export function createOutlineMesh(resources: WebglResources): RectMesh {
+  return createRectMesh(resources, INITIAL_CAPACITY, resources.outlineMaterial);
+}
+
+const tmpSize = new THREE.Vector2();
+/** Set the outline border width (CSS px) and resolution (call per draw). */
+export function updateOutlineUniforms(
+  resources: WebglResources,
+  renderer: THREE.WebGLRenderer,
+  borderPx: number,
+) {
+  renderer.getDrawingBufferSize(tmpSize);
+  const uniforms = resources.outlineMaterial.uniforms;
+  uniforms.uBorderPx.value = borderPx * renderer.getPixelRatio();
+  (uniforms.uResolution.value as THREE.Vector2).set(tmpSize.x, tmpSize.y);
 }
 
 /**

@@ -1,7 +1,6 @@
 import { Flex } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
-import { useRef, useLayoutEffect, useMemo, useCallback, useState } from "react";
-import { useMeasure } from "react-use";
+import { useRef, useLayoutEffect, useMemo, useState, useCallback } from "react";
 import styles from "./chart.module.css";
 import type { MarkerLinesProps } from "./const.ts";
 import { nsPerMs } from "../../consts.ts";
@@ -10,6 +9,7 @@ import { calcRelativeMs, getInitVisibleRange } from "./utils.ts";
 import VisibleRange from "./VisibleRangeInfo.tsx";
 import { currentSlotAtom } from "../../atoms.ts";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
+import ExecrpTrack from "./ExecrpTrack/ExecrpTrack.tsx";
 import { RevenueType } from "../../api/entities.ts";
 import type { TsRange } from "../WebGl/webglUtils.ts";
 import { useExplorableChart } from "./useExplorableChart.ts";
@@ -41,17 +41,24 @@ interface ChartProps {
 export default function Chart({ startupTimeNs }: ChartProps) {
   const currentSlot = useAtomValue(currentSlotAtom);
 
-  const [measureRef, { width }] = useMeasure<HTMLDivElement>();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const setContainerRefs = useCallback(
-    (el: HTMLDivElement | null) => {
-      containerRef.current = el;
-      if (el) {
-        measureRef(el);
-      }
-    },
-    [measureRef],
-  );
+
+  // Measure the scrollable tracks region via clientWidth (which excludes the
+  // vertical scrollbar). ResizeObserver's contentRect keeps the scrollbar's
+  // width, so using it would size the canvases wider than the space they're
+  // shown in and clip their right edge.
+  const [width, setWidth] = useState(0);
+  const tracksRef = useRef<HTMLDivElement | null>(null);
+  const measureRef = useCallback((el: HTMLDivElement | null) => {
+    tracksRef.current = el;
+    if (!el) return;
+    setWidth(el.clientWidth);
+    const observer = new ResizeObserver(() => setWidth(el.clientWidth));
+    observer.observe(el);
+    measureCleanupRef.current = () => observer.disconnect();
+  }, []);
+  const measureCleanupRef = useRef<(() => void) | undefined>();
+  useLayoutEffect(() => () => measureCleanupRef.current?.(), []);
 
   const rangeRef = useRef<
     | {
@@ -177,17 +184,25 @@ export default function Chart({ startupTimeNs }: ChartProps) {
   ]);
 
   return (
-    <div className={styles.container} ref={setContainerRefs}>
+    <div className={styles.container} ref={containerRef}>
+      {isRangeInitialized && <VisibleRange {...visibleRangeSubscriberProps} />}
       {!!width && isRangeInitialized && (
-        <>
-          <VisibleRange {...visibleRangeSubscriberProps} />
-          <MiniMap
-            width={width}
-            {...visibleRangeSubscriberProps}
-            {...miniMapProps}
-            {...markerLinesProps}
-          />
-          <Flex direction="column" gapY="4" position="relative">
+        <MiniMap
+          width={width}
+          {...visibleRangeSubscriberProps}
+          {...miniMapProps}
+          {...markerLinesProps}
+        />
+      )}
+      <Flex
+        ref={measureRef}
+        direction="column"
+        gapY="4"
+        position="relative"
+        className={styles.tracks}
+      >
+        {!!width && isRangeInitialized && (
+          <>
             <ShredsTrack
               width={width}
               {...visibleRangeSubscriberProps}
@@ -201,9 +216,15 @@ export default function Chart({ startupTimeNs }: ChartProps) {
               {...explorableChartProps}
               {...markerLinesProps}
             />
-          </Flex>
-        </>
-      )}
+            <ExecrpTrack
+              width={width}
+              {...visibleRangeSubscriberProps}
+              {...explorableChartProps}
+              {...markerLinesProps}
+            />
+          </>
+        )}
+      </Flex>
     </div>
   );
 }

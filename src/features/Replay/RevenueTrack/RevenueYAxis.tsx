@@ -1,11 +1,13 @@
 import { lamportsPerSol } from "../../../consts.ts";
-import { revenueLogBase } from "../../Overview/SlotPerformance/TransactionBarsCard/consts.ts";
 import styles from "../chart.module.css";
 import {
   aggMaxY,
+  aggLogSpan,
   minNonZeroY,
   nonAggMaxHeightRatio,
   nonAggMinHeightRatio,
+  nonAggLogSpan,
+  revenueValueAtHeightRatio,
 } from "./consts.ts";
 
 interface RevenueAxisTick {
@@ -17,6 +19,7 @@ function buildRevenueAxisTicks(
   maxValue: bigint,
   lowRatio: number,
   highRatio: number,
+  logSpan: number,
   heightToTopPct: (heightRatio: number) => number,
 ): RevenueAxisTick[] {
   if (maxValue <= 0n) return [];
@@ -27,7 +30,13 @@ function buildRevenueAxisTicks(
   const heightRatios = [highRatio, highRatio - step, lowRatio + step, lowRatio];
 
   return heightRatios.map((heightRatio) => {
-    const value = maxNum * Math.pow(revenueLogBase, -1 / heightRatio);
+    const value = revenueValueAtHeightRatio(
+      maxNum,
+      heightRatio,
+      lowRatio,
+      highRatio,
+      logSpan,
+    );
     const sol = (value / lamportsPerSol).toLocaleString(undefined, {
       maximumSignificantDigits: 2,
     });
@@ -42,6 +51,7 @@ function getAggAxisTicks(maxValue: bigint): RevenueAxisTick[] {
     maxValue,
     minNonZeroY,
     aggMaxY,
+    aggLogSpan,
     (heightRatio) => (1 - heightRatio / aggMaxY) * 100,
   );
 }
@@ -51,6 +61,7 @@ function getNonAggAxisTicks(maxValue: bigint): RevenueAxisTick[] {
     maxValue,
     nonAggMinHeightRatio,
     nonAggMaxHeightRatio,
+    nonAggLogSpan,
     (heightRatio) => (1 - heightRatio) * 100,
   );
 }

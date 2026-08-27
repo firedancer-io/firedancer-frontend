@@ -18,8 +18,6 @@ import { msBucketSizes } from "../const.ts";
 import type { RevenueType } from "../../../api/entities.ts";
 import type { AggRevenue } from "../../../api/types.ts";
 import { omit } from "lodash";
-import { clampNonZeroValue, logRatio } from "../../../mathUtils.ts";
-import { revenueLogBase } from "../../Overview/SlotPerformance/TransactionBarsCard/consts.ts";
 import { bigIntRatio } from "../../Overview/SlotPerformance/TransactionBarsCard/txnBarsPluginUtils.ts";
 import {
   getPaidTxnValue,
@@ -32,11 +30,14 @@ import {
   minY,
   minNonZeroY,
   aggMaxY,
+  aggLogSpan,
   nonAggMaxY,
   nonAggMinHeightRatio,
   nonAggMaxHeightRatio,
+  nonAggLogSpan,
   nonAggMinAlpha,
   nonAggMaxAlpha,
+  revenueHeightRatio,
 } from "./consts.ts";
 
 export interface RendererObj {
@@ -164,17 +165,6 @@ export function setUpNonAggResources(
   };
 }
 
-function getRevenueRatio(
-  maxValue: bigint,
-  value: bigint,
-  min: number,
-  max: number,
-) {
-  if (maxValue === 0n) return 0;
-  const ratio = 1 / logRatio(Number(maxValue), Number(value), revenueLogBase);
-  return clampNonZeroValue(ratio, min, max);
-}
-
 function getNonAggRevenueAlpha(maxValue: bigint, value: bigint) {
   if (maxValue === 0n) return 0;
   return Math.max(
@@ -231,7 +221,7 @@ export function drawAggRevenue(
       startMs - mesh.referenceX,
       minY,
       endMs - startMs,
-      getRevenueRatio(maxValue, value, minNonZeroY, aggMaxY),
+      revenueHeightRatio(maxValue, value, minNonZeroY, aggMaxY, aggLogSpan),
       REVENUE_COLOR,
     );
   }
@@ -264,6 +254,40 @@ export function moveAggCamera(
 
 export function isAggregate(rangeMs: TsRange) {
   return rangeMs[1] - rangeMs[0] > AGGREGATE_THRESHOLD_MS;
+}
+
+export interface AggBucketHit {
+  /** Bucket value for the active revenue type (lamports). */
+  value: bigint;
+  /** Bucket time span, in relative ms. */
+  startMs: number;
+  endMs: number;
+}
+
+/**
+ * The aggregated bucket at a relative-ms x position, or undefined if none. Used
+ * for the hover tooltip; mirrors the bucket layout drawn by drawAggRevenue
+ * (bucket i spans [referenceMs + i*bucketMs, +bucketMs)).
+ */
+export function hitTestAggBucket(
+  type: RevenueType,
+  aggRevenue: AggRevenue,
+  getRelativeMs: (absoluteNs: bigint) => number,
+  relMs: number,
+): AggBucketHit | undefined {
+  const { granularity, reference_ts_ns } = aggRevenue;
+  const referenceMs = getRelativeMs(reference_ts_ns);
+  const bucketMs = msBucketSizes[granularity];
+  if (bucketMs <= 0) return undefined;
+
+  const i = Math.floor((relMs - referenceMs) / bucketMs);
+  if (i < 0 || i >= aggRevenue[type].length) return undefined;
+
+  const value = aggRevenue[type][i];
+  if (value == null) return undefined;
+
+  const startMs = referenceMs + i * bucketMs;
+  return { value, startMs, endMs: startMs + bucketMs };
 }
 
 export function drawNonAggRevenue(
@@ -372,11 +396,12 @@ export function drawNonAggRevenue(
         yPosForRow,
         widthMs,
         rowHeight *
-          getRevenueRatio(
+          revenueHeightRatio(
             maxValue,
             value,
             nonAggMinHeightRatio,
             nonAggMaxHeightRatio,
+            nonAggLogSpan,
           ),
         color,
       );

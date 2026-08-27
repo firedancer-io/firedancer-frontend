@@ -1322,6 +1322,23 @@ export const aggShredsSchema = z.object({
   published: z.array(z.number().nullable()),
 });
 
+export const txnTimestampsResponseSchema = z.object({
+  reference_slot: z.number().nullable(),
+  reference_ts: z.coerce.bigint().nullable(),
+  slot_delta: z.number().array(),
+  txn_idx: z.number().array(),
+  txn_exec_idx: z.number().array(),
+  txn_sigverify_exec_idx: z.number().array(),
+  txn_sigverify_start_ts_delta: z.coerce.bigint().array(),
+  txn_sigverify_end_ts_delta: z.coerce.bigint().array(),
+  txn_load_start_ts_delta: z.coerce.bigint().array(),
+  txn_check_start_ts_delta: z.coerce.bigint().nullable().array(),
+  txn_exec_start_ts_delta: z.coerce.bigint().nullable().array(),
+  txn_commit_start_ts_delta: z.coerce.bigint().nullable().array(),
+  txn_commit_end_ts_delta: z.coerce.bigint().array(),
+  txn_error_code: z.number().array(),
+});
+
 export const timelineSchema = z.discriminatedUnion("key", [
   timelineTopicSchema.extend({
     id: z.number(),
@@ -1346,9 +1363,13 @@ export const timelineSchema = z.discriminatedUnion("key", [
     key: z.literal("query_agg_shreds"),
     value: aggShredsSchema,
   }),
+  timelineTopicSchema.extend({
+    key: z.literal("query_txn_timestamps"),
+    value: txnTimestampsResponseSchema,
+  }),
 ]);
 
 export const timelineErrorSchema = timelineTopicSchema.extend({
-  key: z.enum(["query_txn_meta"]),
+  key: z.enum(["query_txn_meta", "query_txn_timestamps"]),
   error: errorBodySchema,
 });
