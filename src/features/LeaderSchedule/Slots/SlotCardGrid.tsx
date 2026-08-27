@@ -72,14 +72,24 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
           scrollAll(slot, e.currentTarget.scrollLeft);
         }}
       >
-        {isFiredancer && (
-          <Text
-            className={clsx(styles.headerText, styles.voteLatencyHeader)}
-            align="right"
-          >
-            {isAlpenglow ? <>Vote&nbsp;Rewarded</> : <>Vote&nbsp;Latency</>}
-          </Text>
-        )}
+        {isFiredancer &&
+          (isAlpenglow ? (
+            <Tooltip content="Whether this validator's vote for the slot was included in the slot's reward certificate, which arrives with slot + 8. This client does not transmit Alpenglow votes yet, so it currently reads No for every slot.">
+              <Text
+                className={clsx(styles.headerText, styles.voteLatencyHeader)}
+                align="right"
+              >
+                Vote&nbsp;Rewarded
+              </Text>
+            </Tooltip>
+          ) : (
+            <Text
+              className={clsx(styles.headerText, styles.voteLatencyHeader)}
+              align="right"
+            >
+              Vote&nbsp;Latency
+            </Text>
+          ))}
         {/* Alpenglow votes are not transactions, so the count is always
             zero and the column carries nothing. */}
         {!isAlpenglow && (

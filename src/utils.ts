@@ -581,10 +581,17 @@ export const voteMissedColor = "#FF3C3C";
    rather than as a miss.  The server sends vote_rewarded only in this
    mode, which is what selects this branch at the call site: without it
    hasLateVote's Tower path marks every rooted slot missed, because the
-   latency fields it keys on are never sent under Alpenglow. */
+   latency fields it keys on are never sent under Alpenglow.
+
+   Not being in the certificate is stated plainly rather than flagged in
+   red.  It is a per-slot fact, but the usual cause right now is not a
+   per-slot fault: this client does not yet transmit Alpenglow votes at
+   all, so every slot reads No, and a column of red crosses would point
+   at a problem the operator cannot act on.  The column header carries
+   the explanation. */
 export function voteRewardedCell(rewarded: boolean | null) {
   if (rewarded === null) return { text: "-" };
-  return rewarded ? { text: "✓" } : { text: "✕", color: voteMissedColor };
+  return rewarded ? { text: "✓" } : { text: "No" };
 }
 
 export function getDiscountedVoteLatency(

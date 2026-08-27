@@ -5,7 +5,6 @@ import {
   getDiscountedVoteLatency,
   getDurationText,
   hasLateVote,
-  voteMissedColor,
   voteRewardedCell,
 } from "../utils";
 import { Duration } from "luxon";
@@ -604,11 +603,10 @@ describe("voteRewardedCell", () => {
     expect(voteRewardedCell(true)).toEqual({ text: "\u2713" });
   });
 
-  it("an unrewarded vote is marked missed", () => {
-    expect(voteRewardedCell(false)).toEqual({
-      text: "\u2715",
-      color: voteMissedColor,
-    });
+  it("an unrewarded vote states the fact without flagging a fault", () => {
+    /* Plain text, and no colour: with vote transmission unimplemented
+       this is every slot, and red would point at nothing actionable. */
+    expect(voteRewardedCell(false)).toEqual({ text: "No" });
   });
 });
 
