@@ -13,6 +13,98 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { earlyWsWorkerMain } from "./src/api/worker/earlyWsWorker";
 
+// Three-stage pipelined entry (entry.ts): A=react B=vendor C=app, each
+// dynamic-imported so eval starts per chunk as bytes land. Preload all
+// three with fetchpriority shaping A high / C low. Vendor lists only
+// whole-package boot-path libs; radix and other partially-lazy packages
+// keep default chunking (static pieces fold into the app chunk, overlay
+// pieces stay behind the overlayStack dynamic boundary).
+const VENDOR_PKGS_RE = new RegExp(
+  "node_modules/(" +
+    [
+      "lodash-es",
+      "jotai",
+      "jotai-immer",
+      "immer",
+      "@floating-ui/[^/]+",
+      "@material-design-icons/svg",
+      "react-virtualized-auto-sizer",
+      "react-use",
+      "use-debounce",
+      "use-sync-external-store",
+      "d3-shape",
+      "d3-path",
+      "d3-array",
+      "micro-memoize",
+      "byte-size",
+      "classnames",
+      "clsx",
+      "set-harmonic-interval",
+      "tslib",
+    ].join("|") +
+    ")/",
+);
+
+function pipelineChunks(id: string): string | undefined {
+  if (id.includes("/src/pipeline/reactLibs")) return "react";
+  if (id.includes("/src/pipeline/vendorLibs")) return "vendor";
+  if (!id.includes("node_modules")) return undefined;
+  if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return "react";
+  if (VENDOR_PKGS_RE.test(id)) return "vendor";
+  return undefined;
+}
+
+function pipelinePreloads(): Plugin {
+  return {
+    name: "pipeline-preloads",
+    transformIndexHtml: {
+      order: "post",
+      handler(html, ctx) {
+        if (!ctx.bundle) return html;
+        const find = (re: RegExp) =>
+          Object.keys(ctx.bundle ?? {}).find((f) => re.test(f));
+        const tags: {
+          tag: string;
+          injectTo: "head";
+          attrs?: Record<string, string | boolean>;
+          children?: string;
+        }[] = [];
+        const add = (file: string | undefined, fetchpriority?: string) => {
+          if (!file) return;
+          tags.push({
+            tag: "link",
+            injectTo: "head",
+            attrs: {
+              rel: "modulepreload",
+              crossorigin: true,
+              href: "/" + file,
+              ...(fetchpriority ? { fetchpriority } : {}),
+            },
+          });
+        };
+        const a = find(/^assets\/react-[\w-]+\.js$/);
+        const b = find(/^assets\/vendor-[\w-]+\.js$/);
+        add(a, "high");
+        add(b);
+        add(find(/^assets\/main-[\w-]+\.js$/), "low");
+        // classic-script kick: dynamic-import eval is not gated on pending
+        // stylesheets (module script tags are), so A/B library eval starts
+        // the moment their bytes land. C keeps the entry module's ordering.
+        if (a && b) {
+          tags.push({
+            tag: "script",
+            // must precede the stylesheet link: a later classic script
+            // waits for pending sheets before executing
+            injectTo: "head-prepend",
+            children: `import("/${a}").catch(function(){});import("/${b}").catch(function(){});`,
+          });
+        }
+        return { html, tags };
+      },
+    },
+  };
+}
+
 // Drop index.html logo preloads belonging to the client not being built.
 function stripOtherClientPreloads(client: string | undefined): Plugin {
   const strip =
@@ -262,7 +354,13 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       minify: "esbuild",
+      // one render-blocking stylesheet: app css must not ride the dynamic
+      // C chunk's async css path
+      cssCodeSplit: false,
       rollupOptions: {
+        output: {
+          manualChunks: pipelineChunks,
+        },
         plugins: [
           license({
             thirdParty: {
@@ -300,6 +398,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       stripOtherClientPreloads(client),
+      pipelinePreloads(),
       earlyWebsocket(client, devWsUrl, wsCompress),
       react(),
       svgr(),
