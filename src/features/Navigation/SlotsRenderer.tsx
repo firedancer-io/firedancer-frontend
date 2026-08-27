@@ -1,6 +1,5 @@
 import { useAtomValue } from "jotai";
 import { currentSlotAtom, slotDurationAtom } from "../../atoms";
-import { Box, Flex, Text } from "@radix-ui/themes";
 import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
 import type React from "react";
 import { memo, useMemo } from "react";
@@ -99,21 +98,33 @@ function YourNextLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
   });
 
   return (
-    <Flex
-      direction="column"
-      className={clsx(styles.slotGroup, styles.future, styles.you)}
+    <div
+      className={clsx(
+        "rt-Flex rt-r-fd-column",
+        styles.slotGroup,
+        styles.future,
+        styles.you,
+      )}
     >
-      <Flex justify="between" gap="2px">
+      <div
+        className="rt-Flex rt-r-jc-space-between rt-r-gap"
+        style={{ "--gap": "2px" } as CSSProperties}
+      >
         <MSlotIconName slot={firstSlot} />
 
-        <Flex gap="3px" flexShrink="0">
-          <Text className={styles.slotName}>{nextSlotText}</Text>
+        <div
+          className="rt-Flex rt-r-gap rt-r-fs-0"
+          style={{ "--gap": "3px" } as CSSProperties}
+        >
+          <span className={clsx("rt-Text", styles.slotName)}>
+            {nextSlotText}
+          </span>
           <MSlotStatuses firstSlot={firstSlot} />
-        </Flex>
-      </Flex>
+        </div>
+      </div>
 
       <Progress value={progressSinceLastLeader} height="2px" />
-    </Flex>
+    </div>
   );
 }
 
@@ -124,13 +135,19 @@ interface SlotGroupProps {
 function FutureSlotGroup({ firstSlot }: SlotGroupProps) {
   const { isLeader: isYou } = useSlotInfo(firstSlot);
   return (
-    <Flex
-      justify="between"
-      className={clsx(styles.slotGroup, styles.future, { [styles.you]: isYou })}
+    <div
+      className={clsx(
+        "rt-Flex rt-r-jc-space-between",
+        styles.slotGroup,
+        styles.future,
+        {
+          [styles.you]: isYou,
+        },
+      )}
     >
       <MSlotIconName slot={firstSlot} />
       <MSlotStatuses firstSlot={firstSlot} />
-    </Flex>
+    </div>
   );
 }
 
@@ -138,24 +155,33 @@ function CurrentLeaderSlotGroup({ firstSlot }: { firstSlot: number }) {
   const { isLeader: isYou, countryFlag } = useSlotInfo(firstSlot);
   const hasSkipped = useIsLeaderGroupSkipped(firstSlot);
   return (
-    <Flex
-      justify="between"
-      className={clsx(styles.slotGroup, styles.current, {
-        [styles.you]: isYou,
-        [styles.skipped]: hasSkipped,
-      })}
+    <div
+      className={clsx(
+        "rt-Flex rt-r-jc-space-between",
+        styles.slotGroup,
+        styles.current,
+        {
+          [styles.you]: isYou,
+          [styles.skipped]: hasSkipped,
+        },
+      )}
     >
-      <Flex direction="column" className={styles.leftColumn}>
+      <div className={clsx("rt-Flex rt-r-fd-column", styles.leftColumn)}>
         <MSlotIconName slot={firstSlot} iconSize={22} />
-        <Flex gap="1" align="center" className={styles.currentSlotRow}>
+        <div
+          className={clsx(
+            "rt-Flex rt-r-ai-center rt-r-gap-1",
+            styles.currentSlotRow,
+          )}
+        >
           <MSlotFlag flag={countryFlag} width="13px" />
           <MCurrentSlot />
           <SlotClient slot={firstSlot} size="small" />
-        </Flex>
-      </Flex>
+        </div>
+      </div>
 
       <MSlotStatuses firstSlot={firstSlot} isCurrentSlot />
-    </Flex>
+    </div>
   );
 }
 
@@ -182,37 +208,36 @@ const MPastSlotGroup = memo(function PastSlotGroup({
   const content = useMemo(() => {
     return (
       <>
-        <Flex className={styles.leftColumn} direction="column">
+        <div className={clsx("rt-Flex rt-r-fd-column", styles.leftColumn)}>
           <MSlotIconName slot={firstSlot} />
-          <Flex className={styles.slotItemContent}>
+          <div className={clsx("rt-Flex", styles.slotItemContent)}>
             <MSlotFlag flag={countryFlag} width="15px" />
-            <Text>{firstSlot}</Text>
+            <span className="rt-Text">{firstSlot}</span>
             <SlotClient slot={firstSlot} size="small" />
-          </Flex>
-        </Flex>
+          </div>
+        </div>
         <MSlotStatuses firstSlot={firstSlot} isPastSlot />
       </>
     );
   }, [countryFlag, firstSlot]);
 
-  return (
-    <Flex
-      className={clsx(styles.slotGroup, styles.past, {
-        [styles.you]: isYou,
-        [styles.processed]: isProcessed,
-        [styles.skipped]: hasSkipped,
-        [styles.selected]: showAsSelected,
-      })}
-      asChild={canBeSelected}
+  const groupClassName = clsx("rt-Flex", styles.slotGroup, styles.past, {
+    [styles.you]: isYou,
+    [styles.processed]: isProcessed,
+    [styles.skipped]: hasSkipped,
+    [styles.selected]: showAsSelected,
+  });
+
+  return canBeSelected ? (
+    <Link
+      to="/slotDetails"
+      search={{ slot: firstSlot }}
+      className={groupClassName}
     >
-      {canBeSelected ? (
-        <Link to="/slotDetails" search={{ slot: firstSlot }}>
-          {content}
-        </Link>
-      ) : (
-        content
-      )}
-    </Flex>
+      {content}
+    </Link>
+  ) : (
+    <div className={groupClassName}>{content}</div>
   );
 });
 
@@ -226,12 +251,17 @@ export const MSlotsPlaceholder = memo(function SlotsPlaceholder({
   const items = useMemo(() => Math.ceil(height / 46), [height]);
 
   return (
-    <Box
-      position="absolute"
-      width={`${width - 1}px`}
-      height={`${height}px`}
-      overflow="hidden"
-      className={styles.scrollSlotsPlaceholder}
+    <div
+      className={clsx(
+        "rt-Box rt-r-w rt-r-h rt-r-position-absolute rt-r-overflow-hidden",
+        styles.scrollSlotsPlaceholder,
+      )}
+      style={
+        {
+          "--width": `${width - 1}px`,
+          "--height": `${height}px`,
+        } as CSSProperties
+      }
     >
       <div className={clsx(styles.absoluteFullSize, styles.shimmer)} />
       <div className={styles.absoluteFullSize}>
@@ -239,7 +269,7 @@ export const MSlotsPlaceholder = memo(function SlotsPlaceholder({
           <div key={index} className={styles.scrollPlaceholderItem} />
         ))}
       </div>
-    </Box>
+    </div>
   );
 });
 
@@ -252,15 +282,20 @@ const MSlotIconName = memo(function SlotIconName({
 }) {
   const { peer, isLeader, name } = useSlotInfo(slot);
   return (
-    <Flex gap="4px" minWidth="0">
+    <div
+      className="rt-Flex rt-r-gap rt-r-min-w"
+      style={{ "--gap": "4px", "--min-width": "0" } as CSSProperties}
+    >
       <PeerIcon
         url={peer?.info?.icon_url}
         size={iconSize}
         isYou={isLeader}
         hideTooltip
       />
-      <Text className={clsx(styles.slotName, styles.ellipsis)}>{name}</Text>
-    </Flex>
+      <span className={clsx("rt-Text", styles.slotName, styles.ellipsis)}>
+        {name}
+      </span>
+    </div>
   );
 });
 
@@ -271,7 +306,14 @@ const MSlotFlag = memo(function SlotFlag({
   flag?: string;
   width: string;
 }) {
-  return <Flex width={width}>{flag && <Text>{flag}</Text>}</Flex>;
+  return (
+    <div
+      className="rt-Flex rt-r-w"
+      style={{ "--width": width } as CSSProperties}
+    >
+      {flag && <span className="rt-Text">{flag}</span>}
+    </div>
+  );
 });
 
 interface SlotStatusesProps {
@@ -286,13 +328,15 @@ const MSlotStatuses = memo(function SlotStatuses({
   isPastSlot = false,
 }: SlotStatusesProps) {
   return (
-    <Flex
-      className={clsx(styles.slotStatuses, {
-        [styles.tall]: isCurrentSlot,
-        [styles.short]: !isCurrentSlot && !isPastSlot,
-      })}
-      direction="column"
-      justify="between"
+    <div
+      className={clsx(
+        "rt-Flex rt-r-fd-column rt-r-jc-space-between",
+        styles.slotStatuses,
+        {
+          [styles.tall]: isCurrentSlot,
+          [styles.short]: !isCurrentSlot && !isPastSlot,
+        },
+      )}
     >
       {Array.from({ length: slotsPerLeader }).map((_, slotIdx) => {
         const slot = firstSlot + (slotsPerLeader - 1) - slotIdx;
@@ -307,7 +351,7 @@ const MSlotStatuses = memo(function SlotStatuses({
 
         return <MSlotStatus key={slotIdx} />;
       })}
-    </Flex>
+    </div>
   );
 });
 
@@ -321,8 +365,8 @@ const MSlotStatus = memo(function SlotStatus({
   slotDuration?: number;
 }) {
   return (
-    <Flex
-      className={styles.slotStatus}
+    <div
+      className={clsx("rt-Flex", styles.slotStatus)}
       style={{ borderColor, backgroundColor }}
     >
       {slotDuration && (
@@ -333,7 +377,7 @@ const MSlotStatus = memo(function SlotStatus({
           className={styles.slotStatusProgress}
         />
       )}
-    </Flex>
+    </div>
   );
 });
 
