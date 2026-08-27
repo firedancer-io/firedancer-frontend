@@ -31,6 +31,20 @@ const computeItemKey = (slot: number) => slot;
 // Add one future slot to prevent current leader transition from flickering
 const increaseViewportBy = { top: 24, bottom: 0 };
 
+const itemHeightPx = 42;
+
+/**
+ * Virtuoso's init dance can blank the window again up to ~200ms after a
+ * first settled-looking state (measured: late scrollTo retries while
+ * row sizes refine), so the swap waits for this many consecutive
+ * settled frames -- longer than any observed blank gap on both local
+ * and 4x-throttled runs.
+ */
+const settleSwapConsecutivePolls = 15;
+
+/** Total rAF settle polls before the static overlay swaps anyway */
+const settleSwapCapPolls = 240;
+
 interface SlotsListProps {
   width: number;
   height: number;
@@ -59,8 +73,78 @@ function InnerSlotsList({
   const listContainerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<VirtuosoHandle>(null);
   const visibleStartIndexRef = useRef<number | null>(null);
+  const userScrolledRef = useRef(false);
 
   const [showPlaceholder, setShowPlaceholder] = useState(true);
+
+  // The static overlay carries the first paint with the same rows the
+  // settled list will show; Virtuoso mounts two frames later (the
+  // below-fold staging pattern) and settles hidden behind it. Its
+  // initial-position pass is multi-commit -- rows at offset 0, then the
+  // measured 4.5M-px height with the clamped scrollTop (an empty
+  // window), then the real position a rAF later -- so swapping only
+  // once it has settled keeps every painted frame populated.
+  const [virtuosoMounted, setVirtuosoMounted] = useState(false);
+  const [showStatic, setShowStatic] = useState(true);
+
+  useEffect(() => {
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => setVirtuosoMounted(true));
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // Swap when the hidden list is settled at the live position (rows
+  // present, scrollTop at the followed target): both layers render the
+  // same slots from the same atoms at the same offsets, so the swap is
+  // pixel-stable. A user gesture swaps immediately; the poll cap is a
+  // safety backstop only.
+  useEffect(() => {
+    if (!virtuosoMounted || !showStatic) return;
+    const container = listContainerRef.current;
+    let raf: number | null = null;
+    let polls = 0;
+    let settledPolls = 0;
+    const swap = () => setShowStatic(false);
+    const poll = () => {
+      raf = null;
+      const scroller = container?.querySelector<HTMLElement>(
+        '[data-testid="virtuoso-scroller"]',
+      );
+      const rows =
+        scroller?.querySelectorAll('[class*="slot-group-container"]').length ??
+        0;
+      const leader = getDefaultStore().get(currentLeaderSlotAtom);
+      const slotIndex =
+        leader === undefined ? undefined : getIndexForSlot(leader);
+      const target =
+        (slotIndex ? Math.max(0, slotIndex - slotsListPinnedSlotOffset) : 0) *
+        itemHeightPx;
+      const settled =
+        scroller != null &&
+        rows > 0 &&
+        Math.abs(scroller.scrollTop - target) <= 2 * itemHeightPx;
+      settledPolls = settled ? settledPolls + 1 : 0;
+      if (
+        settledPolls >= settleSwapConsecutivePolls ||
+        ++polls > settleSwapCapPolls
+      ) {
+        swap();
+        return;
+      }
+      raf = requestAnimationFrame(poll);
+    };
+    raf = requestAnimationFrame(poll);
+    container?.addEventListener("wheel", swap, { passive: true });
+    container?.addEventListener("touchstart", swap, { passive: true });
+    container?.addEventListener("pointerdown", swap);
+    return () => {
+      if (raf !== null) cancelAnimationFrame(raf);
+      container?.removeEventListener("wheel", swap);
+      container?.removeEventListener("touchstart", swap);
+      container?.removeEventListener("pointerdown", swap);
+    };
+  }, [virtuosoMounted, showStatic, getIndexForSlot]);
 
   // Rows render in the mounting commit itself, already positioned at the
   // live slot (initialItemCount + initialScrollTop): no measure pass, no
@@ -87,7 +171,9 @@ function InnerSlotsList({
     };
 
     const config: ScrollSeekConfiguration = {
-      enter: (velocity) => Math.abs(velocity) > 1500,
+      // programmatic jumps (initial position, epoch-slider follows)
+      // must not blank rendered rows; seek only for user scrolling
+      enter: (velocity) => userScrolledRef.current && Math.abs(velocity) > 1500,
       exit: (velocity) => Math.abs(velocity) < 500,
       change: (_, range) => rangeChangedFn(range),
     };
@@ -118,6 +204,7 @@ function InnerSlotsList({
     );
 
     const handleScroll = () => {
+      userScrolledRef.current = true; // opens the scroll-seek gate
       handleSlotOverride();
     };
 
@@ -165,31 +252,83 @@ function InnerSlotsList({
       />
       {showPlaceholder && <MSlotsPlaceholder width={width} height={height} />}
       <ResetLive />
-      <Virtuoso
-        ref={listRef}
-        className={styles.slotsList}
-        width={width}
-        height={height}
-        totalCount={itemsCount}
-        initialTopMostItemIndex={initialTopMostItemIndex}
-        initialItemCount={initialItemCount}
-        // estimate-consistent offset so the rows are on screen in the
-        // mount paint, not after the async scroll-to-index settles
-        initialScrollTop={initialTopMostItemIndex * 42}
-        increaseViewportBy={increaseViewportBy}
-        // height of past slots that the user is most likely to scroll through
-        defaultItemHeight={42}
-        skipAnimationFrameInResizeObserver
-        computeItemKey={computeItemKey}
-        itemContent={getItemContent}
-        rangeChanged={rangeChanged}
-        components={{ ScrollSeekPlaceholder: MScrollSeekPlaceHolder }}
-        scrollSeekConfiguration={scrollSeekConfiguration}
-        totalListHeightChanged={totalListHeightChanged}
-      />
+      {virtuosoMounted && (
+        <Virtuoso
+          ref={listRef}
+          className={styles.slotsList}
+          width={width}
+          height={height}
+          totalCount={itemsCount}
+          initialTopMostItemIndex={initialTopMostItemIndex}
+          initialItemCount={initialItemCount}
+          // estimate-consistent offset so the rows are on screen in the
+          // mount paint, not after the async scroll-to-index settles
+          initialScrollTop={initialTopMostItemIndex * itemHeightPx}
+          increaseViewportBy={increaseViewportBy}
+          // height of past slots that the user is most likely to scroll through
+          defaultItemHeight={itemHeightPx}
+          skipAnimationFrameInResizeObserver
+          computeItemKey={computeItemKey}
+          itemContent={getItemContent}
+          rangeChanged={rangeChanged}
+          components={{ ScrollSeekPlaceholder: MScrollSeekPlaceHolder }}
+          scrollSeekConfiguration={scrollSeekConfiguration}
+          totalListHeightChanged={totalListHeightChanged}
+        />
+      )}
+      {showStatic && (
+        <MStaticInitialRows
+          count={initialItemCount}
+          getIndexForSlot={getIndexForSlot}
+          getSlotAtIndex={getSlotAtIndex}
+        />
+      )}
     </Box>
   );
 }
+
+/**
+ * First-paint stand-in for the list: the same SlotsRenderer rows the
+ * settled Virtuoso shows, anchored to the followed leader group, in
+ * plain flow (identical geometry: Virtuoso items are unstyled stacked
+ * divs). Live like the real rows -- it re-anchors on leader rotation
+ * exactly when RtAutoScroll moves the list under it.
+ */
+const MStaticInitialRows = memo(function StaticInitialRows({
+  count,
+  getIndexForSlot,
+  getSlotAtIndex,
+}: {
+  count: number;
+} & Pick<SlotsIndexProps, "getIndexForSlot" | "getSlotAtIndex">) {
+  const currentLeaderSlot = useAtomValue(currentLeaderSlotAtom);
+  const slotIndex =
+    currentLeaderSlot === undefined
+      ? undefined
+      : getIndexForSlot(currentLeaderSlot);
+  const base = slotIndex
+    ? Math.max(0, slotIndex - slotsListPinnedSlotOffset)
+    : 0;
+
+  const slots: number[] = [];
+  for (let i = 0; i < count; i++) {
+    const slot = getSlotAtIndex(base + i);
+    if (slot != null) slots.push(slot);
+  }
+
+  return (
+    <Box
+      position="absolute"
+      inset="0"
+      overflow="hidden"
+      style={{ zIndex: 1, background: "var(--slot-nav-background-color)" }}
+    >
+      {slots.map((slot) => (
+        <SlotsRenderer key={slot} leaderSlotForGroup={slot} />
+      ))}
+    </Box>
+  );
+});
 
 // Render nothing when scrolling quickly to improve performance
 const MScrollSeekPlaceHolder = memo(function ScrollSeekPlaceholder() {
