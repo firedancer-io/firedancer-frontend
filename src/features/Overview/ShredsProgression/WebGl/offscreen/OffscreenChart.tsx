@@ -22,6 +22,7 @@ import { SocketState } from "../../../../../api/ws/types";
 import { showStartupProgressAtom } from "../../../../StartupProgress/atoms";
 import { openShredsChartPort } from "../../../../../api/worker/useWsWorker";
 import {
+  isOffscreenChartSupported,
   isWebgl2SupportedAtom,
   offscreenChartFailedAtom,
 } from "../../../../WebGl/atoms";
@@ -31,6 +32,26 @@ import withWebGlRemount, {
 import { MAX_WEBGL_PX_RATIO } from "../../../../../consts";
 
 const store = getDefaultStore();
+
+/**
+ * Spawned at module eval (entry bundle): the ~500KB worker chunk fetch,
+ * thread start and three.js eval overlap main-bundle eval and the reveal
+ * render instead of starting inside the reveal commit. The canvas
+ * transfer still happens at mount; remounts spawn fresh workers.
+ */
+let prewarmedWorker: Worker | null = null;
+try {
+  if (isOffscreenChartSupported) prewarmedWorker = new ChartWorker();
+} catch {
+  prewarmedWorker = null;
+}
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    prewarmedWorker?.terminate();
+    prewarmedWorker = null;
+  });
+}
 
 /**
  * How long to wait for a lost worker-side WebGL context to be restored
@@ -107,10 +128,13 @@ function OffscreenShredsChart({
     } catch {
       // canvas already transferred or transfer unsupported at runtime
       store.set(offscreenChartFailedAtom, true);
+      prewarmedWorker?.terminate();
+      prewarmedWorker = null;
       return;
     }
 
-    const worker = new ChartWorker();
+    const worker = prewarmedWorker ?? new ChartWorker();
+    prewarmedWorker = null;
     workerRef.current = worker;
     const post = (msg: ToChartWorker, transfer?: Transferable[]) =>
       worker.postMessage(msg, transfer ?? []);
