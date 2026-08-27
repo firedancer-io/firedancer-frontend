@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { Flex, Text } from "@radix-ui/themes";
+import type { CSSProperties } from "react";
 import Card from "../../../components/Card";
 import { headerGap } from "../../Gossip/consts";
 import { isStartupPhaseAtom } from "../../StartupProgress/atoms";
@@ -15,17 +15,21 @@ export default function SlotTimeline() {
     // Stays in flow (hidden) during startup so the cards grid below
     // renders at its final position from the first paint
     <Card style={isStartup ? { visibility: "hidden" } : undefined}>
-      <Flex direction="column" height="100%" gap={headerGap}>
-        <Text
+      <div
+        className="rt-Flex rt-r-fd-column rt-r-gap rt-r-h"
+        style={{ "--gap": headerGap, "--height": "100%" } as CSSProperties}
+      >
+        <span
+          className="rt-Text"
           style={{
             color: "var(--primary-text-color)",
             fontSize: "18px",
           }}
         >
           Slots
-        </Text>
+        </span>
         <SlotLanes />
-      </Flex>
+      </div>
     </Card>
   );
 }

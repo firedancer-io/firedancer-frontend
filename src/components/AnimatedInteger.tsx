@@ -9,7 +9,6 @@ import {
 } from "react";
 import styles from "./animatedInteger.module.css";
 import clsx from "clsx";
-import { Box, Flex, Text, type FlexProps } from "@radix-ui/themes";
 import { useUnmount } from "react-use";
 import { useAtomValue } from "jotai";
 import { nsPerMs } from "../consts";
@@ -24,7 +23,7 @@ interface AnimatedIntegerProps {
    * Explicitly set height of text container. If omitted, uses default text height.
    */
   height?: number;
-  containerRowJustify?: FlexProps["justify"];
+  containerRowJustify?: "start" | "center" | "end" | "between";
   className?: string;
 }
 /**
@@ -56,11 +55,18 @@ export default function AnimatedInteger({
 
   if (noAnimation) {
     return (
-      <Flex position="relative" justify={containerRowJustify}>
-        <Text className={className} style={heightStyle}>
+      <div
+        className={clsx(
+          "rt-Flex",
+          containerRowJustify &&
+            `rt-r-jc-${containerRowJustify === "between" ? "space-between" : containerRowJustify}`,
+          "rt-r-position-relative",
+        )}
+      >
+        <span className={clsx("rt-Text", className)} style={heightStyle}>
           {value}
-        </Text>
-      </Flex>
+        </span>
+      </div>
     );
   }
 
@@ -107,7 +113,7 @@ interface AnimatedIntegerInnerProps {
   value: number;
   animationDurationMs?: number;
   heightStyle?: CSSProperties;
-  containerRowJustify?: FlexProps["justify"];
+  containerRowJustify?: "start" | "center" | "end" | "between";
   className?: string;
 }
 
@@ -241,17 +247,30 @@ function AnimatedIntegerInner({
   }, [currentValidNumber, isDuringAnimation, nextState.number, target, value]);
 
   return (
-    <Flex position="relative" justify={containerRowJustify}>
+    <div
+      className={clsx(
+        "rt-Flex",
+        containerRowJustify &&
+          `rt-r-jc-${containerRowJustify === "between" ? "space-between" : containerRowJustify}`,
+        "rt-r-position-relative",
+      )}
+    >
       {/* Add hidden Text to set container height and to support selection / copy of the full number (digits components are not selectable). */}
-      <Text
-        className={clsx(className, styles.selectionText)}
+      <span
+        className={clsx("rt-Text", className, styles.selectionText)}
         style={heightStyle}
       >
         {currentValidNumber}
-      </Text>
+      </span>
 
-      <Flex height="100%" position="absolute" inert="true">
-        {nextState.number < 0 && <Text className={className}>-</Text>}
+      <div
+        className="rt-Flex rt-r-h rt-r-position-absolute"
+        style={{ "--height": "100%" } as CSSProperties}
+        inert="true"
+      >
+        {nextState.number < 0 && (
+          <span className={clsx("rt-Text", className)}>-</span>
+        )}
         {nextState.paddedDigits.map((nextDigit, idx) => {
           const idxFromBack = nextState.paddedDigits.length - 1 - idx;
           return (
@@ -271,8 +290,8 @@ function AnimatedIntegerInner({
             />
           );
         })}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }
 
@@ -372,8 +391,15 @@ function DigitSlider({
   });
 
   return (
-    <Box height="100%" overflowY="hidden">
-      <Flex ref={digitSliderRef} height="200%" direction="column">
+    <div
+      className="rt-Box rt-r-h rt-r-oy-hidden"
+      style={{ "--height": "100%" } as CSSProperties}
+    >
+      <div
+        ref={digitSliderRef}
+        className="rt-Flex rt-r-fd-column rt-r-h"
+        style={{ "--height": "200%" } as CSSProperties}
+      >
         <Digit
           className={className}
           digit={direction === "incr" ? nextDigit : currentDigit}
@@ -382,8 +408,8 @@ function DigitSlider({
           className={className}
           digit={direction === "incr" ? currentDigit : nextDigit}
         />
-      </Flex>
-    </Box>
+      </div>
+    </div>
   );
 }
 
@@ -398,13 +424,13 @@ interface DigitProps {
  */
 function Digit({ digit, className }: DigitProps) {
   return (
-    <Text
-      className={clsx(className, styles.digit, {
+    <span
+      className={clsx("rt-Text", className, styles.digit, {
         [styles.hidden]: digit == null,
       })}
     >
       {digit}
-    </Text>
+    </span>
   );
 }
 
