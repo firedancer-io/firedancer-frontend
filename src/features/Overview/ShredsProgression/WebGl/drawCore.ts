@@ -80,12 +80,16 @@ export interface SceneState {
 
 /**
  * Fill slot meshes and render. Returns the xRange used, for label layout.
+ * onBeforeRender runs after the mesh fill, before the GL submit: the
+ * chart worker posts its label frame there so the main-thread hop
+ * overlaps the render (same task, so the canvas commit is unchanged).
  */
 export function drawScene(
   objs: SceneObjects,
   prevTimeDiffs: number[],
   visibleTsRangeRef: { current: TsRange | undefined },
   state: SceneState,
+  onBeforeRender?: (xRange: XRange) => void,
 ): XRange {
   const {
     liveShreds,
@@ -186,6 +190,8 @@ export function drawScene(
       objs.availableMeshes.push(slotMesh);
     }
   }
+
+  onBeforeRender?.(xRange);
 
   if (forceDraw || anythingDrawn || cameraChanged) {
     objs.renderer.render(objs.scene, objs.camera);

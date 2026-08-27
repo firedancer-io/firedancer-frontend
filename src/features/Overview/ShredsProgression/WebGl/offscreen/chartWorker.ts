@@ -169,33 +169,40 @@ function draw(time: number) {
   const rangeAfterStartup = getRangeAfterStartup(slotRange);
   if (!rangeAfterStartup) return;
 
-  const xRange = drawScene(objs, prevTimeDiffs, visibleTsRangeRef, {
-    liveShreds,
-    slotRange,
-    minCompletedSlot,
-    skippedSlotsCluster: skippedSlots,
-    serverTimeMs,
-    scale,
-    minDirtySlot,
-    cssRange: [0, width],
-    forceDraw,
-  });
+  drawScene(
+    objs,
+    prevTimeDiffs,
+    visibleTsRangeRef,
+    {
+      liveShreds,
+      slotRange,
+      minCompletedSlot,
+      skippedSlotsCluster: skippedSlots,
+      serverTimeMs,
+      scale,
+      minDirtySlot,
+      cssRange: [0, width],
+      forceDraw,
+    },
+    // posted before the GL submit: the hop to main overlaps the render
+    (xRange) => {
+      const leaderRange = {
+        min: getSlotGroupLeader(rangeAfterStartup.min),
+        max: getSlotGroupLeader(rangeAfterStartup.max),
+      };
+      const frame = computeLabelFrame(
+        rangeAfterStartup,
+        leaderRange,
+        liveShreds.slots,
+        skippedSlots,
+        xRange,
+      );
+      presented = true;
+      post({ type: "labels", frame, leaderRange });
+    },
+  );
   forceDraw = false;
   minDirtySlot = Infinity;
-
-  const leaderRange = {
-    min: getSlotGroupLeader(rangeAfterStartup.min),
-    max: getSlotGroupLeader(rangeAfterStartup.max),
-  };
-  const frame = computeLabelFrame(
-    rangeAfterStartup,
-    leaderRange,
-    liveShreds.slots,
-    skippedSlots,
-    xRange,
-  );
-  presented = true;
-  post({ type: "labels", frame, leaderRange });
 }
 
 scheduleFrame(tick);
