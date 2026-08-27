@@ -13,6 +13,7 @@ import type {
   finalizedSlotSchema,
   commitHashSchema,
   identityKeySchema,
+  isAlpenglowSchema,
   liveTilePrimaryMetricSchema,
   liveTxnWaterfallSchema,
   optimisticallyConfirmedSlotSchema,
@@ -84,6 +85,8 @@ import type {
 export type Client = z.infer<typeof clientSchema>;
 
 export type Version = z.infer<typeof versionSchema>;
+
+export type IsAlpenglow = z.infer<typeof isAlpenglowSchema>;
 
 export type Cluster = z.infer<typeof clusterSchema>;
 

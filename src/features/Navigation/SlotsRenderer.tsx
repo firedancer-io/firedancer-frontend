@@ -345,8 +345,19 @@ function getSlotStatusColorStyles(publish?: SlotPublish): CSSProperties {
       return {};
     case "completed":
       return { borderColor: slotStatusGreen };
+    // Alpenglow's notarized is the same rung as Tower's optimistically
+    // confirmed: the cluster has committed to the block, but it is not
+    // yet irreversible.
     case "optimistically_confirmed":
+    case "notarized":
       return { backgroundColor: slotStatusGreen };
+    // The cluster has certified a skip that finality has not yet made
+    // irreversible.  Outlined rather than filled, matching how
+    // completed is the outlined form of optimistically_confirmed.
+    case "skip_notarized":
+      return { borderColor: slotStatusRed };
+    case "skipped":
+      return { backgroundColor: slotStatusRed };
     case "finalized":
     case "rooted":
       return { backgroundColor: slotStatusTeal };

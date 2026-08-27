@@ -1,6 +1,7 @@
 import { atom } from "jotai";
 import type {
   Version,
+  IsAlpenglow,
   Cluster,
   CommitHash,
   IdentityKey,
@@ -51,6 +52,9 @@ import type { ValuesWithHistory } from "./worker/types";
 const emptyValuesWithHistory: ValuesWithHistory = { values: [], history: [] };
 
 export const versionAtom = atom<Version | undefined>(undefined);
+
+// Older GUI servers do not publish this message and are Tower-only.
+export const isAlpenglowAtom = atom<IsAlpenglow>(false);
 
 export const clusterAtom = atom<Cluster | undefined>(undefined);
 

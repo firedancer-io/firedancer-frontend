@@ -1001,6 +1001,13 @@ export const [
   setLateVoteHistoryAtom,
 ] = isFrankendancer ? frankendancerLateVoteAtoms : firedancerLateVoteAtoms;
 
+/* Alpenglow's counterpart to the late vote history: slots this epoch we
+   were a voter for whose reward certificate did not include us,
+   run-length encoded as inclusive [start, end] pairs.  Kept separate
+   from the late vote atoms above, which measure a vote latency that
+   Alpenglow does not have. */
+export const missedVoteHistoryAtom = atom<number[]>([]);
+
 export const quickSearchSlotsAtom = atom((get) => {
   const leaderSlots = get(leaderSlotsAtom);
   const firstProcessedLeaderIndex = get(firstProcessedLeaderIndexAtom);

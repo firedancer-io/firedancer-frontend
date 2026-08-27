@@ -29,6 +29,7 @@ import {
   deleteLateVoteSlotAtom,
   clearLateVoteSlotsAtom,
   setLateVoteHistoryAtom,
+  missedVoteHistoryAtom,
   deleteSkippedClusterSlotsRangeAtom,
   deleteSlotResponseBoundsAtom,
   deleteSlotStatusBoundsAtom,
@@ -54,6 +55,7 @@ import {
 import { hasLateVote, slowDateTimeNow } from "../utils";
 import {
   versionAtom,
+  isAlpenglowAtom,
   clusterAtom,
   commitHashAtom,
   identityKeyAtom,
@@ -221,6 +223,7 @@ export function useSetAtomWsData() {
 
 function useUpdateAtoms() {
   const setVersion = useSetAtom(versionAtom);
+  const setIsAlpenglow = useSetAtom(isAlpenglowAtom);
   const setCluster = useSetAtom(clusterAtom);
   const setCommitHash = useSetAtom(commitHashAtom);
   const setIdentityKey = useSetAtom(identityKeyAtom);
@@ -359,6 +362,7 @@ function useUpdateAtoms() {
   const deleteLateVoteSlot = useSetAtom(deleteLateVoteSlotAtom);
   const clearLateVoteSlots = useSetAtom(clearLateVoteSlotsAtom);
   const setLateVoteHistory = useSetAtom(setLateVoteHistoryAtom);
+  const setMissedVoteHistory = useSetAtom(missedVoteHistoryAtom);
 
   const handleSlotUpdate = useCallback(
     (value: SlotResponse) => {
@@ -544,6 +548,10 @@ function useUpdateAtoms() {
           switch (key) {
             case "version": {
               setVersion(value);
+              break;
+            }
+            case "is_alpenglow": {
+              setIsAlpenglow(value);
               break;
             }
             case "cluster": {
@@ -753,6 +761,10 @@ function useUpdateAtoms() {
               addLiveShreds(value);
               break;
             }
+            case "missed_vote_history": {
+              setMissedVoteHistory(value.slot);
+              break;
+            }
             case "late_votes_history": {
               if (isFrankendancer && "latency" in value)
                 setLateVoteHistory(value);
@@ -806,6 +818,7 @@ function useUpdateAtoms() {
       setLiveProgramCache,
       setHealth,
       setVersion,
+      setIsAlpenglow,
       setCluster,
       setCommitHash,
       setIdentityKey,
@@ -851,6 +864,7 @@ function useUpdateAtoms() {
       setSlotRankings,
       addLiveShreds,
       setLateVoteHistory,
+      setMissedVoteHistory,
       setBlockEngine,
       setSupermajorityEpoch,
       addToSupermajorityPeersBuffers,

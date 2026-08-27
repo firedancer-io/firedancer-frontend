@@ -37,6 +37,8 @@ const accountsTopicSchema = z.object({
 
 export const versionSchema = z.string();
 
+export const isAlpenglowSchema = z.boolean();
+
 export const clusterSchema = z.enum([
   "development",
   "mainnet-beta",
@@ -133,18 +135,45 @@ export const serverTimeNanosSchema = z.coerce.number();
 export const estimatedSlotSchema = z.number();
 export const resetSlotSchema = z.number().nullable();
 export const storageSlotSchema = z.number().nullable();
-export const voteSlotSchema = z.number();
+export const voteSlotSchema = z.number().nullable();
 export const slotCaughtUpSchema = z.number().nullable();
 export const activeForkCountSchema = z.number();
 
 export const estimatedSlotDurationSchema = z.number();
 
-export const estimatedTpsSchema = z.object({
-  total: z.number(),
-  vote: z.number(),
-  nonvote_success: z.number(),
-  nonvote_failed: z.number(),
-});
+// Tower sends {total, vote, nonvote_success, nonvote_failed}; Alpenglow
+// sends {success, failed}, since it has no vote transactions to split
+// out.  Both are accepted; use normalizeEstimatedTps to read either.
+export const estimatedTpsSchema = z
+  .object({
+    total: z.number().optional(),
+    vote: z.number().optional(),
+    nonvote_success: z.number().optional(),
+    nonvote_failed: z.number().optional(),
+    success: z.number().optional(),
+    failed: z.number().optional(),
+  })
+  .transform((t) => {
+    // Alpenglow reports {success, failed}.  Project it onto the Tower
+    // shape so consumers stay unchanged; the vote rate is genuinely
+    // zero there, because votes are not transactions.
+    if (t.success !== undefined || t.failed !== undefined) {
+      const success = t.success ?? 0;
+      const failed = t.failed ?? 0;
+      return {
+        total: success + failed,
+        vote: 0,
+        nonvote_success: success,
+        nonvote_failed: failed,
+      };
+    }
+    return {
+      total: t.total ?? 0,
+      vote: t.vote ?? 0,
+      nonvote_success: t.nonvote_success ?? 0,
+      nonvote_failed: t.nonvote_failed ?? 0,
+    };
+  });
 
 export const liveNetworkMetricsSchema = z.object({
   ingress: z.array(z.number()),
@@ -463,39 +492,95 @@ export const slotTransactionsSchema = z.preprocess(
 export const slotLevelSchema = z.enum([
   "incomplete",
   "completed",
+  // Tower
   "optimistically_confirmed",
   "rooted",
   "finalized",
+  // Alpenglow.  "notarized" occupies the same rung as
+  // "optimistically_confirmed"; the two skip states are levels here
+  // rather than a separate boolean.
+  "notarized",
+  "skip_notarized",
+  "skipped",
 ]);
 
-export const slotPublishSchema = z.object({
-  slot: z.number(),
-  mine: z.boolean(),
-  skipped: z.boolean(),
-  level: slotLevelSchema,
-  success_nonvote_transaction_cnt: z.number().nullable(),
-  failed_nonvote_transaction_cnt: z.number().nullable(),
-  success_vote_transaction_cnt: z.number().nullable(),
-  failed_vote_transaction_cnt: z.number().nullable(),
-  priority_fee: z.coerce.bigint().nullable(),
-  transaction_fee: z.coerce.bigint().nullable(),
-  tips: z.coerce.bigint().nullable(),
-  max_compute_units: z.number().nullable(),
-  compute_units: z.number().nullable(),
-  duration_nanos: z.number().nullable(),
-  completed_time_nanos: z.coerce.bigint().nullable(),
-  vote_latency: z.number().nullable().optional(),
-  vote_latency_exact: z.number().nullable().optional(),
-  is_voter: z.boolean().optional(),
-});
+export const notarizationKindSchema = z.enum(["regular", "fallback"]);
+export const finalizationKindSchema = z.enum(["fast", "slow", "implicit"]);
+
+export const slotPublishSchema = z
+  .object({
+    slot: z.number(),
+    mine: z.boolean(),
+    // Tower-only: Alpenglow folds the skip states into `level`.
+    skipped: z.boolean().optional(),
+    level: slotLevelSchema,
+    // Tower-only: votes are not transactions under Alpenglow, which sends
+    // the combined pair below instead.  Exactly one set is present.
+    success_nonvote_transaction_cnt: z.number().nullable().optional(),
+    failed_nonvote_transaction_cnt: z.number().nullable().optional(),
+    success_vote_transaction_cnt: z.number().nullable().optional(),
+    failed_vote_transaction_cnt: z.number().nullable().optional(),
+    // Alpenglow-only.
+    success_transaction_cnt: z.number().nullable().optional(),
+    failed_transaction_cnt: z.number().nullable().optional(),
+    notarization_kind: notarizationKindSchema.nullable().optional(),
+    finalization_kind: finalizationKindSchema.nullable().optional(),
+    vote_rewarded: z.boolean().nullable().optional(),
+    priority_fee: z.coerce.bigint().nullable(),
+    transaction_fee: z.coerce.bigint().nullable(),
+    tips: z.coerce.bigint().nullable(),
+    max_compute_units: z.number().nullable(),
+    compute_units: z.number().nullable(),
+    duration_nanos: z.number().nullable(),
+    completed_time_nanos: z.coerce.bigint().nullable(),
+    vote_latency: z.number().nullable().optional(),
+    vote_latency_exact: z.number().nullable().optional(),
+    is_voter: z.boolean().optional(),
+  })
+  .transform((p) => {
+    // Alpenglow reports one combined transaction pair and no `skipped`
+    // boolean.  Project both onto the Tower shape so that consumers do
+    // not have to branch on consensus mode; the Alpenglow-only fields
+    // above are passed through untouched for those that want them.
+    const combined =
+      p.success_transaction_cnt !== undefined ||
+      p.failed_transaction_cnt !== undefined;
+
+    return {
+      ...p,
+      // Terminal skip is a level under Alpenglow rather than a flag.
+      skipped: p.skipped ?? p.level === "skipped",
+      success_nonvote_transaction_cnt:
+        p.success_nonvote_transaction_cnt ?? p.success_transaction_cnt ?? null,
+      failed_nonvote_transaction_cnt:
+        p.failed_nonvote_transaction_cnt ?? p.failed_transaction_cnt ?? null,
+      // Not unknown but genuinely zero: there are no vote transactions.
+      success_vote_transaction_cnt:
+        p.success_vote_transaction_cnt ?? (combined ? 0 : null),
+      failed_vote_transaction_cnt:
+        p.failed_vote_transaction_cnt ?? (combined ? 0 : null),
+    };
+  });
 
 export const tpsHistorySchema = z.array(
-  z.tuple([
-    z.number(), // total
-    z.number(), // vote
-    z.number(), // nonvote_success
-    z.number(), // nonvote_failed
-  ]),
+  z
+    .union([
+      z.tuple([
+        z.number(), // total
+        z.number(), // vote
+        z.number(), // nonvote_success
+        z.number(), // nonvote_failed
+      ]),
+      // Alpenglow: [success, failed]
+      z.tuple([z.number(), z.number()]),
+    ])
+    .transform((sample): [number, number, number, number] => {
+      if (sample.length === 2) {
+        const [success, failed] = sample;
+        return [success + failed, 0, success, failed];
+      }
+      return sample;
+    }),
 );
 
 export const voteStateSchema = z.enum(["voting", "non-voting", "delinquent"]);
@@ -565,6 +650,10 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("version"),
     value: versionSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("is_alpenglow"),
+    value: isAlpenglowSchema,
   }),
   summaryTopicSchema.extend({
     key: z.literal("cluster"),
@@ -1025,6 +1114,15 @@ export const slotSchema = z.discriminatedUnion("key", [
   slotTopicSchema.extend({
     key: z.literal("live_shreds"),
     value: liveShredsSchema,
+  }),
+  // Alpenglow's counterpart to late_votes_history: slots we were a
+  // voter for whose reward certificate did not include us.  Run-length
+  // encoded as inclusive [start, end] pairs.
+  slotTopicSchema.extend({
+    key: z.literal("missed_vote_history"),
+    value: z.object({
+      slot: z.number().array(),
+    }),
   }),
   slotTopicSchema.extend({
     key: z.literal("late_votes_history"),
