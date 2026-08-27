@@ -1,7 +1,7 @@
 import { useState } from "react";
 import privateIcon from "../assets/private.svg";
 import privateYouIcon from "../assets/privateYou.svg";
-import { Tooltip } from "@radix-ui/themes";
+import LazyTooltip from "./LazyTooltip";
 import { useAtom } from "jotai";
 import { getPeerIconHasErrorIcon } from "./peerIconAtom";
 import styles from "./peerIcon.module.css";
@@ -46,7 +46,7 @@ export default function PeerIcon({
       const img = <img src={privateYouIcon} style={iconStyles} />;
 
       if (hideTooltip) return img;
-      return <Tooltip content="Your current validator">{img}</Tooltip>;
+      return <LazyTooltip content="Your current validator">{img}</LazyTooltip>;
     }
 
     return <img src={privateIcon} alt="private" style={iconStyles} />;

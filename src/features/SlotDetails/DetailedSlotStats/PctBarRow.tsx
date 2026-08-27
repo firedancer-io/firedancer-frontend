@@ -1,7 +1,7 @@
 import { Text } from "@radix-ui/themes";
 import PctBar from "./PctBar";
 import styles from "./detailedSlotStats.module.css";
-import ConditionalTooltip from "../../../components/ConditionalTooltip";
+import LazyTooltip from "../../../components/LazyTooltip";
 
 interface PctBarRowProps {
   label: string;
@@ -26,11 +26,11 @@ export default function PctBarRow({
 
   return (
     <>
-      <ConditionalTooltip content={labelWidth ? label : undefined}>
+      <LazyTooltip content={labelWidth ? label : undefined}>
         <Text className={styles.label} truncate style={{ width: labelWidth }}>
           {label}
         </Text>
-      </ConditionalTooltip>
+      </LazyTooltip>
       <Text
         className={styles.value}
         style={{ color: numeratorColor ? valueColor : undefined }}

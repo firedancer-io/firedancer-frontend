@@ -5,8 +5,9 @@ import {
   commitHashAtom,
   scheduleStrategyAtom,
 } from "../../api/atoms";
-import { Text, Tooltip, Flex } from "@radix-ui/themes";
+import { Text, Flex } from "@radix-ui/themes";
 import styles from "./cluster.module.css";
+import LazyTooltip from "../../components/LazyTooltip";
 import { ScheduleStrategyEnum } from "../../api/entityEnums";
 import { ScheduleStrategyIcon } from "../../components/ScheduleStrategyIcon";
 import { clusterIndicatorHeight, slotsListWidth } from "../../consts";
@@ -42,15 +43,15 @@ export function Cluster() {
         align="center"
         style={{ background: getClusterColor(cluster) }}
       >
-        <Tooltip content="Cluster the validator is joined to">
+        <LazyTooltip content="Cluster the validator is joined to">
           <Text className={styles.clusterName}>{clusterText}</Text>
-        </Tooltip>
+        </LazyTooltip>
 
-        <Tooltip
+        <LazyTooltip
           content={`Current validator software version. Commit Hash: ${commitHash || "unknown"}`}
         >
           <Text>v{version}</Text>
-        </Tooltip>
+        </LazyTooltip>
       </Flex>
 
       <StrategyIcon />

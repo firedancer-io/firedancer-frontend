@@ -7,7 +7,7 @@ import Performance from "../assets/performance.svg?react";
 import Revenue from "../assets/revenue.svg?react";
 import { getClusterColor } from "../utils";
 import { useMemo } from "react";
-import { Tooltip } from "@radix-ui/themes";
+import LazyTooltip from "./LazyTooltip";
 
 export function ScheduleStrategyIcon({
   strategy,
@@ -43,8 +43,8 @@ export function ScheduleStrategyIcon({
   // Tooltip needs a child that supports forwards ref and
   // pointer events, such as div. SVG does not by default
   return (
-    <Tooltip content={tooltipContent}>
+    <LazyTooltip content={tooltipContent}>
       <div style={{ lineHeight: 0 }}>{icon}</div>
-    </Tooltip>
+    </LazyTooltip>
   );
 }

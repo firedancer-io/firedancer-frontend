@@ -1,4 +1,3 @@
-import { DropdownMenu } from "radix-ui";
 import styles from "./nav.module.css";
 import type { ButtonProps } from "@radix-ui/themes";
 import { Button, Flex, Text } from "@radix-ui/themes";
@@ -22,6 +21,7 @@ import { clusterAtom } from "../../api/atoms";
 import { getClusterColor } from "../../utils";
 import { navButtonInactiveTextColor } from "../../colors";
 import { isFrankendancer } from "../../client";
+import { useOverlayStack } from "../../components/lazyOverlays";
 
 interface NavLinkProps {
   label: RouteLabel;
@@ -123,6 +123,21 @@ export function NavLinks() {
 export function DropdownNav() {
   const containerEl = useAtomValue(containerElAtom);
   const currentRoute = useCurrentRoute();
+  // bare trigger until the overlay stack loads on the first gesture
+  const overlays = useOverlayStack();
+
+  if (!overlays)
+    return (
+      <NavButton
+        key={currentRoute}
+        label={currentRoute}
+        isActive
+        showDropdownIcon
+        isLink={false}
+      />
+    );
+
+  const { DropdownMenu } = overlays;
 
   return (
     <DropdownMenu.Root>

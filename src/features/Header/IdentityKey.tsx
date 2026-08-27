@@ -19,7 +19,7 @@ import PopoverDropdown from "../../components/PopoverDropdown";
 import { identityIconOnlyWidth, maxZIndex } from "../../consts";
 import { useUptimeDuration } from "../../hooks/useUptime";
 import CopyButton from "../../components/CopyButton";
-import ConditionalTooltip from "../../components/ConditionalTooltip";
+import LazyTooltip from "../../components/LazyTooltip";
 import { client, isFiredancer } from "../../client";
 
 // Reserves the identity-key column before summary.identity_key arrives:
@@ -302,7 +302,7 @@ function Label({
   const reserved = !children;
 
   return (
-    <ConditionalTooltip content={tooltip}>
+    <LazyTooltip content={tooltip}>
       <Flex
         direction="column"
         minWidth="0"
@@ -323,7 +323,7 @@ function Label({
           </Text>
         </CopyButton>
       </Flex>
-    </ConditionalTooltip>
+    </LazyTooltip>
   );
 }
 

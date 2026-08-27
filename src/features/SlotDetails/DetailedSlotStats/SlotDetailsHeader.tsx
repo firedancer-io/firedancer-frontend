@@ -20,7 +20,7 @@ import CopyButton from "../../../components/CopyButton";
 import MonoText from "../../../components/MonoText";
 import clsx from "clsx";
 import { isFrankendancer } from "../../../client";
-import ConditionalTooltip from "../../../components/ConditionalTooltip";
+import LazyTooltip from "../../../components/LazyTooltip";
 
 const gap = "5px";
 
@@ -165,11 +165,11 @@ function IconNameKey({ slot, isLgScreen }: IconNameKeyProps) {
         <PeerIcon url={peer?.info?.icon_url} size={42} isYou={isLeader} />
 
         <Flex direction="column" gapY="1px" minWidth="0">
-          <ConditionalTooltip content={name}>
+          <LazyTooltip content={name}>
             <Text truncate className={clsx(styles.name, styles.lg)}>
               {name}
             </Text>
-          </ConditionalTooltip>
+          </LazyTooltip>
           <Pubkey slot={slot} pubkey={pubkey} />
         </Flex>
       </Flex>
@@ -180,11 +180,11 @@ function IconNameKey({ slot, isLgScreen }: IconNameKeyProps) {
     <Flex direction="column">
       <Flex gapX={gap} align="center">
         <PeerIcon url={peer?.info?.icon_url} size={15} isYou={isLeader} />
-        <ConditionalTooltip content={name}>
+        <LazyTooltip content={name}>
           <Text truncate className={styles.name}>
             {name}
           </Text>
-        </ConditionalTooltip>
+        </LazyTooltip>
       </Flex>
 
       <Pubkey slot={slot} pubkey={pubkey} />
