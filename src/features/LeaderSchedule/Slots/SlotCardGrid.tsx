@@ -10,7 +10,12 @@ import { useEffect, useRef, useState } from "react";
 import "react-circular-progressbar/dist/styles.css";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import type { SlotPublish } from "../../../api/types";
-import { fixValue, getDiscountedVoteLatency } from "../../../utils";
+import {
+  fixValue,
+  getDiscountedVoteLatency,
+  voteMissedColor,
+  voteRewardedCell,
+} from "../../../utils";
 import { usePrevious, useUnmount } from "react-use";
 import {
   defaultMaxComputeUnits,
@@ -25,7 +30,7 @@ import {
   scrollAllFuncsAtom,
 } from "./atoms";
 import clsx from "clsx";
-import { identityKeyAtom } from "../../../api/atoms";
+import { identityKeyAtom, isAlpenglowAtom } from "../../../api/atoms";
 import { usePubKey } from "../../../hooks/usePubKey";
 import {
   PlaceholderIcon,
@@ -41,6 +46,7 @@ interface SlotCardGridProps {
 }
 
 export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
   const ref = useRef<HTMLDivElement | null>(null);
   const setScroll = useSetAtom(setScrollFuncsAtom);
   const deleteScroll = useSetAtom(deleteScrollFuncsAtom);
@@ -68,7 +74,7 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
             className={clsx(styles.headerText, styles.voteLatencyHeader)}
             align="right"
           >
-            Vote&nbsp;Latency
+            {isAlpenglow ? <>Vote&nbsp;Rewarded</> : <>Vote&nbsp;Latency</>}
           </Text>
         )}
         <Text
@@ -262,13 +268,15 @@ function getRowValues(
   const voteLatency =
     publish.is_voter === false
       ? { text: "-" }
-      : discountedLatency != null
-        ? { text: discountedLatency.toLocaleString() }
-        : publish.skipped
-          ? { text: "-" }
-          : publish.level === "rooted"
-            ? { text: "✕", color: "#FF3C3C" }
-            : { text: "-" };
+      : publish.vote_rewarded !== undefined
+        ? voteRewardedCell(publish.vote_rewarded)
+        : discountedLatency != null
+          ? { text: discountedLatency.toLocaleString() }
+          : publish.skipped
+            ? { text: "-" }
+            : publish.level === "rooted"
+              ? { text: "✕", color: voteMissedColor }
+              : { text: "-" };
 
   return {
     voteTxns: (voteTxnsSuccess + voteTxnsFailure).toLocaleString(),

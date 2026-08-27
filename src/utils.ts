@@ -573,6 +573,20 @@ export function hasLateVote(publish: SlotPublish) {
   );
 }
 
+export const voteMissedColor = "#FF3C3C";
+
+/* Alpenglow has no vote latency.  A vote for a slot either made it into
+   that slot's reward certificate or it did not, and the certificate only
+   arrives with slot + 8, so an unresolved slot has to read as unknown
+   rather than as a miss.  The server sends vote_rewarded only in this
+   mode, which is what selects this branch at the call site: without it
+   hasLateVote's Tower path marks every rooted slot missed, because the
+   latency fields it keys on are never sent under Alpenglow. */
+export function voteRewardedCell(rewarded: boolean | null) {
+  if (rewarded === null) return { text: "-" };
+  return rewarded ? { text: "✓" } : { text: "✕", color: voteMissedColor };
+}
+
 export function getDiscountedVoteLatency(
   slot: number,
   latency: number,

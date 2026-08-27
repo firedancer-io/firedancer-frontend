@@ -5,6 +5,8 @@ import {
   getDiscountedVoteLatency,
   getDurationText,
   hasLateVote,
+  voteMissedColor,
+  voteRewardedCell,
 } from "../utils";
 import { Duration } from "luxon";
 import type { SlotPublish } from "../api/types";
@@ -587,5 +589,61 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
         }),
       ),
     ).toBeFalsy();
+  });
+});
+
+describe("voteRewardedCell", () => {
+  /* Under Alpenglow the leader schedule's vote column is driven by the
+     reward certificate, not by a latency the server never sends. */
+
+  it("an unresolved outcome reads as unknown, not as a miss", () => {
+    expect(voteRewardedCell(null)).toEqual({ text: "-" });
+  });
+
+  it("a rewarded vote is marked landed", () => {
+    expect(voteRewardedCell(true)).toEqual({ text: "\u2713" });
+  });
+
+  it("an unrewarded vote is marked missed", () => {
+    expect(voteRewardedCell(false)).toEqual({
+      text: "\u2715",
+      color: voteMissedColor,
+    });
+  });
+});
+
+describe("hasLateVote under Alpenglow", () => {
+  /* The server sends neither vote_latency nor vote_latency_exact in
+     Alpenglow mode.  A rooted slot must not be counted late just because
+     both are missing. */
+  const alpenglowPublish = (
+    overrides: Partial<SlotPublish> = {},
+  ): SlotPublish =>
+    ({
+      slot: 100,
+      mine: false,
+      skipped: false,
+      level: "rooted",
+      is_voter: true,
+      success_nonvote_transaction_cnt: 0,
+      failed_nonvote_transaction_cnt: 0,
+      success_vote_transaction_cnt: 0,
+      failed_vote_transaction_cnt: 0,
+      priority_fee: null,
+      transaction_fee: null,
+      tips: null,
+      max_compute_units: null,
+      compute_units: null,
+      duration_nanos: null,
+      completed_time_nanos: null,
+      ...overrides,
+    }) as SlotPublish;
+
+  it("a rooted slot with no latency fields is not late", () => {
+    expect(hasLateVote(alpenglowPublish())).toBeFalsy();
+  });
+
+  it("an unrewarded rooted slot is still not counted as a late vote", () => {
+    expect(hasLateVote(alpenglowPublish({ vote_rewarded: false }))).toBeFalsy();
   });
 });

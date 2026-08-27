@@ -48,9 +48,15 @@ export function StatusIcon({
     );
   }
 
-  if (status === "rooted" || status === "finalized") {
+  /* Alpenglow's skipped is terminal in the same way rooted is - finality
+     has established there is no block here - so it earns the same icon.
+     The leader schedule draws a skipped marker beside this one, which is
+     what distinguishes the two. */
+  if (status === "rooted" || status === "finalized" || status === "skipped") {
     return (
-      <Tooltip content="Slot was rooted">
+      <Tooltip
+        content={status === "skipped" ? "Slot was skipped" : "Slot was rooted"}
+      >
         <img src={rootedIcon} alt="rooted" className={className} />
       </Tooltip>
     );

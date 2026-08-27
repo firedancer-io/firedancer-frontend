@@ -64,11 +64,32 @@ describe("getSlotLanes", () => {
     });
 
     expect(lanes.map(({ label }) => label)).toEqual([
+      "Next Leader",
       "Rotor",
       "Replayed",
       "Finalized",
       "Storage",
     ]);
+  });
+
+  it("keeps the next leader lane with a null slot when we never lead", () => {
+    const lanes = getSlotLanes({
+      ...baseValues,
+      isAlpenglow: true,
+      nextLeaderSlot: undefined,
+    });
+
+    expect(lanes.find(({ id }) => id === "nextLeader")?.slot).toBeNull();
+  });
+
+  it("keeps the next leader slot when there is one", () => {
+    const lanes = getSlotLanes({
+      ...baseValues,
+      isAlpenglow: true,
+      nextLeaderSlot: 140,
+    });
+
+    expect(lanes.find(({ id }) => id === "nextLeader")?.slot).toBe(140);
   });
 });
 

@@ -12,7 +12,10 @@ export type SlotLaneId =
 export interface SlotLane {
   id: SlotLaneId;
   label: string;
-  slot: number;
+  /* null means the lane is known to have no slot rather than not yet
+     known: an unstaked validator never leads, so its next leader lane
+     stays visible and reads "never" instead of disappearing. */
+  slot: number | null;
   color: string;
   isReference?: boolean;
 }

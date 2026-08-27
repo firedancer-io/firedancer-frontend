@@ -113,10 +113,12 @@ function SlotLanes() {
   if (replaySlot == null || currentSlotRange == null) return;
 
   const nextLeaderLane = lanes.find(({ id }) => id === "nextLeader");
+  const nextLeaderSlotValue = nextLeaderLane?.slot ?? null;
   const hasNextLeaderColumn =
-    nextLeaderLane != null && nextLeaderLane.slot > currentSlotRange.maxSlot;
+    nextLeaderSlotValue != null &&
+    nextLeaderSlotValue > currentSlotRange.maxSlot;
   const futureSlotCellCount = hasNextLeaderColumn
-    ? getFutureSlotCellCount(currentSlotRange.maxSlot, nextLeaderLane.slot)
+    ? getFutureSlotCellCount(currentSlotRange.maxSlot, nextLeaderSlotValue)
     : 0;
   const hasFutureSection = futureSlotCellCount > 0;
   const futureSectionWeight = Math.min(
@@ -148,8 +150,11 @@ function SlotLanes() {
         {hasFutureSection && (
           <FutureSlots lanes={lanes} cellCount={futureSlotCellCount} />
         )}
-        {hasNextLeaderColumn && (
-          <NextLeaderSlots lanes={lanes} nextLeaderLane={nextLeaderLane} />
+        {hasNextLeaderColumn && nextLeaderLane != null && (
+          <NextLeaderSlots
+            lanes={lanes}
+            nextLeaderLane={{ ...nextLeaderLane, slot: nextLeaderSlotValue }}
+          />
         )}
       </div>
     </div>
@@ -166,20 +171,26 @@ function LaneLabels({ lanes, referenceSlot }: LaneLabelsProps) {
     <div className={clsx(styles.timelineSection, styles.labelsSection)}>
       <Text className={styles.typeHeader}>Type</Text>
       {lanes.map((lane) => {
-        const delta = lane.slot - referenceSlot;
+        const delta = lane.slot == null ? null : lane.slot - referenceSlot;
         const deltaText =
-          lane.id === "nextLeader"
-            ? `${delta}`
-            : delta > 0
-              ? `+${delta}`
-              : `${delta}`;
+          delta == null
+            ? "never"
+            : lane.id === "nextLeader"
+              ? `${delta}`
+              : delta > 0
+                ? `+${delta}`
+                : `${delta}`;
 
         return (
           <div
             className={styles.laneLabel}
             key={lane.id}
             style={{ "--lane-color": lane.color } as LaneStyle}
-            title={`${lane.label}: ${lane.slot}`}
+            title={
+              lane.slot == null
+                ? `${lane.label}: never`
+                : `${lane.label}: ${lane.slot}`
+            }
           >
             <Text className={styles.laneName} weight="medium" truncate>
               {lane.label}
@@ -283,13 +294,19 @@ const SlotCells = memo(function SlotCells({
   maxSlot,
   columns,
 }: SlotCellsProps) {
-  const isBeforeRange = lane.slot < minSlot;
-  const isAfterRange = lane.slot > maxSlot;
-  const visibleSlot = isBeforeRange
-    ? minSlot
-    : isAfterRange
-      ? maxSlot
-      : lane.slot;
+  /* A lane with no slot has nothing to mark anywhere on the row; note
+     that null < minSlot would otherwise be true, since null coerces to
+     zero, and would clip a marker to the left edge. */
+  const isBeforeRange = lane.slot != null && lane.slot < minSlot;
+  const isAfterRange = lane.slot != null && lane.slot > maxSlot;
+  const visibleSlot =
+    lane.slot == null
+      ? null
+      : isBeforeRange
+        ? minSlot
+        : isAfterRange
+          ? maxSlot
+          : lane.slot;
   const showOutOfRangeMarker = lane.id !== "nextLeader";
 
   return (
@@ -304,6 +321,7 @@ const SlotCells = memo(function SlotCells({
     >
       {slots.map((slot) => {
         const isMarker =
+          visibleSlot != null &&
           slot === visibleSlot &&
           (!isBeforeRange && !isAfterRange ? true : showOutOfRangeMarker);
 

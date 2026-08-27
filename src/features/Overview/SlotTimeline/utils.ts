@@ -25,8 +25,13 @@ type OptionalSlotLane = Omit<SlotLane, "slot"> & {
   slot: number | null | undefined;
 };
 
+/* A lane with no slot yet is not worth a row - except next leader, which
+   is kept so that a validator that will never lead says so rather than
+   silently losing the row. */
 function removeUnavailableLanes(lanes: OptionalSlotLane[]): SlotLane[] {
-  return lanes.filter((lane): lane is SlotLane => lane.slot != null);
+  return lanes
+    .filter((lane) => lane.slot != null || lane.id === "nextLeader")
+    .map((lane) => ({ ...lane, slot: lane.slot ?? null }));
 }
 
 export function getSlotLanes(values: SlotTimelineValues): SlotLane[] {
@@ -150,7 +155,8 @@ export function getCurrentSlotRange(
 ): CurrentSlotRange {
   const currentSlots = lanes
     .filter(({ id }) => id !== "nextLeader")
-    .map(({ slot }) => slot);
+    .map(({ slot }) => slot)
+    .filter((slot): slot is number => slot != null);
   const maxSlot = Math.max(referenceSlot, ...currentSlots);
   const oldestSlot = Math.min(referenceSlot, ...currentSlots);
   const paddedMinSlot = Math.max(0, maxSlot - minCurrentSlotCount + 1);
