@@ -1,9 +1,9 @@
 import "@radix-ui/themes/styles.css";
 import { Theme } from "@radix-ui/themes";
-import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { RouterProvider } from "@tanstack/react-router";
 import "./app.css";
 import "./appColors.css";
-import { routeTree } from "./routeTree.gen";
+import { router } from "./router";
 import { ConnectionProvider } from "./api/ws/ConnectionProvider";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { containerElAtom, isDocumentVisibleAtom } from "./atoms";
@@ -15,15 +15,6 @@ import { isFiredancer } from "./client";
 
 // immer's MapSet plugin loads in applyWsData.ts: it must be enabled
 // before the pre-mount first-batch apply, which runs before this module
-
-const router = createRouter({ routeTree });
-
-// Register the router instance for type safety
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
-}
 
 // set up favicon and title based on client
 if (isFiredancer) {
