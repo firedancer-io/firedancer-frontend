@@ -43,13 +43,17 @@ export default function PeerIcon({
     }
 
     if (isYou) {
-      const img = <img src={privateYouIcon} style={iconStyles} />;
+      const img = (
+        <img src={privateYouIcon} style={iconStyles} decoding="sync" />
+      );
 
       if (hideTooltip) return img;
       return <LazyTooltip content="Your current validator">{img}</LazyTooltip>;
     }
 
-    return <img src={privateIcon} alt="private" style={iconStyles} />;
+    return (
+      <img src={privateIcon} alt="private" style={iconStyles} decoding="sync" />
+    );
   }
 
   const handleError = () => {
@@ -62,13 +66,23 @@ export default function PeerIcon({
       <img
         className={clsx({ [styles.hide]: !hasLoaded })}
         style={iconStyles}
+        // sync: paint the pixels in the frame that reveals the img
+        // instead of skipping it for an async decode
+        decoding="sync"
         onError={handleError}
         onLoad={() => setHasLoaded(true)}
+        // cached images are complete at commit; swap pre-paint so they
+        // land in the reveal frame instead of waiting out a load task
+        ref={(el) => {
+          if (el?.complete && el.naturalWidth > 0 && !hasLoaded)
+            setHasLoaded(true);
+        }}
         src={url}
       />
       <img
         className={clsx({ [styles.hide]: hasLoaded })}
         style={iconStyles}
+        decoding="sync"
         src={privateIcon}
         alt="private"
       />
