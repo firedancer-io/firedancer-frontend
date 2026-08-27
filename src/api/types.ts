@@ -78,6 +78,7 @@ import type {
   partitionTierSchema,
   compactionStateSchema,
   voteCommissionSchema,
+  isAlpenglowSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -211,6 +212,8 @@ export type VoteHealth = z.infer<typeof voteHealthSchema>;
 export type BundleHealth = z.infer<typeof bundleHealthSchema>;
 export type ReplayHealth = z.infer<typeof replayHealthSchema>;
 export type TurbineHealth = z.infer<typeof turbineHealthSchema>;
+
+export type IsAlpenglow = z.infer<typeof isAlpenglowSchema>;
 
 export type AccountsStats = z.infer<typeof accountsStatsSchema>;
 export type AccountsPartition = z.infer<typeof accountsPartitionSchema>;

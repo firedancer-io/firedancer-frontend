@@ -43,6 +43,7 @@ import type {
   Health,
   AccountsStats,
   VoteCommission,
+  IsAlpenglow,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 import type { ValuesWithHistory } from "./worker/types";
@@ -198,5 +199,6 @@ export const liveProgramCacheAtom = atom<LiveProgramCache | undefined>(
 );
 
 export const healthAtom = atom<Health | undefined>(undefined);
+export const isAlpenglowAtom = atom<IsAlpenglow | undefined>(undefined);
 
 export const accountsStatsAtom = atom<AccountsStats | undefined>(undefined);
