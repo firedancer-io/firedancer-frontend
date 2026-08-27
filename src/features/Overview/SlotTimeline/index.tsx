@@ -114,17 +114,14 @@ function SlotLanes() {
   if (replaySlot == null || currentSlotRange == null) return;
 
   const nextLeaderLane = lanes.find(({ id }) => id === "nextLeader");
-  const nextLeaderSlotValue = nextLeaderLane?.slot ?? null;
-  /* The column is still worth drawing when we will never lead, because
-     that is where the answer belongs.  There is no gap to fill in front
-     of it then, and no countdown to run. */
-  const hasNextLeaderColumn =
-    nextLeaderLane != null &&
-    shouldShowNextLeaderColumn(nextLeaderLane.slot, currentSlotRange.maxSlot);
-  const futureSlotCellCount =
-    hasNextLeaderColumn && nextLeaderSlotValue != null
-      ? getFutureSlotCellCount(currentSlotRange.maxSlot, nextLeaderSlotValue)
-      : 0;
+  const hasNextLeaderColumn = shouldShowNextLeaderColumn(
+    nextLeaderLane?.slot,
+    currentSlotRange.maxSlot,
+  );
+  const futureSlotCellCount = getFutureSlotCellCount(
+    currentSlotRange.maxSlot,
+    nextLeaderLane?.slot,
+  );
   const hasFutureSection = futureSlotCellCount > 0;
   const futureSectionWeight = Math.min(
     currentSlotRange.slots.length,
@@ -404,6 +401,8 @@ function NextLeaderSlots({ lanes, nextLeaderLane }: NextLeaderSlotsProps) {
   );
 }
 
+/* useNextSlot already renders "Never" for a missing next leader slot, so
+   the timer needs no special case. */
 function NextLeaderTimer() {
   const { progressSinceLastLeader, nextSlotText } = useNextSlot({
     showNowIfCurrent: false,

@@ -94,7 +94,9 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
           className={clsx(styles.headerText, styles.nonVotesHeader)}
           align="right"
         >
-          Non-votes
+          {/* With no votes column beside it, "non-votes" is naming a
+              distinction Alpenglow does not draw. */}
+          {isAlpenglow ? "Transactions" : "Non-votes"}
         </Text>
         <Text
           className={clsx(styles.headerText, styles.feesHeader)}

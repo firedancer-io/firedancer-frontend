@@ -144,6 +144,10 @@ describe("getFutureSlotCellCount", () => {
     expect(getFutureSlotCellCount(100, 1_000)).toBe(maxFutureSlotCellCount);
     expect(getFutureSlotCellCount(100, undefined)).toBe(0);
   });
+
+  it("fills the section when we will never lead", () => {
+    expect(getFutureSlotCellCount(100, null)).toBe(maxFutureSlotCellCount);
+  });
 });
 
 describe("shouldShowNextLeaderColumn", () => {
@@ -152,6 +156,10 @@ describe("shouldShowNextLeaderColumn", () => {
 
   it("keeps the column when we will never lead", () => {
     expect(shouldShowNextLeaderColumn(null, 100)).toBe(true);
+  });
+
+  it("drops the column when there is no lane at all", () => {
+    expect(shouldShowNextLeaderColumn(undefined, 100)).toBe(false);
   });
 
   it("keeps the column when the next leader slot is ahead of the range", () => {

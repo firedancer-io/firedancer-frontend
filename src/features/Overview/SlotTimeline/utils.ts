@@ -177,23 +177,30 @@ export function getCurrentSlotRange(
   };
 }
 
-/* The next leader column is drawn when it has something to say: a slot
-   beyond the current range, or the fact that we will never lead.  A slot
-   already inside the current range is marked there, so a second column
-   would only duplicate it. */
+/* Null means we will never lead, which still gets the column - the card
+   keeps its usual shape and the header reads "never" where the slot
+   number would be.  Undefined means no lane at all.  A slot already
+   inside the current range is marked there, so a column would only
+   duplicate it. */
 export function shouldShowNextLeaderColumn(
-  nextLeaderSlot: number | null,
+  nextLeaderSlot: number | null | undefined,
   maxCurrentSlot: number,
 ) {
-  if (nextLeaderSlot == null) return true;
+  if (nextLeaderSlot === null) return true;
+  if (nextLeaderSlot === undefined) return false;
   return nextLeaderSlot > maxCurrentSlot;
 }
 
+/* Null and undefined mean different things here.  Null is "we will never
+   lead", where the future runs on with nothing at the end of it, so the
+   section is filled rather than measured.  Undefined is "no lane at
+   all", which draws nothing. */
 export function getFutureSlotCellCount(
   maxCurrentSlot: number,
-  nextLeaderSlot: number | undefined,
+  nextLeaderSlot: number | null | undefined,
 ) {
-  if (nextLeaderSlot == null) return 0;
+  if (nextLeaderSlot === null) return maxFutureSlotCellCount;
+  if (nextLeaderSlot === undefined) return 0;
   return Math.min(
     Math.max(nextLeaderSlot - maxCurrentSlot - 1, 0),
     maxFutureSlotCellCount,
