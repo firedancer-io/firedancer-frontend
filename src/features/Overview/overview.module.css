@@ -2,12 +2,14 @@
   grid-template-columns: minmax(300px, 1fr);
 }
 
-/* Isolate each section's layout/paint so data-driven commits inside one
-   card can't trigger full-page style/layout/paint work. Tooltips,
-   popovers and dropdowns all portal out of the cards. */
+/* Isolate each section's layout so data-driven commits inside one card
+   can't trigger full-page style/layout work. Tooltips, popovers and
+   dropdowns all portal out of the cards. No paint containment: its
+   clip layer lands the 1px card border on a rounded edge at fractional
+   zoom, eating the bottom border. */
 .overview > *,
 .cards > * {
-  contain: content;
+  contain: style layout;
 }
 
 /* Below the fold at 1600x900: skip render work until scrolled near.
