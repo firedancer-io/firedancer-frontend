@@ -57,11 +57,23 @@ function installEarly(overrides?: Partial<Omit<EarlyWs, "worker">>) {
   return worker;
 }
 
-function installMain(overrides?: Partial<Omit<MainWs, "worker" | "early">>) {
-  const worker = new MockWorker();
+class MockMainPort {
+  posted: { msg: unknown; transfer?: Transferable[] }[] = [];
+  closeCalls = 0;
+  onmessage: ((e: MessageEvent) => void) | null = null;
+  postMessage(msg: unknown, transfer?: Transferable[]) {
+    this.posted.push({ msg, transfer });
+  }
+  close() {
+    this.closeCalls += 1;
+  }
+}
+
+function installMain(overrides?: Partial<Omit<MainWs, "port" | "early">>) {
+  const port = new MockMainPort();
   const early = new MockWorker();
   window.__fdWsMain = {
-    worker: worker as unknown as Worker,
+    port: port as unknown as MessagePort,
     early: early as unknown as Worker,
     url: wsUrl,
     compress: true,
@@ -69,7 +81,7 @@ function installMain(overrides?: Partial<Omit<MainWs, "worker" | "early">>) {
     pending: [],
     ...overrides,
   };
-  return { worker, early };
+  return { port, early };
 }
 
 function makeSink() {
@@ -158,40 +170,45 @@ describe("adoptEarlyWs", () => {
 });
 
 describe("attachMainWs", () => {
-  test("attaches to the parked worker: pending drains in order, then live messages flow", () => {
+  test("attaches to the parked port: pending drains in order, then live messages flow", () => {
     const connected = { type: "connected" };
     const kvb1 = { type: "kvb", items: ["a"] };
     // the inline script parks the message events themselves
-    const { worker, early } = installMain({
+    const { port, early } = installMain({
       pending: [{ data: connected }, { data: kvb1 }],
     });
     const { seen, onMessage } = makeSink();
 
-    expect(attachMainWs(wsUrl, true, onMessage)).toBe(
-      worker as unknown as Worker,
-    );
+    const facade = attachMainWs(wsUrl, true, onMessage);
+    expect(facade).not.toBeNull();
     expect(window.__fdWsMain).toBeUndefined();
 
     // buffered messages replayed first, in order
     expect(seen).toEqual([connected, kvb1]);
 
-    // live handler installed on the worker itself
+    // live handler installed on the port itself
     const kvb2 = { type: "kvb", items: ["b"] };
-    worker.onmessage?.({ data: kvb2 } as MessageEvent);
+    port.onmessage?.({ data: kvb2 } as MessageEvent);
     expect(seen).toEqual([connected, kvb1, kvb2]);
 
-    expect(worker.terminateCalls).toBe(0);
-    expect(early.terminateCalls).toBe(0);
-    expect(worker.posted).toHaveLength(0); // adoption was wired inline
+    // the facade posts through the port, transfer list included
+    const chartPort = { name: "chart" } as unknown as MessagePort;
+    facade?.postMessage({ type: "shredsPort", port: chartPort }, [chartPort]);
+    expect(port.posted).toHaveLength(1);
+    expect(port.posted[0].transfer).toEqual([chartPort]);
+
+    // terminate tears down the port and the owner of nested + socket
+    facade?.terminate();
+    expect(port.closeCalls).toBe(1);
+    expect(early.terminateCalls).toBe(1);
   });
 
-  test("closeEarlyWs terminates the blob socket worker after attach, not the wsWorker", () => {
-    const { worker, early } = installMain();
+  test("closeEarlyWs terminates the blob owner worker after attach", () => {
+    const { early } = installMain();
     expect(attachMainWs(wsUrl, true, makeSink().onMessage)).not.toBeNull();
 
     closeEarlyWs();
     expect(early.terminateCalls).toBe(1);
-    expect(worker.terminateCalls).toBe(0);
     closeEarlyWs();
     expect(early.terminateCalls).toBe(1);
   });
@@ -201,9 +218,9 @@ describe("attachMainWs", () => {
     ["url mismatch", { url: "ws://other:80/websocket" }],
     ["compress mismatch", { compress: false }],
   ] as const)(
-    "tears both workers down and falls back when the parked worker is %s",
+    "tears everything down and falls back when the parked handle is %s",
     (_name, overrides) => {
-      const { worker, early } = installMain({
+      const { port, early } = installMain({
         pending: [{ data: { type: "connected" } }],
         ...overrides,
       });
@@ -212,7 +229,7 @@ describe("attachMainWs", () => {
       expect(attachMainWs(wsUrl, true, onMessage)).toBeNull();
       expect(window.__fdWsMain).toBeUndefined();
       expect(seen).toHaveLength(0); // nothing replayed from a dead pair
-      expect(worker.terminateCalls).toBe(1);
+      expect(port.closeCalls).toBe(1);
       expect(early.terminateCalls).toBe(1);
     },
   );
@@ -229,32 +246,32 @@ describe("attachMainWs", () => {
   test("openShredsChartPort wires the chart port to the attached inline worker", async () => {
     vi.stubGlobal("Worker", MockWorker); // module-eval startWorker runs
     const url = `${window.location.protocol.startsWith("https") ? "wss" : "ws"}://${window.location.hostname}:${window.location.port}/websocket`;
-    const { worker } = installMain({ url });
+    const { port } = installMain({ url });
 
     vi.resetModules();
     const mod = await import("../useWsWorker");
 
-    // module eval attached to the parked worker instead of spawning
+    // module eval attached to the parked port instead of spawning
     expect(window.__fdWsMain).toBeUndefined();
-    expect(worker.onmessage).not.toBeNull();
+    expect(port.onmessage).not.toBeNull();
 
     // jsdom lacks OffscreenCanvas, so startWorker asks for the main feed
-    expect(worker.posted).toHaveLength(1);
-    expect(worker.posted[0].msg).toMatchObject({
+    expect(port.posted).toHaveLength(1);
+    expect(port.posted[0].msg).toMatchObject({
       type: "mainShreds",
       enabled: true,
     });
 
     // late chart mount: the shreds port reaches the inline-booted worker
-    const port = mod.openShredsChartPort();
-    expect(port).toMatchObject({ name: "port2" });
-    expect(worker.posted).toHaveLength(2);
-    expect(worker.posted[1].msg).toMatchObject({
+    const chartPort = mod.openShredsChartPort();
+    expect(chartPort).toMatchObject({ name: "port2" });
+    expect(port.posted).toHaveLength(2);
+    expect(port.posted[1].msg).toMatchObject({
       type: "shredsPort",
       port: { name: "port1" },
     });
-    expect(worker.posted[1].transfer).toEqual([
-      (worker.posted[1].msg as { port: MessagePort }).port,
+    expect(port.posted[1].transfer).toEqual([
+      (port.posted[1].msg as { port: MessagePort }).port,
     ]);
   });
 });
@@ -451,6 +468,76 @@ describe("earlyWsWorkerMain", () => {
       data: { type: "ws-send", data: "x" },
     } as MessageEvent);
     expect(socket.sent).toEqual(['{"a":1}']);
+  });
+
+  test("spawn request boots the nested wsWorker and wires adoption internally", () => {
+    class NestedWorkerMock extends MockWorker {
+      static last: NestedWorkerMock | undefined;
+      constructor(public url: string) {
+        super();
+        NestedWorkerMock.last = this;
+      }
+    }
+    class Chan {
+      static last: Chan | undefined;
+      port1 = new MockPort();
+      port2 = new MockPort();
+      constructor() {
+        Chan.last = this;
+      }
+    }
+    vi.stubGlobal("Worker", NestedWorkerMock);
+    vi.stubGlobal("MessageChannel", Chan);
+
+    const { scope, socket } = startWorker();
+    openSocket(socket);
+    receive(socket, "buffered-1");
+
+    const mainPort = { name: "main" } as unknown as MessagePort;
+    scope.onmessage?.({
+      data: { spawn: "http://v/assets/wsWorker-abc.js", main: mainPort },
+    } as MessageEvent);
+
+    // nested worker booted from the requested URL; main channel first,
+    // then the adopt wiring, both transferred
+    const nested = NestedWorkerMock.last!;
+    expect(nested.url).toBe("http://v/assets/wsWorker-abc.js");
+    expect(nested.posted[0].msg).toEqual({ type: "mainPort", port: mainPort });
+    expect(nested.posted[0].transfer).toEqual([mainPort]);
+    expect(nested.posted[1].msg).toEqual({
+      type: "adopt",
+      websocketUrl: wsUrl,
+      compress: true,
+      port: Chan.last!.port2,
+    });
+    expect(nested.posted[1].transfer).toEqual([Chan.last!.port2]);
+
+    // the blob worker pumps its own channel end like any adoption
+    const pump = Chan.last!.port1;
+    expect(pump.types()).toEqual(["adopt-open", "frame"]);
+    expect(scope.statusPosts).toEqual([]);
+  });
+
+  test("spawn failure posts spawnfail and stays adoptable by the bundle", () => {
+    vi.stubGlobal(
+      "Worker",
+      class {
+        constructor() {
+          throw new Error("blocked");
+        }
+      },
+    );
+    const { scope, socket } = startWorker();
+    openSocket(socket);
+    scope.onmessage?.({
+      data: { spawn: "u", main: {} as MessagePort },
+    } as MessageEvent);
+    expect(scope.statusPosts).toEqual(["spawnfail"]);
+
+    // frames kept buffering; a later bundle adoption still drains them
+    receive(socket, "frame-1");
+    const port = adopt(scope);
+    expect(port.types()).toEqual(["adopt-open", "frame"]);
   });
 
   test("close-early closes the socket silently and ends the worker", () => {

@@ -119,14 +119,18 @@ function zstdWasmAsset(): Plugin {
 // bundle fetch/eval AND frame consumption happens on an idle thread (a
 // blocked main thread would stall Chrome's websocket flow control).
 // In build, where the hashed wsWorker asset name is known, the inline
-// script also boots the real wsWorker and wires the blob-worker adoption
-// (the same MessageChannel + "adopt" contract as earlyWs.ts) immediately,
-// so decode+parse completes while the main bundle is still fetching; the
-// worker handle plus its pre-attach messages park on window.__fdWsMain
-// for useWsWorker to attach to. Dev has no hashed names, so it keeps the
-// blob-only path with main-bundle adoption. Any failure falls back one
-// step: inline wsWorker spawn failure leaves window.__fdWsEarly for the
-// bundle to adopt; blob failure has the worker connect on its own.
+// script also asks the blob worker to boot the real wsWorker as a
+// NESTED worker (a page-spawned worker only starts once the busy main
+// thread runs its post-fetch continuation task; a worker-spawned one
+// starts the moment its script lands) and wire the adoption contract
+// (earlyWs.ts) internally, so decode+parse completes while the main
+// bundle is still fetching/evaluating; the main-thread MessagePort plus
+// its pre-attach messages park on window.__fdWsMain for useWsWorker to
+// attach to. Dev has no hashed names, so it keeps the blob-only path
+// with main-bundle adoption. Any failure falls back one step: a nested
+// spawn failure marks the handle errored (fresh worker + fresh socket);
+// an inline-script throw leaves window.__fdWsEarly for the bundle to
+// adopt; blob failure has the worker connect on its own.
 // Firedancer-only. URL and subprotocol offer mirror src/api/consts.ts:
 // same-origin ws(s)://host:port/websocket in production,
 // VITE_WEBSOCKET_URL when serving dev.
@@ -152,24 +156,23 @@ function earlyWebsocket(
               /^assets\/wsWorker-[\w-]+\.js$/.test(f),
             )
           : undefined;
-        // port1 to the blob worker last: it is the commit point that
-        // switches the blob worker into port mode, so any earlier throw
-        // leaves __fdWsEarly adoptable by the bundle as before
+        // The blob worker spawns the real wsWorker NESTED (worker-spawned
+        // workers neither fetch-complete nor start behind main-thread
+        // bundle eval) and wires adoption internally; main keeps only a
+        // MessagePort channel. The spawn postMessage is the commit
+        // point: any earlier throw leaves __fdWsEarly adoptable by the
+        // bundle as before.
         const spawnMain = wsWorkerFile
           ? "try{" +
-            `var mw=new Worker(${JSON.stringify("/" + wsWorkerFile)});` +
-            "try{" +
             "var c=new MessageChannel();" +
-            `mw.postMessage({type:"adopt",websocketUrl:u,compress:${compress},port:c.port2},[c.port2]);` +
-            "w.postMessage(c.port1,[c.port1]);" +
-            `var g={worker:mw,early:w,url:u,compress:${compress},error:false,pending:[]};` +
+            `var g={port:c.port1,early:w,url:u,compress:${compress},error:false,pending:[]};` +
             // buffer the events, not data: clones deserialize lazily on
             // first data access, so big batches don't stall attach
-            "mw.onmessage=function(m){if(g.pending.length<1e4)g.pending.push(m)};" +
-            "mw.onerror=function(){g.error=true};" +
+            "c.port1.onmessage=function(m){if(g.pending.length<1e4)g.pending.push(m)};" +
+            "w.onmessage=function(m){if(m.data==='error')e.error=true;else if(m.data==='closed')e.closed=true;else if(m.data==='spawnfail')g.error=true};" +
+            `w.postMessage({spawn:location.origin+${JSON.stringify("/" + wsWorkerFile)},main:c.port2},[c.port2]);` +
             "window.__fdWsMain=g;" +
             "delete window.__fdWsEarly" +
-            "}catch(x){mw.terminate()}" +
             "}catch(x){}"
           : "";
         return {

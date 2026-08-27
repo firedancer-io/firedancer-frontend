@@ -64,9 +64,7 @@ export function earlyWsWorkerMain(
     }
   };
 
-  // adoption: the sole main-thread message is the port to wsWorker
-  self.onmessage = (e: MessageEvent) => {
-    const p = e.data as MessagePort;
+  const adoptPort = (p: MessagePort) => {
     port = p;
     p.onmessage = (pe: MessageEvent) => {
       const pm = pe.data as
@@ -99,5 +97,33 @@ export function earlyWsWorkerMain(
       p.postMessage({ type: "adopt-closed" });
       self.close();
     }
+  };
+
+  // Two main-thread messages: a bare MessagePort (bundle-driven
+  // adoption, the far end held by a page-spawned wsWorker), or a build
+  // inline-script spawn request. The latter starts the real wsWorker as
+  // a NESTED worker so neither its script-fetch completion nor its eval
+  // ever queues behind main-thread bundle work, hands it the
+  // main-thread channel, and wires the same adopt contract internally.
+  self.onmessage = (e: MessageEvent) => {
+    const d = e.data as MessagePort | { spawn: string; main: MessagePort };
+    if (typeof (d as { spawn?: unknown }).spawn === "string") {
+      const req = d as { spawn: string; main: MessagePort };
+      try {
+        const nested = new Worker(req.spawn);
+        nested.onerror = () => self.postMessage("spawnfail");
+        nested.postMessage({ type: "mainPort", port: req.main }, [req.main]);
+        const chan = new MessageChannel();
+        nested.postMessage(
+          { type: "adopt", websocketUrl: url, compress, port: chan.port2 },
+          [chan.port2],
+        );
+        adoptPort(chan.port1);
+      } catch {
+        self.postMessage("spawnfail");
+      }
+      return;
+    }
+    adoptPort(d as MessagePort);
   };
 }

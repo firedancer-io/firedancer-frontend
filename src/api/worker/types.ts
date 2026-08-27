@@ -24,6 +24,10 @@ export type EarlyWsFrame = string | ArrayBuffer;
 
 export type ToWorkerMessage =
   | { type: "connect"; websocketUrl: string; compress: boolean }
+  // nested-spawn mode (earlyWsWorker.ts): wsWorker runs as a child of
+  // the blob worker, and this transferred port is its channel to the
+  // main thread; all other main<->worker messages ride it
+  | { type: "mainPort"; port: MessagePort }
   // early-socket adoption (earlyWs.ts): the blob worker spawned by
   // index.html owns the socket and pumps frames to wsWorker over the
   // transferred port

@@ -5,6 +5,7 @@ import type {
   EarlyPortMessage,
   EarlyPortRequest,
   EarlyWsFrame,
+  FromWorkerMessage,
   WsEntity,
   ToWorkerMessage,
 } from "./types";
@@ -29,6 +30,11 @@ const zstdPromise: Promise<ZstdDec | undefined> = ZstdInit().catch(
 );
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
+// nested-spawn mode: main talks over a transferred port, not ctx
+let mainPort: MessagePort | null = null;
+function postMain(msg: FromWorkerMessage, transfer?: Transferable[]) {
+  (mainPort ?? ctx).postMessage(msg, transfer ?? []);
+}
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout>;
 
@@ -117,7 +123,7 @@ function getZodFailureKey(json: unknown): string | null {
   return null;
 }
 
-const handler = createMessageHandler((msg) => ctx.postMessage(msg));
+const handler = createMessageHandler((msg) => postMain(msg));
 
 // offscreen shreds chart port: live_shreds skip the main thread entirely
 let shredsPort: MessagePort | null = null;
@@ -224,7 +230,7 @@ function flush() {
         transfer.push(item.value.leader_slots.buffer as ArrayBuffer);
     }
     // latest kv type not implemented as everything defaults to batched kvb
-    ctx.postMessage({ type: "kvb", items }, transfer);
+    postMain({ type: "kvb", items }, transfer);
   }
 }
 
@@ -392,9 +398,13 @@ function adoptOpen(protocol: string) {
   })();
 }
 
-ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
+const onMainMessage = (e: MessageEvent<ToWorkerMessage>) => {
   const msg = e.data;
   switch (msg.type) {
+    case "mainPort":
+      mainPort = msg.port;
+      msg.port.onmessage = onMainMessage;
+      break;
     case "connect":
       void (async () => {
         connect(msg.websocketUrl, msg.compress ? await zstdPromise : undefined);
@@ -458,7 +468,7 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
       mainShredsForced = msg.enabled;
       // catch the fallback chart up with the events main never received
       if (msg.enabled && shredsCalc.data.slotsShreds)
-        ctx.postMessage({ type: "shredsSeed", data: shredsCalc.data });
+        postMain({ type: "shredsSeed", data: shredsCalc.data });
       break;
     case "requestPeers":
       peersRequested = true;
@@ -502,3 +512,4 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
       break;
   }
 };
+ctx.onmessage = onMainMessage;

@@ -16,15 +16,17 @@ export interface EarlyWs {
 
 /**
  * Handle to the real wsWorker when the index.html inline script (build
- * only) booted it and wired the early-socket adoption itself. pending
- * holds the message EVENTS the worker posted before the app attached
- * (Worker messages with no listener are lost, so the inline script
- * buffers them; events rather than data, so structured clones stay
- * lazily undeserialized until a flush reads them); error is set from
- * the worker's error event pre-attach.
+ * only) had the blob worker boot it as a NESTED worker (so its startup
+ * never queues behind main-thread bundle eval) with the early-socket
+ * adoption wired worker-to-worker. port is the main thread's channel to
+ * it; pending holds the message EVENTS it posted before the app
+ * attached (port messages with no listener are lost, so the inline
+ * script buffers them; events rather than data, so structured clones
+ * stay lazily undeserialized until a flush reads them); error is set
+ * from the blob worker's spawnfail/nested-error status pre-attach.
  */
 export interface MainWs {
-  worker: Worker;
+  port: MessagePort;
   early: Worker;
   url: string;
   compress: boolean;
@@ -85,8 +87,13 @@ export function adoptEarlyWs(
  * onMessage, then routes live messages to it; everything is synchronous
  * so no message can interleave with the drain. Returns null when there
  * is no usable parked worker (not spawned, errored pre-attach, or
- * connection-parameter mismatch) after tearing both workers down; the
+ * connection-parameter mismatch) after tearing everything down; the
  * caller then constructs its own wsWorker exactly as before.
+ *
+ * The nested wsWorker is unreachable by Worker handle from here, so
+ * the return value is a Worker facade over the main-thread port;
+ * terminate() tears down the blob worker, which owns the nested
+ * wsWorker and the socket.
  */
 export function attachMainWs(
   url: string,
@@ -98,15 +105,26 @@ export function attachMainWs(
   delete window.__fdWsMain; // attach is first-connection-only
 
   if (main.error || main.url !== url || main.compress !== compress) {
-    main.worker.terminate();
-    main.early.terminate(); // the adopted socket dies with its owner
+    main.port.close();
+    main.early.terminate(); // nested wsWorker and socket die with their owner
     return null;
   }
 
-  earlyWorker = main.early; // closeEarlyWs tears down the socket owner
+  earlyWorker = main.early; // closeEarlyWs tears down the owner
   for (const ev of main.pending) onMessage(ev as MessageEvent);
-  main.worker.onmessage = onMessage;
-  return main.worker;
+  const { port, early } = main;
+  port.onmessage = onMessage;
+  return {
+    postMessage: (msg: unknown, transfer?: Transferable[]) =>
+      port.postMessage(msg, transfer ?? []),
+    set onmessage(fn: ((e: MessageEvent) => void) | null) {
+      port.onmessage = fn;
+    },
+    terminate: () => {
+      port.close();
+      early.terminate();
+    },
+  } as unknown as Worker;
 }
 
 /** Drop the early worker (and its socket) without notifying wsWorker */

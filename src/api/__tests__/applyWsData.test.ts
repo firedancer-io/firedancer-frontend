@@ -247,10 +247,10 @@ describe("useWsWorker pre-mount pipeline", () => {
     vi.resetModules();
 
     // parked wsWorker handle as the index.html inline script leaves it
-    const fakeWorker = {
+    const fakePort = {
       onmessage: null as ((e: unknown) => void) | null,
       postMessage: () => {},
-      terminate: () => {},
+      close: () => {},
     };
     const fakeEarly = { postMessage: () => {}, terminate: () => {} };
     vi.stubGlobal(
@@ -263,7 +263,7 @@ describe("useWsWorker pre-mount pipeline", () => {
 
     const consts = await import("../consts");
     window.__fdWsMain = {
-      worker: fakeWorker as unknown as Worker,
+      port: fakePort as unknown as MessagePort,
       early: fakeEarly as unknown as Worker,
       url: consts.websocketUrl,
       compress: consts.websocketCompress,
