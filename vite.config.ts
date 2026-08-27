@@ -65,8 +65,9 @@ function zstdWasmAsset(): Plugin {
       const file = id.replace(/\?.*$/, "");
 
       if (file.endsWith("src/api/worker/zstdWasmPrefetch.ts")) {
-        // order-independent of the package transform: recompute the
-        // hashed name from the package source on disk
+        // the sole live consumer of the wasm (zstdDecompress.ts): emit
+        // the asset here, since the package module only stays in the
+        // graph as an eliminated dev-fallback branch
         const match = readFileSync(
           fileURLToPath(
             new URL(
@@ -77,10 +78,17 @@ function zstdWasmAsset(): Plugin {
           "utf8",
         ).match(dataUriRe);
         if (!match) return;
+        const wasm = Buffer.from(match[1], "base64");
+        const fileName = nameOf(wasm);
+        this.emitFile({
+          type: "asset",
+          fileName: `assets/${fileName}`,
+          source: wasm,
+        });
         return {
           code: code.replace(
             '"__FD_ZSTD_WASM_FILE__"',
-            JSON.stringify(nameOf(Buffer.from(match[1], "base64"))),
+            JSON.stringify(fileName),
           ),
           map: null,
         };
@@ -94,20 +102,14 @@ function zstdWasmAsset(): Plugin {
         return;
       }
 
-      const wasm = Buffer.from(match[1], "base64");
-      const fileName = nameOf(wasm);
-      this.emitFile({
-        type: "asset",
-        fileName: `assets/${fileName}`,
-        source: wasm,
-      });
+      // dead in build output (zstdDecompress.ts's dev-only branch), but
+      // kept consistent if it ever survives: reference the emitted
+      // asset instead of carrying the 177KB data URI
       return {
-        code: code
-          .replace(match[0], JSON.stringify(fileName))
-          .replace(
-            /fetch\(([A-Za-z_$][\w$]*),\{credentials:"same-origin"\}\)/g,
-            '(self.__fdZstdWasmFetch?self.__fdZstdWasmFetch():fetch($1,{credentials:"same-origin"}))',
-          ),
+        code: code.replace(
+          match[0],
+          JSON.stringify(nameOf(Buffer.from(match[1], "base64"))),
+        ),
         map: null,
       };
     },

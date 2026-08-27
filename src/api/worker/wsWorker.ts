@@ -1,5 +1,5 @@
 import "./zstdWasmPrefetch";
-import { ZstdInit, type ZstdDec } from "@oneidentity/zstd-js/decompress";
+import { ZstdInit, type ZstdDecoder } from "./zstdDecompress";
 import { logDebug, logError, logWarning } from "../../logger";
 import type {
   EarlyPortMessage,
@@ -18,7 +18,7 @@ const reconnectDelayMs = 3_000;
 const flushDelayMs = 32; // ~30fps
 
 // Fired at module load so wasm compile overlaps the WS handshake
-const zstdPromise: Promise<ZstdDec | undefined> = ZstdInit().catch(
+const zstdPromise: Promise<ZstdDecoder | undefined> = ZstdInit().catch(
   (e: unknown) => {
     logError(
       "WS",
@@ -234,7 +234,7 @@ function flush() {
   }
 }
 
-function connect(url: string, zstd: ZstdDec | undefined) {
+function connect(url: string, zstd: ZstdDecoder | undefined) {
   logDebug("WS", `Connecting to API WebSocket ${url.toString()}`);
   handler.onConnectionChange({ type: "connecting" });
   ws = new WebSocket(url, zstd ? ["compress-zstd"] : undefined);
@@ -289,7 +289,7 @@ const largeFrameBytes = 262_144;
  */
 const starvedBatchMs = 250;
 
-function handleFrame(message: unknown, zstd: ZstdDec | undefined) {
+function handleFrame(message: unknown, zstd: ZstdDecoder | undefined) {
   // Ship the pending batch before starting a large decode, and whenever
   // the flush timer has been starved well past its cadence. Frames
   // decode in arrival order; flushing early only makes batches smaller,
@@ -364,7 +364,7 @@ interface Adopt {
   url: string;
   compress: boolean;
   port: MessagePort;
-  zstd: ZstdDec | undefined;
+  zstd: ZstdDecoder | undefined;
   ready: boolean;
   pending: EarlyWsFrame[];
 }
@@ -374,7 +374,7 @@ function adoptOpen(protocol: string) {
   const a = adopt;
   if (!a) return;
   void (async () => {
-    let zstd: ZstdDec | undefined;
+    let zstd: ZstdDecoder | undefined;
     if (protocol === "compress-zstd") {
       zstd = await zstdPromise;
       if (adopt !== a) return;
