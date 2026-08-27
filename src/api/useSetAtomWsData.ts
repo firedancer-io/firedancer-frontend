@@ -104,6 +104,8 @@ import {
   replayTxnMetaResponseAtom,
   replayTxnMetaErrorAtom,
   aggShredsAtom,
+  replayTxnTimestampsResponseAtom,
+  replayTxnTimestampsErrorAtom,
 } from "./atoms";
 import {
   tpsSampleIntervalMs,
@@ -552,6 +554,7 @@ function useUpdateAtoms() {
   const setAggRevenue = useSetAtom(aggRevenueAtom);
   const setReplayTxnMeta = useSetAtom(replayTxnMetaResponseAtom);
   const setAggShreds = useSetAtom(aggShredsAtom);
+  const setReplayTxnTimestamps = useSetAtom(replayTxnTimestampsResponseAtom);
 
   const updateAtoms = useCallback(
     (item: WsEntity) => {
@@ -803,6 +806,10 @@ function useUpdateAtoms() {
               setAggShreds(value);
               break;
             }
+            case "query_txn_timestamps": {
+              setReplayTxnTimestamps(value);
+              break;
+            }
           }
           break;
         }
@@ -889,6 +896,7 @@ function useUpdateAtoms() {
       setAggRevenue,
       setReplayTxnMeta,
       setAggShreds,
+      setReplayTxnTimestamps,
       setSupermajorityEpoch,
       addToSupermajorityPeersBuffers,
       setAccountsStats,
@@ -986,6 +994,7 @@ function useUpdateAtoms() {
 
 function useUpdateErrorAtoms() {
   const setReplayTxnMetaError = useSetAtom(replayTxnMetaErrorAtom);
+  const setReplayTxnTimestampsError = useSetAtom(replayTxnTimestampsErrorAtom);
 
   return useCallback(
     (msg: WsError) => {
@@ -997,11 +1006,15 @@ function useUpdateErrorAtoms() {
               setReplayTxnMetaError(error.code);
               break;
             }
+            case "query_txn_timestamps": {
+              setReplayTxnTimestampsError(error.code);
+              break;
+            }
           }
           break;
         }
       }
     },
-    [setReplayTxnMetaError],
+    [setReplayTxnMetaError, setReplayTxnTimestampsError],
   );
 }

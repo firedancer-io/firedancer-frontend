@@ -288,6 +288,40 @@ export function isAggregate(rangeMs: TsRange) {
   return rangeMs[1] - rangeMs[0] > AGGREGATE_THRESHOLD_MS;
 }
 
+export interface AggBucketHit {
+  /** Bucket value for the active revenue type (lamports). */
+  value: bigint;
+  /** Bucket time span, in relative ms. */
+  startMs: number;
+  endMs: number;
+}
+
+/**
+ * The aggregated bucket at a relative-ms x position, or undefined if none. Used
+ * for the hover tooltip; mirrors the bucket layout drawn by drawAggRevenue
+ * (bucket i spans [referenceMs + i*bucketMs, +bucketMs)).
+ */
+export function hitTestAggBucket(
+  type: RevenueType,
+  aggRevenue: AggRevenue,
+  getRelativeMs: (absoluteNs: bigint) => number,
+  relMs: number,
+): AggBucketHit | undefined {
+  const { granularity, reference_ts_ns } = aggRevenue;
+  const referenceMs = getRelativeMs(reference_ts_ns);
+  const bucketMs = msBucketSizes[granularity];
+  if (bucketMs <= 0) return undefined;
+
+  const i = Math.floor((relMs - referenceMs) / bucketMs);
+  if (i < 0 || i >= aggRevenue[type].length) return undefined;
+
+  const value = aggRevenue[type][i];
+  if (value == null) return undefined;
+
+  const startMs = referenceMs + i * bucketMs;
+  return { value, startMs, endMs: startMs + bucketMs };
+}
+
 export function buildNonAggBuffer(
   rendererObj: RendererObj,
   type: RevenueType,

@@ -1,10 +1,11 @@
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
 import {
   type ExplorableChartProps,
   type MarkerLinesProps,
   type RangeChangeSubscriberProps,
 } from "../const.ts";
+import styles from "../chart.module.css";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
@@ -12,6 +13,7 @@ import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import {
   buildNonAggBuffer,
   drawAggRevenue,
+  hitTestAggBucket,
   isAggregate,
   moveAggCamera,
   moveNonAggCamera,
@@ -25,11 +27,15 @@ import { DEFAULT_REVENUE_SCALE, type RevenueScale } from "./consts.ts";
 import useAggRevenueQuery, { getGranularity } from "./useAggRevenueQuery.ts";
 import useTxnMetaQuery from "./useTxnMetaQuery.ts";
 import { replayTxnMetaCacheAtom } from "./txnMeta.ts";
+import { selectedInfoAtom } from "../selectedInfo.ts";
 import { tileCountAtom } from "../../Overview/SlotPerformance/atoms.ts";
 import type { RevenueType } from "../../../api/entities.ts";
 import { aggRevenueAtom } from "../../../api/atoms.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
+
+// A pointer that moves more than this between down and up is a pan, not a click.
+const CLICK_MOVE_TOLERANCE_PX = 4;
 
 const height = 150;
 const baseSubscriptionId = "revenue-track";
@@ -66,8 +72,14 @@ function RevenueTrack({
   const [scale, setScale] = useState<RevenueScale>(DEFAULT_REVENUE_SCALE);
   const [axisMaxValue, setAxisMaxValue] = useState(0n);
 
+  const setSelectedInfo = useSetAtom(selectedInfoAtom);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<RendererObj | undefined>();
+  // Latest visible range + agg flag, kept for click hit-testing.
+  const visibleRangeRef = useRef<TsRange>([0, 0]);
+  const isAggRef = useRef(isAgg);
+  isAggRef.current = isAgg;
 
   const widthRef = useRef(width);
   widthRef.current = width;
@@ -138,6 +150,7 @@ function RevenueTrack({
    */
   const onRangeChange = useCallback(
     (visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
+      visibleRangeRef.current = visibleRangeMs;
       if (!rendererRef.current) return;
 
       throttledRelativeTsQuery(visibleRangeMs, worldRangeMs);
@@ -188,6 +201,44 @@ function RevenueTrack({
     [renderMode, throttledRelativeTsQuery, type, getRelativeMs],
   );
 
+  // Click an aggregated fee bucket to surface it in the shared info banner
+  // (skipped in per-txn mode). A pointer that moved is a pan, not a click.
+  const onCanvasClick = useCallback(
+    (e: MouseEvent, downX: number, downY: number) => {
+      if (
+        Math.abs(e.clientX - downX) > CLICK_MOVE_TOLERANCE_PX ||
+        Math.abs(e.clientY - downY) > CLICK_MOVE_TOLERANCE_PX
+      ) {
+        return; // pan/drag, not a click
+      }
+      if (!isAggRef.current) return;
+
+      const agg = aggRevenueRef.current;
+      const el = containerRef.current;
+      if (!agg || !el) return;
+
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const fracX = (e.clientX - rect.left) / rect.width;
+      const [start, end] = visibleRangeRef.current;
+      const relMs = start + fracX * (end - start);
+
+      const hit = hitTestAggBucket(type, agg, getRelativeMs, relMs);
+      setSelectedInfo(
+        hit
+          ? {
+              kind: "aggBucket",
+              type,
+              value: hit.value,
+              startNs: getAbsoluteNs(hit.startMs),
+              endNs: getAbsoluteNs(hit.endMs),
+            }
+          : undefined,
+      );
+    },
+    [type, getRelativeMs, getAbsoluteNs, setSelectedInfo],
+  );
+
   // set up renderer and subscribe to range change, to trigger queries
   useLayoutEffect(() => {
     if (rendererRef.current || !hasWidth || !containerRef.current) return;
@@ -207,15 +258,31 @@ function RevenueTrack({
     const cleanUpExploreListeners = setUpExploreListeners(containerRef.current);
     const cleanUpRenderer = rendererRef.current.cleanUp;
 
+    // Track the mousedown position so a click (select) can be told apart from a
+    // drag (pan). The click fires on mouseup regardless of movement.
+    const el = containerRef.current;
+    let downX = 0;
+    let downY = 0;
+    const onMouseDown = (e: MouseEvent) => {
+      downX = e.clientX;
+      downY = e.clientY;
+    };
+    const onClick = (e: MouseEvent) => onCanvasClick(e, downX, downY);
+    el.addEventListener("mousedown", onMouseDown);
+    el.addEventListener("click", onClick);
+
     // cleanup
     return () => {
       unsubscribe?.();
       cleanUpRenderer();
       rendererRef.current = undefined;
       cleanUpExploreListeners();
+      el.removeEventListener("mousedown", onMouseDown);
+      el.removeEventListener("click", onClick);
     };
   }, [
     onRangeChange,
+    onCanvasClick,
     setUpExploreListeners,
     subscribeRangeChange,
     setUpContextListeners,
@@ -306,6 +373,7 @@ function RevenueTrack({
 
   return (
     <div
+      className={styles.track}
       style={{
         position: "relative",
         width: "100%",

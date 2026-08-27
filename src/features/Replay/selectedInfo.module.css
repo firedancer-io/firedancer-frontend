@@ -1,0 +1,41 @@
+.container {
+  min-width: 0;
+  flex: 1;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: #1b2027;
+}
+
+/* Scroll horizontally only when the fields don't fit the available space.
+   Grows to fill so the close button is pushed to the far right. */
+.scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.field {
+  flex-shrink: 0;
+}
+
+.label {
+  font-size: 10px;
+  line-height: 1.2;
+  color: #8b949e;
+  white-space: nowrap;
+}
+
+.value {
+  font-size: 12px;
+  line-height: 1.2;
+  color: white;
+  white-space: nowrap;
+}
+
+.pending {
+  font-size: 12px;
+  color: #8b949e;
+}
