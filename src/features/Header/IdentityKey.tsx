@@ -235,10 +235,17 @@ function FrankendancerCommissionValue() {
 }
 
 function FiredancerCommissionValue() {
-  const voteCommission = useAtomValue(voteCommissionAtom);
-  return (
-    <ValueWithSuffix value={voteCommission?.toLocaleString()} suffix="%" />
-  );
+  const voteCommissionBps = useAtomValue(voteCommissionAtom);
+
+  const value =
+    voteCommissionBps == null
+      ? undefined
+      : formatNumber(voteCommissionBps / 100, {
+          decimals: 2,
+          trailingZeroes: false,
+        });
+
+  return <ValueWithSuffix value={value} suffix="%" />;
 }
 
 function StartupTime() {
