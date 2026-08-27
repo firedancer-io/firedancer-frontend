@@ -165,6 +165,7 @@ export function PieChartContent<D extends PieData>({
       </svg>
       {hover && tooltipFormatter && (
         <div
+          className={styles.tooltipWrapper}
           style={{
             position: "absolute",
             left: hover.x,

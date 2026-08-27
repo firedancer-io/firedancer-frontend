@@ -3,9 +3,10 @@
   font-size: 18px;
 }
 
-/* This prevents the nivo tooltip wrapper from overflowing and
-causing a horizontal scrollbar */
-div:has(> .tooltip) {
+/* This prevents the tooltip wrapper from overflowing and causing a
+horizontal scrollbar. Direct class instead of div:has(> .tooltip):
+the bare-div :has() taxed every recalc in the page */
+.tooltip-wrapper {
   width: 1px;
   height: 1px;
   contain: layout;

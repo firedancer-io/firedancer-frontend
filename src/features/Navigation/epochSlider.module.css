@@ -100,12 +100,9 @@
   }
 }
 
-/* radix positions the thumb through an unclassed wrapper span; hide it
-   too pre-position, or its move still counts as a layout shift */
-.slider-root :has(> .slider-thumb.unpositioned) {
-  visibility: hidden;
-}
-
+/* the radix wrapper span around the thumb is hidden pre-position from
+   JS (SliderThumbTooltip layout effect): it is unclassed, and hiding it
+   via :has() taxed every recalc under .slider-root */
 .slider-thumb:hover {
   background: rgba(100, 101, 101, 0.3);
 }

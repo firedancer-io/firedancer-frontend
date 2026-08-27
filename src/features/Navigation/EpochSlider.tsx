@@ -15,7 +15,14 @@ import {
 } from "../../atoms";
 import { skippedSlotsAtom } from "../../api/atoms";
 import type React from "react";
-import { startTransition, useMemo, useReducer, useRef, useState } from "react";
+import {
+  startTransition,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { Slider } from "radix-ui";
 import warning from "../../assets/warning_16dp_FF5353_FILL1_wght400_GRAD0_opsz20.svg";
 import green_flag from "../../assets/flag.svg";
@@ -330,8 +337,17 @@ function SliderThumbTooltip({
   const slotOverride = useAtomValue(slotOverrideAtom);
   const { showNav } = useSlotsNavigation();
 
+  // radix positions the thumb through an unclassed wrapper span; hide
+  // it too pre-position, or its move still counts as a layout shift
+  const thumbRef = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const wrapper = thumbRef.current?.parentElement;
+    if (wrapper) wrapper.style.visibility = positioned ? "" : "hidden";
+  }, [positioned]);
+
   return (
     <Slider.Thumb
+      ref={thumbRef}
       className={clsx(styles.sliderThumb, {
         [styles.collapsed]: !showNav,
         [styles.unpositioned]: !positioned,
