@@ -6,7 +6,7 @@ import {
   type RectMesh,
   type WebglResources,
   addRectangleToMesh,
-  updateRectMeshCount,
+  updateRectMeshCounts,
   createRectMesh,
   createRenderer,
   type RgbColor,
@@ -118,7 +118,7 @@ export function drawMiniMap(
   if (newData.granularity !== rendererObj.lastDraw?.granularity) {
     // reset meshes
     for (const mesh of rendererObj.meshes) {
-      updateRectMeshCount(mesh, 0);
+      updateRectMeshCounts(mesh, 0);
     }
 
     // initialize mesh range
@@ -188,7 +188,7 @@ export function drawMiniMap(
 
     const newCount = meshUpdates[i].maxIdx + 1;
     if (mesh.count !== newCount) {
-      updateRectMeshCount(mesh, newCount);
+      updateRectMeshCounts(mesh, newCount);
     }
 
     updateMeshRange(mesh, [meshUpdates[i].minIdx, meshUpdates[i].maxIdx]);

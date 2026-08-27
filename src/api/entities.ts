@@ -1300,6 +1300,28 @@ export const txnMetaResponseSchema = z.object({
   txn_error_code: z.number().array(),
 });
 
+export const shredsGranularitySchema = z.enum(["shreds", "fec"]);
+export const ShredsGranularityEnum = shredsGranularitySchema.enum;
+export const historicalShredsSchema = z.object({
+  granularity: shredsGranularitySchema,
+  reference_slot: z.number(),
+  reference_ts: z.coerce.bigint(),
+  slot_delta: z.number().array(),
+  idx: z.number().nullable().array(),
+  event: z.number().array(),
+  event_ts_delta: z.coerce.number().array(),
+  skipped: z.number().array(),
+});
+
+export const aggShredsSchema = z.object({
+  granularity: aggGranularitySchema,
+  reference_ts_ns: z.coerce.bigint(),
+  turbine: z.array(z.number().nullable()),
+  repair: z.array(z.number().nullable()),
+  reconstructed: z.array(z.number().nullable()),
+  published: z.array(z.number().nullable()),
+});
+
 export const timelineSchema = z.discriminatedUnion("key", [
   timelineTopicSchema.extend({
     id: z.number(),
@@ -1314,6 +1336,15 @@ export const timelineSchema = z.discriminatedUnion("key", [
   timelineTopicSchema.extend({
     key: z.literal("query_txn_meta"),
     value: txnMetaResponseSchema,
+  }),
+  timelineTopicSchema.extend({
+    id: z.number(),
+    key: z.literal("query_shreds"),
+    value: historicalShredsSchema,
+  }),
+  timelineTopicSchema.extend({
+    key: z.literal("query_agg_shreds"),
+    value: aggShredsSchema,
   }),
 ]);
 

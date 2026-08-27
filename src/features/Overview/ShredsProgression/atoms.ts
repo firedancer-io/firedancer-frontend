@@ -52,6 +52,9 @@ export function createLiveShredsAtoms() {
     min: number;
     max: number;
   }>();
+  // smallest absolute event ts (ns) seen in the most recent batch of live
+  // events, used to invalidate cached tiles that may now have newer data
+  const _minDirtyTsAtom = atom<bigint>();
   const rangeAfterStartupAtom = atom((get) => {
     const range = get(_slotRangeAtom);
     const slotCaughtUp = get(slotCaughtUpAtom);
@@ -70,6 +73,11 @@ export function createLiveShredsAtoms() {
      * min completed slot we've seen since we started collecting data
      */
     minCompletedSlot: atom((get) => get(_minCompletedSlotAtom)),
+    /**
+     * smallest absolute event ts (ns) from the latest batch of live events;
+     * changes each time new live events arrive
+     */
+    minDirtyTs: atom((get) => get(_minDirtyTsAtom)),
     range: atom((get) => get(_slotRangeAtom)),
     rangeAfterStartup: rangeAfterStartupAtom,
     /**
@@ -110,6 +118,7 @@ export function createLiveShredsAtoms() {
         let newMinCompletedSlot = minCompletedSlot;
 
         let minEventSlot = Infinity;
+        let minDirtyTs: bigint | undefined;
 
         set(_liveShredsAtom, (prev) => {
           const updated: SlotsShreds = prev ?? {
@@ -134,6 +143,13 @@ export function createLiveShredsAtoms() {
             minEventSlot = Math.min(minEventSlot, slotNumber);
 
             const shredIdx = shred_idx[i];
+
+            // track smallest absolute event ts (ns) in this batch
+            const eventTsNs =
+              reference_ts + BigInt(Math.round(event_ts_delta[i]));
+            if (minDirtyTs == null || eventTsNs < minDirtyTs) {
+              minDirtyTs = eventTsNs;
+            }
 
             // convert to current reference and delta
             const eventTsDelta = Math.round(
@@ -171,6 +187,7 @@ export function createLiveShredsAtoms() {
 
         set(_slotRangeAtom, slotRange);
         set(_minCompletedSlotAtom, newMinCompletedSlot);
+        if (minDirtyTs != null) set(_minDirtyTsAtom, minDirtyTs);
 
         // mark slot for redraw
         set(setMinDirtySlotByChartIfSmaller, minEventSlot);
