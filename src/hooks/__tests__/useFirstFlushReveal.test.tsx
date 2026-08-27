@@ -4,11 +4,13 @@ import { getDefaultStore } from "jotai";
 import { firstFlushAppliedAtom } from "../../api/ws/atoms";
 import { firstFlushRevealCapMs } from "../../consts";
 import { useFirstFlushReveal } from "../useFirstFlushReveal";
+import { shellStaleEvent } from "../../shellVerifier";
 
 const store = getDefaultStore();
 
 beforeEach(() => {
   store.set(firstFlushAppliedAtom, false);
+  delete window.__fdShellStale;
 });
 
 afterEach(() => {
@@ -26,6 +28,31 @@ describe("useFirstFlushReveal", () => {
     const { result } = renderHook(() => useFirstFlushReveal());
     expect(result.current).toBe(false);
     act(() => store.set(firstFlushAppliedAtom, true));
+    expect(result.current).toBe(true);
+  });
+
+  test("stale shell before mount: reveal held", () => {
+    store.set(firstFlushAppliedAtom, true);
+    window.__fdShellStale = true;
+    const { result } = renderHook(() => useFirstFlushReveal());
+    expect(result.current).toBe(false);
+  });
+
+  test("stale shell answer after mount: reveal withdrawn", () => {
+    store.set(firstFlushAppliedAtom, true);
+    const { result } = renderHook(() => useFirstFlushReveal());
+    expect(result.current).toBe(true);
+    act(() => {
+      window.__fdShellStale = true;
+      window.dispatchEvent(new Event(shellStaleEvent));
+    });
+    expect(result.current).toBe(false);
+  });
+
+  test("pending verifier answer never blocks the reveal", () => {
+    // no answer arrived: __fdShellStale unset
+    store.set(firstFlushAppliedAtom, true);
+    const { result } = renderHook(() => useFirstFlushReveal());
     expect(result.current).toBe(true);
   });
 

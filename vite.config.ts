@@ -12,6 +12,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { earlyWsWorkerMain } from "./src/api/worker/earlyWsWorker";
+import { shellVerifierMain } from "./src/shellVerifier";
 
 // Three-stage pipelined entry (entry.ts): A=react B=vendor C=app, each
 // dynamic-imported so eval starts per chunk as bytes land. Preload all
@@ -100,6 +101,54 @@ function pipelinePreloads(): Plugin {
           });
         }
         return { html, tags };
+      },
+    },
+  };
+}
+
+// Stamp the entry chunk's hashed path into index.html as the build id
+// (an fd-build meta marker) plus the inline verifier that fetches "/"
+// past the cache and reloads a stale shell before the reveal
+// (shellVerifier.ts). The shell is otherwise browser-cacheable
+// (fd_gui_tile.c serves it max-age=86400). onerror on the entry tag
+// covers a stale shell whose purged hashed assets 404 (the verifier
+// still runs; this reloads even if its answer is slow), one attempt per
+// tab session so a broken deploy can't reload-loop. First in the plugin
+// list so the later head-prepends (ws spawn, chunk kick) stay above the
+// verifier, which in turn stays above the render-blocking stylesheet (a
+// classic script below it would wait for the sheet).
+function shellBuildId(): Plugin {
+  return {
+    name: "shell-build-id",
+    transformIndexHtml: {
+      order: "post",
+      handler(html, ctx) {
+        if (!ctx.bundle) return html;
+        const entry = Object.values(ctx.bundle).find(
+          (c) => c.type === "chunk" && c.isEntry,
+        )?.fileName;
+        if (!entry) throw new Error("shell-build-id: no entry chunk");
+        const src = `src="/${entry}"`;
+        if (!html.includes(src))
+          throw new Error("shell-build-id: entry script tag not found");
+        return {
+          html: html.replace(
+            src,
+            `${src} onerror="try{if(!sessionStorage.getItem('fd-entry-reload')){sessionStorage.setItem('fd-entry-reload','1');location.reload()}}catch(e){}"`,
+          ),
+          tags: [
+            {
+              tag: "meta",
+              injectTo: "head",
+              attrs: { name: "fd-build", content: entry },
+            },
+            {
+              tag: "script",
+              injectTo: "head-prepend",
+              children: `(${shellVerifierMain.toString()})(window,${JSON.stringify(entry)});`,
+            },
+          ],
+        };
       },
     },
   };
@@ -397,6 +446,7 @@ export default defineConfig(({ mode }) => {
       ],
     },
     plugins: [
+      shellBuildId(),
       stripOtherClientPreloads(client),
       pipelinePreloads(),
       earlyWebsocket(client, devWsUrl, wsCompress),
