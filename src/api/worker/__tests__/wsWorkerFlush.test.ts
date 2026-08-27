@@ -160,6 +160,46 @@ describe("wsWorker backlog drain flush ordering", () => {
     const batches = kvbs().map((m) => m.items.map((i) => i.value));
     expect(batches).toEqual([["v1"], ["v2"], ["v3"]]);
   });
+
+  test("columnar slot batch fans out to per-slot update items", async () => {
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const nulls = [null, null];
+    const { kvbs } = await bootAdopted([
+      frame("slot", "batch", {
+        slot: [1000001, 1000002],
+        mine: [false, false],
+        skipped: [false, true],
+        level: ["rooted", "rooted"],
+        success_nonvote_transaction_cnt: [10, 20],
+        failed_nonvote_transaction_cnt: nulls,
+        success_vote_transaction_cnt: nulls,
+        failed_vote_transaction_cnt: nulls,
+        priority_fee: nulls,
+        transaction_fee: ["55", null],
+        tips: nulls,
+        max_compute_units: nulls,
+        compute_units: nulls,
+        duration_nanos: nulls,
+        completed_time_nanos: nulls,
+        vote_latency_exact: nulls,
+        is_voter: [false, false],
+      }),
+    ]);
+
+    vi.advanceTimersByTime(33);
+    expect(kvbs()).toHaveLength(1);
+    const items = kvbs()[0].items;
+    expect(items.map((i) => `${i.topic}:${i.key}`)).toEqual([
+      "slot:update",
+      "slot:update",
+    ]);
+    const publishes = items.map(
+      (i) =>
+        (i.value as { publish: { slot: number; skipped: boolean } }).publish,
+    );
+    expect(publishes.map((p) => p.slot)).toEqual([1000001, 1000002]);
+    expect(publishes.map((p) => p.skipped)).toEqual([false, true]);
+  });
 });
 
 describe("wsWorker peers snapshot hold", () => {

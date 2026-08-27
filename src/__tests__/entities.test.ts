@@ -279,4 +279,68 @@ describe("dual-format wire tolerance", () => {
     expect(liveShredsSchema.safeParse(shreds(["abc"])).success).toBe(false);
     expect(liveShredsSchema.safeParse(shreds([true])).success).toBe(false);
   });
+
+  it("slot batch: columnar arrays become slot:update-shaped rows", () => {
+    const cols = {
+      slot: [331355000, 331355001],
+      mine: [false, true],
+      skipped: [false, true],
+      level: ["rooted", "finalized"],
+      success_nonvote_transaction_cnt: [901, null],
+      failed_nonvote_transaction_cnt: [17, null],
+      success_vote_transaction_cnt: [740, null],
+      failed_vote_transaction_cnt: [3, null],
+      priority_fee: ["123456", null],
+      transaction_fee: ["7890", null],
+      tips: ["0", null],
+      max_compute_units: [48000000, null],
+      compute_units: [30123456, null],
+      duration_nanos: [401000000, null],
+      completed_time_nanos: ["1724800000000000000", null],
+      vote_latency_exact: [1, null],
+      is_voter: [true, false],
+    };
+    const parsed = WsMessageSchema.safeParse(frame("slot", "batch", cols));
+    expect(parsed.success).toBe(true);
+    if (!parsed.success || parsed.data.key !== "batch") return;
+    expect(parsed.data.value).toHaveLength(2);
+    expect(parsed.data.value[0].publish).toStrictEqual({
+      slot: 331355000,
+      mine: false,
+      skipped: false,
+      level: "rooted",
+      success_transaction_cnt: 901,
+      failed_transaction_cnt: 17,
+      success_vote_transaction_cnt: 740,
+      failed_vote_transaction_cnt: 3,
+      vote_rewarded: null,
+      priority_fee: 123456n,
+      transaction_fee: 7890n,
+      tips: 0n,
+      max_compute_units: 48000000,
+      compute_units: 30123456,
+      duration_nanos: 401000000,
+      completed_time_nanos: 1724800000000000000n,
+      vote_latency_exact: 1,
+      is_voter: true,
+    });
+    // second row: every nullable column null, required scalars intact
+    expect(parsed.data.value[1].publish.slot).toBe(331355001);
+    expect(parsed.data.value[1].publish.level).toBe("finalized");
+    expect(parsed.data.value[1].publish.tips).toBeNull();
+    expect(parsed.data.value[1].publish.completed_time_nanos).toBeNull();
+
+    // ragged columns reject the frame rather than mis-zipping rows
+    expect(
+      WsMessageSchema.safeParse(
+        frame("slot", "batch", { ...cols, mine: [false] }),
+      ).success,
+    ).toBe(false);
+    // unknown level enum rejects
+    expect(
+      WsMessageSchema.safeParse(
+        frame("slot", "batch", { ...cols, level: ["rooted", "bogus"] }),
+      ).success,
+    ).toBe(false);
+  });
 });

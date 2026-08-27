@@ -667,6 +667,9 @@ export function applyWsEntity(item: WsEntity) {
           }
           break;
         }
+        // batch never reaches main: the worker fans it out to update items
+        case "batch":
+          break;
         case "query_rankings": {
           store.set(slotRankingsAtom, value);
           break;

@@ -1062,6 +1062,73 @@ export const slotResponseSchema = z.object({
   scheduler_stats: z.optional(z.nullable(slotScheduleStatsSchema)),
 });
 
+// Columnar connect-burst slot replay (upcoming wire format): one frame
+// of parallel arrays carrying the slotPublishSchema fields, transformed
+// to slot:update-shaped rows the worker fans out; per-slot update
+// frames (current backends, and live updates always) parse unchanged.
+export const slotBatchSchema = z.pipe(
+  z.object({
+    slot: z.array(z.number()),
+    mine: z.array(z.boolean()),
+    skipped: z.array(z.boolean()),
+    level: z.array(towerSlotLevelSchema),
+    success_nonvote_transaction_cnt: z.array(z.nullable(z.number())),
+    failed_nonvote_transaction_cnt: z.array(z.nullable(z.number())),
+    success_vote_transaction_cnt: z.array(z.nullable(z.number())),
+    failed_vote_transaction_cnt: z.array(z.nullable(z.number())),
+    priority_fee: z.array(z.nullable(z.coerce.bigint())),
+    transaction_fee: z.array(z.nullable(z.coerce.bigint())),
+    tips: z.array(z.nullable(z.coerce.bigint())),
+    max_compute_units: z.array(z.nullable(z.number())),
+    compute_units: z.array(z.nullable(z.number())),
+    duration_nanos: z.array(z.nullable(z.number())),
+    completed_time_nanos: z.array(z.nullable(z.coerce.bigint())),
+    vote_latency_exact: z.array(z.nullable(z.number())),
+    is_voter: z.array(z.boolean()),
+  }),
+  z.transform((cols, ctx) => {
+    const rows: z.infer<typeof slotResponseSchema>[] = [];
+    const n = cols.slot.length;
+    for (const [name, col] of Object.entries(cols)) {
+      if (col.length !== n) {
+        ctx.issues.push({
+          code: "custom",
+          message: `slot batch: ${name} length ${col.length} != slot length ${n}`,
+          input: col,
+        });
+        return rows;
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      rows.push({
+        publish: {
+          slot: cols.slot[i],
+          mine: cols.mine[i],
+          skipped: cols.skipped[i],
+          level: cols.level[i],
+          // tower publish shape, post-transform (the batch is tower-only;
+          // alpenglow backends replay keyed slot:update frames)
+          success_transaction_cnt: cols.success_nonvote_transaction_cnt[i],
+          failed_transaction_cnt: cols.failed_nonvote_transaction_cnt[i],
+          success_vote_transaction_cnt: cols.success_vote_transaction_cnt[i],
+          failed_vote_transaction_cnt: cols.failed_vote_transaction_cnt[i],
+          vote_rewarded: null,
+          priority_fee: cols.priority_fee[i],
+          transaction_fee: cols.transaction_fee[i],
+          tips: cols.tips[i],
+          max_compute_units: cols.max_compute_units[i],
+          compute_units: cols.compute_units[i],
+          duration_nanos: cols.duration_nanos[i],
+          completed_time_nanos: cols.completed_time_nanos[i],
+          vote_latency_exact: cols.vote_latency_exact[i],
+          is_voter: cols.is_voter[i],
+        },
+      });
+    }
+    return rows;
+  }),
+);
+
 export const slotSkippedHistorySchema = z.array(z.number());
 export const slotSkippedHistoryClusterSchema = z.array(z.number());
 
@@ -1144,6 +1211,10 @@ export const slotSchema = z.discriminatedUnion("key", [
   z.extend(slotTopicSchema, {
     key: z.literal("update"),
     value: slotResponseSchema,
+  }),
+  z.extend(slotTopicSchema, {
+    key: z.literal("batch"),
+    value: slotBatchSchema,
   }),
   z.extend(slotTopicSchema, {
     key: z.literal("query"),

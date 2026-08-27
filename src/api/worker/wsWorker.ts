@@ -275,7 +275,15 @@ function handleFrame(message: unknown, zstd: ZstdDec | undefined) {
       const result = WsMessageSchema.safeParse(json);
 
       if (result.success) {
-        enqueue(fillEpochLeaderSlots(result.data));
+        const msg = result.data;
+        // Columnar replay batch: fan rows out to the slot:update path
+        // so downstream sees per-slot items either way
+        if (msg.topic === "slot" && msg.key === "batch") {
+          for (const value of msg.value)
+            enqueue({ topic: "slot", key: "update", value });
+          return;
+        }
+        enqueue(fillEpochLeaderSlots(msg));
         return;
       }
 
