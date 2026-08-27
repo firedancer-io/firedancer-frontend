@@ -99,6 +99,7 @@ import {
   healthAtom,
   accountsStatsAtom,
   voteCommissionAtom,
+  isAlpenglowAtom,
 } from "./atoms";
 import {
   tpsSampleIntervalMs,
@@ -450,6 +451,8 @@ function useUpdateAtoms() {
 
   const setHealth = useSetAtom(healthAtom);
 
+  const setIsAlpenglow = useSetAtom(isAlpenglowAtom);
+
   const setAccountsStats = useSetAtom(accountsStatsAtom);
 
   const peersBuffer = useRef(new Map<string, Peer>());
@@ -681,6 +684,9 @@ function useUpdateAtoms() {
             case "health":
               setHealth(value);
               break;
+            case "is_alpenglow":
+              setIsAlpenglow(value);
+              break;
             case "estimated_slot":
             case "ping":
             case "vote_key":
@@ -799,6 +805,7 @@ function useUpdateAtoms() {
       setDbLiveTileMetrics,
       setLiveProgramCache,
       setHealth,
+      setIsAlpenglow,
       setVersion,
       setCluster,
       setCommitHash,

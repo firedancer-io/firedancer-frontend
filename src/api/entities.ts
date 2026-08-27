@@ -555,6 +555,8 @@ export const healthSchema = z.object({
   turbine: turbineHealthSchema,
 });
 
+export const isAlpenglowSchema = z.boolean();
+
 export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("ping"),
@@ -716,6 +718,10 @@ export const summarySchema = z.discriminatedUnion("key", [
   summaryTopicSchema.extend({
     key: z.literal("health"),
     value: healthSchema,
+  }),
+  summaryTopicSchema.extend({
+    key: z.literal("is_alpenglow"),
+    value: isAlpenglowSchema,
   }),
 ]);
 
