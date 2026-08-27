@@ -30,7 +30,11 @@ import { showStartupProgressAtom } from "../../StartupProgress/atoms";
 import MonoText from "../../../components/MonoText";
 import Progress from "../../../components/Progress";
 
-const minSlotHeaderWidthPx = 72;
+/* A seven digit slot number is about 46px at this font size, and the
+   header cell clips rather than overflows, so this is the budget per
+   label before one gets dropped.  Too generous a budget silently
+   halves the number of labels. */
+const minSlotHeaderWidthPx = 56;
 
 type TimelineGridStyle = CSSProperties & {
   "--lane-count": number;
@@ -123,8 +127,12 @@ function SlotLanes() {
     nextLeaderLane?.slot,
   );
   const hasFutureSection = futureSlotCellCount > 0;
+  /* The future section is filler - it shows that a gap exists, not how
+     wide the gap is - so it must not take width from the slots, whose
+     labels are dropped as their columns narrow.  Holding it to a third
+     of the lanes keeps the card's shape without costing labels. */
   const futureSectionWeight = Math.min(
-    currentSlotRange.slots.length,
+    currentSlotRange.slots.length / 3,
     Math.max(3, futureSlotCellCount / 2),
   );
   const gridTemplateColumns = [
