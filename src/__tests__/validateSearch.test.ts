@@ -3,25 +3,13 @@
 // lands in the main bundle).  The router always calls validateSearch with
 // the parsed search params object, so equivalence is asserted over object
 // inputs (Record<string, unknown>), the router's contract.
-import type { SearchSchemaInput } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
 import * as z from "zod/mini";
 import {
   SearchTypeEnum,
-  validateLeaderScheduleSearch as validateLeaderScheduleSearchBranded,
-  validateSlotDetailsSearch as validateSlotDetailsSearchBranded,
+  validateLeaderScheduleSearch,
+  validateSlotDetailsSearch,
 } from "../routes/-searchValidators";
-
-// SearchSchemaInput is a type-level brand the router applies to search
-// inputs; erase it so plain objects can be passed in tests
-const validateLeaderScheduleSearch = (search: Record<string, unknown>) =>
-  validateLeaderScheduleSearchBranded(
-    search as Record<string, unknown> & SearchSchemaInput,
-  );
-const validateSlotDetailsSearch = (search: Record<string, unknown>) =>
-  validateSlotDetailsSearchBranded(
-    search as Record<string, unknown> & SearchSchemaInput,
-  );
 
 // The exact schemas the routes used before the hand-rolled swap.
 const leaderScheduleZodSchema = z.object({

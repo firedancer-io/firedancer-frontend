@@ -1,6 +1,2 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { LeaderSchedule } from "../features/LeaderSchedule";
-
-export const Route = createLazyFileRoute("/leaderSchedule")({
-  component: LeaderSchedule,
-});
+// Route chunk: keeps features/LeaderSchedule code-split under this chunk name
+export { LeaderSchedule as default } from "../features/LeaderSchedule";

@@ -1,6 +1,2 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import Gossip from "../features/Gossip";
-
-export const Route = createLazyFileRoute("/gossip")({
-  component: Gossip,
-});
+// Route chunk: keeps features/Gossip code-split under this chunk name
+export { default } from "../features/Gossip";

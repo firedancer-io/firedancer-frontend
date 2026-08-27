@@ -1,18 +1,10 @@
-import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
-import { Route } from "../../routes/slotDetails";
+import { navigate } from "../../router";
 
 export function useNavigateToSlot() {
-  const navigate = useNavigate({
-    from: Route.fullPath,
-  });
-
-  const navigateToSlot = useCallback(
-    (slot?: number) => {
-      void navigate({ search: { slot }, replace: true });
-    },
-    [navigate],
-  );
+  const navigateToSlot = useCallback((slot?: number) => {
+    navigate({ to: "/slotDetails", search: { slot }, replace: true });
+  }, []);
 
   return navigateToSlot;
 }

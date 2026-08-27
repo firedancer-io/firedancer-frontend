@@ -1,9 +1,8 @@
 import "@radix-ui/themes/styles.css";
 import { Theme } from "@radix-ui/themes";
-import { RouterProvider } from "@tanstack/react-router";
 import "./app.css";
 import "./appColors.css";
-import { router } from "./router";
+import Root from "./Root";
 import { ConnectionProvider } from "./api/ws/ConnectionProvider";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { containerElAtom, isDocumentVisibleAtom } from "./atoms";
@@ -51,7 +50,7 @@ export default function App() {
   return (
     <Theme id="app" appearance="dark" ref={setContainerEl} scaling="90%">
       <ConnectionProvider>
-        <RouterProvider router={router} />
+        <Root />
       </ConnectionProvider>
     </Theme>
   );

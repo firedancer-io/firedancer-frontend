@@ -7,7 +7,7 @@ import CalendarMonthIcon from "@material-design-icons/svg/filled/calendar_month.
 import CampaignIcon from "@material-design-icons/svg/filled/campaign.svg?react";
 import AccountBalanceIcon from "@material-design-icons/svg/filled/account_balance.svg?react";
 import KeyboardArrowDownIcon from "@material-design-icons/svg/filled/keyboard_arrow_down.svg?react";
-import { Link } from "@tanstack/react-router";
+import { Link } from "../../router";
 import clsx from "clsx";
 import type { FC, SVGProps } from "react";
 import { forwardRef, useEffect, useMemo } from "react";

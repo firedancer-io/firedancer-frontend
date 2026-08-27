@@ -23,7 +23,7 @@ import {
   slotsPerLeader,
 } from "../../consts";
 import { useMeasure } from "react-use";
-import { Link } from "@tanstack/react-router";
+import { Link } from "../../router";
 import styles from "./slotNavigation.module.css";
 import clsx from "clsx";
 import MeasureOffscreen from "../../components/MeasureOffscreen";

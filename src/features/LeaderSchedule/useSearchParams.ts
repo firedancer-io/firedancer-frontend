@@ -1,35 +1,32 @@
-import { useNavigate } from "@tanstack/react-router";
-import type { SearchType } from "../../routes/leaderSchedule";
-import { Route, SearchTypeEnum } from "../../routes/leaderSchedule";
+import { navigate, useLeaderScheduleSearch } from "../../router";
+import type { SearchType } from "../../routes/-searchValidators";
+import { SearchTypeEnum } from "../../routes/-searchValidators";
 import { useCallback } from "react";
 
 export function useSearchTypeSearchParam() {
-  const { searchType } = Route.useSearch();
-  const navigate = useNavigate({ from: Route.fullPath });
+  const { searchType } = useLeaderScheduleSearch();
 
-  const setSearchType = useCallback(
-    (searchType: SearchType) => {
-      void navigate({ search: { searchType }, replace: true });
-    },
-    [navigate],
-  );
+  const setSearchType = useCallback((searchType: SearchType) => {
+    navigate({
+      to: "/leaderSchedule",
+      search: { searchType },
+      replace: true,
+    });
+  }, []);
 
   return { searchType, setSearchType };
 }
 
 export function useSearchTextSearchParam() {
-  const { searchText } = Route.useSearch();
-  const navigate = useNavigate({ from: Route.fullPath });
+  const { searchText } = useLeaderScheduleSearch();
 
-  const setSearchText = useCallback(
-    (searchText: string) => {
-      void navigate({
-        search: { searchText, searchType: SearchTypeEnum.text },
-        replace: true,
-      });
-    },
-    [navigate],
-  );
+  const setSearchText = useCallback((searchText: string) => {
+    navigate({
+      to: "/leaderSchedule",
+      search: { searchText, searchType: SearchTypeEnum.text },
+      replace: true,
+    });
+  }, []);
 
   return { searchText, setSearchText };
 }

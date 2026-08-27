@@ -9,7 +9,7 @@ import PeerIcon from "../../components/PeerIcon";
 import { slotsPerLeader } from "../../consts";
 import { useSlotInfo } from "../../hooks/useSlotInfo";
 import clsx from "clsx";
-import { Link } from "@tanstack/react-router";
+import { Link } from "../../router";
 import {
   slotStatusBlue,
   slotStatusDullTeal,

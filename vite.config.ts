@@ -2,7 +2,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import checker from "vite-plugin-checker";
-import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
 import license from "rollup-plugin-license";
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
@@ -304,7 +303,6 @@ export default defineConfig(({ mode }) => {
       earlyWebsocket(client, devWsUrl, wsCompress),
       react(),
       svgr(),
-      TanStackRouterVite({ quoteStyle: "double", semicolons: true }),
       wasm(),
       topLevelAwait(),
 

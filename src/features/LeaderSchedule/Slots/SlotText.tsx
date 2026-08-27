@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link } from "../../../router";
 import { Text } from "@radix-ui/themes";
 import styles from "./slotText.module.css";
 import clsx from "clsx";

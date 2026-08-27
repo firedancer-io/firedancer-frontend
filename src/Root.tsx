@@ -1,46 +1,23 @@
-import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { lazy, useEffect } from "react";
+import { useEffect } from "react";
 import { Box, Flex } from "@radix-ui/themes";
-import StartupProgress from "../features/StartupProgress";
-import Toast from "../features/Toast";
-import Navigation from "../features/Navigation";
-import Header from "../features/Header";
-import { headerSpacing, slotsNavSpacing } from "../consts";
-import NavBlur from "../features/Navigation/NavBlur";
-import { useCurrentRoute } from "../hooks/useCurrentRoute";
-import { useSlotsNavigation } from "../hooks/useSlotsNavigation";
-import { getDefaultStore, useAtomValue } from "jotai";
+import StartupProgress from "./features/StartupProgress";
+import Toast from "./features/Toast";
+import Navigation from "./features/Navigation";
+import Header from "./features/Header";
+import { headerSpacing, slotsNavSpacing } from "./consts";
+import NavBlur from "./features/Navigation/NavBlur";
+import { useCurrentRoute } from "./hooks/useCurrentRoute";
+import { useSlotsNavigation } from "./hooks/useSlotsNavigation";
+import { useAtomValue } from "jotai";
 import {
   bootProgressPhaseAtom,
   isStartupProgressVisibleAtom,
-} from "../features/StartupProgress/atoms";
-import { baseSelectedSlotAtoms } from "../features/Overview/SlotPerformance/atoms";
-import { isFiredancer } from "../client";
-import { useFirstFlushReveal } from "../hooks/useFirstFlushReveal";
+} from "./features/StartupProgress/atoms";
+import { isFiredancer } from "./client";
+import { useFirstFlushReveal } from "./hooks/useFirstFlushReveal";
+import { Outlet } from "./router";
 
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const TanStackRouterDevtools =
-  process.env.NODE_ENV === "production"
-    ? () => null // Render nothing in production
-    : lazy(() =>
-        // Lazy load in development
-        import("@tanstack/router-devtools").then((res) => ({
-          default: res.TanStackRouterDevtools,
-          // For Embedded Mode
-          // default: res.TanStackRouterDevtoolsPanel
-        })),
-      );
-
-const store = getDefaultStore();
-
-export const Route = createRootRoute({
-  component: Root,
-  beforeLoad: () => store.set(baseSelectedSlotAtoms.slot, undefined),
-});
-
-function Root() {
+export default function Root() {
   const isStartupProgressVisible = useAtomValue(isStartupProgressVisibleAtom);
 
   // Merge the empty-chrome and first-data paints: with the pre-mount

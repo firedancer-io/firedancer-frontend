@@ -1,6 +1,6 @@
 import { Reset } from "@radix-ui/themes";
 import { logoWidth } from "../../consts";
-import { Link } from "@tanstack/react-router";
+import { Link } from "../../router";
 import fdLogo from "../../assets/firedancer_logo.svg";
 import frLogo from "../../assets/frankendancer_logo.svg";
 import styles from "./logo.module.css";

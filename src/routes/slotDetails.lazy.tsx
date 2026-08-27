@@ -1,6 +1,2 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import SlotDetails from "../features/SlotDetails";
-
-export const Route = createLazyFileRoute("/slotDetails")({
-  component: SlotDetails,
-});
+// Route chunk: keeps features/SlotDetails code-split under this chunk name
+export { default } from "../features/SlotDetails";

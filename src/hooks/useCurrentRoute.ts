@@ -1,4 +1,4 @@
-import { useLocation } from "@tanstack/react-router";
+import { useLocation } from "../router";
 import { useMemo } from "react";
 
 export type RouteLabel =

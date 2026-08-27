@@ -1,5 +1,3 @@
-import type { SearchSchemaInput } from "@tanstack/react-router";
-
 export const SearchTypeEnum = {
   mySlots: "mySlots",
   skippedSlots: "skippedSlots",
@@ -18,9 +16,10 @@ const searchTypes: ReadonlySet<unknown> = new Set(
 // bundle; equivalence, including key-presence and inherited-key lookup,
 // is locked down by src/__tests__/validateSearch.test.ts
 
-export function validateLeaderScheduleSearch(
-  search: Record<string, unknown> & SearchSchemaInput,
-): { searchType: SearchType; searchText: string } {
+export function validateLeaderScheduleSearch(search: Record<string, unknown>): {
+  searchType: SearchType;
+  searchText: string;
+} {
   const { searchType, searchText } = search;
   return {
     searchType: searchTypes.has(searchType)
@@ -30,9 +29,9 @@ export function validateLeaderScheduleSearch(
   };
 }
 
-export function validateSlotDetailsSearch(
-  search: Record<string, unknown> & SearchSchemaInput,
-): { slot?: number | undefined } {
+export function validateSlotDetailsSearch(search: Record<string, unknown>): {
+  slot?: number | undefined;
+} {
   if (!("slot" in search)) return {};
   const { slot } = search;
   return {

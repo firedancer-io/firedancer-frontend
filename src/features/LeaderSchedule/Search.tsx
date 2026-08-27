@@ -24,7 +24,7 @@ import styles from "./search.module.css";
 import { isAlpenglowAtom, skippedSlotsAtom } from "../../api/atoms";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as Toggle from "@radix-ui/react-toggle";
-import { SearchTypeEnum } from "../../routes/leaderSchedule";
+import { SearchTypeEnum } from "../../routes/-searchValidators";
 import {
   useSearchTextSearchParam,
   useSearchTypeSearchParam,
