@@ -6,6 +6,7 @@ import { liveShredsKey } from "../../../types";
 import {
   delayMs,
   POST_STARTUP_DELETE_INTERVAL_MS,
+  shredsDataToJson,
   STARTUP_DELETE_INTERVAL_MS,
   xRangeMs,
 } from "../shredsCalc";
@@ -19,6 +20,12 @@ function getDefaultValidatorState() {
 
 describe("createShredsCache", () => {
   let liveShredsCache: ReturnType<typeof createShredsCache> | undefined;
+
+  // expectations below are written in the main-thread JSON row shape
+  const getJson = () => {
+    const data = liveShredsCache?.get();
+    return data && shredsDataToJson(data);
+  };
 
   beforeEach(() => {
     vi.useFakeTimers({
@@ -64,7 +71,7 @@ describe("createShredsCache", () => {
       ],
     });
 
-    expect(liveShredsCache.get()).toEqual({
+    expect(getJson()).toEqual({
       minCompletedSlot: 2003,
       range: {
         min: 2003,
@@ -101,7 +108,7 @@ describe("createShredsCache", () => {
 
     // uses inital reference ts
     // update shred events with min ts
-    expect(liveShredsCache.get()).toEqual({
+    expect(getJson()).toEqual({
       minCompletedSlot: 2003,
       range: {
         min: 2002,
@@ -154,7 +161,7 @@ describe("createShredsCache", () => {
       event_ts_delta: [2_000_030, 4_123_456, 5_678_234, 8_000_000],
     });
 
-    expect(liveShredsCache.get()).toEqual({
+    expect(getJson()).toEqual({
       minCompletedSlot: 2003,
       range: {
         min: 2003,
@@ -194,7 +201,7 @@ describe("createShredsCache", () => {
       event_ts_delta: [1_000_030, 2_123_345],
     });
 
-    expect(liveShredsCache.get()).toEqual({
+    expect(getJson()).toEqual({
       minCompletedSlot: 2002,
       range: {
         min: 2002,
@@ -390,16 +397,16 @@ describe("createShredsCache", () => {
       // add initial shreds
       liveShredsCache.subscribeAndAdd(toAdd);
 
-      expect(liveShredsCache.get()).toEqual(expectedInitial);
+      expect(getJson()).toEqual(expectedInitial);
 
       // advance time to trigger deletion of old slots
       vi.advanceTimersByTime(POST_STARTUP_DELETE_INTERVAL_MS);
 
-      expect(liveShredsCache.get()).toEqual(expectedPostDelete);
+      expect(getJson()).toEqual(expectedPostDelete);
 
       // delete all
       liveShredsCache.resetDataAndUnsubscribe();
-      expect(liveShredsCache.get()).toEqual({});
+      expect(getJson()).toEqual({});
     });
 
     it("with server timestamp: deletes slot numbers before max completed slot number that was completed before chart min X", () => {
@@ -418,12 +425,12 @@ describe("createShredsCache", () => {
       // add initial shreds
       liveShredsCache.subscribeAndAdd(toAdd);
 
-      expect(liveShredsCache.get()).toEqual(expectedInitial);
+      expect(getJson()).toEqual(expectedInitial);
 
       // advance time to trigger deletion of old slots
       vi.advanceTimersByTime(POST_STARTUP_DELETE_INTERVAL_MS);
 
-      expect(liveShredsCache.get()).toEqual(expectedPostDelete);
+      expect(getJson()).toEqual(expectedPostDelete);
     });
   });
 
@@ -485,7 +492,7 @@ describe("createShredsCache", () => {
       event_ts_delta: events.map((v) => v.ts),
     });
 
-    expect(liveShredsCache.get()).toEqual({
+    expect(getJson()).toEqual({
       minCompletedSlot: 1,
       range: {
         min: 0,
@@ -530,7 +537,7 @@ describe("createShredsCache", () => {
     // advance time to trigger deletion of old slots
     vi.advanceTimersByTime(STARTUP_DELETE_INTERVAL_MS);
 
-    expect(liveShredsCache.get()).toEqual({
+    expect(getJson()).toEqual({
       minCompletedSlot: 1,
       range: {
         min: 1,
@@ -590,7 +597,7 @@ describe("createShredsCache", () => {
 
     liveShredsCache.resetDataAndUnsubscribe();
 
-    expect(liveShredsCache.get()).toEqual({});
+    expect(getJson()).toEqual({});
     expect(post).toHaveBeenCalledOnce();
     expect(post).toHaveBeenCalledWith([{ key: liveShredsKey, data: {} }]);
   });

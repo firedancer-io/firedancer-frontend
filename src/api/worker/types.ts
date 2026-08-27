@@ -10,7 +10,7 @@ import type {
 } from "../entities";
 import type { GossipHealthEma } from "../atoms";
 import type { Epoch } from "../types";
-import type { LiveShredsData } from "./cache/shreds/types";
+import type { FlatSlot, JsonSlot, LiveShredsData } from "./cache/shreds/types";
 
 type KvFrom<TSchema extends z.core.$ZodType, TTopic extends string> =
   z.infer<TSchema> extends infer U
@@ -84,7 +84,7 @@ export type FromWorkerMessage =
   | ({ type: "kv" } & WsEntity)
   // worker-side shreds cache snapshot, posted when a fallback chart
   // re-enables the main feed mid-session (mainShreds)
-  | { type: "shredsSeed"; data: LiveShredsData }
+  | { type: "shredsSeed"; data: LiveShredsData<JsonSlot> }
   // batch publisher caches
   | { type: "ema"; items: EmaItem[] }
   | {
@@ -163,5 +163,5 @@ export const liveShredsKey = "liveShreds";
 export type LiveShredsKey = typeof liveShredsKey;
 export interface LiveShredsItem {
   key: LiveShredsKey;
-  data: LiveShredsData;
+  data: LiveShredsData<FlatSlot>;
 }

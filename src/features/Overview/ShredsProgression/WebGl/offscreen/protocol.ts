@@ -1,5 +1,8 @@
 import type { LiveShreds } from "../../../../../api/types";
-import type { LiveShredsData } from "../../../../../api/worker/cache/shreds/types";
+import type {
+  FlatSlot,
+  LiveShredsData,
+} from "../../../../../api/worker/cache/shreds/types";
 import type { LabelFrame } from "../../labelsCalc";
 
 /** Main thread -> shreds chart worker */
@@ -31,7 +34,7 @@ export type ToChartWorker =
 export type ShredsPortMessage =
   | { type: "shreds"; value: LiveShreds }
   // wsWorker's cache of everything that arrived before the port attached
-  | { type: "seed"; data: LiveShredsData }
+  | { type: "seed"; data: LiveShredsData<FlatSlot> }
   // first server_time_nanos of the connection, sent at wire-decode time:
   // the main-thread state relay lands ~30-90ms later on a cold boot and
   // it is the last gate before the chart's first draw

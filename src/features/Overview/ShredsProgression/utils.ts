@@ -1,7 +1,7 @@
 import { sum } from "../../../mathUtils";
 import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import { getSlotGroupLeader } from "../../../utils";
-import type { SlotsShreds } from "./atoms";
+import type { SlotsShredsView } from "../../../api/worker/cache/shreds/types";
 
 export function getSlotGroupLabelId(slot: number) {
   return `slot-group-label-${getSlotGroupLeader(slot)}`;
@@ -82,7 +82,7 @@ export type XRange = {
 export function getDrawInfo(
   minSlotNumber: number,
   maxSlotNumber: number,
-  liveShreds: SlotsShreds,
+  liveShreds: SlotsShredsView,
   xRange: XRange,
 ) {
   const orderedSlotNumbers = [];
@@ -94,7 +94,12 @@ export function getDrawInfo(
     slotNumber++
   ) {
     const slot = liveShreds.slots.get(slotNumber);
-    if (!slot?.shreds.length || slot.minEventTsDelta == null) {
+    const rowCount = !slot
+      ? 0
+      : slot.shreds
+        ? slot.shreds.length
+        : slot.shredCount;
+    if (!rowCount || slot?.minEventTsDelta == null) {
       // slot has no events
       continue;
     }
@@ -113,7 +118,7 @@ export function getDrawInfo(
     }
 
     orderedSlotNumbers.push(slotNumber);
-    maxShreds = Math.max(maxShreds, slot.shreds.length);
+    maxShreds = Math.max(maxShreds, rowCount);
   }
 
   return {

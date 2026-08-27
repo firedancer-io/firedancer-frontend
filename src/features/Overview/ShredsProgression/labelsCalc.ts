@@ -1,5 +1,5 @@
 import { slotsPerLeader } from "../../../consts";
-import type { SlotsShreds } from "../../../api/worker/cache/shreds/types";
+import type { Slot } from "../../../api/worker/cache/shreds/types";
 import type { XRange } from "./utils";
 
 /**
@@ -34,7 +34,7 @@ export function getSlotBlocks(
     min: number;
     max: number;
   },
-  slots: SlotsShreds["slots"],
+  slots: ReadonlyMap<number, Slot>,
 ): Array<CompleteBlock | IncompleteBlock> {
   const blocks: Array<CompleteBlock | IncompleteBlock> = [];
   let incompleteBlockSlotNumbers: number[] = [];
@@ -121,7 +121,7 @@ export function getSlotBlocks(
  */
 function getIncompleteBlockStart(
   blockSlotNumbers: number[],
-  slots: SlotsShreds["slots"],
+  slots: ReadonlyMap<number, Slot>,
   previousBlock: CompleteBlock | IncompleteBlock,
 ) {
   const firstSlotNumber = blockSlotNumbers[0];
@@ -362,7 +362,7 @@ export function computeLabelFrame(
     min: number;
     max: number;
   },
-  slots: SlotsShreds["slots"],
+  slots: ReadonlyMap<number, Slot>,
   skippedSlotsCluster: Set<number>,
   xRange: XRange,
 ): LabelFrame {

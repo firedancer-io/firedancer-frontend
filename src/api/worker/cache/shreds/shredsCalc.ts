@@ -3,20 +3,23 @@ import { ShredEvent } from "../../../entityEnums";
 import type { LiveShreds } from "../../../types";
 import type { ValidatorState } from "../../types";
 import type {
+  FlatSlot,
+  JsonSlot,
   LiveShredsData,
-  ShredEventTsDeltaMs,
   ShredEventTsDeltas,
-  Slot,
   SlotsShreds,
 } from "./types";
+import { SHRED_ROW_STRIDE } from "./types";
 
 export const xRangeMs = 10_000;
 export const delayMs = 50;
 export const STARTUP_DELETE_INTERVAL_MS = 1_000;
 export const POST_STARTUP_DELETE_INTERVAL_MS = xRangeMs / 4;
 
+const INITIAL_ROWS = 128;
+
 export function createShredsCalc(getValidatorState: () => ValidatorState) {
-  let data: LiveShredsData = {};
+  let data: LiveShredsData<FlatSlot> = {};
   let deleteTimeoutId: NodeJS.Timeout | undefined;
 
   function add({
@@ -29,7 +32,7 @@ export function createShredsCalc(getValidatorState: () => ValidatorState) {
   }: LiveShreds) {
     let newMinCompletedSlot = data.minCompletedSlot;
     let newRange = data.range;
-    const updatedSlotsShreds: SlotsShreds = data.slotsShreds ?? {
+    const updatedSlotsShreds: SlotsShreds<FlatSlot> = data.slotsShreds ?? {
       referenceTs: Math.round(Number(reference_ts) / nsPerMs),
       slots: new Map(),
     };
@@ -219,7 +222,7 @@ export function createShredsCalc(getValidatorState: () => ValidatorState) {
   }
 
   /** Replace state wholesale (offscreen chart worker snapshot handoff) */
-  function seed(newData: LiveShredsData) {
+  function seed(newData: LiveShredsData<FlatSlot>) {
     data = newData;
     if (deleteTimeoutId == null && data.slotsShreds) {
       setRecursiveDeleteTimeout();
@@ -245,32 +248,17 @@ function isBeforeChartX(tsDelta: number, now: number, referenceTs: number) {
 }
 
 /**
- * Mutate shred by adding an event ts to event index
- */
-function addEventToShred(
-  event: Exclude<ShredEvent, ShredEvent.slot_complete>,
-  eventTsDelta: number,
-  shredToMutate: ShredEventTsDeltas | undefined,
-): ShredEventTsDeltas {
-  const shred = shredToMutate ?? new Array<ShredEventTsDeltaMs>();
-
-  // in case of duplicate events, keep the min ts
-  shred[event] = Math.min(eventTsDelta, shred[event] ?? eventTsDelta);
-
-  return shred;
-}
-
-/**
- * Mutate slot by marking as complete, or adding an event to the shreds array
+ * Mutate slot by marking as complete, or adding an event to the flat rows
  */
 function addEventToSlot(
   shredIdx: number | null,
   event: ShredEvent,
   eventTsDelta: number,
-  slotToMutate: Slot | undefined,
-): Slot {
+  slotToMutate: FlatSlot | undefined,
+): FlatSlot {
   const slot = slotToMutate ?? {
-    shreds: [],
+    evts: null,
+    shredCount: 0,
   };
 
   // update slot min event ts
@@ -298,12 +286,88 @@ function addEventToSlot(
     return slot;
   }
 
-  // update shred
-  slot.shreds[shredIdx] = addEventToShred(
-    event,
-    eventTsDelta,
-    slot.shreds[shredIdx],
-  );
+  let evts = slot.evts;
+  const needed = (shredIdx + 1) * SHRED_ROW_STRIDE;
+  if (!evts || evts.length < needed) {
+    let rows = evts ? evts.length / SHRED_ROW_STRIDE : INITIAL_ROWS;
+    while (rows * SHRED_ROW_STRIDE < needed) rows *= 2;
+    const grown = new Float64Array(rows * SHRED_ROW_STRIDE).fill(NaN);
+    if (evts) grown.set(evts);
+    slot.evts = evts = grown;
+  }
+  if (shredIdx + 1 > slot.shredCount) slot.shredCount = shredIdx + 1;
+
+  // in case of duplicate events, keep the min ts (NaN = first write)
+  const off = shredIdx * SHRED_ROW_STRIDE + event;
+  const prev = evts[off];
+  evts[off] = prev < eventTsDelta ? prev : eventTsDelta;
 
   return slot;
+}
+
+/**
+ * Copy for postMessage: rows sliced to their live length, buffers
+ * returned for the transfer list so the receiver adopts them uncopied
+ */
+export function snapshotShredsData(data: LiveShredsData<FlatSlot>): {
+  data: LiveShredsData<FlatSlot>;
+  transfer: ArrayBuffer[];
+} {
+  const slotsShreds = data.slotsShreds;
+  if (!slotsShreds) return { data: { ...data }, transfer: [] };
+
+  const transfer: ArrayBuffer[] = [];
+  const slots = new Map<number, FlatSlot>();
+  for (const [slotNumber, slot] of slotsShreds.slots) {
+    const evts =
+      slot.evts && slot.shredCount
+        ? slot.evts.slice(0, slot.shredCount * SHRED_ROW_STRIDE)
+        : null;
+    if (evts) transfer.push(evts.buffer);
+    slots.set(slotNumber, { ...slot, evts });
+  }
+  return {
+    data: {
+      ...data,
+      slotsShreds: { referenceTs: slotsShreds.referenceTs, slots },
+    },
+    transfer,
+  };
+}
+
+/** Main-thread atoms form, for the fallback-chart seed (shredsSeed) */
+export function shredsDataToJson(
+  data: LiveShredsData<FlatSlot>,
+): LiveShredsData<JsonSlot> {
+  const slotsShreds = data.slotsShreds;
+  if (!slotsShreds) return { ...data, slotsShreds: undefined };
+
+  const slots = new Map<number, JsonSlot>();
+  for (const [slotNumber, slot] of slotsShreds.slots) {
+    const shreds: (ShredEventTsDeltas | undefined)[] = [];
+    const { evts, shredCount } = slot;
+    if (evts) {
+      for (let shredIdx = 0; shredIdx < shredCount; shredIdx++) {
+        const base = shredIdx * SHRED_ROW_STRIDE;
+        let row: ShredEventTsDeltas | undefined;
+        for (let event = 0; event < SHRED_ROW_STRIDE; event++) {
+          const tsDelta = evts[base + event];
+          if (!Number.isNaN(tsDelta)) (row ??= [])[event] = tsDelta;
+        }
+        if (row) shreds[shredIdx] = row;
+      }
+    }
+    const jsonSlot: JsonSlot = { shreds };
+    if (slot.minEventTsDelta !== undefined)
+      jsonSlot.minEventTsDelta = slot.minEventTsDelta;
+    if (slot.maxEventTsDelta !== undefined)
+      jsonSlot.maxEventTsDelta = slot.maxEventTsDelta;
+    if (slot.completionTsDelta !== undefined)
+      jsonSlot.completionTsDelta = slot.completionTsDelta;
+    slots.set(slotNumber, jsonSlot);
+  }
+  return {
+    ...data,
+    slotsShreds: { referenceTs: slotsShreds.referenceTs, slots },
+  };
 }

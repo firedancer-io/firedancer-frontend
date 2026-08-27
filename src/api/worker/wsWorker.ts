@@ -12,7 +12,11 @@ import type {
 import { WsMessageSchema } from "./wsMessage";
 import { createMessageHandler } from "./messageHandler";
 import { fillEpochLeaderSlots } from "./epochLeaderSlots";
-import { createShredsCalc } from "./cache/shreds/shredsCalc";
+import {
+  createShredsCalc,
+  shredsDataToJson,
+  snapshotShredsData,
+} from "./cache/shreds/shredsCalc";
 import { nsPerMs } from "../../consts";
 
 const reconnectDelayMs = 3_000;
@@ -478,9 +482,12 @@ const onMainMessage = (e: MessageEvent<ToWorkerMessage>) => {
     case "shredsPort": {
       shredsPort?.close();
       shredsPort = msg.port;
-      // hand over everything that arrived before the chart attached
-      if (shredsCalc.data.slotsShreds)
-        shredsPort.postMessage({ type: "seed", data: shredsCalc.data });
+      // hand over everything that arrived before the chart attached;
+      // flat rows ride the transfer list instead of a structured-clone walk
+      if (shredsCalc.data.slotsShreds) {
+        const { data, transfer } = snapshotShredsData(shredsCalc.data);
+        shredsPort.postMessage({ type: "seed", data }, transfer);
+      }
       const serverTimeNanos = handler.getValidatorState().serverTimeNanos;
       shredsPortTimeSent = serverTimeNanos != null;
       if (serverTimeNanos != null)
@@ -494,7 +501,10 @@ const onMainMessage = (e: MessageEvent<ToWorkerMessage>) => {
       mainShredsForced = msg.enabled;
       // catch the fallback chart up with the events main never received
       if (msg.enabled && shredsCalc.data.slotsShreds)
-        postMain({ type: "shredsSeed", data: shredsCalc.data });
+        postMain({
+          type: "shredsSeed",
+          data: shredsDataToJson(shredsCalc.data),
+        });
       break;
     case "requestPeers":
       peersRequested = true;

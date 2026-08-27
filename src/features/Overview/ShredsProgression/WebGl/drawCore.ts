@@ -6,8 +6,9 @@ import {
 } from "../../../../api/worker/cache/shreds/shredsCalc";
 import type {
   ShredEventTsDeltas,
-  SlotsShreds,
+  SlotsShredsView,
 } from "../../../../api/worker/cache/shreds/types";
+import { SHRED_ROW_STRIDE } from "../../../../api/worker/cache/shreds/types";
 import { shredEventDescPriorities } from "../const";
 import type { SlotMesh, WebglResources } from "../../../WebGl/webglUtils";
 import {
@@ -66,7 +67,7 @@ const colors = {
 };
 
 export interface SceneState {
-  liveShreds: SlotsShreds;
+  liveShreds: SlotsShredsView;
   slotRange: { min: number; max: number };
   minCompletedSlot: number;
   skippedSlotsCluster: Set<number>;
@@ -142,7 +143,7 @@ export function drawScene(
 
   for (const slotNumber of orderedSlotNumbers) {
     const slot = liveShreds.slots.get(slotNumber);
-    if (!slot?.shreds) continue;
+    if (!slot) continue;
 
     let slotMesh = objs.meshes.get(slotNumber);
     const isNewMesh = !slotMesh;
@@ -161,22 +162,43 @@ export function drawScene(
     const isSlotSkipped = skippedSlotsCluster.has(slotNumber);
 
     let rectangleIdx = 0;
-    for (let shredIdx = 0; shredIdx < slot.shreds.length; shredIdx++) {
-      const shred = slot.shreds[shredIdx];
-      if (!shred) continue;
+    if (slot.shreds) {
+      for (let shredIdx = 0; shredIdx < slot.shreds.length; shredIdx++) {
+        const shred = slot.shreds[shredIdx];
+        if (!shred) continue;
 
-      const rectanglesAdded = addEventsForRow(
-        slotMesh,
-        rectangleIdx,
-        shred,
-        slot.completionTsDelta,
-        isSlotSkipped,
-        -shredIdx,
-        visibleTsRange,
-      );
-      rectangleIdx += rectanglesAdded;
-      if (rectanglesAdded) {
-        anythingDrawn = true;
+        const rectanglesAdded = addEventsForRow(
+          slotMesh,
+          rectangleIdx,
+          shred,
+          slot.completionTsDelta,
+          isSlotSkipped,
+          -shredIdx,
+          visibleTsRange,
+        );
+        rectangleIdx += rectanglesAdded;
+        if (rectanglesAdded) {
+          anythingDrawn = true;
+        }
+      }
+    } else if (slot.evts) {
+      const evts = slot.evts;
+      const shredCount = slot.shredCount;
+      for (let shredIdx = 0; shredIdx < shredCount; shredIdx++) {
+        const rectanglesAdded = addEventsForRowFlat(
+          slotMesh,
+          rectangleIdx,
+          evts,
+          shredIdx * SHRED_ROW_STRIDE,
+          slot.completionTsDelta,
+          isSlotSkipped,
+          -shredIdx,
+          visibleTsRange,
+        );
+        rectangleIdx += rectanglesAdded;
+        if (rectanglesAdded) {
+          anythingDrawn = true;
+        }
       }
     }
     updateSlotMeshCounts(slotMesh, rectangleIdx);
@@ -265,6 +287,68 @@ function addEventsForRow(
     endTs = startTs;
   }
 
+  return emitRowRects(
+    slotMesh,
+    startRectangleIdx,
+    count,
+    eventsMask,
+    isSlotSkipped,
+    y,
+  );
+}
+
+/** addEventsForRow over one flat row (evts[rowBase + event], NaN = none) */
+function addEventsForRowFlat(
+  slotMesh: SlotMesh,
+  startRectangleIdx: number,
+  evts: Float64Array,
+  rowBase: number,
+  slotCompletionTsDelta: number | undefined,
+  isSlotSkipped: boolean,
+  y: number,
+  visibleTsRange: TsRange,
+) {
+  let endTs: number =
+    slotCompletionTsDelta == null
+      ? visibleTsRange[1] + delayMs
+      : slotCompletionTsDelta;
+
+  let count = 0;
+  let eventsMask = 0;
+  for (let i = 0; i < shredEventDescPriorities.length; i++) {
+    const eventType = shredEventDescPriorities[i];
+    const startTs = evts[rowBase + eventType];
+    // NaN (no event) and overlapping lower-priority events both fail this
+    if (!(startTs < endTs)) continue;
+
+    rowEvents[count] = eventType;
+    rowXs[count] = startTs;
+    rowWs[count] = isSlotSkipped
+      ? SKIPPED_SLOT_DOT_DURATION_MS
+      : endTs - startTs;
+    count++;
+    eventsMask |= 1 << eventType;
+    endTs = startTs;
+  }
+
+  return emitRowRects(
+    slotMesh,
+    startRectangleIdx,
+    count,
+    eventsMask,
+    isSlotSkipped,
+    y,
+  );
+}
+
+function emitRowRects(
+  slotMesh: SlotMesh,
+  startRectangleIdx: number,
+  count: number,
+  eventsMask: number,
+  isSlotSkipped: boolean,
+  y: number,
+) {
   let rectanglesAdded = 0;
   for (let i = 0; i < count; i++) {
     const eventType = rowEvents[i] as Exclude<
