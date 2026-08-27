@@ -19,9 +19,9 @@ export default function useUpdateTransactions() {
 
     const timestampedHistory = tpsHistory
       .slice(-MAX_HISTORY_POINTS)
-      .map(([total, vote, nonvote_success, nonvote_failed], i, arr) => ({
+      .map((tps, i, arr) => ({
         ts: now - (arr.length - 1 - i) * tpsSampleIntervalMs,
-        tps: { total, vote, nonvote_success, nonvote_failed },
+        tps,
       }));
 
     setTpsData(timestampedHistory);

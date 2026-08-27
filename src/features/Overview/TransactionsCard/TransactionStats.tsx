@@ -1,7 +1,7 @@
 import { Flex } from "@radix-ui/themes";
 import CardStat from "../../../components/CardStat";
 import { useAtomValue } from "jotai";
-import { estimatedTpsAtom } from "../../../api/atoms";
+import { estimatedTpsAtom, isAlpenglowAtom } from "../../../api/atoms";
 import {
   failureColor,
   headerColor,
@@ -10,56 +10,45 @@ import {
 } from "../../../colors";
 import styles from "./transactionsStats.module.css";
 
+const formatTps = (value?: number) =>
+  value?.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }) ?? "-";
+
 export default function TransactionStats() {
-  const estimated = useAtomValue(estimatedTpsAtom);
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
+  const tps = useAtomValue(estimatedTpsAtom);
   return (
     <Flex direction="column" gap="2" minWidth="100px">
       <CardStat
         label="Total TPS"
-        value={
-          estimated?.total.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }) ?? "-"
-        }
+        value={formatTps(tps?.total)}
         valueColor={headerColor}
         valueSize="medium"
       />
       <Flex gap="4" wrap="wrap">
         <CardStat
-          label="Non-vote TPS Success"
-          value={
-            estimated?.nonvote_success.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }) ?? "-"
-          }
+          label={isAlpenglow ? "Success" : "Non-vote TPS Success"}
+          value={formatTps(tps?.success)}
           valueColor={nonVoteColor}
           valueSize="small"
         />
         <CardStat
-          label="Non-vote TPS Fail"
-          value={
-            estimated?.nonvote_failed.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }) ?? "-"
-          }
+          label={isAlpenglow ? "Fail" : "Non-vote TPS Fail"}
+          value={formatTps(tps?.failed)}
           valueColor={failureColor}
           valueSize="small"
         />
-        <CardStat
-          label="Vote TPS"
-          value={
-            estimated?.vote.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }) ?? "-"
-          }
-          valueColor={votesColor}
-          valueSize="small"
-          className={styles.voteTps}
-        />
+        {!isAlpenglow && (
+          <CardStat
+            label="Vote TPS"
+            value={formatTps(tps?.vote)}
+            valueColor={votesColor}
+            valueSize="small"
+            className={styles.voteTps}
+          />
+        )}
       </Flex>
     </Flex>
   );

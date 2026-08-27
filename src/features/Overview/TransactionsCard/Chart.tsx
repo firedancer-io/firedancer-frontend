@@ -51,9 +51,8 @@ export default function Chart() {
     const points = data.map((p) => ({
       x: width * (1 - (now - p.ts) / WINDOW_MS),
       voteY: p.tps.vote * yRatio,
-      nonvoteFailedY: (p.tps.nonvote_failed + p.tps.vote) * yRatio,
-      nonvoteY:
-        (p.tps.nonvote_success + p.tps.nonvote_failed + p.tps.vote) * yRatio,
+      failedY: (p.tps.failed + p.tps.vote) * yRatio,
+      successY: (p.tps.success + p.tps.failed + p.tps.vote) * yRatio,
     }));
 
     drawArea(
@@ -61,17 +60,10 @@ export default function Chart() {
       points,
       width,
       height,
-      "nonvoteY",
+      "successY",
       transactionNonVotePathColor,
     );
-    drawArea(
-      ctx,
-      points,
-      width,
-      height,
-      "nonvoteFailedY",
-      transactionFailedPathColor,
-    );
+    drawArea(ctx, points, width, height, "failedY", transactionFailedPathColor);
     drawArea(ctx, points, width, height, "voteY", transactionVotePathColor);
 
     drawPeakLine(ctx, width, height, maxTotalY * yRatio, maxTotalY);
@@ -87,8 +79,8 @@ export default function Chart() {
 type Point = {
   x: number;
   voteY: number;
-  nonvoteFailedY: number;
-  nonvoteY: number;
+  failedY: number;
+  successY: number;
 };
 
 function drawArea(
