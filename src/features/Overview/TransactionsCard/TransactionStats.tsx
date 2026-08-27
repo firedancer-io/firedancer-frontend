@@ -1,4 +1,4 @@
-import { Flex } from "@radix-ui/themes";
+import type { CSSProperties } from "react";
 import CardStat from "../../../components/CardStat";
 import { useAtomValue } from "jotai";
 import { isAlpenglowAtom } from "../../../api/atoms";
@@ -21,14 +21,17 @@ export default function TransactionStats() {
   const isAlpenglow = useAtomValue(isAlpenglowAtom);
   const tps = useAtomValue(estimatedTpsSeededAtom);
   return (
-    <Flex direction="column" gap="2" minWidth="100px">
+    <div
+      className="rt-Flex rt-r-fd-column rt-r-gap-2 rt-r-min-w"
+      style={{ "--min-width": "100px" } as CSSProperties}
+    >
       <CardStat
         label="Total TPS"
         value={formatTps(tps?.total)}
         valueColor={headerColor}
         valueSize="medium"
       />
-      <Flex gap="4" wrap="wrap">
+      <div className="rt-Flex rt-r-fw-wrap rt-r-gap-4">
         <CardStat
           label={isAlpenglow ? "Success" : "Non-vote TPS Success"}
           value={formatTps(tps?.success)}
@@ -50,7 +53,7 @@ export default function TransactionStats() {
             className={styles.voteTps}
           />
         )}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }

@@ -1,8 +1,7 @@
 import { startTransition, useEffect, useState } from "react";
-import type { ComponentType } from "react";
-import { Box, Flex } from "@radix-ui/themes";
-import type { FlexProps } from "@radix-ui/themes";
+import type { ComponentType, CSSProperties } from "react";
 import { useAtomValue } from "jotai";
+import clsx from "clsx";
 import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
 import { ShredsChartLegend } from "./ShredsChartLegend";
@@ -20,9 +19,11 @@ import ShredsChartOffscreen from "./WebGl/offscreen/OffscreenChart";
 // the main chunk
 import ShredsChartCanvas from "./ShredsChartDeferred";
 
-interface WebGlChartProps
-  extends Pick<FlexProps, "height" | "minHeight" | "flexGrow"> {
+interface WebGlChartProps {
   chartId: string;
+  height?: string;
+  minHeight?: string;
+  flexGrow?: "0" | "1";
 }
 let webGlChart: ComponentType<WebGlChartProps> | undefined;
 
@@ -45,7 +46,14 @@ function ShredsChartWebGl(props: WebGlChartProps) {
       cancelled = true;
     };
   }, [Chart]);
-  return Chart ? <Chart {...props} /> : <Box height={props.height} />;
+  return Chart ? (
+    <Chart {...props} />
+  ) : (
+    <div
+      className={clsx("rt-Box", props.height !== undefined && "rt-r-h")}
+      style={{ "--height": props.height } as CSSProperties}
+    />
+  );
 }
 
 /**
@@ -70,11 +78,14 @@ export default function ShredsProgression() {
   return (
     // extra right padding for x axis label
     <Card style={{ padding: "10px 13px 10px 10px" }}>
-      <Flex direction="column" gap="4">
-        <Flex gapX="15px" gapY="2" align="center" wrap="wrap">
+      <div className="rt-Flex rt-r-fd-column rt-r-gap-4">
+        <div
+          className="rt-Flex rt-r-ai-center rt-r-fw-wrap rt-r-cg rt-r-rg-2"
+          style={{ "--column-gap": "15px" } as CSSProperties}
+        >
           <CardHeader text="Shreds" />
           <ShredsChartLegend />
-        </Flex>
+        </div>
         {isOffscreenChartSupported && !offscreenFailed ? (
           <ShredsChartOffscreen
             height="400px"
@@ -83,7 +94,7 @@ export default function ShredsProgression() {
         ) : (
           <ShredsChartFallback height="400px" chartId="overview-shreds-chart" />
         )}
-      </Flex>
+      </div>
     </Card>
   );
 }

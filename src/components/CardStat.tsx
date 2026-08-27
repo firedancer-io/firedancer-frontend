@@ -1,4 +1,3 @@
-import { Flex, Text } from "@radix-ui/themes";
 import styles from "./cardStat.module.css";
 import { useMemo, type CSSProperties } from "react";
 import clsx from "clsx";
@@ -33,34 +32,39 @@ export default function CardStat({
   }, [valueSize]);
 
   return (
-    <Flex
-      direction="column"
-      align="start"
-      className={clsx(styles.container, className)}
+    <div
+      className={clsx(
+        "rt-Flex rt-r-fd-column rt-r-ai-start",
+        styles.container,
+        className,
+      )}
       style={{ "--value-color": valueColor } as CSSProperties}
     >
-      <Text className={styles.label}>{label}</Text>
-      <Flex align="baseline" gap="1" width="100%">
+      <span className={clsx("rt-Text", styles.label)}>{label}</span>
+      <div
+        className="rt-Flex rt-r-ai-baseline rt-r-gap-1 rt-r-w"
+        style={{ "--width": "100%" } as CSSProperties}
+      >
         {typeof value === "number" && animateInteger ? (
           <AnimatedInteger value={value} className={valueClassName} />
         ) : (
           // nbsp reserves the value line before data arrives (CLS)
-          <Text className={valueClassName}>
+          <span className={clsx("rt-Text", valueClassName)}>
             {value === "" ? "\u00a0" : value}
-          </Text>
+          </span>
         )}
 
         {appendValue && (
-          <Text
-            className={styles.appendValue}
+          <span
+            className={clsx("rt-Text", styles.appendValue)}
             style={
               { "--append-value-color": appendValueColor } as CSSProperties
             }
           >
             {appendValue}
-          </Text>
+          </span>
         )}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }

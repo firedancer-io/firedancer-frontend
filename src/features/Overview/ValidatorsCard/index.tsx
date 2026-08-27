@@ -1,4 +1,4 @@
-import { Flex } from "@radix-ui/themes";
+import type { CSSProperties } from "react";
 import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
 import { useAtomValue } from "jotai";
@@ -11,10 +11,13 @@ export default function ValidatorsCard({ className }: { className?: string }) {
 
   return (
     <Card className={className}>
-      <Flex direction="column" height="100%" gap="2">
+      <div
+        className="rt-Flex rt-r-fd-column rt-r-gap-2 rt-r-h"
+        style={{ "--height": "100%" } as CSSProperties}
+      >
         <CardHeader text="Validators" />
         <ValidatorsStatsContent />
-      </Flex>
+      </div>
     </Card>
   );
 }

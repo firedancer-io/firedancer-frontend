@@ -1,4 +1,3 @@
-import { Flex, Text } from "@radix-ui/themes";
 import cardStatStyles from "../../../components/cardStat.module.css";
 import styles from "./hitRateStat.module.css";
 import clsx from "clsx";
@@ -12,7 +11,7 @@ import {
 import { formatHitRate } from "../../../utils";
 import ColorText from "../../../components/ColorText";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { liveProgramCacheAtom } from "../../../api/atoms";
 
 type HitRateValues = {
@@ -49,46 +48,58 @@ export default function HitRateStat() {
   }, [liveProgramCache]);
 
   return (
-    <Flex
-      className={clsx(cardStatStyles.container)}
-      direction="column"
-      align="start"
-      gap="1"
+    <div
+      className={clsx(
+        "rt-Flex rt-r-fd-column rt-r-ai-start rt-r-gap-1",
+        cardStatStyles.container,
+      )}
     >
-      <Text className={cardStatStyles.label}>
-        <Text>Hit Rate</Text>{" "}
-        <Text className={styles.trailing}>Trailing 1m</Text>{" "}
-        <Text style={{ color: hitRateUnchangedColor(status) }}>{status}</Text>
-      </Text>
-      <Flex gap="2" align="center">
-        <Flex align="baseline" gap="1" minWidth="70px">
+      <span className={clsx("rt-Text", cardStatStyles.label)}>
+        <span className="rt-Text">Hit Rate</span>{" "}
+        <span className={clsx("rt-Text", styles.trailing)}>Trailing 1m</span>{" "}
+        <span
+          className="rt-Text"
+          style={{ color: hitRateUnchangedColor(status) }}
+        >
+          {status}
+        </span>
+      </span>
+      <div className="rt-Flex rt-r-ai-center rt-r-gap-2">
+        <div
+          className="rt-Flex rt-r-ai-baseline rt-r-gap-1 rt-r-min-w"
+          style={{ "--min-width": "70px" } as CSSProperties}
+        >
           <ColorText
             value={percentage}
             changedColor={hitRateChangedColor(status)}
             unchangedColor={hitRateUnchangedColor(status)}
             className={clsx(cardStatStyles.value, cardStatStyles.small)}
           />
-          <Text className={cardStatStyles.appendValue}>%</Text>
-        </Flex>
-        <Flex align="baseline" gap="1">
+          <span className={clsx("rt-Text", cardStatStyles.appendValue)}>%</span>
+        </div>
+        <div className="rt-Flex rt-r-ai-baseline rt-r-gap-1">
           <ColorText
             value={hits}
             changedColor={unknownChangedColor}
             unchangedColor={unknownUnchangedColor}
             className={clsx(cardStatStyles.value, cardStatStyles.small)}
           />
-          <Text className={cardStatStyles.appendValue}>Hits</Text>
-        </Flex>
-        <Flex align="baseline" gap="1">
+          <span className={clsx("rt-Text", cardStatStyles.appendValue)}>
+            Hits
+          </span>
+        </div>
+        <div className="rt-Flex rt-r-ai-baseline rt-r-gap-1">
           <ColorText
             value={misses}
             changedColor={unknownChangedColor}
             unchangedColor={unknownUnchangedColor}
             className={clsx(cardStatStyles.value, cardStatStyles.small)}
           />
-          <Text className={cardStatStyles.appendValue}>Misses</Text>
-        </Flex>
-      </Flex>
-    </Flex>
+          <span className={clsx("rt-Text", cardStatStyles.appendValue)}>
+            Misses
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

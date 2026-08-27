@@ -1,21 +1,29 @@
-import { Flex, Text } from "@radix-ui/themes";
+import type { CSSProperties } from "react";
+import clsx from "clsx";
 import { legend } from "./const";
 import styles from "./shreds.module.css";
 
 export function ShredsChartLegend() {
   return (
-    <Flex gapX="15px" gapY="5px" wrap="wrap">
+    <div
+      className="rt-Flex rt-r-fw-wrap rt-r-cg rt-r-rg"
+      style={{ "--column-gap": "15px", "--row-gap": "5px" } as CSSProperties}
+    >
       {Object.entries(legend).map(([label, color]) => {
         return (
-          <Flex key={label} gap="5px" flexShrink="0">
+          <div
+            key={label}
+            className="rt-Flex rt-r-gap rt-r-fs-0"
+            style={{ "--gap": "5px" } as CSSProperties}
+          >
             <div
               className={styles.legendColorBox}
               style={{ backgroundColor: color }}
             />
-            <Text className={styles.legendLabel}>{label}</Text>
-          </Flex>
+            <span className={clsx("rt-Text", styles.legendLabel)}>{label}</span>
+          </div>
         );
       })}
-    </Flex>
+    </div>
   );
 }

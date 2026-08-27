@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Text } from "@radix-ui/themes";
+import clsx from "clsx";
 
 interface ColorTextProps {
   value: string;
@@ -52,7 +52,7 @@ export default function ColorText({
       : chars.findIndex((_, idx) => isCharChanged(idx, value, prevValue));
 
   return (
-    <Text className={className}>
+    <span className={clsx("rt-Text", className)}>
       {chars.map((char, idx) => {
         const changed = firstChangedIdx !== -1 && idx >= firstChangedIdx;
         return (
@@ -64,6 +64,6 @@ export default function ColorText({
           </span>
         );
       })}
-    </Text>
+    </span>
   );
 }

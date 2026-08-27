@@ -1,4 +1,5 @@
-import { Flex, Box, Text } from "@radix-ui/themes";
+import type { CSSProperties } from "react";
+import clsx from "clsx";
 import CardHeader from "../../../components/CardHeader";
 import Chart from "./Chart";
 import Card from "../../../components/Card";
@@ -12,27 +13,34 @@ export default function TransactionsCard({
 }) {
   return (
     <Card className={className}>
-      <Flex direction="column" height="100%" gap="2">
+      <div
+        className="rt-Flex rt-r-fd-column rt-r-gap-2 rt-r-h"
+        style={{ "--height": "100%" } as CSSProperties}
+      >
         <CardHeader text="Transactions" />
-        <Flex gap="4" flexGrow="1">
+        <div className="rt-Flex rt-r-gap-4 rt-r-fg-1">
           <TransactionStats />
-          <Flex direction="column" flexGrow="1">
-            <Box
-              flexGrow="1"
-              minWidth="180px"
-              minHeight="80px"
-              overflow="hidden"
-              position="relative"
+          <div className="rt-Flex rt-r-fd-column rt-r-fg-1">
+            <div
+              className="rt-Box rt-r-min-w rt-r-min-h rt-r-position-relative rt-r-overflow-hidden rt-r-fg-1"
+              style={
+                {
+                  "--min-width": "180px",
+                  "--min-height": "80px",
+                } as CSSProperties
+              }
             >
               <Chart />
-            </Box>
-            <Flex justify="between">
-              <Text className={styles.axisText}>~ 1min ago</Text>
-              <Text className={styles.axisText}>Now</Text>
-            </Flex>
-          </Flex>
-        </Flex>
-      </Flex>
+            </div>
+            <div className="rt-Flex rt-r-jc-space-between">
+              <span className={clsx("rt-Text", styles.axisText)}>
+                ~ 1min ago
+              </span>
+              <span className={clsx("rt-Text", styles.axisText)}>Now</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </Card>
   );
 }

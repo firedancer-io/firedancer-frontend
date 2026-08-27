@@ -1,7 +1,6 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, type CSSProperties } from "react";
 import { useMeasure } from "react-use";
-import { Box, Flex } from "@radix-ui/themes";
-import type { FlexProps } from "@radix-ui/themes";
+import clsx from "clsx";
 import { getDefaultStore } from "jotai";
 import ChartWorker from "./chartWorker?worker";
 import type { FromChartWorker, ToChartWorker } from "./protocol";
@@ -110,10 +109,11 @@ if (import.meta.hot) {
  */
 const CONTEXT_RESTORE_TIMEOUT_MS = 10_000;
 
-interface OffscreenShredsChartProps
-  extends WebGlRemountProps,
-    Pick<FlexProps, "height" | "minHeight" | "flexGrow"> {
+interface OffscreenShredsChartProps extends WebGlRemountProps {
   chartId: string;
+  height?: string;
+  minHeight?: string;
+  flexGrow?: "0" | "1";
 }
 
 /**
@@ -306,18 +306,40 @@ function OffscreenShredsChart({
   }, [width, height]);
 
   return (
-    <Flex direction="column" gap="2px" {...flexProps}>
+    <div
+      className={clsx(
+        "rt-Flex rt-r-fd-column rt-r-gap",
+        flexProps.height !== undefined && "rt-r-h",
+        flexProps.minHeight !== undefined && "rt-r-min-h",
+        flexProps.flexGrow !== undefined && `rt-r-fg-${flexProps.flexGrow}`,
+      )}
+      style={
+        {
+          "--gap": "2px",
+          "--height": flexProps.height,
+          "--min-height": flexProps.minHeight,
+        } as CSSProperties
+      }
+    >
       <ShredsSlotLabels />
-      <Box flexGrow="1" minHeight="0" position="relative" ref={measureRef}>
+      <div
+        className="rt-Box rt-r-min-h rt-r-position-relative rt-r-fg-1"
+        style={{ "--min-height": "0" } as CSSProperties}
+        ref={measureRef}
+      >
         <MChartAxesDeferred
           chartId={`${chartId}-axes`}
           scale={scale}
           containerWidth={width}
           containerHeight={fullHeight + 1}
         />
-        <Box position="relative" style={{ zIndex: 1 }} ref={containerRef} />
-      </Box>
-    </Flex>
+        <div
+          className="rt-Box rt-r-position-relative"
+          style={{ zIndex: 1 }}
+          ref={containerRef}
+        />
+      </div>
+    </div>
   );
 }
 

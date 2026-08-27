@@ -1,4 +1,3 @@
-import { Flex, Box } from "@radix-ui/themes";
 import CardHeader from "../../../components/CardHeader";
 import Card from "../../../components/Card";
 import CardStat from "../../../components/CardStat";
@@ -24,7 +23,7 @@ import {
   successColor,
   voteDistanceColor,
 } from "../../../colors";
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import Progress from "../../../components/Progress";
 import { getDurationText } from "../../../utils";
 import { Duration } from "../../../timeUtils";
@@ -32,7 +31,10 @@ import { Duration } from "../../../timeUtils";
 export default function StatusCard({ className }: { className?: string }) {
   return (
     <Card className={className}>
-      <Flex direction="column" height="100%" gap="2" align="start">
+      <div
+        className="rt-Flex rt-r-fd-column rt-r-ai-start rt-r-gap-2 rt-r-h"
+        style={{ "--height": "100%" } as CSSProperties}
+      >
         <CardHeader text="Status" />
         <div className={styles.statRow}>
           <CurrentSlotText />
@@ -42,7 +44,7 @@ export default function StatusCard({ className }: { className?: string }) {
           <VotingStatusText />
           <NextEpochTimeText />
         </div>
-      </Flex>
+      </div>
     </Card>
   );
 }
@@ -51,7 +53,7 @@ function CurrentSlotText() {
   const currentSlot = useAtomValue(currentSlotAtom);
 
   return (
-    <Box>
+    <div className="rt-Box">
       <CardStat
         label="Slot"
         value={currentSlot ?? ""}
@@ -59,7 +61,7 @@ function CurrentSlotText() {
         valueSize="medium"
         animateInteger
       />
-    </Box>
+    </div>
   );
 }
 
@@ -67,14 +69,14 @@ function CurrentEpochText() {
   const epoch = useAtomValue(epochAtom);
 
   return (
-    <Box>
+    <div className="rt-Box">
       <CardStat
         label="Current Epoch"
         value={epoch?.epoch?.toString() ?? ""}
         valueColor={overviewTextColor}
         valueSize="medium"
       />
-    </Box>
+    </div>
   );
 }
 
@@ -100,7 +102,7 @@ function NextEpochTimeText() {
   }, [epoch, slot]);
 
   return (
-    <Flex direction="column">
+    <div className="rt-Flex rt-r-fd-column">
       <CardStat
         label="Time to Next Epoch"
         value={nextEpochText}
@@ -108,7 +110,7 @@ function NextEpochTimeText() {
         valueSize="small"
       />
       <Progress className={styles.progress} value={progressSinceLastEpoch} />
-    </Flex>
+    </div>
   );
 }
 

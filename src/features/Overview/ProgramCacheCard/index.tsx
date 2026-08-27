@@ -1,4 +1,3 @@
-import { Flex } from "@radix-ui/themes";
 import CardHeader from "../../../components/CardHeader";
 import Card from "../../../components/Card";
 import CardStat from "../../../components/CardStat";
@@ -6,7 +5,7 @@ import styles from "./programCacheCard.module.css";
 import { useAtomValue } from "jotai";
 import { liveProgramCacheAtom } from "../../../api/atoms";
 import { formatSIBytes } from "../../../utils";
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import HitRateStat from "./HitRateStat";
 import StorageStat from "./StorageStat";
 import { programCacheColor } from "../../../colors";
@@ -18,7 +17,10 @@ export default function ProgramCacheCard({
 }) {
   return (
     <Card className={className}>
-      <Flex direction="column" height="100%" gap="2" align="start">
+      <div
+        className="rt-Flex rt-r-fd-column rt-r-ai-start rt-r-gap-2 rt-r-h"
+        style={{ "--height": "100%" } as CSSProperties}
+      >
         <CardHeader text="Program Cache" />
         <div className={styles.statRow}>
           <HitRateStat />
@@ -27,7 +29,7 @@ export default function ProgramCacheCard({
         <div className={styles.statRow}>
           <ProgramCacheStats />
         </div>
-      </Flex>
+      </div>
     </Card>
   );
 }

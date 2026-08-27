@@ -1,4 +1,4 @@
-import { Flex, Box } from "@radix-ui/themes";
+import type { CSSProperties } from "react";
 import { useAtomValue } from "jotai";
 import { peerStatsAtom } from "../../../atoms";
 import {
@@ -20,8 +20,11 @@ export default function ValidatorsStatsContent() {
   const delinquentLabel = formatNumberLamports(peerStats.delinquentStake);
 
   return (
-    <Flex gap="2" flexGrow="1">
-      <Flex direction="column" gap="2" minWidth="0">
+    <div className="rt-Flex rt-r-gap-2 rt-r-fg-1">
+      <div
+        className="rt-Flex rt-r-fd-column rt-r-gap-2 rt-r-min-w"
+        style={{ "--min-width": "0" } as CSSProperties}
+      >
         <div className={styles.statRow}>
           <CardStat
             label="Total Validators"
@@ -52,13 +55,13 @@ export default function ValidatorsStatsContent() {
             valueSize="small"
           />
         </div>
-      </Flex>
-      <Box style={{ minWidth: "200px" }}>
+      </div>
+      <div className="rt-Box" style={{ minWidth: "200px" }}>
         <Chart
           activeStake={peerStats.activeStake}
           delinquentStake={peerStats.delinquentStake}
         />
-      </Box>
-    </Flex>
+      </div>
+    </div>
   );
 }

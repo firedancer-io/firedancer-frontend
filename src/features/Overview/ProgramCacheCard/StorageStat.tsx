@@ -1,5 +1,4 @@
 import { clamp } from "../../../mathUtils";
-import { Flex, Text } from "@radix-ui/themes";
 import cardStatStyles from "../../../components/cardStat.module.css";
 import clsx from "clsx";
 import Progress from "../../../components/Progress";
@@ -44,33 +43,56 @@ export default function StorageStat() {
   }, [liveProgramCache]);
 
   return (
-    <Flex direction="column" className={styles.storageStatContainer}>
-      <Flex
-        className={cardStatStyles.container}
-        direction="column"
-        align="start"
+    <div
+      className={clsx("rt-Flex rt-r-fd-column", styles.storageStatContainer)}
+    >
+      <div
+        className={clsx(
+          "rt-Flex rt-r-fd-column rt-r-ai-start",
+          cardStatStyles.container,
+        )}
       >
-        <Text className={cardStatStyles.label}>Storage</Text>
-        <Flex align="baseline" gap="1">
-          <Text
-            className={clsx(cardStatStyles.value, cardStatStyles.small)}
+        <span className={clsx("rt-Text", cardStatStyles.label)}>Storage</span>
+        <div className="rt-Flex rt-r-ai-baseline rt-r-gap-1">
+          <span
+            className={clsx(
+              "rt-Text",
+              cardStatStyles.value,
+              cardStatStyles.small,
+            )}
             style={{ color: headerColor } as CSSProperties}
           >
             {numerator.value}
-          </Text>
+          </span>
           {numerator.unit !== denominator.unit && (
-            <Text className={cardStatStyles.appendValue}>{numerator.unit}</Text>
+            <span className={clsx("rt-Text", cardStatStyles.appendValue)}>
+              {numerator.unit}
+            </span>
           )}
-          <Text className={clsx(cardStatStyles.value, cardStatStyles.small)}>
+          <span
+            className={clsx(
+              "rt-Text",
+              cardStatStyles.value,
+              cardStatStyles.small,
+            )}
+          >
             /
-          </Text>
-          <Text className={clsx(cardStatStyles.value, cardStatStyles.small)}>
+          </span>
+          <span
+            className={clsx(
+              "rt-Text",
+              cardStatStyles.value,
+              cardStatStyles.small,
+            )}
+          >
             {denominator.value}
-          </Text>
-          <Text className={cardStatStyles.appendValue}>{denominator.unit}</Text>
-        </Flex>
-      </Flex>
+          </span>
+          <span className={clsx("rt-Text", cardStatStyles.appendValue)}>
+            {denominator.unit}
+          </span>
+        </div>
+      </div>
       <Progress value={progress} />
-    </Flex>
+    </div>
   );
 }

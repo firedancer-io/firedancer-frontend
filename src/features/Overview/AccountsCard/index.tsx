@@ -1,4 +1,3 @@
-import { Flex } from "@radix-ui/themes";
 import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
 import { accountsStatsAtom } from "../../../api/atoms";
@@ -65,11 +64,11 @@ export default function AccountsCard({ className }: { className?: string }) {
       className={className}
       style={accountStats ? undefined : { visibility: "hidden" }}
     >
-      <Flex direction="column" gap="2">
+      <div className="rt-Flex rt-r-fd-column rt-r-gap-2">
         <CardHeader text="Accounts" />
 
-        <Flex gap="3" wrap="wrap">
-          <Flex direction="column" gap="2" flexGrow="1">
+        <div className="rt-Flex rt-r-fw-wrap rt-r-gap-3">
+          <div className="rt-Flex rt-r-fd-column rt-r-gap-2 rt-r-fg-1">
             <div className={styles.sectionLabel}>Cache</div>
             <Stat
               label="Hit Rate"
@@ -82,7 +81,7 @@ export default function AccountsCard({ className }: { className?: string }) {
               color={hitRateColor}
               suffix="%"
             />
-            <Flex gap="2">
+            <div className="rt-Flex rt-r-gap-2">
               <Stat
                 label="R/S"
                 value={
@@ -101,14 +100,14 @@ export default function AccountsCard({ className }: { className?: string }) {
                 color={accountsWriteColor}
                 minWidth={cacheStatsMinWidth}
               />
-            </Flex>
-          </Flex>
+            </div>
+          </div>
 
-          <Flex direction="column" gap="2" flexGrow="1">
+          <div className="rt-Flex rt-r-fd-column rt-r-gap-2 rt-r-fg-1">
             <div className={styles.sectionLabel}>Disk</div>
-            <Flex gap="2">
-              <Flex direction="column" gap="2">
-                <Flex gap="2" wrap="wrap">
+            <div className="rt-Flex rt-r-gap-2">
+              <div className="rt-Flex rt-r-fd-column rt-r-gap-2">
+                <div className="rt-Flex rt-r-fw-wrap rt-r-gap-2">
                   <Stat
                     label="Used"
                     value={used ? used.value : "--"}
@@ -125,8 +124,8 @@ export default function AccountsCard({ className }: { className?: string }) {
                     suffix={frag?.unit}
                     minWidth={storageStatsMinWidth}
                   />
-                </Flex>
-                <Flex gap="2" wrap="wrap">
+                </div>
+                <div className="rt-Flex rt-r-fw-wrap rt-r-gap-2">
                   <Stat
                     label="Allocated"
                     value={allocated ? allocated.value : "--"}
@@ -142,10 +141,10 @@ export default function AccountsCard({ className }: { className?: string }) {
                       minWidth={storageStatsMinWidth}
                     />
                   )}
-                </Flex>
-              </Flex>
-              <Flex direction="column" gap="2">
-                <Flex gap="2" wrap="wrap">
+                </div>
+              </div>
+              <div className="rt-Flex rt-r-fd-column rt-r-gap-2">
+                <div className="rt-Flex rt-r-fw-wrap rt-r-gap-2">
                   <Stat
                     label="Read"
                     value={readPerSec ? readPerSec.value : "--"}
@@ -162,8 +161,8 @@ export default function AccountsCard({ className }: { className?: string }) {
                     suffix={writePerSec && `${writePerSec.unit}/s`}
                     minWidth={readWriteStatsMinWidth}
                   />
-                </Flex>
-                <Flex gap="2" wrap="wrap">
+                </div>
+                <div className="rt-Flex rt-r-fw-wrap rt-r-gap-2">
                   <Stat
                     label="R/S"
                     value={
@@ -188,12 +187,12 @@ export default function AccountsCard({ className }: { className?: string }) {
                     color={accountsWriteColor}
                     minWidth={readWriteStatsMinWidth}
                   />
-                </Flex>
-              </Flex>
-            </Flex>
-          </Flex>
-        </Flex>
-      </Flex>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </Card>
   );
 }

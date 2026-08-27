@@ -1,4 +1,3 @@
-import { Flex, Text } from "@radix-ui/themes";
 import styles from "./stat.module.css";
 import type { CSSProperties } from "react";
 import clsx from "clsx";
@@ -28,23 +27,36 @@ export default function Stat({
   align,
 }: StatProps) {
   return (
-    <Flex
-      className={className}
-      direction="column"
-      minWidth={minWidth}
-      align={align}
+    <div
+      className={clsx(
+        "rt-Flex rt-r-fd-column",
+        align && `rt-r-ai-${align}`,
+        minWidth !== undefined && "rt-r-min-w",
+        className,
+      )}
+      style={
+        minWidth !== undefined
+          ? ({ "--min-width": minWidth } as CSSProperties)
+          : undefined
+      }
     >
-      {label && <Text className={styles.label}>{label}</Text>}
-      <Flex
-        className={clsx(styles.valuesContainer, { [styles.lg]: size === "lg" })}
-        align="baseline"
+      {label && <span className={clsx("rt-Text", styles.label)}>{label}</span>}
+      <div
+        className={clsx("rt-Flex rt-r-ai-baseline", styles.valuesContainer, {
+          [styles.lg]: size === "lg",
+        })}
       >
-        <Text className={styles.value} style={color ? { color } : undefined}>
+        <span
+          className={clsx("rt-Text", styles.value)}
+          style={color ? { color } : undefined}
+        >
           {value}
-        </Text>
-        {suffix && <Text className={styles.suffix}>{suffix}</Text>}
-      </Flex>
-    </Flex>
+        </span>
+        {suffix && (
+          <span className={clsx("rt-Text", styles.suffix)}>{suffix}</span>
+        )}
+      </div>
+    </div>
   );
 }
 interface FractionStatProps {
@@ -65,19 +77,39 @@ export function FractionStat({
   minWidth,
 }: FractionStatProps) {
   return (
-    <Flex className={className} direction="column" minWidth={minWidth}>
-      {label && <Text className={styles.label}>{label}</Text>}
-      <Flex className={styles.valuesContainer} align="baseline">
-        <Text className={styles.value} style={color ? { color } : undefined}>
+    <div
+      className={clsx(
+        "rt-Flex rt-r-fd-column",
+        minWidth !== undefined && "rt-r-min-w",
+        className,
+      )}
+      style={
+        minWidth !== undefined
+          ? ({ "--min-width": minWidth } as CSSProperties)
+          : undefined
+      }
+    >
+      {label && <span className={clsx("rt-Text", styles.label)}>{label}</span>}
+      <div className={clsx("rt-Flex rt-r-ai-baseline", styles.valuesContainer)}>
+        <span
+          className={clsx("rt-Text", styles.value)}
+          style={color ? { color } : undefined}
+        >
           {numerator.value}
-        </Text>
+        </span>
         {numerator.unit !== denominator.unit && (
-          <Text className={styles.suffix}>{numerator.unit}</Text>
+          <span className={clsx("rt-Text", styles.suffix)}>
+            {numerator.unit}
+          </span>
         )}
-        <Text className={styles.secondaryValue}>/</Text>
-        <Text className={styles.secondaryValue}>{denominator.value}</Text>
-        <Text className={styles.suffix}>{denominator.unit}</Text>
-      </Flex>
-    </Flex>
+        <span className={clsx("rt-Text", styles.secondaryValue)}>/</span>
+        <span className={clsx("rt-Text", styles.secondaryValue)}>
+          {denominator.value}
+        </span>
+        <span className={clsx("rt-Text", styles.suffix)}>
+          {denominator.unit}
+        </span>
+      </div>
+    </div>
   );
 }

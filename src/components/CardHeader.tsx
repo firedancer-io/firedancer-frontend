@@ -1,4 +1,4 @@
-import { Text } from "@radix-ui/themes";
+import clsx from "clsx";
 import styles from "./cardHeader.module.css";
 
 interface CardHeaderProps {
@@ -6,5 +6,5 @@ interface CardHeaderProps {
 }
 
 export default function CardHeader({ text }: CardHeaderProps) {
-  return <Text className={styles.text}>{text}</Text>;
+  return <span className={clsx("rt-Text", styles.text)}>{text}</span>;
 }

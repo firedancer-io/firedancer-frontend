@@ -1,4 +1,3 @@
-import { Flex, Grid } from "@radix-ui/themes";
 import TransactionsCard from "./TransactionsCard";
 import ValidatorsCard from "./ValidatorsCard";
 import StatusCard from "./StatusCard";
@@ -30,13 +29,17 @@ export default function Overview() {
   }, []);
 
   return (
-    <Flex direction="column" gap="4" flexGrow="1" className={styles.overview}>
+    <div
+      className={clsx(
+        "rt-Flex rt-r-fd-column rt-r-gap-4 rt-r-fg-1",
+        styles.overview,
+      )}
+    >
       <SlotTimeline />
-      <Grid
-        className={clsx(styles.cards, {
+      <div
+        className={clsx("rt-Grid rt-r-gap-4", styles.cards, {
           [styles.frankendancer]: isFrankendancer,
         })}
-        gap="4"
       >
         <StatusCard />
         <ValidatorsCard className={styles.validatorsCard} />
@@ -45,7 +48,7 @@ export default function Overview() {
         )}
         {!isFrankendancer && <AccountsCard className={styles.accountsCard} />}
         <TransactionsCard className={styles.txnsCard} />
-      </Grid>
+      </div>
       <ShredsProgression />
       <div className={clsx(styles.belowFold, styles.slotPerformanceSection)}>
         {renderBelowFold && (
@@ -68,6 +71,6 @@ export default function Overview() {
           </Suspense>
         )}
       </div>
-    </Flex>
+    </div>
   );
 }
