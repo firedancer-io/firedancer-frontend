@@ -130,6 +130,9 @@ function moveLabelPosition(
     // Set to opacity 0, and transition to 1 when the group end becomes defined.
     const opacity = width == null ? "0" : "1";
     if (nameEl && prevState?.opacity !== opacity) {
+      // fade only realtime changes: a first-ever application (page load
+      // populating every historical group at once) shows immediately
+      nameEl.style.transition = prevState === undefined ? "none" : "";
       newState.opacity = opacity;
       nameEl.style.opacity = opacity;
     }
