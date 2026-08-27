@@ -49,9 +49,13 @@ export type FromChartWorker =
   | { type: "contextRestored" }
   // computed slot label positions for DOM application (labelsApply.ts),
   // plus the leader-group range the DOM label skeleton renders from
-  // (main atoms stop carrying it once the main shreds feed is off)
+  // (main atoms stop carrying it once the main shreds feed is off).
+  // basisMs/pxPerMs describe the frame's wall-clock slide so main can
+  // extrapolate between slow draws (labelScheduler.ts)
   | {
       type: "labels";
       frame: LabelFrame;
       leaderRange: { min: number; max: number };
+      basisMs: number;
+      pxPerMs: number;
     };

@@ -90,7 +90,7 @@ export function drawScene(
   prevTimeDiffs: number[],
   visibleTsRangeRef: { current: TsRange | undefined },
   state: SceneState,
-  onBeforeRender?: (xRange: XRange) => void,
+  onBeforeRender?: (xRange: XRange, nowMs: number) => void,
 ): XRange {
   const {
     liveShreds,
@@ -104,7 +104,9 @@ export function drawScene(
     forceDraw,
   } = state;
 
-  const adjustedNow = getAdjustedNow(serverTimeMs, prevTimeDiffs);
+  // wall-clock basis of this frame's xRange, shared with label consumers
+  const nowMs = Date.now();
+  const adjustedNow = getAdjustedNow(serverTimeMs, prevTimeDiffs, nowMs);
   const maxReferenceTs = adjustedNow - liveShreds.referenceTs;
 
   const visibleTsRange: TsRange = [
@@ -213,7 +215,7 @@ export function drawScene(
     }
   }
 
-  onBeforeRender?.(xRange);
+  onBeforeRender?.(xRange, nowMs);
 
   if (forceDraw || anythingDrawn || cameraChanged) {
     objs.renderer.render(objs.scene, objs.camera);

@@ -185,7 +185,7 @@ function draw(time: number) {
       forceDraw,
     },
     // posted before the GL submit: the hop to main overlaps the render
-    (xRange) => {
+    (xRange, nowMs) => {
       const leaderRange = {
         min: getSlotGroupLeader(rangeAfterStartup.min),
         max: getSlotGroupLeader(rangeAfterStartup.max),
@@ -198,7 +198,15 @@ function draw(time: number) {
         xRange,
       );
       presented = true;
-      post({ type: "labels", frame, leaderRange });
+      post({
+        type: "labels",
+        frame,
+        leaderRange,
+        basisMs: nowMs,
+        pxPerMs:
+          (xRange.maxCssPos - xRange.minCssPos) /
+          (xRange.maxDeltaTs - xRange.minDeltaTs),
+      });
     },
   );
   forceDraw = false;
