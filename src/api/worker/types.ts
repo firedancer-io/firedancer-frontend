@@ -40,7 +40,11 @@ export type ToWorkerMessage =
   | { type: "shredsPort"; port: MessagePort }
   // main-thread charts in use (boot page always; Overview fallbacks):
   // keep posting slot:live_shreds in kvbs even once the validator runs
-  | { type: "mainShreds"; enabled: boolean };
+  | { type: "mainShreds"; enabled: boolean }
+  // gossip-route navigation: the full peer set is needed now
+  | { type: "requestPeers" }
+  // main's boot-path work settled (peers snapshot hold release gate)
+  | { type: "bootSettled" };
 
 /**
  * Port protocol between the early blob worker (earlyWsWorker.ts, socket

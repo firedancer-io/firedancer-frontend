@@ -59,7 +59,7 @@ async function bootAdopted(pending: string[]) {
   portMessage({ data: { type: "adopt-open", protocol: "" } });
 
   const kvbs = () => posted.filter((m): m is Kvb => m.type === "kvb");
-  return { posted, kvbs };
+  return { posted, kvbs, onmessage };
 }
 
 beforeEach(() => {
@@ -159,5 +159,70 @@ describe("wsWorker backlog drain flush ordering", () => {
     vi.advanceTimersByTime(33);
     const batches = kvbs().map((m) => m.items.map((i) => i.value));
     expect(batches).toEqual([["v1"], ["v2"], ["v3"]]);
+  });
+});
+
+describe("wsWorker peers snapshot hold", () => {
+  const statsFrame = frame("peers", "stats", {
+    validator_count: 1,
+    rpc_count: 0,
+    active_stake: "1",
+    delinquent_stake: "0",
+  });
+  const updateFrame = (pubkey: string) =>
+    frame("peers", "update", {
+      add: [{ identity_pubkey: pubkey, gossip: null, vote: [], info: null }],
+    });
+  const keysOf = (kvb: Kvb) => kvb.items.map((i) => `${i.topic}:${i.key}`);
+
+  test("lite-first updates held; bootSettled releases them in order", async () => {
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const { kvbs, onmessage } = await bootAdopted([
+      statsFrame,
+      frame("summary", "version", "v1"),
+      updateFrame("A"),
+      updateFrame("B"),
+    ]);
+
+    vi.advanceTimersByTime(33);
+    expect(kvbs()).toHaveLength(1);
+    expect(keysOf(kvbs()[0])).toEqual(["peers:stats", "summary:version"]);
+
+    onmessage({ data: { type: "bootSettled" } });
+    vi.advanceTimersByTime(33);
+    expect(kvbs()).toHaveLength(2);
+    expect(keysOf(kvbs()[1])).toEqual(["peers:update", "peers:update"]);
+    const values = kvbs()[1].items.map(
+      (i) => (i.value as { add: { identity_pubkey: string }[] }).add[0],
+    );
+    expect(values.map((v) => v.identity_pubkey)).toEqual(["A", "B"]);
+  });
+
+  test("requestPeers releases immediately, without bootSettled", async () => {
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const { kvbs, onmessage } = await bootAdopted([
+      statsFrame,
+      updateFrame("A"),
+    ]);
+
+    vi.advanceTimersByTime(33);
+    expect(keysOf(kvbs()[0])).toEqual(["peers:stats"]);
+
+    onmessage({ data: { type: "requestPeers" } });
+    vi.advanceTimersByTime(33);
+    expect(kvbs()).toHaveLength(2);
+    expect(keysOf(kvbs()[1])).toEqual(["peers:update"]);
+  });
+
+  test("without lite frames the snapshot flows with its batch", async () => {
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const { kvbs } = await bootAdopted([
+      frame("summary", "version", "v1"),
+      updateFrame("A"),
+    ]);
+
+    vi.advanceTimersByTime(33);
+    expect(kvbs()).toHaveLength(1);
+    expect(keysOf(kvbs()[0])).toEqual(["summary:version", "peers:update"]);
   });
 });

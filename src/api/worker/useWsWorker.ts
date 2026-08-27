@@ -2,13 +2,14 @@ import { useCallback, useEffect } from "react";
 import type { FromWorkerMessage, ToWorkerMessage } from "./types";
 import { adoptEarlyWs, attachMainWs, closeEarlyWs } from "./earlyWs";
 import { createTypedWorker, type TypedWorker } from "./typedWorker";
-import type { SendMessage } from "../ws/types";
+import { SocketState, type SendMessage } from "../ws/types";
 import { messageEventType, type MessageEmitter } from "../ws/ConnectionContext";
 import { MiniEmitter } from "../ws/miniEmitter";
 import WsWorker from "./wsWorker?worker";
 import { logError } from "../../logger";
 import { getDefaultStore } from "jotai";
 import { isDocumentVisibleAtom } from "../../atoms";
+import { socketStateAtom } from "../ws/atoms";
 import { websocketCompress, websocketUrl } from "../consts";
 import { applyWorkerMessage } from "../applyWsData";
 import {
@@ -70,6 +71,7 @@ function flushBuffer() {
   const messages = buffer;
   buffer = [];
   emitMessages(messages);
+  armBootSettled();
 }
 
 /**
@@ -151,6 +153,65 @@ const unsubscribeVisibility = store.sub(isDocumentVisibleAtom, () => {
   }
 });
 
+/**
+ * Boot-settled signal for the worker's peers snapshot hold
+ * (wsWorker.ts): after the reveal flush, the first idle callback that
+ * finds nothing buffered means the boot-path applies and below-fold
+ * mounts stopped saturating the thread. Sent once per connection;
+ * reconnects hold a fresh snapshot, so the Connected transition
+ * re-arms.
+ */
+let bootSettledSent = false;
+let bootIdleHandle: number | null = null;
+// no idle signal without requestIdleCallback: a fixed post-reveal
+// delay approximates one
+const bootIdleFallbackMs = 200;
+
+function cancelBootSettled() {
+  if (bootIdleHandle === null) return;
+  if (typeof window.cancelIdleCallback === "function")
+    window.cancelIdleCallback(bootIdleHandle);
+  else clearTimeout(bootIdleHandle);
+  bootIdleHandle = null;
+}
+
+function armBootSettled() {
+  if (bootSettledSent || bootIdleHandle !== null) return;
+  if (!worker || !firstKvbApplied) return;
+  if (store.get(socketStateAtom) !== SocketState.Connected) return;
+  const check = () => {
+    bootIdleHandle = null;
+    if (bootSettledSent || !worker) return;
+    if (buffer.length) return; // the flush that drains it re-arms
+    bootSettledSent = true;
+    worker.postMessage({ type: "bootSettled" });
+  };
+  // hidden: idle callbacks don't run, and there are no paints to
+  // protect (the worker still waits out its own decode run)
+  if (!store.get(isDocumentVisibleAtom)) {
+    bootIdleHandle = window.setTimeout(check, 0);
+    return;
+  }
+  bootIdleHandle =
+    typeof window.requestIdleCallback === "function"
+      ? window.requestIdleCallback(check)
+      : window.setTimeout(check, bootIdleFallbackMs);
+}
+
+const unsubscribeSocketState = store.sub(socketStateAtom, () => {
+  if (store.get(socketStateAtom) === SocketState.Connected) {
+    bootSettledSent = false;
+    armBootSettled();
+  } else {
+    cancelBootSettled();
+  }
+});
+
+/** Gossip-route mount: the full peer set is needed now */
+export function requestPeers() {
+  worker?.postMessage({ type: "requestPeers" });
+}
+
 const maxPreSubscribeBuffer = 10_000;
 
 function onMessage(e: MessageEvent<FromWorkerMessage>) {
@@ -209,6 +270,7 @@ function startWorker(websocketUrl: string, compress: boolean) {
 
 function stopWorker() {
   cancelPendingFlush();
+  cancelBootSettled();
   buffer = [];
   closeEarlyWs();
   if (worker) {
@@ -262,6 +324,7 @@ if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     unsubscribeVisibility();
     unsubscribeOffscreenFailed();
+    unsubscribeSocketState();
     stopWorker();
   });
 }

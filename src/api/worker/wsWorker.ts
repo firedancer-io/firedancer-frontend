@@ -36,6 +36,41 @@ let scheduled = false;
 let batchStartedAt = 0;
 const pendingBatches = new Map<string, WsEntity[]>();
 
+/**
+ * Connect-burst peers snapshot hold. The backend broadcasts the lite
+ * peers frames (stats, leaders) ahead of the first peers:update, and
+ * everything above the fold renders from those, so when they preceded
+ * it the multi-MB snapshot (and any deltas behind it, preserving apply
+ * order) is held off the boot path until both threads settle: main
+ * reports bootSettled (post-reveal idle callback with nothing
+ * buffered, useWsWorker.ts) and the flush timer here runs unstarved
+ * (the burst decode run is over). requestPeers (gossip-route
+ * navigation) releases immediately. Backends that never send the lite
+ * frames (Frankendancer) never hold.
+ */
+let peersHeld: WsEntity[] = [];
+let peersHolding = false;
+let peersHoldDecided = false;
+let peersLiteSeen = false;
+let mainSettled = false;
+let peersRequested = false;
+
+function resetPeersHold() {
+  peersHeld = [];
+  peersHolding = false;
+  peersHoldDecided = false;
+  peersLiteSeen = false;
+  mainSettled = false;
+  peersRequested = false;
+}
+
+function releasePeers() {
+  peersHolding = false;
+  const held = peersHeld;
+  peersHeld = [];
+  for (const item of held) batch(item);
+}
+
 const loggedZodFailures = new Set<string>();
 
 function getZodFailureKey(json: unknown): string | null {
@@ -70,6 +105,21 @@ let mainShredsForced = false;
 function enqueue(item: WsEntity) {
   handler.onMessage(item);
 
+  if (item.topic === "peers") {
+    if (item.key === "update") {
+      if (!peersHoldDecided) {
+        peersHoldDecided = true;
+        peersHolding = peersLiteSeen && !peersRequested;
+      }
+      if (peersHolding) {
+        peersHeld.push(item);
+        return;
+      }
+    } else {
+      peersLiteSeen = true;
+    }
+  }
+
   if (item.topic === "slot" && item.key === "live_shreds") {
     shredsCalc.add(item.value);
     shredsPort?.postMessage({ type: "shreds", value: item.value });
@@ -80,6 +130,10 @@ function enqueue(item: WsEntity) {
       return;
   }
 
+  batch(item);
+}
+
+function batch(item: WsEntity) {
   const key = `${item.topic}:${item.key}`;
   if (pendingBatches.has(key)) {
     pendingBatches.get(key)?.push(item);
@@ -90,8 +144,23 @@ function enqueue(item: WsEntity) {
 
   if (!scheduled) {
     scheduled = true;
-    setTimeout(flush, flushDelayMs);
+    setTimeout(timerFlush, flushDelayMs);
   }
+}
+
+function timerFlush() {
+  // An on-schedule timer run means frame decodes aren't saturating the
+  // thread (handleFrame force-flushes starved batches), so with main
+  // settled the burst is over and the held snapshot can ship
+  if (
+    peersHolding &&
+    mainSettled &&
+    (!pendingBatches.size ||
+      performance.now() - batchStartedAt < starvedBatchMs)
+  ) {
+    releasePeers();
+  }
+  flush();
 }
 
 function flush() {
@@ -139,6 +208,7 @@ function connect(url: string, zstd: ZstdDec | undefined) {
     );
     handler.onConnectionChange({ type: "disconnected" });
     shredsCalc.resetDataAndClearDeleteTimeout();
+    resetPeersHold(); // reconnect brings a fresh snapshot
 
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(() => connect(url, zstd), reconnectDelayMs);
@@ -314,6 +384,7 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
             );
             handler.onConnectionChange({ type: "disconnected" });
             shredsCalc.resetDataAndClearDeleteTimeout();
+            resetPeersHold();
             clearTimeout(reconnectTimer);
             reconnectTimer = setTimeout(() => {
               void (async () => {
@@ -339,12 +410,22 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
       if (msg.enabled && shredsCalc.data.slotsShreds)
         ctx.postMessage({ type: "shredsSeed", data: shredsCalc.data });
       break;
+    case "requestPeers":
+      peersRequested = true;
+      if (peersHolding) releasePeers();
+      break;
+    case "bootSettled":
+      mainSettled = true;
+      // idle stream: no pending flush will run the timer check
+      if (peersHolding && !pendingBatches.size && !scheduled) releasePeers();
+      break;
     case "disconnect":
       if (adopt) {
         adopt.port.close();
         adopt = null;
       }
       shredsCalc.resetDataAndClearDeleteTimeout();
+      resetPeersHold();
       clearTimeout(reconnectTimer);
       if (ws) {
         try {
