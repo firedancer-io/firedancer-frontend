@@ -36,10 +36,10 @@ import { getAdjustedNow, getDrawInfo, type XRange } from "../utils";
 
 const SKIPPED_SLOT_DOT_DURATION_MS = 10;
 
-const tempEventPositions = new Map<
-  Exclude<ShredEvent, ShredEvent.slot_complete>,
-  { x: number; w: number }
->();
+// per-row scratch, reused across calls (a first present fills ~30k rows)
+const rowEvents = new Int32Array(shredEventDescPriorities.length);
+const rowXs = new Float64Array(shredEventDescPriorities.length);
+const rowWs = new Float64Array(shredEventDescPriorities.length);
 
 export type TsRange = [startTs: number, endTs: number];
 
@@ -161,17 +161,15 @@ export function drawScene(
       const shred = slot.shreds[shredIdx];
       if (!shred) continue;
 
-      tempEventPositions.clear();
-      const rectanglesAdded = addEventsForRow({
-        tempEventPositions,
+      const rectanglesAdded = addEventsForRow(
         slotMesh,
-        startRectangleIdx: rectangleIdx,
-        eventTsDeltas: shred,
-        slotCompletionTsDelta: slot.completionTsDelta,
+        rectangleIdx,
+        shred,
+        slot.completionTsDelta,
         isSlotSkipped,
-        y: -shredIdx,
+        -shredIdx,
         visibleTsRange,
-      });
+      );
       rectangleIdx += rectanglesAdded;
       if (rectanglesAdded) {
         anythingDrawn = true;
@@ -220,35 +218,20 @@ function updateVisibleXRange(
   return true;
 }
 
-interface AddEventsForRowArgs {
-  tempEventPositions: Map<
-    Exclude<ShredEvent, ShredEvent.slot_complete>,
-    { x: number; w: number }
-  >;
-  slotMesh: SlotMesh;
-  startRectangleIdx: number;
-  eventTsDeltas: ShredEventTsDeltas;
-  slotCompletionTsDelta: number | undefined;
-  isSlotSkipped: boolean;
-  y: number;
-  visibleTsRange: TsRange;
-}
-
 /**
  * Draw rows for shreds, with rectangles or dots for events.
  * Each row may represent partial or multiple shreds. Use the row shred priorities to determine
  * which shred to draw.
  */
-function addEventsForRow({
-  tempEventPositions,
-  slotMesh,
-  startRectangleIdx,
-  eventTsDeltas,
-  slotCompletionTsDelta,
-  isSlotSkipped,
-  y,
-  visibleTsRange,
-}: AddEventsForRowArgs) {
+function addEventsForRow(
+  slotMesh: SlotMesh,
+  startRectangleIdx: number,
+  eventTsDeltas: ShredEventTsDeltas,
+  slotCompletionTsDelta: number | undefined,
+  isSlotSkipped: boolean,
+  y: number,
+  visibleTsRange: TsRange,
+) {
   let endTs: number =
     slotCompletionTsDelta == null
       ? // event goes to max x
@@ -256,34 +239,40 @@ function addEventsForRow({
       : slotCompletionTsDelta;
 
   // draw events from highest to lowest priority
-  for (const eventType of shredEventDescPriorities) {
+  let count = 0;
+  let eventsMask = 0;
+  for (let i = 0; i < shredEventDescPriorities.length; i++) {
+    const eventType = shredEventDescPriorities[i];
     const startTs = eventTsDeltas[eventType];
     if (startTs == null) continue;
 
     // ignore overlapping events with lower priority
     if (startTs >= endTs) continue;
 
-    tempEventPositions.set(eventType, {
-      x: startTs,
-      w: isSlotSkipped ? SKIPPED_SLOT_DOT_DURATION_MS : endTs - startTs,
-    });
+    rowEvents[count] = eventType;
+    rowXs[count] = startTs;
+    rowWs[count] = isSlotSkipped
+      ? SKIPPED_SLOT_DOT_DURATION_MS
+      : endTs - startTs;
+    count++;
+    eventsMask |= 1 << eventType;
     endTs = startTs;
   }
 
   let rectanglesAdded = 0;
-  for (const [eventType, { x, w }] of tempEventPositions.entries()) {
-    const color = getShredEventColor(
-      isSlotSkipped,
-      eventType,
-      tempEventPositions,
-    );
+  for (let i = 0; i < count; i++) {
+    const eventType = rowEvents[i] as Exclude<
+      ShredEvent,
+      ShredEvent.slot_complete
+    >;
+    const color = getShredEventColor(isSlotSkipped, eventType, eventsMask);
 
     // unknown event type, skip it
     if (color == null) continue;
 
     const rectangleIdx = startRectangleIdx + rectanglesAdded;
     ensureCapacity(slotMesh, rectangleIdx + 1);
-    addRectangleToMesh(slotMesh, rectangleIdx, x, y, w, 1, color);
+    addRectangleToMesh(slotMesh, rectangleIdx, rowXs[i], y, rowWs[i], 1, color);
     rectanglesAdded++;
   }
   return rectanglesAdded;
@@ -292,10 +281,7 @@ function addEventsForRow({
 function getShredEventColor(
   isSlotSkipped: boolean,
   eventType: Exclude<ShredEvent, ShredEvent.slot_complete>,
-  eventPositions: Map<
-    Exclude<ShredEvent, ShredEvent.slot_complete>,
-    { x: number; w: number }
-  >,
+  eventsMask: number,
 ): [number, number, number] | undefined {
   if (isSlotSkipped) return colors.skipped;
   switch (eventType) {
@@ -309,9 +295,9 @@ function getShredEventColor(
       return colors.receivedRepair;
     }
     case ShredEvent.shred_replayed: {
-      if (eventPositions.has(ShredEvent.shred_received_repair)) {
+      if (eventsMask & (1 << ShredEvent.shred_received_repair)) {
         return colors.replayedRepair;
-      } else if (eventPositions.has(ShredEvent.shred_received_turbine)) {
+      } else if (eventsMask & (1 << ShredEvent.shred_received_turbine)) {
         return colors.replayedTurbine;
       } else {
         return colors.replayedNothing;
