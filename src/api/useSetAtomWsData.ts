@@ -7,6 +7,7 @@ import type {
   HistoryArrayKey,
   KeyedValuesWithHistory,
   WsEntity,
+  WsError,
 } from "./worker/types";
 import { isEmaObjectKey } from "./worker/types";
 import { DateTime } from "luxon";
@@ -100,6 +101,8 @@ import {
   accountsStatsAtom,
   voteCommissionAtom,
   aggRevenueAtom,
+  replayTxnMetaResponseAtom,
+  replayTxnMetaErrorAtom,
 } from "./atoms";
 import {
   tpsSampleIntervalMs,
@@ -139,6 +142,7 @@ export function useSetAtomWsData() {
   const setSocketState = useSetAtom(socketStateAtom);
 
   const updateAtoms = useUpdateAtoms();
+  const updateErrorAtoms = useUpdateErrorAtoms();
 
   const setNetworkMetricsEmaIngress = useSetAtom(networkMetricsEmaIngressAtom);
   const setNetworkMetricsEmaEgress = useSetAtom(networkMetricsEmaEgressAtom);
@@ -195,6 +199,9 @@ export function useSetAtomWsData() {
         case "kv":
           updateAtoms(msg);
           break;
+        case "error":
+          updateErrorAtoms(msg);
+          break;
         // currently unused, would map to EmaCache object
         case "ema":
           break;
@@ -213,7 +220,13 @@ export function useSetAtomWsData() {
           break;
       }
     },
-    [setSocketState, updateAtoms, updateHistoryArray, updateEmaHistoryObject],
+    [
+      setSocketState,
+      updateAtoms,
+      updateHistoryArray,
+      updateEmaHistoryObject,
+      updateErrorAtoms,
+    ],
   );
 
   useServerMessages(onMessage);
@@ -536,6 +549,7 @@ function useUpdateAtoms() {
   );
 
   const setAggRevenue = useSetAtom(aggRevenueAtom);
+  const setReplayTxnMeta = useSetAtom(replayTxnMetaResponseAtom);
 
   const updateAtoms = useCallback(
     (item: WsEntity) => {
@@ -774,6 +788,10 @@ function useUpdateAtoms() {
               setAggRevenue(value);
               break;
             }
+            case "query_txn_meta": {
+              setReplayTxnMeta(value);
+              break;
+            }
           }
           break;
         }
@@ -858,6 +876,7 @@ function useUpdateAtoms() {
       setLateVoteHistory,
       setBlockEngine,
       setAggRevenue,
+      setReplayTxnMeta,
       setSupermajorityEpoch,
       addToSupermajorityPeersBuffers,
       setAccountsStats,
@@ -951,4 +970,26 @@ function useUpdateAtoms() {
   );
 
   return updateAtoms;
+}
+
+function useUpdateErrorAtoms() {
+  const setReplayTxnMetaError = useSetAtom(replayTxnMetaErrorAtom);
+
+  return useCallback(
+    (msg: WsError) => {
+      const { topic, key, error } = msg;
+      switch (topic) {
+        case "timeline": {
+          switch (key) {
+            case "query_txn_meta": {
+              setReplayTxnMetaError(error.code);
+              break;
+            }
+          }
+          break;
+        }
+      }
+    },
+    [setReplayTxnMetaError],
+  );
 }

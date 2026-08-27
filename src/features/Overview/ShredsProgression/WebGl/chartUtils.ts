@@ -16,13 +16,13 @@ import {
 import { shredEventDescPriorities } from "../const";
 import { updateLabels } from "../shredsProgressionPlugin";
 import type {
-  SlotMesh,
+  RectMesh,
   TsRange,
   WebglResources,
 } from "../../../WebGl/webglUtils";
 import {
   createRectMesh,
-  updateSlotMeshCounts,
+  updateRectMeshCount,
   ensureCapacity,
   addRectangleToMesh,
   convertToWebGlColor,
@@ -64,23 +64,28 @@ export type RendererObj = {
   renderer: THREE.WebGLRenderer;
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
-  meshes: Map<number, SlotMesh>;
-  availableMeshes: SlotMesh[];
+  meshes: Map<number, RectMesh>;
+  availableMeshes: RectMesh[];
   worldTsRange: TsRange;
   // resources shared by this renderer's slot meshes
   resources: WebglResources;
   cleanUpRenderer: () => void;
 };
 
+const shredColor = (hex: string): [number, number, number, number] => [
+  ...convertToWebGlColor(hex),
+  SHREDS_OPACITY,
+];
+
 const colors = {
-  skipped: convertToWebGlColor(shredSkippedColor),
-  repairRequested: convertToWebGlColor(shredRepairRequestedColor),
-  receivedTurbine: convertToWebGlColor(shredReceivedTurbineColor),
-  receivedRepair: convertToWebGlColor(shredReceivedRepairColor),
-  replayedRepair: convertToWebGlColor(shredReplayedRepairColor),
-  replayedTurbine: convertToWebGlColor(shredReplayedTurbineColor),
-  replayedNothing: convertToWebGlColor(shredReplayedNothingColor),
-  published: convertToWebGlColor(shredPublishedColor),
+  skipped: shredColor(shredSkippedColor),
+  repairRequested: shredColor(shredRepairRequestedColor),
+  receivedTurbine: shredColor(shredReceivedTurbineColor),
+  receivedRepair: shredColor(shredReceivedRepairColor),
+  replayedRepair: shredColor(shredReplayedRepairColor),
+  replayedTurbine: shredColor(shredReplayedTurbineColor),
+  replayedNothing: shredColor(shredReplayedNothingColor),
+  published: shredColor(shredPublishedColor),
 };
 
 /**
@@ -115,9 +120,9 @@ export function setUpRenderer(
     renderer.setSize(canvasWidth, canvasHeight);
     renderer.setClearColor(0x000000, 0);
 
-    const meshes = new Map<number, SlotMesh>();
-    const availableMeshes: SlotMesh[] = [];
-    const resources = createWebglResources(SHREDS_OPACITY);
+    const meshes = new Map<number, RectMesh>();
+    const availableMeshes: RectMesh[] = [];
+    const resources = createWebglResources();
     renderer.render(scene, camera);
     const clearContextListeners = setUpContextListeners(renderer.domElement);
 
@@ -279,7 +284,7 @@ export function draw(
         anythingDrawn = true;
       }
     }
-    updateSlotMeshCounts(slotMesh, rectangleIdx);
+    updateRectMeshCount(slotMesh, rectangleIdx);
   }
 
   store.set(minDirtySlotByChartAtom, (prev) => {
@@ -347,7 +352,7 @@ interface AddEventsForRowArgs {
     Exclude<ShredEvent, ShredEvent.slot_complete>,
     { x: number; w: number }
   >;
-  slotMesh: SlotMesh;
+  slotMesh: RectMesh;
   startRectangleIdx: number;
   eventTsDeltas: ShredEventTsDeltas;
   slotCompletionTsDelta: number | undefined;
@@ -418,7 +423,7 @@ function getShredEventColor(
     Exclude<ShredEvent, ShredEvent.slot_complete>,
     { x: number; w: number }
   >,
-): [number, number, number] | undefined {
+): [number, number, number, number] | undefined {
   if (isSlotSkipped) return colors.skipped;
   switch (eventType) {
     case ShredEvent.shred_repair_request: {
