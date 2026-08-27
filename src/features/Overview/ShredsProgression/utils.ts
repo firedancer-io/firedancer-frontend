@@ -132,6 +132,9 @@ export type LabelState = {
 export type LabelsState = {
   groups: Map<number, LabelState>;
   slots: Map<number, LabelState>;
+  /** when this chart instance applied its first label frame; carried
+      across the prev/new swap, reset by remounts */
+  firstAppliedAt?: number;
 };
 
 export function createLabelsState(): LabelsState {

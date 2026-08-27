@@ -17,11 +17,25 @@ import styles from "./shreds.module.css";
 const hugeWidth = 100000;
 const hiddenTransformX = -hugeWidth;
 
+/**
+ * Name fades are for realtime changes (a group's end materializing). A
+ * cold load settles the range and slot data over several frames, so any
+ * opacity landing inside this window after the first applied frame is
+ * initial population and must not fade. Leader rotation is >=1.6s, so
+ * realtime entries land outside it.
+ */
+const initialFadeWindowMs = 1000;
+
 export function applyLabelFrame(
   frame: LabelFrame,
   prevLabels: LabelsState,
   newLabels: LabelsState,
 ) {
+  const now = performance.now();
+  const firstAppliedAt = (newLabels.firstAppliedAt =
+    prevLabels.firstAppliedAt ?? now);
+  const suppressFade = now - firstAppliedAt < initialFadeWindowMs;
+
   for (const group of frame.groups) {
     const leaderEl = document.getElementById(getSlotGroupLabelId(group.slot));
     if (!leaderEl) continue;
@@ -35,6 +49,7 @@ export function applyLabelFrame(
       newLabels.groups,
       frame.maxCssPos,
       group.skipped,
+      suppressFade,
     );
   }
 
@@ -51,6 +66,7 @@ export function applyLabelFrame(
       newLabels.slots,
       frame.maxCssPos,
       slot.skipped,
+      suppressFade,
     );
   }
 
@@ -83,6 +99,7 @@ function moveLabelPosition(
   newLabels: Map<number, LabelState>,
   maxVisibleXPos: number,
   isSkipped: boolean,
+  suppressFade: boolean,
 ) {
   const borderOffset = isGroup ? 1 : 0;
   const prevState = prevLabels.get(slotNumber);
@@ -130,9 +147,7 @@ function moveLabelPosition(
     // Set to opacity 0, and transition to 1 when the group end becomes defined.
     const opacity = width == null ? "0" : "1";
     if (nameEl && prevState?.opacity !== opacity) {
-      // fade only realtime changes: a first-ever application (page load
-      // populating every historical group at once) shows immediately
-      nameEl.style.transition = prevState === undefined ? "none" : "";
+      nameEl.style.transition = suppressFade ? "none" : "";
       newState.opacity = opacity;
       nameEl.style.opacity = opacity;
     }
