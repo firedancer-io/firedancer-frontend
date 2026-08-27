@@ -202,6 +202,152 @@ describe("wsWorker backlog drain flush ordering", () => {
   });
 });
 
+describe("wsWorker reveal-set fast flush", () => {
+  const revealFrames = [
+    frame("summary", "boot_progress", { phase: "running" }),
+    frame("summary", "vote_state", "voting"),
+    frame("summary", "tps_history", [[1, 1, 0, 0]]),
+    frame("summary", "estimated_tps", {
+      total: 1,
+      vote: 1,
+      nonvote_success: 0,
+      nonvote_failed: 0,
+    }),
+    frame("summary", "completed_slot", 1000001),
+    frame("summary", "live_program_cache", {
+      hits: 0,
+      lookups: 0,
+      insertions: 0,
+      insertion_bytes: 0,
+      evictions: 0,
+      eviction_bytes: 0,
+      spills: 0,
+      spill_bytes: 0,
+      free_bytes: 0,
+      size_bytes: 0,
+    }),
+    frame("epoch", "new", {
+      epoch: 0,
+      start_time_nanos: null,
+      end_time_nanos: null,
+      start_slot: 0,
+      end_slot: 7,
+      excluded_stake_lamports: "0",
+      staked_pubkeys: ["A"],
+      staked_lamports: ["1"],
+      leader_slots: [0, 0],
+    }),
+    frame("peers", "stats", {
+      validator_count: 1,
+      rpc_count: 0,
+      active_stake: "1",
+      delinquent_stake: "0",
+    }),
+    frame("peers", "leaders", {
+      epoch: 0,
+      names: [null],
+      icon_urls: [null],
+      delinquent: [null],
+      country_codes: [null],
+      client_ids: [null],
+    }),
+    frame("slot", "skipped_history", []),
+    frame("slot", "update", {
+      publish: {
+        slot: 1000001,
+        mine: false,
+        skipped: false,
+        level: "rooted",
+        success_nonvote_transaction_cnt: 10,
+        failed_nonvote_transaction_cnt: null,
+        success_vote_transaction_cnt: null,
+        failed_vote_transaction_cnt: null,
+        priority_fee: null,
+        transaction_fee: null,
+        tips: null,
+        max_compute_units: null,
+        compute_units: null,
+        duration_nanos: null,
+        completed_time_nanos: null,
+        vote_latency_exact: null,
+        is_voter: false,
+      },
+    }),
+    frame("accounts", "stats", {
+      sample_time_nanos: 0,
+      disk: {
+        accounts_total: 0,
+        accounts_capacity: 0,
+        allocated_bytes: 0,
+        current_bytes: 0,
+        used_bytes: 0,
+      },
+      compaction: {
+        in_compaction: 0,
+        compactions_requested: 0,
+        compactions_completed: 0,
+        accounts_relocated_bytes: 0,
+        relocated_bytes_per_sec: 0,
+        next_compaction_remaining_seconds: null,
+        next_compaction_partition_idx: null,
+      },
+      cache: { hit_rate_ema: 0, size_bytes: 0, classes: [] },
+      io: {
+        acquired: 0,
+        acquired_writable: 0,
+        bytes_read: 0,
+        bytes_copied: 0,
+        bytes_written: 0,
+        bytes_written_accdb: 0,
+        read_ops: 0,
+        write_ops: 0,
+        acquired_per_sec: 0,
+        acquired_writable_per_sec: 0,
+        bytes_read_per_sec: 0,
+        bytes_copied_per_sec: 0,
+        bytes_written_per_sec: 0,
+        read_ops_per_sec: 0,
+        write_ops_per_sec: 0,
+        prewrite_ratio: 0,
+      },
+    }),
+  ];
+
+  test("completing the reveal set flushes synchronously mid-drain", async () => {
+    vi.spyOn(performance, "now").mockReturnValue(0); // no age/size triggers
+    const { kvbs } = await bootAdopted([
+      ...revealFrames,
+      frame("summary", "version", "after"),
+    ]);
+
+    // shipped the moment accounts:stats (the snapshot tail) was batched,
+    // without waiting on the starved 32ms timer or a large frame
+    expect(kvbs()).toHaveLength(1);
+    const keys = kvbs()[0].items.map((i) => `${i.topic}:${i.key}`);
+    expect(keys).toHaveLength(revealFrames.length);
+    expect(keys).toContain("accounts:stats");
+    expect(keys).not.toContain("summary:version");
+
+    // the trailing frame ships on the normal timer cadence
+    vi.advanceTimersByTime(33);
+    expect(kvbs()).toHaveLength(2);
+    expect(kvbs()[1].items.map(({ key }) => key)).toEqual(["version"]);
+
+    // fast-flush phase over: completing another "set" cannot re-trigger
+    expect(kvbs()).toHaveLength(2);
+  });
+
+  test("an incomplete reveal set keeps the timer flush", async () => {
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const { kvbs } = await bootAdopted(revealFrames.slice(0, -1));
+
+    expect(kvbs()).toHaveLength(0);
+    vi.advanceTimersByTime(33);
+    expect(kvbs()).toHaveLength(1);
+    expect(kvbs()[0].items).toHaveLength(revealFrames.length - 1);
+  });
+});
+
 describe("wsWorker peers snapshot hold", () => {
   const statsFrame = frame("peers", "stats", {
     validator_count: 1,

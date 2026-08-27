@@ -62,7 +62,36 @@ function resetPeersHold() {
   peersLiteSeen = false;
   mainSettled = false;
   peersRequested = false;
+  revealRemaining = new Set(revealTokens);
 }
+
+/**
+ * First-batch fast flush: the reveal renders entirely from the connect
+ * snapshot (frames through accounts:stats, ahead of the multi-MB
+ * live_shreds/peers frames), but the burst decode run starves the flush
+ * timer, so without this the first batch waits for the next large frame.
+ * The moment every reveal-feeding key is batched, ship immediately.
+ * Token set mirrors the FD connect snapshot; backends that never
+ * complete it (Frankendancer) keep the timer/size/age triggers.
+ */
+const revealKeyTokens: Record<string, string> = {
+  "summary:boot_progress": "boot",
+  "summary:startup_progress": "boot",
+  "summary:vote_state": "vote_state",
+  "summary:tps_history": "tps_history",
+  "summary:estimated_tps": "estimated_tps",
+  "summary:completed_slot": "completed_slot",
+  "summary:live_program_cache": "program_cache",
+  "epoch:new": "epoch",
+  "peers:stats": "peers_stats",
+  "peers:leaders": "peers_leaders",
+  "slot:skipped_history": "skipped_history",
+  // columnar batch fans out to update items before reaching batch()
+  "slot:update": "slots",
+  "accounts:stats": "accounts",
+};
+const revealTokens = new Set(Object.values(revealKeyTokens));
+let revealRemaining: Set<string> | null = new Set(revealTokens);
 
 function releasePeers() {
   peersHolding = false;
@@ -142,6 +171,17 @@ function batch(item: WsEntity) {
     pendingBatches.set(key, [item]);
   }
 
+  if (revealRemaining) {
+    const token = revealKeyTokens[key];
+    if (token) {
+      revealRemaining.delete(token);
+      if (!revealRemaining.size) {
+        flush();
+        return;
+      }
+    }
+  }
+
   if (!scheduled) {
     scheduled = true;
     setTimeout(timerFlush, flushDelayMs);
@@ -172,6 +212,8 @@ function flush() {
   pendingBatches.clear();
 
   if (items.length) {
+    // any shipped first batch ends the fast-flush phase
+    revealRemaining = null;
     // derived leader_slots move by buffer transfer (~108KB/epoch), not clone
     const transfer: ArrayBuffer[] = [];
     for (const item of items) {
