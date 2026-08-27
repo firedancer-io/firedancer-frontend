@@ -63,7 +63,10 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
     <Flex minWidth="0" flexGrow="1">
       <SlotColumn slot={slot} currentSlot={currentSlot} />
       <div
-        className={clsx(styles.grid, { [styles.firedancerGrid]: isFiredancer })}
+        className={clsx(styles.grid, {
+          [styles.firedancerGrid]: isFiredancer,
+          [styles.alpenglowGrid]: isAlpenglow,
+        })}
         ref={ref}
         onScroll={(e) => {
           scrollAll(slot, e.currentTarget.scrollLeft);
@@ -77,12 +80,16 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
             {isAlpenglow ? <>Vote&nbsp;Rewarded</> : <>Vote&nbsp;Latency</>}
           </Text>
         )}
-        <Text
-          className={clsx(styles.headerText, styles.votesHeader)}
-          align="right"
-        >
-          Votes
-        </Text>
+        {/* Alpenglow votes are not transactions, so the count is always
+            zero and the column carries nothing. */}
+        {!isAlpenglow && (
+          <Text
+            className={clsx(styles.headerText, styles.votesHeader)}
+            align="right"
+          >
+            Votes
+          </Text>
+        )}
         <Text
           className={clsx(styles.headerText, styles.nonVotesHeader)}
           align="right"
@@ -294,6 +301,7 @@ function getRowValues(
 }
 
 function SlotCardRow({ slot, active }: SlotCardRowProps) {
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
   const firstProcessedSlot = useAtomValue(firstProcessedSlotAtom);
   const currentSlot = useAtomValue(currentSlotAtom);
   const skippedClusterSlots = useAtomValue(skippedClusterSlotsAtom);
@@ -359,9 +367,11 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
           {getText(values?.voteLatency.text)}
         </Text>
       )}
-      <Text className={valueClassName} align="right">
-        {getText(values?.voteTxns)}
-      </Text>
+      {!isAlpenglow && (
+        <Text className={valueClassName} align="right">
+          {getText(values?.voteTxns)}
+        </Text>
+      )}
       <Text className={valueClassName} align="right">
         {getText(values?.nonVoteTxns)}
       </Text>

@@ -19,6 +19,14 @@
       minMax(70px, auto) minMax(70px, auto) minMax(80px, auto)
       minMax(149px, auto);
   }
+
+  /* Alpenglow drops the votes column: votes are not transactions there,
+     so the count is always zero. */
+  &.firedancer-grid.alpenglow-grid {
+    grid:
+      auto-flow / minMax(80px, auto) minMax(80px, auto) minMax(70px, auto)
+      minMax(70px, auto) minMax(80px, auto) minMax(149px, auto);
+  }
 }
 
 .header-text {

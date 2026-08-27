@@ -177,6 +177,18 @@ export function getCurrentSlotRange(
   };
 }
 
+/* The next leader column is drawn when it has something to say: a slot
+   beyond the current range, or the fact that we will never lead.  A slot
+   already inside the current range is marked there, so a second column
+   would only duplicate it. */
+export function shouldShowNextLeaderColumn(
+  nextLeaderSlot: number | null,
+  maxCurrentSlot: number,
+) {
+  if (nextLeaderSlot == null) return true;
+  return nextLeaderSlot > maxCurrentSlot;
+}
+
 export function getFutureSlotCellCount(
   maxCurrentSlot: number,
   nextLeaderSlot: number | undefined,

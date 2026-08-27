@@ -22,6 +22,7 @@ import type { CurrentSlotRange, SlotLane } from "./types";
 import {
   getCurrentSlotRange,
   getFutureSlotCellCount,
+  shouldShowNextLeaderColumn,
   getSlotLanes,
 } from "./utils";
 import useNextSlot from "../../../hooks/useNextSlot";
@@ -114,12 +115,16 @@ function SlotLanes() {
 
   const nextLeaderLane = lanes.find(({ id }) => id === "nextLeader");
   const nextLeaderSlotValue = nextLeaderLane?.slot ?? null;
+  /* The column is still worth drawing when we will never lead, because
+     that is where the answer belongs.  There is no gap to fill in front
+     of it then, and no countdown to run. */
   const hasNextLeaderColumn =
-    nextLeaderSlotValue != null &&
-    nextLeaderSlotValue > currentSlotRange.maxSlot;
-  const futureSlotCellCount = hasNextLeaderColumn
-    ? getFutureSlotCellCount(currentSlotRange.maxSlot, nextLeaderSlotValue)
-    : 0;
+    nextLeaderLane != null &&
+    shouldShowNextLeaderColumn(nextLeaderLane.slot, currentSlotRange.maxSlot);
+  const futureSlotCellCount =
+    hasNextLeaderColumn && nextLeaderSlotValue != null
+      ? getFutureSlotCellCount(currentSlotRange.maxSlot, nextLeaderSlotValue)
+      : 0;
   const hasFutureSection = futureSlotCellCount > 0;
   const futureSectionWeight = Math.min(
     currentSlotRange.slots.length,
@@ -151,10 +156,7 @@ function SlotLanes() {
           <FutureSlots lanes={lanes} cellCount={futureSlotCellCount} />
         )}
         {hasNextLeaderColumn && nextLeaderLane != null && (
-          <NextLeaderSlots
-            lanes={lanes}
-            nextLeaderLane={{ ...nextLeaderLane, slot: nextLeaderSlotValue }}
-          />
+          <NextLeaderSlots lanes={lanes} nextLeaderLane={nextLeaderLane} />
         )}
       </div>
     </div>
@@ -375,19 +377,24 @@ interface NextLeaderSlotsProps {
 }
 
 function NextLeaderSlots({ lanes, nextLeaderLane }: NextLeaderSlotsProps) {
+  const headerText = nextLeaderLane.slot ?? "never";
+
   return (
     <div className={styles.timelineSection}>
       <MonoText
         className={clsx(styles.slotHeaderCell, styles.nextLeaderSlotHeader)}
-        title={`${nextLeaderLane.slot}`}
+        title={`${headerText}`}
       >
-        {nextLeaderLane.slot}
+        {headerText}
       </MonoText>
       {lanes.map((lane) => (
         <div
           aria-hidden="true"
           className={clsx(styles.slotCell, styles.nextLeaderSlotCell, {
-            [styles.activeSlotCell]: lane.id === "nextLeader",
+            /* No slot means no marker to place - the header carries the
+               answer on its own. */
+            [styles.activeSlotCell]:
+              lane.id === "nextLeader" && nextLeaderLane.slot != null,
           })}
           key={lane.id}
           style={{ "--lane-color": lane.color } as LaneStyle}

@@ -7,6 +7,7 @@ import {
   maxCurrentSlotCount,
   maxFutureSlotCellCount,
   minCurrentSlotCount,
+  shouldShowNextLeaderColumn,
 } from "../utils";
 
 const baseValues = {
@@ -142,5 +143,23 @@ describe("getFutureSlotCellCount", () => {
   it("caps distant leaders and handles missing data", () => {
     expect(getFutureSlotCellCount(100, 1_000)).toBe(maxFutureSlotCellCount);
     expect(getFutureSlotCellCount(100, undefined)).toBe(0);
+  });
+});
+
+describe("shouldShowNextLeaderColumn", () => {
+  /* The column is what tells an unstaked validator it will never lead,
+     so a null slot has to keep it rather than drop it. */
+
+  it("keeps the column when we will never lead", () => {
+    expect(shouldShowNextLeaderColumn(null, 100)).toBe(true);
+  });
+
+  it("keeps the column when the next leader slot is ahead of the range", () => {
+    expect(shouldShowNextLeaderColumn(140, 100)).toBe(true);
+  });
+
+  it("drops the column when the slot is already inside the range", () => {
+    expect(shouldShowNextLeaderColumn(100, 100)).toBe(false);
+    expect(shouldShowNextLeaderColumn(80, 100)).toBe(false);
   });
 });
