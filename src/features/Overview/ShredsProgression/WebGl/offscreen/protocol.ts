@@ -4,6 +4,9 @@ import type { LabelFrame } from "../../labelsCalc";
 
 /** Main thread -> shreds chart worker */
 export type ToChartWorker =
+  // sent by the blob worker on nested spawn (build inline script): all
+  // later main-thread traffic arrives on this port, replies go back on it
+  | { type: "mainPort"; port: MessagePort }
   | {
       type: "init";
       canvas: OffscreenCanvas;

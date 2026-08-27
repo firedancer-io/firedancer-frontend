@@ -158,6 +158,26 @@ function earlyWebsocket(
               /^assets\/wsWorker-[\w-]+\.js$/.test(f),
             )
           : undefined;
+        const chartWorkerFile = ctx.bundle
+          ? Object.keys(ctx.bundle).find((f) =>
+              /^assets\/chartWorker-[\w-]+\.js$/.test(f),
+            )
+          : undefined;
+        // The offscreen chart worker gets the same nested treatment
+        // (fetch, thread start and three.js eval all off the main-thread
+        // queue); gated on the same feature test OffscreenChart.tsx uses
+        // to pick the offscreen path. Own try so a throw here can't
+        // strand the ws handles mid-handoff.
+        const spawnChart = chartWorkerFile
+          ? "try{" +
+            'if(typeof OffscreenCanvas!=="undefined"&&HTMLCanvasElement.prototype.transferControlToOffscreen){' +
+            "var c2=new MessageChannel();" +
+            "h={port:c2.port1,early:w,error:false,pending:[]};" +
+            "c2.port1.onmessage=function(m){if(h.pending.length<1e3)h.pending.push(m)};" +
+            `w.postMessage({spawnChart:location.origin+${JSON.stringify("/" + chartWorkerFile)},main:c2.port2},[c2.port2]);` +
+            "window.__fdChartMain=h" +
+            "}}catch(x){}"
+          : "";
         // The blob worker spawns the real wsWorker NESTED (worker-spawned
         // workers neither fetch-complete nor start behind main-thread
         // bundle eval) and wires adoption internally; main keeps only a
@@ -166,15 +186,17 @@ function earlyWebsocket(
         // bundle as before.
         const spawnMain = wsWorkerFile
           ? "try{" +
+            "var h;" +
             "var c=new MessageChannel();" +
             `var g={port:c.port1,early:w,url:u,compress:${compress},error:false,pending:[]};` +
             // buffer the events, not data: clones deserialize lazily on
             // first data access, so big batches don't stall attach
             "c.port1.onmessage=function(m){if(g.pending.length<1e4)g.pending.push(m)};" +
-            "w.onmessage=function(m){if(m.data==='error')e.error=true;else if(m.data==='closed')e.closed=true;else if(m.data==='spawnfail')g.error=true};" +
+            "w.onmessage=function(m){if(m.data==='error')e.error=true;else if(m.data==='closed')e.closed=true;else if(m.data==='spawnfail')g.error=true;else if(m.data==='chartspawnfail'&&h)h.error=true};" +
             `w.postMessage({spawn:location.origin+${JSON.stringify("/" + wsWorkerFile)},main:c.port2},[c.port2]);` +
             "window.__fdWsMain=g;" +
-            "delete window.__fdWsEarly" +
+            "delete window.__fdWsEarly;" +
+            spawnChart +
             "}catch(x){}"
           : "";
         return {

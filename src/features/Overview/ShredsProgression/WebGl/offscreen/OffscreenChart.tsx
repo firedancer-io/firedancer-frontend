@@ -34,14 +34,65 @@ import { MAX_WEBGL_PX_RATIO } from "../../../../../consts";
 const store = getDefaultStore();
 
 /**
+ * Handle to the chart worker when the index.html inline script (build
+ * only) had the early blob worker spawn it NESTED, so its fetch, thread
+ * start and three.js eval never queue behind main-thread bundle work.
+ * Mirrors earlyWs.ts's MainWs.
+ */
+interface ParkedChartWorker {
+  port: MessagePort;
+  early: Worker;
+  error: boolean;
+  pending: MessageEvent[];
+}
+
+declare global {
+  interface Window {
+    __fdChartMain?: ParkedChartWorker;
+  }
+}
+
+/**
+ * Worker facade over the main-thread port to the nested chart worker.
+ * terminate() must NOT terminate the blob worker (it owns wsWorker and
+ * the socket); the kill is relayed for the blob worker to terminate
+ * just its nested chart child.
+ */
+function attachNestedChartWorker(): Worker | null {
+  const main = window.__fdChartMain;
+  if (!main) return null;
+  delete window.__fdChartMain; // attach is first-mount-only
+  if (main.error) {
+    main.port.close();
+    return null;
+  }
+  const { port, early, pending } = main;
+  return {
+    postMessage: (msg: unknown, transfer?: Transferable[]) =>
+      port.postMessage(msg, transfer ?? []),
+    set onmessage(fn: ((e: MessageEvent) => void) | null) {
+      port.onmessage = fn;
+      if (fn) for (const ev of pending.splice(0)) fn(ev);
+    },
+    terminate: () => {
+      port.close();
+      early.postMessage("kill-chart");
+    },
+  } as unknown as Worker;
+}
+
+/**
  * Spawned at module eval (entry bundle): the ~500KB worker chunk fetch,
  * thread start and three.js eval overlap main-bundle eval and the reveal
- * render instead of starting inside the reveal commit. The canvas
- * transfer still happens at mount; remounts spawn fresh workers.
+ * render instead of starting inside the reveal commit. The nested-spawn
+ * handle from the inline script is preferred (it started at page load);
+ * page spawn is the fallback. The canvas transfer still happens at
+ * mount; remounts spawn fresh (page) workers.
  */
 let prewarmedWorker: Worker | null = null;
 try {
-  if (isOffscreenChartSupported) prewarmedWorker = new ChartWorker();
+  if (isOffscreenChartSupported)
+    prewarmedWorker = attachNestedChartWorker() ?? new ChartWorker();
 } catch {
   prewarmedWorker = null;
 }

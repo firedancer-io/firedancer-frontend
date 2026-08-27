@@ -99,14 +99,42 @@ export function earlyWsWorkerMain(
     }
   };
 
-  // Two main-thread messages: a bare MessagePort (bundle-driven
-  // adoption, the far end held by a page-spawned wsWorker), or a build
-  // inline-script spawn request. The latter starts the real wsWorker as
-  // a NESTED worker so neither its script-fetch completion nor its eval
-  // ever queues behind main-thread bundle work, hands it the
-  // main-thread channel, and wires the same adopt contract internally.
+  let chartWorker: Worker | null = null;
+
+  // Main-thread messages: a bare MessagePort (bundle-driven adoption,
+  // the far end held by a page-spawned wsWorker), or build inline-script
+  // requests. spawn starts the real wsWorker as a NESTED worker so
+  // neither its script-fetch completion nor its eval ever queues behind
+  // main-thread bundle work, hands it the main-thread channel, and wires
+  // the same adopt contract internally. spawnChart does the same for the
+  // offscreen chart worker (its only wiring is the main-thread port);
+  // "kill-chart" terminates just that nested child (the page facade's
+  // terminate must not take down this worker, which owns wsWorker and
+  // the socket).
   self.onmessage = (e: MessageEvent) => {
-    const d = e.data as MessagePort | { spawn: string; main: MessagePort };
+    const d = e.data as
+      | MessagePort
+      | { spawn: string; main: MessagePort }
+      | { spawnChart: string; main: MessagePort }
+      | "kill-chart";
+    if (d === "kill-chart") {
+      chartWorker?.terminate();
+      chartWorker = null;
+      return;
+    }
+    if (typeof (d as { spawnChart?: unknown }).spawnChart === "string") {
+      const req = d as { spawnChart: string; main: MessagePort };
+      try {
+        chartWorker = new Worker(req.spawnChart);
+        chartWorker.onerror = () => self.postMessage("chartspawnfail");
+        chartWorker.postMessage({ type: "mainPort", port: req.main }, [
+          req.main,
+        ]);
+      } catch {
+        self.postMessage("chartspawnfail");
+      }
+      return;
+    }
     if (typeof (d as { spawn?: unknown }).spawn === "string") {
       const req = d as { spawn: string; main: MessagePort };
       try {

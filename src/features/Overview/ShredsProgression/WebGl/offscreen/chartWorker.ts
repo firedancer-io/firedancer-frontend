@@ -21,7 +21,9 @@ import type {
  */
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
-const post = (msg: FromChartWorker) => ctx.postMessage(msg);
+// nested-spawn mode: the main thread is reachable only over this port
+let mainPort: MessagePort | null = null;
+const post = (msg: FromChartWorker) => (mainPort ?? ctx).postMessage(msg);
 
 const REDRAW_INTERVAL_MS = 15;
 
@@ -111,11 +113,22 @@ function addShreds(value: LiveShreds) {
 }
 
 // rAF is available in workers on Chrome/Firefox/Safari 15.4+; keep a
-// timer fallback so older engines still draw
-const scheduleFrame: (cb: (time: number) => void) => void =
-  typeof requestAnimationFrame === "function"
-    ? (cb) => requestAnimationFrame(cb)
-    : (cb) => setTimeout(() => cb(performance.now()), 16);
+// timer fallback so older engines still draw. Probed by calling it: in
+// a NESTED worker (blob-worker spawn) rAF exists on the scope but
+// THROWS NotSupportedError -- no animation frame provider -- so nested
+// mode draws on the same timer cadence as the older-engine ladder.
+const scheduleFrame: (cb: (time: number) => void) => void = (() => {
+  if (typeof requestAnimationFrame === "function") {
+    try {
+      requestAnimationFrame(() => {});
+      return (cb: (time: number) => void) => requestAnimationFrame(cb);
+    } catch {
+      // fall through to the timer ladder
+    }
+  }
+  return (cb: (time: number) => void) =>
+    setTimeout(() => cb(performance.now()), 16);
+})();
 
 function tick(time: number) {
   scheduleFrame(tick);
@@ -174,9 +187,13 @@ function tick(time: number) {
 
 scheduleFrame(tick);
 
-ctx.onmessage = (e: MessageEvent<ToChartWorker>) => {
+const handleMessage = (e: MessageEvent<ToChartWorker>) => {
   const msg = e.data;
   switch (msg.type) {
+    case "mainPort":
+      mainPort = msg.port;
+      mainPort.onmessage = handleMessage;
+      break;
     case "init":
       pixelRatio = msg.pixelRatio;
       scale = msg.scale;
@@ -229,3 +246,5 @@ ctx.onmessage = (e: MessageEvent<ToChartWorker>) => {
       break;
   }
 };
+
+ctx.onmessage = handleMessage;
