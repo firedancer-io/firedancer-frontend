@@ -60,6 +60,7 @@ export const ScheduleStrategyEnum = scheduleStrategySchema.enum;
 export const tileTypeSchema = z.enum([
   "sock",
   "net",
+  "mlx5",
   "quic",
   "bundle",
   "verify",
