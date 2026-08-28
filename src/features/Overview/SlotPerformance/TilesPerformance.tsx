@@ -13,7 +13,9 @@ export default function TilesPerformance() {
 
   const { tileCounts, showLive, queryIdleData } = useTilesPerformance();
 
-  const netType = tileCounts["net"] ? "net" : "sock";
+  const netType =
+    (["mlx5", "net", "sock"] as const).find((type) => tileCounts[type]) ??
+    "sock";
 
   return (
     <div className={styles.container}>
