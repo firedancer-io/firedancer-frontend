@@ -15,6 +15,7 @@ import {
   epochAtom,
   firstProcessedSlotAtom,
   leaderSlotsAtom,
+  slotPublishAtomFamily,
 } from "../../../atoms";
 import { getSlotGroupLeader } from "../../../utils";
 import { DisplayType } from "../../../sankey";
@@ -34,6 +35,7 @@ function getSlotState(
   leaderSlots?: number[],
   firstProcessedSlot?: number,
   currentSlot?: number,
+  hasResponse?: boolean,
 ) {
   if (slot === undefined) return SelectedSlotValidityState.Valid;
   if (
@@ -45,11 +47,15 @@ function getSlotState(
     return SelectedSlotValidityState.NotReady;
   if (slot < epoch.start_slot || epoch.end_slot < slot)
     return SelectedSlotValidityState.OutsideEpoch;
-  if (!leaderSlots.includes(getSlotGroupLeader(slot)))
-    return SelectedSlotValidityState.NotYou;
-  if (slot < firstProcessedSlot)
-    return SelectedSlotValidityState.BeforeFirstProcessed;
   if (slot >= currentSlot) return SelectedSlotValidityState.Future;
+  // Gate on data availability, not identity: any slot with a response is
+  // viewable. Only unfetched slots fall back to the identity/restart checks.
+  if (!hasResponse) {
+    if (!leaderSlots.includes(getSlotGroupLeader(slot)))
+      return SelectedSlotValidityState.NotYou;
+    if (slot < firstProcessedSlot)
+      return SelectedSlotValidityState.BeforeFirstProcessed;
+  }
   return SelectedSlotValidityState.Valid;
 }
 
@@ -65,12 +71,14 @@ export const baseSelectedSlotAtoms = (function () {
     const leaderSlots = get(leaderSlotsAtom);
     const firstProcessedSlot = get(firstProcessedSlotAtom);
     const currentSlot = get(currentSlotAtom);
+    const hasResponse = get(slotPublishAtomFamily(slot)) !== undefined;
     return getSlotState(
       slot,
       epoch,
       leaderSlots,
       firstProcessedSlot,
       currentSlot,
+      hasResponse,
     );
   });
 

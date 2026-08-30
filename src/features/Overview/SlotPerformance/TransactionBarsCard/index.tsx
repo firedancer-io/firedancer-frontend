@@ -9,8 +9,11 @@ import { Text } from "@radix-ui/themes";
 export default function TransactionsBarsCard() {
   const slot = useAtomValue(selectedSlotAtom);
   const query = useSlotQueryResponseTransactions(slot);
-  if (!slot || !query.response?.transactions)
+  if (!slot || !query.response?.transactions) {
+    // Per-transaction data expires server-side; stop the spinner once resolved.
+    if (query.hasWaitedForData) return <TransactionsBarsCardUnavailable />;
     return <TransactionsBarsCardPlaceholder />;
+  }
 
   return (
     <>
@@ -34,6 +37,25 @@ function TransactionsBarsCardPlaceholder() {
       }}
     >
       <Text>Loading Banks...</Text>
+    </Card>
+  );
+}
+
+function TransactionsBarsCardUnavailable() {
+  return (
+    <Card
+      style={{
+        display: "flex",
+        flexGrow: "1",
+        height: "400px",
+        justifyContent: "center",
+        alignItems: "center",
+        textAlign: "center",
+      }}
+    >
+      <Text color="gray">
+        Per-transaction data is no longer retained for this slot.
+      </Text>
     </Card>
   );
 }

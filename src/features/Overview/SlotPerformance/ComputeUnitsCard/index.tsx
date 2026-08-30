@@ -34,8 +34,11 @@ export default function ComputeUnitsCard() {
     [],
   );
 
-  if (!slot || !query.response?.transactions)
+  if (!slot || !query.response?.transactions) {
+    // Per-transaction data expires server-side; stop the spinner once resolved.
+    if (query.hasWaitedForData) return <ComputeUnitCardUnavailable />;
     return <ComputeUnitCardPlaceholder />;
+  }
 
   return (
     <>
@@ -77,6 +80,25 @@ function ComputeUnitCardPlaceholder() {
       }}
     >
       <Text>Loading Slot Progress...</Text>
+    </Card>
+  );
+}
+
+function ComputeUnitCardUnavailable() {
+  return (
+    <Card
+      style={{
+        display: "flex",
+        flexGrow: "1",
+        height,
+        justifyContent: "center",
+        alignItems: "center",
+        textAlign: "center",
+      }}
+    >
+      <Text color="gray">
+        Per-transaction data is no longer retained for this slot.
+      </Text>
     </Card>
   );
 }

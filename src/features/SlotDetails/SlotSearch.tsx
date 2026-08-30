@@ -281,7 +281,7 @@ function Errors() {
       case SelectedSlotValidityState.OutsideEpoch:
         return `Slot ${slot} is outside this epoch. Please try again with a different ID between ${epoch?.start_slot} - ${epoch?.end_slot}.`;
       case SelectedSlotValidityState.NotYou:
-        return `Slot ${slot} belongs to another validator. Please try again with a slot number processed by you.`;
+        return `No data for slot ${slot} on this node. It may belong to another validator or not have been replayed.`;
       case SelectedSlotValidityState.BeforeFirstProcessed:
         return `Slot ${slot} is in this epoch but its details are unavailable because it was processed before the restart.`;
       case SelectedSlotValidityState.Future:
