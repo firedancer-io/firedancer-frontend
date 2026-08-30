@@ -12,6 +12,7 @@ export const secondaryTextColor = "#67696A";
 export const regularTextColor = "#8E909D";
 export const iconButtonColor = "#B4B4B4";
 export const headerLabelTextColor = "#949494";
+export const attributionBackgroundColor = "#222939";
 
 export const containerBorderColor = "rgba(250, 250, 250, 0.12)";
 export const containerBackgroundColor = "rgba(250, 250, 250, 0.05)";
