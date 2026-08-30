@@ -32,6 +32,7 @@ import type {
   GossipPeersCellUpdate,
   ServerTimeNanos,
   LiveNetworkMetrics,
+  SystemLive,
   TileMetrics,
   TurbineSlot,
   VoteSlot,
@@ -106,6 +107,8 @@ export const estimatedTpsAtom = atom<EstimatedTps | undefined>(undefined);
 export const liveNetworkMetricsAtom = atom<LiveNetworkMetrics | undefined>(
   undefined,
 );
+
+export const liveSystemResourcesAtom = atom<SystemLive | undefined>(undefined);
 
 export const networkMetricsEmaIngressAtom = atom<ValuesWithHistory>(
   emptyValuesWithHistory,
