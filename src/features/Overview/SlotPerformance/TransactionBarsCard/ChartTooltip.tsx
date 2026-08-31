@@ -83,10 +83,12 @@ export default function ChartTooltip() {
                   : undefined
               }
             />
-            <BooleanLabelValueDisplay
-              label="Vote"
-              value={transactions.txn_is_simple_vote[txnIdx]}
-            />
+            {transactions.txn_is_simple_vote && (
+              <BooleanLabelValueDisplay
+                label="Vote"
+                value={transactions.txn_is_simple_vote[txnIdx]}
+              />
+            )}
             <BooleanLabelValueDisplay
               label="Landed"
               value={transactions.txn_landed[txnIdx]}

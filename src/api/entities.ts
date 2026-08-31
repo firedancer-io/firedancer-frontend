@@ -444,7 +444,7 @@ export const slotTransactionsSchema = z.preprocess(
     txn_tips: z.coerce.bigint().array(),
     txn_error_code: z.number().array(),
     txn_from_bundle: z.boolean().array(),
-    txn_is_simple_vote: z.boolean().array(),
+    txn_is_simple_vote: z.boolean().array().optional(),
     txn_bank_idx: z.number().array(),
     txn_preload_end_timestamps_nanos: z.coerce.bigint().array(),
     txn_start_timestamps_nanos: z.coerce.bigint().array(),

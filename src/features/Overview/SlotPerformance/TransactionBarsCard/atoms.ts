@@ -213,7 +213,7 @@ export const filterLandedDataAtom = booleanFilterChartDataAtom(
 
 export const filterSimpleDataAtom = booleanFilterChartDataAtom(
   "simple",
-  (transactions, idx) => transactions.txn_is_simple_vote[idx],
+  (transactions, idx) => !!transactions.txn_is_simple_vote?.[idx],
 );
 
 export const filterArrivalDataAtom = filterChartDataAtom(

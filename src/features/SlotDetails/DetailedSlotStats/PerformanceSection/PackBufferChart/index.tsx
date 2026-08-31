@@ -19,12 +19,14 @@ import { packBufferTooltipPlugin } from "./packBufferTooltipPlugin";
 import PackBufferChartTooltip from "./PackBufferChartTooltip";
 import { SlotDetailsSubSection } from "../../SlotDetailsSubSection";
 import { Box } from "@radix-ui/themes";
+import { isAlpenglowAtom } from "../../../../../api/atoms";
 
 const xScaleKey = "packX";
 const yScaleKey = "packTxnsY";
 
 export default function PackBufferChart() {
   const slot = useAtomValue(selectedSlotAtom);
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
   const response = useSlotQueryResponseDetailed(slot).response;
   const [tooltipDataIdx, setTooltipDataIdx] = useState<number>();
   const schedulerCounts = response?.scheduler_counts;
@@ -33,22 +35,26 @@ export default function PackBufferChart() {
     const startTimeNanos = response?.transactions?.start_timestamp_nanos;
     if (!schedulerCounts || !startTimeNanos) return;
 
-    const data: [number[], number[], number[], number[], number[]] = [
-      [],
-      [],
-      [],
-      [],
-      [],
-    ];
+    const x: number[] = [];
+    const regular: number[] = [];
+    const votes: number[] = [];
+    const conflicting: number[] = [];
+    const bundles: number[] = [];
     for (let i = 0; i < Math.min(schedulerCounts.length); i++) {
-      data[0].push(Number(schedulerCounts[i].timestamp_nanos - startTimeNanos));
-      data[1].push(schedulerCounts[i].regular);
-      data[2].push(schedulerCounts[i].votes);
-      data[3].push(schedulerCounts[i].conflicting);
-      data[4].push(schedulerCounts[i].bundles);
+      x.push(Number(schedulerCounts[i].timestamp_nanos - startTimeNanos));
+      regular.push(schedulerCounts[i].regular);
+      votes.push(schedulerCounts[i].votes);
+      conflicting.push(schedulerCounts[i].conflicting);
+      bundles.push(schedulerCounts[i].bundles);
     }
-    return data;
-  }, [response?.transactions?.start_timestamp_nanos, schedulerCounts]);
+    return isAlpenglow
+      ? [x, regular, conflicting, bundles]
+      : [x, regular, votes, conflicting, bundles];
+  }, [
+    response?.transactions?.start_timestamp_nanos,
+    schedulerCounts,
+    isAlpenglow,
+  ]);
 
   const options = useMemo<uPlot.Options>(() => {
     return {
@@ -136,13 +142,17 @@ export default function PackBufferChart() {
           width: 2 / devicePixelRatio,
           scale: yScaleKey,
         },
-        {
-          label: "Votes",
-          stroke: votesColor,
-          points: { show: false },
-          width: 2 / devicePixelRatio,
-          scale: yScaleKey,
-        },
+        ...(isAlpenglow
+          ? []
+          : [
+              {
+                label: "Votes",
+                stroke: votesColor,
+                points: { show: false },
+                width: 2 / devicePixelRatio,
+                scale: yScaleKey,
+              },
+            ]),
         {
           label: "Conflicting",
           stroke: slotStatusRed,
@@ -166,7 +176,7 @@ export default function PackBufferChart() {
         touchPlugin(),
       ],
     };
-  }, []);
+  }, [isAlpenglow]);
 
   if (!chartData) return;
 

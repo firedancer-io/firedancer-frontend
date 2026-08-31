@@ -2,6 +2,7 @@ import { Grid } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
 import { computeUnitsColor, votesColor } from "../../../../colors";
 import { useSlotQueryResponseDetailed } from "../../../../hooks/useSlotQuery";
+import { isAlpenglowAtom } from "../../../../api/atoms";
 import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
 import PctBarRow from "../PctBarRow";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
@@ -9,6 +10,7 @@ import { gridGapX, gridGapY } from "../consts";
 
 export default function ProtocolLimitStats() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
   const queryResponse = useSlotQueryResponseDetailed(selectedSlot).response;
   if (!queryResponse) return;
   const { limits } = queryResponse;
@@ -27,12 +29,14 @@ export default function ProtocolLimitStats() {
           total={limits.max_total_block_cost ?? 0}
           valueColor={computeUnitsColor}
         />
-        <PctBarRow
-          label="Vote cost"
-          value={limits.used_total_vote_cost ?? 0}
-          total={limits.max_total_vote_cost ?? 0}
-          valueColor={votesColor}
-        />
+        {!isAlpenglow && (
+          <PctBarRow
+            label="Vote cost"
+            value={limits.used_total_vote_cost ?? 0}
+            total={limits.max_total_vote_cost ?? 0}
+            valueColor={votesColor}
+          />
+        )}
         <PctBarRow
           label="Bytes"
           value={limits.used_total_bytes ?? 0}

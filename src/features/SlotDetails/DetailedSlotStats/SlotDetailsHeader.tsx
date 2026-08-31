@@ -9,6 +9,7 @@ import {
   useSlotQueryResponseDetailed,
 } from "../../../hooks/useSlotQuery";
 import { epochAtom } from "../../../atoms";
+import { isAlpenglowAtom } from "../../../api/atoms";
 import { useMemo } from "react";
 
 import styles from "./detailedSlotStats.module.css";
@@ -27,6 +28,7 @@ export default function SlotDetailsHeader() {
   const slot = useAtomValue(selectedSlotAtom);
   const { countryCode, countryFlag, cityName } = useSlotInfo(slot ?? 0);
   const epoch = useAtomValue(epochAtom);
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
   const slotPublish = useSlotQueryPublish(slot).publish;
 
   const isLgScreen = useMedia("(min-width: 1420px)");
@@ -82,24 +84,26 @@ export default function SlotDetailsHeader() {
         </>
       )}
 
-      <Flex direction="column" gap={gap}>
-        <LabelValue
-          label="Votes"
-          value={slotPublish?.success_vote_transaction_cnt?.toLocaleString()}
-        />
-        <LabelValue
-          label="Vote Failures"
-          value={slotPublish?.failed_vote_transaction_cnt?.toLocaleString()}
-        />
-      </Flex>
+      {!isAlpenglow && (
+        <Flex direction="column" gap={gap}>
+          <LabelValue
+            label="Votes"
+            value={slotPublish?.success_vote_transaction_cnt?.toLocaleString()}
+          />
+          <LabelValue
+            label="Vote Failures"
+            value={slotPublish?.failed_vote_transaction_cnt?.toLocaleString()}
+          />
+        </Flex>
+      )}
 
       <Flex direction="column" gap={gap}>
         <LabelValue
-          label="Non-votes"
+          label={isAlpenglow ? "Transaction Successes" : "Non-votes"}
           value={slotPublish?.success_transaction_cnt?.toLocaleString()}
         />
         <LabelValue
-          label="Non-vote Failures"
+          label={isAlpenglow ? "Transaction Failures" : "Non-vote Failures"}
           value={slotPublish?.failed_transaction_cnt?.toLocaleString()}
         />
       </Flex>

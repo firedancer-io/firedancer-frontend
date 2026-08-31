@@ -1,5 +1,6 @@
 import { useAtomValue } from "jotai";
 import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
+import { isAlpenglowAtom } from "../../../../api/atoms";
 import { Grid, Text } from "@radix-ui/themes";
 import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { useMemo } from "react";
@@ -23,6 +24,7 @@ interface CuStats {
 
 export default function ComputeUnitStats() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
   const query = useSlotQueryResponseTransactions(selectedSlot);
 
   const stats = useMemo(() => {
@@ -30,7 +32,7 @@ export default function ComputeUnitStats() {
 
     return query.response.transactions.txn_compute_units_consumed.reduce<CuStats>(
       (acc, consumedCus, i) => {
-        const isVote = !!query.response?.transactions?.txn_is_simple_vote[i];
+        const isVote = !!query.response?.transactions?.txn_is_simple_vote?.[i];
         const isBundle = query.response?.transactions?.txn_from_bundle[i];
 
         if (isVote) {
@@ -59,13 +61,15 @@ export default function ComputeUnitStats() {
         gapX={gridGapX}
         gapY={gridGapY}
       >
-        <CuStatRow
-          label="Vote"
-          cus={stats.vote}
-          totalCus={totalCus}
-          maxCus={maxCus}
-          pctColor={votesColor}
-        />
+        {!isAlpenglow && (
+          <CuStatRow
+            label="Vote"
+            cus={stats.vote}
+            totalCus={totalCus}
+            maxCus={maxCus}
+            pctColor={votesColor}
+          />
+        )}
         <CuStatRow
           label="Bundle"
           cus={stats.bundle}
