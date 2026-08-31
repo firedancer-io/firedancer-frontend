@@ -9,6 +9,7 @@ import {
   selectedSlotAtom,
 } from "../atoms";
 import type { TxnWaterfall, TxnWaterfallOut } from "../../../../api/types";
+import { isAlpenglowAtom } from "../../../../api/atoms";
 import { Flex, Spinner, Text } from "@radix-ui/themes";
 import {
   droppedSlotNodes,
@@ -389,8 +390,8 @@ function getHistoricalLinks(
   durationNanos?: number | null,
   successfulVoteTransactions?: number | null,
   failedVoteTransactions?: number | null,
-  successfulNonVoteTransactions?: number | null,
-  failedNonVoteTransactions?: number | null,
+  successfulTransactions?: number | null,
+  failedTransactions?: number | null,
 ) {
   const totalIncoming = sum(Object.values(waterfall.in));
   const getValue = getGetValue({ displayType, durationNanos, totalIncoming });
@@ -400,20 +401,24 @@ function getHistoricalLinks(
 
   return [
     ...getSharedLinks(waterfall, getValue),
-    {
-      source: SlotNode.SlotEnd,
-      target: SlotNode.Votes,
-      value: getValue(votes),
-    },
+    ...(successfulVoteTransactions != null || failedVoteTransactions != null
+      ? [
+          {
+            source: SlotNode.SlotEnd,
+            target: SlotNode.Votes,
+            value: getValue(votes),
+          },
+        ]
+      : []),
     {
       source: SlotNode.SlotEnd,
       target: SlotNode.NonVoteFailure,
-      value: getValue(failedNonVoteTransactions ?? 0),
+      value: getValue(failedTransactions ?? 0),
     },
     {
       source: SlotNode.SlotEnd,
       target: SlotNode.NonVoteSuccess,
-      value: getValue(successfulNonVoteTransactions ?? 0),
+      value: getValue(successfulTransactions ?? 0),
     },
   ];
 }
@@ -465,6 +470,12 @@ function getLabelFill(label: SlotNode, value: number): [string, string] {
   return [sankeyBaseLabelColor, sankeyBaseLabelColor];
 }
 
+function getTowerLabel(node: { id: SlotNode }): string {
+  if (node.id === SlotNode.NonVoteSuccess) return "Non-vote Success";
+  if (node.id === SlotNode.NonVoteFailure) return "Non-vote Failure";
+  return node.id;
+}
+
 export default function Container() {
   const slot = useAtomValue(selectedSlotAtom);
 
@@ -474,6 +485,7 @@ export default function Container() {
 function SlotSankey({ slot }: { slot?: number }) {
   const displayType = useAtomValue(sankeyDisplayTypeAtom);
   const liveWaterfall = useAtomValue(liveWaterfallAtom);
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
 
   const query = useSlotQueryResponseDetailed(slot);
 
@@ -553,6 +565,7 @@ function SlotSankey({ slot }: { slot?: number }) {
             enableLinkGradient
             labelPosition="outside"
             labelPadding={16}
+            label={isAlpenglow ? undefined : getTowerLabel}
             getLabelFill={getLabelFill}
             getLinkColor={getLinkColor}
             displayType={displayType}
