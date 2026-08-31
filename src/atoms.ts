@@ -9,6 +9,8 @@ import {
   skippedSlotsAtom,
   startupProgressAtom,
   accountsStatsAtom,
+  completedSlotAtom,
+  voteSlotAtom,
 } from "./api/atoms";
 import type {
   Epoch,
@@ -1051,4 +1053,11 @@ export const accountsNextCompactionAtom = atom((get) => {
         )} left`;
 
   return { partitionIdx: next_compaction_partition_idx, timeLabel };
+});
+
+export const alpenglowVoteDistanceAtom = atom((get) => {
+  const replaySlot = get(completedSlotAtom);
+  const voteSlot = get(voteSlotAtom);
+  if (replaySlot == null || voteSlot == null) return;
+  return replaySlot - voteSlot;
 });

@@ -4,8 +4,17 @@ import Card from "../../../components/Card";
 import CardStat from "../../../components/CardStat";
 import { useAtomValue } from "jotai";
 import styles from "./statusCard.module.css";
-import { currentSlotAtom, epochAtom, slotDurationAtom } from "../../../atoms";
-import { voteDistanceAtom, voteStateAtom } from "../../../api/atoms";
+import {
+  alpenglowVoteDistanceAtom,
+  currentSlotAtom,
+  epochAtom,
+  slotDurationAtom,
+} from "../../../atoms";
+import {
+  healthAtom,
+  isAlpenglowAtom,
+  voteDistanceAtom,
+} from "../../../api/atoms";
 import {
   failureColor,
   headerColor,
@@ -104,13 +113,16 @@ function NextEpochTimeText() {
 }
 
 function VotingStatusText() {
-  const voteState = useAtomValue(voteStateAtom);
-  const voteDistance = useAtomValue(voteDistanceAtom);
+  const voteState = useAtomValue(healthAtom)?.vote;
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
+  const voteDistance = useAtomValue(
+    isAlpenglow ? alpenglowVoteDistanceAtom : voteDistanceAtom,
+  );
 
   const voteColor = useMemo(() => {
-    if (voteState === "voting") {
+    if (voteState === "voting" || voteState === "not_started") {
       return successColor;
-    } else if (voteState === "non-voting") {
+    } else if (voteState === "disabled") {
       return mySlotsColor;
     } else if (voteState === "delinquent") {
       return failureColor;
