@@ -1,6 +1,7 @@
-import { Grid, Text } from "@radix-ui/themes";
+import { Flex, Grid, Text } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
 import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
+import { isAlpenglowAtom } from "../../../../api/atoms";
 import { useSlotQueryResponseDetailed } from "../../../../hooks/useSlotQuery";
 import byteSize from "byte-size";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
@@ -21,6 +22,7 @@ const scheduleOutcomes = [
 
 export default function SchedulerStats() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
   const schedulerStats =
     useSlotQueryResponseDetailed(selectedSlot).response?.scheduler_stats;
   if (!schedulerStats) return;
@@ -63,35 +65,54 @@ export default function SchedulerStats() {
         </Grid>
       </SlotDetailsSubSection>
       <SlotDetailsSubSection title="Smallest Pending Txn">
-        <Grid columns="repeat(3, 1fr)" gapX={gridGapX} gapY={gridGapY}>
-          <div />
-          <Text className={styles.tableHeader} align="right">
-            CU Cost
-          </Text>
-          <Text className={styles.tableHeader} align="right">
-            Size
-          </Text>
+        {isAlpenglow ? (
+          <Flex direction="column" gap={gridGapY}>
+            <Flex gap={gridGapX}>
+              <Text className={styles.label}>CU Cost</Text>
+              <Text className={styles.value}>
+                {pending_smallest_cost?.toLocaleString() ?? 0}
+              </Text>
+            </Flex>
+            <Flex gap={gridGapX}>
+              <Text className={styles.label}>Size</Text>
+              <Text className={styles.value}>
+                {pending_smallest_bytes != null
+                  ? byteSize(pending_smallest_bytes)?.toString()
+                  : 0}
+              </Text>
+            </Flex>
+          </Flex>
+        ) : (
+          <Grid columns="repeat(3, 1fr)" gapX={gridGapX} gapY={gridGapY}>
+            <div />
+            <Text className={styles.tableHeader} align="right">
+              CU Cost
+            </Text>
+            <Text className={styles.tableHeader} align="right">
+              Size
+            </Text>
 
-          <Text className={styles.label}>Non-vote</Text>
-          <Text className={styles.value} align="right">
-            {pending_smallest_cost?.toLocaleString() ?? 0}
-          </Text>
-          <Text className={styles.value} align="right">
-            {pending_smallest_bytes != null
-              ? byteSize(pending_smallest_bytes)?.toString()
-              : 0}
-          </Text>
+            <Text className={styles.label}>Non-vote</Text>
+            <Text className={styles.value} align="right">
+              {pending_smallest_cost?.toLocaleString() ?? 0}
+            </Text>
+            <Text className={styles.value} align="right">
+              {pending_smallest_bytes != null
+                ? byteSize(pending_smallest_bytes)?.toString()
+                : 0}
+            </Text>
 
-          <Text className={styles.label}>Vote</Text>
-          <Text className={styles.value} align="right">
-            {pending_vote_smallest_cost?.toLocaleString() ?? 0}
-          </Text>
-          <Text className={styles.value} align="right">
-            {pending_vote_smallest_bytes != null
-              ? byteSize(pending_vote_smallest_bytes)?.toString()
-              : 0}
-          </Text>
-        </Grid>
+            <Text className={styles.label}>Vote</Text>
+            <Text className={styles.value} align="right">
+              {pending_vote_smallest_cost?.toLocaleString() ?? 0}
+            </Text>
+            <Text className={styles.value} align="right">
+              {pending_vote_smallest_bytes != null
+                ? byteSize(pending_vote_smallest_bytes)?.toString()
+                : 0}
+            </Text>
+          </Grid>
+        )}
       </SlotDetailsSubSection>
     </>
   );

@@ -3,6 +3,7 @@ import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
+import { isAlpenglowAtom } from "../../../../api/atoms";
 import { nonVoteColor, votesColor } from "../../../../colors";
 import { getDurationWithUnits } from "../../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
@@ -17,6 +18,7 @@ import { sum, values } from "lodash";
 
 export default function ExecutionTime() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
   const query = useSlotQueryResponseTransactions(selectedSlot);
   const transactions = query.response?.transactions;
 
@@ -43,7 +45,7 @@ export default function ExecutionTime() {
 
       const totalNum = sum(values(duration).map((n) => Number(n)));
 
-      if (transactions.txn_is_simple_vote[i]) {
+      if (transactions.txn_is_simple_vote?.[i]) {
         vote.total += totalNum;
         vote.count++;
         vote.min = Math.min(vote.min, totalNum);
@@ -87,16 +89,18 @@ export default function ExecutionTime() {
   return (
     <SlotDetailsSubSection title="Execution Time (min / avg / max)">
       <Grid columns="repeat(7, auto)" gapX={gridGapX} gapY={gridGapY}>
+        {!isAlpenglow && (
+          <Row
+            label="Vote"
+            value={durations.vote}
+            color={votesColor}
+            max={max}
+            minValue={durations.voteMin}
+            maxValue={durations.voteMax}
+          />
+        )}
         <Row
-          label="Vote"
-          value={durations.vote}
-          color={votesColor}
-          max={max}
-          minValue={durations.voteMin}
-          maxValue={durations.voteMax}
-        />
-        <Row
-          label="Non-vote"
+          label={isAlpenglow ? "Transaction" : "Non-vote"}
           value={durations.nonVote}
           color={nonVoteColor}
           max={max}

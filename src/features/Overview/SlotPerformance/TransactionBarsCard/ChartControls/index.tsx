@@ -47,6 +47,7 @@ import { txnBarsUplotActionAtom } from "../uplotAtoms";
 import { getMaxTs } from "../../../../../transactionUtils";
 import { banksXScaleKey } from "../../ComputeUnitsCard/consts";
 import { tooltipTxnIdxAtom, tooltipTxnStateAtom } from "../chartTooltipAtoms";
+import { isAlpenglowAtom } from "../../../../../api/atoms";
 import SearchCommand from "./SearchCommand";
 import {
   successToggleColor,
@@ -99,6 +100,7 @@ export default function ChartControls(props: ChartControlsProps) {
 
 function ChartControlsContent(props: ChartControlsProps) {
   const { transactions, maxTs } = props;
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
   const setChartFilters = useSetAtom(chartFiltersAtom);
   const setBarCount = useSetAtom(barCountAtom);
   const setSelectedBank = useSetAtom(selectedBankAtom);
@@ -128,8 +130,12 @@ function ChartControlsContent(props: ChartControlsProps) {
       <Separator orientation="vertical" size="2" />
       <LandedControl transactions={transactions} maxTs={maxTs} />
       <Separator orientation="vertical" size="2" />
-      <SimpleControl transactions={transactions} maxTs={maxTs} />
-      <Separator orientation="vertical" size="2" />
+      {!isAlpenglow && (
+        <>
+          <SimpleControl transactions={transactions} maxTs={maxTs} />
+          <Separator orientation="vertical" size="2" />
+        </>
+      )}
       <ToggleSeriesControls transactions={transactions} />
       <Separator orientation="vertical" size="2" />
       <CuControls transactions={transactions} />
@@ -144,12 +150,16 @@ function ChartControlsContent(props: ChartControlsProps) {
 }
 
 function MobileViewChartControls({ transactions, maxTs }: ChartControlsProps) {
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
+
   return (
     <Flex direction="column" gap="3">
       <ErrorControl transactions={transactions} maxTs={maxTs} />
       <BundleControl transactions={transactions} maxTs={maxTs} isMobileView />
       <LandedControl transactions={transactions} maxTs={maxTs} isMobileView />
-      <SimpleControl transactions={transactions} maxTs={maxTs} isMobileView />
+      {!isAlpenglow && (
+        <SimpleControl transactions={transactions} maxTs={maxTs} isMobileView />
+      )}
       <ToggleSeriesControls transactions={transactions} />
       <CuControls transactions={transactions} />
       <div style={{ marginBottom: "8px" }}>
