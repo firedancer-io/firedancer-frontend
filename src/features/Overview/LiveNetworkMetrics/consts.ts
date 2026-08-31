@@ -7,4 +7,5 @@ export const networkProtocols = [
   "repair",
   "rserve",
   "metrics",
+  "votor",
 ] as const;
