@@ -45,12 +45,12 @@ export const enum SlotNode {
   BankNonceAdvanceFailed = "NonceAdvanceFailed",
   BankNonceWrongBlockhash = "NonceWrongBlockhash",
 
-  BlockSuccess = "Success",
-  BlockFailure = "Failure",
+  BlockSuccess = "Success:block",
+  BlockFailure = "Failure:block",
 
   Votes = "Votes",
-  NonVoteSuccess = "Non-vote Success",
-  NonVoteFailure = "Non-vote Failure",
+  NonVoteSuccess = "Success:txn",
+  NonVoteFailure = "Failure:txn",
 }
 
 export const tileNodes: SlotNode[] = [
