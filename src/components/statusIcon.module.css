@@ -7,3 +7,7 @@
   width: 15px;
   height: 15px;
 }
+
+.can-change {
+  opacity: 0.45;
+}

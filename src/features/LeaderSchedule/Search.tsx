@@ -14,13 +14,14 @@ import { useMount } from "react-use";
 import {
   discountedLateVoteSlotsAtom,
   leaderSlotsAtom,
+  missedVoteSlotsAtom,
   skipRateAtom,
   slotOverrideAtom,
 } from "../../atoms";
 import { useDebouncedCallback } from "use-debounce";
 import NextSlotStatus from "../Overview/SlotPerformance/NextSlotStatus";
 import styles from "./search.module.css";
-import { skippedSlotsAtom } from "../../api/atoms";
+import { isAlpenglowAtom, skippedSlotsAtom } from "../../api/atoms";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as Toggle from "@radix-ui/react-toggle";
 import { SearchTypeEnum } from "../../routes/leaderSchedule";
@@ -270,21 +271,23 @@ interface LateVoteSlotsProps {
 }
 
 function LateVoteSlots({ resetSearchText }: LateVoteSlotsProps) {
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
   const discountedLateVoteSlots = useAtomValue(discountedLateVoteSlotsAtom);
+  const missedVoteSlots = useAtomValue(missedVoteSlotsAtom);
   const setSearch = useSetAtom(searchLeaderSlotsAtom);
   const setSlotOverride = useSetAtom(slotOverrideAtom);
 
   const { searchType, setSearchType } = useSearchTypeSearchParam();
 
-  const slotCount = discountedLateVoteSlots.size;
+  const voteSlots = isAlpenglow ? missedVoteSlots : discountedLateVoteSlots;
+
+  const slotCount = voteSlots.size;
 
   const lateVoteLeaderSlots = useMemo(() => {
     return Array.from(
-      new Set(
-        [...discountedLateVoteSlots].map((slot) => getSlotGroupLeader(slot)),
-      ),
+      new Set([...voteSlots].map((slot) => getSlotGroupLeader(slot))),
     );
-  }, [discountedLateVoteSlots]);
+  }, [voteSlots]);
 
   const setLateVoteSlots = useCallback(() => {
     setSearch(lateVoteLeaderSlots);
@@ -312,10 +315,14 @@ function LateVoteSlots({ resetSearchText }: LateVoteSlotsProps) {
   };
 
   const isSelected = searchType === SearchTypeEnum.lateVoteSlots;
-  const isDisabled = !discountedLateVoteSlots.size;
+  const isDisabled = !slotCount;
+
+  const tooltip = isAlpenglow
+    ? "Number of slots this validator's vote missed the reward certificate for in the current epoch. Toggle to filter"
+    : "Number of slots this validator has voted late in the current epoch. Toggle to filter";
 
   return (
-    <Tooltip content="Number of slots this validator has voted late in the current epoch. Toggle to filter">
+    <Tooltip content={tooltip}>
       <div>
         <Reset>
           <Toggle.Root
@@ -325,11 +332,17 @@ function LateVoteSlots({ resetSearchText }: LateVoteSlotsProps) {
               isDisabled && styles.disabled,
             )}
             onClick={handleClick}
-            aria-label="Toggle late vote slots"
+            aria-label={
+              isAlpenglow
+                ? "Toggle missed vote slots"
+                : "Toggle late vote slots"
+            }
             pressed={isSelected}
             disabled={isDisabled}
           >
-            <Text className={styles.label}>My Late Votes</Text>
+            <Text className={styles.label}>
+              {isAlpenglow ? "My Missed Votes" : "My Late Votes"}
+            </Text>
             <Text>{slotCount}</Text>
           </Toggle.Root>
         </Reset>

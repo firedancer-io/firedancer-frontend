@@ -29,6 +29,10 @@ import {
   deleteLateVoteSlotAtom,
   clearLateVoteSlotsAtom,
   setLateVoteHistoryAtom,
+  setMissedVoteHistoryAtom,
+  clearMissedVoteSlotsAtom,
+  addMissedVoteSlotAtom,
+  deleteMissedVoteSlotAtom,
   deleteSkippedClusterSlotsRangeAtom,
   deleteSlotResponseBoundsAtom,
   deleteSlotStatusBoundsAtom,
@@ -51,7 +55,7 @@ import {
   resetRepairSlotsAtom,
   resetTurbineSlotsAtom,
 } from "../features/StartupProgress/Firedancer/CatchingUp/atoms";
-import { hasLateVote, slowDateTimeNow } from "../utils";
+import { hasLateVote, hasMissedVote, slowDateTimeNow } from "../utils";
 import {
   versionAtom,
   clusterAtom,
@@ -357,8 +361,12 @@ function useUpdateAtoms() {
 
   const addLateVoteSlots = useSetAtom(addLateVoteSlotAtom);
   const deleteLateVoteSlot = useSetAtom(deleteLateVoteSlotAtom);
+  const addMissedVoteSlot = useSetAtom(addMissedVoteSlotAtom);
+  const deleteMissedVoteSlot = useSetAtom(deleteMissedVoteSlotAtom);
   const clearLateVoteSlots = useSetAtom(clearLateVoteSlotsAtom);
   const setLateVoteHistory = useSetAtom(setLateVoteHistoryAtom);
+  const setMissedVoteHistory = useSetAtom(setMissedVoteHistoryAtom);
+  const clearMissedVoteSlots = useSetAtom(clearMissedVoteSlotsAtom);
 
   const handleSlotUpdate = useCallback(
     (value: SlotResponse) => {
@@ -384,6 +392,12 @@ function useUpdateAtoms() {
         }
       }
 
+      if (hasMissedVote(value.publish)) {
+        addMissedVoteSlot(value.publish.slot);
+      } else {
+        deleteMissedVoteSlot(value.publish.slot);
+      }
+
       if (value.publish.mine) {
         if (value.publish.skipped) {
           setSkippedSlots((prev) =>
@@ -405,8 +419,10 @@ function useUpdateAtoms() {
     },
     [
       addLateVoteSlots,
+      addMissedVoteSlot,
       addSkippedClusterSlots,
       deleteLateVoteSlot,
+      deleteMissedVoteSlot,
       deleteSkippedClusterSlot,
       setDirtySlotOnSkippedChange,
       setSkippedSlots,
@@ -760,6 +776,10 @@ function useUpdateAtoms() {
                 setLateVoteHistory(value);
               break;
             }
+            case "missed_vote_history": {
+              setMissedVoteHistory(value);
+              break;
+            }
           }
           break;
         case "block_engine": {
@@ -851,6 +871,7 @@ function useUpdateAtoms() {
       setSlotRankings,
       addLiveShreds,
       setLateVoteHistory,
+      setMissedVoteHistory,
       setBlockEngine,
       setSupermajorityEpoch,
       addToSupermajorityPeersBuffers,
@@ -890,7 +911,11 @@ function useUpdateAtoms() {
       startSlot: epoch.start_slot,
       endSlot: epoch.end_slot,
     });
-  }, [clearLateVoteSlots, epoch]);
+    clearMissedVoteSlots({
+      startSlot: epoch.start_slot,
+      endSlot: epoch.end_slot,
+    });
+  }, [clearLateVoteSlots, clearMissedVoteSlots, epoch]);
 
   const isStartup = useAtomValue(showStartupProgressAtom);
   const isSocketDisconnected =

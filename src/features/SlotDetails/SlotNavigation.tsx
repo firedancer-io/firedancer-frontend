@@ -288,7 +288,7 @@ function SlotNavItem({
     >
       <Text>{slot}</Text>
       {isSkipped ? (
-        <SkippedIcon size="large" />
+        <SkippedIcon size="large" isSkipped />
       ) : (
         <StatusIcon isCurrent={false} slot={slot} size="large" />
       )}

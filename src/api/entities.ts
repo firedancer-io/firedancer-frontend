@@ -459,7 +459,7 @@ export const slotTransactionsSchema = z.preprocess(
   }),
 );
 
-export const slotLevelSchema = z.enum([
+export const towerSlotLevelSchema = z.enum([
   "incomplete",
   "completed",
   "optimistically_confirmed",
@@ -467,15 +467,23 @@ export const slotLevelSchema = z.enum([
   "finalized",
 ]);
 
-export const slotPublishSchema = z.object({
+export const alpenglowSlotLevelSchema = z.enum([
+  "incomplete",
+  "completed",
+  "notarized",
+  "skip_notarized",
+  "rooted",
+  "skipped",
+]);
+
+export const slotLevelSchema = z.union([
+  towerSlotLevelSchema,
+  alpenglowSlotLevelSchema,
+]);
+
+const slotPublishBaseSchema = z.object({
   slot: z.number(),
   mine: z.boolean(),
-  skipped: z.boolean(),
-  level: slotLevelSchema,
-  success_nonvote_transaction_cnt: z.number().nullable(),
-  failed_nonvote_transaction_cnt: z.number().nullable(),
-  success_vote_transaction_cnt: z.number().nullable(),
-  failed_vote_transaction_cnt: z.number().nullable(),
   priority_fee: z.coerce.bigint().nullable(),
   transaction_fee: z.coerce.bigint().nullable(),
   tips: z.coerce.bigint().nullable(),
@@ -483,10 +491,58 @@ export const slotPublishSchema = z.object({
   compute_units: z.number().nullable(),
   duration_nanos: z.number().nullable(),
   completed_time_nanos: z.coerce.bigint().nullable(),
-  vote_latency: z.number().nullable().optional(),
-  vote_latency_exact: z.number().nullable().optional(),
-  is_voter: z.boolean().optional(),
+  is_voter: z.boolean().nullable().optional(),
 });
+
+export const towerSlotPublishSchema = slotPublishBaseSchema
+  .extend({
+    level: towerSlotLevelSchema,
+    skipped: z.boolean(),
+    success_nonvote_transaction_cnt: z.number().nullable(),
+    failed_nonvote_transaction_cnt: z.number().nullable(),
+    success_vote_transaction_cnt: z.number().nullable(),
+    failed_vote_transaction_cnt: z.number().nullable(),
+    vote_latency: z.number().nullable().optional(),
+    vote_latency_exact: z.number().nullable().optional(),
+  })
+  .transform(
+    ({
+      success_nonvote_transaction_cnt,
+      failed_nonvote_transaction_cnt,
+      ...p
+    }) => ({
+      ...p,
+      success_transaction_cnt: success_nonvote_transaction_cnt,
+      failed_transaction_cnt: failed_nonvote_transaction_cnt,
+      vote_rewarded: null,
+    }),
+  );
+
+export const alpenglowSlotPublishSchema = slotPublishBaseSchema
+  .extend({
+    level: alpenglowSlotLevelSchema,
+    success_transaction_cnt: z.number().nullable(),
+    failed_transaction_cnt: z.number().nullable(),
+    notarization_kind: z.enum(["regular", "fallback"]).nullable().optional(),
+    finalization_kind: z
+      .enum(["fast", "slow", "implicit"])
+      .nullable()
+      .optional(),
+    vote_rewarded: z.boolean().nullable().optional(),
+  })
+  .transform((p) => ({
+    ...p,
+    skipped: p.level === "skipped" || p.level === "skip_notarized",
+    success_vote_transaction_cnt: null,
+    failed_vote_transaction_cnt: null,
+    vote_latency: null,
+    vote_latency_exact: null,
+  }));
+
+export const slotPublishSchema = z.union([
+  towerSlotPublishSchema,
+  alpenglowSlotPublishSchema,
+]);
 
 export const tpsHistorySchema = z.array(
   z.tuple([
@@ -1039,6 +1095,12 @@ export const slotSchema = z.discriminatedUnion("key", [
         latency_exact: z.number().nullable().array(),
       }),
     ]),
+  }),
+  slotTopicSchema.extend({
+    key: z.literal("missed_vote_history"),
+    value: z.object({
+      slot: z.number().array(),
+    }),
   }),
 ]);
 

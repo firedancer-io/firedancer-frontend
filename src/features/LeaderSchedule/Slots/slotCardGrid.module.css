@@ -19,6 +19,12 @@
       minMax(70px, auto) minMax(70px, auto) minMax(80px, auto)
       minMax(149px, auto);
   }
+
+  &.alpenglow-grid {
+    grid:
+      auto-flow / minMax(40px, auto) minMax(80px, auto) minMax(70px, auto)
+      minMax(70px, auto) minMax(80px, auto) minMax(149px, auto);
+  }
 }
 
 .header-text {

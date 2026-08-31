@@ -341,11 +341,15 @@ function getSlotStatusColorStyles(publish?: SlotPublish): CSSProperties {
   if (!publish) return {};
   if (publish.skipped) return { backgroundColor: slotStatusRed };
   switch (publish.level) {
+    case "skipped":
+    case "skip_notarized":
+      return { backgroundColor: slotStatusRed };
     case "incomplete":
       return {};
     case "completed":
       return { borderColor: slotStatusGreen };
     case "optimistically_confirmed":
+    case "notarized":
       return { backgroundColor: slotStatusGreen };
     case "finalized":
     case "rooted":
