@@ -4,8 +4,17 @@ import Card from "../../../components/Card";
 import CardStat from "../../../components/CardStat";
 import { useAtomValue } from "jotai";
 import styles from "./statusCard.module.css";
-import { currentSlotAtom, epochAtom, slotDurationAtom } from "../../../atoms";
-import { voteDistanceAtom, voteStateAtom } from "../../../api/atoms";
+import {
+  alpenglowVoteDistanceAtom,
+  currentSlotAtom,
+  epochAtom,
+  slotDurationAtom,
+} from "../../../atoms";
+import {
+  isAlpenglowAtom,
+  voteDistanceAtom,
+  voteStateAtom,
+} from "../../../api/atoms";
 import {
   failureColor,
   headerColor,
@@ -105,7 +114,10 @@ function NextEpochTimeText() {
 
 function VotingStatusText() {
   const voteState = useAtomValue(voteStateAtom);
-  const voteDistance = useAtomValue(voteDistanceAtom);
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
+  const voteDistance = useAtomValue(
+    isAlpenglow ? alpenglowVoteDistanceAtom : voteDistanceAtom,
+  );
 
   const voteColor = useMemo(() => {
     if (voteState === "voting") {
