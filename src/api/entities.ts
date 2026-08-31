@@ -853,7 +853,6 @@ const peerUpdateVoteAccountSchema = z.object({
   activated_stake: z.coerce.bigint(),
   last_vote: z.nullable(z.number()),
   root_slot: z.nullable(z.number()),
-  epoch_credits: z.number(),
   commission: z.number(),
   delinquent: z.boolean(),
 });
