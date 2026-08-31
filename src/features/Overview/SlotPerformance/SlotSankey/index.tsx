@@ -489,8 +489,8 @@ function SlotSankey({ slot }: { slot?: number }) {
           query.response?.publish.duration_nanos,
           query.response?.publish.success_vote_transaction_cnt,
           query.response?.publish.failed_vote_transaction_cnt,
-          query.response?.publish.success_nonvote_transaction_cnt,
-          query.response?.publish.failed_nonvote_transaction_cnt,
+          query.response?.publish.success_transaction_cnt,
+          query.response?.publish.failed_transaction_cnt,
         );
 
     const linkNodes = links.flatMap((l) => [l.source, l.target]);
@@ -503,9 +503,9 @@ function SlotSankey({ slot }: { slot?: number }) {
     displayType,
     liveWaterfall,
     query.response?.publish.duration_nanos,
-    query.response?.publish.failed_nonvote_transaction_cnt,
+    query.response?.publish.failed_transaction_cnt,
     query.response?.publish.failed_vote_transaction_cnt,
-    query.response?.publish.success_nonvote_transaction_cnt,
+    query.response?.publish.success_transaction_cnt,
     query.response?.publish.success_vote_transaction_cnt,
     query.response?.waterfall,
   ]);

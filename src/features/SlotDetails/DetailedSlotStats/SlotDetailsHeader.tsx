@@ -96,11 +96,11 @@ export default function SlotDetailsHeader() {
       <Flex direction="column" gap={gap}>
         <LabelValue
           label="Non-votes"
-          value={slotPublish?.success_nonvote_transaction_cnt?.toLocaleString()}
+          value={slotPublish?.success_transaction_cnt?.toLocaleString()}
         />
         <LabelValue
           label="Non-vote Failures"
-          value={slotPublish?.failed_nonvote_transaction_cnt?.toLocaleString()}
+          value={slotPublish?.failed_transaction_cnt?.toLocaleString()}
         />
       </Flex>
     </Grid>

@@ -10,8 +10,12 @@ import { useMedia } from "react-use";
 import clsx from "clsx";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
-import { discountedLateVoteSlotsAtom } from "../../../atoms";
+import {
+  discountedLateVoteSlotsAtom,
+  missedVoteSlotsAtom,
+} from "../../../atoms";
 import { useAtomValue } from "jotai";
+import { isAlpenglowAtom } from "../../../api/atoms";
 import { mediumScreenMedia, wideScreenMedia } from "./consts";
 
 interface PastSlotCardProps {
@@ -20,14 +24,17 @@ interface PastSlotCardProps {
 
 export function PastSlotCard({ slot }: PastSlotCardProps) {
   const { isLeader } = useSlotInfo(slot);
+  const isAlpenglow = useAtomValue(isAlpenglowAtom);
   const discountedLateVoteSlots = useAtomValue(discountedLateVoteSlotsAtom);
+  const missedVoteSlots = useAtomValue(missedVoteSlotsAtom);
+  const voteSlots = isAlpenglow ? missedVoteSlots : discountedLateVoteSlots;
 
   const query = useSlotQueryPublish(slot);
   const query1 = useSlotQueryPublish(slot + 1);
   const query2 = useSlotQueryPublish(slot + 2);
   const query3 = useSlotQueryPublish(slot + 3);
   const isLateVote = [0, 1, 2, 3].some((offset) =>
-    discountedLateVoteSlots.has(slot + offset),
+    voteSlots.has(slot + offset),
   );
 
   const isSkipped =

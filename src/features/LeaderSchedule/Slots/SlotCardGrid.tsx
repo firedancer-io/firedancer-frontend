@@ -19,19 +19,16 @@ import {
   solDecimals,
 } from "../../../consts";
 import { formatNumberLamports } from "../../Overview/ValidatorsCard/formatAmt";
+import { successColor } from "../../../colors";
 import {
   setScrollFuncsAtom,
   deleteScrollFuncsAtom,
   scrollAllFuncsAtom,
 } from "./atoms";
 import clsx from "clsx";
-import { identityKeyAtom } from "../../../api/atoms";
+import { identityKeyAtom, isAlpenglowAtom } from "../../../api/atoms";
 import { usePubKey } from "../../../hooks/usePubKey";
-import {
-  PlaceholderIcon,
-  SkippedIcon,
-  StatusIcon,
-} from "../../../components/StatusIcon";
+import { SkippedIcon, StatusIcon } from "../../../components/StatusIcon";
 import LinkedSlotText from "./SlotText";
 import { isFiredancer } from "../../../client";
 
@@ -45,6 +42,7 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
   const setScroll = useSetAtom(setScrollFuncsAtom);
   const deleteScroll = useSetAtom(deleteScrollFuncsAtom);
   const scrollAll = useSetAtom(scrollAllFuncsAtom);
+  const isAlpenglow = !!useAtomValue(isAlpenglowAtom);
 
   useEffect(() => {
     setScroll(slot, (scrollLeft: number) => {
@@ -57,7 +55,10 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
     <Flex minWidth="0" flexGrow="1">
       <SlotColumn slot={slot} currentSlot={currentSlot} />
       <div
-        className={clsx(styles.grid, { [styles.firedancerGrid]: isFiredancer })}
+        className={clsx(styles.grid, {
+          [styles.firedancerGrid]: isFiredancer && !isAlpenglow,
+          [styles.alpenglowGrid]: isFiredancer && isAlpenglow,
+        })}
         ref={ref}
         onScroll={(e) => {
           scrollAll(slot, e.currentTarget.scrollLeft);
@@ -68,20 +69,22 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
             className={clsx(styles.headerText, styles.voteLatencyHeader)}
             align="right"
           >
-            Vote&nbsp;Latency
+            {isAlpenglow ? <>Voted</> : <>Vote&nbsp;Latency</>}
           </Text>
         )}
-        <Text
-          className={clsx(styles.headerText, styles.votesHeader)}
-          align="right"
-        >
-          Votes
-        </Text>
+        {!isAlpenglow && (
+          <Text
+            className={clsx(styles.headerText, styles.votesHeader)}
+            align="right"
+          >
+            Votes
+          </Text>
+        )}
         <Text
           className={clsx(styles.headerText, styles.nonVotesHeader)}
           align="right"
         >
-          Non-votes
+          {isAlpenglow ? "Transactions" : "Non-votes"}
         </Text>
         <Text
           className={clsx(styles.headerText, styles.feesHeader)}
@@ -95,10 +98,7 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
         >
           Tips
         </Text>
-        <Text
-          className={clsx(styles.headerText, styles.durationHeader)}
-          align="right"
-        >
+        <Text className={clsx(styles.headerText)} align="right">
           Duration
         </Text>
         <Text
@@ -167,18 +167,18 @@ function SlotText({ slot, isCurrent }: SlotTextProps) {
       <LinkedSlotText slot={slot} isLeader={isLeader} />
 
       <StatusIcon slot={slot} isCurrent={isCurrent} size="small" />
-      {queryPublish.publish?.skipped ? (
-        <SkippedIcon size="small" />
-      ) : (
-        <PlaceholderIcon size="small" />
-      )}
+      <SkippedIcon
+        size="small"
+        isSkipped={queryPublish.publish?.skipped}
+        canChange={queryPublish.publish?.level === "skip_notarized"}
+      />
     </Flex>
   );
 }
 
 interface RowValues {
   voteTxns: string;
-  nonVoteTxns: string;
+  txns: string;
   totalFees: string;
   transactionFeeFull: string;
   priorityFeeFull: string;
@@ -198,15 +198,12 @@ interface SlotCardRowProps {
 function getRowValues(
   publish: SlotPublish,
   skippedClusterSlots: Set<number>,
+  isAlpenglow: boolean,
 ): RowValues {
   const voteTxnsSuccess = fixValue(publish.success_vote_transaction_cnt ?? 0);
-  const nonVoteTxnsSuccess = fixValue(
-    publish.success_nonvote_transaction_cnt ?? 0,
-  );
   const voteTxnsFailure = fixValue(publish.failed_vote_transaction_cnt ?? 0);
-  const nonVoteTxnsFailure = fixValue(
-    publish.failed_nonvote_transaction_cnt ?? 0,
-  );
+  const txnsSuccess = fixValue(publish.success_transaction_cnt ?? 0);
+  const txnsFailure = fixValue(publish.failed_transaction_cnt ?? 0);
   const totalFees = formatNumberLamports(
     (publish.transaction_fee ?? 0n) + (publish.priority_fee ?? 0n),
     solDecimals,
@@ -259,20 +256,28 @@ function getRowValues(
           )
         : null;
 
-  const voteLatency =
-    publish.is_voter === false
+  const voteRewarded = publish.vote_rewarded;
+  const voteLatency = isAlpenglow
+    ? publish.is_voter === false
+      ? { text: "-" }
+      : voteRewarded === true
+        ? { text: "✓", color: successColor }
+        : voteRewarded === false
+          ? { text: "✕", color: "#FF3C3C" }
+          : { text: "-" }
+    : publish.is_voter === false
       ? { text: "-" }
       : discountedLatency != null
         ? { text: discountedLatency.toLocaleString() }
         : publish.skipped
-          ? { text: "-" }
+          ? { text: "" }
           : publish.level === "rooted"
             ? { text: "✕", color: "#FF3C3C" }
             : { text: "-" };
 
   return {
     voteTxns: (voteTxnsSuccess + voteTxnsFailure).toLocaleString(),
-    nonVoteTxns: (nonVoteTxnsSuccess + nonVoteTxnsFailure).toLocaleString(),
+    txns: (txnsSuccess + txnsFailure).toLocaleString(),
     totalFees,
     transactionFeeFull,
     priorityFeeFull,
@@ -289,19 +294,22 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
   const firstProcessedSlot = useAtomValue(firstProcessedSlotAtom);
   const currentSlot = useAtomValue(currentSlotAtom);
   const skippedClusterSlots = useAtomValue(skippedClusterSlotsAtom);
+  const isAlpenglow = !!useAtomValue(isAlpenglowAtom);
 
   const queryPublish = useSlotQueryPublish(slot);
 
   const [values, setValues] = useState<RowValues | undefined>(() => {
     if (!queryPublish.publish) return;
-    return getRowValues(queryPublish.publish, skippedClusterSlots);
+    return getRowValues(queryPublish.publish, skippedClusterSlots, isAlpenglow);
   });
 
   useEffect(() => {
     if (queryPublish.publish) {
-      setValues(getRowValues(queryPublish.publish, skippedClusterSlots));
+      setValues(
+        getRowValues(queryPublish.publish, skippedClusterSlots, isAlpenglow),
+      );
     }
-  }, [queryPublish.publish, skippedClusterSlots, slot]);
+  }, [queryPublish.publish, skippedClusterSlots, slot, isAlpenglow]);
 
   const isFuture = slot > (currentSlot ?? Infinity);
   const isCurrent = slot === currentSlot;
@@ -351,11 +359,13 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
           {getText(values?.voteLatency.text)}
         </Text>
       )}
+      {!isAlpenglow && (
+        <Text className={valueClassName} align="right">
+          {getText(values?.voteTxns)}
+        </Text>
+      )}
       <Text className={valueClassName} align="right">
-        {getText(values?.voteTxns)}
-      </Text>
-      <Text className={valueClassName} align="right">
-        {getText(values?.nonVoteTxns)}
+        {getText(values?.txns)}
       </Text>
       <Tooltip
         content={

@@ -573,6 +573,10 @@ export function hasLateVote(publish: SlotPublish) {
   );
 }
 
+export function hasMissedVote(publish: SlotPublish) {
+  return publish.is_voter && publish.vote_rewarded === false;
+}
+
 export function getDiscountedVoteLatency(
   slot: number,
   latency: number,

@@ -349,8 +349,8 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       mine: false,
       skipped: false,
       level: "optimistically_confirmed",
-      success_nonvote_transaction_cnt: null,
-      failed_nonvote_transaction_cnt: null,
+      success_transaction_cnt: null,
+      failed_transaction_cnt: null,
       success_vote_transaction_cnt: null,
       failed_vote_transaction_cnt: null,
       priority_fee: null,
@@ -361,6 +361,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       duration_nanos: null,
       completed_time_nanos: null,
       vote_latency: 2,
+      vote_rewarded: null,
     };
     expect(hasLateVote(publish)).toBeFalsy();
     expect(
@@ -378,8 +379,8 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       mine: false,
       skipped: false,
       level: "rooted",
-      success_nonvote_transaction_cnt: null,
-      failed_nonvote_transaction_cnt: null,
+      success_transaction_cnt: null,
+      failed_transaction_cnt: null,
       success_vote_transaction_cnt: null,
       failed_vote_transaction_cnt: null,
       priority_fee: null,
@@ -390,6 +391,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       duration_nanos: null,
       completed_time_nanos: null,
       vote_latency: null,
+      vote_rewarded: null,
     };
     expect(hasLateVote(publish)).toBeTruthy();
     expect(hasLateVote({ ...publish, skipped: true })).toBeFalsy();
@@ -402,8 +404,8 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       mine: false,
       skipped: false,
       level: "rooted",
-      success_nonvote_transaction_cnt: null,
-      failed_nonvote_transaction_cnt: null,
+      success_transaction_cnt: null,
+      failed_transaction_cnt: null,
       success_vote_transaction_cnt: null,
       failed_vote_transaction_cnt: null,
       priority_fee: null,
@@ -414,6 +416,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       duration_nanos: null,
       completed_time_nanos: null,
       vote_latency: 2,
+      vote_rewarded: null,
     };
     expect(hasLateVote(publish)).toBeTruthy();
     expect(
@@ -432,8 +435,8 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       mine: false,
       skipped: false,
       level: "rooted",
-      success_nonvote_transaction_cnt: null,
-      failed_nonvote_transaction_cnt: null,
+      success_transaction_cnt: null,
+      failed_transaction_cnt: null,
       success_vote_transaction_cnt: null,
       failed_vote_transaction_cnt: null,
       priority_fee: null,
@@ -444,6 +447,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       duration_nanos: null,
       completed_time_nanos: null,
       vote_latency: 5,
+      vote_rewarded: null,
     };
     expect(hasLateVote(publish)).toBeTruthy();
     expect(
@@ -462,8 +466,8 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       mine: false,
       skipped: false,
       level: "rooted",
-      success_nonvote_transaction_cnt: null,
-      failed_nonvote_transaction_cnt: null,
+      success_transaction_cnt: null,
+      failed_transaction_cnt: null,
       success_vote_transaction_cnt: null,
       failed_vote_transaction_cnt: null,
       priority_fee: null,
@@ -474,6 +478,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       duration_nanos: null,
       completed_time_nanos: null,
       vote_latency: 5,
+      vote_rewarded: null,
     };
     expect(hasLateVote(publish)).toBeTruthy();
     expect(
@@ -492,8 +497,8 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       mine: false,
       skipped: false,
       level: "rooted",
-      success_nonvote_transaction_cnt: null,
-      failed_nonvote_transaction_cnt: null,
+      success_transaction_cnt: null,
+      failed_transaction_cnt: null,
       success_vote_transaction_cnt: null,
       failed_vote_transaction_cnt: null,
       priority_fee: null,
@@ -504,6 +509,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       duration_nanos: null,
       completed_time_nanos: null,
       vote_latency: 5,
+      vote_rewarded: null,
     };
     expect(hasLateVote(publish)).toBeTruthy();
     expect(
@@ -520,8 +526,8 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
     mine: false,
     skipped: false,
     level: "rooted",
-    success_nonvote_transaction_cnt: null,
-    failed_nonvote_transaction_cnt: null,
+    success_transaction_cnt: null,
+    failed_transaction_cnt: null,
     success_vote_transaction_cnt: null,
     failed_vote_transaction_cnt: null,
     priority_fee: null,
@@ -534,6 +540,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
     vote_latency: null,
     vote_latency_exact: null,
     is_voter: true,
+    vote_rewarded: null,
     ...overrides,
   });
 

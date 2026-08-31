@@ -154,11 +154,7 @@ export const slotNavFilterAtom = (function getSlotNavFilterAtom() {
 export const setSlotStatusAtom = atom(
   null,
   (_, set, slot: number, level: SlotLevel) => {
-    if (
-      level === "completed" ||
-      level === "optimistically_confirmed" ||
-      level === "rooted"
-    ) {
+    if (level !== "incomplete") {
       set(currentSlotAtom, slot + 1);
     }
     set(slotStatusAtom, (draft) => {
@@ -1002,6 +998,57 @@ export const [
   clearLateVoteSlotsAtom,
   setLateVoteHistoryAtom,
 ] = isFrankendancer ? frankendancerLateVoteAtoms : firedancerLateVoteAtoms;
+
+export const [
+  missedVoteSlotsAtom,
+  setMissedVoteHistoryAtom,
+  clearMissedVoteSlotsAtom,
+  addMissedVoteSlotAtom,
+  deleteMissedVoteSlotAtom,
+] = (function getMissedVoteSlotsAtom() {
+  const _missedVoteSlotsAtom = atomWithImmer(new Set<number>());
+
+  return [
+    atom((get) => get(_missedVoteSlotsAtom)),
+
+    atom(null, (_get, set, value: { slot: number[] }) => {
+      const newMissedVoteSlots = new Set<number>();
+      for (let i = 0; i < value.slot.length; i += 2) {
+        for (let slot = value.slot[i]; slot <= value.slot[i + 1]; slot++) {
+          newMissedVoteSlots.add(slot);
+        }
+      }
+      set(_missedVoteSlotsAtom, newMissedVoteSlots);
+    }),
+
+    atom(null, (_get, set, keep?: { startSlot: number; endSlot: number }) => {
+      set(_missedVoteSlotsAtom, (draft) => {
+        if (!keep) {
+          draft.clear();
+          return;
+        }
+
+        for (const slot of draft) {
+          if (slot < keep.startSlot || keep.endSlot < slot) {
+            draft.delete(slot);
+          }
+        }
+      });
+    }),
+
+    atom(null, (_get, set, slot: number) => {
+      set(_missedVoteSlotsAtom, (draft) => {
+        draft.add(slot);
+      });
+    }),
+
+    atom(null, (_get, set, slot: number) => {
+      set(_missedVoteSlotsAtom, (draft) => {
+        draft.delete(slot);
+      });
+    }),
+  ] as const;
+})();
 
 export const quickSearchSlotsAtom = atom((get) => {
   const leaderSlots = get(leaderSlotsAtom);
