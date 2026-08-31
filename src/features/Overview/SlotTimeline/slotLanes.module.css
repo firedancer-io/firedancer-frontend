@@ -1,0 +1,146 @@
+.grid {
+  row-gap: 2px;
+  grid-auto-rows: 15px;
+}
+
+.next-slot {
+  flex-grow: 1;
+  background-color: var(--gray-5);
+  opacity: 30%;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.next-leader-timer-container {
+  align-self: center;
+  justify-self: center;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  background-color: #131720;
+
+  .next-leader-timer-label {
+    color: #919191;
+    flex-shrink: 100000000000;
+    min-width: 0;
+  }
+  .next-leader-time {
+    color: #bcbcbc;
+    font-weight: 600;
+    min-width: 0;
+  }
+}
+
+.slot-lane-stats {
+  display: contents;
+  font-size: 12px;
+  .slot-text {
+    color: #b1b1b1;
+  }
+  .slot-dt {
+    font-weight: 600;
+    min-width: 20px;
+  }
+}
+
+.slot-lane-bars {
+  display: contents;
+
+  .slot-cell {
+    position: relative;
+    border-radius: 2px;
+
+    &.transparent {
+      background-color: transparent;
+    }
+
+    .highlight {
+      border-radius: 2px;
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      min-width: max(1px, 100%);
+    }
+  }
+}
+
+.storage {
+  color: #a09000;
+  .slot-cell {
+    background-color: #21231d;
+    .highlight {
+      background-color: #666025;
+    }
+  }
+}
+
+.root {
+  color: #0abf9e;
+  .slot-cell {
+    background-color: #12282d;
+    .highlight {
+      background-color: #3b7a6c;
+    }
+  }
+}
+
+.vote {
+  color: #4aa7c1;
+  .slot-cell {
+    background-color: #192530;
+    .highlight {
+      background-color: #446c7f;
+    }
+  }
+}
+
+.replay {
+  color: #08a24d;
+  .slot-cell {
+    background-color: #122524;
+    .highlight {
+      background-color: #326940;
+    }
+  }
+}
+
+.repair {
+  color: #ac4902;
+  .slot-cell {
+    background-color: #221c1d;
+    .highlight {
+      background-color: #68391b;
+    }
+  }
+}
+
+.turbine {
+  color: #3f7bf4;
+  .slot-cell {
+    background-color: #172135;
+    .highlight {
+      background-color: #3b529b;
+    }
+  }
+}
+
+.confirmed {
+  color: #af49f2;
+  .slot-cell {
+    background-color: #231c35;
+    .highlight {
+      background-color: #6c3999;
+    }
+  }
+}
+
+.nextLeader {
+  color: #2497ee;
+  .slot-cell {
+    background-color: #152435;
+    .highlight {
+      background-color: #386398;
+    }
+  }
+}
