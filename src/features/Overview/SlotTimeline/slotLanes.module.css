@@ -75,7 +75,8 @@
   }
 }
 
-.root {
+.root,
+.finalized {
   color: #0abf9e;
   .slot-cell {
     background-color: #12282d;
@@ -125,7 +126,8 @@
   }
 }
 
-.confirmed {
+.confirmed,
+.notarized {
   color: #af49f2;
   .slot-cell {
     background-color: #231c35;
