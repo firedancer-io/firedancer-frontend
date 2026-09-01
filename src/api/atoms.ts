@@ -6,6 +6,7 @@ import type {
   IdentityKey,
   RootSlot,
   OptimisticallyConfirmedSlot,
+  NotarizedSlot,
   CompletedSlot,
   EstimatedSlot,
   EstimatedTps,
@@ -44,6 +45,7 @@ import type {
   AccountsStats,
   VoteCommission,
   IsAlpenglow,
+  FinalizedSlot,
 } from "./types";
 import { rafAtom } from "../atomUtils";
 import type { ValuesWithHistory } from "./worker/types";
@@ -79,6 +81,10 @@ export const rootSlotAtom = atom<RootSlot | undefined>(undefined);
 export const optimisticallyConfirmedSlotAtom = atom<
   OptimisticallyConfirmedSlot | undefined
 >(undefined);
+
+export const notarizedSlotAtom = atom<NotarizedSlot | undefined>(undefined);
+
+export const finalizedSlotAtom = atom<FinalizedSlot | undefined>(undefined);
 
 export const completedSlotAtom = atom<CompletedSlot | undefined>(undefined);
 export const serverTimeNanosAtom = atom<ServerTimeNanos | undefined>(undefined);

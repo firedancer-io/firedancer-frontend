@@ -98,12 +98,14 @@ import {
   voteSlotAtom,
   rootSlotAtom,
   optimisticallyConfirmedSlotAtom,
+  notarizedSlotAtom,
   liveProgramCacheAtom,
   slotCaughtUpAtom,
   healthAtom,
   accountsStatsAtom,
   voteCommissionAtom,
   isAlpenglowAtom,
+  finalizedSlotAtom,
 } from "./atoms";
 import {
   tpsSampleIntervalMs,
@@ -459,6 +461,8 @@ function useUpdateAtoms() {
   const setOptimisticallyConfirmedSlot = useSetAtom(
     optimisticallyConfirmedSlotAtom,
   );
+  const setNotarizedSlot = useSetAtom(notarizedSlotAtom);
+  const setFinalizedSlot = useSetAtom(finalizedSlotAtom);
   const setSlotCaughtUp = useSetAtom(slotCaughtUpAtom);
 
   const addLiveShreds = useSetAtom(shredsAtoms.addShredEvents);
@@ -675,6 +679,14 @@ function useUpdateAtoms() {
               setOptimisticallyConfirmedSlot(value);
               break;
             }
+            case "notarized_slot": {
+              setNotarizedSlot(value);
+              break;
+            }
+            case "finalized_slot": {
+              setFinalizedSlot(value);
+              break;
+            }
             case "slot_caught_up":
               setSlotCaughtUp(value);
               break;
@@ -855,6 +867,8 @@ function useUpdateAtoms() {
       setVoteSlot,
       setRootSlot,
       setOptimisticallyConfirmedSlot,
+      setNotarizedSlot,
+      setFinalizedSlot,
       addTurbineSlots,
       addRepairSlots,
       setServerTimeNanos,

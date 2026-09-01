@@ -15,6 +15,7 @@ import type {
   liveTilePrimaryMetricSchema,
   liveTxnWaterfallSchema,
   optimisticallyConfirmedSlotSchema,
+  notarizedSlotSchema,
   peerRemoveSchema,
   peerUpdateSchema,
   rootSlotSchema,
@@ -79,6 +80,7 @@ import type {
   compactionStateSchema,
   voteCommissionSchema,
   isAlpenglowSchema,
+  finalizedSlotSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -108,6 +110,10 @@ export type RootSlot = z.infer<typeof rootSlotSchema>;
 export type OptimisticallyConfirmedSlot = z.infer<
   typeof optimisticallyConfirmedSlotSchema
 >;
+
+export type NotarizedSlot = z.infer<typeof notarizedSlotSchema>;
+
+export type FinalizedSlot = z.infer<typeof finalizedSlotSchema>;
 
 export type CompletedSlot = z.infer<typeof completedSlotSchema>;
 
