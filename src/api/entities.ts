@@ -23,6 +23,10 @@ const slotTopicSchema = z.object({
   topic: z.literal("slot"),
 });
 
+const timelineTopicSchema = z.object({
+  topic: z.literal("timeline"),
+});
+
 const blockEngineTopicSchema = z.object({
   topic: z.literal("block_engine"),
 });
@@ -1224,5 +1228,51 @@ export const accountsSchema = z.discriminatedUnion("key", [
   accountsTopicSchema.extend({
     key: z.literal("stats"),
     value: accountsStatsSchema,
+  }),
+]);
+
+export const aggGranularitySchema = z.enum([
+  "250ms",
+  "500ms",
+  "1s",
+  "2s",
+  "4s",
+  "8s",
+  "15s",
+  "30s",
+  "1m",
+  "2m",
+  "4m",
+  "8m",
+  "15m",
+  "30m",
+  "1h",
+  "2h",
+  "4h",
+  "8h",
+  "12h",
+  "1d",
+]);
+
+export enum RevenueType {
+  TxnFees = "txn_fees",
+  PrioFees = "prio_fees",
+  Tips = "tips",
+}
+
+export const revenueTypeSchema = z.enum(["txn_fees", "prio_fees", "tips"]);
+
+export const aggRevenueSchema = z.object({
+  granularity: aggGranularitySchema,
+  reference_ts_ns: z.coerce.bigint(),
+  [RevenueType.TxnFees]: z.array(z.coerce.bigint().nullable()),
+  [RevenueType.PrioFees]: z.array(z.coerce.bigint().nullable()),
+  [RevenueType.Tips]: z.array(z.coerce.bigint().nullable()),
+});
+
+export const timelineSchema = z.discriminatedUnion("key", [
+  timelineTopicSchema.extend({
+    key: z.literal("query_agg_revenue"),
+    value: aggRevenueSchema,
   }),
 ]);

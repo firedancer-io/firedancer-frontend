@@ -15,10 +15,14 @@ import {
 } from "../atoms";
 import { shredEventDescPriorities } from "../const";
 import { updateLabels } from "../shredsProgressionPlugin";
-import type { SlotMesh, WebglResources } from "../../../WebGl/webglUtils";
+import type {
+  RectMesh,
+  TsRange,
+  WebglResources,
+} from "../../../WebGl/webglUtils";
 import {
-  createSlotMesh,
-  updateSlotMeshCounts,
+  createRectMesh,
+  updateRectMeshCounts,
   ensureCapacity,
   addRectangleToMesh,
   convertToWebGlColor,
@@ -48,6 +52,7 @@ import { isWebgl2SupportedAtom } from "../../../WebGl/atoms";
 
 const store = getDefaultStore();
 
+const SHREDS_OPACITY = 0.8;
 const SKIPPED_SLOT_DOT_DURATION_MS = 10;
 
 const tempEventPositions = new Map<
@@ -59,8 +64,8 @@ export type RendererObj = {
   renderer: THREE.WebGLRenderer;
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
-  meshes: Map<number, SlotMesh>;
-  availableMeshes: SlotMesh[];
+  meshes: Map<number, RectMesh>;
+  availableMeshes: RectMesh[];
   worldTsRange: TsRange;
   // resources shared by this renderer's slot meshes
   resources: WebglResources;
@@ -110,9 +115,9 @@ export function setUpRenderer(
     renderer.setSize(canvasWidth, canvasHeight);
     renderer.setClearColor(0x000000, 0);
 
-    const meshes = new Map<number, SlotMesh>();
-    const availableMeshes: SlotMesh[] = [];
-    const resources = createWebglResources();
+    const meshes = new Map<number, RectMesh>();
+    const availableMeshes: RectMesh[] = [];
+    const resources = createWebglResources(SHREDS_OPACITY);
     renderer.render(scene, camera);
     const clearContextListeners = setUpContextListeners(renderer.domElement);
 
@@ -122,11 +127,11 @@ export function setUpRenderer(
       // Three doesn't restore GPU objects for restored contexts unless there's a render.
       // Remount on restore to reset the context listeners state
       if (!getWasContextLost()) {
-        for (const slotMesh of meshes.values()) {
-          slotMesh.mesh.geometry.dispose();
+        for (const rectMesh of meshes.values()) {
+          rectMesh.mesh.geometry.dispose();
         }
-        for (const slotMesh of availableMeshes) {
-          slotMesh.mesh.geometry.dispose();
+        for (const rectMesh of availableMeshes) {
+          rectMesh.mesh.geometry.dispose();
         }
         // dispose this chart's own unitQuad / sharedMaterial
         disposeWebglResources(resources);
@@ -241,7 +246,7 @@ export function draw(
     const isNewMesh = !slotMesh;
     if (!slotMesh) {
       const lastMesh = rendererObj.availableMeshes.pop();
-      slotMesh = lastMesh ?? createSlotMesh(rendererObj.resources);
+      slotMesh = lastMesh ?? createRectMesh(rendererObj.resources);
       rendererObj.meshes.set(slotNumber, slotMesh);
       rendererObj.scene.add(slotMesh.mesh);
     }
@@ -274,7 +279,7 @@ export function draw(
         anythingDrawn = true;
       }
     }
-    updateSlotMeshCounts(slotMesh, rectangleIdx);
+    updateRectMeshCounts(slotMesh, rectangleIdx);
   }
 
   store.set(minDirtySlotByChartAtom, (prev) => {
@@ -337,14 +342,12 @@ function updateVisibleXRange(
   return true;
 }
 
-export type TsRange = [startTs: number, endTs: number];
-
 interface AddEventsForRowArgs {
   tempEventPositions: Map<
     Exclude<ShredEvent, ShredEvent.slot_complete>,
     { x: number; w: number }
   >;
-  slotMesh: SlotMesh;
+  slotMesh: RectMesh;
   startRectangleIdx: number;
   eventTsDeltas: ShredEventTsDeltas;
   slotCompletionTsDelta: number | undefined;
