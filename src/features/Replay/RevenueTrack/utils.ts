@@ -4,11 +4,11 @@ import {
   createWebglResources,
   createRectMesh,
   disposeWebglResources,
-  type SlotMesh,
+  type RectMesh,
   type WebglResources,
   ensureCapacity,
   addRectangleToMesh,
-  updateSlotMeshCounts,
+  updateRectMeshCounts,
   type RgbColor,
   type TsRange,
   createRenderer,
@@ -42,7 +42,7 @@ export interface AggResources {
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
   resources: WebglResources;
-  mesh: SlotMesh;
+  mesh: RectMesh;
   /**
    * origin ms subtracted from both the camera bounds and
    * the rectangle geometry so the GPU works with small, float32-precise coordinates
@@ -153,15 +153,13 @@ export function drawAggRevenue(
   const { cameraReferenceMs, mesh } = rendererObj.aggResources;
 
   /** store mesh positions relative to referenceX. This allows GPU to see small coordinates */
-  if (mesh.referenceX == null) {
-    mesh.referenceX = cameraReferenceMs;
-  }
-  mesh.mesh.position.x = mesh.referenceX - cameraReferenceMs;
+  mesh.referenceX = cameraReferenceMs;
+  mesh.mesh.position.x = 0;
 
   // draw nothing if max value is 0
   const dataCount = maxValue === 0n ? 0 : data.length;
   ensureCapacity(mesh, dataCount);
-  updateSlotMeshCounts(mesh, dataCount);
+  updateRectMeshCounts(mesh, dataCount);
 
   for (let rectangleIdx = 0; rectangleIdx < dataCount; rectangleIdx++) {
     const [value, startMs] = data[rectangleIdx];

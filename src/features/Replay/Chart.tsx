@@ -82,8 +82,8 @@ export default function Chart({ startupTimeNs }: ChartProps) {
       };
 
       const setSelectedMs = (ts: number | undefined) => {
-        broadcastSelectedMsChange();
         selectedMsRef.current = ts;
+        broadcastSelectedMsChange();
         refreshSelectedMarkerLine();
       };
 
