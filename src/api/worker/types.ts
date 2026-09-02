@@ -87,11 +87,15 @@ export type EmaHistoryArrayKey = never;
 export type HistoryArrayKey =
   | "tileTimers"
   | "liveNetworkMetricsIngress"
-  | "liveNetworkMetricsEgress";
+  | "liveNetworkMetricsEgress"
+  | "tps";
 
 export interface KeyedValuesWithHistory<K extends string>
   extends ValuesWithHistory {
   key: K;
+  /** When true, history holds only new tail points to append to the existing
+   *  series rather than the full window */
+  deltaOnly?: boolean;
 }
 
 export interface EmaObjectItem<
