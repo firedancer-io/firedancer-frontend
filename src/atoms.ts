@@ -11,6 +11,7 @@ import {
   accountsStatsAtom,
   completedSlotAtom,
   voteSlotAtom,
+  tilesAtom,
 } from "./api/atoms";
 import type {
   Epoch,
@@ -1108,3 +1109,7 @@ export const alpenglowVoteDistanceAtom = atom((get) => {
   if (replaySlot == null || voteSlot == null) return;
   return replaySlot - voteSlot;
 });
+
+export const isBlockProductionEnabledAtom = atom(
+  (get) => get(tilesAtom)?.some(({ kind }) => kind === "pack") ?? true,
+);

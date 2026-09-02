@@ -1,16 +1,17 @@
 import { Flex } from "@radix-ui/themes";
 import clsx from "clsx";
-import { useAtomValue } from "jotai";
-import { useState } from "react";
+import { memo, useState } from "react";
 import styles from "./logo.module.css";
 import fdLogo from "../../../assets/firedancer.svg";
-import { bootProgressPhaseAtom } from "../atoms";
+import { bootProgressPhaseAtom, hasFiredancerAppDataAtom } from "../atoms";
+import { useAtomValue } from "jotai";
 
-export default function Logo() {
-  const phase = useAtomValue(bootProgressPhaseAtom);
+export const MLogo = memo(function Logo() {
+  const hasPhase = useAtomValue(bootProgressPhaseAtom) != null;
+  const hasFdAppData = useAtomValue(hasFiredancerAppDataAtom);
   const [showInitialLogo, setShowInitialLogo] = useState(true);
 
-  if (phase && showInitialLogo) {
+  if (hasPhase && hasFdAppData && showInitialLogo) {
     setShowInitialLogo(false);
   }
 
@@ -23,4 +24,4 @@ export default function Logo() {
       <img src={fdLogo} alt="fd" />
     </Flex>
   );
-}
+});

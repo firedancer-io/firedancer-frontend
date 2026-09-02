@@ -12,7 +12,7 @@ import Header from "../../Header/index";
 import { BootPhaseEnum } from "../../../api/entities";
 import { bootProgressContainerElAtom } from "../../../atoms";
 import type { BootPhase } from "../../../api/types";
-import Logo from "./Logo";
+import { MLogo } from "./Logo";
 import { appMaxWidth } from "../../../consts";
 import Snapshot from "./Snapshot";
 import CatchingUp from "./CatchingUp";
@@ -39,7 +39,7 @@ export default function Body() {
   return (
     <>
       {phase && <BootProgressContent phase={phase} />}
-      <Logo />
+      <MLogo />
     </>
   );
 }
