@@ -9,6 +9,7 @@ import type {
   WsEntity,
 } from "./worker/types";
 import { isEmaObjectKey } from "./worker/types";
+import { tpsBuffer } from "../features/Overview/TransactionsCard/tpsBuffer";
 import { DateTime } from "luxon";
 import { useInterval } from "react-use";
 import {
@@ -79,7 +80,6 @@ import {
   tileTimerHistoryAtom,
   bootProgressAtom,
   startupProgressAtom,
-  tpsHistoryAtom,
   voteStateAtom,
   voteDistanceAtom,
   skippedSlotsAtom,
@@ -161,7 +161,12 @@ export function useSetAtomWsData() {
   );
 
   const updateHistoryArray = useCallback(
-    ({ key, values, history }: KeyedValuesWithHistory<HistoryArrayKey>) => {
+    ({
+      key,
+      values,
+      history,
+      deltaOnly,
+    }: KeyedValuesWithHistory<HistoryArrayKey>) => {
       switch (key) {
         case "tileTimers":
           setTileTimerHistory({ values, history });
@@ -171,6 +176,9 @@ export function useSetAtomWsData() {
           break;
         case "liveNetworkMetricsEgress":
           setNetworkMetricsEmaEgress({ values, history });
+          break;
+        case "tps":
+          tpsBuffer.update(history, deltaOnly);
           break;
       }
     },
@@ -314,8 +322,6 @@ function useUpdateAtoms() {
   const setStartupProgress = useSetAtom(startupProgressAtom);
 
   const setSupermajorityEpoch = useSetAtom(supermajorityEpochAtom);
-
-  const setTpsHistory = useSetAtom(tpsHistoryAtom);
 
   const setVoteState = useSetAtom(voteStateAtom);
   const setVoteDistance = useSetAtom(voteDistanceAtom);
@@ -631,10 +637,6 @@ function useUpdateAtoms() {
               setStartupProgress(value);
               break;
             }
-            case "tps_history": {
-              setTpsHistory(value);
-              break;
-            }
             case "vote_state": {
               setVoteState(value);
               break;
@@ -715,6 +717,7 @@ function useUpdateAtoms() {
             case "is_alpenglow":
               setIsAlpenglow(value);
               break;
+            case "tps_history":
             case "estimated_slot":
             case "ping":
             case "vote_key":
@@ -855,7 +858,6 @@ function useUpdateAtoms() {
       setDbTileTimer,
       setBootProgress,
       setStartupProgress,
-      setTpsHistory,
       setVoteState,
       setVoteDistance,
       setSkipRate,

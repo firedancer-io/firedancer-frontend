@@ -1,13 +1,16 @@
+// Wall-clock ms since the Unix epoch, comparable across the worker/main threads
+export const epochNow = () => performance.timeOrigin + performance.now();
+
 type Sub = (now: number, dt: number) => void;
 
 export function createClock(intervalMs: number) {
   const subs = new Set<Sub>();
   let id: number | null = null;
-  let last = performance.now();
+  let last = epochNow();
 
   function startChartClock() {
     const loop = () => {
-      const now = performance.now();
+      const now = epochNow();
       if (now - last >= intervalMs) {
         const dt = now - last;
         last = now;

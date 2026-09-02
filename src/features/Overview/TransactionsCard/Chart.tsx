@@ -1,18 +1,16 @@
 import { useLayoutEffect, useRef } from "react";
-import { getDefaultStore } from "jotai";
 import { useMeasure, useRafLoop } from "react-use";
-import { tpsDataAtom } from "./atoms";
 import {
   regularTextColor,
   transactionFailedPathColor,
   transactionNonVotePathColor,
   transactionVotePathColor,
 } from "../../../colors";
-import { WINDOW_MS } from "./consts";
+import { tpsRenderWindowMs as WINDOW_MS } from "../../../api/worker/cache/consts";
+import { tpsBuffer } from "./tpsBuffer";
+import { epochNow } from "../../../clockUtils";
 
 const TOP_PADDING = 10;
-
-const store = getDefaultStore();
 
 export default function Chart() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -39,15 +37,11 @@ export default function Chart() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const data = store.get(tpsDataAtom);
-    if (!data.length) return;
+    const { points: data, maxTotalY } = tpsBuffer.get();
+    if (!data.length || maxTotalY === 0) return;
 
-    const maxTotalY = data.reduce((max, p) => Math.max(max, p.tps.total), 0);
-    if (maxTotalY === 0) return;
-
+    const now = epochNow();
     const yRatio = (height - TOP_PADDING) / maxTotalY;
-    const now = performance.now();
-
     const points = data.map((p) => ({
       x: width * (1 - (now - p.ts) / WINDOW_MS),
       voteY: p.tps.vote * yRatio,
