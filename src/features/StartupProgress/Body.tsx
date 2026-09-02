@@ -3,7 +3,7 @@ import { startupProgressAtom } from "../../api/atoms";
 import styles from "./body.module.css";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { showStartupProgressAtom } from "./atoms";
+import { hasFrankendancerAppDataAtom, showStartupProgressAtom } from "./atoms";
 import fdLogo from "../../assets/firedancer.svg";
 import frLogo from "../../assets/frankendancer.svg";
 import { Box, Flex } from "@radix-ui/themes";
@@ -13,7 +13,6 @@ import InprogressStep from "./InprogressStep";
 import CompleteStep from "./CompleteStep";
 import LoadingLedgerProgress from "./LedgerProgress";
 import FullSnapshotProgress from "./FullSnapshotProgress";
-import { peersAtom } from "../../atoms";
 import IncrementalSnapshotProgress from "./IncrementalSnapshotProgress";
 import { animated, useSpring } from "@react-spring/web";
 import FullSnapshotStats from "./FullSnapshotStats";
@@ -62,12 +61,11 @@ const steps: {
 ];
 
 export default function Body() {
+  const hasFrankendancerAppData = useAtomValue(hasFrankendancerAppDataAtom);
   const startupProgress = useAtomValue(startupProgressAtom);
   const [showStartupProgress, setShowStartupProgress] = useAtom(
     showStartupProgressAtom,
   );
-  const peers = useAtomValue(peersAtom);
-  const hasPeers = !!Object.values(peers).length;
 
   const [_hideSteps, setHideSteps] = useState<boolean>();
 
@@ -87,11 +85,11 @@ export default function Body() {
   const hideSteps = _hideSteps === true || _hideSteps === undefined;
 
   useEffect(() => {
-    if (hasPeers && startupProgress?.phase === "running") {
+    if (hasFrankendancerAppData && startupProgress?.phase === "running") {
       setShowStartupProgress(false);
     }
   }, [
-    hasPeers,
+    hasFrankendancerAppData,
     setShowStartupProgress,
     showStartupProgress,
     startupProgress?.phase,

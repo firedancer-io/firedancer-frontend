@@ -1,8 +1,9 @@
 import { atom } from "jotai";
-import { bootProgressAtom } from "../../api/atoms";
+import { bootProgressAtom, clusterAtom, tilesAtom } from "../../api/atoms";
 import { BootPhaseEnum } from "../../api/entities";
 import type { BootPhase } from "../../api/types";
 import { isFrankendancer } from "../../client";
+import { peersCountAtom } from "../../atoms";
 
 export const bootProgressPhaseAtom = atom(
   (get) => get(bootProgressAtom)?.phase,
@@ -110,5 +111,17 @@ export const snapshotSlotAtom = atom<number | null | undefined>((get) => {
   return (
     get(bootProgressAtom)?.loading_incremental_snapshot_slot ??
     get(bootProgressAtom)?.loading_full_snapshot_slot
+  );
+});
+
+export const hasFiredancerAppDataAtom = atom((get) => {
+  return get(clusterAtom) != null && get(tilesAtom) != null;
+});
+
+export const hasFrankendancerAppDataAtom = atom((get) => {
+  return (
+    get(clusterAtom) != null &&
+    get(peersCountAtom) > 0 &&
+    get(tilesAtom) != null
   );
 });
