@@ -5,8 +5,12 @@ import TilesPerformance from "./TilesPerformance";
 import Card from "../../../components/Card";
 import SankeyControls from "./SankeyControls";
 import styles from "./SlotSankey/slotSankey.module.css";
+import { useAtomValue } from "jotai";
+import { blockProductionEnabledAtom } from "../../../api/atoms";
 
 export default function SlotPerformance() {
+  const blockProductionEnabled = useAtomValue(blockProductionEnabledAtom);
+
   return (
     <Card>
       <Flex
@@ -14,10 +18,14 @@ export default function SlotPerformance() {
         gap="1"
         className={styles.slotPerformanceContainer}
       >
-        <Flex gap="3">
-          <CardHeader text="TPU Waterfall" />
-        </Flex>
-        <SankeyContainer />
+        {blockProductionEnabled !== false && (
+          <>
+            <Flex gap="3">
+              <CardHeader text="TPU Waterfall" />
+            </Flex>
+            <SankeyContainer />
+          </>
+        )}
         <TilesPerformance />
       </Flex>
     </Card>

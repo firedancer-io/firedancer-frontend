@@ -18,7 +18,7 @@ import type { RouteLabel } from "../../hooks/useCurrentRoute";
 import { RouteLabelToPath, useCurrentRoute } from "../../hooks/useCurrentRoute";
 import useNavigateLeaderSlot from "../../hooks/useNavigateLeaderSlot";
 import { maxZIndex, slotsNavSpacing } from "../../consts";
-import { clusterAtom } from "../../api/atoms";
+import { blockProductionEnabledAtom, clusterAtom } from "../../api/atoms";
 import { getClusterColor } from "../../utils";
 import { navButtonInactiveTextColor } from "../../colors";
 import { isFrankendancer } from "../../client";
@@ -36,7 +36,12 @@ const RouteLabelToIcon: Record<RouteLabel, FC<SVGProps<SVGSVGElement>>> = {
   Accounts: AccountBalanceIcon,
 };
 
-function isRouteHidden(routeLabel: RouteLabel) {
+function isRouteHidden(
+  routeLabel: RouteLabel,
+  blockProductionEnabled?: boolean,
+) {
+  if (blockProductionEnabled === false && routeLabel === "Slot Details")
+    return true;
   if (isFrankendancer)
     return routeLabel === "Gossip" || routeLabel === "Accounts";
   return false;
@@ -100,12 +105,13 @@ NavButton.displayName = "NavButton";
 
 export function NavLinks() {
   const currentRoute = useCurrentRoute();
+  const blockProductionEnabled = useAtomValue(blockProductionEnabledAtom);
 
   return (
     <Flex gap={`${slotsNavSpacing}px`}>
       {Object.keys(RouteLabelToPath).map((label) => {
         const routeLabel = label as RouteLabel;
-        if (isRouteHidden(routeLabel)) return;
+        if (isRouteHidden(routeLabel, blockProductionEnabled)) return;
 
         return (
           <NavButton
@@ -123,6 +129,7 @@ export function NavLinks() {
 export function DropdownNav() {
   const containerEl = useAtomValue(containerElAtom);
   const currentRoute = useCurrentRoute();
+  const blockProductionEnabled = useAtomValue(blockProductionEnabledAtom);
 
   return (
     <DropdownMenu.Root>
@@ -145,7 +152,7 @@ export function DropdownNav() {
         >
           {Object.keys(RouteLabelToPath).map((label) => {
             const routeLabel = label as RouteLabel;
-            if (isRouteHidden(routeLabel)) return;
+            if (isRouteHidden(routeLabel, blockProductionEnabled)) return;
 
             return (
               <DropdownMenu.Item key={routeLabel} asChild>

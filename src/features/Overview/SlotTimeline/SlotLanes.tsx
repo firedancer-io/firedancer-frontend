@@ -16,6 +16,7 @@ import {
 import { useAtomValue } from "jotai";
 import { epochAtom } from "../../../atoms";
 import { nsPerMs } from "../../../consts";
+import { blockProductionEnabledAtom } from "../../../api/atoms";
 
 export default function SlotLanes() {
   const [measureRef, { width: barsContainerWidth }] =
@@ -222,6 +223,7 @@ interface NextLeaderTimerProps {
   isNarrow: boolean;
 }
 function NextLeaderTimer({ isNarrow }: NextLeaderTimerProps) {
+  const blockProductionEnabled = useAtomValue(blockProductionEnabledAtom);
   const { progressSinceLastLeader, nextSlotText, nextLeaderSlot } = useNextSlot(
     {
       showNowIfCurrent: false,
@@ -237,6 +239,8 @@ function NextLeaderTimer({ isNarrow }: NextLeaderTimerProps) {
     useAtomValue(epochAtom)?.target_slot_duration_nanos ?? 400 * nsPerMs;
   // a bit longer than an expected slot duration
   const progressDuration = (targetSlotDurationNs / nsPerMs) * 1.25;
+
+  if (blockProductionEnabled === false) return null;
 
   return (
     <Flex

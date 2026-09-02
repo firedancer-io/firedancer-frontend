@@ -66,6 +66,10 @@ export const startupTimeAtom = atom<
 
 export const tilesAtom = atom<Tile[] | undefined>(undefined);
 
+export const blockProductionEnabledAtom = atom((get) =>
+  get(tilesAtom)?.some(({ kind }) => kind === "pack"),
+);
+
 export const scheduleStrategyAtom = atom<ScheduleStrategy | undefined>(
   undefined,
 );
