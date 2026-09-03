@@ -151,6 +151,7 @@ export default function Chart({ startupTimeNs }: ChartProps) {
     if (rangeRef.current) {
       rangeRef.current.worldEndMs = newWorldEndMs;
       broadcastWorldRangeChange();
+      refreshSelectedMarkerLine();
       return;
     }
 
