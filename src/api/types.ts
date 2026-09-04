@@ -80,6 +80,7 @@ import type {
   voteCommissionSchema,
   aggGranularitySchema,
   aggRevenueSchema,
+  txnMetaResponseSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -221,3 +222,4 @@ export type CompactionState = z.infer<typeof compactionStateSchema>;
 
 export type AggGranularity = z.infer<typeof aggGranularitySchema>;
 export type AggRevenue = z.infer<typeof aggRevenueSchema>;
+export type TimelineTxnMeta = z.infer<typeof txnMetaResponseSchema>;
