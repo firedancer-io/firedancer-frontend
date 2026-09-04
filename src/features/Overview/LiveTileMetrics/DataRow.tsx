@@ -333,15 +333,17 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
           tableStyles.noFadeCell,
         )}
       >
-        <TileSparkLine
-          value={avgValue}
-          history={initialHistory}
-          background={tileChartDarkBackground}
-          windowMs={60_000}
-          height={chartHeight}
-          updateIntervalMs={liveTileMetricsSparklineDebounceMs}
-          tickMs={1_000}
-        />
+        <Flex align="center">
+          <TileSparkLine
+            value={avgValue}
+            history={initialHistory}
+            background={tileChartDarkBackground}
+            windowMs={60_000}
+            height={chartHeight}
+            updateIntervalMs={liveTileMetricsSparklineDebounceMs}
+            tickMs={1_000}
+          />
+        </Flex>
       </Table.Cell>
     </>
   );
