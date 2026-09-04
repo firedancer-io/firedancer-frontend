@@ -26,6 +26,7 @@ import { tileChartDarkBackground } from "../../../colors";
 import type { CellProps } from "@radix-ui/themes/components/table";
 import { chartHeight } from "./consts";
 import { PriorityEnum } from "../../../api/entities";
+import type { SelectTileProps } from "./useTileSelect";
 
 const store = getDefaultStore();
 
@@ -332,15 +333,17 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
           tableStyles.noFadeCell,
         )}
       >
-        <TileSparkLine
-          value={avgValue}
-          history={initialHistory}
-          background={tileChartDarkBackground}
-          windowMs={60_000}
-          height={chartHeight}
-          updateIntervalMs={liveTileMetricsSparklineDebounceMs}
-          tickMs={1_000}
-        />
+        <Flex align="center">
+          <TileSparkLine
+            value={avgValue}
+            history={initialHistory}
+            background={tileChartDarkBackground}
+            windowMs={60_000}
+            height={chartHeight}
+            updateIntervalMs={liveTileMetricsSparklineDebounceMs}
+            tickMs={1_000}
+          />
+        </Flex>
       </Table.Cell>
     </>
   );
@@ -348,14 +351,22 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
 
 interface DataRowProps {
   idx: number;
+  selectTileProps: SelectTileProps;
 }
 
-export const DataRow = memo(function DataRow({ idx }: DataRowProps) {
+export const DataRow = memo(function DataRow({
+  idx,
+  selectTileProps,
+}: DataRowProps) {
   const rowRef = useRef<HTMLTableRowElement>(null);
   useRowState(idx, rowRef, writeRow);
 
   return (
-    <Table.Row ref={rowRef} className={tableStyles.dataRow}>
+    <Table.Row
+      ref={rowRef}
+      className={clsx(tableStyles.dataRow, tableStyles.selectable)}
+      {...selectTileProps}
+    >
       <LiveCell idx={idx} write={writeCpu} align="right" />
       <LiveCell idx={idx} write={writeAlive} align="right" />
       <LiveCell idx={idx} write={writePriority} align="right" />

@@ -8,7 +8,7 @@ import styles from "./liveTileMetrics.module.css";
 import { headerGap } from "../../Gossip/consts";
 import type { Tile } from "../../../api/types";
 import clsx from "clsx";
-import { memo, useMemo, type CSSProperties } from "react";
+import { memo, useCallback, useMemo, useRef, type CSSProperties } from "react";
 import TableDescriptionDialog from "../../../components/TableDescriptionDialog";
 import {
   chartHeight,
@@ -21,6 +21,8 @@ import { PriorityEnum } from "../../../api/entities";
 import { DataRow } from "./DataRow";
 import { PinnedRow } from "./PinnedRow";
 import { TableHeader } from "../../../components/DataTable";
+import { areTilesEqual, getTileId } from "./utils";
+import { toggleTileSelectedClass, useTileSelect } from "./useTileSelect";
 
 export default memo(function LiveTileMetrics() {
   return (
@@ -37,18 +39,49 @@ export default memo(function LiveTileMetrics() {
 });
 
 function LiveMetricsTables() {
+  const selectedTileRef = useRef<Tile | undefined>();
+  const selectTile = useCallback((tile: Tile) => {
+    if (selectedTileRef.current) {
+      // deselect
+      toggleTileSelectedClass(selectedTileRef.current, false);
+    }
+
+    selectedTileRef.current = tile;
+    toggleTileSelectedClass(selectedTileRef.current, true);
+  }, []);
+
+  const initSelectedClass = useCallback((tile: Tile) => {
+    // sync states if row was remounted
+    const isSelected = areTilesEqual(selectedTileRef.current, tile);
+    toggleTileSelectedClass(tile, isSelected);
+  }, []);
+
   return (
     <Flex>
-      <LiveMetricsTable isPinned={true} />
-      <LiveMetricsTable isPinned={false} />
+      <LiveMetricsTable
+        isPinned={true}
+        initSelectedClass={initSelectedClass}
+        selectTile={selectTile}
+      />
+      <LiveMetricsTable
+        isPinned={false}
+        initSelectedClass={initSelectedClass}
+        selectTile={selectTile}
+      />
     </Flex>
   );
 }
 
 interface LiveMetricsTableProps {
   isPinned: boolean;
+  initSelectedClass: (tile: Tile) => void;
+  selectTile: (tile: Tile) => void;
 }
-function LiveMetricsTable({ isPinned }: LiveMetricsTableProps) {
+function LiveMetricsTable({
+  isPinned,
+  initSelectedClass,
+  selectTile,
+}: LiveMetricsTableProps) {
   const tiles = useAtomValue(tilesAtom);
   const hasMetrics = useAtomValue(hasLiveTileMetricsAtom);
 
@@ -81,10 +114,12 @@ function LiveMetricsTable({ isPinned }: LiveMetricsTableProps) {
       <Table.Body>
         {tiles.map((tile, i) => (
           <TableRow
-            key={`${tile.kind}${tile.kind_id}`}
+            key={getTileId(tile)}
             tile={tile}
             idx={i}
             isPinned={isPinned}
+            initSelectedClass={initSelectedClass}
+            selectTile={selectTile}
           />
         ))}
       </Table.Body>
@@ -96,18 +131,29 @@ interface TableRowProps {
   tile: Tile;
   idx: number;
   isPinned: boolean;
+  initSelectedClass: (tile: Tile) => void;
+  selectTile: (tile: Tile) => void;
 }
 
 const TableRow = memo(function TableRow({
   tile,
   idx,
   isPinned,
+  initSelectedClass,
+  selectTile,
 }: TableRowProps) {
+  const selectRowProps = useTileSelect(
+    isPinned,
+    tile,
+    initSelectedClass,
+    selectTile,
+  );
+
   if (!isPinned) {
-    return <DataRow idx={idx} />;
+    return <DataRow idx={idx} selectTileProps={selectRowProps} />;
   }
 
-  return <PinnedRow tile={tile} idx={idx} />;
+  return <PinnedRow tile={tile} idx={idx} selectTileProps={selectRowProps} />;
 });
 
 function PriorityCountCell() {
