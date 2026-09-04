@@ -18,7 +18,6 @@ import type {
   LiveTilePrimaryMetric,
   SkippedSlots,
   Tile,
-  TpsHistory,
   VoteState,
   VoteDistance,
   BlockEngineUpdate,
@@ -187,8 +186,6 @@ export const gossipPeersRowsUpdateAtom = atom<
 export const gossipPeersCellUpdateAtom = atom<
   GossipPeersCellUpdate | undefined
 >(undefined);
-
-export const tpsHistoryAtom = atom<TpsHistory | undefined>(undefined);
 
 export const voteStateAtom = atom<VoteState | undefined>(undefined);
 

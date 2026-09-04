@@ -5,6 +5,18 @@ import { createClock } from "../../../clockUtils";
 
 export const strokeLineWidth = 2;
 
+/** Worker timestamps use a different clock than the main thread, so only the
+ *  relative ts deltas are meaningful. Pin the newest point to `now` and keep the
+ *  spacing. */
+function rebaseToMainClock<T extends { ts: number }>(
+  entries: T[],
+  now = performance.now(),
+): T[] {
+  if (entries.length === 0) return entries;
+  const newestTs = entries[entries.length - 1].ts;
+  return entries.map((e) => ({ ...e, ts: now - (newestTs - e.ts) }));
+}
+
 interface UseTileSparklineProps {
   isLive: boolean;
   tileCount: number;
@@ -74,6 +86,11 @@ interface PointSample {
   ts: number;
 }
 
+export type ScaledPoint = {
+  x: number;
+  y: number;
+};
+
 const defaultTickMs = 150;
 /** How many ticks of extra buffer data is drawn for the transform to slide over */
 const tickBufferCount = 3;
@@ -124,9 +141,7 @@ export function useScaledDataPoints({
   stopShifting,
   tickMs = defaultTickMs,
 }: UseScaledDataPointsProps) {
-  const [scaledDataPoints, setScaledDataPoints] = useState<
-    { x: number; y: number }[]
-  >([]);
+  const [scaledDataPoints, setScaledDataPoints] = useState<ScaledPoint[]>([]);
 
   const isStatic = !!(history?.length && value === undefined);
 
@@ -168,13 +183,7 @@ export function useScaledDataPoints({
     if (isSeededRef.current || !normalizedHistory?.length) return;
     isSeededRef.current = true;
 
-    const now = performance.now();
-    const newestTs = normalizedHistory[normalizedHistory.length - 1].ts;
-
-    dataRef.current = normalizedHistory.map(({ ts, value }) => ({
-      value,
-      ts: now - (newestTs - ts),
-    }));
+    dataRef.current = rebaseToMainClock(normalizedHistory);
   }, [normalizedHistory]);
 
   useEffect(() => {
@@ -214,7 +223,7 @@ export function useScaledDataPoints({
       const tStart = tEnd - windowMs;
       const scale = width / windowMs;
 
-      const points = new Array<{ x: number; y: number }>(size);
+      const points = new Array<ScaledPoint>(size);
       for (let i = 0; i < size; i++) {
         const d = data[i];
         if (d === undefined && i === 0) {
@@ -238,7 +247,7 @@ export function useScaledDataPoints({
               (1 - d.value) * (height - strokeLineWidth) + strokeLineWidth / 2
             : (prevPoint.y ?? 0);
 
-        points[i] = { x: x, y: y };
+        points[i] = { x, y };
       }
 
       setScaledDataPoints(points);
@@ -248,11 +257,7 @@ export function useScaledDataPoints({
       if (!normalizedHistory?.length) return;
 
       const tEnd = performance.now();
-      const newestTs = normalizedHistory[normalizedHistory.length - 1].ts;
-      const data = normalizedHistory.map(({ ts, value }) => ({
-        value,
-        ts: tEnd - (newestTs - ts),
-      }));
+      const data = rebaseToMainClock(normalizedHistory, tEnd);
 
       tick(data, tEnd);
     }
