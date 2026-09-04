@@ -1300,7 +1300,7 @@ export const txnMetaResponseSchema = z.object({
   txn_error_code: z.number().array(),
 });
 
-export const shredsGranularitySchema = z.enum(["shreds", "fec"]);
+export const shredsGranularitySchema = z.enum(["shred", "fec"]);
 export const ShredsGranularityEnum = shredsGranularitySchema.enum;
 export const historicalShredsSchema = z.object({
   granularity: shredsGranularitySchema,

@@ -1,6 +1,6 @@
 import type { RgbColor, RgbaColor } from "../../WebGl/webglUtils.ts";
 
-export const EXECRP_THRESHOLD_MS = 30_000;
+export const EXECRP_THRESHOLD_MS = 60_000;
 
 export const ROW_FILL = 0.9;
 
