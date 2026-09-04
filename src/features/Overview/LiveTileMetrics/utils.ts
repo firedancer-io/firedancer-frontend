@@ -46,3 +46,15 @@ export const writeRow: WriteEl<HTMLTableRowElement> = (el, c, p) => {
   el.style.display = alive === 2 || !hasTimers ? "none" : "";
   el.classList.toggle(tableStyles.faded, priority === PriorityEnum.floating);
 };
+
+export function getPinnedRowId(idx: number) {
+  return `pinned-row-${idx}`;
+}
+
+export function getUnpinnedRowId(idx: number) {
+  return `unpinned-row-${idx}`;
+}
+
+export function getRowIds(idx: number) {
+  return [getPinnedRowId(idx), getUnpinnedRowId(idx)];
+}

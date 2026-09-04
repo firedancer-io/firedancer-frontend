@@ -6,6 +6,7 @@ import {
   type TileRowMetrics,
 } from "./atoms";
 import { type WriteEl, useRowState, writeRow } from "./utils";
+import type { HoverRowProps } from "./useTileHover";
 import { Flex, Table, Text } from "@radix-ui/themes";
 import tableStyles from "../../../components/dataTable.module.css";
 import { Bars } from "../../StartupProgress/Firedancer/Bars";
@@ -348,14 +349,18 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
 
 interface DataRowProps {
   idx: number;
+  hoverProps: HoverRowProps;
 }
 
-export const DataRow = memo(function DataRow({ idx }: DataRowProps) {
+export const DataRow = memo(function DataRow({
+  idx,
+  hoverProps,
+}: DataRowProps) {
   const rowRef = useRef<HTMLTableRowElement>(null);
   useRowState(idx, rowRef, writeRow);
 
   return (
-    <Table.Row ref={rowRef} className={tableStyles.dataRow}>
+    <Table.Row ref={rowRef} className={tableStyles.dataRow} {...hoverProps}>
       <LiveCell idx={idx} write={writeCpu} align="right" />
       <LiveCell idx={idx} write={writeAlive} align="right" />
       <LiveCell idx={idx} write={writePriority} align="right" />

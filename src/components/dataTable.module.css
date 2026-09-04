@@ -56,6 +56,11 @@
         }
       }
 
+      &.hovered {
+        background-color: var(--gray-a3);
+        mix-blend-mode: hard-light;
+      }
+
       .green {
         color: var(--green-9);
       }
