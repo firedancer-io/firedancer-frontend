@@ -3,6 +3,7 @@ import { liveTileRowAtomFamily, type TileRowMetrics } from "./atoms";
 import tableStyles from "../../../components/dataTable.module.css";
 import { PriorityEnum } from "../../../api/entities";
 import { useLayoutEffect } from "react";
+import type { Tile } from "../../../api/types";
 
 const store = getDefaultStore();
 
@@ -46,3 +47,27 @@ export const writeRow: WriteEl<HTMLTableRowElement> = (el, c, p) => {
   el.style.display = alive === 2 || !hasTimers ? "none" : "";
   el.classList.toggle(tableStyles.faded, priority === PriorityEnum.floating);
 };
+
+export function areTilesEqual(
+  tile1: Tile | null | undefined,
+  tile2: Tile | null | undefined,
+) {
+  if (tile1 == null || tile2 == null) return false;
+  return tile1.kind === tile2.kind && tile1.kind_id === tile2.kind_id;
+}
+
+export function getTileId(tile: Tile) {
+  return `${tile.kind}:${tile.kind_id}`;
+}
+
+export function getPinnedRowId(tile: Tile) {
+  return `pinned-row-${getTileId(tile)}`;
+}
+
+export function getUnpinnedRowId(tile: Tile) {
+  return `unpinned-row-${getTileId(tile)}`;
+}
+
+export function getRowIds(tile: Tile) {
+  return [getPinnedRowId(tile), getUnpinnedRowId(tile)];
+}
