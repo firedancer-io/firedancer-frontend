@@ -8,7 +8,13 @@ import styles from "./liveTileMetrics.module.css";
 import { headerGap } from "../../Gossip/consts";
 import type { Tile } from "../../../api/types";
 import clsx from "clsx";
-import { memo, useMemo, type CSSProperties } from "react";
+import {
+  memo,
+  useMemo,
+  useRef,
+  type CSSProperties,
+  type MutableRefObject,
+} from "react";
 import TableDescriptionDialog from "../../../components/TableDescriptionDialog";
 import {
   chartHeight,
@@ -21,6 +27,7 @@ import { PriorityEnum } from "../../../api/entities";
 import { DataRow } from "./DataRow";
 import { PinnedRow } from "./PinnedRow";
 import { TableHeader } from "../../../components/DataTable";
+import { useTileHover } from "./useTileHover";
 
 export default memo(function LiveTileMetrics() {
   return (
@@ -37,18 +44,21 @@ export default memo(function LiveTileMetrics() {
 });
 
 function LiveMetricsTables() {
+  const hoveredIdxRef = useRef<number | undefined>();
+
   return (
     <Flex>
-      <LiveMetricsTable isPinned={true} />
-      <LiveMetricsTable isPinned={false} />
+      <LiveMetricsTable isPinned={true} hoveredIdxRef={hoveredIdxRef} />
+      <LiveMetricsTable isPinned={false} hoveredIdxRef={hoveredIdxRef} />
     </Flex>
   );
 }
 
 interface LiveMetricsTableProps {
   isPinned: boolean;
+  hoveredIdxRef: MutableRefObject<number | undefined>;
 }
-function LiveMetricsTable({ isPinned }: LiveMetricsTableProps) {
+function LiveMetricsTable({ isPinned, hoveredIdxRef }: LiveMetricsTableProps) {
   const tiles = useAtomValue(tilesAtom);
   const hasMetrics = useAtomValue(hasLiveTileMetricsAtom);
 
@@ -85,6 +95,7 @@ function LiveMetricsTable({ isPinned }: LiveMetricsTableProps) {
             tile={tile}
             idx={i}
             isPinned={isPinned}
+            hoveredIdxRef={hoveredIdxRef}
           />
         ))}
       </Table.Body>
@@ -96,18 +107,22 @@ interface TableRowProps {
   tile: Tile;
   idx: number;
   isPinned: boolean;
+  hoveredIdxRef: MutableRefObject<number | undefined>;
 }
 
 const TableRow = memo(function TableRow({
   tile,
   idx,
   isPinned,
+  hoveredIdxRef,
 }: TableRowProps) {
+  const hoverProps = useTileHover(isPinned, idx, hoveredIdxRef);
+
   if (!isPinned) {
-    return <DataRow idx={idx} />;
+    return <DataRow idx={idx} hoverProps={hoverProps} />;
   }
 
-  return <PinnedRow tile={tile} idx={idx} />;
+  return <PinnedRow tile={tile} idx={idx} hoverProps={hoverProps} />;
 });
 
 function PriorityCountCell() {
