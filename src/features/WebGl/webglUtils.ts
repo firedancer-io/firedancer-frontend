@@ -7,6 +7,7 @@ import { getDefaultStore } from "jotai";
 export type TsRange = [startTs: number, endTs: number];
 export type NsTsRange = [startTs: bigint, endTs: bigint];
 export type RgbColor = [r: number, g: number, b: number];
+export type RgbaColor = [r: number, g: number, b: number, a: number];
 
 export type RectMesh = {
   mesh: THREE.Mesh;
@@ -26,9 +27,9 @@ uniform mat4 modelViewMatrix;
 
 attribute vec2 position;
 attribute vec4 instanceRect;  // x, y, w, h in world space
-attribute vec3 instanceColor;
+attribute vec4 instanceColor; // r, g, b, a
 
-varying vec3 vColor;
+varying vec4 vColor;
 
 void main() {
   // position is unit quad: [(-0.5,-0.5), (0.5,-0.5), (-0.5,0.5), (0.5,0.5)]
@@ -40,11 +41,10 @@ void main() {
 
 const fragmentShader = /* glsl */ `
 precision mediump float;
-uniform float uOpacity;
-varying vec3 vColor;
+varying vec4 vColor;
 
 void main() {
-  gl_FragColor = vec4(vColor, uOpacity);
+  gl_FragColor = vec4(vColor.rgb * vColor.a, vColor.a);
 }
 `;
 
@@ -104,7 +104,8 @@ export type WebglResources = {
   sharedMaterial: THREE.RawShaderMaterial;
 };
 
-function createUnitQuad() {
+/** Unit quad in [-0.5, 0.5] with a two-triangle index, for instanced meshes. */
+export function createUnitQuad() {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     "position",
@@ -118,22 +119,20 @@ function createUnitQuad() {
   return geometry;
 }
 
-function createSharedMaterial(opacity: number) {
+function createSharedMaterial() {
   return new THREE.RawShaderMaterial({
     vertexShader,
     fragmentShader,
     side: THREE.FrontSide,
     transparent: true,
-    uniforms: {
-      uOpacity: { value: opacity },
-    },
+    depthWrite: false,
   });
 }
 
-export function createWebglResources(opacity: number): WebglResources {
+export function createWebglResources(): WebglResources {
   return {
     unitQuad: createUnitQuad(),
-    sharedMaterial: createSharedMaterial(opacity),
+    sharedMaterial: createSharedMaterial(),
   };
 }
 
@@ -150,10 +149,10 @@ const INITIAL_CAPACITY = 700 * (SHRED_EVENT_TYPES_COUNT - 1);
  */
 export function createRectMesh(resources: WebglResources): RectMesh {
   const rectArray = new Float32Array(INITIAL_CAPACITY * 4);
-  const colorArray = new Float32Array(INITIAL_CAPACITY * 3);
+  const colorArray = new Float32Array(INITIAL_CAPACITY * 4);
 
   const rectAttr = new THREE.InstancedBufferAttribute(rectArray, 4);
-  const colorAttr = new THREE.InstancedBufferAttribute(colorArray, 3);
+  const colorAttr = new THREE.InstancedBufferAttribute(colorArray, 4);
   // DynamicDrawUsage to optimize for frequent updates
   rectAttr.setUsage(THREE.DynamicDrawUsage);
   colorAttr.setUsage(THREE.DynamicDrawUsage);
@@ -185,7 +184,7 @@ export function createRectMesh(resources: WebglResources): RectMesh {
 }
 
 /**
- * Bump up capacity for slot as needed
+ * Bump up capacity for rect as needed
  */
 export function ensureCapacity(rectMesh: RectMesh, needed: number) {
   if (needed <= rectMesh.capacity) return;
@@ -194,14 +193,14 @@ export function ensureCapacity(rectMesh: RectMesh, needed: number) {
   while (newCapacity < needed) newCapacity *= 2;
 
   const rectArray = new Float32Array(newCapacity * 4);
-  const colorArray = new Float32Array(newCapacity * 3);
+  const colorArray = new Float32Array(newCapacity * 4);
   rectArray.set(rectMesh.rectArray);
   colorArray.set(rectMesh.colorArray);
 
   rectMesh.rectArray = rectArray;
   rectMesh.colorArray = colorArray;
   rectMesh.rectAttr = new THREE.InstancedBufferAttribute(rectArray, 4);
-  rectMesh.colorAttr = new THREE.InstancedBufferAttribute(colorArray, 3);
+  rectMesh.colorAttr = new THREE.InstancedBufferAttribute(colorArray, 4);
   rectMesh.rectAttr.setUsage(THREE.DynamicDrawUsage);
   rectMesh.colorAttr.setUsage(THREE.DynamicDrawUsage);
   rectMesh.capacity = newCapacity;
@@ -211,7 +210,7 @@ export function ensureCapacity(rectMesh: RectMesh, needed: number) {
   geometry.setAttribute("instanceColor", rectMesh.colorAttr);
   // clear private field _maxInstanceCount for recomputation,
   // instead of allocating a new geometry
-  // @ts-expect-error
+  // @ts-expect-error accessing three.js private field
   geometry._maxInstanceCount = undefined;
 }
 
@@ -222,7 +221,7 @@ export function addRectangleToMesh(
   y: number,
   w: number,
   h: number,
-  color: RgbColor,
+  color: RgbColor | RgbaColor,
 ) {
   const ri = rectangleIdx * 4;
   rectMesh.rectArray[ri] = x;
@@ -230,10 +229,11 @@ export function addRectangleToMesh(
   rectMesh.rectArray[ri + 2] = w;
   rectMesh.rectArray[ri + 3] = h;
 
-  const ci = rectangleIdx * 3;
+  const ci = rectangleIdx * 4;
   rectMesh.colorArray[ci] = color[0];
   rectMesh.colorArray[ci + 1] = color[1];
   rectMesh.colorArray[ci + 2] = color[2];
+  rectMesh.colorArray[ci + 3] = color[3] ?? 1;
 }
 
 export function updateRectMeshCounts(rectMesh: RectMesh, count: number) {
@@ -255,4 +255,8 @@ export function convertToWebGlColor(hex: string): RgbColor {
   tmpColor.setHex(parseInt(hex.replace("#", ""), 16), THREE.SRGBColorSpace);
   tmpColor.getRGB(tmpRgb, THREE.SRGBColorSpace);
   return [tmpRgb.r, tmpRgb.g, tmpRgb.b];
+}
+
+export function glslFloat(value: number): string {
+  return Number.isInteger(value) ? `${value}.0` : `${value}`;
 }
