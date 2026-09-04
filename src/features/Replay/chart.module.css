@@ -1,6 +1,6 @@
 .container {
   padding: 32px;
-  border-radius: 8px;
+  border: solid 1px #3c4652;
   flex-shrink: 0;
 }
 
@@ -13,4 +13,31 @@
   height: 100%;
   border-left: 3px solid yellow;
   transform: translateX(var(--marker-lines-pct)) translateX(-1.5px);
+}
+
+.y-axis {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.y-axis-tick {
+  position: absolute;
+  left: 0;
+  transform: translateY(-50%);
+  font-size: 8px;
+  white-space: nowrap;
+  text-shadow:
+    1px 0 1px #141720,
+    -1px 0 1px #141720,
+    0 1px 1px #141720,
+    0 -1px 1px #141720;
+}
+
+.y-axis-grid-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border-top: 1px solid var(--chart-grid-stroke-color);
+  z-index: -1;
 }

@@ -72,15 +72,20 @@ export type RendererObj = {
   cleanUpRenderer: () => void;
 };
 
+const shredColor = (hex: string): [number, number, number, number] => [
+  ...convertToWebGlColor(hex),
+  SHREDS_OPACITY,
+];
+
 const colors = {
-  skipped: convertToWebGlColor(shredSkippedColor),
-  repairRequested: convertToWebGlColor(shredRepairRequestedColor),
-  receivedTurbine: convertToWebGlColor(shredReceivedTurbineColor),
-  receivedRepair: convertToWebGlColor(shredReceivedRepairColor),
-  replayedRepair: convertToWebGlColor(shredReplayedRepairColor),
-  replayedTurbine: convertToWebGlColor(shredReplayedTurbineColor),
-  replayedNothing: convertToWebGlColor(shredReplayedNothingColor),
-  published: convertToWebGlColor(shredPublishedColor),
+  skipped: shredColor(shredSkippedColor),
+  repairRequested: shredColor(shredRepairRequestedColor),
+  receivedTurbine: shredColor(shredReceivedTurbineColor),
+  receivedRepair: shredColor(shredReceivedRepairColor),
+  replayedRepair: shredColor(shredReplayedRepairColor),
+  replayedTurbine: shredColor(shredReplayedTurbineColor),
+  replayedNothing: shredColor(shredReplayedNothingColor),
+  published: shredColor(shredPublishedColor),
 };
 
 /**
@@ -117,7 +122,7 @@ export function setUpRenderer(
 
     const meshes = new Map<number, RectMesh>();
     const availableMeshes: RectMesh[] = [];
-    const resources = createWebglResources(SHREDS_OPACITY);
+    const resources = createWebglResources();
     renderer.render(scene, camera);
     const clearContextListeners = setUpContextListeners(renderer.domElement);
 
@@ -418,7 +423,7 @@ function getShredEventColor(
     Exclude<ShredEvent, ShredEvent.slot_complete>,
     { x: number; w: number }
   >,
-): [number, number, number] | undefined {
+): [number, number, number, number] | undefined {
   if (isSlotSkipped) return colors.skipped;
   switch (eventType) {
     case ShredEvent.shred_repair_request: {
