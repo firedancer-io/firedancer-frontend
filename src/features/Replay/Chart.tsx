@@ -2,7 +2,7 @@ import { Flex, Spinner } from "@radix-ui/themes";
 import { useRef, useCallback, useLayoutEffect } from "react";
 import { useMeasure, useRafLoop } from "react-use";
 import styles from "./chart.module.css";
-import { type MarkerLinesProps } from "./const.ts";
+import type { MarkerLinesProps } from "./const.ts";
 import { nsPerMs } from "../../consts.ts";
 import { calcRelativeMs, getInitVisibleRange } from "./utils.ts";
 import VisibleRangeInfo from "./VisibleRangeInfo.tsx";
@@ -17,15 +17,20 @@ import {
   worldRangeAtom,
 } from "./atoms.ts";
 import { startupTimeAtom } from "../../api/atoms.ts";
+import MiniMap from "./MiniMap/MiniMap.tsx";
 
 const store = getDefaultStore();
 
 const WORLD_UPDATE_INTERVAL_MS = 10;
 // const LIVE_CHART_DELAY_NS = BigInt(500 * nsPerMs);
+
 const LIVE_CHART_DELAY_MS = 500;
 const MARKER_PCT_VAR = "--marker-lines-pct";
+const WORLD_MARKER_PCT_VAR = "--world-marker-lines-pct";
+
 const markerLinesProps: MarkerLinesProps = {
   markerLinesClassName: styles.withMarkerLines,
+  miniMapMarkerLinesClassName: styles.withWorldMarkerLines,
 };
 
 /**
@@ -39,50 +44,54 @@ export default function Chart() {
 
   const [measureRef, { width }] = useMeasure<HTMLDivElement>();
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const refreshSelectedMarker = useCallback((isWorld: boolean) => {
+    if (!containerRef.current) return;
+
+    const cssVar = isWorld ? WORLD_MARKER_PCT_VAR : MARKER_PCT_VAR;
+
+    const selectedMs = store.get(selectedMsAtom);
+    if (selectedMs == null) {
+      // off screen
+      containerRef.current.style.setProperty(cssVar, "-300%");
+      return;
+    }
+
+    const range = store.get(isWorld ? worldRangeAtom : visibleRangeAtom);
+    if (!range) return;
+
+    const pct = (100 * (selectedMs - range[0])) / (range[1] - range[0]);
+    containerRef.current.style.setProperty(cssVar, `${pct}%`);
+  }, []);
+
   const setContainerRefs = useCallback(
     (el: HTMLDivElement | null) => {
       containerRef.current = el;
       if (el) {
         measureRef(el);
+        refreshSelectedMarker(true);
+        refreshSelectedMarker(false);
       }
     },
-    [measureRef],
+    [measureRef, refreshSelectedMarker],
   );
 
-  const refreshSelectedMarkerLine = useCallback(() => {
-    const selectedMs = store.get(selectedMsAtom);
-    if (!containerRef.current) return;
-    if (selectedMs == null) {
-      // off screen
-      containerRef.current.style.setProperty(MARKER_PCT_VAR, "-300%");
-      return;
-    }
-
-    const visibleRange = store.get(visibleRangeAtom);
-
-    if (!visibleRange) return;
-    const [start, end] = visibleRange;
-    const pct = (100 * (selectedMs - start)) / (end - start);
-    containerRef.current.style.setProperty(MARKER_PCT_VAR, `${pct}%`);
-  }, []);
-
   useLayoutEffect(() => {
-    const unsubVisibleRange = store.sub(
-      visibleRangeAtom,
-      refreshSelectedMarkerLine,
-    );
-    const unsubSelectedMs = store.sub(
-      selectedMsAtom,
-      refreshSelectedMarkerLine,
-    );
-
-    refreshSelectedMarkerLine();
+    const unsubs = [
+      // world end advances continuously, so the world marker's percentage
+      // must be recomputed as the world range grows
+      store.sub(worldRangeAtom, () => refreshSelectedMarker(true)),
+      store.sub(visibleRangeAtom, () => refreshSelectedMarker(false)),
+      store.sub(selectedMsAtom, () => {
+        refreshSelectedMarker(true);
+        refreshSelectedMarker(false);
+      }),
+    ];
 
     return () => {
-      unsubVisibleRange();
-      unsubSelectedMs();
+      unsubs.forEach((unsub) => unsub());
     };
-  }, [refreshSelectedMarkerLine]);
+  }, [refreshSelectedMarker]);
 
   // refresh world size
   useRafLoop((time: number) => {
@@ -121,7 +130,7 @@ export default function Chart() {
     store.set(visibleRangeAtom, visibleRangeMs);
   });
 
-  const explorableChartProps = useExplorableChart();
+  const { explorableChartProps, miniMapProps } = useExplorableChart();
 
   if (!hasReferenceTs) return <Spinner />;
 
@@ -130,6 +139,7 @@ export default function Chart() {
       {!!width && (
         <>
           <VisibleRangeInfo />
+          <MiniMap width={width} {...miniMapProps} {...markerLinesProps} />
           <Flex direction="column" gapY="4" position="relative">
             <RevenueTrack
               type={RevenueType.TxnFees}
