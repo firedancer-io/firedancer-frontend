@@ -208,6 +208,7 @@ export const systemLiveMemorySchema = z.object({
 });
 
 export const systemDiskUsageSchema = z.object({
+  path: z.string(),
   category: z.string(),
   bytes: z.number(),
 });
@@ -216,7 +217,7 @@ export const systemDiskMountSchema = z.object({
   name: z.string(),
   total_bytes: z.number(),
   used_bytes: z.number(),
-  firedancer: systemDiskUsageSchema.array(),
+  files: systemDiskUsageSchema.array(),
 });
 
 export const systemLiveSchema = z.object({
