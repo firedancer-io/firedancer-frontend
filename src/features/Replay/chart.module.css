@@ -2,15 +2,38 @@
   padding: 32px;
   border-radius: 8px;
   flex-shrink: 0;
+
+  .grab-cursor * {
+    cursor: grab;
+  }
+  .grabbing-cursor * {
+    cursor: grabbing !important;
+  }
+  .resizing-cursor * {
+    cursor: ew-resize !important;
+  }
+}
+
+.with-marker-lines,
+.with-world-marker-lines {
+  overflow-x: hidden;
+  &::after {
+    pointer-events: none;
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    border-left: 3px solid yellow;
+  }
 }
 
 .with-marker-lines::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border-left: 3px solid yellow;
   transform: translateX(var(--marker-lines-pct)) translateX(-1.5px);
+}
+
+.with-world-marker-lines::after {
+  transform: translateX(var(--world-marker-lines-pct)) translateX(-1.5px);
 }
