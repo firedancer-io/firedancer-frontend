@@ -188,10 +188,10 @@ describe("resource summaries", () => {
       name: "/data",
       total_bytes: 1000,
       used_bytes: 700,
-      firedancer: [
-        { category: "accounts", bytes: 200 },
-        { category: "accounts", bytes: 100 },
-        { category: "future-category", bytes: 50 },
+      files: [
+        { path: "/data/accounts.db", category: "accounts", bytes: 200 },
+        { path: "/data/accounts2.db", category: "accounts", bytes: 100 },
+        { path: "/data/future.db", category: "future-category", bytes: 50 },
       ],
     };
     const summary = getDiskSummary(mount);
@@ -216,7 +216,7 @@ describe("resource summaries", () => {
       name: "/data",
       total_bytes: 100,
       used_bytes: 150,
-      firedancer: [{ category: "accounts", bytes: 120 }],
+      files: [{ path: "/data/accounts.db", category: "accounts", bytes: 120 }],
     });
     expect(disk.usedBytes).toBe(100);
     expect(disk.firedancerSegments[0].bytes).toBe(100);

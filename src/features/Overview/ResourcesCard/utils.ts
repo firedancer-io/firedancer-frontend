@@ -195,7 +195,7 @@ export function getDiskSummary(mount: SystemLive["disk"][number]): DiskSummary {
   const usedBytes = Math.min(nonNegative(mount.used_bytes), totalBytes);
   const grouped = new Map<string, number>();
 
-  for (const usage of mount.firedancer) {
+  for (const usage of mount.files) {
     grouped.set(
       usage.category,
       (grouped.get(usage.category) ?? 0) + nonNegative(usage.bytes),
