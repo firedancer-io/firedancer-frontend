@@ -8,7 +8,7 @@ import styles from "./liveTileMetrics.module.css";
 import { headerGap } from "../../Gossip/consts";
 import type { Tile } from "../../../api/types";
 import clsx from "clsx";
-import { memo, useMemo, type CSSProperties } from "react";
+import { memo, useEffect, useMemo, type CSSProperties } from "react";
 import TableDescriptionDialog from "../../../components/TableDescriptionDialog";
 import {
   chartHeight,
@@ -21,6 +21,9 @@ import { PriorityEnum } from "../../../api/entities";
 import { DataRow } from "./DataRow";
 import { PinnedRow } from "./PinnedRow";
 import { TableHeader } from "../../../components/DataTable";
+import { getTileId } from "./utils";
+import { TileSelectProvider } from "./TileSelectProvider";
+import { useTileSelect } from "./TileSelectContext";
 
 export default memo(function LiveTileMetrics() {
   return (
@@ -38,10 +41,12 @@ export default memo(function LiveTileMetrics() {
 
 function LiveMetricsTables() {
   return (
-    <Flex>
-      <LiveMetricsTable isPinned={true} />
-      <LiveMetricsTable isPinned={false} />
-    </Flex>
+    <TileSelectProvider>
+      <Flex>
+        <LiveMetricsTable isPinned={true} />
+        <LiveMetricsTable isPinned={false} />
+      </Flex>
+    </TileSelectProvider>
   );
 }
 
@@ -103,11 +108,20 @@ const TableRow = memo(function TableRow({
   idx,
   isPinned,
 }: TableRowProps) {
+  const { syncSelectedClass } = useTileSelect();
+
+  // re-sync selected state on mount / tile change
+  useEffect(() => {
+    syncSelectedClass(tile);
+  }, [syncSelectedClass, tile]);
+
+  const id = getTileId(tile, isPinned);
+
   if (!isPinned) {
-    return <DataRow idx={idx} />;
+    return <DataRow id={id} idx={idx} />;
   }
 
-  return <PinnedRow tile={tile} idx={idx} />;
+  return <PinnedRow id={id} tile={tile} idx={idx} />;
 });
 
 function PriorityCountCell() {
@@ -146,7 +160,7 @@ function PriorityCountCell() {
   if (!counts) return;
 
   return (
-    <Flex className={styles.priorityCount} gap="5px" justify="between">
+    <Flex className={styles.priorityCount} gap="5px">
       <Text>
         {counts.critical} <Text className={styles.critical}>C</Text>
       </Text>
