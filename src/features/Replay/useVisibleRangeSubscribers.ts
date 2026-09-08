@@ -26,8 +26,9 @@ export function useVisibleRangeSubscribers({
     Map<
       string,
       {
-        onRangeChange: RangeChangeHandler;
+        onVisibleRangeChange: RangeChangeHandler;
         onSelectedMsChange?: RangeChangeHandler;
+        onWorldRangeChange?: RangeChangeHandler;
       }
     >
   >(new Map());
@@ -36,9 +37,9 @@ export function useVisibleRangeSubscribers({
     const broadcastVisibleRangeChange = () => {
       if (!rangeRef.current) return;
       for (const {
-        onRangeChange,
+        onVisibleRangeChange,
       } of visibleRangeSubscribersRef.current.values()) {
-        onRangeChange(
+        onVisibleRangeChange(
           rangeRef.current.visibleRangeMs,
           [0, rangeRef.current.worldEndMs],
           selectedMsRef.current,
@@ -59,14 +60,33 @@ export function useVisibleRangeSubscribers({
       }
     };
 
+    const broadcastWorldRangeChange = () => {
+      if (!rangeRef.current) return;
+      for (const {
+        onWorldRangeChange,
+      } of visibleRangeSubscribersRef.current.values()) {
+        onWorldRangeChange?.(
+          rangeRef.current.visibleRangeMs,
+          [0, rangeRef.current.worldEndMs],
+          selectedMsRef.current,
+        );
+      }
+    };
+
     const subscribeRangeChange: RangeChangeSubscriberProps["subscribeRangeChange"] =
-      (chartId, onRangeChange, onSelectedMsChange) => {
+      (
+        chartId,
+        onVisibleRangeChange,
+        onSelectedMsChange,
+        onWorldRangeChange,
+      ) => {
         visibleRangeSubscribersRef.current.set(chartId, {
-          onRangeChange,
+          onVisibleRangeChange,
           onSelectedMsChange,
+          onWorldRangeChange,
         });
         if (!rangeRef.current) return;
-        onRangeChange(
+        onVisibleRangeChange(
           rangeRef.current.visibleRangeMs,
           [0, rangeRef.current.worldEndMs],
           selectedMsRef.current,
@@ -94,6 +114,7 @@ export function useVisibleRangeSubscribers({
     return {
       broadcastVisibleRangeChange,
       broadcastSelectedMsChange,
+      broadcastWorldRangeChange,
       visibleRangeSubscriberProps,
     };
   }, [rangeRef, selectedMsRef]);
