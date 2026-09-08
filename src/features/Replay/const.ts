@@ -1,5 +1,5 @@
+import { nsPerMs } from "../../consts";
 import type { AggGranularity } from "../../api/types";
-import type { TsRange } from "../WebGl/webglUtils";
 
 export const DEFAULT_WINDOW_MS = 12_000;
 export const MIN_VISIBLE_MS = 600;
@@ -27,31 +27,32 @@ export const msBucketSizes: Record<AggGranularity, number> = {
   "1d": 86_400_000,
 };
 
+export const nsBucketSizes = Object.fromEntries(
+  Object.entries(msBucketSizes).map(([granularity, ms]) => [
+    granularity,
+    BigInt(ms * nsPerMs),
+  ]),
+) as Record<AggGranularity, bigint>;
+
 export const ascBucketGranularities = Object.keys(msBucketSizes).sort(
   (a, b) =>
     msBucketSizes[a as AggGranularity] - msBucketSizes[b as AggGranularity],
 ) as AggGranularity[];
 
-export type RangeChangeHandler = (
-  visibleRangeMs: TsRange,
-  worldRangeMs: TsRange,
-  selectedMs: number | undefined,
-) => void;
-
-export interface RangeChangeSubscriberProps {
-  subscribeRangeChange: (
-    subscriberId: string,
-    onVisibleRangeChange: RangeChangeHandler,
-    onSelectedMsChange?: RangeChangeHandler,
-  ) => (() => void) | undefined;
-  getAbsoluteNs: (relativeMs: number) => bigint;
-  getRelativeMs: (absoluteNs: bigint) => number;
-}
-
 export interface ExplorableChartProps {
   setUpExploreListeners: (trackEl: HTMLDivElement) => () => void;
 }
 
+export interface MiniMapSetupProps {
+  setUpMiniMap: (
+    trackEl: HTMLDivElement,
+    visibleRangeEl: HTMLDivElement,
+    leftHandleEl: HTMLDivElement,
+    rightHandleEl: HTMLDivElement,
+  ) => () => void;
+}
+
 export interface MarkerLinesProps {
   markerLinesClassName: string;
+  miniMapMarkerLinesClassName: string;
 }
