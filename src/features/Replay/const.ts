@@ -1,5 +1,4 @@
 import type { AggGranularity } from "../../api/types";
-import type { TsRange } from "../WebGl/webglUtils";
 
 export const DEFAULT_WINDOW_MS = 12_000;
 export const MIN_VISIBLE_MS = 600;
@@ -32,26 +31,20 @@ export const ascBucketGranularities = Object.keys(msBucketSizes).sort(
     msBucketSizes[a as AggGranularity] - msBucketSizes[b as AggGranularity],
 ) as AggGranularity[];
 
-export type RangeChangeHandler = (
-  visibleRangeMs: TsRange,
-  worldRangeMs: TsRange,
-  selectedMs: number | undefined,
-) => void;
-
-export interface RangeChangeSubscriberProps {
-  subscribeRangeChange: (
-    subscriberId: string,
-    onVisibleRangeChange: RangeChangeHandler,
-    onSelectedMsChange?: RangeChangeHandler,
-  ) => (() => void) | undefined;
-  getAbsoluteNs: (relativeMs: number) => bigint;
-  getRelativeMs: (absoluteNs: bigint) => number;
-}
-
 export interface ExplorableChartProps {
   setUpExploreListeners: (trackEl: HTMLDivElement) => () => void;
 }
 
+export interface MiniMapSetupProps {
+  setUpMiniMap: (
+    trackEl: HTMLDivElement,
+    visibleRangeEl: HTMLDivElement,
+    leftHandleEl: HTMLDivElement,
+    rightHandleEl: HTMLDivElement,
+  ) => () => void;
+}
+
 export interface MarkerLinesProps {
   markerLinesClassName: string;
+  miniMapMarkerLinesClassName: string;
 }

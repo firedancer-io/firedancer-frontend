@@ -1,0 +1,50 @@
+.mini-map-container {
+  cursor: pointer;
+  position: relative;
+  margin-bottom: 10px;
+
+  .mini-map-track {
+    width: 100%;
+    height: 100%;
+  }
+
+  .visible-range-box {
+    cursor: grab;
+    box-sizing: content-box;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    height: calc(100% + 4px);
+    border: 2px solid white;
+
+    &::before {
+      content: "";
+      position: absolute;
+      /* expand clickable range */
+      inset: -5px -10px;
+    }
+  }
+
+  .handle {
+    display: none;
+    cursor: ew-resize;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 50%;
+    width: 5px;
+    border: 2px solid white;
+    background-color: var(--gray-8);
+    &.left {
+      right: 100%;
+    }
+    &.right {
+      left: 100%;
+    }
+  }
+
+  &:hover .handle {
+    display: block;
+  }
+}
