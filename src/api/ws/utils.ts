@@ -1,5 +1,5 @@
 import type { SendMessage } from "./types";
-import { useContext, useRef, useEffect } from "react";
+import { useContext, useRef, useLayoutEffect } from "react";
 import { ConnectionContext, messageEventType } from "./ConnectionContext";
 import type { FromWorkerMessage } from "../worker/types";
 
@@ -23,7 +23,7 @@ export function useServerMessages(
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const cb = (message: FromWorkerMessage) => onMessageRef.current(message);
     emitter.addListener(messageEventType, cb);
     return () => {
