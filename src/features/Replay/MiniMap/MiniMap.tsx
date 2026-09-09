@@ -9,6 +9,7 @@ import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import {
   drawMiniMap,
+  trackHeight,
   moveCamera,
   render,
   setUpRenderer,
@@ -24,7 +25,6 @@ import styles from "./miniMap.module.css";
 import clsx from "clsx";
 import { Box } from "@radix-ui/themes";
 
-const height = 25;
 const chartId = "mini-map-track";
 
 interface MiniMapProps
@@ -127,7 +127,7 @@ function MiniMap({
 
     const rendererObj = setUpRenderer(
       widthRef.current,
-      height,
+      trackHeight,
       setUpContextListeners,
       getWasContextLost,
     );
@@ -168,7 +168,7 @@ function MiniMap({
   // handle chart resize
   useLayoutEffect(() => {
     if (!rendererRef.current) return;
-    rendererRef.current.renderer.setSize(width, height);
+    rendererRef.current.renderer.setSize(width, trackHeight);
     render(rendererRef.current);
   }, [width]);
 
@@ -185,7 +185,7 @@ function MiniMap({
     <Box
       ref={containerRef}
       className={styles.miniMapContainer}
-      height={`${height}px`}
+      height={`${trackHeight}px`}
     >
       <div
         ref={chartContainerRef}

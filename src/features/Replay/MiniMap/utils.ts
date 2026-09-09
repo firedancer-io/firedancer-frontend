@@ -18,8 +18,12 @@ import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import { msBucketSizes } from "../const.ts";
 import type { AggGranularity, AggSlots } from "../../../api/types.ts";
 import { epochSliderProgressColor } from "../../../colors.ts";
+import { clamp } from "lodash";
 
+export const trackHeight = 25;
 const opacity = 1;
+const minY = 0;
+const maxY = 1;
 const MAX_RECTANGLES_PER_MESH = 8000;
 
 interface MeshReferences {
@@ -56,7 +60,7 @@ export function setUpRenderer(
   const { renderer, cleanUpRenderer } = rendererObj;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(0, 0, 0, 0, 0.5, 10);
+  const camera = new THREE.OrthographicCamera(0, 0, maxY, minY, 0.5, 10);
   camera.position.z = 1;
 
   const resources = createWebglResources(opacity);
@@ -107,22 +111,33 @@ const colors: Record<ColorState, RgbColor> = {
   [ColorState.NotSkipped]: convertToWebGlColor(epochSliderProgressColor),
 };
 
-function getBucketColorCounts(
+function getBucketColorRatios(
   startSlot: number | null,
   endSlot: number | null,
   skippedCount: number | null,
+  minHeightRatio: number,
 ): Record<ColorState, number> {
-  if (startSlot == null || endSlot == null)
+  if (startSlot == null || endSlot == null) {
     return {
       [ColorState.Skipped]: 0,
       [ColorState.NotSkipped]: 0,
     };
+  }
 
   const totalSlots = endSlot - startSlot + 1;
-  const skipped = skippedCount ?? 0;
+  if (totalSlots === 0) {
+    return {
+      [ColorState.Skipped]: 0,
+      [ColorState.NotSkipped]: 0,
+    };
+  }
+
+  const skippedRatio = skippedCount
+    ? clamp(skippedCount / totalSlots, minHeightRatio, maxY)
+    : 0;
   return {
-    [ColorState.Skipped]: skipped,
-    [ColorState.NotSkipped]: totalSlots - skipped,
+    [ColorState.Skipped]: skippedRatio,
+    [ColorState.NotSkipped]: maxY - skippedRatio,
   };
 }
 
@@ -157,22 +172,27 @@ export function drawMiniMap(
   const meshUpdates: { minIdx: number; maxIdx: number }[] = [];
   const bucketSizeMs = msBucketSizes[granularity];
 
-  let maxY = 0;
+  // min 1px
+  const minHeightRatio = (maxY - minY) / trackHeight;
+
   for (let i = 0; i < start_slot.length; i++) {
     const startMs = referenceMs + i * bucketSizeMs;
     const width = bucketSizeMs;
 
-    const bucketColorCounts = getBucketColorCounts(
+    const bucketColorRatios = getBucketColorRatios(
       start_slot[i],
       end_slot[i],
       skipped[i],
+      minHeightRatio,
     );
 
-    let y = 0;
+    let y = minY;
     for (let colorIdx = 0; colorIdx < colorStates.length; colorIdx++) {
       const colorState = colorStates[colorIdx];
       const startY = y;
-      const height = bucketColorCounts[colorState];
+      const ratio = bucketColorRatios[colorState];
+      // keep a non-zero band visible (at least 1px)
+      const height = ratio * (maxY - minY);
       const color = colors[colorState];
 
       const { meshIdx, rectangleIdx } = getPositionInMesh(
@@ -217,9 +237,7 @@ export function drawMiniMap(
 
       y = startY + height;
     }
-    maxY = Math.max(y, maxY);
   }
-  updateCameraToMaxY(maxY, rendererObj.camera);
 
   // update mesh counts / ranges
   for (let i = 0; i < meshUpdates.length; i++) {
@@ -258,13 +276,5 @@ export function moveCamera(rendererObj: RendererObj, worldRangeMs: TsRange) {
 
   camera.left = worldRangeMs[0];
   camera.right = worldRangeMs[1];
-  camera.updateProjectionMatrix();
-}
-
-function updateCameraToMaxY(y: number, camera: THREE.OrthographicCamera) {
-  if (y <= camera.top) {
-    return;
-  }
-  camera.top = y;
   camera.updateProjectionMatrix();
 }
