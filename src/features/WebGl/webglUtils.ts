@@ -95,7 +95,7 @@ export function createRenderer(
 }
 
 /**
- * Resources shared by all slot meshes of a single chart / renderer.
+ * Resources shared by all rect meshes of a single chart / renderer.
  * Compiled shaders / uploaded buffers are bound to a specific GL
  * context, so a fresh renderer (e.g. after a context loss) needs its own copy.
  */
@@ -148,9 +148,12 @@ const INITIAL_CAPACITY = 700 * (SHRED_EVENT_TYPES_COUNT - 1);
 /**
  * Create a mesh to draw 2D rectangles
  */
-export function createRectMesh(resources: WebglResources): RectMesh {
-  const rectArray = new Float32Array(INITIAL_CAPACITY * 4);
-  const colorArray = new Float32Array(INITIAL_CAPACITY * 3);
+export function createRectMesh(
+  resources: WebglResources,
+  initialCapacity = INITIAL_CAPACITY,
+): RectMesh {
+  const rectArray = new Float32Array(initialCapacity * 4);
+  const colorArray = new Float32Array(initialCapacity * 3);
 
   const rectAttr = new THREE.InstancedBufferAttribute(rectArray, 4);
   const colorAttr = new THREE.InstancedBufferAttribute(colorArray, 3);
@@ -185,7 +188,7 @@ export function createRectMesh(resources: WebglResources): RectMesh {
 }
 
 /**
- * Bump up capacity for slot as needed
+ * Bump up capacity for rectangles as needed
  */
 export function ensureCapacity(rectMesh: RectMesh, needed: number) {
   if (needed <= rectMesh.capacity) return;
@@ -241,6 +244,27 @@ export function updateRectMeshCounts(rectMesh: RectMesh, count: number) {
   (rectMesh.mesh.geometry as THREE.InstancedBufferGeometry).instanceCount =
     count;
   rectMesh.rectAttr.needsUpdate = true;
+  rectMesh.colorAttr.needsUpdate = true;
+}
+
+/**
+ * Mark a specific range as updated
+ */
+export function updateMeshRange(
+  rectMesh: RectMesh,
+  idxRange: [number, number],
+) {
+  const startIdx = idxRange[0];
+  const endIdx = Math.min(rectMesh.count - 1, idxRange[1]);
+  const instanceCount = endIdx - startIdx + 1;
+  if (instanceCount <= 0) return;
+
+  rectMesh.rectAttr.clearUpdateRanges();
+  rectMesh.rectAttr.addUpdateRange(startIdx * 4, instanceCount * 4);
+  rectMesh.rectAttr.needsUpdate = true;
+
+  rectMesh.colorAttr.clearUpdateRanges();
+  rectMesh.colorAttr.addUpdateRange(startIdx * 3, instanceCount * 3);
   rectMesh.colorAttr.needsUpdate = true;
 }
 
