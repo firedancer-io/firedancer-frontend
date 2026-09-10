@@ -5,6 +5,7 @@ import {
   type PublisherEntry,
   type PublisherOptions,
 } from "./batchPublisher";
+import { epochNow } from "../../../clockUtils";
 
 export interface HistoryArrayOptions extends PublisherOptions {
   historyWindowMs: number;
@@ -95,7 +96,7 @@ export function createHistoryArrayCache<K extends string>(
       const e = publisher.get(key);
       if (!e) return;
       e.values = values;
-      pushHistory(e, performance.now());
+      pushHistory(e, epochNow());
     },
 
     seed(key: K, entries: HistoryEntry[]) {

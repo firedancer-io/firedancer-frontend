@@ -1,21 +1,9 @@
 import { mean } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useInterval } from "react-use";
-import { createClock } from "../../../clockUtils";
+import { createClock, epochNow } from "../../../clockUtils";
 
 export const strokeLineWidth = 2;
-
-/** Worker timestamps use a different clock than the main thread, so only the
- *  relative ts deltas are meaningful. Pin the newest point to `now` and keep the
- *  spacing. */
-function rebaseToMainClock<T extends { ts: number }>(
-  entries: T[],
-  now = performance.now(),
-): T[] {
-  if (entries.length === 0) return entries;
-  const newestTs = entries[entries.length - 1].ts;
-  return entries.map((e) => ({ ...e, ts: now - (newestTs - e.ts) }));
-}
 
 interface UseTileSparklineProps {
   isLive: boolean;
@@ -102,7 +90,7 @@ function setDataWindow(
   windowMs: number,
   value: number | undefined,
 ) {
-  const now = performance.now();
+  const now = epochNow();
 
   data.push({ value, ts: now });
 
@@ -150,7 +138,7 @@ export function useScaledDataPoints({
     if (!history?.length) return;
     if (!isNumberHistory(history)) return history;
 
-    const now = performance.now();
+    const now = epochNow();
     const ratio = _windowMs / (history.length - 1);
     const tStart = now - _windowMs;
     return history.map((value, i) => ({ value, ts: tStart + i * ratio }));
@@ -173,8 +161,8 @@ export function useScaledDataPoints({
   }, [_width, _windowMs, isStatic, tickMs]);
 
   const dataRef = useRef<PointSample[]>([
-    { value: undefined, ts: performance.now() - windowMs },
-    { value: undefined, ts: performance.now() },
+    { value: undefined, ts: epochNow() - windowMs },
+    { value: undefined, ts: epochNow() },
   ]);
 
   const isSeededRef = useRef(false);
@@ -183,7 +171,7 @@ export function useScaledDataPoints({
     if (isSeededRef.current || !normalizedHistory?.length) return;
     isSeededRef.current = true;
 
-    dataRef.current = rebaseToMainClock(normalizedHistory);
+    dataRef.current = [...normalizedHistory];
   }, [normalizedHistory]);
 
   useEffect(() => {
@@ -197,7 +185,7 @@ export function useScaledDataPoints({
 
     const lastTs = dataRef.current[dataRef.current.length - 1]?.ts;
     // Don't add a artifical tick point if one was added within the specified update interval
-    if (lastTs !== undefined && performance.now() - lastTs < updateIntervalMs) {
+    if (lastTs !== undefined && epochNow() - lastTs < updateIntervalMs) {
       return;
     }
 
@@ -256,10 +244,9 @@ export function useScaledDataPoints({
     if (isStatic) {
       if (!normalizedHistory?.length) return;
 
-      const tEnd = performance.now();
-      const data = rebaseToMainClock(normalizedHistory, tEnd);
+      const tEnd = normalizedHistory[normalizedHistory.length - 1].ts;
 
-      tick(data, tEnd);
+      tick(normalizedHistory, tEnd);
     }
     // live
     else {

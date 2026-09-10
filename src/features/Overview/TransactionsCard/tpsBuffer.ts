@@ -3,23 +3,24 @@ import type { EstimatedTps } from "../../../api/types";
 import { tpsRenderWindowMs } from "../../../api/worker/cache/consts";
 
 export interface TpsDataPoint {
-  /** Worker-clock ts. Rebase with `clockOffsetMs` at render time. */
   ts: number;
   tps: EstimatedTps;
+}
+
+export interface TpsSnapshot {
+  points: TpsDataPoint[];
+  maxTotalY: number;
 }
 
 export interface TpsBuffer {
   /** Append the tail if `deltaOnly`. Otherwise replace the whole window. */
   update(history: HistoryEntry[], deltaOnly?: boolean): void;
-  get(): { points: TpsDataPoint[]; clockOffsetMs: number };
+  get(): TpsSnapshot;
 }
 
 export function createTpsBuffer(): TpsBuffer {
   let points: TpsDataPoint[] = [];
-  /** Worker timestamps use a different clock than the main thread, so only the
-   *  relative ts deltas are meaningful. Add this offset to every point at render
-   *  to pin the newest point to the main clock. */
-  let clockOffsetMs = 0;
+  let maxTotalY = 0;
 
   return {
     update(history, deltaOnly) {
@@ -31,17 +32,23 @@ export function createTpsBuffer(): TpsBuffer {
       }
 
       const newest = points[points.length - 1];
-      if (!newest) return;
-
-      clockOffsetMs = performance.now() - newest.ts;
+      if (!newest) {
+        maxTotalY = 0;
+        return;
+      }
 
       // Keep one point past the window so lines/areas render to the left edge.
-      const cutoff = newest.ts - tpsRenderWindowMs;
-      while (points.length > 1 && points[1].ts < cutoff) points.shift();
+      const windowStart = newest.ts - tpsRenderWindowMs;
+      while (points.length > 1 && points[1].ts < windowStart) points.shift();
+
+      maxTotalY = points.reduce(
+        (max, p) => (p.ts >= windowStart ? Math.max(max, p.tps.total) : max),
+        0,
+      );
     },
 
     get() {
-      return { points, clockOffsetMs };
+      return { points, maxTotalY };
     },
   };
 }

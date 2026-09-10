@@ -8,6 +8,7 @@ import {
 } from "../../../colors";
 import { tpsRenderWindowMs as WINDOW_MS } from "../../../api/worker/cache/consts";
 import { tpsBuffer } from "./tpsBuffer";
+import { epochNow } from "../../../clockUtils";
 
 const TOP_PADDING = 10;
 
@@ -36,23 +37,13 @@ export default function Chart() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const { points: data, clockOffsetMs } = tpsBuffer.get();
-    if (!data.length) return;
+    const { points: data, maxTotalY } = tpsBuffer.get();
+    if (!data.length || maxTotalY === 0) return;
 
-    const now = performance.now();
-    const windowStart = now - WINDOW_MS;
-
-    const maxTotalY = data.reduce(
-      (max, p) =>
-        p.ts + clockOffsetMs >= windowStart ? Math.max(max, p.tps.total) : max,
-      0,
-    );
-    if (maxTotalY === 0) return;
-
+    const now = epochNow();
     const yRatio = (height - TOP_PADDING) / maxTotalY;
-
     const points = data.map((p) => ({
-      x: width * (1 - (now - (p.ts + clockOffsetMs)) / WINDOW_MS),
+      x: width * (1 - (now - p.ts) / WINDOW_MS),
       voteY: p.tps.vote * yRatio,
       failedY: (p.tps.failed + p.tps.vote) * yRatio,
       successY: (p.tps.success + p.tps.failed + p.tps.vote) * yRatio,

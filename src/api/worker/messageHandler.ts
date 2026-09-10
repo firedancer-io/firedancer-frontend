@@ -18,6 +18,7 @@ import {
   tpsHistoryIntervalMs,
 } from "./cache/consts";
 import { gossipHealthEmaFields } from "../atoms";
+import { epochNow } from "../../clockUtils";
 import {
   defaultValidatorState,
   type FromWorkerMessage,
@@ -81,7 +82,7 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
       post(msg);
     },
     onMessage(item: WsEntity): void {
-      const nowMs = performance.now();
+      const nowMs = epochNow();
 
       if (isEntry(item, "summary", "server_time_nanos")) {
         validatorState = {
