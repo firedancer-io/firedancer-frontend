@@ -1,12 +1,8 @@
 import {
-  averageChangedColor,
-  averageUnchangedColor,
-  badChangedColor,
-  badUnchangedColor,
-  goodChangedColor,
-  goodUnchangedColor,
-  unknownChangedColor,
-  unknownUnchangedColor,
+  averageHitRateColor,
+  badHitRateColor,
+  goodHitRateColor,
+  unknownHitRateColor,
 } from "./colors";
 import tableStyles from "./components/dataTable.module.css";
 
@@ -21,18 +17,11 @@ export function getHitRateStatus(
   return "Good";
 }
 
-export function hitRateChangedColor(status: HitRateStatus) {
-  if (status === "Good") return goodChangedColor;
-  if (status === "Average") return averageChangedColor;
-  if (status === "Bad") return badChangedColor;
-  return unknownChangedColor;
-}
-
-export function hitRateUnchangedColor(status: HitRateStatus) {
-  if (status === "Good") return goodUnchangedColor;
-  if (status === "Average") return averageUnchangedColor;
-  if (status === "Bad") return badUnchangedColor;
-  return unknownUnchangedColor;
+export function hitRateColor(status: HitRateStatus) {
+  if (status === "Good") return goodHitRateColor;
+  if (status === "Average") return averageHitRateColor;
+  if (status === "Bad") return badHitRateColor;
+  return unknownHitRateColor;
 }
 
 export function hitRateClass(rate: number | null | undefined) {
