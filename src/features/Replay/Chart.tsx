@@ -1,6 +1,13 @@
 import { Flex } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
-import { useRef, useLayoutEffect, useMemo, useCallback, useState } from "react";
+import {
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useCallback,
+  useState,
+} from "react";
 import { useMeasure } from "react-use";
 import styles from "./chart.module.css";
 import { type MarkerLinesProps } from "./const.ts";
@@ -10,6 +17,7 @@ import { calcRelativeMs, getInitVisibleRange } from "./utils.ts";
 import VisibleRange from "./VisibleRangeInfo.tsx";
 import { currentSlotAtom } from "../../atoms.ts";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
+import { resetTxnMetaCache } from "./RevenueTrack/txnMetaCache.ts";
 import { RevenueType } from "../../api/entities.ts";
 import type { TsRange } from "../WebGl/webglUtils.ts";
 import { useExplorableChart } from "./useExplorableChart.ts";
@@ -35,6 +43,8 @@ interface ChartProps {
  */
 export default function Chart({ startupTimeNs }: ChartProps) {
   const currentSlot = useAtomValue(currentSlotAtom);
+
+  useEffect(() => resetTxnMetaCache, []);
 
   const [measureRef, { width }] = useMeasure<HTMLDivElement>();
   const containerRef = useRef<HTMLDivElement | null>(null);

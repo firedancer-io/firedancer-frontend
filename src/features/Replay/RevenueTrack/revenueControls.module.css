@@ -1,0 +1,27 @@
+.controls {
+  position: absolute;
+  top: 0;
+  right: 5px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 8px;
+  color: var(--replay-primary-text-color);
+}
+
+.control {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.select {
+  font-size: 8px;
+  padding: 1px 2px;
+  color: var(--replay-primary-text-color);
+}
+
+.checkbox {
+  width: 10px;
+  height: 10px;
+}

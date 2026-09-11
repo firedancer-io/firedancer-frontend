@@ -1,6 +1,11 @@
 import { ZstdInit, type ZstdDec } from "@oneidentity/zstd-js/decompress";
 import { logDebug, logError, logWarning } from "../../logger";
-import { WsMessageSchema, type WsEntity, type ToWorkerMessage } from "./types";
+import {
+  WsMessageSchema,
+  WsErrorSchema,
+  type WsEntity,
+  type ToWorkerMessage,
+} from "./types";
 import { createMessageHandler } from "./messageHandler";
 
 const reconnectDelayMs = 3_000;
@@ -107,6 +112,12 @@ function connect(url: string, zstd: ZstdDec | undefined) {
 
         if (result.success) {
           enqueue(result.data);
+          return;
+        }
+
+        const errorResult = WsErrorSchema.safeParse(json);
+        if (errorResult.success) {
+          ctx.postMessage({ type: "error", ...errorResult.data });
           return;
         }
 
