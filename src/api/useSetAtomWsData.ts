@@ -7,6 +7,7 @@ import type {
   HistoryArrayKey,
   KeyedValuesWithHistory,
   WsEntity,
+  WsError,
 } from "./worker/types";
 import { isEmaObjectKey } from "./worker/types";
 import { DateTime } from "luxon";
@@ -101,6 +102,7 @@ import {
   voteCommissionAtom,
   aggRevenueAtom,
 } from "./atoms";
+import { resolveTxnMetaRequest } from "../features/Replay/RevenueTrack/txnMetaRequests";
 import {
   tpsSampleIntervalMs,
   liveNetworkMetricsDebounceMs,
@@ -139,6 +141,7 @@ export function useSetAtomWsData() {
   const setSocketState = useSetAtom(socketStateAtom);
 
   const updateAtoms = useUpdateAtoms();
+  const updateErrorAtoms = useUpdateErrorAtoms();
 
   const setNetworkMetricsEmaIngress = useSetAtom(networkMetricsEmaIngressAtom);
   const setNetworkMetricsEmaEgress = useSetAtom(networkMetricsEmaEgressAtom);
@@ -195,6 +198,9 @@ export function useSetAtomWsData() {
         case "kv":
           updateAtoms(msg);
           break;
+        case "error":
+          updateErrorAtoms(msg);
+          break;
         // currently unused, would map to EmaCache object
         case "ema":
           break;
@@ -213,7 +219,13 @@ export function useSetAtomWsData() {
           break;
       }
     },
-    [setSocketState, updateAtoms, updateHistoryArray, updateEmaHistoryObject],
+    [
+      setSocketState,
+      updateAtoms,
+      updateHistoryArray,
+      updateEmaHistoryObject,
+      updateErrorAtoms,
+    ],
   );
 
   useServerMessages(onMessage);
@@ -539,7 +551,7 @@ function useUpdateAtoms() {
 
   const updateAtoms = useCallback(
     (item: WsEntity) => {
-      const { topic, key, value } = item;
+      const { topic, key, value, id } = item;
       switch (topic) {
         case "summary":
           switch (key) {
@@ -774,6 +786,10 @@ function useUpdateAtoms() {
               setAggRevenue(value);
               break;
             }
+            case "query_txn_meta": {
+              resolveTxnMetaRequest(id, { value });
+              break;
+            }
           }
           break;
         }
@@ -951,4 +967,21 @@ function useUpdateAtoms() {
   );
 
   return updateAtoms;
+}
+
+function useUpdateErrorAtoms() {
+  return useCallback((msg: WsError) => {
+    const { topic, key, error, id } = msg;
+    switch (topic) {
+      case "timeline": {
+        switch (key) {
+          case "query_txn_meta": {
+            resolveTxnMetaRequest(id, { errorCode: error.code });
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }, []);
 }

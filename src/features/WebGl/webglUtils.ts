@@ -26,7 +26,7 @@ uniform mat4 modelViewMatrix;
 
 attribute vec2 position;
 attribute vec4 instanceRect;  // x, y, w, h in world space
-attribute vec3 instanceColor;
+attribute vec3 instanceColor; // r, g, b
 
 varying vec3 vColor;
 
@@ -104,7 +104,7 @@ export type WebglResources = {
   sharedMaterial: THREE.RawShaderMaterial;
 };
 
-function createUnitQuad() {
+export function createUnitQuad() {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     "position",
@@ -124,13 +124,14 @@ function createSharedMaterial(opacity: number) {
     fragmentShader,
     side: THREE.FrontSide,
     transparent: true,
+    depthWrite: false,
     uniforms: {
       uOpacity: { value: opacity },
     },
   });
 }
 
-export function createWebglResources(opacity: number): WebglResources {
+export function createWebglResources(opacity = 1): WebglResources {
   return {
     unitQuad: createUnitQuad(),
     sharedMaterial: createSharedMaterial(opacity),
@@ -185,7 +186,7 @@ export function createRectMesh(resources: WebglResources): RectMesh {
 }
 
 /**
- * Bump up capacity for slot as needed
+ * Bump up capacity for rect as needed
  */
 export function ensureCapacity(rectMesh: RectMesh, needed: number) {
   if (needed <= rectMesh.capacity) return;
