@@ -13,7 +13,7 @@ import {
   accountsSecondaryColor,
 } from "../../../colors";
 import styles from "./accountsCard.module.css";
-import { hitRateChangedColor, getHitRateStatus } from "../../../hitRate";
+import { hitRateColor, getHitRateStatus } from "../../../hitRate";
 import { accountsNextCompactionAtom } from "../../../atoms";
 
 const storageStatsMinWidth = "150px";
@@ -27,7 +27,7 @@ export default function AccountsCard({ className }: { className?: string }) {
   if (!accountStats) return null;
 
   const hitRateStatus = getHitRateStatus(accountStats.cache.hit_rate_ema);
-  const hitRateColor = hitRateChangedColor(hitRateStatus);
+  const hitRateStatusColor = hitRateColor(hitRateStatus);
 
   const readsPerSec = formatCount(
     Math.max(
@@ -60,7 +60,7 @@ export default function AccountsCard({ className }: { className?: string }) {
               label="Hit Rate"
               value={formatHitRate(accountStats.cache.hit_rate_ema)}
               size="lg"
-              color={hitRateColor}
+              color={hitRateStatusColor}
               suffix="%"
             />
             <Flex gap="2">

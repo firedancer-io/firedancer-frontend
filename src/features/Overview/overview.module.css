@@ -4,7 +4,7 @@
 
 /* Firedancer */
 
-@media (900px <= width < 1450px) {
+@media (900px <= width < 1500px) {
   .cards:not(.frankendancer) {
     grid-template-columns: repeat(2, 1fr);
 
@@ -16,7 +16,7 @@
   }
 }
 
-@media (1450px <= width < 1770px) {
+@media (1500px <= width < 1770px) {
   .cards:not(.frankendancer) {
     grid-template-columns: repeat(3, 1fr);
 
