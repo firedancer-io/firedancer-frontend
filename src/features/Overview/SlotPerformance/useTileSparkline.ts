@@ -1,7 +1,7 @@
 import { mean } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useInterval } from "react-use";
-import { createClock } from "../../../clockUtils";
+import { createClock, epochNow } from "../../../clockUtils";
 
 export const strokeLineWidth = 2;
 
@@ -74,6 +74,11 @@ interface PointSample {
   ts: number;
 }
 
+export type ScaledPoint = {
+  x: number;
+  y: number;
+};
+
 const defaultTickMs = 150;
 /** How many ticks of extra buffer data is drawn for the transform to slide over */
 const tickBufferCount = 3;
@@ -85,7 +90,7 @@ function setDataWindow(
   windowMs: number,
   value: number | undefined,
 ) {
-  const now = performance.now();
+  const now = epochNow();
 
   data.push({ value, ts: now });
 
@@ -124,9 +129,7 @@ export function useScaledDataPoints({
   stopShifting,
   tickMs = defaultTickMs,
 }: UseScaledDataPointsProps) {
-  const [scaledDataPoints, setScaledDataPoints] = useState<
-    { x: number; y: number }[]
-  >([]);
+  const [scaledDataPoints, setScaledDataPoints] = useState<ScaledPoint[]>([]);
 
   const isStatic = !!(history?.length && value === undefined);
 
@@ -135,7 +138,7 @@ export function useScaledDataPoints({
     if (!history?.length) return;
     if (!isNumberHistory(history)) return history;
 
-    const now = performance.now();
+    const now = epochNow();
     const ratio = _windowMs / (history.length - 1);
     const tStart = now - _windowMs;
     return history.map((value, i) => ({ value, ts: tStart + i * ratio }));
@@ -158,8 +161,8 @@ export function useScaledDataPoints({
   }, [_width, _windowMs, isStatic, tickMs]);
 
   const dataRef = useRef<PointSample[]>([
-    { value: undefined, ts: performance.now() - windowMs },
-    { value: undefined, ts: performance.now() },
+    { value: undefined, ts: epochNow() - windowMs },
+    { value: undefined, ts: epochNow() },
   ]);
 
   const isSeededRef = useRef(false);
@@ -168,13 +171,7 @@ export function useScaledDataPoints({
     if (isSeededRef.current || !normalizedHistory?.length) return;
     isSeededRef.current = true;
 
-    const now = performance.now();
-    const newestTs = normalizedHistory[normalizedHistory.length - 1].ts;
-
-    dataRef.current = normalizedHistory.map(({ ts, value }) => ({
-      value,
-      ts: now - (newestTs - ts),
-    }));
+    dataRef.current = [...normalizedHistory];
   }, [normalizedHistory]);
 
   useEffect(() => {
@@ -188,7 +185,7 @@ export function useScaledDataPoints({
 
     const lastTs = dataRef.current[dataRef.current.length - 1]?.ts;
     // Don't add a artifical tick point if one was added within the specified update interval
-    if (lastTs !== undefined && performance.now() - lastTs < updateIntervalMs) {
+    if (lastTs !== undefined && epochNow() - lastTs < updateIntervalMs) {
       return;
     }
 
@@ -214,7 +211,7 @@ export function useScaledDataPoints({
       const tStart = tEnd - windowMs;
       const scale = width / windowMs;
 
-      const points = new Array<{ x: number; y: number }>(size);
+      const points = new Array<ScaledPoint>(size);
       for (let i = 0; i < size; i++) {
         const d = data[i];
         if (d === undefined && i === 0) {
@@ -238,7 +235,7 @@ export function useScaledDataPoints({
               (1 - d.value) * (height - strokeLineWidth) + strokeLineWidth / 2
             : (prevPoint.y ?? 0);
 
-        points[i] = { x: x, y: y };
+        points[i] = { x, y };
       }
 
       setScaledDataPoints(points);
@@ -247,14 +244,9 @@ export function useScaledDataPoints({
     if (isStatic) {
       if (!normalizedHistory?.length) return;
 
-      const tEnd = performance.now();
-      const newestTs = normalizedHistory[normalizedHistory.length - 1].ts;
-      const data = normalizedHistory.map(({ ts, value }) => ({
-        value,
-        ts: tEnd - (newestTs - ts),
-      }));
+      const tEnd = normalizedHistory[normalizedHistory.length - 1].ts;
 
-      tick(data, tEnd);
+      tick(normalizedHistory, tEnd);
     }
     // live
     else {

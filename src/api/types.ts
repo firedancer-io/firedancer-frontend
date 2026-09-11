@@ -30,7 +30,6 @@ import type {
   tileSchema,
   tileTimerSchema,
   tileTypeSchema,
-  tpsHistorySchema,
   txnWaterfallInSchema,
   txnWaterfallOutSchema,
   txnWaterfallSchema,
@@ -160,8 +159,6 @@ export type StartupPhase = z.infer<typeof startupPhaseSchema>;
 export type BootPhase = z.infer<typeof bootPhaseSchema>;
 
 export type SupermajorityEpoch = z.infer<typeof supermajorityEpochSchema>;
-
-export type TpsHistory = z.infer<typeof tpsHistorySchema>;
 
 export type VoteState = z.infer<typeof voteStateSchema>;
 

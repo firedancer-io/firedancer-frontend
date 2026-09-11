@@ -13,8 +13,12 @@ import {
   overviewPublishIntervalMs,
   overviewRenderWindowMs,
   overviewHistoryBufferMs,
+  tpsPublishIntervalMs,
+  tpsRenderWindowMs,
+  tpsHistoryIntervalMs,
 } from "./cache/consts";
 import { gossipHealthEmaFields } from "../atoms";
+import { epochNow } from "../../clockUtils";
 import {
   defaultValidatorState,
   type FromWorkerMessage,
@@ -39,6 +43,12 @@ const tileTimerOptions: HistoryArrayOptions = {
 const networkMetricsOptions: HistoryArrayOptions = {
   publishIntervalMs: overviewPublishIntervalMs,
   historyWindowMs: overviewRenderWindowMs + overviewHistoryBufferMs,
+};
+
+const tpsOptions: HistoryArrayOptions = {
+  publishIntervalMs: tpsPublishIntervalMs,
+  historyWindowMs: tpsRenderWindowMs,
+  sendDelta: true,
 };
 
 function isEntry<
@@ -72,7 +82,7 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
       post(msg);
     },
     onMessage(item: WsEntity): void {
-      const nowMs = performance.now();
+      const nowMs = epochNow();
 
       if (isEntry(item, "summary", "server_time_nanos")) {
         validatorState = {
@@ -118,6 +128,23 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
       if (isEntry(item, "summary", "live_tile_timers")) {
         historyArrayCache.subscribe("tileTimers", tileTimerOptions);
         historyArrayCache.update("tileTimers", item.value);
+      }
+
+      if (isEntry(item, "summary", "estimated_tps")) {
+        const { total, vote, success, failed } = item.value;
+        historyArrayCache.subscribe("tps", tpsOptions);
+        historyArrayCache.update("tps", [total, vote, success, failed]);
+      }
+
+      if (isEntry(item, "summary", "tps_history")) {
+        historyArrayCache.subscribe("tps", tpsOptions);
+        historyArrayCache.seed(
+          "tps",
+          item.value.map(({ total, vote, success, failed }, i, arr) => ({
+            ts: nowMs - (arr.length - 1 - i) * tpsHistoryIntervalMs,
+            values: [total, vote, success, failed],
+          })),
+        );
       }
     },
   };

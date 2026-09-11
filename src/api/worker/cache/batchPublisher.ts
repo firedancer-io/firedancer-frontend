@@ -1,4 +1,5 @@
 import { isDefined } from "../../../utils";
+import { epochNow } from "../../../clockUtils";
 
 export interface PublisherOptions {
   publishIntervalMs: number;
@@ -47,7 +48,7 @@ export function createBatchPublisher<
   }
 
   function collectAndPost(entries: Iterable<TEntry>, isForced: boolean) {
-    const nowMs = performance.now();
+    const nowMs = epochNow();
     const batch: TMessage[] = [];
     for (const e of entries) {
       if (!isForced && (!e.subscribed || nowMs < nextDueAt(e))) {
@@ -67,7 +68,7 @@ export function createBatchPublisher<
   function schedule() {
     if (timer) return;
 
-    const nowMs = performance.now();
+    const nowMs = epochNow();
     let nextDue = Infinity;
     for (const e of entries.values()) {
       if (!e.subscribed) continue;
