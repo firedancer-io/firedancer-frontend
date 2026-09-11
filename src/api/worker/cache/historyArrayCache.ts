@@ -101,7 +101,14 @@ export function createHistoryArrayCache<K extends string>(
 
     seed(key: K, entries: HistoryEntry[]) {
       const e = publisher.get(key);
-      if (!e || entries.length === 0) return;
+      if (!e) return;
+
+      if (entries.length === 0) {
+        publisher.reset(key);
+        post([{ key, values: [], history: [] }]);
+        return;
+      }
+
       e.history.clear();
       for (const entry of entries) {
         e.history.push(entry);
