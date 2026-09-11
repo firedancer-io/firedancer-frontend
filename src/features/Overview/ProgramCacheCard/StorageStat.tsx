@@ -53,7 +53,7 @@ export default function StorageStat() {
         <Text className={cardStatStyles.label}>Storage</Text>
         <Flex align="baseline" gap="1">
           <Text
-            className={clsx(cardStatStyles.value, cardStatStyles.small)}
+            className={clsx(cardStatStyles.value, cardStatStyles.medium)}
             style={{ color: headerColor } as CSSProperties}
           >
             {numerator.value}

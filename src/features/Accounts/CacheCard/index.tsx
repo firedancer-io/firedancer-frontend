@@ -12,7 +12,7 @@ import {
 import Stat, { FractionStat } from "../Stat";
 
 import { cacheClassList } from "../consts";
-import { hitRateChangedColor, getHitRateStatus } from "../../../hitRate";
+import { hitRateColor, getHitRateStatus } from "../../../hitRate";
 import { accountsReadColor, accountsWriteColor } from "../../../colors";
 
 export default function CacheCard({ className }: { className?: string }) {
@@ -22,7 +22,7 @@ export default function CacheCard({ className }: { className?: string }) {
   const cacheClasses = accountStats.cache.classes;
 
   const hitRateStatus = getHitRateStatus(accountStats.cache.hit_rate_ema);
-  const hitRateColor = hitRateChangedColor(hitRateStatus);
+  const hitRateStatusColor = hitRateColor(hitRateStatus);
 
   const readsPerSec = formatCount(
     Math.max(
@@ -52,7 +52,7 @@ export default function CacheCard({ className }: { className?: string }) {
         <Stat
           value={formatHitRate(accountStats.cache.hit_rate_ema)}
           size="lg"
-          color={hitRateColor}
+          color={hitRateStatusColor}
           suffix="% hit"
         />
 

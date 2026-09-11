@@ -2,10 +2,12 @@ import { Flex, Text } from "@radix-ui/themes";
 import cardStatStyles from "../../../components/cardStat.module.css";
 import styles from "./hitRateStat.module.css";
 import clsx from "clsx";
-import { unknownChangedColor, unknownUnchangedColor } from "../../../colors";
 import {
-  hitRateChangedColor,
-  hitRateUnchangedColor,
+  unknownHitRateColor,
+  unknownHitRateUnchangedColor,
+} from "../../../colors";
+import {
+  hitRateColor,
   getHitRateStatus,
   type HitRateStatus,
 } from "../../../hitRate";
@@ -58,23 +60,23 @@ export default function HitRateStat() {
       <Text className={cardStatStyles.label}>
         <Text>Hit Rate</Text>{" "}
         <Text className={styles.trailing}>Trailing 1m</Text>{" "}
-        <Text style={{ color: hitRateUnchangedColor(status) }}>{status}</Text>
+        <Text style={{ color: hitRateColor(status) }}>{status}</Text>
       </Text>
-      <Flex gap="2" align="center">
+      <Flex gap="2" align="baseline">
         <Flex align="baseline" gap="1" minWidth="70px">
-          <ColorText
-            value={percentage}
-            changedColor={hitRateChangedColor(status)}
-            unchangedColor={hitRateUnchangedColor(status)}
-            className={clsx(cardStatStyles.value, cardStatStyles.small)}
-          />
+          <Text
+            className={clsx(cardStatStyles.value, cardStatStyles.medium)}
+            style={{ color: hitRateColor(status) }}
+          >
+            {percentage}
+          </Text>
           <Text className={cardStatStyles.appendValue}>%</Text>
         </Flex>
         <Flex align="baseline" gap="1">
           <ColorText
             value={hits}
-            changedColor={unknownChangedColor}
-            unchangedColor={unknownUnchangedColor}
+            changedColor={unknownHitRateColor}
+            unchangedColor={unknownHitRateUnchangedColor}
             className={clsx(cardStatStyles.value, cardStatStyles.small)}
           />
           <Text className={cardStatStyles.appendValue}>Hits</Text>
@@ -82,8 +84,8 @@ export default function HitRateStat() {
         <Flex align="baseline" gap="1">
           <ColorText
             value={misses}
-            changedColor={unknownChangedColor}
-            unchangedColor={unknownUnchangedColor}
+            changedColor={unknownHitRateColor}
+            unchangedColor={unknownHitRateUnchangedColor}
             className={clsx(cardStatStyles.value, cardStatStyles.small)}
           />
           <Text className={cardStatStyles.appendValue}>Misses</Text>
