@@ -1,58 +1,29 @@
-import { MAX_WEBGL_PX_RATIO } from "../../../consts.ts";
+import { colors } from "../../Overview/ShredsProgression/WebGl/chartUtils";
+import { msBucketSizes, nsBucketSizes } from "../const";
 import * as THREE from "three";
+import { MAX_WEBGL_PX_RATIO, nsPerMs } from "../../../consts";
+import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers";
 import {
   createWebglResources,
   createRectMesh,
   disposeWebglResources,
-  type RectMesh,
-  type WebglResources,
+  createRenderer,
   ensureCapacity,
   addRectangleToMesh,
   updateRectMeshCounts,
-  type RgbColor,
   type TsRange,
-  createRenderer,
   type NsTsRange,
-} from "../../WebGl/webglUtils.ts";
-import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
-import { msBucketSizes, nsBucketSizes } from "../const.ts";
-import type { RevenueType } from "../../../api/entities.ts";
+  type RgbColor,
+} from "../../WebGl/webglUtils";
+import {
+  SHREDS_AGG_THRESHOLD_MS,
+  type AggRendererResources,
+  type RendererObj,
+} from "./const";
 import { omit } from "lodash";
-import { clampNonZeroValue, logRatio } from "../../../mathUtils.ts";
-import { revenueLogBase } from "../../Overview/SlotPerformance/TransactionBarsCard/consts.ts";
-import type { RevenueBucketsByGranularity } from "./atoms.ts";
-import { getGranularity, OVERSCAN_BUCKETS } from "./useAggRevenueQuery.ts";
-
-// TODO: set reasonable threshold with non-agg data
-const AGGREGATE_THRESHOLD_MS = 0;
-
-const REVENUE_COLOR: RgbColor = [116 / 255, 178 / 255, 238 / 255];
-const REVENUE_OPACITY = 1;
-
-const minY = 0;
-const minNonZeroY = 0.1;
-const maxY = 5;
-
-export interface RendererObj {
-  renderer: THREE.WebGLRenderer;
-  aggResources: AggResources;
-  // TODO: add nonAggResources
-  cleanUp: () => void;
-}
-
-export interface AggResources {
-  camera: THREE.OrthographicCamera;
-  scene: THREE.Scene;
-  resources: WebglResources;
-  mesh: RectMesh;
-  /**
-   * origin ms subtracted from both the camera bounds and
-   * the rectangle geometry so the GPU works with small, float32-precise coordinates
-   * instead of ~3.4e8.
-   * Mesh position x values must be updated when this changes
-   */
-  cameraReferenceMs: number;
-}
+import type { ShredBucketsByGranularity } from "./atoms";
+import { getAggGranularity, OVERSCAN_BUCKETS } from "./useAggShredsQuery";
+import { AggShredEventType } from "../../../api/entities";
 
 export function setUpRenderers(
   canvasWidth: number,
@@ -88,12 +59,12 @@ export function setUpRenderers(
 
 export function setUpAggResources(
   getWasContextLost: ContextHelpers["getWasContextLost"],
-): AggResources & { cleanUpResources: () => void } {
+) {
   const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(0, 0, maxY, minY, 0.5, 10);
+  const camera = new THREE.OrthographicCamera(0, 0, 0, 0, 0.5, 10);
   camera.position.z = 1;
 
-  const resources = createWebglResources(REVENUE_OPACITY);
+  const resources = createWebglResources(1);
   const mesh = createRectMesh(resources);
 
   scene.add(mesh.mesh);
@@ -120,72 +91,81 @@ export function setUpAggResources(
   };
 }
 
-function getRevenueRatio(maxValue: bigint, value: bigint) {
-  if (maxValue === 0n) return 0;
-  const ratio = 1 / logRatio(Number(maxValue), Number(value), revenueLogBase);
-  return clampNonZeroValue(ratio, minNonZeroY, maxY);
-}
+const orderedEventColors: Record<AggShredEventType, RgbColor> = {
+  [AggShredEventType.Repair]: colors.replayedRepair,
+  [AggShredEventType.Reconstructed]: colors.replayedNothing,
+  [AggShredEventType.Turbine]: colors.replayedTurbine,
+  [AggShredEventType.Published]: colors.published,
+};
 
+// TODO: get skipped data
 /**
  * Redraw all available data in the visible range at the appropriate granularity level
  */
-export function drawAggRevenue(
+export function drawAggShreds(
   rendererObj: RendererObj,
   absoluteVisibleRange: NsTsRange,
   getRelativeMs: (absoluteNs: bigint) => number,
-  type: RevenueType,
-  aggRevenue: RevenueBucketsByGranularity,
+  aggShreds: ShredBucketsByGranularity,
 ) {
-  const granularity = getGranularity(
+  const granularity = getAggGranularity(
     absoluteVisibleRange[1] - absoluteVisibleRange[0],
   );
-  const revenueByBucketIdx = aggRevenue.get(granularity);
-  if (!revenueByBucketIdx) return;
 
-  const { cameraReferenceMs, mesh } = rendererObj.aggResources;
+  const eventsByBucketIdx = aggShreds.get(granularity);
+  if (!eventsByBucketIdx) return;
+
+  const { camera, cameraReferenceMs, mesh } = rendererObj.aggResources;
   const bucketSizeNs = nsBucketSizes[granularity];
   const startIdx = Number(absoluteVisibleRange[0] / bucketSizeNs);
   // don't include next bucket if on boundary
   const endIdx = Number((absoluteVisibleRange[1] - 1n) / bucketSizeNs);
+  const width = msBucketSizes[granularity];
 
-  let maxVisibleValue = 0n;
-  const toDraw: [value: bigint, x: number][] = [];
+  let maxVisibleShredsPerBucket = 0;
+  let rectIdx = 0;
   for (
     let bucketIdx = startIdx - OVERSCAN_BUCKETS;
     bucketIdx <= endIdx + OVERSCAN_BUCKETS;
     bucketIdx++
   ) {
+    const eventCounts = eventsByBucketIdx.get(bucketIdx);
+    if (!eventCounts) continue;
+
     const isOverscan = bucketIdx < startIdx || bucketIdx > endIdx;
-    const revenues = revenueByBucketIdx.get(bucketIdx);
-    const value = revenues?.[type];
-    if (!value) continue;
 
     const startNs = BigInt(bucketIdx) * bucketSizeNs;
     // shift start by camera reference to keep coordinates small
     const x = getRelativeMs(startNs) - cameraReferenceMs;
-    toDraw.push([value, x]);
+
+    let shredsInBucket = 0;
+    for (const [eventType, color] of Object.entries(orderedEventColors)) {
+      const count = eventCounts[eventType as AggShredEventType];
+      if (!count) continue;
+
+      addRectangleToMesh(
+        mesh,
+        rectIdx,
+        x,
+        -shredsInBucket - count,
+        width,
+        count,
+        color,
+      );
+
+      shredsInBucket += count;
+      rectIdx++;
+    }
 
     // exclude overscan from max visible value
-    if (!isOverscan && value > maxVisibleValue) {
-      maxVisibleValue = value;
+    if (!isOverscan && shredsInBucket > maxVisibleShredsPerBucket) {
+      maxVisibleShredsPerBucket = shredsInBucket;
     }
   }
 
-  const width = msBucketSizes[granularity];
-  for (let rectIdx = 0; rectIdx < toDraw.length; rectIdx++) {
-    const [value, x] = toDraw[rectIdx];
-    addRectangleToMesh(
-      mesh,
-      rectIdx,
-      x,
-      minY,
-      width,
-      getRevenueRatio(maxVisibleValue, value),
-      REVENUE_COLOR,
-    );
-  }
-  ensureCapacity(mesh, toDraw.length);
-  updateRectMeshCounts(mesh, toDraw.length);
+  updateCameraYRange(camera, maxVisibleShredsPerBucket);
+  ensureCapacity(mesh, rectIdx);
+  updateRectMeshCounts(mesh, rectIdx);
 
   /** store mesh positions relative to referenceX. This allows GPU to see small coordinates */
   mesh.referenceX = cameraReferenceMs;
@@ -196,14 +176,14 @@ export function drawAggRevenue(
  * Move camera and update mesh reference x
  */
 export function moveAggCamera(
-  rendererObj: RendererObj,
+  resources: AggRendererResources,
   visibleRangeMs: TsRange,
 ) {
-  const { camera, mesh } = rendererObj.aggResources;
+  const { camera, mesh } = resources;
 
   // Store a camera reference to make mesh coordinates smaller for GPU
   const cameraReferenceMs = visibleRangeMs[0];
-  rendererObj.aggResources.cameraReferenceMs = cameraReferenceMs;
+  resources.cameraReferenceMs = cameraReferenceMs;
   camera.left = visibleRangeMs[0] - cameraReferenceMs;
   camera.right = visibleRangeMs[1] - cameraReferenceMs;
   camera.updateProjectionMatrix();
@@ -215,6 +195,18 @@ export function moveAggCamera(
   }
 }
 
-export function isAggregate(rangeMs: TsRange) {
-  return rangeMs[1] - rangeMs[0] > AGGREGATE_THRESHOLD_MS;
+export function updateCameraYRange(
+  camera: THREE.OrthographicCamera,
+  maxShredCount: number,
+) {
+  if (camera.bottom === -maxShredCount) return;
+  camera.top = 0;
+  camera.bottom = -maxShredCount;
+  camera.updateProjectionMatrix();
+}
+
+export function isAggregate(range: NsTsRange) {
+  return (
+    range[1] - range[0] > BigInt(SHREDS_AGG_THRESHOLD_MS) * BigInt(nsPerMs)
+  );
 }
