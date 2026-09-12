@@ -15,6 +15,7 @@ import type { TsRange } from "../WebGl/webglUtils.ts";
 import { useExplorableChart } from "./useExplorableChart.ts";
 import { useVisibleRangeSubscribers } from "./useVisibleRangeSubscribers.ts";
 import MiniMap from "./MiniMap/MiniMap.tsx";
+import HeaderTrack from "./HeaderTrack/HeaderTrack.tsx";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 
 const LIVE_CHART_DELAY_MS = 500;
@@ -181,14 +182,21 @@ export default function Chart({ startupTimeNs }: ChartProps) {
     <div className={styles.container} ref={setContainerRefs}>
       {!!width && isRangeInitialized && (
         <>
-          <VisibleRange {...visibleRangeSubscriberProps} />
           <MiniMap
             width={width}
             {...visibleRangeSubscriberProps}
             {...miniMapProps}
             {...markerLinesProps}
           />
+          <VisibleRange {...visibleRangeSubscriberProps} />
+
           <Flex direction="column" gapY="4" position="relative">
+            <HeaderTrack
+              width={width}
+              {...visibleRangeSubscriberProps}
+              {...explorableChartProps}
+              {...markerLinesProps}
+            />
             <ShredsTrack
               width={width}
               {...visibleRangeSubscriberProps}

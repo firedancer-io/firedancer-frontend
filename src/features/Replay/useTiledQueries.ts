@@ -12,6 +12,11 @@ interface UseTiledQueriesOpts<Granularity extends string> {
    * Extra tiles to be fetched on either side of the query range
    */
   overscanTilesCount: number;
+  /**
+   * First query id to assign. Use to avoid collisions with other requesters
+   * sharing the same server message channel.
+   */
+  startQueryId?: number;
   sendQuery: (
     queryId: number,
     startNs: bigint,
@@ -32,6 +37,7 @@ interface UseTiledQueriesOpts<Granularity extends string> {
 export function useTiledQueries<Granularity extends string>({
   getTileSizeNs,
   overscanTilesCount,
+  startQueryId = 0,
   sendQuery,
   tileEvictionThreshold,
   onEvictTiles,
@@ -43,7 +49,7 @@ export function useTiledQueries<Granularity extends string>({
   const latestVisibleRangeRef = useRef<
     [startNs: bigint, endNs: bigint] | undefined
   >();
-  const nextQueryIdRef = useRef(0);
+  const nextQueryIdRef = useRef(startQueryId);
 
   const { getTileStates, getNewQueryId } = useMemo(
     () => ({
