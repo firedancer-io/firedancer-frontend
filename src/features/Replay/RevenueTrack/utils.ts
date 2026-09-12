@@ -12,14 +12,16 @@ import {
   type RgbColor,
   type TsRange,
   createRenderer,
+  type NsTsRange,
 } from "../../WebGl/webglUtils.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
-import { msBucketSizes } from "../const.ts";
+import { msBucketSizes, nsBucketSizes } from "../const.ts";
 import type { RevenueType } from "../../../api/entities.ts";
-import type { AggRevenue } from "../../../api/types.ts";
 import { omit } from "lodash";
 import { clampNonZeroValue, logRatio } from "../../../mathUtils.ts";
 import { revenueLogBase } from "../../Overview/SlotPerformance/TransactionBarsCard/consts.ts";
+import type { RevenueBucketsByGranularity } from "./atoms.ts";
+import { getGranularity, OVERSCAN_BUCKETS } from "./useAggRevenueQuery.ts";
 
 // TODO: set reasonable threshold with non-agg data
 const AGGREGATE_THRESHOLD_MS = 0;
@@ -124,56 +126,70 @@ function getRevenueRatio(maxValue: bigint, value: bigint) {
   return clampNonZeroValue(ratio, minNonZeroY, maxY);
 }
 
+/**
+ * Redraw all available data in the visible range at the appropriate granularity level
+ */
 export function drawAggRevenue(
   rendererObj: RendererObj,
-  type: RevenueType,
-  aggRevenue: AggRevenue,
+  absoluteVisibleRange: NsTsRange,
   getRelativeMs: (absoluteNs: bigint) => number,
+  type: RevenueType,
+  aggRevenue: RevenueBucketsByGranularity,
 ) {
-  const { granularity, reference_ts_ns } = aggRevenue;
-  const referenceMs = getRelativeMs(reference_ts_ns);
-  const bucketMs = msBucketSizes[granularity];
-
-  let maxValue = 0n;
-  const data = aggRevenue[type].reduce<[value: bigint, startMs: number][]>(
-    (acc, value, i) => {
-      if (value != null) {
-        const startMs = referenceMs + i * bucketMs;
-        acc.push([value, startMs]);
-
-        if (value > maxValue) {
-          maxValue = value;
-        }
-      }
-      return acc;
-    },
-    [],
+  const granularity = getGranularity(
+    absoluteVisibleRange[1] - absoluteVisibleRange[0],
   );
+  const revenueByBucketIdx = aggRevenue.get(granularity);
+  if (!revenueByBucketIdx) return;
 
   const { cameraReferenceMs, mesh } = rendererObj.aggResources;
+  const bucketSizeNs = nsBucketSizes[granularity];
+  const startIdx = Number(absoluteVisibleRange[0] / bucketSizeNs);
+  // don't include next bucket if on boundary
+  const endIdx = Number((absoluteVisibleRange[1] - 1n) / bucketSizeNs);
+
+  let maxVisibleValue = 0n;
+  const toDraw: [value: bigint, x: number][] = [];
+  for (
+    let bucketIdx = startIdx - OVERSCAN_BUCKETS;
+    bucketIdx <= endIdx + OVERSCAN_BUCKETS;
+    bucketIdx++
+  ) {
+    const isOverscan = bucketIdx < startIdx || bucketIdx > endIdx;
+    const revenues = revenueByBucketIdx.get(bucketIdx);
+    const value = revenues?.[type];
+    if (!value) continue;
+
+    const startNs = BigInt(bucketIdx) * bucketSizeNs;
+    // shift start by camera reference to keep coordinates small
+    const x = getRelativeMs(startNs) - cameraReferenceMs;
+    toDraw.push([value, x]);
+
+    // exclude overscan from max visible value
+    if (!isOverscan && value > maxVisibleValue) {
+      maxVisibleValue = value;
+    }
+  }
+
+  const width = msBucketSizes[granularity];
+  for (let rectIdx = 0; rectIdx < toDraw.length; rectIdx++) {
+    const [value, x] = toDraw[rectIdx];
+    addRectangleToMesh(
+      mesh,
+      rectIdx,
+      x,
+      minY,
+      width,
+      getRevenueRatio(maxVisibleValue, value),
+      REVENUE_COLOR,
+    );
+  }
+  ensureCapacity(mesh, toDraw.length);
+  updateRectMeshCounts(mesh, toDraw.length);
 
   /** store mesh positions relative to referenceX. This allows GPU to see small coordinates */
   mesh.referenceX = cameraReferenceMs;
   mesh.mesh.position.x = 0;
-
-  // draw nothing if max value is 0
-  const dataCount = maxValue === 0n ? 0 : data.length;
-  ensureCapacity(mesh, dataCount);
-  updateRectMeshCounts(mesh, dataCount);
-
-  for (let rectangleIdx = 0; rectangleIdx < dataCount; rectangleIdx++) {
-    const [value, startMs] = data[rectangleIdx];
-    const endMs = startMs + bucketMs;
-    addRectangleToMesh(
-      mesh,
-      rectangleIdx,
-      startMs - mesh.referenceX,
-      minY,
-      endMs - startMs,
-      getRevenueRatio(maxValue, value),
-      REVENUE_COLOR,
-    );
-  }
 }
 
 /**
