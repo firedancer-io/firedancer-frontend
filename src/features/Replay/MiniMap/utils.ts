@@ -99,19 +99,19 @@ export function render(rendererObj: RendererObj) {
   renderer.render(scene, camera);
 }
 
-enum ColorState {
+export enum ColorState {
   Skipped = "Skipped",
   NotSkipped = "NotSkipped",
 }
 
-const colorStates = Object.values(ColorState);
+export const colorStates = Object.values(ColorState);
 
-const colors: Record<ColorState, RgbColor> = {
+export const colors: Record<ColorState, RgbColor> = {
   [ColorState.Skipped]: [235 / 255, 64 / 255, 52 / 255],
   [ColorState.NotSkipped]: convertToWebGlColor(epochSliderProgressColor),
 };
 
-function getBucketColorRatios(
+export function getBucketColorRatios(
   startSlot: number | null,
   endSlot: number | null,
   skippedCount: number | null,

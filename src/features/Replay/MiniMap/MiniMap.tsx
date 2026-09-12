@@ -19,7 +19,7 @@ import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
 import useMiniMapQuery, { getMiniMapGranularity } from "./useMiniMapQuery.ts";
 import type { AggSlots } from "../../../api/types.ts";
 import { useTimelineServerMessage } from "../utils.ts";
-import { RequesterId } from "../useAggSlotsQuery.ts";
+import { StartQueryId } from "../useAggSlotsQuery.ts";
 import { useThrottledCallback } from "use-debounce";
 import styles from "./miniMap.module.css";
 import clsx from "clsx";
@@ -173,7 +173,7 @@ function MiniMap({
   }, [width]);
 
   const onMessage = useCallback((message: { id: number; value: AggSlots }) => {
-    if (!rendererRef.current || message.id !== RequesterId.MiniMap) return;
+    if (!rendererRef.current || message.id !== StartQueryId.MiniMap) return;
 
     drawMiniMap(rendererRef.current, message.value, getRelativeMsRef.current);
     render(rendererRef.current);

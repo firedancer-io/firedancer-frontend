@@ -1,7 +1,7 @@
 .mini-map-container {
   cursor: pointer;
   position: relative;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
 
   .mini-map-track {
     width: 100%;
