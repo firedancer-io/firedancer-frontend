@@ -767,6 +767,7 @@ function useUpdateAtoms() {
         }
         case "timeline": {
           switch (key) {
+            case "query_agg_shreds":
             case "query_agg_revenue":
             case "query_agg_slots": {
               // listen in component

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from "react";
-import type { NsTsRange } from "../../WebGl/webglUtils";
+import type { NsTsRange } from "../WebGl/webglUtils";
 
 interface TileStates {
   fetched: Set<number>;
