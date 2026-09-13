@@ -9,6 +9,7 @@ import LiveTileMetrics from "./LiveTileMetrics";
 import SlotTimeline from "./SlotTimeline";
 import ProgramCacheCard from "./ProgramCacheCard";
 import AccountsCard from "./AccountsCard";
+import ResourcesCard from "./ResourcesCard";
 import styles from "./overview.module.css";
 import { isFrankendancer } from "../../client";
 import clsx from "clsx";
@@ -31,6 +32,7 @@ export default function Overview() {
         {!isFrankendancer && <AccountsCard className={styles.accountsCard} />}
         <TransactionsCard className={styles.txnsCard} />
       </Grid>
+      {!isFrankendancer && <ResourcesCard />}
       <ShredsProgression />
       <SlotPerformance />
       <LiveNetworkMetrics />
