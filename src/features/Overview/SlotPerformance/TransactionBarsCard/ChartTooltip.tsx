@@ -6,8 +6,6 @@ import { Button, Flex, Text } from "@radix-ui/themes";
 import { stateTextColors, TxnState } from "./consts";
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
-import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
-import { selectedSlotAtom } from "../atoms";
 import UplotTooltip from "../../../../uplotReact/UplotTooltip";
 import { calcTxnIncome, getCuIncomeRankings } from "./txnBarsPluginUtils";
 import { Cross2Icon } from "@radix-ui/react-icons";
@@ -27,28 +25,26 @@ import {
 } from "../../../../colors";
 import { solDecimals, txnErrorCodeMap } from "../../../../consts";
 import { peersListAtom } from "../../../../atoms";
-import {
-  getTxnBundleStats,
-  getTxnStateDurations,
-} from "../../../../transactionUtils";
+import { getTxnStateDurations } from "../../../../transactionUtils";
+import { useSlotTransactionsContext } from "../../../SlotDetails/SlotTransactionsContext";
 import { isFiredancer } from "../../../../client";
 import { sum, values } from "lodash";
 import CopyButton from "../../../../components/CopyButton";
 
 export default function ChartTooltip() {
-  const slot = useAtomValue(selectedSlotAtom);
-  const query = useSlotQueryResponseTransactions(slot);
   const txnIdx = useAtomValue(tooltipTxnIdxAtom);
   const txnState = useAtomValue(tooltipTxnStateAtom);
-  const transactions = query.response?.transactions;
+
+  const { transactions, getTxnBundleStats } =
+    useSlotTransactionsContext() ?? {};
 
   const bundleStats = useMemo(() => {
-    if (!transactions) return;
+    if (!transactions || !getTxnBundleStats) return;
     if (txnIdx < 0) return;
     if (!transactions.txn_from_bundle[txnIdx]) return;
 
-    return getTxnBundleStats(transactions, txnIdx);
-  }, [transactions, txnIdx]);
+    return getTxnBundleStats(txnIdx);
+  }, [transactions, txnIdx, getTxnBundleStats]);
 
   const formattedArrivalTime = transactions?.txn_arrival_timestamps_nanos[
     txnIdx
@@ -146,7 +142,7 @@ export default function ChartTooltip() {
             <StateDurationDisplay
               transactions={transactions}
               txnIdx={txnIdx}
-              bundleTxnIdx={bundleStats?.bundleTxnIdx}
+              bundleTxnIdxs={bundleStats?.bundleTxnIdxs}
             />
             <RowSeparator />
             <LabelValueDisplay
@@ -273,17 +269,17 @@ function CuDisplay({ transactions, txnIdx }: DisplayProps) {
 interface StateDurationDisplayProps {
   transactions: SlotTransactions;
   txnIdx: number;
-  bundleTxnIdx?: number[];
+  bundleTxnIdxs?: number[];
 }
 
 function StateDurationDisplay({
   transactions,
   txnIdx,
-  bundleTxnIdx,
+  bundleTxnIdxs,
 }: StateDurationDisplayProps) {
   const durations = useMemo(() => {
-    return getTxnStateDurations(transactions, txnIdx, bundleTxnIdx);
-  }, [bundleTxnIdx, transactions, txnIdx]);
+    return getTxnStateDurations(transactions, txnIdx, bundleTxnIdxs);
+  }, [bundleTxnIdxs, transactions, txnIdx]);
 
   const durationRatios = useMemo(() => {
     if (!durations) return;
@@ -321,10 +317,9 @@ function StateDurationDisplay({
 
     const startTs = transactions.txn_mb_start_timestamps_nanos[txnIdx];
     const endTs = transactions.txn_mb_end_timestamps_nanos[txnIdx];
-    const bundleTotal =
-      bundleTxnIdx?.length && transactions.txn_from_bundle[txnIdx]
-        ? getDurationWithUnits(endTs - startTs)
-        : null;
+    const bundleTotal = bundleTxnIdxs?.length
+      ? getDurationWithUnits(endTs - startTs)
+      : null;
 
     return {
       preLoading,
@@ -335,7 +330,7 @@ function StateDurationDisplay({
       total,
       bundleTotal,
     };
-  }, [transactions, durations, txnIdx, bundleTxnIdx]);
+  }, [transactions, durations, txnIdx, bundleTxnIdxs]);
 
   if (!durations || !durationRatios || !durationUnits) return;
 

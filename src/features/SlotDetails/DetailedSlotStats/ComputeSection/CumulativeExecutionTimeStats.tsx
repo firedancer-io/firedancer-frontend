@@ -1,8 +1,5 @@
 import { Grid, Text } from "@radix-ui/themes";
-import { useAtomValue } from "jotai";
-import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
-import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
-import { useMemo } from "react";
+import { useContext } from "react";
 import { getDurationWithUnits } from "../../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
 import PctBar from "../PctBar";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
@@ -10,80 +7,16 @@ import styles from "../detailedSlotStats.module.css";
 import clsx from "clsx";
 import MonoText from "../../../../components/MonoText";
 import { gridGapX, gridGapY } from "../consts";
-import {
-  getTxnBundleStats,
-  getTxnStateDurations,
-} from "../../../../transactionUtils";
 import { TxnState } from "../../../Overview/SlotPerformance/TransactionBarsCard/consts";
 import { isFiredancer } from "../../../../client";
-
-const initDurations = {
-  preLoading: 0,
-  validating: 0,
-  loading: 0,
-  execute: 0,
-  postExecute: 0,
-  total: 0,
-};
-
-function getTotal(durations: typeof initDurations) {
-  return Object.values(durations).reduce((acc, val) => acc + val, 0);
-}
+import { SlotTransactionsContext } from "../../SlotTransactionsContext";
 
 export default function CumulativeExecutionTimeStats() {
-  const selectedSlot = useAtomValue(selectedSlotAtom);
-  const transactions =
-    useSlotQueryResponseTransactions(selectedSlot).response?.transactions;
+  const transactionsInfo = useContext(SlotTransactionsContext);
+  if (!transactionsInfo) return;
 
-  const durations = useMemo(() => {
-    if (!transactions) return;
-
-    const unlanded = { ...initDurations };
-    const landedSuccess = { ...initDurations };
-    const landedFailed = { ...initDurations };
-
-    for (let i = 0; i < transactions.txn_landed.length; i++) {
-      const bundleStats = getTxnBundleStats(transactions, i);
-      const duration = getTxnStateDurations(
-        transactions,
-        i,
-        bundleStats.bundleTxnIdx,
-      );
-
-      const sumDurations = (
-        durations: typeof initDurations,
-        b: typeof duration,
-      ) => {
-        durations.preLoading += Number(b.preLoading);
-        durations.validating += Number(b.validating);
-        durations.loading += Number(b.loading);
-        durations.execute += Number(b.execute);
-        durations.postExecute += Number(b.postExecute);
-      };
-      if (!transactions.txn_landed[i]) {
-        sumDurations(unlanded, duration);
-      } else if (transactions.txn_error_code[i] === 0) {
-        sumDurations(landedSuccess, duration);
-      } else {
-        sumDurations(landedFailed, duration);
-      }
-    }
-
-    unlanded.total = getTotal(unlanded);
-    landedSuccess.total = getTotal(landedSuccess);
-    landedFailed.total = getTotal(landedFailed);
-
-    return {
-      unlanded,
-      landedSuccess,
-      landedFailed,
-      max: Math.max(unlanded.total, landedSuccess.total, landedFailed.total),
-    };
-  }, [transactions]);
-
-  if (!durations) return;
-
-  const { unlanded, landedSuccess, landedFailed, max } = durations;
+  const { unlanded, landedSuccess, landedFailed, max } =
+    transactionsInfo.landedStateDurations;
 
   return (
     <SlotDetailsSubSection title="Cumulative Execution Time">

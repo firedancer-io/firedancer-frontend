@@ -24,7 +24,8 @@ import {
   getCuIncomeRankingRatios,
 } from "./txnBarsPluginUtils";
 import { banksXScaleKey } from "../ComputeUnitsCard/consts";
-import { getTxnState, type TxnBundleStats } from "../../../../transactionUtils";
+import { getTxnState } from "../../../../transactionUtils";
+import type { GetTxnBundleStats } from "../../../SlotDetails/SlotTransactionsContext";
 
 const laneWidth = 1;
 const laneDistr = SPACE_BETWEEN;
@@ -66,7 +67,7 @@ export const setPauseDrawing = (pause: boolean) => (pauseDrawing = pause);
 
 export function txnBarsPlugin(
   transactionsRef: MutableRefObject<SlotTransactions | null | undefined>,
-  transactionsBundleStats: (TxnBundleStats | undefined)[],
+  getTxnBundleStats: GetTxnBundleStats,
 ): uPlot.Plugin {
   let maxFees = 0n;
   let maxTips = 0n;
@@ -112,7 +113,7 @@ export function txnBarsPlugin(
                   data[0][dataIdx],
                   transactionsRef.current,
                   value,
-                  transactionsBundleStats[value]?.bundleTxnIdx,
+                  getTxnBundleStats(value)?.bundleTxnIdxs,
                 )
           ],
           brightness:

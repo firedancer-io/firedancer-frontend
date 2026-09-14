@@ -1,9 +1,7 @@
 import { useAtomValue } from "jotai";
-import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
 import { isAlpenglowAtom } from "../../../../api/atoms";
 import { Grid, Text } from "@radix-ui/themes";
-import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
-import { useMemo } from "react";
+import { useSlotTransactionsContext } from "../../SlotTransactionsContext";
 import {
   computeUnitsColor,
   headerColor,
@@ -16,38 +14,9 @@ import { gridGapX, gridGapY } from "../consts";
 
 const bundleColor = headerColor;
 
-interface CuStats {
-  vote: number;
-  bundle: number;
-  other: number;
-}
-
 export default function ComputeUnitStats() {
-  const selectedSlot = useAtomValue(selectedSlotAtom);
   const isAlpenglow = useAtomValue(isAlpenglowAtom);
-  const query = useSlotQueryResponseTransactions(selectedSlot);
-
-  const stats = useMemo(() => {
-    if (!query?.response?.transactions) return;
-
-    return query.response.transactions.txn_compute_units_consumed.reduce<CuStats>(
-      (acc, consumedCus, i) => {
-        const isVote = !!query.response?.transactions?.txn_is_simple_vote?.[i];
-        const isBundle = query.response?.transactions?.txn_from_bundle[i];
-
-        if (isVote) {
-          acc.vote += consumedCus;
-        } else if (isBundle) {
-          acc.bundle += consumedCus;
-        } else {
-          acc.other += consumedCus;
-        }
-
-        return acc;
-      },
-      { vote: 0, bundle: 0, other: 0 },
-    );
-  }, [query]);
+  const { computeUnitStats: stats } = useSlotTransactionsContext() ?? {};
 
   if (!stats) return;
 

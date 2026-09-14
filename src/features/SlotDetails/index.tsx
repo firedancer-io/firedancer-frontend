@@ -13,6 +13,7 @@ import SlotNavigation from "./SlotNavigation";
 import DetailedSlotStats from "./DetailedSlotStats";
 import { useEffect, useState } from "react";
 import ChartControlsProvider from "./ChartControlsProvider";
+import SlotTransactionsProvider from "./SlotTransactionsProvider";
 
 export default function SlotDetails() {
   const selectedSlot = useAtomValue(selectedSlotAtom);
@@ -41,12 +42,14 @@ function SlotContent() {
   return (
     <Flex direction="column" gap="2" flexGrow="1">
       <SlotNavigation />
-      <ChartControlsProvider>
-        <DetailedSlotStats />
-        <SlotPerformance />
-        <ComputeUnitsCard />
-        <TransactionBarsCard />
-      </ChartControlsProvider>
+      <SlotTransactionsProvider>
+        <ChartControlsProvider>
+          <DetailedSlotStats />
+          <SlotPerformance />
+          <ComputeUnitsCard />
+          <TransactionBarsCard />
+        </ChartControlsProvider>
+      </SlotTransactionsProvider>
     </Flex>
   );
 }
