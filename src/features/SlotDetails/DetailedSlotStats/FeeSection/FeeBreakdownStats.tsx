@@ -1,52 +1,19 @@
 import { Flex, Grid, Text } from "@radix-ui/themes";
-import { useAtomValue } from "jotai";
-import { useMemo } from "react";
 import {
   tipsColor,
   feesColor,
   incomePerCuToggleControlColor,
 } from "../../../../colors";
-import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
-import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
-import { getPaidTxnFees, getPaidTxnTips } from "../../../../utils";
+import { useSlotTransactionsContext } from "../../SlotTransactionsContext";
 import { formatNumberLamports } from "../../../Overview/ValidatorsCard/formatAmt";
 import { solDecimals } from "../../../../consts";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import styles from "../detailedSlotStats.module.css";
 import { gridGapX, gridGapY } from "../consts";
-
-export const defaultMaxValue = 100_000_000;
+import { defaultIncomeMaxValue } from "../../const";
 
 export default function FeeBreakdownStats() {
-  const selectedSlot = useAtomValue(selectedSlotAtom);
-  const query = useSlotQueryResponseTransactions(selectedSlot);
-
-  const stats = useMemo(() => {
-    const transactions = query?.response?.transactions;
-    if (!transactions) return;
-
-    const { tips, fees } = transactions.txn_transaction_fee.reduce(
-      (acc, _, i) => {
-        acc.fees += Number(getPaidTxnFees(transactions, i));
-        acc.tips += Number(getPaidTxnTips(transactions, i));
-
-        return acc;
-      },
-      {
-        tips: 0,
-        fees: 0,
-      },
-    );
-
-    const income = tips + fees;
-    const jito = tips * 0.06;
-
-    return {
-      tips,
-      fees,
-      maxValue: income > defaultMaxValue ? income + jito : defaultMaxValue,
-    };
-  }, [query]);
+  const { feeBreakdownStats: stats } = useSlotTransactionsContext() ?? {};
 
   if (!stats) return;
 
@@ -160,7 +127,7 @@ interface TotalIncomeRowProps {
 
 function TotalIncomeRow({ tips, fees }: TotalIncomeRowProps) {
   const total = tips + fees;
-  const max = Math.max(defaultMaxValue, total);
+  const max = Math.max(defaultIncomeMaxValue, total);
   const totalPct = (total / max) * 100;
   const tipPct = (tips / max) * 100;
   const feePct = (fees / max) * 100;

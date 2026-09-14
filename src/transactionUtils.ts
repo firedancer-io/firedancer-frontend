@@ -27,7 +27,7 @@ export function getMaxTs(
 export function getTxnStateDurations(
   transactions: SlotTransactions,
   txnIdx: number,
-  bundleTxnIdx: number[] | undefined,
+  bundleTxnIdxs: number[] | undefined,
 ) {
   if (txnIdx < 0)
     return {
@@ -44,14 +44,14 @@ export function getTxnStateDurations(
   const firstPhaseBoundary = isFiredancer
     ? transactions.txn_start_timestamps_nanos
     : transactions.txn_preload_end_timestamps_nanos;
-  if (transactions.txn_from_bundle[txnIdx] && bundleTxnIdx?.length) {
-    const bundleIdx = bundleTxnIdx.indexOf(txnIdx) ?? -1;
-    const prevTxnIdx = bundleTxnIdx[bundleIdx - 1];
+  if (bundleTxnIdxs) {
+    const bundleIdx = bundleTxnIdxs.indexOf(txnIdx) ?? -1;
+    const prevTxnIdx = bundleTxnIdxs[bundleIdx - 1];
     if (prevTxnIdx > 0) {
       startTs = firstPhaseBoundary[txnIdx];
     }
 
-    const nextTxnIdx = bundleIdx !== -1 ? bundleTxnIdx[bundleIdx + 1] : -1;
+    const nextTxnIdx = bundleIdx !== -1 ? bundleTxnIdxs[bundleIdx + 1] : -1;
     if (nextTxnIdx > 0) {
       endTs = firstPhaseBoundary[nextTxnIdx];
     }
@@ -85,19 +85,15 @@ export function getTxnStateDurations(
 
   let execute;
   let postExecute;
-  if (
-    isFrankendancer ||
-    !transactions.txn_from_bundle[txnIdx] ||
-    !bundleTxnIdx?.length
-  ) {
+  if (isFrankendancer || !bundleTxnIdxs) {
     execute =
       transactions.txn_end_timestamps_nanos[txnIdx] -
       transactions.txn_load_end_timestamps_nanos[txnIdx];
 
     postExecute = endTs - transactions.txn_end_timestamps_nanos[txnIdx];
   } else {
-    const bundleIdx = bundleTxnIdx.indexOf(txnIdx) ?? -1;
-    const nextTxnIdx = bundleIdx !== -1 ? bundleTxnIdx[bundleIdx + 1] : -1;
+    const bundleIdx = bundleTxnIdxs.indexOf(txnIdx);
+    const nextTxnIdx = bundleIdx !== -1 ? bundleTxnIdxs[bundleIdx + 1] : -1;
 
     if (nextTxnIdx > 0) {
       execute =
@@ -124,36 +120,11 @@ export function getTxnStateDurations(
   };
 }
 
-export interface TxnBundleStats {
-  totalCount: number;
-  order: number;
-  bundleTxnIdx: number[];
-}
-
-export function getTxnBundleStats(
-  transactions: SlotTransactions,
-  txnIdx: number,
-): TxnBundleStats {
-  const mbId = transactions.txn_microblock_id[txnIdx];
-  const bundleTxnIdx: number[] = [];
-
-  for (let i = 0; i < transactions.txn_microblock_id.length; i++) {
-    if (transactions.txn_microblock_id[i] !== mbId) continue;
-    bundleTxnIdx.push(i);
-  }
-
-  return {
-    totalCount: bundleTxnIdx.length,
-    order: bundleTxnIdx.indexOf(txnIdx) + 1,
-    bundleTxnIdx,
-  };
-}
-
 export function getTxnState(
   ts: number,
   transactions: SlotTransactions,
   txnIdx: number,
-  bundleTxnIdx: number[] | undefined,
+  bundleTxnIdxs: number[] | undefined,
 ): TxnState {
   // Helper function to calculate relative timestamp
   const relativeTime = (timestamp: bigint): number => {
@@ -191,16 +162,15 @@ export function getTxnState(
   }
 
   // Handle execution phase based on client type and bundle conditions
-  const isBundled =
-    transactions.txn_from_bundle[txnIdx] && bundleTxnIdx?.length;
+  const isBundled = !!bundleTxnIdxs;
 
   if (!isBundled || isFrankendancer) {
     if (ts < relativeTime(transactions.txn_end_timestamps_nanos[txnIdx])) {
       return TxnState.EXECUTE;
     }
   } else {
-    const bundleIdx = bundleTxnIdx.indexOf(txnIdx);
-    const nextTxnIdx = bundleIdx !== -1 ? bundleTxnIdx[bundleIdx + 1] : -1;
+    const bundleIdx = bundleTxnIdxs.indexOf(txnIdx);
+    const nextTxnIdx = bundleIdx !== -1 ? bundleTxnIdxs[bundleIdx + 1] : -1;
 
     // Use the first phase boundary of the next txn (see comment
     // in getTxnStateDurations for the per-client ordering).

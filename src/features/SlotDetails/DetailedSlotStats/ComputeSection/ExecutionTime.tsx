@@ -1,8 +1,5 @@
 import { Grid, Text } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
-import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
-import { selectedSlotAtom } from "../../../Overview/SlotPerformance/atoms";
 import { isAlpenglowAtom } from "../../../../api/atoms";
 import { nonVoteColor, votesColor } from "../../../../colors";
 import { getDurationWithUnits } from "../../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
@@ -10,81 +7,26 @@ import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import MonoText from "../../../../components/MonoText";
 import styles from "../detailedSlotStats.module.css";
 import { gridGapX, gridGapY } from "../consts";
-import {
-  getTxnBundleStats,
-  getTxnStateDurations,
-} from "../../../../transactionUtils";
-import { sum, values } from "lodash";
+import { useSlotTransactionsContext } from "../../SlotTransactionsContext";
 
 export default function ExecutionTime() {
-  const selectedSlot = useAtomValue(selectedSlotAtom);
   const isAlpenglow = useAtomValue(isAlpenglowAtom);
-  const query = useSlotQueryResponseTransactions(selectedSlot);
-  const transactions = query.response?.transactions;
+  const transactionsInfo = useSlotTransactionsContext();
 
-  const durations = useMemo(() => {
-    if (!transactions) return;
+  if (!transactionsInfo) return;
 
-    const { vote, nonVote, bundle } = {
-      vote: { count: 0, total: 0, min: Infinity, max: -Infinity },
-      nonVote: { count: 0, total: 0, min: Infinity, max: -Infinity },
-      bundle: { count: 0, total: 0, min: Infinity, max: -Infinity },
-    };
-
-    for (
-      let i = 0;
-      i < transactions.txn_mb_start_timestamps_nanos.length;
-      i++
-    ) {
-      const bundleStats = getTxnBundleStats(transactions, i);
-      const duration = getTxnStateDurations(
-        transactions,
-        i,
-        bundleStats.bundleTxnIdx,
-      );
-
-      const totalNum = sum(values(duration).map((n) => Number(n)));
-
-      if (transactions.txn_is_simple_vote?.[i]) {
-        vote.total += totalNum;
-        vote.count++;
-        vote.min = Math.min(vote.min, totalNum);
-        vote.max = Math.max(vote.max, totalNum);
-      } else {
-        nonVote.total += totalNum;
-        nonVote.count++;
-        nonVote.min = Math.min(nonVote.min, totalNum);
-        nonVote.max = Math.max(nonVote.max, totalNum);
-      }
-
-      if (transactions.txn_from_bundle[i]) {
-        bundle.total += totalNum;
-        bundle.count++;
-        bundle.min = Math.min(bundle.min, totalNum);
-        bundle.max = Math.max(bundle.max, totalNum);
-      }
-    }
-
-    return {
-      vote: vote.total / vote.count,
-      nonVote: nonVote.total / nonVote.count,
-      bundle: bundle.total / bundle.count,
-      voteMin: vote.min,
-      voteMax: vote.max,
-      nonVoteMin: nonVote.min,
-      nonVoteMax: nonVote.max,
-      bundleMin: bundle.min,
-      bundleMax: bundle.max,
-    };
-  }, [transactions]);
-
-  if (!durations) return;
-
-  const max = Math.max(
-    durations.voteMax,
-    durations.nonVoteMax,
-    durations.bundleMax,
-  );
+  const {
+    vote,
+    voteMin,
+    voteMax,
+    nonVote,
+    nonVoteMin,
+    nonVoteMax,
+    bundle,
+    bundleMin,
+    bundleMax,
+    max,
+  } = transactionsInfo.txnStateDurations;
 
   return (
     <SlotDetailsSubSection title="Execution Time (min / avg / max)">
@@ -92,28 +34,28 @@ export default function ExecutionTime() {
         {!isAlpenglow && (
           <Row
             label="Vote"
-            value={durations.vote}
+            value={vote}
             color={votesColor}
             max={max}
-            minValue={durations.voteMin}
-            maxValue={durations.voteMax}
+            minValue={voteMin}
+            maxValue={voteMax}
           />
         )}
         <Row
           label={isAlpenglow ? "Transaction" : "Non-vote"}
-          value={durations.nonVote}
+          value={nonVote}
           color={nonVoteColor}
           max={max}
-          minValue={durations.nonVoteMin}
-          maxValue={durations.nonVoteMax}
+          minValue={nonVoteMin}
+          maxValue={nonVoteMax}
         />
         <Row
           label="Bundle"
-          value={durations.bundle}
+          value={bundle}
           color="var(--purple-9)"
           max={max}
-          minValue={durations.bundleMin}
-          maxValue={durations.bundleMax}
+          minValue={bundleMin}
+          maxValue={bundleMax}
         />
       </Grid>
     </SlotDetailsSubSection>

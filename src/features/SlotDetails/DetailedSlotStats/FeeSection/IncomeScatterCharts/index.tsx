@@ -1,6 +1,4 @@
-import { useAtomValue } from "jotai";
-import { useSlotQueryResponseTransactions } from "../../../../../hooks/useSlotQuery";
-import { selectedSlotAtom } from "../../../../Overview/SlotPerformance/atoms";
+import { useSlotTransactionsContext } from "../../../SlotTransactionsContext.tsx";
 import { Flex } from "@radix-ui/themes";
 import { SlotDetailsSubSection } from "../../SlotDetailsSubSection.tsx";
 import type { SlotTransactions } from "../../../../../api/types.ts";
@@ -77,10 +75,7 @@ function getArrivalChartData(transactions?: SlotTransactions | null) {
 }
 
 export default function IncomeScatterCharts() {
-  const slot = useAtomValue(selectedSlotAtom);
-  const transactions =
-    useSlotQueryResponseTransactions(slot).response?.transactions;
-  const query = useSlotQueryResponseTransactions(slot);
+  const transactions = useSlotTransactionsContext()?.transactions;
 
   const cuChartData = useMemo(
     () => getCuChartData(transactions),
@@ -101,8 +96,7 @@ export default function IncomeScatterCharts() {
     };
   }, [arrivalChartData]);
 
-  if (!query.response?.transactions || !cuChartData || !arrivalChartData)
-    return;
+  if (!transactions || !cuChartData || !arrivalChartData) return;
 
   return (
     <Flex flexGrow="1" minWidth="300px" minHeight="150px" gap={subsectionGapX}>

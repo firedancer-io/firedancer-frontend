@@ -3,10 +3,6 @@ import { useCallback, useMemo, useState } from "react";
 import AutoSizer from "react-virtualized-auto-sizer";
 import uPlot, { type AlignedData, type Options } from "uplot";
 import UplotReact from "../../../../../uplotReact/UplotReact";
-import { useAtomValue } from "jotai";
-import { selectedSlotAtom } from "../../../../Overview/SlotPerformance/atoms";
-import { useSlotQueryResponseTransactions } from "../../../../../hooks/useSlotQuery";
-import { getMax } from "../../../../../utils";
 import { getDurationWithUnits } from "../../../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
 import { SlotDetailsSubSection } from "../../SlotDetailsSubSection";
 import { chartAxisColor } from "../../../../../colors";
@@ -16,6 +12,7 @@ import { syncYAxisPlugin } from "../../../../../uplotReact/syncYAxisPlugin";
 import { getAxisSize } from "../../../../../uplotReact/utils";
 import TxnExecutionDurationChartTooltip from "./TxnExecutionDurationChartTooltip";
 import { txnExecutionDurationScaleKey } from "../../../../Overview/SlotPerformance/ComputeUnitsCard/consts";
+import { useSlotTransactionsContext } from "../../../SlotTransactionsContext";
 
 const bucketCount = 20;
 const bucketIndices = Array.from({ length: bucketCount }, (_, i) => i);
@@ -56,28 +53,34 @@ const fmtDuration = (nanos: number, maximumFractionDigits?: number) => {
 };
 
 export default function TxnExecutionDurationCharts() {
-  const selectedSlot = useAtomValue(selectedSlotAtom);
-  const transactions =
-    useSlotQueryResponseTransactions(selectedSlot).response?.transactions;
+  const transactions = useSlotTransactionsContext()?.transactions;
   const [tooltipDataIdx, setTooltipDataIdx] = useState<number | undefined>();
 
   const { cuData, countData, maxDuration }: TxnExecutionDurationChartData =
     useMemo(() => {
       if (!transactions) return defaultTxnExecutionDurationChartData;
 
-      const items = transactions.txn_landed
-        .map((_, i) => ({
-          duration: Number(
-            transactions.txn_mb_end_timestamps_nanos[i] -
-              transactions.txn_mb_start_timestamps_nanos[i],
-          ),
-          cu: transactions.txn_compute_units_consumed[i],
-        }))
-        .filter(({ duration }) => duration > 0);
+      const items = [];
+      let _maxDuration = -Infinity;
+
+      for (let i = 0; i < transactions.txn_landed.length; i++) {
+        const duration = Number(
+          transactions.txn_mb_end_timestamps_nanos[i] -
+            transactions.txn_mb_start_timestamps_nanos[i],
+        );
+        if (duration <= 0) continue;
+
+        const cu = transactions.txn_compute_units_consumed[i];
+        items.push({ duration, cu });
+
+        if (duration > _maxDuration) {
+          _maxDuration = duration;
+        }
+      }
 
       if (items.length === 0) return defaultTxnExecutionDurationChartData;
 
-      const maxDuration = getMax(items.map(({ duration }) => duration)) + 1;
+      const maxDuration = _maxDuration + 1;
 
       const buckets = Array.from({ length: bucketCount }, () => ({
         count: 0,

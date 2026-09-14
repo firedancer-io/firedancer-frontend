@@ -2,22 +2,20 @@ import type uPlot from "uplot";
 import type { SlotTransactions } from "../../../../api/types.js";
 import type { MutableRefObject } from "react";
 import { baseTooltipPlugin } from "../../../../uplotReact/baseTooltipPlugin.js";
-import {
-  getTxnState,
-  type TxnBundleStats,
-} from "../../../../transactionUtils.js";
+import { getTxnState } from "../../../../transactionUtils.js";
 import type { TxnState } from "./consts.js";
+import type { GetTxnBundleStats } from "../../../SlotDetails/SlotTransactionsContext.js";
 
 export function txnBarsTooltipPlugin({
   transactionsRef,
   setTxnIdx,
   setTxnState,
-  transactionsBundleStats,
+  getTxnBundleStats,
 }: {
   transactionsRef: MutableRefObject<SlotTransactions | null | undefined>;
   setTxnIdx: (txnIdx: number) => void;
   setTxnState: (state: TxnState) => void;
-  transactionsBundleStats: (TxnBundleStats | undefined)[];
+  getTxnBundleStats: GetTxnBundleStats;
 }): uPlot.Plugin {
   function showOnCursor(
     u: uPlot,
@@ -47,7 +45,7 @@ export function txnBarsTooltipPlugin({
         xVal,
         transactionsRef.current,
         txnIdx,
-        transactionsBundleStats[txnIdx]?.bundleTxnIdx,
+        getTxnBundleStats(txnIdx)?.bundleTxnIdxs,
       );
       setTxnState(txnState);
       setTxnIdx(txnIdx);

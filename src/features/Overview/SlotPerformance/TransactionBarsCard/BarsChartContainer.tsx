@@ -4,7 +4,7 @@ import "uplot/dist/uPlot.min.css";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useMeasure, useWindowSize } from "react-use";
 import { clamp } from "lodash";
-import { selectedSlotAtom, tileCountAtom } from "../atoms";
+import { tileCountAtom } from "../atoms";
 import ChartControls from "./ChartControls";
 import { Flex } from "@radix-ui/themes";
 import BarsChart from "./BarsChart";
@@ -13,7 +13,6 @@ import {
   barChartMaxHeight,
   barChartMinRowHeight,
 } from "./consts";
-import { useSlotQueryResponseTransactions } from "../../../../hooks/useSlotQuery";
 import { baseChartDataAtom, barCountAtom, selectedBankAtom } from "./atoms";
 import { getChartData } from "./chartUtils";
 import BarChartFloatingAction from "./BarChartFloatingAction";
@@ -27,6 +26,7 @@ import {
 } from "../../../../consts";
 import useChartControl from "./ChartControls/useChartControl";
 import { FOCUS_BANK_KEY } from "../../../SlotDetails/ChartControlsContext";
+import { useSlotTransactionsContext } from "../../../SlotDetails/SlotTransactionsContext";
 import { tileNames } from "../../../../utils";
 
 const navigationTop = clusterIndicatorHeight + headerHeight;
@@ -40,11 +40,8 @@ export default function BarsChartContainer() {
     (bankIdx) => setFocusedBankIdx(bankIdx),
     () => setFocusedBankIdx(undefined),
   );
-
-  const slot = useAtomValue(selectedSlotAtom);
-
-  const query = useSlotQueryResponseTransactions(slot);
-  const transactions = query.response?.transactions;
+  const { transactions, getTxnBundleStats } =
+    useSlotTransactionsContext() ?? {};
 
   const tileCount = useAtomValue(tileCountAtom);
   const bankTileCount = tileCount[tileNames.bank];
@@ -94,7 +91,7 @@ export default function BarsChartContainer() {
     );
   }, [windowHeight, controlsHeight, bankTileCount, barCount, selected]);
 
-  if (!transactions) return null;
+  if (!transactions || !getTxnBundleStats) return null;
 
   return (
     <Flex direction="column" height="100%">
@@ -141,6 +138,7 @@ export default function BarsChartContainer() {
               key={`${bankIdx}`}
               bankIdx={bankIdx}
               transactions={transactions}
+              getTxnBundleStats={getTxnBundleStats}
               maxTs={maxTs}
               hasAxis={hasAxis}
               hasTopAxis={hasTopAxis}

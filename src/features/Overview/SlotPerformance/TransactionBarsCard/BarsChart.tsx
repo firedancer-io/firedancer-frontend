@@ -20,15 +20,16 @@ import { leftAxisSizeAtom, rightAxisSizeAtom } from "../ComputeUnitsCard/atoms";
 import { touchPlugin } from "../../../../uplotReact/touchPlugin";
 import { chartAxisColor, chartGridStrokeColor } from "../../../../colors";
 import { banksXScaleKey } from "../ComputeUnitsCard/consts";
-import { getTxnBundleStats } from "../../../../transactionUtils";
 import clsx from "clsx";
 import { barChartAxisSize, barChartXBuffer } from "./consts";
+import type { GetTxnBundleStats } from "../../../SlotDetails/SlotTransactionsContext";
 
 const store = getDefaultStore();
 
 interface BarsChartProps {
   bankIdx: number;
   transactions: SlotTransactions;
+  getTxnBundleStats: GetTxnBundleStats;
   maxTs: number;
   rowHeight: number;
   hasAxis?: boolean;
@@ -41,6 +42,7 @@ const resizeDebounceMs = 500;
 export default function BarsChart({
   bankIdx,
   transactions,
+  getTxnBundleStats,
   maxTs,
   rowHeight,
   hasAxis,
@@ -93,14 +95,6 @@ export default function BarsChart({
     [bankIdx, maxTs, transactions],
   );
 
-  const transactionsBundleStats = useMemo(() => {
-    return transactions.txn_from_bundle.map((from_bundle, i) => {
-      if (!from_bundle) return;
-
-      return getTxnBundleStats(transactions, i);
-    });
-  }, [transactions]);
-
   const options = useMemo<uPlot.Options | undefined>(() => {
     if (!chartData?.length) return;
 
@@ -147,12 +141,12 @@ export default function BarsChart({
       padding: [0, barChartXBuffer, 0, barChartXBuffer],
       series: [{ scale: banksXScaleKey }, { label: `Bank ${bankIdx}` }, {}],
       plugins: [
-        txnBarsPlugin(transactionsRef, transactionsBundleStats),
+        txnBarsPlugin(transactionsRef, getTxnBundleStats),
         txnBarsTooltipPlugin({
           transactionsRef,
           setTxnIdx,
           setTxnState,
-          transactionsBundleStats,
+          getTxnBundleStats,
         }),
         timeScaleDragPlugin(),
         wheelZoomPlugin({ factor: 0.75 }),
@@ -170,14 +164,14 @@ export default function BarsChart({
       },
     };
   }, [
-    bankIdx,
     chartData?.length,
     yAxisHeight,
     hasTopAxis,
-    hasAxis,
+    bankIdx,
+    getTxnBundleStats,
     setTxnIdx,
     setTxnState,
-    transactionsBundleStats,
+    hasAxis,
   ]);
 
   const barCount = useAtomValue(barCountAtom);
