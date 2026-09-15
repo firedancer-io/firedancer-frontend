@@ -7,9 +7,9 @@ import { formatBytesAsBits } from "../../../../utils";
 import { Bars } from "../Bars";
 import PhaseHeader from "../PhaseHeader";
 import { useDebounce } from "use-debounce";
-import { lamportsPerSol } from "../../../../consts";
-import { compactZeroDecimalFormatter } from "../../../../numUtils";
-import { peersCountAtom } from "../../../../atoms";
+import { formatNumberLamports } from "../../../Overview/ValidatorsCard/formatAmt";
+import { gossipPeerCountAtom, peerStatsAtom } from "../../../../atoms";
+import ConditionalTooltip from "../../../../components/ConditionalTooltip";
 import { useEmaValue } from "../../../../hooks/useEma";
 import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
 
@@ -17,7 +17,8 @@ const MAX_THROUGHPUT_BYTES = 1_8750_000; // 150Mbit
 const TOTAL_PEERS_COUNT = 5_000;
 
 export default function Gossip() {
-  const peersCount = useAtomValue(peersCountAtom);
+  const peersCount = useAtomValue(gossipPeerCountAtom);
+  const peerStats = useAtomValue(peerStatsAtom);
   const phaseCompleteFraction = Math.min(peersCount / TOTAL_PEERS_COUNT, 1);
   const overallCompleteFraction = useOverallCompleteFraction(
     phaseCompleteFraction,
@@ -32,16 +33,16 @@ export default function Gossip() {
     maxWait: 100,
   });
 
-  if (!dbNetworkStats) return null;
+  const formattedConnectedStake = peerStats
+    ? `${formatNumberLamports(peerStats.knownConnectedStake)} SOL`
+    : "--";
 
-  const { health, ingress, egress } = dbNetworkStats;
-
-  const solConnectedStake = Number(health.connected_stake) / lamportsPerSol;
-  const formattedConnectedStake =
-    compactZeroDecimalFormatter.format(solConnectedStake);
-
-  const ingressThroughput = formatBytesAsBits(ingress.total_throughput);
-  const egressThroughput = formatBytesAsBits(egress.total_throughput);
+  const ingressThroughput = dbNetworkStats
+    ? formatBytesAsBits(dbNetworkStats.ingress.total_throughput)
+    : undefined;
+  const egressThroughput = dbNetworkStats
+    ? formatBytesAsBits(dbNetworkStats.egress.total_throughput)
+    : undefined;
 
   return (
     <>
@@ -61,18 +62,20 @@ export default function Gossip() {
       >
         <Flex justify="between" gap="20px" align="stretch" wrap="wrap">
           <GossipCard
-            title="Staked Peers"
-            value={health.connected_staked_peers.toLocaleString(undefined, {
-              maximumFractionDigits: 0,
-            })}
+            title="Gossip peers"
+            value={peersCount.toLocaleString()}
+            tooltip="Non-removed peers with gossip metadata, independently of stake and voting status."
           />
           <GossipCard
-            title="Unstaked Peers"
-            value={health.connected_unstaked_peers.toLocaleString(undefined, {
-              maximumFractionDigits: 0,
-            })}
+            title="Known staked peers"
+            value={peerStats?.knownStakedPeerCount.toLocaleString()}
+            tooltip="Gossip peers with positive mapped current epoch stake. Excluded identities are not counted."
           />
-          <GossipCard title="Connected Stake" value={formattedConnectedStake} />
+          <GossipCard
+            title="Known connected stake"
+            value={formattedConnectedStake}
+            tooltip="Lower bound: mapped current epoch stake of non-removed peers with gossip metadata, regardless of voting status. Excluded stake cannot be assigned to connected identities, so coverage may be incomplete."
+          />
         </Flex>
 
         <Flex direction="column" gap="10px">
@@ -83,7 +86,7 @@ export default function Gossip() {
               : "-- Mbps"}
           </Text>
           <Bars
-            value={ingress.total_throughput ?? 0}
+            value={dbNetworkStats?.ingress.total_throughput ?? 0}
             max={MAX_THROUGHPUT_BYTES}
           />
         </Flex>
@@ -96,7 +99,7 @@ export default function Gossip() {
               : "-- Mbps"}
           </Text>
           <Bars
-            value={egress.total_throughput ?? 0}
+            value={dbNetworkStats?.egress.total_throughput ?? 0}
             max={MAX_THROUGHPUT_BYTES}
           />
         </Flex>
@@ -108,12 +111,15 @@ export default function Gossip() {
 interface GossipCardProps {
   title: string;
   value?: number | string | null;
+  tooltip?: string;
 }
-function GossipCard({ title, value }: GossipCardProps) {
+function GossipCard({ title, value, tooltip }: GossipCardProps) {
   return (
-    <Card className={styles.card}>
-      <Text>{title}</Text>
-      <Text className={styles.value}>{value ?? "--"}</Text>
-    </Card>
+    <ConditionalTooltip content={tooltip}>
+      <Card className={styles.card}>
+        <Text>{title}</Text>
+        <Text className={styles.value}>{value ?? "--"}</Text>
+      </Card>
+    </ConditionalTooltip>
   );
 }
