@@ -1,4 +1,8 @@
-import { AccountsRate, SnapshotBarsCard } from "./SnapshotBarsCard";
+import {
+  AccountsRate,
+  SnapshotBarsCard,
+  SnapshotThroughput,
+} from "./SnapshotBarsCard";
 import { getProgress, getThroughputCompleteCorrected } from "./utils";
 
 interface SnapshotInsertingCardProps {
@@ -6,12 +10,14 @@ interface SnapshotInsertingCardProps {
   decompressedCompleted?: number | null;
   decompressedTotal?: number | null;
   cumulativeAccounts?: number | null;
+  path?: string | null;
 }
 export function SnapshotInsertingCard({
   emaDecompressedThroughput,
   decompressedCompleted,
   decompressedTotal,
   cumulativeAccounts,
+  path,
 }: SnapshotInsertingCardProps) {
   const { isComplete, progressPct } = getProgress(
     decompressedCompleted,
@@ -31,11 +37,15 @@ export function SnapshotInsertingCard({
       barsThroughput={throughput}
       maxThroughput={3_500_000_000}
       headerRightContent={
-        <AccountsRate
-          isComplete={isComplete}
-          cumulativeAccounts={cumulativeAccounts}
-        />
+        <>
+          <AccountsRate
+            isComplete={isComplete}
+            cumulativeAccounts={cumulativeAccounts}
+          />
+          <SnapshotThroughput throughput={throughput} />
+        </>
       }
+      footerText={path}
     />
   );
 }

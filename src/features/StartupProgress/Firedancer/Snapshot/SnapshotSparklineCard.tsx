@@ -1,6 +1,7 @@
 import { Card, Flex, Text } from "@radix-ui/themes";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
+import { useState, type CSSProperties } from "react";
 import type { TileType } from "../../../../api/types";
 import {
   tileCountAtom,
@@ -8,6 +9,7 @@ import {
 } from "../../../Overview/SlotPerformance/atoms";
 import TileBusy from "../../../Overview/SlotPerformance/TileBusy";
 import { Sparkline } from "../../../Overview/SlotPerformance/TileSparkLine";
+import TileSparkLineExpandedContainer from "../../../Overview/SlotPerformance/TileSparkLineExpandedContainer";
 import {
   useTileSparkline,
   useScaledDataPoints,
@@ -33,10 +35,17 @@ export default function SnapshotSparklineCard({
   tileType,
   isComplete,
 }: SnapshotSparklineCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const tileCounts = useAtomValue(tileCountAtom);
   const timers = useAtomValue(liveSnapshotTimersAtom);
 
-  const { avgBusy: currentAvgBusy } = useTileSparkline({
+  const {
+    avgBusy: currentAvgBusy,
+    tileCountArr,
+    liveBusyPerTile,
+    busy,
+  } = useTileSparkline({
     isLive: true,
     tileCount: tileCounts[tileType],
     liveIdlePerTile: timers?.[tileType],
@@ -54,32 +63,65 @@ export default function SnapshotSparklineCard({
       stopShifting: isComplete,
     });
 
+  const header = (
+    <Flex justify="between" align="center">
+      <Text className={styles.snapshotTileTitle}>{title}</Text>
+      <TileBusy busy={avgBusy} className={styles.snapshotTileBusy} />
+    </Flex>
+  );
+
   return (
     <Card className={clsx(styles.card, styles.sparklineCard)}>
-      <Flex justify="between" align="center">
-        <Text className={styles.snapshotTileTitle}>{title}</Text>
-        <TileBusy busy={avgBusy} className={styles.snapshotTileBusy} />
+      {header}
+
+      <Flex justify="center">
+        <Flex
+          className={styles.sparklineContainer}
+          style={{
+            width: `${width}px`,
+            backgroundSize: `${gridSize}px ${gridSize}px`,
+          }}
+        >
+          <Sparkline
+            scaledDataPoints={scaledDataPoints}
+            range={range}
+            showRange
+            height={height}
+            background="transparent"
+            tickMs={chartTickMs}
+            pxPerTick={pxPerTick}
+            isLive={isLive}
+          />
+        </Flex>
       </Flex>
 
-      <Flex
-        className={styles.sparklineContainer}
-        style={{
-          alignSelf: "center",
-          width: `${width}px`,
-          backgroundSize: `${gridSize}px ${gridSize}px`,
-        }}
+      <TileSparkLineExpandedContainer
+        tileCountArr={tileCountArr}
+        liveBusyPerTile={liveBusyPerTile}
+        width={width}
+        header={header}
+        isExpanded={isExpanded}
+        setIsExpanded={setIsExpanded}
       >
-        <Sparkline
-          scaledDataPoints={scaledDataPoints}
-          range={range}
-          showRange
-          height={height}
-          background="transparent"
-          tickMs={chartTickMs}
-          pxPerTick={pxPerTick}
-          isLive={isLive}
-        />
-      </Flex>
+        <div className={styles.tileContainer}>
+          {tileCountArr.map((_, i) => {
+            const tileBusy = busy?.[i];
+            if (tileBusy === undefined) {
+              return (
+                <div key={i} className={clsx(styles.tile, styles.tileEmpty)} />
+              );
+            }
+
+            return (
+              <div
+                key={i}
+                className={styles.tile}
+                style={{ "--busy": `${tileBusy * 100}%` } as CSSProperties}
+              />
+            );
+          })}
+        </div>
+      </TileSparkLineExpandedContainer>
     </Card>
   );
 }
