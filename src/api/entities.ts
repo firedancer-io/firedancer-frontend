@@ -1278,6 +1278,22 @@ export const aggRevenueSchema = z.object({
   [RevenueType.Tips]: z.array(z.coerce.bigint().nullable()),
 });
 
+export enum AggShredEventType {
+  Turbine = "turbine",
+  Repair = "repair",
+  Reconstructed = "reconstructed",
+  Published = "published",
+}
+
+export const aggShredsSchema = z.object({
+  granularity: aggGranularitySchema,
+  reference_ts_ns: z.coerce.bigint(),
+  [AggShredEventType.Turbine]: z.array(z.number().nullable()),
+  [AggShredEventType.Repair]: z.array(z.number().nullable()),
+  [AggShredEventType.Reconstructed]: z.array(z.number().nullable()),
+  [AggShredEventType.Published]: z.array(z.number().nullable()),
+});
+
 export const timelineSchema = z.discriminatedUnion("key", [
   timelineTopicSchema.extend({
     id: z.number(),
@@ -1288,5 +1304,10 @@ export const timelineSchema = z.discriminatedUnion("key", [
     id: z.number(),
     key: z.literal("query_agg_revenue"),
     value: aggRevenueSchema,
+  }),
+  timelineTopicSchema.extend({
+    id: z.number(),
+    key: z.literal("query_agg_shreds"),
+    value: aggShredsSchema,
   }),
 ]);
