@@ -35,6 +35,8 @@ function getSnapshotValues(bootProgress: BootProgress) {
     loading_incremental_snapshot_insert_bytes_decompressed,
     loading_incremental_snapshot_read_path,
     loading_incremental_snapshot_insert_accounts,
+
+    accounts_database_path,
   } = bootProgress;
 
   const values =
@@ -87,6 +89,7 @@ function getSnapshotValues(bootProgress: BootProgress) {
     ...values,
     insertCompressedBytes,
     totalDecompressedBytes,
+    accountsDatabasePath: accounts_database_path,
   };
 }
 
@@ -120,6 +123,7 @@ export default function Snapshot() {
     insertCompressedBytes,
     insertAccounts,
     totalDecompressedBytes,
+    accountsDatabasePath,
   } = snapshotValues ?? {};
 
   const insertRemainingSeconds =
@@ -201,6 +205,7 @@ export default function Snapshot() {
             decompressedCompleted={insertDecompressedBytes}
             decompressedTotal={totalDecompressedBytes}
             cumulativeAccounts={insertAccounts}
+            path={accountsDatabasePath}
           />
           <SnapshotSparklineCard
             title="CPU Utilization"

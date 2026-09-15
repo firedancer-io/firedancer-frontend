@@ -6,12 +6,14 @@ interface SnapshotInsertingCardProps {
   decompressedCompleted?: number | null;
   decompressedTotal?: number | null;
   cumulativeAccounts?: number | null;
+  path?: string | null;
 }
 export function SnapshotInsertingCard({
   emaDecompressedThroughput,
   decompressedCompleted,
   decompressedTotal,
   cumulativeAccounts,
+  path,
 }: SnapshotInsertingCardProps) {
   const { isComplete, progressPct } = getProgress(
     decompressedCompleted,
@@ -36,6 +38,7 @@ export function SnapshotInsertingCard({
           cumulativeAccounts={cumulativeAccounts}
         />
       }
+      footerText={path}
     />
   );
 }
