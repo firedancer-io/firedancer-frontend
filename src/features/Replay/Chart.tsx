@@ -1,30 +1,25 @@
 import { Flex, Spinner } from "@radix-ui/themes";
 import { useRef, useCallback, useLayoutEffect } from "react";
-import { useMeasure, useRafLoop } from "react-use";
+import { useMeasure } from "react-use";
 import styles from "./chart.module.css";
 import type { MarkerLinesProps } from "./const.ts";
-import { nsPerMs } from "../../consts.ts";
-import { calcRelativeMs, getInitVisibleRange } from "./utils.ts";
 import VisibleRangeInfo from "./VisibleRangeInfo.tsx";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
 import { RevenueType } from "../../api/entities.ts";
 import { useExplorableChart } from "./useExplorableChart.ts";
 import { getDefaultStore, useAtomValue } from "jotai";
 import {
-  referenceNsAtom,
+  initializeVisibleRangeAtom,
+  isInitializedAtom,
   selectedMsAtom,
   visibleRangeAtom,
   worldRangeAtom,
 } from "./atoms.ts";
-import { startupTimeAtom } from "../../api/atoms.ts";
 import MiniMap from "./MiniMap/MiniMap.tsx";
+import useAggRevenueQuery from "./RevenueTrack/useAggRevenueQuery.ts";
 
 const store = getDefaultStore();
 
-const WORLD_UPDATE_INTERVAL_MS = 10;
-// const LIVE_CHART_DELAY_NS = BigInt(500 * nsPerMs);
-
-const LIVE_CHART_DELAY_MS = 500;
 const MARKER_PCT_VAR = "--marker-lines-pct";
 const WORLD_MARKER_PCT_VAR = "--world-marker-lines-pct";
 
@@ -39,8 +34,7 @@ const markerLinesProps: MarkerLinesProps = {
  * Informs subscribers of visible range changes.
  */
 export default function Chart() {
-  const hasReferenceTs = useAtomValue(referenceNsAtom) != null;
-  const lastWorldUpdateTsRef = useRef(-Infinity);
+  const isInitialized = useAtomValue(isInitializedAtom);
 
   const [measureRef, { width }] = useMeasure<HTMLDivElement>();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -93,46 +87,19 @@ export default function Chart() {
     };
   }, [refreshSelectedMarker]);
 
-  // refresh world size
-  useRafLoop((time: number) => {
-    if (time - lastWorldUpdateTsRef.current < WORLD_UPDATE_INTERVAL_MS) return;
-    lastWorldUpdateTsRef.current = time;
-
-    const newWorldEndNs =
-      BigInt(new Date().getTime() - LIVE_CHART_DELAY_MS) * BigInt(nsPerMs);
-    const referenceNs = store.get(referenceNsAtom);
-
-    if (referenceNs != null) {
-      const newWorldEndMs = calcRelativeMs(referenceNs, newWorldEndNs);
-      store.set(worldRangeAtom, [0, newWorldEndMs]);
-      return;
+  useLayoutEffect(() => {
+    if (isInitialized) {
+      // TODO: make sure selected ts is initialized from query param before this
+      store.set(initializeVisibleRangeAtom);
     }
-
-    /**
-     *  use reference ts so we can convert bigints to number without losing precision
-     */
-    const newReferenceNs = store.get(startupTimeAtom)?.startupTimeNanos;
-    if (!newReferenceNs) return;
-
-    // initialize ranges
-    const newWorldEndMs = calcRelativeMs(newReferenceNs, newWorldEndNs);
-
-    // delay if too soon after startup
-    if (newWorldEndMs < 0) return;
-
-    const visibleRangeMs = getInitVisibleRange(
-      store.get(selectedMsAtom),
-      newWorldEndMs,
-    );
-
-    store.set(referenceNsAtom, newReferenceNs);
-    store.set(worldRangeAtom, [0, newWorldEndMs]);
-    store.set(visibleRangeAtom, visibleRangeMs);
-  });
+  }, [isInitialized]);
 
   const { explorableChartProps, miniMapProps } = useExplorableChart();
 
-  if (!hasReferenceTs) return <Spinner />;
+  // shared query cache if there are multiple revenue tracks
+  const aggRevenueQuery = useAggRevenueQuery();
+
+  if (!isInitialized) return <Spinner />;
 
   return (
     <div className={styles.container} ref={setContainerRefs}>
@@ -142,6 +109,7 @@ export default function Chart() {
           <MiniMap width={width} {...miniMapProps} {...markerLinesProps} />
           <Flex direction="column" gapY="4" position="relative">
             <RevenueTrack
+              aggQuery={aggRevenueQuery}
               type={RevenueType.TxnFees}
               width={width}
               {...explorableChartProps}

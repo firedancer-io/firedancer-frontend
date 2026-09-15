@@ -1,28 +1,39 @@
 import { nsPerMs } from "../../consts.ts";
-import { DEFAULT_WINDOW_MS } from "./const.ts";
+import { DEFAULT_WINDOW_MS, nsBucketSizes } from "./const.ts";
 import { clamp } from "../../uplotReact/utils.ts";
 import type { TsRange } from "../WebGl/webglUtils.ts";
 import { convertToNsTimestamp } from "../../mathUtils.ts";
 import { useServerMessages } from "../../api/ws/utils.ts";
 import type { WsEntity } from "../../api/worker/types.ts";
+import type { AggGranularity } from "../../api/types.ts";
+
+export function clampToWorld(range: TsRange, worldRange: TsRange) {
+  return clamp(
+    range[1] - range[0],
+    range[0],
+    range[1],
+    worldRange[1] - worldRange[0],
+    worldRange[0],
+    worldRange[1],
+  );
+}
 
 export function getInitVisibleRange(
   selectedMs: number | undefined,
-  worldEndMs: number,
+  worldRange: TsRange,
 ): TsRange {
   if (selectedMs == null) {
-    // show right most data
-    return [Math.max(0, worldEndMs - DEFAULT_WINDOW_MS), worldEndMs];
+    return clampToWorld(
+      // show right most data
+      [worldRange[1] - DEFAULT_WINDOW_MS, worldRange[1]],
+      worldRange,
+    );
   }
 
   // try to center around selected ts
-  return clamp(
-    DEFAULT_WINDOW_MS,
-    selectedMs - DEFAULT_WINDOW_MS / 2,
-    selectedMs + DEFAULT_WINDOW_MS / 2,
-    worldEndMs,
-    0,
-    worldEndMs,
+  return clampToWorld(
+    [selectedMs - DEFAULT_WINDOW_MS / 2, selectedMs + DEFAULT_WINDOW_MS / 2],
+    worldRange,
   );
 }
 
@@ -61,4 +72,19 @@ export function useTimelineServerMessage<TKey extends string>(
       }
     }
   });
+}
+
+export function getBucketIdx(
+  tsNs: bigint,
+  granularity: AggGranularity,
+  isEndTs: boolean,
+) {
+  const bucketSizeNs = nsBucketSizes[granularity];
+  const idx = tsNs / bucketSizeNs;
+
+  // for end ts on bucket boundary, return previous bucket idx
+  if (isEndTs && idx * bucketSizeNs === tsNs) {
+    return Number(idx) - 1;
+  }
+  return Number(idx);
 }
