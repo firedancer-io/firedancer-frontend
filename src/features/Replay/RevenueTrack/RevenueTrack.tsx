@@ -18,9 +18,9 @@ import {
 } from "./utils.ts";
 import useAggRevenueQuery, { getGranularity } from "./useAggRevenueQuery.ts";
 import type { RevenueType } from "../../../api/entities.ts";
-import { aggRevenueAtom } from "../../../api/atoms.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
+import { aggRevenueAtom, lastUpdateTsAtom } from "./atoms.ts";
 
 const height = 150;
 const baseSubscriptionId = "revenue-track";
@@ -51,6 +51,7 @@ function RevenueTrack({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<RendererObj | undefined>();
+  const absoluteVisibleRangeRef = useRef<NsTsRange | undefined>(undefined);
 
   const widthRef = useRef(width);
   widthRef.current = width;
@@ -62,6 +63,7 @@ function RevenueTrack({
 
   const aggQuery = useAggRevenueQuery();
   const aggRevenue = useAtomValue(aggRevenueAtom);
+  const lastUpdateTs = useAtomValue(lastUpdateTsAtom);
 
   const throttledRelativeTsQuery = useThrottledCallback(
     (relativeVisibleRange: TsRange, relativeWorldRange: TsRange) => {
@@ -70,12 +72,18 @@ function RevenueTrack({
         getAbsoluteNs(relativeVisibleRange[0]),
         getAbsoluteNs(relativeVisibleRange[1]),
       ];
+      absoluteVisibleRangeRef.current = visibleRangeNs;
+
+      const worldRangeNs: NsTsRange = [
+        getAbsoluteNs(relativeWorldRange[0]),
+        getAbsoluteNs(relativeWorldRange[1]),
+      ];
 
       if (isAggregate(relativeVisibleRange)) {
         const queryGranularity = getGranularity(
-          relativeVisibleRange[1] - relativeVisibleRange[0],
+          visibleRangeNs[1] - visibleRangeNs[0],
         );
-        aggQuery(visibleRangeNs, queryGranularity);
+        aggQuery(visibleRangeNs, worldRangeNs, queryGranularity);
         setGranularity(queryGranularity);
       } else {
         // TODO: non-aggregate query
@@ -158,11 +166,17 @@ function RevenueTrack({
 
   // trigger draw
   useLayoutEffect(() => {
-    if (!rendererRef.current || !aggRevenue) return;
+    if (!rendererRef.current || !absoluteVisibleRangeRef.current) return;
     // TODO: draw non-agg
-    drawAggRevenue(rendererRef.current, type, aggRevenue, getRelativeMs);
+    drawAggRevenue(
+      rendererRef.current,
+      absoluteVisibleRangeRef.current,
+      getRelativeMs,
+      type,
+      aggRevenue,
+    );
     renderActive();
-  }, [aggRevenue, getRelativeMs, renderActive, type]);
+  }, [aggRevenue, lastUpdateTs, getRelativeMs, renderActive, type]);
 
   return (
     <div

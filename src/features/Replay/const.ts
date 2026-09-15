@@ -1,4 +1,5 @@
 import type { AggGranularity } from "../../api/types";
+import { nsPerMs } from "../../consts";
 import type { TsRange } from "../WebGl/webglUtils";
 
 export const DEFAULT_WINDOW_MS = 12_000;
@@ -26,6 +27,14 @@ export const msBucketSizes: Record<AggGranularity, number> = {
   "12h": 43_200_000,
   "1d": 86_400_000,
 };
+
+export const nsBucketSizes = Object.entries(msBucketSizes).reduce(
+  (acc, [aggGranularity, msValue]) => {
+    acc[aggGranularity as AggGranularity] = BigInt(msValue * nsPerMs);
+    return acc;
+  },
+  {} as Record<AggGranularity, bigint>,
+);
 
 export const ascBucketGranularities = Object.keys(msBucketSizes).sort(
   (a, b) =>
