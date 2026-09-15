@@ -7,9 +7,9 @@ import {
 } from "./const";
 import { getDefaultStore } from "jotai";
 import { selectedMsAtom, visibleRangeAtom, worldRangeAtom } from "./atoms";
-import { clamp } from "../../uplotReact/utils";
 import { clamp as minMaxClamp } from "lodash";
 import styles from "./chart.module.css";
+import { clampToWorld } from "./utils";
 
 const PAN_THRESHOLD_PX = 0;
 const ZOOM_INTENSITY = 0.002;
@@ -68,17 +68,7 @@ export function useExplorableChart(): {
     const worldRange = store.get(worldRangeAtom);
     if (!worldRange) return;
 
-    store.set(
-      visibleRangeAtom,
-      clamp(
-        unclampedNewRange[1] - unclampedNewRange[0],
-        unclampedNewRange[0],
-        unclampedNewRange[1],
-        worldRange[1] - worldRange[0],
-        worldRange[0],
-        worldRange[1],
-      ),
-    );
+    store.set(visibleRangeAtom, clampToWorld(unclampedNewRange, worldRange));
   }, []);
 
   const createCallbacks = useCallback(
