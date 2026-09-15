@@ -11,8 +11,6 @@ import { compactSingleDecimalFormatter } from "../../../../numUtils";
 import Progress from "../../../../components/Progress";
 import { formatByteValue } from "./utils";
 
-const gap = "4px";
-
 interface SnapshotBarsCardProps {
   title: string;
   progressPct: number | undefined;
@@ -37,18 +35,11 @@ export function SnapshotBarsCard({
     <Card className={clsx(styles.card, styles.barsCard)}>
       <Flex direction="column" gap="2px">
         <ProgressBar pct={progressPct} />
-        <Flex
-          justify="between"
-          wrap="nowrap"
-          gap={gap}
-          className={styles.cardHeader}
-        >
+        <div className={styles.cardHeader}>
           <SnapshotTitle text={title} />
-          <Flex gap={gap} minWidth="0" className={styles.headerRightSection}>
-            <SnapshotTotalComplete completed={completed} total={total} />
-            {headerRightContent}
-          </Flex>
-        </Flex>
+          <SnapshotTotalComplete completed={completed} total={total} />
+          <div className={styles.rightColumn}>{headerRightContent}</div>
+        </div>
       </Flex>
       <Bars value={barsThroughput ?? 0} max={maxThroughput} />
 
@@ -124,7 +115,7 @@ export function AccountsRate({
   }, [accountsPerSecond, cumulativeAccounts, isComplete]);
 
   return (
-    <div className={styles.rightColumn}>
+    <div className={styles.rightStat}>
       <ValueUnitText value={value} unit="Accounts / sec" />
     </div>
   );
@@ -163,7 +154,7 @@ export function SnapshotThroughput({
   const throughputObj = formatByteValue(throughput);
 
   return (
-    <div className={styles.rightColumn}>
+    <div className={styles.rightStat}>
       {prefix && <Text className={styles.secondaryColor}>{prefix} </Text>}
       <ValueUnitText value={throughputObj?.value} unit={throughputObj?.unit} />
       <Text className={styles.secondaryColor}>/sec</Text>

@@ -80,7 +80,6 @@ export const tileTypeSchema = z.enum([
   "snapld",
   "snapdc",
   "snapin",
-  "snapwr",
 
   // shred tiles
   "netlnk",
@@ -369,15 +368,6 @@ export const bootProgressSchema = z.object({
     .nullable()
     .optional(),
   loading_full_snapshot_insert_accounts: z.number().nullable().optional(),
-  loading_full_snapshot_snapwr_in_bytes_decompressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_full_snapshot_snapwr_out_bytes_decompressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_full_snapshot_snapwr_accounts: z.number().nullable().optional(),
 
   loading_incremental_snapshot_elapsed_seconds: z
     .number()
@@ -407,18 +397,6 @@ export const bootProgressSchema = z.object({
     .nullable()
     .optional(),
   loading_incremental_snapshot_insert_accounts: z
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_snapwr_in_bytes_decompressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_snapwr_out_bytes_decompressed: z.coerce
-    .number()
-    .nullable()
-    .optional(),
-  loading_incremental_snapshot_snapwr_accounts: z
     .number()
     .nullable()
     .optional(),
