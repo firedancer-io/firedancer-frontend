@@ -14,11 +14,11 @@ import {
 } from "./utils.ts";
 import useAggRevenueQuery, { getGranularity } from "./useAggRevenueQuery.ts";
 import type { RevenueType } from "../../../api/entities.ts";
-import { aggRevenueAtom } from "../../../api/atoms.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
-import { referenceNsAtom, visibleRangeAtom } from "../atoms.ts";
+import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import { calcAbsoluteNs } from "../utils.ts";
+import { aggRevenueAtom, lastUpdateTsAtom } from "./atoms.ts";
 
 const height = 150;
 const store = getDefaultStore();
@@ -38,6 +38,7 @@ function RevenueTrack({
   width,
   type,
 }: RevenueTrackProps) {
+  const chartId = `revenue-track-${type}`;
   const [isInitialized, setIsInitialized] = useState(false);
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
@@ -50,22 +51,28 @@ function RevenueTrack({
     remount,
   });
 
-  const aggQuery = useAggRevenueQuery();
+  const aggQuery = useAggRevenueQuery(chartId);
   const aggRevenue = useAtomValue(aggRevenueAtom);
+  const lastUpdateTs = useAtomValue(lastUpdateTsAtom);
 
   const throttledRelativeTsQuery = useThrottledCallback(
-    (referenceNs: bigint, visibleRange: TsRange) => {
+    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
       if (!aggQuery) return;
       const visibleRangeNs: NsTsRange = [
         calcAbsoluteNs(referenceNs, visibleRange[0]),
         calcAbsoluteNs(referenceNs, visibleRange[1]),
       ];
 
+      const worldRangeNs: NsTsRange = [
+        calcAbsoluteNs(referenceNs, worldRange[0]),
+        calcAbsoluteNs(referenceNs, worldRange[1]),
+      ];
+
       if (isAggregate(visibleRange)) {
         const queryGranularity = getGranularity(
-          visibleRange[1] - visibleRange[0],
+          visibleRangeNs[1] - visibleRangeNs[0],
         );
-        aggQuery(visibleRangeNs, queryGranularity);
+        aggQuery(visibleRangeNs, worldRangeNs, queryGranularity);
         setGranularity(queryGranularity);
       } else {
         // TODO: non-aggregate query
@@ -91,10 +98,11 @@ function RevenueTrack({
     if (!rendererRef.current) return;
 
     const referenceNs = store.get(referenceNsAtom);
+    const worldRange = store.get(worldRangeAtom);
     const visibleRange = store.get(visibleRangeAtom);
-    if (referenceNs == null || !visibleRange) return;
+    if (referenceNs == null || !visibleRange || !worldRange) return;
 
-    throttledRelativeTsQuery(referenceNs, visibleRange);
+    throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
 
     if (isAggregate(visibleRange)) {
       moveAggCamera(rendererRef.current, visibleRange);
@@ -151,11 +159,24 @@ function RevenueTrack({
   // trigger draw
   useLayoutEffect(() => {
     const referenceNs = store.get(referenceNsAtom);
-    if (!rendererRef.current || !aggRevenue || referenceNs == null) return;
+    const visibleRange = store.get(visibleRangeAtom);
+    if (
+      !rendererRef.current ||
+      !visibleRange ||
+      !aggRevenue ||
+      referenceNs == null
+    )
+      return;
     // TODO: draw non-agg
-    drawAggRevenue(rendererRef.current, type, aggRevenue, referenceNs);
+    drawAggRevenue(
+      rendererRef.current,
+      referenceNs,
+      visibleRange,
+      type,
+      aggRevenue,
+    );
     renderActive();
-  }, [aggRevenue, renderActive, type]);
+  }, [lastUpdateTs, aggRevenue, renderActive, type]);
 
   return (
     <div

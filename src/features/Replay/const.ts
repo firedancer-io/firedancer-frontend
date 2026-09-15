@@ -1,5 +1,5 @@
-import { nsPerMs } from "../../consts";
 import type { AggGranularity } from "../../api/types";
+import { nsPerMs } from "../../consts";
 
 export const DEFAULT_WINDOW_MS = 12_000;
 export const MIN_VISIBLE_MS = 600;
