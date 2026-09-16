@@ -30,7 +30,6 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
     remount,
   });
 
-  const prevTimeDiffsRef = useRef<number[]>([]);
   const lastRedrawRef = useRef(-Infinity);
   const [measureRef, { width, height: fullHeight }] =
     useMeasure<HTMLDivElement>();
@@ -82,7 +81,6 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
 
     draw(
       chartId,
-      prevTimeDiffsRef,
       rendererRef.current,
       visibleTsRangeRef,
       labelsRef,
@@ -108,7 +106,6 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
     if (rendererRef.current) {
       draw(
         chartId,
-        prevTimeDiffsRef,
         rendererRef.current,
         visibleTsRangeRef,
         labelsRef,

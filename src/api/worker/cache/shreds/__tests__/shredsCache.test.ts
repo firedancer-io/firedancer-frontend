@@ -411,7 +411,7 @@ describe("createShredsCache", () => {
         vi.fn(),
         () => ({
           isStartup: false,
-          serverTimeNanos: chartRangeMs * nsPerMs,
+          serverTimeNanos: BigInt(chartRangeMs) * BigInt(nsPerMs),
         }),
       );
 
