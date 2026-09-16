@@ -1,4 +1,3 @@
-import { sum } from "lodash";
 import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import { getSlotGroupLeader } from "../../../utils";
 import type { SlotsShreds } from "./atoms";
@@ -39,27 +38,8 @@ export const getXIncrs = (scale: number) => {
   return incrs;
 };
 
-/**
- * Get timestamp for "now", which is the ts at x = 0 (right-most in chart).
- * "now" is adjusted using an avg diff of server time and real now ts to smooth out server msg delays.
- * We also delay "now" by one data update interval to prevent instability of right-most data.
- */
-export function getAdjustedNow(serverTimeMs: number, prevTimeDiffs: number[]) {
-  // Use server time for chart axis
-  // Use a rolling avg of the server time and client now diff.
-  // If we get ws messages buffered and it results in a temporary high
-  // diff, shred still move smoothly by using the avg
-  const now = Date.now();
-
-  const timeDiff = now - serverTimeMs;
-  prevTimeDiffs.push(timeDiff);
-  while (prevTimeDiffs.length > 100) {
-    prevTimeDiffs.shift();
-  }
-
-  const timeDiffAvg = sum(prevTimeDiffs) / prevTimeDiffs.length;
-  const adjustedTimeMs = now - timeDiffAvg;
-  return adjustedTimeMs - delayMs;
+export function getDelayedNow(smoothedNow: number) {
+  return smoothedNow - delayMs;
 }
 
 export type XRange = {

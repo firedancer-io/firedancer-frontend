@@ -9,6 +9,7 @@ import {
   STARTUP_DELETE_INTERVAL_MS,
   xRangeMs,
 } from "../shredsCalc";
+import { stubPerformanceToFakeClock } from "../../../../../testUtils";
 
 function getDefaultValidatorState() {
   return {
@@ -30,6 +31,7 @@ describe("createShredsCache", () => {
     liveShredsCache?.resetDataAndUnsubscribe();
     liveShredsCache = undefined;
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("adds live shred events for single shred, replacing duplicates with min ts and ignoring unsupported event types", () => {
@@ -378,6 +380,8 @@ describe("createShredsCache", () => {
       const date = new Date(chartRangeMs - POST_STARTUP_DELETE_INTERVAL_MS);
       vi.setSystemTime(date);
 
+      stubPerformanceToFakeClock();
+
       liveShredsCache = createShredsCache(
         { publishIntervalMs: Infinity },
         vi.fn(),
@@ -411,7 +415,7 @@ describe("createShredsCache", () => {
         vi.fn(),
         () => ({
           isStartup: false,
-          serverTimeNanos: chartRangeMs * nsPerMs,
+          serverTimeNanos: BigInt(chartRangeMs) * BigInt(nsPerMs),
         }),
       );
 
@@ -432,6 +436,8 @@ describe("createShredsCache", () => {
     // simulate progression over delete interval
     const date = new Date(chartRangeMs - STARTUP_DELETE_INTERVAL_MS);
     vi.setSystemTime(date);
+
+    stubPerformanceToFakeClock();
 
     const events = [
       {

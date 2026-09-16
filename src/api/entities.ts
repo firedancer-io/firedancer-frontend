@@ -130,7 +130,7 @@ export const catchUpHistorySchema = z.object({
   turbine: z.number().array(),
 });
 
-export const serverTimeNanosSchema = z.coerce.number();
+export const serverTimeNanosSchema = z.coerce.bigint();
 
 export const estimatedSlotSchema = z.number();
 export const resetSlotSchema = z.number().nullable();

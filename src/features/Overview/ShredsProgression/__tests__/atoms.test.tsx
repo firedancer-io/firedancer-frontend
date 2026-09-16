@@ -10,6 +10,7 @@ import {
   delayMs,
 } from "../../../../api/worker/cache/shreds/shredsCalc";
 import { nsPerMs } from "../../../../consts";
+import { stubPerformanceToFakeClock } from "../../../../testUtils";
 
 const emptyStoreWrapper = ({ children }: PropsWithChildren) => (
   <Provider>{children}</Provider>
@@ -18,6 +19,7 @@ const emptyStoreWrapper = ({ children }: PropsWithChildren) => (
 describe("live shreds atoms with reference ts and ts deltas", () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("adds live shred events for single shred, replacing duplicates with min ts and ignoring unsupported event types", () => {
@@ -248,6 +250,8 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
     const date = new Date(chartRangeMs);
     vi.setSystemTime(date);
 
+    stubPerformanceToFakeClock();
+
     const atoms = createLiveShredsAtoms();
 
     const { result } = renderHook(
@@ -420,6 +424,8 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
     const chartRangeMs = xRangeMs + delayMs;
     const date = new Date(chartRangeMs);
     vi.setSystemTime(date);
+
+    stubPerformanceToFakeClock();
 
     const atoms = createLiveShredsAtoms();
 
