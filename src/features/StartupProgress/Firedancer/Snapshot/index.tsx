@@ -14,7 +14,6 @@ import PhaseHeader from "../PhaseHeader";
 import { useEffect } from "react";
 import { useEma } from "../../../../hooks/useEma";
 import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
-import { SnapshotWritingCard } from "./SnapshotWritingCard";
 
 const rowGap = "5";
 const columnGap = "26px";
@@ -28,7 +27,6 @@ function getSnapshotValues(bootProgress: BootProgress) {
     loading_full_snapshot_insert_bytes_decompressed,
     loading_full_snapshot_read_path,
     loading_full_snapshot_insert_accounts,
-    loading_full_snapshot_snapwr_in_bytes_decompressed,
 
     loading_incremental_snapshot_total_bytes_compressed,
     loading_incremental_snapshot_read_bytes_compressed,
@@ -37,7 +35,6 @@ function getSnapshotValues(bootProgress: BootProgress) {
     loading_incremental_snapshot_insert_bytes_decompressed,
     loading_incremental_snapshot_read_path,
     loading_incremental_snapshot_insert_accounts,
-    loading_incremental_snapshot_snapwr_in_bytes_decompressed,
 
     accounts_database_path,
   } = bootProgress;
@@ -56,8 +53,6 @@ function getSnapshotValues(bootProgress: BootProgress) {
           insertDecompressedBytes:
             loading_full_snapshot_insert_bytes_decompressed,
           insertAccounts: loading_full_snapshot_insert_accounts,
-          writeInDecompressedBytes:
-            loading_full_snapshot_snapwr_in_bytes_decompressed,
         }
       : {
           totalCompressedBytes:
@@ -72,8 +67,6 @@ function getSnapshotValues(bootProgress: BootProgress) {
           insertDecompressedBytes:
             loading_incremental_snapshot_insert_bytes_decompressed,
           insertAccounts: loading_incremental_snapshot_insert_accounts,
-          writeInDecompressedBytes:
-            loading_incremental_snapshot_snapwr_in_bytes_decompressed,
         };
 
   const insertCompressedBytes =
@@ -115,14 +108,10 @@ export default function Snapshot() {
   const { ema: decompressedInputThroughput, reset: resetInsertThroughput } =
     useEma(snapshotValues?.insertDecompressedBytes);
 
-  const { ema: decompressedWriteInThroughput, reset: resetWriteInThroughput } =
-    useEma(snapshotValues?.writeInDecompressedBytes);
-
   useEffect(() => {
     // reset throughput history on phase change
     resetInsertThroughput();
-    resetWriteInThroughput();
-  }, [bootProgress?.phase, resetInsertThroughput, resetWriteInThroughput]);
+  }, [bootProgress?.phase, resetInsertThroughput]);
 
   const {
     totalCompressedBytes,
@@ -133,7 +122,6 @@ export default function Snapshot() {
     insertDecompressedBytes,
     insertCompressedBytes,
     insertAccounts,
-    writeInDecompressedBytes,
     totalDecompressedBytes,
     accountsDatabasePath,
   } = snapshotValues ?? {};
@@ -155,35 +143,8 @@ export default function Snapshot() {
     1,
   );
 
-  const writeRemainingSeconds =
-    !decompressedWriteInThroughput ||
-    totalDecompressedBytes == null ||
-    writeInDecompressedBytes == null
-      ? undefined
-      : Math.round(
-          (totalDecompressedBytes - writeInDecompressedBytes) /
-            decompressedWriteInThroughput,
-        );
-
-  const writeCompleteFraction = Math.min(
-    totalDecompressedBytes && writeInDecompressedBytes
-      ? writeInDecompressedBytes / totalDecompressedBytes
-      : 0,
-    1,
-  );
-
-  const remainingSeconds =
-    insertRemainingSeconds == null && writeRemainingSeconds == null
-      ? undefined
-      : Math.max(
-          insertRemainingSeconds ?? -Infinity,
-          writeRemainingSeconds ?? -Infinity,
-        );
-
-  const phaseCompleteFraction = Math.min(
-    insertCompleteFraction,
-    writeCompleteFraction,
-  );
+  const remainingSeconds = insertRemainingSeconds;
+  const phaseCompleteFraction = insertCompleteFraction;
 
   const overallCompleteFraction = useOverallCompleteFraction(
     phaseCompleteFraction,
@@ -244,6 +205,7 @@ export default function Snapshot() {
             decompressedCompleted={insertDecompressedBytes}
             decompressedTotal={totalDecompressedBytes}
             cumulativeAccounts={insertAccounts}
+            path={accountsDatabasePath}
           />
           <SnapshotSparklineCard
             title="CPU Utilization"
@@ -252,24 +214,6 @@ export default function Snapshot() {
               isIncremental &&
               !!insertCompressedBytes &&
               insertCompressedBytes === totalCompressedBytes
-            }
-          />
-        </Flex>
-
-        <Flex className={styles.rowContainer} gap={gap} wrap={wrap}>
-          <SnapshotWritingCard
-            emaDecompressedThroughput={decompressedWriteInThroughput}
-            decompressedCompleted={writeInDecompressedBytes}
-            decompressedTotal={totalDecompressedBytes}
-            path={accountsDatabasePath}
-          />
-          <SnapshotSparklineCard
-            title="CPU Utilization"
-            tileType="snapwr"
-            isComplete={
-              isIncremental &&
-              !!writeInDecompressedBytes &&
-              writeInDecompressedBytes === totalDecompressedBytes
             }
           />
         </Flex>
