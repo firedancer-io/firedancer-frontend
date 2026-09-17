@@ -1,6 +1,10 @@
-import { Flex, Box } from "@radix-ui/themes";
+import { Flex, Box, Tooltip } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
-import { peerStatsAtom } from "../../../atoms";
+import {
+  gossipPeerCountAtom,
+  peerStatsAtom,
+  totalNetworkStakeAtom,
+} from "../../../atoms";
 import {
   totalValidatorsColor,
   nonDelinquentColor,
@@ -14,49 +18,71 @@ import styles from "./validatorsCard.module.css";
 
 export default function ValidatorsStatsContent() {
   const peerStats = useAtomValue(peerStatsAtom);
-  if (!peerStats) return null;
+  const gossipPeerCount = useAtomValue(gossipPeerCountAtom);
+  const totalNetworkStake = useAtomValue(totalNetworkStakeAtom);
 
-  const activeLabel = formatNumberLamports(peerStats.activeStake);
-  const delinquentLabel = formatNumberLamports(peerStats.delinquentStake);
+  const nonDelinquentLabel = peerStats
+    ? formatNumberLamports(peerStats.nonDelinquentStake)
+    : "--";
+  const delinquentLabel = peerStats
+    ? formatNumberLamports(peerStats.delinquentStake)
+    : "--";
 
   return (
-    <Flex gap="2" flexGrow="1">
-      <Flex direction="column" gap="2" minWidth="0">
+    <Flex gap="2" flexGrow="1" wrap="wrap">
+      <Flex
+        direction="column"
+        gap="2"
+        minWidth="0"
+        flexGrow="1"
+        flexBasis="240px"
+      >
         <div className={styles.statRow}>
-          <CardStat
-            label="Total Validators"
-            value={peerStats.validatorCount.toString()}
-            valueColor={totalValidatorsColor}
-            valueSize="medium"
-          />
+          <Tooltip content="Identities with positive mapped current epoch stake. Excluded identities are not counted; peer metadata and connectivity are not required.">
+            <div>
+              <CardStat
+                label="Known staked validators"
+                value={
+                  peerStats?.knownStakedValidatorCount.toLocaleString() ?? "--"
+                }
+                valueColor={totalValidatorsColor}
+                valueSize="medium"
+              />
+            </div>
+          </Tooltip>
           <CardStat
             label="Non-delinquent Stake"
-            value={activeLabel}
+            value={nonDelinquentLabel}
             valueColor={nonDelinquentColor}
-            appendValue="SOL"
+            appendValue={peerStats ? "SOL" : undefined}
             valueSize="medium"
           />
         </div>
         <div className={styles.statRow}>
-          <CardStat
-            label="RPC Nodes"
-            value={peerStats.rpcCount.toString()}
-            valueColor={headerColor}
-            valueSize="small"
-          />
+          <Tooltip content="Non-removed peers with gossip metadata, independently of stake and voting status.">
+            <div>
+              <CardStat
+                label="Gossip peers"
+                value={gossipPeerCount.toLocaleString()}
+                valueColor={headerColor}
+                valueSize="small"
+              />
+            </div>
+          </Tooltip>
           <CardStat
             label="Delinquent Stake"
             value={delinquentLabel}
             valueColor={failureColor}
-            appendValue="SOL"
+            appendValue={peerStats ? "SOL" : undefined}
             valueSize="small"
           />
         </div>
       </Flex>
-      <Box style={{ minWidth: "200px" }}>
+      <Box minWidth="200px" minHeight="200px" flexGrow="1" flexBasis="200px">
         <Chart
-          activeStake={peerStats.activeStake}
-          delinquentStake={peerStats.delinquentStake}
+          nonDelinquentStake={peerStats?.nonDelinquentStake}
+          delinquentStake={peerStats?.delinquentStake}
+          totalNetworkStake={totalNetworkStake}
         />
       </Box>
     </Flex>

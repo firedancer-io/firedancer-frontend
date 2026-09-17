@@ -5,6 +5,7 @@ import {
   bootProgressAtom,
   estimatedSlotDurationAtom,
   identityKeyAtom,
+  voteKeyAtom,
   serverTimeNanosAtom,
   skippedSlotsAtom,
   startupProgressAtom,
@@ -22,13 +23,14 @@ import type {
   SlotResponse,
   SupermajorityEpoch,
 } from "./api/types";
-import { clamp, merge } from "lodash";
+import { clamp } from "lodash";
 import {
   getDiscountedVoteLatency,
   getDurationText,
+  getEpochStake,
+  getEpochStakes,
   getLeaderSlots,
   getSlotGroupLeader,
-  getStake,
 } from "./utils";
 import { searchLeaderSlotsAtom } from "./features/LeaderSchedule/atoms";
 import { selectedSlotAtom } from "./features/Overview/SlotPerformance/atoms";
@@ -445,6 +447,7 @@ export const currentLeaderSlotAtom = atom((get) => {
 });
 
 export const peersAtom = atomWithImmer<Record<string, Peer>>({});
+export const peersInitializedAtom = atom(false);
 
 export const peersListAtom = atom((get) => Object.values(get(peersAtom)));
 
@@ -454,107 +457,149 @@ export const peersAtomFamily = atomFamily((peer?: string) =>
   atom((get) => (peer !== undefined ? get(peersAtom)[peer] : undefined)),
 );
 
+const peerRemovalGenerationsAtom = atomWithImmer<Record<string, symbol>>({});
+
 export const updatePeersAtom = atom(null, (_, set, peers?: Peer[]) => {
   if (!peers?.length) return;
 
+  set(peerRemovalGenerationsAtom, (draft) => {
+    for (const peer of peers) {
+      delete draft[peer.identity_pubkey];
+    }
+  });
   set(peersAtom, (draft) => {
     for (const peer of peers) {
-      if (draft[peer.identity_pubkey]) {
-        draft[peer.identity_pubkey] = merge(draft[peer.identity_pubkey], peer);
-      } else {
-        draft[peer.identity_pubkey] = peer;
-      }
+      draft[peer.identity_pubkey] = { ...peer, removed: false };
     }
   });
 });
 
 const removePeerDelay = 60_000 * 5;
-export const removePeersAtom = atom(null, (_, set, peers?: PeerRemove[]) => {
+export const removePeersAtom = atom(null, (get, set, peers?: PeerRemove[]) => {
   if (!peers?.length) return;
 
+  const currentPeers = get(peersAtom);
+  const identities = peers
+    .map((peer) => peer.identity_pubkey)
+    .filter((identity) => currentPeers[identity]);
+  if (!identities.length) return;
+
+  const generation = Symbol();
+  set(peerRemovalGenerationsAtom, (draft) => {
+    for (const identity of identities) {
+      draft[identity] = generation;
+    }
+  });
   set(peersAtom, (draft) => {
-    for (const peer of peers) {
-      if (draft[peer.identity_pubkey]) {
-        draft[peer.identity_pubkey].removed = true;
-        peersAtomFamily.remove(peer.identity_pubkey);
-      }
+    for (const identity of identities) {
+      draft[identity].removed = true;
+      peersAtomFamily.remove(identity);
     }
   });
 
   setTimeout(() => {
+    const generations = get(peerRemovalGenerationsAtom);
+    const expiredIdentities = identities.filter(
+      (identity) => generations[identity] === generation,
+    );
+    if (!expiredIdentities.length) return;
+
     set(peersAtom, (draft) => {
-      for (const peer of peers) {
-        if (draft[peer.identity_pubkey]) {
-          delete draft[peer.identity_pubkey];
-        }
+      for (const identity of expiredIdentities) {
+        if (draft[identity]?.removed) delete draft[identity];
+      }
+    });
+    set(peerRemovalGenerationsAtom, (draft) => {
+      for (const identity of expiredIdentities) {
+        if (draft[identity] === generation) delete draft[identity];
       }
     });
   }, removePeerDelay);
 });
 
-export const peerStatsAtom = atom((get) => {
-  const peers = get(peersAtom);
-  if (!peers) return;
+export const applyPeersBatchAtom = atom(
+  null,
+  (get, set, peers: Peer[], removedPeers: PeerRemove[]) => {
+    if (!get(peersInitializedAtom)) {
+      set(peersAtom, {});
+      set(peerRemovalGenerationsAtom, {});
+    }
+    set(updatePeersAtom, peers);
+    set(removePeersAtom, removedPeers);
+    set(peersInitializedAtom, true);
+  },
+);
 
-  const activePeers = Object.values(peers).filter((p) => !p.removed);
-  const rpc = activePeers.filter(
-    (p) => p.vote.every((v) => !v.activated_stake) && !!p.gossip,
-  );
-  const validators = activePeers.filter((p) =>
-    p.vote.some((v) => v.activated_stake),
-  );
-  const activeStake = activePeers.reduce(
-    (stake, p) =>
-      p.vote.reduce(
-        (acc, v) => (v.delinquent ? acc : acc + v.activated_stake),
-        0n,
-      ) + stake,
-    0n,
-  );
-  const delinquentStake = activePeers.reduce(
-    (stake, p) =>
-      p.vote.reduce(
-        (acc, v) => (v.delinquent ? acc + v.activated_stake : acc),
-        0n,
-      ) + stake,
-    0n,
-  );
+export const epochStakesAtom = atom((get) => {
+  const epoch = get(epochAtom);
+  return epoch ? getEpochStakes(epoch) : undefined;
+});
+
+export const totalNetworkStakeAtom = atom(
+  (get) => get(epochStakesAtom)?.totalStake,
+);
+
+export const gossipPeerCountAtom = atom(
+  (get) =>
+    get(peersListAtom).filter((peer) => !peer.removed && peer.gossip != null)
+      .length,
+);
+
+export const peerStatsAtom = atom((get) => {
+  const epochStakes = get(epochStakesAtom);
+  if (!epochStakes) return;
+  if (!get(peersInitializedAtom)) return;
+
+  const peers = get(peersAtom);
+  let nonDelinquentStake = 0n;
+  let knownConnectedStake = 0n;
+  let knownStakedPeerCount = 0;
+
+  for (const [identity, stake] of epochStakes.stakeByIdentity) {
+    const peer = peers[identity];
+    if (peer && !peer.removed && peer.gossip != null) {
+      knownConnectedStake += stake;
+      if (stake > 0n) knownStakedPeerCount++;
+    }
+
+    if (peer && !peer.removed && peer.vote.some((vote) => !vote.delinquent)) {
+      nonDelinquentStake += stake;
+    }
+  }
 
   return {
-    rpcCount: rpc.length,
-    validatorCount: validators.length,
-    activeStake,
-    delinquentStake,
+    totalStake: epochStakes.totalStake,
+    nonDelinquentStake,
+    delinquentStake: epochStakes.totalStake - nonDelinquentStake,
+    knownConnectedStake,
+    knownStakedValidatorCount: epochStakes.knownStakedValidatorCount,
+    knownStakedPeerCount,
+    gossipPeerCount: get(gossipPeerCountAtom),
   };
 });
 
-export const totalActivePeersStakeAtom = atom((get) => {
-  const peerStats = get(peerStatsAtom);
-  if (!peerStats) return;
-  if (!(peerStats.activeStake + peerStats.delinquentStake)) return;
-  return peerStats.activeStake + peerStats.delinquentStake;
-});
-
-export const myStakeAmountAtom = atom((get) => {
-  const peers = get(peersAtom);
-  const idKey = get(identityKeyAtom);
-  const peerStats = get(peerStatsAtom);
-
-  if (!peers || !idKey || !peerStats) return;
-
-  const myPeer = peers[idKey];
-  if (!myPeer) return;
-
-  return getStake(myPeer);
-});
+export const myStakeAmountAtom = atom((get) =>
+  getEpochStake(get(epochStakesAtom), get(identityKeyAtom)),
+);
 
 export const myStakePctAtom = atom((get) => {
-  const totalActivePeersStake = get(totalActivePeersStakeAtom);
+  const totalStake = get(totalNetworkStakeAtom);
   const stake = get(myStakeAmountAtom);
 
-  if (stake === undefined || !totalActivePeersStake) return;
+  if (stake === undefined || !totalStake) return;
 
-  return (Number(stake) / Number(totalActivePeersStake)) * 100;
+  return (Number(stake) / Number(totalStake)) * 100;
+});
+
+export const myVoteAccountAtom = atom((get) => {
+  const identity = get(identityKeyAtom);
+  const voteKey = get(voteKeyAtom);
+  if (identity === undefined || voteKey === undefined) return;
+
+  const peer = get(peersAtom)[identity];
+  if (!peer || peer.removed) return;
+
+  return peer.vote.find((vote) => vote.vote_account === voteKey);
 });
 
 export const leaderScheduleSearchDependenciesAtom = atom((get) => {

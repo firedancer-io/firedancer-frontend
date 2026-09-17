@@ -10,7 +10,7 @@ const ctx = self as unknown as DedicatedWorkerGlobalScope;
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout>;
 
-let scheduled = false;
+let flushTimer: ReturnType<typeof setTimeout> | undefined;
 const pendingBatches = new Map<string, WsEntity[]>();
 
 const loggedZodFailures = new Set<string>();
@@ -42,14 +42,19 @@ function enqueue(item: WsEntity) {
     pendingBatches.set(key, [item]);
   }
 
-  if (!scheduled) {
-    scheduled = true;
-    setTimeout(flush, flushDelayMs);
+  if (flushTimer === undefined) {
+    flushTimer = setTimeout(flush, flushDelayMs);
   }
 }
 
+function clearPendingBatches() {
+  clearTimeout(flushTimer);
+  flushTimer = undefined;
+  pendingBatches.clear();
+}
+
 function flush() {
-  scheduled = false;
+  flushTimer = undefined;
   const items: WsEntity[] = [];
   for (const batch of pendingBatches.values()) {
     for (const item of batch) items.push(item);
@@ -63,6 +68,7 @@ function flush() {
 }
 
 function connect(url: string, zstd: ZstdDec | undefined) {
+  clearPendingBatches();
   logDebug("WS", `Connecting to API WebSocket ${url.toString()}`);
   handler.onConnectionChange({ type: "connecting" });
   ws = new WebSocket(url, zstd ? ["compress-zstd"] : undefined);
@@ -78,6 +84,7 @@ function connect(url: string, zstd: ZstdDec | undefined) {
   ws.onclose = function onclose() {
     if (this !== ws) return;
 
+    clearPendingBatches();
     logDebug(
       "WS",
       `Disconnected API WebSocket, reconnecting in ${reconnectDelayMs}ms`,
@@ -149,17 +156,20 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
         connect(msg.websocketUrl, zstd);
       })();
       break;
-    case "disconnect":
+    case "disconnect": {
       clearTimeout(reconnectTimer);
-      if (ws) {
+      clearPendingBatches();
+      const socket = ws;
+      ws = null;
+      if (socket) {
         try {
-          ws.close();
+          socket.close();
         } catch {
           logError("WS", "Error closing WebSocket");
         }
-        ws = null;
       }
       break;
+    }
     case "send":
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(msg.value));
