@@ -6,7 +6,7 @@ import {
   xRangeMs,
 } from "../../../../api/worker/cache/shreds/shredsCalc";
 import type { ShredEventTsDeltas } from "../../../../api/worker/cache/shreds/types";
-import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../../atoms";
+import { smoothedNowMsAtom, skippedClusterSlotsAtom } from "../../../../atoms";
 import { showStartupProgressAtom } from "../../../StartupProgress/atoms";
 import {
   liveShredsDataAtom,
@@ -37,7 +37,7 @@ import {
 } from "../../../../colors";
 import { getDefaultStore } from "jotai";
 import {
-  getAdjustedNow,
+  getDelayedNow,
   getDrawInfo,
   type LabelsState,
   type XRange,
@@ -87,13 +87,15 @@ export function setUpRenderer(
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): RendererObj | undefined {
-  const serverTimeMs = store.get(serverTimeMsAtom);
-  if (serverTimeMs == null) return;
+  const smoothedNowMs = store.get(smoothedNowMsAtom);
+  if (smoothedNowMs == null) return;
+
+  const delayedNow = getDelayedNow(smoothedNowMs);
 
   const referenceTs = store.get(liveShredsDataAtom)?.slotsShreds?.referenceTs;
   if (referenceTs == null) return;
 
-  const worldStartTs = serverTimeMs - xRangeMs - delayMs - referenceTs;
+  const worldStartTs = delayedNow - xRangeMs - referenceTs;
   const worldEndTs = worldStartTs + 365 * msPerDay;
   // store world range for future pause / pan
   const worldTsRange: TsRange = [worldStartTs, worldEndTs];
@@ -161,7 +163,6 @@ export function setUpRenderer(
 
 export function draw(
   chartId: string,
-  prevTimeDiffsRef: MutableRefObject<number[]>,
   rendererObj: RendererObj,
   visibleTsRangeRef: MutableRefObject<TsRange | undefined>,
   labelsRef: MutableRefObject<{
@@ -179,7 +180,7 @@ export function draw(
   } = store.get(liveShredsDataAtom) ?? {};
   const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
   const rangeAfterStartup = store.get(liveShredsPostStartupRangeAtom);
-  const serverTimeMs = store.get(serverTimeMsAtom);
+  const smoothedNow = store.get(smoothedNowMsAtom);
 
   // if startup is running, prevent drawing non-startup screen chart
   // Sometimes we've missed the completion event for the first slots
@@ -191,12 +192,12 @@ export function draw(
     store.get(showStartupProgressAtom) ||
     minCompletedSlot == null ||
     !rangeAfterStartup ||
-    serverTimeMs == null
+    smoothedNow == null
   )
     return;
 
-  const adjustedNow = getAdjustedNow(serverTimeMs, prevTimeDiffsRef.current);
-  const maxReferenceTs = adjustedNow - liveShreds.referenceTs;
+  const delayedNow = getDelayedNow(smoothedNow);
+  const maxReferenceTs = delayedNow - liveShreds.referenceTs;
 
   const visibleTsRange: TsRange = [
     maxReferenceTs - xRangeMs * scale,

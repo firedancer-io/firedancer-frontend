@@ -1,4 +1,4 @@
-import { atom } from "jotai";
+import { atom, getDefaultStore } from "jotai";
 import { nsPerMs, slotsPerLeader } from "./consts";
 import { atomWithImmer } from "jotai-immer";
 import {
@@ -37,6 +37,8 @@ import memoize from "micro-memoize";
 import { isFrankendancer } from "./client";
 import { numQuickSearchSlots } from "./features/SlotDetails/const";
 import { Duration } from "luxon";
+import { createRingBuffer } from "./ringBuffer";
+import { msToNs } from "./numUtils";
 
 export const isDocumentVisibleAtom = atom<boolean>(
   document.visibilityState === "visible",
@@ -859,10 +861,56 @@ export const [
   ];
 })();
 
-export const serverTimeMsAtom = atom((get) => {
-  const serverTimeNanos = get(serverTimeNanosAtom);
-  if (serverTimeNanos == null) return undefined;
-  return Math.round(serverTimeNanos / nsPerMs);
+/**
+ * Get timestamp for "now", which is adjusted using an avg diff of server time and real now ts to smooth out server msg delays.
+ */
+export const smoothedNowNsAtom = (function () {
+  const bufferSize = 100;
+  const updateIntervalMs = 10;
+  const ringBuffer = createRingBuffer<bigint>(bufferSize);
+
+  const _smoothedNowNsAtom = atom<bigint | undefined>();
+
+  let lastRafTime = -Infinity;
+  let prevTotal = 0n;
+
+  const refreshNowAtom = atom(null, (get, set) => {
+    const serverTimeNs = get(serverTimeNanosAtom);
+    if (serverTimeNs == null) return;
+
+    const nowMs = performance.timeOrigin + performance.now();
+    const nowNs = msToNs(nowMs);
+    const timeDiff = nowNs - serverTimeNs;
+    const evicted = ringBuffer.push(timeDiff);
+
+    const total = prevTotal + timeDiff - (evicted ?? 0n);
+    prevTotal = total;
+    const avgTimeDiff = total / BigInt(ringBuffer.length);
+
+    const smoothedNowNs = nowNs - avgTimeDiff;
+    set(_smoothedNowNsAtom, smoothedNowNs);
+  });
+  const store = getDefaultStore();
+
+  function loop() {
+    requestAnimationFrame(function updateSmoothedNow(rafTime: number) {
+      if (rafTime - lastRafTime >= updateIntervalMs) {
+        store.set(refreshNowAtom);
+        lastRafTime = rafTime;
+      }
+      loop();
+    });
+  }
+
+  loop();
+
+  return atom((get) => get(_smoothedNowNsAtom));
+})();
+
+export const smoothedNowMsAtom = atom((get) => {
+  const nowNs = get(smoothedNowNsAtom);
+  if (nowNs == null) return;
+  return Number(nowNs / BigInt(nsPerMs));
 });
 
 function getFrankendancerLateVoteSlotsAtom() {
