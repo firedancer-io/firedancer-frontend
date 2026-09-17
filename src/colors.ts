@@ -134,15 +134,14 @@ export const toastConnectingEndColor = "#FFC267";
 // background of 1 card overlayed on default app background
 export const cardBackgroundColor = "#141720";
 
+// hit rate
+export const goodHitRateColor = "#56BF8C";
+export const averageHitRateColor = "#C27B45";
+export const badHitRateColor = "#DC6869";
+export const unknownHitRateColor = "var(--gray-11)";
+export const unknownHitRateUnchangedColor = "var(--gray-9)";
+
 // overview cards
-export const unknownChangedColor = "var(--gray-11)";
-export const unknownUnchangedColor = "var(--gray-9)";
-export const goodChangedColor = "#56BF8C";
-export const goodUnchangedColor = "#4A7661";
-export const averageChangedColor = "#C27B45";
-export const averageUnchangedColor = "#714C32";
-export const badChangedColor = "#DC6869";
-export const badUnchangedColor = "#7A3B40";
 export const headerColor = "#BDF3FF";
 export const overviewTextColor = "#B4B4B4";
 export const nonDelinquentColor = "#6F77C0";
