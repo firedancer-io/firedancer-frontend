@@ -1,9 +1,14 @@
 import { useCallback, useMemo, useRef } from "react";
 import type { TsRange } from "../WebGl/webglUtils";
-import { MIN_VISIBLE_MS, type ExplorableChartProps } from "./const";
+import {
+  MIN_VISIBLE_MS,
+  type ExplorableChartProps,
+  type MiniMapSetupProps,
+} from "./const";
 import { getDefaultStore } from "jotai";
 import { selectedMsAtom, visibleRangeAtom, worldRangeAtom } from "./atoms";
 import { clamp } from "../../uplotReact/utils";
+import { clamp as minMaxClamp } from "lodash";
 
 const PAN_THRESHOLD_PX = 0;
 const ZOOM_INTENSITY = 0.002;
@@ -44,7 +49,10 @@ function addListener<K extends keyof HTMLElementEventMap>(
 
 const store = getDefaultStore();
 
-export function useExplorableChart(): ExplorableChartProps {
+export function useExplorableChart(): {
+  explorableChartProps: ExplorableChartProps;
+  miniMapProps: MiniMapSetupProps;
+} {
   const dragStartRef = useRef<{
     clientX: number;
     ts: number;
@@ -52,6 +60,7 @@ export function useExplorableChart(): ExplorableChartProps {
     startVisibleRange: TsRange;
   }>();
   const isPanningRef = useRef(false);
+  const resizeEdgeRef = useRef<"start" | "end">();
 
   const setClampedVisibleRange = useCallback((unclampedNewRange: TsRange) => {
     const worldRange = store.get(worldRangeAtom);
@@ -93,7 +102,9 @@ export function useExplorableChart(): ExplorableChartProps {
 
         isPanningRef.current = false;
         refreshCursor();
-        store.set(selectedMsAtom, dragStartRef.current.ts);
+        if (!isWorldTrack) {
+          store.set(selectedMsAtom, dragStartRef.current.ts);
+        }
       };
 
       const moveDrag = (clientX: number) => {
@@ -119,14 +130,17 @@ export function useExplorableChart(): ExplorableChartProps {
       };
 
       const zoom = (clientX: number, deltaY: number) => {
-        const prevWindow = store.get(visibleRangeAtom);
-        if (!prevWindow) return;
+        const visibleRange = store.get(visibleRangeAtom);
+        const trackWindow = isWorldTrack
+          ? store.get(worldRangeAtom)
+          : visibleRange;
+        if (!visibleRange || !trackWindow) return;
 
-        const [startTs, endTs] = prevWindow;
+        const [startTs, endTs] = visibleRange;
         const span = endTs - startTs;
         const isZoomingOut = deltaY > 0;
 
-        const cursorTs = clientXToTs(trackEl, clientX, prevWindow);
+        const cursorTs = clientXToTs(trackEl, clientX, trackWindow);
         // larger deltaY = faster zoom
         let scale = Math.exp(deltaY * ZOOM_INTENSITY);
         // don't zoom in past the minimum span (clamp to it instead of overshooting)
@@ -205,6 +219,170 @@ export function useExplorableChart(): ExplorableChartProps {
 
       return () => cleanups.forEach((off) => off());
     };
-    return { setUpExploreListeners };
-  }, [createCallbacks]);
+
+    const setUpMiniMap = (
+      trackEl: HTMLDivElement,
+      visibleRangeEl: HTMLDivElement,
+      leftHandleEl: HTMLDivElement,
+      rightHandleEl: HTMLDivElement,
+    ) => {
+      const refreshCursor = () => {
+        const allEls = [trackEl, visibleRangeEl, leftHandleEl, rightHandleEl];
+        const cursor = resizeEdgeRef.current
+          ? "ew-resize"
+          : isPanningRef.current
+            ? "grabbing"
+            : // fallback to default
+              "";
+        allEls.forEach((el) => (el.style.cursor = cursor));
+      };
+      refreshCursor();
+
+      const {
+        endDrag,
+        onMouseDown,
+        onMouseMove,
+        onTouchStart,
+        onTouchMove,
+        onWheel,
+      } = createCallbacks(trackEl, refreshCursor, true);
+
+      const startResize = (edge: "start" | "end") => {
+        resizeEdgeRef.current = edge;
+        refreshCursor();
+      };
+
+      const moveResizeHandle = (clientX: number) => {
+        const edge = resizeEdgeRef.current;
+        const worldRange = store.get(worldRangeAtom);
+        const visibleRange = store.get(visibleRangeAtom);
+        if (!edge || !worldRange || !visibleRange) return;
+
+        const cursorTs = minMaxClamp(
+          clientXToTs(trackEl, clientX, worldRange),
+          worldRange[0],
+          worldRange[1],
+        );
+        const [start, end] = visibleRange;
+
+        if (edge === "start") {
+          setClampedVisibleRange([
+            Math.min(cursorTs, end - MIN_VISIBLE_MS),
+            end,
+          ]);
+        } else {
+          setClampedVisibleRange([
+            start,
+            Math.max(cursorTs, start + MIN_VISIBLE_MS),
+          ]);
+        }
+      };
+
+      const endResize = () => {
+        if (!resizeEdgeRef.current) return;
+        resizeEdgeRef.current = undefined;
+        refreshCursor();
+      };
+
+      const panToPoint = (clientX: number) => {
+        const worldRange = store.get(worldRangeAtom);
+        const visibleRange = store.get(visibleRangeAtom);
+        if (!worldRange || !visibleRange) return;
+
+        const cursorTs = clientXToTs(trackEl, clientX, worldRange);
+        const span = visibleRange[1] - visibleRange[0];
+        setClampedVisibleRange([cursorTs - span / 2, cursorTs + span / 2]);
+      };
+
+      const onHandleMouseDown = (edge: "start" | "end") => (e: MouseEvent) => {
+        if (e.button !== 0) return;
+        startResize(edge);
+        e.stopPropagation();
+        e.preventDefault();
+      };
+      const onHandleTouchStart = (edge: "start" | "end") => (e: TouchEvent) => {
+        if (e.touches.length !== 1) return;
+        startResize(edge);
+        e.stopPropagation();
+        e.preventDefault();
+      };
+
+      const cleanups = [
+        addListener(leftHandleEl, "mousedown", onHandleMouseDown("start")),
+        addListener(rightHandleEl, "mousedown", onHandleMouseDown("end")),
+        addListener(leftHandleEl, "touchstart", onHandleTouchStart("start"), {
+          passive: false,
+        }),
+        addListener(rightHandleEl, "touchstart", onHandleTouchStart("end"), {
+          passive: false,
+        }),
+
+        addListener(visibleRangeEl, "mousedown", onMouseDown),
+        addListener(visibleRangeEl, "touchstart", onTouchStart, {
+          passive: false,
+        }),
+        addListener(visibleRangeEl, "click", (e) =>
+          // prevent track click
+          e.stopPropagation(),
+        ),
+        addListener(trackEl, "click", (e) => panToPoint(e.clientX)),
+        addListener(trackEl, "mousemove", (e) => {
+          if (resizeEdgeRef.current) {
+            moveResizeHandle(e.clientX);
+          } else {
+            onMouseMove(e);
+          }
+        }),
+        addListener(trackEl, "mouseup", () => {
+          endResize();
+          endDrag();
+        }),
+        addListener(trackEl, "mouseleave", () => {
+          endResize();
+          endDrag();
+        }),
+        addListener(
+          trackEl,
+          "touchmove",
+          (e) => {
+            if (resizeEdgeRef.current) {
+              if (e.touches.length === 1) {
+                moveResizeHandle(e.touches[0].clientX);
+                e.preventDefault();
+              }
+            } else {
+              onTouchMove(e);
+            }
+          },
+          { passive: false },
+        ),
+        addListener(
+          trackEl,
+          "touchend",
+          (e) => {
+            // If a touch panned / resize, prevent the synthetic click emission.
+            // Trigger click for pure touch events.
+            if (isPanningRef.current || resizeEdgeRef.current) {
+              e.preventDefault();
+            }
+            endResize();
+            endDrag();
+          },
+          { passive: false },
+        ),
+        addListener(trackEl, "touchcancel", () => {
+          endResize();
+          endDrag();
+        }),
+        addListener(trackEl, "wheel", onWheel, { passive: false }),
+      ];
+
+      return () => cleanups.forEach((off) => off());
+    };
+
+    return {
+      explorableChartProps: { setUpExploreListeners },
+      miniMapProps: { setUpMiniMap },
+    };
+  }, [createCallbacks, setClampedVisibleRange]);
 }
