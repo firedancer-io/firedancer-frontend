@@ -106,7 +106,6 @@ import {
   voteCommissionAtom,
   isAlpenglowAtom,
   finalizedSlotAtom,
-  aggRevenueAtom,
 } from "./atoms";
 import {
   tpsSampleIntervalMs,
@@ -564,8 +563,6 @@ function useUpdateAtoms() {
     [dbFlushSupermajorityPeersBuffers],
   );
 
-  const setAggRevenue = useSetAtom(aggRevenueAtom);
-
   const updateAtoms = useCallback(
     (item: WsEntity) => {
       const { topic, key, value } = item;
@@ -811,12 +808,9 @@ function useUpdateAtoms() {
         }
         case "timeline": {
           switch (key) {
+            case "query_agg_revenue":
             case "query_agg_slots": {
               // listen in component
-              break;
-            }
-            case "query_agg_revenue": {
-              setAggRevenue(value);
               break;
             }
           }
@@ -905,7 +899,6 @@ function useUpdateAtoms() {
       setLateVoteHistory,
       setMissedVoteHistory,
       setBlockEngine,
-      setAggRevenue,
       setSupermajorityEpoch,
       addToSupermajorityPeersBuffers,
       setAccountsStats,
