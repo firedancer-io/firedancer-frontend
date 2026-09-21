@@ -25,6 +25,7 @@ import {
   updatePeersAtom,
   removePeersAtom,
   addSkippedClusterSlotsAtom,
+  currentSlotAtom,
   deleteSkippedClusterSlotAtom,
   addLateVoteSlotAtom,
   deleteLateVoteSlotAtom,
@@ -359,6 +360,7 @@ function useUpdateAtoms() {
   const setBlockEngine = useSetAtom(blockEngineAtom);
 
   const setCompletedSlot = useSetAtom(completedSlotAtom);
+  const setCurrentSlot = useSetAtom(currentSlotAtom);
   const setServerTimeNanos = useSetAtom(serverTimeNanosAtom);
 
   const addSkippedClusterSlots = useSetAtom(addSkippedClusterSlotsAtom);
@@ -651,6 +653,7 @@ function useUpdateAtoms() {
             }
             case "completed_slot": {
               setCompletedSlot(value);
+              setCurrentSlot(value + 1);
               break;
             }
             case "turbine_slot": {
@@ -862,6 +865,7 @@ function useUpdateAtoms() {
       setVoteDistance,
       setSkipRate,
       setCompletedSlot,
+      setCurrentSlot,
       addTurbineSlot,
       addRepairSlot,
       setResetSlot,
