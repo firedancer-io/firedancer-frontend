@@ -68,6 +68,8 @@ export default memo(function TileCard({
   });
   const avgBusy = useLastDefinedValue(currentAvgBusy);
 
+  if (tileCount === 0) return;
+
   return (
     <Flex ref={ref}>
       <Card
