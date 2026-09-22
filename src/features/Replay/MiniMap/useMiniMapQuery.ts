@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import { ascBucketGranularities, msBucketSizes } from "../const";
-import useAggSlotsQuery, { RequesterId } from "../useAggSlotsQuery";
+import useAggSlotsQuery, { StartQueryId } from "../useAggSlotsQuery";
 import type { AggGranularity } from "../../../api/types";
 import type { NsTsRange } from "../../WebGl/webglUtils";
 import { useThrottledCallback } from "use-debounce";
@@ -14,7 +14,7 @@ export default function useMiniMapQuery() {
     | undefined
   >(undefined);
 
-  const query = useAggSlotsQuery(RequesterId.MiniMap);
+  const query = useAggSlotsQuery();
 
   return useThrottledCallback(
     useCallback(
@@ -30,10 +30,14 @@ export default function useMiniMapQuery() {
           }
 
           // fetch only missing data at end
-          query([lastRequest.worldRangeNs[1], worldRangeNs[1]], granularity);
+          query(
+            StartQueryId.MiniMap,
+            [lastRequest.worldRangeNs[1], worldRangeNs[1]],
+            granularity,
+          );
         } else {
           // fetch entire world on granularity change or on start range change
-          query(worldRangeNs, granularity);
+          query(StartQueryId.MiniMap, worldRangeNs, granularity);
         }
 
         lastRequestRef.current = {
