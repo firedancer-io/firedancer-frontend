@@ -1,22 +1,22 @@
 import { useCallback } from "react";
+import { useSetAtom } from "jotai";
 import { ascBucketGranularities, nsBucketSizes } from "../const";
-import type { AggGranularity, AggRevenue } from "../../../api/types";
 import { useWebSocketSend } from "../../../api/ws/utils";
+import type { AggGranularity, AggShreds } from "../../../api/types";
 import type { NsTsRange } from "../../WebGl/webglUtils";
+import { useTimelineServerMessage } from "../utils";
+import { useTiledQueries } from "../useTiledQueries";
 import {
-  addAggRevenueAtom,
-  deleteAggRevenueBucketsAtom,
+  addAggShredsAtom,
+  deleteAggShredsBucketsAtom,
   refreshLastUpdateTsAtom,
 } from "./atoms";
-import { useSetAtom } from "jotai";
-import { useTiledQueries } from "../useTiledQueries";
-import { useTimelineServerMessage } from "../utils";
 
 /**
  * At most, how many buckets should be visible
  */
 const BUCKET_COUNT_THRESHOLD = 1000;
-export function getGranularity(windowSizeNs: bigint) {
+export function getAggGranularity(windowSizeNs: bigint) {
   return (
     ascBucketGranularities.find((g) => {
       return windowSizeNs < BigInt(BUCKET_COUNT_THRESHOLD) * nsBucketSizes[g];
@@ -38,9 +38,9 @@ export function getTileSizeNs(granularity: AggGranularity) {
   return BigInt(BUCKETS_PER_TILE) * nsBucketSizes[granularity];
 }
 
-export default function useAggRevenueQuery(chartId: string) {
-  const addAggRevenue = useSetAtom(addAggRevenueAtom);
-  const deleteAggRevenueBuckets = useSetAtom(deleteAggRevenueBucketsAtom);
+export function useAggShredsQuery(chartId: string) {
+  const addAggShreds = useSetAtom(addAggShredsAtom);
+  const deleteAggShredsBuckets = useSetAtom(deleteAggShredsBucketsAtom);
   const refreshLastUpdateTs = useSetAtom(refreshLastUpdateTsAtom);
   const wsSend = useWebSocketSend();
 
@@ -53,7 +53,7 @@ export default function useAggRevenueQuery(chartId: string) {
     ) => {
       wsSend({
         topic: "timeline",
-        key: "query_agg_revenue",
+        key: "query_agg_shreds",
         id: queryId,
         params: {
           start_ns: startNs.toString(),
@@ -75,9 +75,9 @@ export default function useAggRevenueQuery(chartId: string) {
         }
         return acc;
       }, []);
-      deleteAggRevenueBuckets(granularity, bucketIdxs);
+      deleteAggShredsBuckets(granularity, bucketIdxs);
     },
-    [deleteAggRevenueBuckets],
+    [deleteAggShredsBuckets],
   );
 
   const { queryRange, markQueryComplete } = useTiledQueries<AggGranularity>({
@@ -91,13 +91,13 @@ export default function useAggRevenueQuery(chartId: string) {
   });
 
   useTimelineServerMessage(
-    "query_agg_revenue",
+    "query_agg_shreds",
     useCallback(
-      (message: { id: number; value: AggRevenue }) => {
-        addAggRevenue(message.value);
+      (message: { id: number; value: AggShreds }) => {
         markQueryComplete(message.id);
+        addAggShreds(message.value);
       },
-      [addAggRevenue, markQueryComplete],
+      [addAggShreds, markQueryComplete],
     ),
   );
 
