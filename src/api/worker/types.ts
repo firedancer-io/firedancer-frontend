@@ -121,7 +121,7 @@ export function isEmaObjectKey<K extends keyof EmaHistoryObjectRegistry>(
 }
 
 export interface ValidatorState {
-  serverTimeNanos: number | undefined;
+  serverTimeNanos: bigint | undefined;
   isStartup: boolean | undefined;
 }
 

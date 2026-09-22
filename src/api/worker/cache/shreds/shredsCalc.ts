@@ -102,9 +102,12 @@ export function createShredsCalc(getValidatorState: () => ValidatorState) {
    * Delete slots that completed before the chart x-axis starting time, or with dots outside visible x range
    * Update the min slot
    */
-  function deleteSlots(isStartup: boolean, serverTimeNanos?: number) {
+  function deleteSlots(isStartup: boolean, serverTimeNanos?: bigint) {
     const now =
-      serverTimeNanos == null ? Date.now() : serverTimeNanos / nsPerMs;
+      serverTimeNanos == null
+        ? Date.now()
+        : Number(serverTimeNanos / BigInt(nsPerMs));
+    const delayedNow = now - delayMs;
     if (!data.slotsShreds || !data.range) return;
 
     if (isStartup) {
@@ -120,7 +123,7 @@ export function createShredsCalc(getValidatorState: () => ValidatorState) {
           slot.maxEventTsDelta == null ||
           isBeforeChartX(
             slot.maxEventTsDelta,
-            now,
+            delayedNow,
             data.slotsShreds.referenceTs,
           )
         ) {
@@ -163,7 +166,7 @@ export function createShredsCalc(getValidatorState: () => ValidatorState) {
           slot.completionTsDelta != null &&
           isBeforeChartX(
             slot.completionTsDelta,
-            now,
+            delayedNow,
             data.slotsShreds.referenceTs,
           )
         ) {
@@ -229,10 +232,13 @@ export function createShredsCalc(getValidatorState: () => ValidatorState) {
 
 export type ShredsCalc = ReturnType<typeof createShredsCalc>;
 
-function isBeforeChartX(tsDelta: number, now: number, referenceTs: number) {
-  const nowDelta = now - referenceTs;
-  const chartXRange = xRangeMs + delayMs;
-  return nowDelta - tsDelta > chartXRange;
+function isBeforeChartX(
+  tsDelta: number,
+  delayedNow: number,
+  referenceTs: number,
+) {
+  const nowDelta = delayedNow - referenceTs;
+  return nowDelta - tsDelta > xRangeMs;
 }
 
 /**

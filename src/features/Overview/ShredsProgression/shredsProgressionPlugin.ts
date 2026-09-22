@@ -18,12 +18,12 @@ import {
   shredReplayedTurbineColor,
   shredSkippedColor,
 } from "../../../colors";
-import { serverTimeMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
+import { smoothedNowMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
 import { clamp } from "lodash";
 import { ShredEvent } from "../../../api/entities";
 import {
   createLabelsState,
-  getAdjustedNow,
+  getDelayedNow,
   getDrawInfo,
   getSlotGroupLabelId,
   getSlotGroupNameId,
@@ -62,8 +62,6 @@ export function shredsProgressionPlugin(
   // use to get new map values without creating a new map every update
   let tempNewLabels: typeof prevLabels = createLabelsState();
 
-  const prevTimeDiffs: number[] = [];
-
   return {
     hooks: {
       draw: [
@@ -72,8 +70,8 @@ export function shredsProgressionPlugin(
             drawStartupChartAxes(u);
           }
 
-          const serverTimeMs = store.get(serverTimeMsAtom);
-          if (!serverTimeMs) return;
+          const smoothedNow = store.get(smoothedNowMsAtom);
+          if (!smoothedNow) return;
 
           const {
             slotsShreds: liveShreds,
@@ -105,9 +103,8 @@ export function shredsProgressionPlugin(
             if (!rangeAfterStartup) return;
           }
 
-          const adjustedNow = getAdjustedNow(serverTimeMs, prevTimeDiffs);
-
-          const maxReferenceTs = adjustedNow - liveShreds.referenceTs;
+          const delayedNow = getDelayedNow(smoothedNow);
+          const maxReferenceTs = delayedNow - liveShreds.referenceTs;
           const tsSpan = maxXScale - minXScale;
 
           const xRange: XRange = {

@@ -1,6 +1,7 @@
 export interface RingBuffer<T> {
   length: number;
-  push(item: T): void;
+  /** Returns the item that was evicted by this push, or undefined if the buffer was not yet full. */
+  push(item: T): T | undefined;
   toArray(): T[];
   clear(): void;
 }
@@ -23,10 +24,12 @@ export function createRingBuffer<T>(size: number): RingBuffer<T> {
       return length;
     },
 
-    push(item: T) {
+    push(item: T): T | undefined {
+      const evicted = length === size ? buffer[head] : undefined;
       buffer[head] = item;
       head = (head + 1) % size;
       if (length < size) length++;
+      return evicted;
     },
 
     toArray(): T[] {

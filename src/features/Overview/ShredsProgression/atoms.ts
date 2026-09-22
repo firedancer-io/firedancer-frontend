@@ -1,15 +1,16 @@
 import { atom } from "jotai";
 import type { LiveShreds } from "../../../api/types";
 import { ShredEvent } from "../../../api/entities";
-import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
+import { xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
 import { getSlotGroupLeader } from "../../../utils";
 import {
+  smoothedNowMsAtom,
   epochAtom,
-  serverTimeMsAtom,
   skippedClusterSlotsAtom,
 } from "../../../atoms";
 import { slotCaughtUpAtom } from "../../../api/atoms";
+import { getDelayedNow } from "./utils";
 
 type ShredEventTsDeltaMs = number | undefined;
 /**
@@ -192,7 +193,9 @@ export function createLiveShredsAtoms() {
 
         set(_liveShredsAtom, (prev) => {
           const slotRange = get(_slotRangeAtom);
-          const now = get(serverTimeMsAtom) ?? Date.now();
+          const delayedNow = getDelayedNow(
+            get(smoothedNowMsAtom) ?? Date.now(),
+          );
 
           if (!prev || !slotRange) return prev;
 
@@ -207,7 +210,11 @@ export function createLiveShredsAtoms() {
               if (!slot) continue;
               if (
                 slot.maxEventTsDelta == null ||
-                isBeforeChartX(slot.maxEventTsDelta, now, prev.referenceTs)
+                isBeforeChartX(
+                  slot.maxEventTsDelta,
+                  delayedNow,
+                  prev.referenceTs,
+                )
               ) {
                 prev.slots.delete(slotNumber);
               }
@@ -249,7 +256,11 @@ export function createLiveShredsAtoms() {
               if (
                 !shouldDeleteSlot &&
                 slot.completionTsDelta != null &&
-                isBeforeChartX(slot.completionTsDelta, now, prev.referenceTs)
+                isBeforeChartX(
+                  slot.completionTsDelta,
+                  delayedNow,
+                  prev.referenceTs,
+                )
               ) {
                 // once we find a slot that is complete and far enough in the past,
                 // delete all slot numbers less it but keep this one for label spacing reference
@@ -281,10 +292,13 @@ export function createLiveShredsAtoms() {
   };
 }
 
-function isBeforeChartX(tsDelta: number, now: number, referenceTs: number) {
-  const nowDelta = now - referenceTs;
-  const chartXRange = xRangeMs + delayMs;
-  return nowDelta - tsDelta > chartXRange;
+function isBeforeChartX(
+  tsDelta: number,
+  delayedNow: number,
+  referenceTs: number,
+) {
+  const nowDelta = delayedNow - referenceTs;
+  return nowDelta - tsDelta > xRangeMs;
 }
 
 export const shredsAtoms = createLiveShredsAtoms();

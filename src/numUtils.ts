@@ -1,4 +1,5 @@
 import memoize from "micro-memoize";
+import { nsPerMs } from "./consts";
 
 export function getNumOfDecimals(a: number) {
   if (!isFinite(a) || a < 1e-32) return 0;
@@ -123,4 +124,15 @@ export function formatFrequency(n: number) {
     default:
       return `${n} times`;
   }
+}
+
+/**
+ * Convert ms number to ns bigint, keeping as much precision as possible
+ */
+export function msToNs(ms: number): bigint {
+  const wholeMs = Math.trunc(ms);
+  const fracMs = ms - wholeMs;
+  return (
+    BigInt(wholeMs) * BigInt(nsPerMs) + BigInt(Math.round(fracMs * nsPerMs))
+  );
 }
