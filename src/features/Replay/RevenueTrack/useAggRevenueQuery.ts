@@ -37,7 +37,6 @@ export const OVERSCAN_BUCKETS = BUCKETS_PER_TILE * OVERSCAN_TILES_COUNT;
 const TILE_EVICTION_HIGH_WATERMARK = 24;
 const TILE_EVICTION_LOW_WATERMARK = 16;
 
-/** Fetch-tile size (ms) for an agg granularity: a whole number of buckets. */
 export function getTileSizeNs(granularity: AggGranularity) {
   return BigInt(BUCKETS_PER_TILE) * nsBucketSizes[granularity];
 }
