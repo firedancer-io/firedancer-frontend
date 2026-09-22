@@ -4,6 +4,24 @@ import type { TsRange } from "../WebGl/webglUtils";
 import { atom } from "jotai";
 import { CHART_NOW_DELAY_MS } from "./const";
 import { calcRelativeMs, getInitVisibleRange } from "./utils";
+import type { WsEntity } from "../../api/worker/types";
+
+export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
+
+/** query key -> next id to assign for that key */
+export const [nextQueryIdByKeyAtom, reserveNextQueryIdAtom] = (function () {
+  const _nextQueryIdByKeyAtom = atom(new Map<TimelineQueryKey, number>());
+  return [
+    atom((get) => get(_nextQueryIdByKeyAtom)),
+    atom(null, (get, set, key: TimelineQueryKey) => {
+      const map = get(_nextQueryIdByKeyAtom);
+      const id = map.get(key) ?? 1;
+      // new Map so jotai sees a changed reference
+      set(_nextQueryIdByKeyAtom, new Map(map).set(key, id + 1));
+      return id;
+    }),
+  ];
+})();
 
 export const {
   isInitializedAtom,

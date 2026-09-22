@@ -3,7 +3,7 @@ import { getDefaultStore, useAtomValue } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
 import { type ExplorableChartProps, type MarkerLinesProps } from "../const.ts";
 import { DEFAULT_REVENUE_VIEW_OPTS, type RevenueViewOpts } from "./consts.ts";
-import { useThrottledCallback } from "use-debounce";
+import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -42,6 +42,8 @@ import {
   txnMetaCache,
   type TxnMetaCacheDelta,
 } from "./txnMeta/txnMetaCache.ts";
+import clsx from "clsx";
+import styles from "../track.module.css";
 
 const height = 150;
 const store = getDefaultStore();
@@ -100,7 +102,7 @@ function RevenueTrack({
   const execrpCount = useAtomValue(tileCountAtom).execrp;
   const numRows = getNumRows(opts.splitByRow, execrpCount);
 
-  const throttledRangeQuery = useThrottledCallback(
+  const throttledRangeQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
       if (isAggregate(visibleRangeMs)) {
         const queryGranularity = getGranularity(
@@ -200,7 +202,7 @@ function RevenueTrack({
     [renderActive, throttledRangeQuery],
   );
 
-  const throttledDrawAgg = useThrottledCallback(
+  const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRangeMs = store.get(visibleRangeAtom);
@@ -257,6 +259,9 @@ function RevenueTrack({
     // cleanup
     return () => {
       aggEmitter.removeListener(drawEventType, throttledDrawAgg);
+      // cancel pending trailing timers so they don't accumulate across remounts
+      throttledDrawAgg.cancel();
+      throttledRangeQuery.cancel();
       unsubscribeVisible();
       unsubscribeWorld();
       cleanUpRenderer();
@@ -269,6 +274,7 @@ function RevenueTrack({
     setUpContextListeners,
     getWasContextLost,
     throttledDrawAgg,
+    throttledRangeQuery,
   ]);
 
   // handle chart resize
@@ -332,20 +338,14 @@ function RevenueTrack({
         setOpts={setOpts}
       />
       <div
+        className={styles.trackContainer}
         style={{
-          position: "relative",
-          width: "100%",
           height: `${height}px`,
         }}
       >
         <div
           ref={containerRef}
-          className={markerLinesClassName}
-          style={{
-            position: "relative",
-            width: "100%",
-            height: "100%",
-          }}
+          className={clsx(styles.trackCanvasContainer, markerLinesClassName)}
         />
         <RevenueYAxis
           maxValue={isAgg ? aggAxisMax : nonAggAxisMax}
