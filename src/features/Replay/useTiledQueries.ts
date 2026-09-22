@@ -25,6 +25,11 @@ interface UseTiledQueriesOpts<Granularity extends string> {
    * Extra tiles to be fetched on either side of the query range
    */
   overscanTilesCount: number;
+  /**
+   * First query id to assign. Use to avoid collisions with other requesters
+   * sharing the same server message channel.
+   */
+  startQueryId?: number;
   sendQuery: (
     queryId: number,
     startNs: bigint,
@@ -53,6 +58,7 @@ export function useTiledQueries<Granularity extends string>({
   chartId,
   getTileSizeNs,
   overscanTilesCount,
+  startQueryId = 0,
   sendQuery,
   tileEvictionHighWatermark,
   tileEvictionLowWatermark,
@@ -73,7 +79,7 @@ export function useTiledQueries<Granularity extends string>({
       const byChartId = store.get(tileQueryStateByChartIdAtom);
       let chartState = byChartId.get(chartId);
       if (!chartState) {
-        chartState = { tileStates: new Map(), nextQueryId: 0 };
+        chartState = { tileStates: new Map(), nextQueryId: startQueryId };
         byChartId.set(chartId, chartState);
       }
       return chartState;
@@ -118,7 +124,7 @@ export function useTiledQueries<Granularity extends string>({
     };
 
     return { getChartState, getTileStates, getNewQueryId };
-  }, [chartId]);
+  }, [chartId, startQueryId]);
 
   // On unmount, abandon in-flight queries
   useEffect(() => {

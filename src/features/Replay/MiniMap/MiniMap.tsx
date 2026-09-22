@@ -15,7 +15,7 @@ import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
 import useMiniMapQuery, { getMiniMapGranularity } from "./useMiniMapQuery.ts";
 import type { AggSlots } from "../../../api/types.ts";
 import { calcAbsoluteNs, useTimelineServerMessage } from "../utils.ts";
-import { RequesterId } from "../useAggSlotsQuery.ts";
+import { StartQueryId } from "../useAggSlotsQuery.ts";
 import { useThrottledCallback } from "use-debounce";
 import styles from "./miniMap.module.css";
 import clsx from "clsx";
@@ -166,7 +166,7 @@ function MiniMap({
     if (
       !rendererRef.current ||
       referenceNs == null ||
-      message.id !== RequesterId.MiniMap
+      message.id !== StartQueryId.MiniMap
     )
       return;
 

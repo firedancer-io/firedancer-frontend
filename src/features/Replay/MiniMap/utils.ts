@@ -10,17 +10,14 @@ import {
   updateRectMeshCounts,
   createRectMesh,
   createRenderer,
-  type RgbColor,
   type TsRange,
   updateMeshRange,
-  convertToWebGlColor,
 } from "../../WebGl/webglUtils.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import { msBucketSizes } from "../const.ts";
 import type { AggGranularity, AggSlots } from "../../../api/types.ts";
-import { epochSliderProgressColor } from "../../../colors.ts";
-import { clamp } from "lodash";
 import { calcRelativeMs } from "../utils.ts";
+import { getBucketColorRatios, colorStates, colors } from "../slotUtils.ts";
 
 export const trackHeight = 25;
 const opacity = 1;
@@ -104,41 +101,6 @@ export function render(rendererObj: RendererObj) {
   renderer.render(scene, camera);
 }
 
-enum ColorState {
-  Skipped = "Skipped",
-  NotSkipped = "NotSkipped",
-}
-
-const colorStates = Object.values(ColorState);
-
-const colors: Record<ColorState, RgbColor> = {
-  [ColorState.Skipped]: [235 / 255, 64 / 255, 52 / 255],
-  [ColorState.NotSkipped]: convertToWebGlColor(epochSliderProgressColor),
-};
-
-function getBucketColorRatios(
-  startSlot: number | null,
-  endSlot: number | null,
-  skippedCount: number | null,
-  minHeightRatio: number,
-): Record<ColorState, number> {
-  if (startSlot == null || endSlot == null || endSlot < startSlot) {
-    return {
-      [ColorState.Skipped]: 0,
-      [ColorState.NotSkipped]: 0,
-    };
-  }
-
-  const totalSlots = endSlot - startSlot + 1;
-  const skippedRatio = skippedCount
-    ? clamp(skippedCount / totalSlots, minHeightRatio, maxY)
-    : 0;
-  return {
-    [ColorState.Skipped]: skippedRatio,
-    [ColorState.NotSkipped]: maxY - skippedRatio,
-  };
-}
-
 /**
  * Draw rectangles. Appends data if granularity is the same as in the last draw.
  * Create new meshes as needed.
@@ -182,6 +144,7 @@ export function drawMiniMap(
       end_slot[i],
       skipped[i],
       minHeightRatio,
+      maxY,
     );
 
     let y = minY;
