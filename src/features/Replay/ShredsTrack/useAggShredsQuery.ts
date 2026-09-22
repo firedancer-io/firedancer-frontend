@@ -6,12 +6,15 @@ import type { AggGranularity, AggShreds } from "../../../api/types";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
 import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
 import { useTiledQueries } from "../useTiledQueries";
+import type { TimelineQueryKey } from "../atoms";
 import {
   addAggShredsAtom,
   deleteAggShredsBucketsAtom,
   drawEventType,
   aggShredsEmitterAtom,
 } from "./atoms";
+
+const QUERY_KEY = "query_agg_shreds" satisfies TimelineQueryKey;
 
 /**
  * At most, how many buckets should be visible
@@ -54,7 +57,7 @@ export function useAggShredsQuery(chartId: string) {
     ) => {
       wsSend({
         topic: "timeline",
-        key: "query_agg_shreds",
+        key: QUERY_KEY,
         id: queryId,
         params: {
           start_ns: startNs.toString(),
@@ -85,6 +88,7 @@ export function useAggShredsQuery(chartId: string) {
     chartId,
     getTileSizeNs,
     overscanTilesCount: OVERSCAN_TILES_COUNT,
+    queryKey: QUERY_KEY,
     sendQuery,
     tileEvictionHighWatermark: TILE_EVICTION_HIGH_WATERMARK,
     tileEvictionLowWatermark: TILE_EVICTION_LOW_WATERMARK,
@@ -92,11 +96,12 @@ export function useAggShredsQuery(chartId: string) {
   });
 
   useTimelineServerMessage(
-    "query_agg_shreds",
+    QUERY_KEY,
     useCallback(
       (message: { id: number; value: AggShreds }) => {
+        if (!markQueryComplete(message.id)) return;
+
         addAggShreds(message.value);
-        markQueryComplete(message.id);
       },
       [addAggShreds, markQueryComplete],
     ),

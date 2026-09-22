@@ -12,6 +12,9 @@ import {
 import { useAtomValue, useSetAtom } from "jotai";
 import { useTiledQueries } from "../useTiledQueries";
 import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
+import type { TimelineQueryKey } from "../atoms";
+
+const QUERY_KEY = "query_agg_revenue" satisfies TimelineQueryKey;
 
 const chartId = "revenue-track";
 
@@ -56,7 +59,7 @@ export default function useAggRevenueQuery() {
     ) => {
       wsSend({
         topic: "timeline",
-        key: "query_agg_revenue",
+        key: QUERY_KEY,
         id: queryId,
         params: {
           start_ns: startNs.toString(),
@@ -87,6 +90,7 @@ export default function useAggRevenueQuery() {
     chartId,
     getTileSizeNs,
     overscanTilesCount: OVERSCAN_TILES_COUNT,
+    queryKey: QUERY_KEY,
     sendQuery,
     tileEvictionHighWatermark: TILE_EVICTION_HIGH_WATERMARK,
     tileEvictionLowWatermark: TILE_EVICTION_LOW_WATERMARK,
@@ -94,11 +98,12 @@ export default function useAggRevenueQuery() {
   });
 
   useTimelineServerMessage(
-    "query_agg_revenue",
+    QUERY_KEY,
     useCallback(
       (message: { id: number; value: AggRevenue }) => {
+        if (!markQueryComplete(message.id)) return;
+
         addAggRevenue(message.value);
-        markQueryComplete(message.id);
       },
       [addAggRevenue, markQueryComplete],
     ),
