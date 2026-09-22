@@ -3,7 +3,7 @@ import { getDefaultStore, useAtomValue } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
 import { type ExplorableChartProps, type MarkerLinesProps } from "../const.ts";
 import { DEFAULT_REVENUE_VIEW_OPTS, type RevenueViewOpts } from "./consts.ts";
-import { useThrottledCallback } from "use-debounce";
+import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -100,16 +100,16 @@ function RevenueTrack({
   const execrpCount = useAtomValue(tileCountAtom).execrp;
   const numRows = getNumRows(opts.splitByRow, execrpCount);
 
-  const throttledRangeQuery = useThrottledCallback(
-    (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
-      if (isAggregate(visibleRangeMs)) {
+  const throttledRangeQuery = useThrottledCallbackIfVisible(
+    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
+      if (isAggregate(visibleRange)) {
         const queryGranularity = getGranularity(
-          visibleRangeMs[1] - visibleRangeMs[0],
+          visibleRange[1] - visibleRange[0],
         );
-        aggQuery(referenceNs, visibleRangeMs, worldRangeMs, queryGranularity);
+        aggQuery(referenceNs, visibleRange, worldRange, queryGranularity);
         setGranularity(queryGranularity);
       } else {
-        txnMetaQuery(referenceNs, visibleRangeMs, worldRangeMs);
+        txnMetaQuery(referenceNs, visibleRange, worldRange);
         setGranularity(undefined);
       }
     },
@@ -200,7 +200,7 @@ function RevenueTrack({
     [renderActive, throttledRangeQuery],
   );
 
-  const throttledDrawAgg = useThrottledCallback(
+  const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRangeMs = store.get(visibleRangeAtom);
@@ -259,6 +259,9 @@ function RevenueTrack({
       aggEmitter.removeListener(drawEventType, throttledDrawAgg);
       unsubscribeVisible();
       unsubscribeWorld();
+      // cancel pending trailing timers so they don't accumulate across remounts
+      throttledDrawAgg.cancel();
+      throttledRangeQuery.cancel();
       cleanUpRenderer();
       rendererRef.current = undefined;
       cleanUpExploreListeners();
@@ -269,6 +272,7 @@ function RevenueTrack({
     setUpContextListeners,
     getWasContextLost,
     throttledDrawAgg,
+    throttledRangeQuery,
   ]);
 
   // handle chart resize
