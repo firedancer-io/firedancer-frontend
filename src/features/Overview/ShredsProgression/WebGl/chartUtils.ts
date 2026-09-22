@@ -72,7 +72,7 @@ export type RendererObj = {
   cleanUpRenderer: () => void;
 };
 
-const colors = {
+export const colors = {
   skipped: convertToWebGlColor(shredSkippedColor),
   repairRequested: convertToWebGlColor(shredRepairRequestedColor),
   receivedTurbine: convertToWebGlColor(shredReceivedTurbineColor),
