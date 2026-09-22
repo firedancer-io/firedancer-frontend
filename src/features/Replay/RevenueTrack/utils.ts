@@ -203,7 +203,7 @@ export function drawAggRevenue(
 }
 
 /**
- * Move camera and and update camera and mesh reference x
+ * Move camera and update mesh reference x
  */
 export function moveAggCamera(
   rendererObj: RendererObj,
