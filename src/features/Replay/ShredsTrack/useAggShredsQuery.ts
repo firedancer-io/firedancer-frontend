@@ -1,25 +1,23 @@
 import { useCallback } from "react";
-import { ascBucketGranularities, msBucketSizes, nsBucketSizes } from "../const";
-import type { AggGranularity, AggRevenue } from "../../../api/types";
-import { useWebSocketSend } from "../../../api/ws/utils";
-import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
-import {
-  addAggRevenueAtom,
-  deleteAggRevenueBucketsAtom,
-  drawEventType,
-  aggRevenueEmitterAtom,
-} from "./atoms";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useTiledQueries } from "../useTiledQueries";
+import { ascBucketGranularities, msBucketSizes, nsBucketSizes } from "../const";
+import { useWebSocketSend } from "../../../api/ws/utils";
+import type { AggGranularity, AggShreds } from "../../../api/types";
+import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
 import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
-
-const chartId = "revenue-track";
+import { useTiledQueries } from "../useTiledQueries";
+import {
+  addAggShredsAtom,
+  deleteAggShredsBucketsAtom,
+  drawEventType,
+  aggShredsEmitterAtom,
+} from "./atoms";
 
 /**
  * At most, how many buckets should be visible
  */
 const BUCKET_COUNT_THRESHOLD = 1000;
-export function getGranularity(windowSizeMs: number) {
+export function getAggGranularity(windowSizeMs: number) {
   return (
     ascBucketGranularities.find((g) => {
       return windowSizeMs < BUCKET_COUNT_THRESHOLD * msBucketSizes[g];
@@ -41,10 +39,10 @@ export function getTileSizeNs(granularity: AggGranularity) {
   return BigInt(BUCKETS_PER_TILE) * nsBucketSizes[granularity];
 }
 
-export default function useAggRevenueQuery() {
-  const addAggRevenue = useSetAtom(addAggRevenueAtom);
-  const deleteAggRevenueBuckets = useSetAtom(deleteAggRevenueBucketsAtom);
-  const emitter = useAtomValue(aggRevenueEmitterAtom);
+export function useAggShredsQuery(chartId: string) {
+  const addAggShreds = useSetAtom(addAggShredsAtom);
+  const deleteAggShredsBuckets = useSetAtom(deleteAggShredsBucketsAtom);
+  const emitter = useAtomValue(aggShredsEmitterAtom);
   const wsSend = useWebSocketSend();
 
   const sendQuery = useCallback(
@@ -56,7 +54,7 @@ export default function useAggRevenueQuery() {
     ) => {
       wsSend({
         topic: "timeline",
-        key: "query_agg_revenue",
+        key: "query_agg_shreds",
         id: queryId,
         params: {
           start_ns: startNs.toString(),
@@ -78,9 +76,9 @@ export default function useAggRevenueQuery() {
         }
         return acc;
       }, []);
-      deleteAggRevenueBuckets(granularity, bucketIdxs);
+      deleteAggShredsBuckets(granularity, bucketIdxs);
     },
-    [deleteAggRevenueBuckets],
+    [deleteAggShredsBuckets],
   );
 
   const { queryRange, markQueryComplete } = useTiledQueries<AggGranularity>({
@@ -94,13 +92,13 @@ export default function useAggRevenueQuery() {
   });
 
   useTimelineServerMessage(
-    "query_agg_revenue",
+    "query_agg_shreds",
     useCallback(
-      (message: { id: number; value: AggRevenue }) => {
-        addAggRevenue(message.value);
+      (message: { id: number; value: AggShreds }) => {
+        addAggShreds(message.value);
         markQueryComplete(message.id);
       },
-      [addAggRevenue, markQueryComplete],
+      [addAggShreds, markQueryComplete],
     ),
   );
 
