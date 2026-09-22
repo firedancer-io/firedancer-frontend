@@ -6,48 +6,34 @@ import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import {
-  drawAggRevenue,
+  drawAggSlots,
   isAggregate,
   moveAggCamera,
   setUpRenderers,
-  type RendererObj,
 } from "./utils.ts";
-import { getGranularity } from "./useAggRevenueQuery.ts";
-import type { RevenueType } from "../../../api/entities.ts";
+import { trackHeight, type RendererObj } from "./const.ts";
+import { useAggHeaderQuery, getAggGranularity } from "./useAggHeaderQuery.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
+import { aggSlotsAtom, drawEventType, aggHeaderEmitterAtom } from "./atoms.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
-import {
-  aggRevenueAtom,
-  drawEventType,
-  aggRevenueEmitterAtom,
-} from "./atoms.ts";
 
-const height = 150;
+const chartId = "header-track";
 const store = getDefaultStore();
 
-interface RevenueTrackProps
+interface HeaderTrackProps
   extends WebGlRemountProps,
     ExplorableChartProps,
     MarkerLinesProps {
   width: number;
-  type: RevenueType;
-  aggQuery: (
-    referenceNs: bigint,
-    visibleRange: TsRange,
-    worldRange: TsRange,
-    granularity: AggGranularity,
-  ) => void;
 }
 
-function RevenueTrack({
+function HeaderTrack({
   remount,
   setUpExploreListeners,
   markerLinesClassName,
   width,
-  type,
-  aggQuery,
-}: RevenueTrackProps) {
+}: HeaderTrackProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
@@ -60,10 +46,12 @@ function RevenueTrack({
     remount,
   });
 
+  const aggQuery = useAggHeaderQuery(chartId);
+
   const throttledRelativeTsQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
       if (isAggregate(visibleRange)) {
-        const queryGranularity = getGranularity(
+        const queryGranularity = getAggGranularity(
           visibleRange[1] - visibleRange[0],
         );
         aggQuery(referenceNs, visibleRange, worldRange, queryGranularity);
@@ -98,9 +86,9 @@ function RevenueTrack({
 
     // Move camera before querying, because query may trigger immediate draw if data is already available
     if (isAggregate(visibleRange)) {
-      moveAggCamera(rendererRef.current, visibleRange);
+      moveAggCamera(rendererRef.current.aggResources, visibleRange);
     } else {
-      // TODO: move non-agg camera
+      // TODO: handle non-agg slots
     }
 
     throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
@@ -111,17 +99,11 @@ function RevenueTrack({
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
-      const aggRevenue = store.get(aggRevenueAtom);
+      const aggSlots = store.get(aggSlotsAtom);
       if (!rendererRef.current || !visibleRange || referenceNs == null) return;
-      drawAggRevenue(
-        rendererRef.current,
-        referenceNs,
-        visibleRange,
-        type,
-        aggRevenue,
-      );
+      drawAggSlots(rendererRef.current, referenceNs, visibleRange, aggSlots);
       renderActive();
-    }, [renderActive, type]),
+    }, [renderActive]),
     50,
     { leading: true, trailing: true },
   );
@@ -132,7 +114,7 @@ function RevenueTrack({
 
     const rendererObj = setUpRenderers(
       0,
-      height,
+      trackHeight,
       setUpContextListeners,
       getWasContextLost,
     );
@@ -145,8 +127,8 @@ function RevenueTrack({
     const cleanUpExploreListeners = setUpExploreListeners(containerRef.current);
     const cleanUpRenderer = rendererRef.current.cleanUp;
 
-    // listen for agg revenue draw events
-    const aggEmitter = store.get(aggRevenueEmitterAtom);
+    // listen for agg slots draw events
+    const aggEmitter = store.get(aggHeaderEmitterAtom);
     aggEmitter.addListener(drawEventType, throttledDrawAgg);
 
     // trigger initial draw
@@ -176,16 +158,16 @@ function RevenueTrack({
   // handle chart resize
   useLayoutEffect(() => {
     if (!isInitialized || !rendererRef.current) return;
-    rendererRef.current.renderer.setSize(width, height);
+    rendererRef.current.renderer.setSize(width, trackHeight);
     renderActive();
-  }, [renderActive, width, isInitialized]);
+  }, [isInitialized, renderActive, width]);
 
   return (
     <div
       style={{
         position: "relative",
         width: "100%",
-        height: `${height}px`,
+        height: `${trackHeight}px`,
       }}
     >
       <div
@@ -204,5 +186,5 @@ function RevenueTrack({
   );
 }
 
-const RevenueTrackWithRemount = withWebGlRemount(RevenueTrack);
-export default RevenueTrackWithRemount;
+const HeaderTrackWithRemount = withWebGlRemount(HeaderTrack);
+export default HeaderTrackWithRemount;

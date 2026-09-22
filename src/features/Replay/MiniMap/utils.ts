@@ -10,17 +10,14 @@ import {
   updateRectMeshCounts,
   createRectMesh,
   createRenderer,
-  type RgbColor,
   type TsRange,
   updateMeshRange,
-  convertToWebGlColor,
 } from "../../WebGl/webglUtils.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import { msBucketSizes, nsBucketSizes } from "../const.ts";
 import type { AggGranularity, AggSlots } from "../../../api/types.ts";
-import { epochSliderProgressColor } from "../../../colors.ts";
-import { clamp } from "lodash";
 import { calcRelativeMs } from "../utils.ts";
+import { getBucketColorRatios, colorStates, colors } from "../slotUtils.ts";
 
 export const trackHeight = 25;
 const opacity = 1;
@@ -100,41 +97,6 @@ export function render(rendererObj: RendererObj) {
   renderer.render(scene, camera);
 }
 
-enum ColorState {
-  Skipped = "Skipped",
-  NotSkipped = "NotSkipped",
-}
-
-const colorStates = Object.values(ColorState);
-
-const colors: Record<ColorState, RgbColor> = {
-  [ColorState.Skipped]: [235 / 255, 64 / 255, 52 / 255],
-  [ColorState.NotSkipped]: convertToWebGlColor(epochSliderProgressColor),
-};
-
-function getBucketColorRatios(
-  startSlot: number | null,
-  endSlot: number | null,
-  skippedCount: number | null,
-  minHeightRatio: number,
-): Record<ColorState, number> {
-  if (startSlot == null || endSlot == null || endSlot < startSlot) {
-    return {
-      [ColorState.Skipped]: 0,
-      [ColorState.NotSkipped]: 0,
-    };
-  }
-
-  const totalSlots = endSlot - startSlot + 1;
-  const skippedRatio = skippedCount
-    ? clamp(skippedCount / totalSlots, minHeightRatio, maxY)
-    : 0;
-  return {
-    [ColorState.Skipped]: skippedRatio,
-    [ColorState.NotSkipped]: maxY - skippedRatio,
-  };
-}
-
 /**
  * Draw rectangles. Appends data if granularity is the same as in the last draw.
  * The single mesh grows via ensureCapacity as more buckets arrive.
@@ -147,7 +109,6 @@ export function drawMiniMap(
   const { mesh } = rendererObj;
   const { granularity, reference_ts_ns, start_slot, end_slot, skipped } =
     newData;
-  const dataReferenceMs = calcRelativeMs(referenceNs, reference_ts_ns);
 
   if (newData.granularity !== rendererObj.meshReferences?.granularity) {
     // reset mesh on granularity change
@@ -179,9 +140,22 @@ export function drawMiniMap(
       bucketSizeNs,
   );
 
+  // each bucket reserves colorStates.length consecutive rectangles, indexed
+  // from the mesh reference
+  let rectIdx = startBucketIdx * colorStates.length;
+  const endRectIdx = rectIdx + start_slot.length * colorStates.length;
+  ensureCapacity(mesh, endRectIdx + 1);
+
+  const startX =
+    // use bigint to prevent ms rounding imprecision
+    calcRelativeMs(
+      referenceNs,
+      rendererObj.meshReferences.bucketReferenceNs +
+        BigInt(startBucketIdx) * bucketSizeNs,
+    );
+
   for (let i = 0; i < start_slot.length; i++) {
-    const startMs = dataReferenceMs + i * bucketSizeMs;
-    const width = bucketSizeMs;
+    const x = startX + i * bucketSizeMs;
 
     const bucketColorRatios = getBucketColorRatios(
       start_slot[i],
@@ -190,36 +164,22 @@ export function drawMiniMap(
       minHeightRatio,
     );
 
-    // each bucket reserves colorStates.length consecutive rectangles, indexed
-    // from the mesh reference
-    const bucketIdx = i + startBucketIdx;
-
     let y = minY;
-    for (let colorIdx = 0; colorIdx < colorStates.length; colorIdx++) {
-      const colorState = colorStates[colorIdx];
-      const startY = y;
-      const ratio = bucketColorRatios[colorState];
-      // keep a non-zero band visible (at least 1px)
+
+    for (const colorState of colorStates) {
+      const ratio = bucketColorRatios?.[colorState] ?? 0;
+
+      // keep a non-zero band visible (at least 1px);
       const height = ratio * (maxY - minY);
       const color = colors[colorState];
 
-      const rectangleIdx = bucketIdx * colorStates.length + colorIdx;
+      addRectangleToMesh(mesh, rectIdx, x, y, bucketSizeMs, height, color);
 
-      ensureCapacity(mesh, rectangleIdx + 1);
-      addRectangleToMesh(
-        mesh,
-        rectangleIdx,
-        startMs,
-        startY,
-        width,
-        height,
-        color,
-      );
+      minIdx = Math.min(minIdx, rectIdx);
+      maxIdx = Math.max(maxIdx, rectIdx);
 
-      minIdx = Math.min(minIdx, rectangleIdx);
-      maxIdx = Math.max(maxIdx, rectangleIdx);
-
-      y = startY + height;
+      y += height;
+      rectIdx++;
     }
   }
 

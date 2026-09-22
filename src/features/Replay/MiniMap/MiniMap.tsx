@@ -15,8 +15,8 @@ import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
 import useMiniMapQuery, { getMiniMapGranularity } from "./useMiniMapQuery.ts";
 import type { AggSlots } from "../../../api/types.ts";
 import { calcAbsoluteNs, useTimelineServerMessage } from "../utils.ts";
-import { RequesterId } from "../useAggSlotsQuery.ts";
-import { useThrottledCallback } from "use-debounce";
+import { StartQueryId } from "../useAggSlotsQuery.ts";
+import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import styles from "./miniMap.module.css";
 import clsx from "clsx";
 import { Box } from "@radix-ui/themes";
@@ -53,7 +53,7 @@ function MiniMap({
 
   const query = useMiniMapQuery();
 
-  const updateVisibleEl = useThrottledCallback(
+  const updateVisibleEl = useThrottledCallbackIfVisible(
     useCallback((visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
       const el = visibleRangeElRef.current;
       if (!el) return;
@@ -114,7 +114,7 @@ function MiniMap({
     if (
       !rendererRef.current ||
       referenceNs == null ||
-      message.id !== RequesterId.MiniMap
+      message.id !== StartQueryId.MiniMap
     )
       return;
 
@@ -168,12 +168,20 @@ function MiniMap({
 
     // cleanup
     return () => {
+      // cancel pending trailing timers so they don't accumulate across remounts
+      updateVisibleEl.cancel();
       unsubscribes.forEach((unsub) => unsub());
       cleanUpRenderer();
       rendererRef.current = undefined;
       cleanUpMiniMapListeners();
     };
-  }, [onRangeChange, setUpContextListeners, getWasContextLost, setUpMiniMap]);
+  }, [
+    onRangeChange,
+    setUpContextListeners,
+    getWasContextLost,
+    setUpMiniMap,
+    updateVisibleEl,
+  ]);
 
   // handle chart resize
   useLayoutEffect(() => {

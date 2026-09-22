@@ -17,6 +17,7 @@ import {
 } from "./atoms.ts";
 import MiniMap from "./MiniMap/MiniMap.tsx";
 import useAggRevenueQuery from "./RevenueTrack/useAggRevenueQuery.ts";
+import HeaderTrack from "./HeaderTrack/HeaderTrack.tsx";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 
 const store = getDefaultStore();
@@ -109,11 +110,17 @@ export default function Chart() {
           <VisibleRangeInfo />
           <MiniMap width={width} {...miniMapProps} {...markerLinesProps} />
           <Flex direction="column" gapY="4" position="relative">
+            <HeaderTrack
+              width={width}
+              {...explorableChartProps}
+              {...markerLinesProps}
+            />
             <ShredsTrack
               width={width}
               {...explorableChartProps}
               {...markerLinesProps}
             />
+
             <RevenueTrack
               aggQuery={aggRevenueQuery}
               type={RevenueType.TxnFees}
