@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { nsPerMs, slotsPerLeader } from "./consts";
+import { resolveClientId, nsPerMs, slotsPerLeader } from "./consts";
 import { atomWithImmer } from "jotai-immer";
 import {
   bootProgressAtom,
@@ -578,12 +578,15 @@ export const allLeaderNamesClientIdsAtom = atom((get) => {
   const uniquePubkeys = new Set(
     epoch.leader_slots.map((i) => epoch.staked_pubkeys[i]),
   );
-  return [...uniquePubkeys].map((pubkey) => ({
-    pubkey: pubkey,
-    name: peers[pubkey]?.info?.name?.toLowerCase(),
-    clientId: peers[pubkey]?.gossip?.client_id,
-    version: peers[pubkey]?.gossip?.version,
-  }));
+  return [...uniquePubkeys].map((pubkey) => {
+    const gossip = peers[pubkey]?.gossip;
+    return {
+      pubkey: pubkey,
+      name: peers[pubkey]?.info?.name?.toLowerCase(),
+      clientId: resolveClientId(gossip?.client_id, gossip?.version),
+      version: gossip?.version,
+    };
+  });
 });
 
 type SupermajorityEpochByPubkey = Map<

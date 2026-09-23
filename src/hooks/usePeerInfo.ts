@@ -1,12 +1,13 @@
 import { useMemo } from "react";
 import type { Peer } from "../api/types";
-import { clientIdToClientName, ClientName } from "../consts";
+import { ClientName, clientIdToClientName, resolveClientId } from "../consts";
 import { getCountryFlagEmoji } from "../utils";
 
 export function usePeerInfo(peer?: Peer) {
   const version = peer?.gossip?.version;
-  const client_id = peer?.gossip?.client_id;
-  const client_name = client_id ? clientIdToClientName[client_id] : undefined;
+  const client_id = resolveClientId(peer?.gossip?.client_id, version);
+  const client_name =
+    client_id != null ? clientIdToClientName[client_id] : undefined;
   const client =
     client_name ??
     (version

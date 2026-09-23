@@ -10,6 +10,7 @@ import FiredancerHarmonicLogo from "../assets/firedancer_harmonic_circle_logo.sv
 import FrankendancerLogo from "../assets/frankendancer_circle_logo.svg";
 import FrankendancerHarmonicLogo from "../assets/frankendancer_harmonic_circle_logo.svg";
 import FiredancerBamLogo from "../assets/firedancer_bam_circle_logo.svg";
+import FrankendancerBamLogo from "../assets/frankendancer_bam_circle_logo.svg";
 import EmptyClientsLogo from "../assets/empty_clients_logo.svg";
 import { memo } from "react";
 import styles from "./clientIcons.module.css";
@@ -61,6 +62,10 @@ const ClientImgs: Record<ClientName, { src: string; alt: string } | null> = {
   [ClientName.FiredancerBam]: {
     src: FiredancerBamLogo,
     alt: "Firedancer Bam Logo",
+  },
+  [ClientName.FrankendancerBam]: {
+    src: FrankendancerBamLogo,
+    alt: "Frankendancer Bam Logo",
   },
   [ClientName.AgaveRaiku]: {
     src: AnzaRaikuLogo,

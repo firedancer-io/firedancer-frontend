@@ -102,6 +102,7 @@ export enum ClientName {
   FrankendancerHarmonic = "Frankendancer Harmonic",
   FiredancerBam = "Firedancer BAM",
   AgaveRaiku = "Agave Raiku",
+  FrankendancerBam = "Frankendancer BAM",
 }
 
 export const clientIdToClientName: Record<number, ClientName> = {
@@ -118,7 +119,29 @@ export const clientIdToClientName: Record<number, ClientName> = {
   11: ClientName.FrankendancerHarmonic,
   12: ClientName.FiredancerBam,
   13: ClientName.AgaveRaiku,
+  14: ClientName.FrankendancerBam,
 };
+
+const clientNameToClientId = Object.entries(clientIdToClientName).reduce(
+  (acc, [clientId, clientName]) => {
+    acc[clientName] = Number(clientId);
+    return acc;
+  },
+  {} as Record<ClientName, number>,
+);
+
+export function resolveClientId(
+  clientId: number | undefined | null,
+  version: string | undefined | null,
+): number | undefined | null {
+  if (
+    clientId === clientNameToClientId[ClientName.FiredancerBam] &&
+    version?.[0] === "0"
+  ) {
+    return clientNameToClientId[ClientName.FrankendancerBam];
+  }
+  return clientId;
+}
 
 function checkNeedsTouchScreenSupport() {
   if (typeof window === "undefined") return false;
