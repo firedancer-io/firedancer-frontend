@@ -4,6 +4,7 @@ import type {
   Cluster,
   CommitHash,
   IdentityKey,
+  VoteKey,
   RootSlot,
   OptimisticallyConfirmedSlot,
   NotarizedSlot,
@@ -58,6 +59,8 @@ export const clusterAtom = atom<Cluster | undefined>(undefined);
 export const commitHashAtom = atom<CommitHash | undefined>(undefined);
 
 export const identityKeyAtom = atom<IdentityKey | undefined>(undefined);
+
+export const voteKeyAtom = atom<VoteKey | undefined>(undefined);
 
 export const startupTimeAtom = atom<
   { startupTimeNanos: StartupTimeNanos } | undefined

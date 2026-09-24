@@ -3,7 +3,6 @@ import { DateTime } from "luxon";
 import type {
   Cluster,
   Epoch,
-  Peer,
   PeerUpdateInfo,
   SlotPublish,
   SlotTransactions,
@@ -168,10 +167,62 @@ export function isDefined<T>(item: T | undefined): item is T {
 export const fixValue = (val: number) =>
   val >= 18446744073709552000 ? 0 : val;
 
-export function getStake(peer: Peer) {
-  return peer.vote.reduce(
-    (total, { activated_stake }) => total + activated_stake,
-    0n,
+export type EpochStakes = {
+  stakeByIdentity: ReadonlyMap<string, bigint>;
+  totalStake: bigint;
+  excludedStake: bigint;
+  knownStakedValidatorCount: number;
+};
+
+export function getEpochStakes(epoch: Epoch): EpochStakes | undefined {
+  const {
+    staked_pubkeys: identities,
+    staked_lamports: stakes,
+    excluded_stake_lamports: excludedStake,
+  } = epoch;
+
+  if (
+    !Array.isArray(identities) ||
+    !Array.isArray(stakes) ||
+    identities.length !== stakes.length ||
+    typeof excludedStake !== "bigint" ||
+    excludedStake < 0n
+  )
+    return;
+
+  const stakeByIdentity = new Map<string, bigint>();
+  let totalStake = excludedStake;
+  let knownStakedValidatorCount = 0;
+
+  for (let i = 0; i < identities.length; i++) {
+    const identity = identities[i];
+    const stake = stakes[i];
+    if (typeof identity !== "string" || typeof stake !== "bigint" || stake < 0n)
+      return;
+
+    const previousStake = stakeByIdentity.get(identity) ?? 0n;
+    stakeByIdentity.set(identity, previousStake + stake);
+    totalStake += stake;
+    if (previousStake === 0n && stake > 0n) knownStakedValidatorCount++;
+  }
+
+  return {
+    stakeByIdentity,
+    totalStake,
+    excludedStake,
+    knownStakedValidatorCount,
+  };
+}
+
+export function getEpochStake(
+  epochStakes: EpochStakes | undefined,
+  identity: string | undefined,
+): bigint | undefined {
+  if (!epochStakes || identity === undefined) return;
+
+  return (
+    epochStakes.stakeByIdentity.get(identity) ??
+    (epochStakes.excludedStake === 0n ? 0n : undefined)
   );
 }
 
