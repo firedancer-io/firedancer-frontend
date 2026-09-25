@@ -342,3 +342,7 @@ export const accountsPartitionCompactionTriggerColor = "var(--yellow-9)";
 export const accountsPartitionCompactionColor = "var(--amber-9)";
 export const accountsPartitionCompactionHeadColor = "#d9d9d9";
 export const accountsPartitionWriteHeadColor = "#838383";
+
+// Replay
+export const replayPrimaryTextColor = "#8E909D";
+export const replaySecondaryTextColor = "#67696A";

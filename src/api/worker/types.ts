@@ -8,6 +8,7 @@ import {
   slotSchema,
   summarySchema,
   supermajoritySchema,
+  timelineErrorSchema,
   timelineSchema,
 } from "../entities";
 import type { GossipHealthEma } from "../atoms";
@@ -25,12 +26,20 @@ export const WsMessageSchema = z.discriminatedUnion("topic", [
   accountsSchema,
 ]);
 
+export const WsErrorSchema = z.discriminatedUnion("topic", [
+  timelineErrorSchema,
+]);
+
 export type WsMessage = z.infer<typeof WsMessageSchema>;
+
+export type WsError = z.infer<typeof WsErrorSchema>;
 
 type KvFrom<TSchema extends z.ZodTypeAny, TTopic extends string> =
   z.infer<TSchema> extends infer U
     ? U extends { key: infer K; value: infer V }
-      ? { topic: TTopic; key: K & string; value: V }
+      ? U extends { id: number }
+        ? { topic: TTopic; key: K & string; value: V; id: number }
+        : { topic: TTopic; key: K & string; value: V; id?: number }
       : never
     : never;
 
@@ -56,6 +65,7 @@ export type FromWorkerMessage =
   | { type: "disconnected" }
   | { type: "kvb"; items: WsEntity[] }
   | ({ type: "kv" } & WsEntity)
+  | ({ type: "error" } & WsError)
   // batch publisher caches
   | { type: "ema"; items: EmaItem[] }
   | {

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { MutableRefObject } from "react";
-import { ShredEvent } from "../../../../api/entities";
+import { ShredEvent, SHRED_EVENT_TYPES_COUNT } from "../../../../api/entities";
 import {
   delayMs,
   xRangeMs,
@@ -18,16 +18,16 @@ import { updateLabels } from "../shredsProgressionPlugin";
 import type {
   RectMesh,
   TsRange,
-  WebglResources,
+  RectResources,
 } from "../../../WebGl/webglUtils";
 import {
   createRectMesh,
   updateRectMeshCounts,
-  ensureCapacity,
+  ensureRectCapacity,
   addRectangleToMesh,
   convertToWebGlColor,
-  createWebglResources,
-  disposeWebglResources,
+  createRectResources,
+  disposeRectResources,
 } from "../../../WebGl/webglUtils";
 import {
   shredPublishedColor,
@@ -53,6 +53,8 @@ import { isWebgl2SupportedAtom } from "../../../WebGl/atoms";
 const store = getDefaultStore();
 
 const SHREDS_OPACITY = 0.8;
+// 700 shreds, all events except completion could have a rectangle
+const SHRED_MESH_CAPACITY = 700 * (SHRED_EVENT_TYPES_COUNT - 1);
 const SKIPPED_SLOT_DOT_DURATION_MS = 10;
 
 const tempEventPositions = new Map<
@@ -68,7 +70,7 @@ export type RendererObj = {
   availableMeshes: RectMesh[];
   worldTsRange: TsRange;
   // resources shared by this renderer's slot meshes
-  resources: WebglResources;
+  resources: RectResources;
   cleanUpRenderer: () => void;
 };
 
@@ -117,7 +119,7 @@ export function setUpRenderer(
 
     const meshes = new Map<number, RectMesh>();
     const availableMeshes: RectMesh[] = [];
-    const resources = createWebglResources(SHREDS_OPACITY);
+    const resources = createRectResources(SHREDS_OPACITY);
     renderer.render(scene, camera);
     const clearContextListeners = setUpContextListeners(renderer.domElement);
 
@@ -133,8 +135,8 @@ export function setUpRenderer(
         for (const rectMesh of availableMeshes) {
           rectMesh.mesh.geometry.dispose();
         }
-        // dispose this chart's own unitQuad / sharedMaterial
-        disposeWebglResources(resources);
+        // dispose this chart's own unitQuad / rectMaterial
+        disposeRectResources(resources);
 
         renderer.dispose();
       }
@@ -246,7 +248,8 @@ export function draw(
     const isNewMesh = !slotMesh;
     if (!slotMesh) {
       const lastMesh = rendererObj.availableMeshes.pop();
-      slotMesh = lastMesh ?? createRectMesh(rendererObj.resources);
+      slotMesh =
+        lastMesh ?? createRectMesh(rendererObj.resources, SHRED_MESH_CAPACITY);
       rendererObj.meshes.set(slotNumber, slotMesh);
       rendererObj.scene.add(slotMesh.mesh);
     }
@@ -404,7 +407,7 @@ function addEventsForRow({
     if (color == null) continue;
 
     const rectangleIdx = startRectangleIdx + rectanglesAdded;
-    ensureCapacity(slotMesh, rectangleIdx + 1);
+    ensureRectCapacity(slotMesh, rectangleIdx + 1);
     addRectangleToMesh(slotMesh, rectangleIdx, x, y, w, 1, color);
     rectanglesAdded++;
   }

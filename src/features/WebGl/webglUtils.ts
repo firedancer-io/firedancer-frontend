@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { SHRED_EVENT_TYPES_COUNT } from "../../api/entities";
 import type { ContextHelpers } from "./useWebGlEventHandlers";
 import { isWebgl2SupportedAtom } from "./atoms";
 import { getDefaultStore } from "jotai";
@@ -95,16 +94,16 @@ export function createRenderer(
 }
 
 /**
- * Resources shared by all slot meshes of a single chart / renderer.
+ * Resources shared by all solid rectangle meshes of a single chart / renderer.
  * Compiled shaders / uploaded buffers are bound to a specific GL
  * context, so a fresh renderer (e.g. after a context loss) needs its own copy.
  */
-export type WebglResources = {
+export type RectResources = {
   unitQuad: THREE.BufferGeometry;
-  sharedMaterial: THREE.RawShaderMaterial;
+  rectMaterial: THREE.RawShaderMaterial;
 };
 
-function createUnitQuad() {
+export function createUnitQuad() {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     "position",
@@ -118,39 +117,42 @@ function createUnitQuad() {
   return geometry;
 }
 
-function createSharedMaterial(opacity: number) {
+function createRectMaterial(opacity: number) {
   return new THREE.RawShaderMaterial({
     vertexShader,
     fragmentShader,
     side: THREE.FrontSide,
     transparent: true,
+    depthWrite: false,
     uniforms: {
       uOpacity: { value: opacity },
     },
   });
 }
 
-export function createWebglResources(opacity: number): WebglResources {
+export function createRectResources(opacity = 1): RectResources {
   return {
     unitQuad: createUnitQuad(),
-    sharedMaterial: createSharedMaterial(opacity),
+    rectMaterial: createRectMaterial(opacity),
   };
 }
 
-export function disposeWebglResources(resources: WebglResources) {
+export function disposeRectResources(resources: RectResources) {
   resources.unitQuad.dispose();
-  resources.sharedMaterial.dispose();
+  resources.rectMaterial.dispose();
 }
 
-// 700 shreds, all events except completion could have a rectangle
-const INITIAL_CAPACITY = 700 * (SHRED_EVENT_TYPES_COUNT - 1);
+export const DEFAULT_RECT_CAPACITY = 2 ** 10;
 
 /**
  * Create a mesh to draw 2D rectangles
  */
-export function createRectMesh(resources: WebglResources): RectMesh {
-  const rectArray = new Float32Array(INITIAL_CAPACITY * 4);
-  const colorArray = new Float32Array(INITIAL_CAPACITY * 3);
+export function createRectMesh(
+  resources: RectResources,
+  initialCapacity = DEFAULT_RECT_CAPACITY,
+): RectMesh {
+  const rectArray = new Float32Array(initialCapacity * 4);
+  const colorArray = new Float32Array(initialCapacity * 3);
 
   const rectAttr = new THREE.InstancedBufferAttribute(rectArray, 4);
   const colorAttr = new THREE.InstancedBufferAttribute(colorArray, 3);
@@ -169,7 +171,7 @@ export function createRectMesh(resources: WebglResources): RectMesh {
   geometry.instanceCount = 0;
   geometry.boundingSphere = new THREE.Sphere();
 
-  const mesh = new THREE.Mesh(geometry, resources.sharedMaterial);
+  const mesh = new THREE.Mesh(geometry, resources.rectMaterial);
   mesh.frustumCulled = false;
 
   return {
@@ -178,19 +180,19 @@ export function createRectMesh(resources: WebglResources): RectMesh {
     colorArray,
     rectAttr,
     colorAttr,
-    capacity: INITIAL_CAPACITY,
+    capacity: initialCapacity,
     count: 0,
     referenceX: undefined,
   };
 }
 
 /**
- * Bump up capacity for slot as needed
+ * Bump up capacity for rect as needed
  */
-export function ensureCapacity(rectMesh: RectMesh, needed: number) {
+export function ensureRectCapacity(rectMesh: RectMesh, needed: number) {
   if (needed <= rectMesh.capacity) return;
 
-  let newCapacity = rectMesh.capacity || INITIAL_CAPACITY;
+  let newCapacity = rectMesh.capacity || DEFAULT_RECT_CAPACITY;
   while (newCapacity < needed) newCapacity *= 2;
 
   const rectArray = new Float32Array(newCapacity * 4);
@@ -255,4 +257,9 @@ export function convertToWebGlColor(hex: string): RgbColor {
   tmpColor.setHex(parseInt(hex.replace("#", ""), 16), THREE.SRGBColorSpace);
   tmpColor.getRGB(tmpRgb, THREE.SRGBColorSpace);
   return [tmpRgb.r, tmpRgb.g, tmpRgb.b];
+}
+
+/** Format a JS number as a GLSL float literal (integers need a trailing `.0`). */
+export function glslFloat(value: number): string {
+  return Number.isInteger(value) ? `${value}.0` : `${value}`;
 }
