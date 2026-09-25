@@ -59,7 +59,7 @@ function MiniMap({
       if (!el) return;
       const worldRange = worldRangeMs[1] - worldRangeMs[0];
       const pct = ((visibleRangeMs[1] - visibleRangeMs[0]) / worldRange) * 100;
-      el.style.width = `${pct.toFixed(2)}%`;
+      el.style.width = `${pct}%`;
       const rightPos =
         ((worldRangeMs[1] - visibleRangeMs[1]) / worldRange) * 100;
       el.style.right = `${rightPos}%`;
@@ -91,18 +91,39 @@ function MiniMap({
   /**
    * Update camera and query data for new range
    */
-  const onRangeChange = useCallback(() => {
-    if (!rendererRef.current) return;
+  const onRangeChange = useCallback(
+    (updateOnlyVisible: boolean) => {
+      if (!rendererRef.current) return;
 
+      const referenceNs = store.get(referenceNsAtom);
+      const visibleRange = store.get(visibleRangeAtom);
+      const worldRange = store.get(worldRangeAtom);
+
+      if (referenceNs == null || !visibleRange || !worldRange) return;
+
+      if (!updateOnlyVisible) {
+        updateWorldEl(referenceNs, worldRange);
+      }
+      updateVisibleEl(visibleRange, worldRange);
+    },
+    [updateVisibleEl, updateWorldEl],
+  );
+
+  const onMessage = useCallback((message: { id: number; value: AggSlots }) => {
     const referenceNs = store.get(referenceNsAtom);
-    const visibleRange = store.get(visibleRangeAtom);
-    const worldRange = store.get(worldRangeAtom);
+    if (
+      !rendererRef.current ||
+      referenceNs == null ||
+      message.id !== RequesterId.MiniMap
+    )
+      return;
 
-    if (referenceNs == null || !visibleRange || !worldRange) return;
+    drawMiniMap(rendererRef.current, message.value, referenceNs);
+    render(rendererRef.current);
+  }, []);
 
-    updateWorldEl(referenceNs, worldRange);
-    updateVisibleEl(visibleRange, worldRange);
-  }, [updateVisibleEl, updateWorldEl]);
+  // register listeners before first query
+  useTimelineServerMessage("query_agg_slots", onMessage);
 
   // set up renderer and subscribe to range change, to trigger queries
   useLayoutEffect(() => {
@@ -127,9 +148,9 @@ function MiniMap({
     rendererRef.current = rendererObj;
     chartContainerRef.current.replaceChildren(rendererObj.renderer.domElement);
 
-    const unsusbscribes = [
-      store.sub(visibleRangeAtom, onRangeChange),
-      store.sub(worldRangeAtom, onRangeChange),
+    const unsubscribes = [
+      store.sub(visibleRangeAtom, () => onRangeChange(true)),
+      store.sub(worldRangeAtom, () => onRangeChange(false)),
     ];
 
     const cleanUpMiniMapListeners = setUpMiniMap(
@@ -143,11 +164,11 @@ function MiniMap({
 
     // trigger initial draw
     setIsInitialized(true);
-    onRangeChange();
+    onRangeChange(false);
 
     // cleanup
     return () => {
-      unsusbscribes.forEach((unsub) => unsub());
+      unsubscribes.forEach((unsub) => unsub());
       cleanUpRenderer();
       rendererRef.current = undefined;
       cleanUpMiniMapListeners();
@@ -160,21 +181,6 @@ function MiniMap({
     rendererRef.current.renderer.setSize(width, trackHeight);
     render(rendererRef.current);
   }, [isInitialized, width]);
-
-  const onMessage = useCallback((message: { id: number; value: AggSlots }) => {
-    const referenceNs = store.get(referenceNsAtom);
-    if (
-      !rendererRef.current ||
-      referenceNs == null ||
-      message.id !== RequesterId.MiniMap
-    )
-      return;
-
-    drawMiniMap(rendererRef.current, message.value, referenceNs);
-    render(rendererRef.current);
-  }, []);
-
-  useTimelineServerMessage("query_agg_slots", onMessage);
 
   return (
     <Box

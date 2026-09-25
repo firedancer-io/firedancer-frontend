@@ -10,12 +10,13 @@
 
   .visible-range-box {
     cursor: grab;
-    box-sizing: content-box;
+    box-sizing: border-box;
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
     width: 100%;
-    height: calc(100% + 4px);
+    height: 100%;
+    padding: 8px 0px;
     border: 2px solid white;
 
     &::before {

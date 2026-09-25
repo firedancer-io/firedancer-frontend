@@ -2,17 +2,30 @@
   padding: 32px;
   border-radius: 8px;
   flex-shrink: 0;
+
+  .grab-cursor * {
+    cursor: grab;
+  }
+  .grabbing-cursor * {
+    cursor: grabbing !important;
+  }
+  .resizing-cursor * {
+    cursor: ew-resize !important;
+  }
 }
 
 .with-marker-lines,
 .with-world-marker-lines {
+  overflow-x: hidden;
   &::after {
+    pointer-events: none;
     content: "";
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
+    box-sizing: border-box;
     border-left: 3px solid yellow;
   }
 }

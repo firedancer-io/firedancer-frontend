@@ -44,71 +44,54 @@ export default function Chart() {
 
   const [measureRef, { width }] = useMeasure<HTMLDivElement>();
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const refreshSelectedMarker = useCallback((isWorld: boolean) => {
+    if (!containerRef.current) return;
+
+    const cssVar = isWorld ? WORLD_MARKER_PCT_VAR : MARKER_PCT_VAR;
+
+    const selectedMs = store.get(selectedMsAtom);
+    if (selectedMs == null) {
+      // off screen
+      containerRef.current.style.setProperty(cssVar, "-300%");
+      return;
+    }
+
+    const range = store.get(isWorld ? worldRangeAtom : visibleRangeAtom);
+    if (!range) return;
+
+    const pct = (100 * (selectedMs - range[0])) / (range[1] - range[0]);
+    containerRef.current.style.setProperty(cssVar, `${pct}%`);
+  }, []);
+
   const setContainerRefs = useCallback(
     (el: HTMLDivElement | null) => {
       containerRef.current = el;
       if (el) {
         measureRef(el);
+        refreshSelectedMarker(true);
+        refreshSelectedMarker(false);
       }
     },
-    [measureRef],
+    [measureRef, refreshSelectedMarker],
   );
-
-  const refreshWorldRangeSelectedMarker = useCallback(() => {
-    const selectedMs = store.get(selectedMsAtom);
-    if (!containerRef.current) return;
-    if (selectedMs == null) {
-      // off screen
-      containerRef.current.style.setProperty(WORLD_MARKER_PCT_VAR, "-300%");
-      return;
-    }
-
-    const worldRange = store.get(worldRangeAtom);
-    if (!worldRange) return;
-
-    const worldPct = (100 * selectedMs) / (worldRange[1] - worldRange[0]);
-    containerRef.current.style.setProperty(
-      WORLD_MARKER_PCT_VAR,
-      `${worldPct}%`,
-    );
-  }, []);
-
-  const refreshVisibleRangeSelectedMarker = useCallback(() => {
-    const selectedMs = store.get(selectedMsAtom);
-    if (!containerRef.current) return;
-    if (selectedMs == null) {
-      // off screen
-      containerRef.current.style.setProperty(MARKER_PCT_VAR, "-300%");
-      return;
-    }
-
-    const visibleRange = store.get(visibleRangeAtom);
-    if (!visibleRange) return;
-
-    const [start, end] = visibleRange;
-    const pct = (100 * (selectedMs - start)) / (end - start);
-    containerRef.current.style.setProperty(MARKER_PCT_VAR, `${pct}%`);
-  }, []);
 
   useLayoutEffect(() => {
     const unsubs = [
       // world end advances continuously, so the world marker's percentage
       // must be recomputed as the world range grows
-      store.sub(worldRangeAtom, refreshWorldRangeSelectedMarker),
-      store.sub(visibleRangeAtom, refreshVisibleRangeSelectedMarker),
+      store.sub(worldRangeAtom, () => refreshSelectedMarker(true)),
+      store.sub(visibleRangeAtom, () => refreshSelectedMarker(false)),
       store.sub(selectedMsAtom, () => {
-        refreshWorldRangeSelectedMarker();
-        refreshVisibleRangeSelectedMarker();
+        refreshSelectedMarker(true);
+        refreshSelectedMarker(false);
       }),
     ];
-
-    refreshWorldRangeSelectedMarker();
-    refreshVisibleRangeSelectedMarker();
 
     return () => {
       unsubs.forEach((unsub) => unsub());
     };
-  }, [refreshVisibleRangeSelectedMarker, refreshWorldRangeSelectedMarker]);
+  }, [refreshSelectedMarker]);
 
   // refresh world size
   useRafLoop((time: number) => {

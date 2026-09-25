@@ -1,3 +1,4 @@
+import { nsPerMs } from "../../consts";
 import type { AggGranularity } from "../../api/types";
 
 export const DEFAULT_WINDOW_MS = 12_000;
@@ -25,6 +26,13 @@ export const msBucketSizes: Record<AggGranularity, number> = {
   "12h": 43_200_000,
   "1d": 86_400_000,
 };
+
+export const nsBucketSizes = Object.fromEntries(
+  Object.entries(msBucketSizes).map(([granularity, ms]) => [
+    granularity,
+    BigInt(ms * nsPerMs),
+  ]),
+) as Record<AggGranularity, bigint>;
 
 export const ascBucketGranularities = Object.keys(msBucketSizes).sort(
   (a, b) =>

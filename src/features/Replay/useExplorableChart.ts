@@ -9,6 +9,7 @@ import { getDefaultStore } from "jotai";
 import { selectedMsAtom, visibleRangeAtom, worldRangeAtom } from "./atoms";
 import { clamp } from "../../uplotReact/utils";
 import { clamp as minMaxClamp } from "lodash";
+import styles from "./chart.module.css";
 
 const PAN_THRESHOLD_PX = 0;
 const ZOOM_INTENSITY = 0.002;
@@ -61,6 +62,7 @@ export function useExplorableChart(): {
   }>();
   const isPanningRef = useRef(false);
   const resizeEdgeRef = useRef<"start" | "end">();
+  const hasPendingClickPan = useRef(true);
 
   const setClampedVisibleRange = useCallback((unclampedNewRange: TsRange) => {
     const worldRange = store.get(worldRangeAtom);
@@ -131,16 +133,17 @@ export function useExplorableChart(): {
 
       const zoom = (clientX: number, deltaY: number) => {
         const visibleRange = store.get(visibleRangeAtom);
-        const trackWindow = isWorldTrack
-          ? store.get(worldRangeAtom)
-          : visibleRange;
-        if (!visibleRange || !trackWindow) return;
+        if (!visibleRange) return;
 
         const [startTs, endTs] = visibleRange;
         const span = endTs - startTs;
         const isZoomingOut = deltaY > 0;
 
-        const cursorTs = clientXToTs(trackEl, clientX, trackWindow);
+        const zoomPointTs = isWorldTrack
+          ? // mini map zoom centers on middle of visible range
+            (visibleRange[0] + visibleRange[1]) / 2
+          : // other track zoom centers on cursor
+            clientXToTs(trackEl, clientX, visibleRange);
         // larger deltaY = faster zoom
         let scale = Math.exp(deltaY * ZOOM_INTENSITY);
         // don't zoom in past the minimum span (clamp to it instead of overshooting)
@@ -148,8 +151,8 @@ export function useExplorableChart(): {
           scale = MIN_VISIBLE_MS / span;
         }
         setClampedVisibleRange([
-          cursorTs - (cursorTs - startTs) * scale,
-          cursorTs + (endTs - cursorTs) * scale,
+          zoomPointTs - (zoomPointTs - startTs) * scale,
+          zoomPointTs + (endTs - zoomPointTs) * scale,
         ]);
       };
 
@@ -190,10 +193,11 @@ export function useExplorableChart(): {
   return useMemo(() => {
     const setUpExploreListeners = (trackEl: HTMLDivElement) => {
       const refreshCursor = () => {
-        const cursor = isPanningRef.current ? "grabbing" : "grab";
-        trackEl.style.cursor = cursor;
+        trackEl.classList.toggle(styles.grabbingCursor, isPanningRef.current);
       };
 
+      // default cursor
+      trackEl.classList.add(styles.grabCursor);
       refreshCursor();
 
       const {
@@ -227,19 +231,20 @@ export function useExplorableChart(): {
       rightHandleEl: HTMLDivElement,
     ) => {
       const refreshCursor = () => {
-        const allEls = [trackEl, visibleRangeEl, leftHandleEl, rightHandleEl];
-        const cursor = resizeEdgeRef.current
-          ? "ew-resize"
-          : isPanningRef.current
-            ? "grabbing"
-            : // fallback to default
-              "";
-        allEls.forEach((el) => (el.style.cursor = cursor));
+        if (resizeEdgeRef.current) {
+          trackEl.classList.add(styles.resizingCursor);
+          trackEl.classList.remove(styles.grabbingCursor);
+          return;
+        }
+
+        trackEl.classList.remove(styles.resizingCursor);
+        trackEl.classList.toggle(styles.grabbingCursor, isPanningRef.current);
       };
+
       refreshCursor();
 
       const {
-        endDrag,
+        endDrag: _endDrag,
         onMouseDown,
         onMouseMove,
         onTouchStart,
@@ -280,8 +285,16 @@ export function useExplorableChart(): {
 
       const endResize = () => {
         if (!resizeEdgeRef.current) return;
+        hasPendingClickPan.current = false;
         resizeEdgeRef.current = undefined;
         refreshCursor();
+      };
+
+      const endDrag = () => {
+        if (isPanningRef.current) {
+          hasPendingClickPan.current = false;
+        }
+        _endDrag();
       };
 
       const panToPoint = (clientX: number) => {
@@ -308,6 +321,15 @@ export function useExplorableChart(): {
       };
 
       const cleanups = [
+        addListener(
+          trackEl,
+          "pointerdown",
+          () => {
+            // track if action is for zoom / drag to pan, or a click to pan
+            hasPendingClickPan.current = true;
+          },
+          { capture: true },
+        ),
         addListener(leftHandleEl, "mousedown", onHandleMouseDown("start")),
         addListener(rightHandleEl, "mousedown", onHandleMouseDown("end")),
         addListener(leftHandleEl, "touchstart", onHandleTouchStart("start"), {
@@ -325,7 +347,10 @@ export function useExplorableChart(): {
           // prevent track click
           e.stopPropagation(),
         ),
-        addListener(trackEl, "click", (e) => panToPoint(e.clientX)),
+        addListener(trackEl, "click", (e) => {
+          if (!hasPendingClickPan.current) return;
+          panToPoint(e.clientX);
+        }),
         addListener(trackEl, "mousemove", (e) => {
           if (resizeEdgeRef.current) {
             moveResizeHandle(e.clientX);
@@ -359,12 +384,7 @@ export function useExplorableChart(): {
         addListener(
           trackEl,
           "touchend",
-          (e) => {
-            // If a touch panned / resize, prevent the synthetic click emission.
-            // Trigger click for pure touch events.
-            if (isPanningRef.current || resizeEdgeRef.current) {
-              e.preventDefault();
-            }
+          () => {
             endResize();
             endDrag();
           },

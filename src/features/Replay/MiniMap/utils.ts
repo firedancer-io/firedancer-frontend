@@ -16,7 +16,7 @@ import {
   convertToWebGlColor,
 } from "../../WebGl/webglUtils.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
-import { msBucketSizes } from "../const.ts";
+import { msBucketSizes, nsBucketSizes } from "../const.ts";
 import type { AggGranularity, AggSlots } from "../../../api/types.ts";
 import { epochSliderProgressColor } from "../../../colors.ts";
 import { clamp } from "lodash";
@@ -26,26 +26,25 @@ export const trackHeight = 25;
 const opacity = 1;
 const minY = 0;
 const maxY = 1;
-const MAX_RECTANGLES_PER_MESH = 8000;
 
 interface MeshReferences {
   granularity: AggGranularity;
-  referenceMs: number;
+  // start ns of the first bucket at current granularity
+  bucketReferenceNs: bigint;
 }
 
 export type RendererObj = {
   renderer: THREE.WebGLRenderer;
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
-  /* resources shared by this renderer's meshes */
   resources: WebglResources;
-  meshes: RectMesh[];
+  mesh: RectMesh;
   meshReferences: MeshReferences | undefined;
   cleanUp: () => void;
 };
 
 /**
- * Draw mini map in consecutive meshes, creating another if one gets full
+ * Draw mini map into a single mesh that grows with ensureCapacity as needed
  */
 export function setUpRenderer(
   canvasWidth: number,
@@ -65,12 +64,11 @@ export function setUpRenderer(
   const { renderer, cleanUpRenderer } = rendererObj;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(0, 0, maxY, minY, 0.5, 10);
+  const camera = new THREE.OrthographicCamera(0, 1, maxY, minY, 0.5, 10);
   camera.position.z = 1;
 
   const resources = createWebglResources(opacity);
-  const mesh = createRectMesh(resources, MAX_RECTANGLES_PER_MESH);
-  const meshes = [mesh];
+  const mesh = createRectMesh(resources);
   scene.add(mesh.mesh);
 
   const cleanUp = () => {
@@ -79,9 +77,7 @@ export function setUpRenderer(
     // Three doesn't restore GPU objects for restored contexts unless there's a render.
     // Remount on restore to reset the context listeners state
     if (!getWasContextLost()) {
-      for (const mesh of meshes) {
-        mesh.mesh.geometry.dispose();
-      }
+      mesh.mesh.geometry.dispose();
       // dispose this chart's own unitQuad / sharedMaterial
       disposeWebglResources(resources);
     }
@@ -93,7 +89,7 @@ export function setUpRenderer(
     camera,
     scene,
     resources,
-    meshes,
+    mesh,
     meshReferences: undefined,
     cleanUp,
   };
@@ -141,37 +137,47 @@ function getBucketColorRatios(
 
 /**
  * Draw rectangles. Appends data if granularity is the same as in the last draw.
- * Create new meshes as needed.
+ * The single mesh grows via ensureCapacity as more buckets arrive.
  */
 export function drawMiniMap(
   rendererObj: RendererObj,
   newData: AggSlots,
   referenceNs: bigint,
 ) {
-  const { scene, meshes } = rendererObj;
+  const { mesh } = rendererObj;
   const { granularity, reference_ts_ns, start_slot, end_slot, skipped } =
     newData;
   const dataReferenceMs = calcRelativeMs(referenceNs, reference_ts_ns);
 
   if (newData.granularity !== rendererObj.meshReferences?.granularity) {
-    // reset meshes on granularity change
-    for (const mesh of rendererObj.meshes) {
-      updateRectMeshCounts(mesh, 0);
-    }
+    // reset mesh on granularity change
+    updateRectMeshCounts(mesh, 0);
+
+    // first bucket start ts
+    const bucketReferenceNs =
+      reference_ts_ns - (reference_ts_ns % nsBucketSizes[granularity]);
 
     // initialize mesh range
     rendererObj.meshReferences = {
       granularity: newData.granularity,
-      referenceMs: dataReferenceMs,
+      bucketReferenceNs,
     };
   }
 
-  // track ranges that were updated within each mesh
-  const meshUpdates: { minIdx: number; maxIdx: number }[] = [];
   const bucketSizeMs = msBucketSizes[granularity];
+  const bucketSizeNs = nsBucketSizes[granularity];
 
   // min 1px
   const minHeightRatio = (maxY - minY) / trackHeight;
+
+  // track the range of rectangle indices updated in this draw
+  let minIdx = Infinity;
+  let maxIdx = -Infinity;
+
+  const startBucketIdx = Number(
+    (reference_ts_ns - rendererObj.meshReferences.bucketReferenceNs) /
+      bucketSizeNs,
+  );
 
   for (let i = 0; i < start_slot.length; i++) {
     const startMs = dataReferenceMs + i * bucketSizeMs;
@@ -184,6 +190,10 @@ export function drawMiniMap(
       minHeightRatio,
     );
 
+    // each bucket reserves colorStates.length consecutive rectangles, indexed
+    // from the mesh reference
+    const bucketIdx = i + startBucketIdx;
+
     let y = minY;
     for (let colorIdx = 0; colorIdx < colorStates.length; colorIdx++) {
       const colorState = colorStates[colorIdx];
@@ -193,23 +203,8 @@ export function drawMiniMap(
       const height = ratio * (maxY - minY);
       const color = colors[colorState];
 
-      const { meshIdx, rectangleIdx } = getPositionInMesh(
-        rendererObj.meshReferences,
-        startMs,
-        bucketSizeMs,
-        colorIdx,
-      );
+      const rectangleIdx = bucketIdx * colorStates.length + colorIdx;
 
-      if (!rendererObj.meshes[meshIdx]) {
-        const newMesh = createRectMesh(
-          rendererObj.resources,
-          MAX_RECTANGLES_PER_MESH,
-        );
-        rendererObj.meshes[meshIdx] = newMesh;
-        scene.add(newMesh.mesh);
-      }
-
-      const mesh = meshes[meshIdx];
       ensureCapacity(mesh, rectangleIdx + 1);
       addRectangleToMesh(
         mesh,
@@ -221,53 +216,22 @@ export function drawMiniMap(
         color,
       );
 
-      // keep track of update range for each mesh
-      if (meshUpdates[meshIdx]) {
-        meshUpdates[meshIdx] = {
-          minIdx: Math.min(rectangleIdx, meshUpdates[meshIdx].minIdx),
-          maxIdx: Math.max(rectangleIdx, meshUpdates[meshIdx].maxIdx),
-        };
-      } else {
-        meshUpdates[meshIdx] = {
-          minIdx: rectangleIdx,
-          maxIdx: rectangleIdx,
-        };
-      }
+      minIdx = Math.min(minIdx, rectangleIdx);
+      maxIdx = Math.max(maxIdx, rectangleIdx);
 
       y = startY + height;
     }
   }
 
-  // update mesh counts / ranges
-  for (let i = 0; i < meshUpdates.length; i++) {
-    const mesh = meshes[i];
-    if (!mesh || !meshUpdates[i]) continue;
+  if (maxIdx < minIdx) return;
 
-    const newCount = meshUpdates[i].maxIdx + 1;
-    if (mesh.count !== newCount) {
-      updateRectMeshCounts(mesh, newCount);
-    }
-
-    updateMeshRange(mesh, [meshUpdates[i].minIdx, meshUpdates[i].maxIdx]);
+  // update mesh count / range
+  const newCount = maxIdx + 1;
+  if (mesh.count < newCount) {
+    updateRectMeshCounts(mesh, newCount);
   }
-}
 
-/**
- * Get mesh idx and rectangle idx within mesh. Each bucket reserves colorState.length
- * consecutive rectangles. Each mesh holds MAX_RECTANGLES_PER_MESH rectangles.
- */
-function getPositionInMesh(
-  lastDraw: MeshReferences,
-  tsMs: number,
-  bucketSizeMs: number,
-  colorIdx: number,
-) {
-  const bucketIdx = Math.trunc((tsMs - lastDraw.referenceMs) / bucketSizeMs);
-  const overallRectangleIdx = bucketIdx * colorStates.length + colorIdx;
-  const meshIdx = Math.trunc(overallRectangleIdx / MAX_RECTANGLES_PER_MESH);
-  const meshRectangleIdx = overallRectangleIdx % MAX_RECTANGLES_PER_MESH;
-
-  return { meshIdx, rectangleIdx: meshRectangleIdx };
+  updateMeshRange(mesh, [minIdx, maxIdx]);
 }
 
 export function moveCamera(rendererObj: RendererObj, worldRangeMs: TsRange) {
