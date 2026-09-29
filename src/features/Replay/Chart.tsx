@@ -18,6 +18,7 @@ import {
 } from "./atoms.ts";
 import { startupTimeAtom } from "../../api/atoms.ts";
 import MiniMap from "./MiniMap/MiniMap.tsx";
+import HeaderTrack from "./HeaderTrack/HeaderTrack.tsx";
 
 const store = getDefaultStore();
 
@@ -141,6 +142,11 @@ export default function Chart() {
           <VisibleRangeInfo />
           <MiniMap width={width} {...miniMapProps} {...markerLinesProps} />
           <Flex direction="column" gapY="4" position="relative">
+            <HeaderTrack
+              width={width}
+              {...explorableChartProps}
+              {...markerLinesProps}
+            />
             <RevenueTrack
               type={RevenueType.TxnFees}
               width={width}
