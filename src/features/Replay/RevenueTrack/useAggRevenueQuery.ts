@@ -29,11 +29,11 @@ export default function useAggRevenueQuery() {
 /**
  * At most, how many buckets should be visible
  */
-const BUCKET_COUNT_THRESHOLD = 400;
+export const AGG_BUCKET_COUNT_THRESHOLD = 600;
 export function getGranularity(windowSizeMs: number) {
   return (
     ascBucketGranularities.find((g) => {
-      return windowSizeMs < BUCKET_COUNT_THRESHOLD * msBucketSizes[g];
+      return windowSizeMs < AGG_BUCKET_COUNT_THRESHOLD * msBucketSizes[g];
     }) ?? ascBucketGranularities[ascBucketGranularities.length - 1]
   );
 }

@@ -1,12 +1,12 @@
 import { MAX_WEBGL_PX_RATIO } from "../../../consts.ts";
 import * as THREE from "three";
 import {
-  createWebglResources,
-  disposeWebglResources,
+  createRectResources,
+  disposeRectResources,
   type RectMesh,
-  type WebglResources,
+  type RectResources,
   addRectangleToMesh,
-  ensureCapacity,
+  ensureRectCapacity,
   updateRectMeshCounts,
   createRectMesh,
   createRenderer,
@@ -37,14 +37,14 @@ export type RendererObj = {
   renderer: THREE.WebGLRenderer;
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
-  resources: WebglResources;
+  resources: RectResources;
   mesh: RectMesh;
   meshReferences: MeshReferences | undefined;
   cleanUp: () => void;
 };
 
 /**
- * Draw mini map into a single mesh that grows with ensureCapacity as needed
+ * Draw mini map into a single mesh that grows with ensureRectCapacity as needed
  */
 export function setUpRenderer(
   canvasWidth: number,
@@ -67,7 +67,7 @@ export function setUpRenderer(
   const camera = new THREE.OrthographicCamera(0, 1, maxY, minY, 0.5, 10);
   camera.position.z = 1;
 
-  const resources = createWebglResources(opacity);
+  const resources = createRectResources(opacity);
   const mesh = createRectMesh(resources);
   scene.add(mesh.mesh);
 
@@ -79,7 +79,7 @@ export function setUpRenderer(
     if (!getWasContextLost()) {
       mesh.mesh.geometry.dispose();
       // dispose this chart's own unitQuad / sharedMaterial
-      disposeWebglResources(resources);
+      disposeRectResources(resources);
     }
     cleanUpRenderer();
   };
@@ -205,7 +205,7 @@ export function drawMiniMap(
 
       const rectangleIdx = bucketIdx * colorStates.length + colorIdx;
 
-      ensureCapacity(mesh, rectangleIdx + 1);
+      ensureRectCapacity(mesh, rectangleIdx + 1);
       addRectangleToMesh(
         mesh,
         rectangleIdx,
