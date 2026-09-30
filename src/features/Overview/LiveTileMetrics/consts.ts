@@ -32,7 +32,7 @@ export const metricGroups: ColumnGroup[] = [
         uniqueName: "Name",
         description:
           "The name and index of each tile. A tile represents a sandboxed process or individual thread that communicates with other tiles using message passing queues.",
-        headerColWidth: 85,
+        headerColWidth: 106,
       },
     ],
   },
