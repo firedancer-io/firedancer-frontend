@@ -44,10 +44,11 @@ export function useTileSparkline({
     return mean(queryIdle);
   });
 
-  const busy = (isLive ? liveBusyPerTile : aggQueryBusyPerTile)?.filter(
-    (b) => b !== undefined && b <= 1,
+  const busy = (isLive ? liveBusyPerTile : aggQueryBusyPerTile)?.map((b) =>
+    b !== undefined && b <= 1 ? b : undefined,
   );
-  const avgBusy = busy?.length ? mean(busy) : undefined;
+  const definedBusy = busy?.filter((b) => b !== undefined);
+  const avgBusy = definedBusy?.length ? mean(definedBusy) : undefined;
 
   return {
     avgBusy,
