@@ -4,11 +4,10 @@
 
 /* Firedancer */
 
-@media (900px <= width < 1500px) {
+@media (990px <= width < 1506px) {
   .cards:not(.frankendancer) {
     grid-template-columns: repeat(2, 1fr);
 
-    .program-cache-card,
     .accounts-card,
     .txns-card {
       grid-column: span 2;
@@ -16,27 +15,34 @@
   }
 }
 
-@media (1500px <= width < 1770px) {
+@media (1506px <= width < 1760px) {
   .cards:not(.frankendancer) {
     grid-template-columns: repeat(3, 1fr);
 
-    .validators-card,
-    .accounts-card {
+    .slots-card,
+    .program-cache-card {
       grid-column: span 2;
     }
 
+    .accounts-card,
     .txns-card {
       grid-column: span 3;
     }
   }
 }
 
-@media (1770px <= width) {
+@media (1760px <= width) {
   .cards:not(.frankendancer) {
     grid-template-columns: repeat(6, 1fr);
 
-    > * {
+    .status-card,
+    .validators-card {
       grid-column: span 2;
+    }
+
+    .slots-card,
+    .program-cache-card {
+      grid-column: span 4;
     }
 
     .accounts-card,
@@ -48,18 +54,19 @@
 
 /* Frankendancer */
 
-@media (910px <= width < 1850px) {
+@media (990px <= width < 1850px) {
   .frankendancer {
     grid-template-columns: repeat(2, 1fr);
-
-    .txns-card {
-      grid-column: span 2;
-    }
   }
 }
 
-@media (1850px <= width) {
+@media (1506px <= width) {
   .frankendancer {
-    grid-template-columns: 1fr 1.1fr 2fr;
+    grid-template-columns: repeat(3, 1fr);
+
+    .slots-card,
+    .txns-card {
+      grid-column: span 2;
+    }
   }
 }
