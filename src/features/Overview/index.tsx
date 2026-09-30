@@ -16,14 +16,14 @@ import clsx from "clsx";
 export default function Overview() {
   return (
     <Flex direction="column" gap="4" flexGrow="1">
-      <SlotTimeline />
       <Grid
         className={clsx(styles.cards, {
           [styles.frankendancer]: isFrankendancer,
         })}
         gap="4"
       >
-        <StatusCard />
+        <StatusCard className={styles.statusCard} />
+        <SlotTimeline className={styles.slotsCard} />
         <ValidatorsCard className={styles.validatorsCard} />
         {!isFrankendancer && (
           <ProgramCacheCard className={styles.programCacheCard} />

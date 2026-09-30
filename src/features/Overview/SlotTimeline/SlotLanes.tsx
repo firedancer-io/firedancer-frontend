@@ -1,4 +1,4 @@
-import { Flex, Grid, Text } from "@radix-ui/themes";
+import { Box, Flex, Grid, Text } from "@radix-ui/themes";
 import { useSlotLanes } from "./useSlotLanes";
 import clsx from "clsx";
 import styles from "./slotLanes.module.css";
@@ -6,119 +6,138 @@ import { memo } from "react";
 import { useMeasure } from "react-use";
 import Progress from "../../../components/Progress";
 import useNextSlot from "../../../hooks/useNextSlot";
-import { getGridColumnsAndGap } from "./utils";
-import {
-  defaultBarsGap,
-  nextSlotsBarMinWidth,
-  defaultNextSlotsBarsCount,
-  nextBarsBoxMinWidth,
-} from "./const";
+import { getCellsGap } from "./utils";
+import { slotCellMinWidth } from "./const";
 import { useAtomValue } from "jotai";
 import { epochAtom } from "../../../atoms";
 import { nsPerMs } from "../../../consts";
+import { headerGap } from "../../Gossip/consts";
+import type { SlotLaneInfo } from "./types";
 
 export default function SlotLanes() {
-  const [measureRef, { width: barsContainerWidth }] =
-    useMeasure<HTMLDivElement>();
-  const { lanes, leftRange } = useSlotLanes();
-
-  if (leftRange == null) return null;
-
-  const leftBarsCount = leftRange.maxSlot - leftRange.minSlot + 1;
-  const nextLeaderLane = lanes.find((lane) => lane.isNextLeader);
-  const hasNextLeader = nextLeaderLane?.slot != null;
-  const totalSlotCellsCount = leftBarsCount + (hasNextLeader ? 1 : 0);
-
-  const nextSlotsCount =
-    nextLeaderLane?.slot == null
-      ? undefined
-      : // always show at least one bar
-        Math.max(1, nextLeaderLane.slot - leftRange.maxSlot - 1);
-
-  const { columns, barsGap } = getGridColumnsAndGap(
-    leftBarsCount,
-    hasNextLeader,
-    barsContainerWidth,
-  );
-
+  const { lanes, slotRange, nextLeaderInfo } = useSlotLanes();
   return (
-    <Flex>
-      <Grid
-        className={styles.grid}
-        flexShrink="0"
-        columns="repeat(3, max-content)"
-        gapX="5px"
-        mr="5px"
-      >
-        {lanes.map((lane) => {
-          const slot =
-            lane.isNextLeader && !hasNextLeader ? Infinity : lane.slot;
-          return (
-            <SlotLaneStats
-              key={lane.label}
-              label={lane.label}
-              slot={slot}
-              slotDt={lane.slotDt}
-              showPinIcon={!!lane.isPinned}
-              showPlusSign={!lane.isNextLeader}
-              className={lane.className}
-            />
-          );
-        })}
-      </Grid>
+    <Flex direction="column" height="100%" gap={headerGap}>
+      <Flex justify="between" gap="4px">
+        <Text className={styles.cardHeader}>Slots</Text>
+        <NextLeaderInfo {...nextLeaderInfo} />
+      </Flex>
 
-      <Grid
-        className={styles.grid}
-        flexGrow="1"
-        columns={columns}
-        gapX={`${barsGap}px`}
-        ref={measureRef}
-      >
-        <div
-          style={{
-            gridColumn: leftBarsCount + 1,
-            gridRowStart: 1,
-            gridRowEnd: lanes.length + 1,
-          }}
-        >
-          <MNextSlots count={nextSlotsCount} />
-        </div>
-
-        {lanes.map((lane) => {
-          const highlightedIdx =
-            lane.slot == null
-              ? undefined
-              : lane.isNextLeader && hasNextLeader
-                ? // highlight last column
-                  totalSlotCellsCount - 1
-                : lane.slot - leftRange.minSlot;
-
-          return (
-            <MSlotLaneBars
-              key={lane.label}
-              className={lane.className}
-              totalBarsCount={totalSlotCellsCount}
-              highlightedIdx={highlightedIdx}
-              noGap={barsGap === 0}
-            />
-          );
-        })}
-      </Grid>
+      {slotRange != null && (
+        <Flex>
+          <Grid
+            className={styles.grid}
+            flexShrink="0"
+            columns="repeat(3, max-content)"
+            gapX="5px"
+            mr="5px"
+          >
+            {lanes.map((lane) => {
+              return (
+                <SlotLaneStats
+                  key={lane.label}
+                  label={lane.label}
+                  slot={lane.slot}
+                  slotDt={lane.slotDt}
+                  showPinIcon={!!lane.isPinned}
+                  className={lane.className}
+                />
+              );
+            })}
+          </Grid>
+          <CellsGrid lanes={lanes} slotRange={slotRange} />
+        </Flex>
+      )}
     </Flex>
   );
 }
 
+interface CellsGridProps {
+  lanes: SlotLaneInfo[];
+  slotRange: {
+    minSlot: number;
+    maxSlot: number;
+  };
+}
+
+function CellsGrid({ lanes, slotRange }: CellsGridProps) {
+  const [measureRef, { width: cellsContainerWidth }] =
+    useMeasure<HTMLDivElement>();
+
+  const slotsCount = slotRange.maxSlot - slotRange.minSlot + 1;
+  const cellsGap = getCellsGap(slotsCount, cellsContainerWidth);
+
+  return (
+    <Grid
+      className={styles.grid}
+      flexGrow="1"
+      columns={cellsGap ? `repeat(${slotsCount}, 1fr)` : "1fr"}
+      gapX={`${cellsGap}px`}
+      overflow="hidden"
+      ref={measureRef}
+    >
+      {lanes.map((lane) => {
+        const key = lane.label;
+        const highlightedIdx =
+          lane.slot == null ? undefined : lane.slot - slotRange.minSlot;
+
+        if (cellsGap) {
+          return (
+            <MSlotLaneCells
+              key={key}
+              className={lane.className}
+              cellsCount={slotsCount}
+              highlightedIdx={highlightedIdx}
+            />
+          );
+        }
+
+        // too many cells; only render the highlighted cell
+        const highlightPosition =
+          highlightedIdx == null
+            ? undefined
+            : ((highlightedIdx + slotCellMinWidth / 2) / slotsCount) * 100;
+
+        return (
+          <Box
+            key={key}
+            position="relative"
+            className={clsx(styles.onlyHighlightRow, lane.className)}
+          >
+            <Box position="absolute" inset="0" className={styles.slotCell} />
+
+            {highlightPosition != null && (
+              <Box
+                position="relative"
+                height="100%"
+                className={styles.highlightPositioner}
+                style={{ transform: `translateX(${highlightPosition}%)` }}
+              >
+                <Box
+                  position="absolute"
+                  top="0"
+                  bottom="0"
+                  left="-0.5px"
+                  width="1px"
+                  className={clsx(styles.slotCell, styles.highlighted)}
+                />
+              </Box>
+            )}
+          </Box>
+        );
+      })}
+    </Grid>
+  );
+}
+
 interface CellProps {
-  isTransparent: boolean;
   isHighlighted: boolean;
 }
-const MCell = memo(function Cell({ isHighlighted, isTransparent }: CellProps) {
+const MCell = memo(function Cell({ isHighlighted }: CellProps) {
   return (
     <div
-      className={clsx(styles.slotCell, { [styles.transparent]: isTransparent })}
-    >
-      {isHighlighted && <div className={styles.highlight}></div>}
-    </div>
+      className={clsx(styles.slotCell, { [styles.highlighted]: isHighlighted })}
+    />
   );
 });
 
@@ -127,22 +146,20 @@ interface SlotLaneStatsProps {
   slot: number | null | undefined;
   slotDt: number | null | undefined;
   showPinIcon: boolean;
-  showPlusSign: boolean;
-  className: string;
+  className?: string;
 }
 function SlotLaneStats({
   label,
   slot,
   slotDt,
   showPinIcon,
-  showPlusSign,
   className,
 }: SlotLaneStatsProps) {
   const dtText = showPinIcon
     ? "\u{1F4CD}"
     : slotDt == null
       ? undefined
-      : showPlusSign && slotDt > 0
+      : slotDt > 0
         ? `+${slotDt}`
         : slotDt;
 
@@ -157,71 +174,62 @@ function SlotLaneStats({
 
       <Text align="right" mx="4px" className={styles.slotText}>
         {" "}
-        {slot === Infinity ? "∞" : slot}
+        {slot}
       </Text>
     </div>
   );
 }
 
-interface SlotLaneBarsProps {
-  className: string;
-  totalBarsCount: number;
+interface SlotLaneCellsProps {
+  className?: string;
+  cellsCount: number;
   highlightedIdx?: number;
-  noGap: boolean;
 }
 
-const MSlotLaneBars = memo(function SlotLaneBars({
+const MSlotLaneCells = memo(function SlotLaneCells({
   className,
-  totalBarsCount,
+  cellsCount,
   highlightedIdx,
-  noGap,
-}: SlotLaneBarsProps) {
+}: SlotLaneCellsProps) {
   return (
-    <Flex className={clsx(styles.slotLaneBars, className)}>
-      {Array.from({ length: totalBarsCount }, (_, i) => {
-        return (
-          <MCell
-            key={i}
-            isHighlighted={i === highlightedIdx}
-            isTransparent={noGap}
-          />
-        );
+    <Flex className={clsx(styles.slotLaneCells, className)}>
+      {Array.from({ length: cellsCount }, (_, i) => {
+        return <MCell key={i} isHighlighted={i === highlightedIdx} />;
       })}
     </Flex>
   );
 });
 
-interface NextSlotsProps {
-  count?: number;
-}
-
-const MNextSlots = memo(function NextSlots({ count }: NextSlotsProps) {
-  const [measureRef, { width }] = useMeasure<HTMLDivElement>();
-  const maxBars = Math.trunc(
-    (width + defaultBarsGap) / (nextSlotsBarMinWidth + defaultBarsGap),
-  );
-  const barsCount = Math.min(count ?? defaultNextSlotsBarsCount, maxBars);
-
+function NextLeaderInfo({ label, slotDt, slot }: SlotLaneInfo) {
   return (
     <Flex
-      ref={measureRef}
-      width="100%"
-      height="100%"
-      gap={`${defaultBarsGap}px`}
-      position="relative"
+      gap="4px"
+      align="center"
+      justify="end"
+      flexGrow="1"
+      maxWidth="400px"
+      className={styles.nextLeaderInfo}
     >
-      {Array.from({ length: barsCount }, (_, i) => {
-        return <div key={i} className={styles.nextSlot} />;
-      })}
-      <NextLeaderTimer isNarrow={width <= nextBarsBoxMinWidth + 10} />
+      <Text className={styles.label}>{label}</Text>
+
+      {slotDt != null && (
+        <Text className={styles.dt}>
+          {slotDt > 0 ? "+" : ""}
+          {slotDt}
+        </Text>
+      )}
+
+      {slot == null ? (
+        <Text className={styles.none}>none</Text>
+      ) : (
+        <Text className={styles.slot}>{slot}</Text>
+      )}
+      <NextLeaderCountdown />
     </Flex>
   );
-});
-
-interface NextLeaderTimerProps {
-  isNarrow: boolean;
 }
-function NextLeaderTimer({ isNarrow }: NextLeaderTimerProps) {
+
+function NextLeaderCountdown() {
   const { progressSinceLastLeader, nextSlotText, nextLeaderSlot } = useNextSlot(
     {
       showNowIfCurrent: false,
@@ -231,7 +239,7 @@ function NextLeaderTimer({ isNarrow }: NextLeaderTimerProps) {
     },
   );
 
-  const showInfinity = nextLeaderSlot == null;
+  const countdownText = nextLeaderSlot == null ? "∞s" : nextSlotText;
 
   const targetSlotDurationNs =
     useAtomValue(epochAtom)?.target_slot_duration_nanos ?? 400 * nsPerMs;
@@ -239,34 +247,14 @@ function NextLeaderTimer({ isNarrow }: NextLeaderTimerProps) {
   const progressDuration = (targetSlotDurationNs / nsPerMs) * 1.25;
 
   return (
-    <Flex
-      position="absolute"
-      maxWidth="100%"
-      minWidth={`${nextBarsBoxMinWidth}px`}
-      direction="column"
-      p="5px"
-      align="stretch"
-      justify="between"
-      className={styles.nextLeaderTimerContainer}
-    >
-      <Flex justify="center">
-        {(showInfinity || !isNarrow) && (
-          <Text className={styles.nextLeaderTimerLabel} truncate>
-            Time Until Leader&nbsp;
-          </Text>
-        )}
-
-        <Text className={styles.nextLeaderTime} truncate dir="rtl">
-          {showInfinity ? "∞" : nextSlotText}
-        </Text>
-      </Flex>
-      <div>
-        <Progress
-          value={progressSinceLastLeader}
-          height="1px"
-          duration={`${progressDuration}ms`}
-        />
-      </div>
-    </Flex>
+    <>
+      <Progress
+        className={styles.progressBar}
+        value={progressSinceLastLeader}
+        height="5px"
+        duration={`${progressDuration}ms`}
+      />
+      <Text className={styles.countdown}>{countdownText}</Text>
+    </>
   );
 }
