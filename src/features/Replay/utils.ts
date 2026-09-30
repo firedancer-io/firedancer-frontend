@@ -4,7 +4,7 @@ import { clamp } from "../../uplotReact/utils.ts";
 import type { TsRange } from "../WebGl/webglUtils.ts";
 import { convertToNsTimestamp } from "../../mathUtils.ts";
 import { useServerMessages } from "../../api/ws/utils.ts";
-import type { WsEntity } from "../../api/worker/types.ts";
+import type { WsEntity, WsError } from "../../api/worker/types.ts";
 
 export function getInitVisibleRange(
   selectedMs: number | undefined,
@@ -39,16 +39,25 @@ type TimelineEntityForKey<TKey extends string> = Extract<
   { topic: "timeline"; key: TKey }
 >;
 
-function isTimelineKey<TKey extends string>(
-  message: WsEntity,
+type TimelineErrorForKey<TKey extends string> = Extract<
+  WsError,
+  { topic: "timeline"; key: TKey }
+>;
+
+function isTimelineKey<
+  TMessage extends { topic: string; key: string },
+  TKey extends string,
+>(
+  message: TMessage,
   key: TKey,
-): message is TimelineEntityForKey<TKey> {
+): message is Extract<TMessage, { topic: "timeline"; key: TKey }> {
   return message.topic === "timeline" && message.key === key;
 }
 
 export function useTimelineServerMessage<TKey extends string>(
   key: TKey,
   onMessage: (message: TimelineEntityForKey<TKey>) => void,
+  onError?: (message: TimelineErrorForKey<TKey>) => void,
 ) {
   useServerMessages((message) => {
     if (message.type === "kv" && isTimelineKey(message, key)) {
@@ -59,6 +68,12 @@ export function useTimelineServerMessage<TKey extends string>(
           onMessage(item);
         }
       }
+    } else if (
+      onError &&
+      message.type === "error" &&
+      isTimelineKey(message, key)
+    ) {
+      onError(message);
     }
   });
 }

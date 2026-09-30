@@ -2,7 +2,7 @@ import { nsPerMs } from "../../consts";
 import type { AggGranularity } from "../../api/types";
 
 export const DEFAULT_WINDOW_MS = 12_000;
-export const MIN_VISIBLE_MS = 600;
+export const MIN_VISIBLE_MS = 0.001;
 
 export const msBucketSizes: Record<AggGranularity, number> = {
   "250ms": 250,
