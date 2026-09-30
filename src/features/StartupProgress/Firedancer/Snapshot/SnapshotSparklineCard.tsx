@@ -99,6 +99,7 @@ export default function SnapshotSparklineCard({
         tileCountArr={tileCountArr}
         liveBusyPerTile={liveBusyPerTile}
         width={width}
+        label={`Expand ${title} per tile`}
         header={header}
         isExpanded={isExpanded}
         setIsExpanded={setIsExpanded}

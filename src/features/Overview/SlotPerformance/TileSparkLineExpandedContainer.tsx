@@ -15,6 +15,7 @@ interface TileSparkLineExpandedContainerProps {
   queryIdlePerTile?: number[][];
   width: number;
   header: ReactNode;
+  label: string;
   isExpanded: boolean;
   setIsExpanded: (isExpanded: boolean) => void;
 }
@@ -26,6 +27,7 @@ export default function TileSparkLineExpandedContainer({
   queryIdlePerTile,
   width,
   header,
+  label,
   isExpanded,
   setIsExpanded,
 }: PropsWithChildren<TileSparkLineExpandedContainerProps>) {
@@ -46,7 +48,9 @@ export default function TileSparkLineExpandedContainer({
     >
       <Popover.Trigger>
         {!isExpanded ? (
-          <Button className={styles.btn}>{children}</Button>
+          <Button className={styles.btn} aria-label={label}>
+            {children}
+          </Button>
         ) : (
           <div></div>
         )}

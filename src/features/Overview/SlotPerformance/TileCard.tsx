@@ -93,6 +93,7 @@ export default memo(function TileCard({
             liveBusyPerTile={liveBusyPerTile}
             queryIdlePerTile={queryIdlePerTile}
             width={width}
+            label={`Expand ${header} per tile`}
             header={
               <TileHeader
                 header={header}
