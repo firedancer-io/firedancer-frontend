@@ -1,11 +1,11 @@
 import { atom } from "jotai";
 import type { AggGranularity, AggRevenue } from "../../../api/types";
 import type { RevenueType } from "../../../api/entities";
-import { nsBucketSizes } from "../const";
+import { getBucketIdx } from "../utils";
 
 type Revenues = Record<RevenueType, bigint | null>;
 /**
- * Buckets start at idx 0 for 0n absolute ns ts
+ * Buckets start at idx 0 of absolute world time
  */
 type RevenueByBucketIdx = Map<number, Revenues>;
 export type RevenueBucketsByGranularity = Map<
@@ -14,48 +14,51 @@ export type RevenueBucketsByGranularity = Map<
 >;
 
 export const [
-  lastUpdateTsAtom,
-  refreshLastUpdateTsAtom,
+  revisionAtom,
+  incrementRevisionAtom,
   aggRevenueAtom,
   addAggRevenueAtom,
-  /** delete buckets, but don't update lastUpdateTsAtom (skip redraw trigger) */
+  /** delete buckets, but don't bump the revision (skip redraw trigger) */
   deleteAggRevenueBucketsAtom,
 ] = (function getAggRevenueAtom() {
   const _aggRevenueAtom = atom<RevenueBucketsByGranularity>(new Map());
-  const lastUpdateTsAtom = atom(performance.now());
-  const refreshLastUpdateTsAtom = atom(null, (_get, set) =>
-    set(lastUpdateTsAtom, performance.now()),
+  const revisionAtom = atom(0);
+  const incrementRevisionAtom = atom(null, (_get, set) =>
+    set(revisionAtom, (prev) => (prev + 1) % 100),
   );
 
   return [
-    lastUpdateTsAtom,
-    refreshLastUpdateTsAtom,
+    revisionAtom,
+    incrementRevisionAtom,
     atom((get) => get(_aggRevenueAtom)),
     atom(
       null,
       (
-        _get,
+        get,
         set,
         { granularity, reference_ts_ns, txn_fees, prio_fees, tips }: AggRevenue,
       ) => {
-        if (txn_fees.length === 0) return;
+        if (txn_fees.length === 0) {
+          set(incrementRevisionAtom);
+          return;
+        }
 
         set(_aggRevenueAtom, (prev) => {
           const revenueByBucketIdx =
             prev.get(granularity) ?? new Map<number, Revenues>();
 
-          const startBucketIdx = Number(
-            reference_ts_ns / nsBucketSizes[granularity],
+          const startBucketIdx = getBucketIdx(
+            reference_ts_ns,
+            granularity,
+            false,
           );
+
           for (let i = 0; i < txn_fees.length; i++) {
             const values = {
               txn_fees: txn_fees[i],
               prio_fees: prio_fees[i],
               tips: tips[i],
             };
-            if (!Object.values(values).some((v) => v != null)) {
-              continue;
-            }
 
             const bucketIdx = startBucketIdx + i;
             revenueByBucketIdx.set(bucketIdx, values);
@@ -64,7 +67,7 @@ export const [
           prev.set(granularity, revenueByBucketIdx);
           return prev;
         });
-        set(refreshLastUpdateTsAtom);
+        set(incrementRevisionAtom);
       },
     ),
     atom(

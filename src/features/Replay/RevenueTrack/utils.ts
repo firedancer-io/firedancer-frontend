@@ -19,9 +19,9 @@ import type { RevenueType } from "../../../api/entities.ts";
 import { omit } from "lodash";
 import { clampNonZeroValue, logRatio } from "../../../mathUtils.ts";
 import { revenueLogBase } from "../../Overview/SlotPerformance/TransactionBarsCard/consts.ts";
-import type { RevenueBucketsByGranularity } from "./atoms.ts";
+import { type RevenueBucketsByGranularity } from "./atoms.ts";
 import { getGranularity, OVERSCAN_BUCKETS } from "./useAggRevenueQuery.ts";
-import { calcAbsoluteNs, calcRelativeMs } from "../utils.ts";
+import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils.ts";
 
 // TODO: set reasonable threshold with non-agg data
 const AGGREGATE_THRESHOLD_MS = 0;
@@ -136,21 +136,29 @@ export function drawAggRevenue(
   type: RevenueType,
   aggRevenue: RevenueBucketsByGranularity,
 ) {
-  const absoluteVisibleRange = [
-    calcAbsoluteNs(referenceNs, visibleRange[0]),
-    calcAbsoluteNs(referenceNs, visibleRange[1]),
-  ];
-  const granularity = getGranularity(
-    absoluteVisibleRange[1] - absoluteVisibleRange[0],
-  );
+  const granularity = getGranularity(visibleRange[1] - visibleRange[0]);
   const revenueByBucketIdx = aggRevenue.get(granularity);
   if (!revenueByBucketIdx) return;
 
   const { cameraReferenceMs, mesh } = rendererObj.aggResources;
-  const bucketSizeNs = nsBucketSizes[granularity];
-  const startIdx = Number(absoluteVisibleRange[0] / bucketSizeNs);
-  // don't include next bucket if on boundary
-  const endIdx = Number((absoluteVisibleRange[1] - 1n) / bucketSizeNs);
+  const bucketSizeMs = msBucketSizes[granularity];
+
+  const startIdx = getBucketIdx(
+    calcAbsoluteNs(referenceNs, visibleRange[0]),
+    granularity,
+    false,
+  );
+  const endIdx = getBucketIdx(
+    calcAbsoluteNs(referenceNs, visibleRange[1]),
+    granularity,
+    true,
+  );
+
+  // x: relative ts shifted by camera reference to keep coordinates small
+  const startX =
+    // use bigint to prevent ms rounding imprecision
+    calcRelativeMs(referenceNs, BigInt(startIdx) * nsBucketSizes[granularity]) -
+    cameraReferenceMs;
 
   let maxVisibleValue = 0n;
   const toDraw: [value: bigint, x: number][] = [];
@@ -162,11 +170,10 @@ export function drawAggRevenue(
     const isOverscan = bucketIdx < startIdx || bucketIdx > endIdx;
     const revenues = revenueByBucketIdx.get(bucketIdx);
     const value = revenues?.[type];
+    // don't draw missing or zero values
     if (!value) continue;
 
-    const startNs = BigInt(bucketIdx) * bucketSizeNs;
-    // shift start by camera reference to keep coordinates small
-    const x = calcRelativeMs(referenceNs, startNs) - cameraReferenceMs;
+    const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
     toDraw.push([value, x]);
 
     // exclude overscan from max visible value
@@ -176,7 +183,6 @@ export function drawAggRevenue(
   }
   ensureCapacity(mesh, toDraw.length);
 
-  const width = msBucketSizes[granularity];
   for (let rectIdx = 0; rectIdx < toDraw.length; rectIdx++) {
     const [value, x] = toDraw[rectIdx];
     addRectangleToMesh(
@@ -184,7 +190,7 @@ export function drawAggRevenue(
       rectIdx,
       x,
       minY,
-      width,
+      bucketSizeMs,
       getRevenueRatio(maxVisibleValue, value),
       REVENUE_COLOR,
     );

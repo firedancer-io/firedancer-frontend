@@ -1,25 +1,25 @@
 import { useCallback } from "react";
-import { ascBucketGranularities, nsBucketSizes } from "../const";
+import { ascBucketGranularities, msBucketSizes, nsBucketSizes } from "../const";
 import type { AggGranularity, AggRevenue } from "../../../api/types";
 import { useWebSocketSend } from "../../../api/ws/utils";
-import type { NsTsRange } from "../../WebGl/webglUtils";
+import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
 import {
   addAggRevenueAtom,
   deleteAggRevenueBucketsAtom,
-  refreshLastUpdateTsAtom,
+  incrementRevisionAtom,
 } from "./atoms";
 import { useSetAtom } from "jotai";
 import { useTiledQueries } from "../useTiledQueries";
-import { useTimelineServerMessage } from "../utils";
+import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
 
 /**
  * At most, how many buckets should be visible
  */
 const BUCKET_COUNT_THRESHOLD = 1000;
-export function getGranularity(windowSizeNs: bigint) {
+export function getGranularity(windowSizeMs: number) {
   return (
     ascBucketGranularities.find((g) => {
-      return windowSizeNs < BigInt(BUCKET_COUNT_THRESHOLD) * nsBucketSizes[g];
+      return windowSizeMs < BUCKET_COUNT_THRESHOLD * msBucketSizes[g];
     }) ?? ascBucketGranularities[ascBucketGranularities.length - 1]
   );
 }
@@ -42,7 +42,7 @@ export function getTileSizeNs(granularity: AggGranularity) {
 export default function useAggRevenueQuery(chartId: string) {
   const addAggRevenue = useSetAtom(addAggRevenueAtom);
   const deleteAggRevenueBuckets = useSetAtom(deleteAggRevenueBucketsAtom);
-  const refreshLastUpdateTs = useSetAtom(refreshLastUpdateTsAtom);
+  const incrementRevision = useSetAtom(incrementRevisionAtom);
   const wsSend = useWebSocketSend();
 
   const sendQuery = useCallback(
@@ -104,15 +104,25 @@ export default function useAggRevenueQuery(chartId: string) {
 
   // trigger redraw if panning to already fetched data
   const onNothingToFetch = useCallback(() => {
-    refreshLastUpdateTs();
-  }, [refreshLastUpdateTs]);
+    incrementRevision();
+  }, [incrementRevision]);
 
   return useCallback(
     (
-      visibleRangeNs: NsTsRange,
-      worldRangeNs: NsTsRange,
+      referenceNs: bigint,
+      visibleRange: TsRange,
+      worldRange: TsRange,
       granularity: AggGranularity,
     ) => {
+      const visibleRangeNs: NsTsRange = [
+        calcAbsoluteNs(referenceNs, visibleRange[0]),
+        calcAbsoluteNs(referenceNs, visibleRange[1]),
+      ];
+
+      const worldRangeNs: NsTsRange = [
+        calcAbsoluteNs(referenceNs, worldRange[0]),
+        calcAbsoluteNs(referenceNs, worldRange[1]),
+      ];
       queryRange(visibleRangeNs, worldRangeNs, granularity, onNothingToFetch);
     },
     [onNothingToFetch, queryRange],

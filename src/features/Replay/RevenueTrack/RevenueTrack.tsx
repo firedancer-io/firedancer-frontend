@@ -1,4 +1,4 @@
-import { getDefaultStore, useAtomValue } from "jotai";
+import { getDefaultStore } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
 import { type ExplorableChartProps, type MarkerLinesProps } from "../const.ts";
 import { useThrottledCallback } from "use-debounce";
@@ -15,10 +15,9 @@ import {
 import useAggRevenueQuery, { getGranularity } from "./useAggRevenueQuery.ts";
 import type { RevenueType } from "../../../api/entities.ts";
 import type { AggGranularity } from "../../../api/types.ts";
-import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
+import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
-import { calcAbsoluteNs } from "../utils.ts";
-import { aggRevenueAtom, lastUpdateTsAtom } from "./atoms.ts";
+import { aggRevenueAtom, revisionAtom } from "./atoms.ts";
 
 const height = 150;
 const store = getDefaultStore();
@@ -52,27 +51,14 @@ function RevenueTrack({
   });
 
   const aggQuery = useAggRevenueQuery(chartId);
-  const aggRevenue = useAtomValue(aggRevenueAtom);
-  const lastUpdateTs = useAtomValue(lastUpdateTsAtom);
 
   const throttledRelativeTsQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
-      if (!aggQuery) return;
-      const visibleRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, visibleRange[0]),
-        calcAbsoluteNs(referenceNs, visibleRange[1]),
-      ];
-
-      const worldRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, worldRange[0]),
-        calcAbsoluteNs(referenceNs, worldRange[1]),
-      ];
-
       if (isAggregate(visibleRange)) {
         const queryGranularity = getGranularity(
-          visibleRangeNs[1] - visibleRangeNs[0],
+          visibleRange[1] - visibleRange[0],
         );
-        aggQuery(visibleRangeNs, worldRangeNs, queryGranularity);
+        aggQuery(referenceNs, visibleRange, worldRange, queryGranularity);
         setGranularity(queryGranularity);
       } else {
         // TODO: non-aggregate query
@@ -102,15 +88,35 @@ function RevenueTrack({
     const visibleRange = store.get(visibleRangeAtom);
     if (referenceNs == null || !visibleRange || !worldRange) return;
 
-    throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
-
+    // Move camera before querying, because query may trigger immediate draw if data is already available
     if (isAggregate(visibleRange)) {
       moveAggCamera(rendererRef.current, visibleRange);
     } else {
       // TODO: move non-agg camera
     }
+
+    throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
     renderActive();
   }, [renderActive, throttledRelativeTsQuery]);
+
+  const throttledDrawAgg = useThrottledCallback(
+    useCallback(() => {
+      const referenceNs = store.get(referenceNsAtom);
+      const visibleRange = store.get(visibleRangeAtom);
+      const aggRevenue = store.get(aggRevenueAtom);
+      if (!rendererRef.current || !visibleRange || referenceNs == null) return;
+      drawAggRevenue(
+        rendererRef.current,
+        referenceNs,
+        visibleRange,
+        type,
+        aggRevenue,
+      );
+      renderActive();
+    }, [renderActive, type]),
+    50,
+    { leading: true, trailing: true },
+  );
 
   // set up renderer and subscribe to range change, to trigger queries
   useLayoutEffect(() => {
@@ -127,9 +133,12 @@ function RevenueTrack({
     rendererRef.current = rendererObj;
     containerRef.current.replaceChildren(rendererObj.renderer.domElement);
 
-    const unsubscribe = store.sub(visibleRangeAtom, onRangeChange);
+    const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
     const cleanUpExploreListeners = setUpExploreListeners(containerRef.current);
     const cleanUpRenderer = rendererRef.current.cleanUp;
+    const unsubscribeAggDraw = store.sub(revisionAtom, () => {
+      throttledDrawAgg();
+    });
 
     // trigger initial draw
     setIsInitialized(true);
@@ -137,7 +146,8 @@ function RevenueTrack({
 
     // cleanup
     return () => {
-      unsubscribe();
+      unsubscribeAggDraw();
+      unsubscribeRange();
       cleanUpRenderer();
       rendererRef.current = undefined;
       cleanUpExploreListeners();
@@ -147,6 +157,7 @@ function RevenueTrack({
     setUpExploreListeners,
     setUpContextListeners,
     getWasContextLost,
+    throttledDrawAgg,
   ]);
 
   // handle chart resize
@@ -155,28 +166,6 @@ function RevenueTrack({
     rendererRef.current.renderer.setSize(width, height);
     renderActive();
   }, [renderActive, width, isInitialized]);
-
-  // trigger draw
-  useLayoutEffect(() => {
-    const referenceNs = store.get(referenceNsAtom);
-    const visibleRange = store.get(visibleRangeAtom);
-    if (
-      !rendererRef.current ||
-      !visibleRange ||
-      !aggRevenue ||
-      referenceNs == null
-    )
-      return;
-    // TODO: draw non-agg
-    drawAggRevenue(
-      rendererRef.current,
-      referenceNs,
-      visibleRange,
-      type,
-      aggRevenue,
-    );
-    renderActive();
-  }, [lastUpdateTs, aggRevenue, renderActive, type]);
 
   return (
     <div
