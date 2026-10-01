@@ -17,7 +17,7 @@ import {
   TextAlignTopIcon,
   TimerIcon,
 } from "@radix-ui/react-icons";
-import Skipped from "../../assets/Skipped.svg?react";
+import Skipped from "../../assets/skipped.svg?react";
 import { getSolString } from "../../utils";
 import useSlotRankings from "../../hooks/useSlotRankings";
 import { slotRankingsAtom } from "../../api/atoms";

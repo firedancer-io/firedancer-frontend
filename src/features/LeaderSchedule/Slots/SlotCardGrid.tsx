@@ -28,7 +28,7 @@ import {
 import clsx from "clsx";
 import { identityKeyAtom, isAlpenglowAtom } from "../../../api/atoms";
 import { usePubKey } from "../../../hooks/usePubKey";
-import { SkippedIcon, StatusIcon } from "../../../components/StatusIcon";
+import { StatusIcon } from "../../../components/StatusIcon";
 import LinkedSlotText from "./SlotText";
 import { isFiredancer } from "../../../client";
 
@@ -69,7 +69,7 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
             className={clsx(styles.headerText, styles.voteLatencyHeader)}
             align="right"
           >
-            {isAlpenglow ? <>Voted</> : <>Vote&nbsp;Latency</>}
+            {isAlpenglow ? <>Rewarded</> : <>Vote&nbsp;Latency</>}
           </Text>
         )}
         {!isAlpenglow && (
@@ -166,8 +166,9 @@ function SlotText({ slot, isCurrent }: SlotTextProps) {
     >
       <LinkedSlotText slot={slot} isLeader={isLeader} />
 
-      <StatusIcon slot={slot} isCurrent={isCurrent} size="small" />
-      <SkippedIcon
+      <StatusIcon
+        slot={slot}
+        isCurrent={isCurrent}
         size="small"
         isSkipped={queryPublish.publish?.skipped}
         canChange={queryPublish.publish?.level === "skip_notarized"}

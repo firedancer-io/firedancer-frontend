@@ -27,7 +27,7 @@ import styles from "./slotNavigation.module.css";
 import clsx from "clsx";
 import MeasureOffscreen from "../../components/MeasureOffscreen";
 import { skippedSlotsAtom } from "../../api/atoms";
-import { SkippedIcon, StatusIcon } from "../../components/StatusIcon";
+import { StatusIcon } from "../../components/StatusIcon";
 import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
 import { getSlotGroupLeader } from "../../utils";
 import { clamp } from "lodash";
@@ -287,11 +287,12 @@ function SlotNavItem({
       disabled={isDisabled}
     >
       <Text>{slot}</Text>
-      {isSkipped ? (
-        <SkippedIcon size="large" isSkipped />
-      ) : (
-        <StatusIcon isCurrent={false} slot={slot} size="large" />
-      )}
+      <StatusIcon
+        isCurrent={false}
+        slot={slot}
+        size="large"
+        isSkipped={isSkipped}
+      />
     </Link>
   );
 }

@@ -6,12 +6,17 @@ import { isAlpenglowAtom } from "../api/atoms";
 import { buildStyles, CircularProgressbar } from "react-circular-progressbar";
 import { useRafLoop } from "react-use";
 
-import processedIcon from "../assets/checkOutline.svg";
-import optimisticalyConfirmedIcon from "../assets/checkFill.svg";
-import rootedIcon from "../assets/Rooted.svg";
+import processedIcon from "../assets/check_outline.svg";
+import processedSkippedIcon from "../assets/check_outline_skipped.svg";
+import optimisticalyConfirmedIcon from "../assets/check_fill.svg";
+import optimisticalyConfirmedSkippedIcon from "../assets/check_fill_skipped.svg";
+import rootedIcon from "../assets/rooted.svg";
+import rootedSkippedIcon from "../assets/rooted_skipped.svg";
 import finalizedIcon from "../assets/finalized.svg";
+import finalizedSkippedIcon from "../assets/finalized_skipped.svg";
 import notarizedIcon from "../assets/notarized.svg";
-import skippedIcon from "../assets/Skipped.svg";
+import notarizedSkippedIcon from "../assets/notarized_skipped.svg";
+import skippedIcon from "../assets/skipped.svg";
 
 import {
   circularProgressPathColor,
@@ -20,67 +25,84 @@ import {
 
 import styles from "./statusIcon.module.css";
 import clsx from "clsx";
+import type { SlotLevel } from "../api/types";
 
 type IconSize = "small" | "large";
+type IconInfo = { src: string; alt: string };
+
+function getIconInfo(
+  status: SlotLevel,
+  isAlpenglow: boolean | undefined,
+  isSkipped: boolean | undefined,
+): IconInfo | null {
+  const skipSuffix = isSkipped ? " (skipped)" : "";
+  switch (status) {
+    case "incomplete":
+      return isSkipped ? { src: skippedIcon, alt: "Slot was skipped" } : null;
+    case "completed":
+      return {
+        src: isSkipped ? processedSkippedIcon : processedIcon,
+        alt:
+          (isAlpenglow ? "Slot was replayed" : "Slot was processed") +
+          skipSuffix,
+      };
+    case "optimistically_confirmed":
+      return {
+        src: isSkipped
+          ? optimisticalyConfirmedSkippedIcon
+          : optimisticalyConfirmedIcon,
+        alt: "Slot was optimistically confirmed" + skipSuffix,
+      };
+    case "notarized":
+    case "skip_notarized":
+      return {
+        src: isSkipped ? notarizedSkippedIcon : notarizedIcon,
+        alt: "Slot was notarized" + skipSuffix,
+      };
+    case "rooted":
+    case "finalized":
+    case "skipped":
+      return {
+        src: isSkipped
+          ? isAlpenglow
+            ? finalizedSkippedIcon
+            : rootedSkippedIcon
+          : isAlpenglow
+            ? finalizedIcon
+            : rootedIcon,
+        alt:
+          (isAlpenglow ? "Slot was finalized" : "Slot was rooted") + skipSuffix,
+      };
+  }
+}
 
 export function StatusIcon({
   slot,
   isCurrent,
   size,
+  isSkipped,
+  canChange,
 }: {
   slot: number;
   isCurrent: boolean;
   size: IconSize;
+  isSkipped?: boolean;
+  canChange?: boolean;
 }) {
   const status = useAtomValue(getSlotStatus(slot));
   const isAlpenglow = useAtomValue(isAlpenglowAtom);
-  const className = clsx(styles[`${size}Icon`]);
+  const className = clsx(styles[`${size}Icon`], canChange && styles.canChange);
 
   if (isCurrent) return <LoadingIcon size={size} />;
 
-  if (status === "incomplete") return <PlaceholderIcon size={size} />;
+  const info = getIconInfo(status, isAlpenglow, isSkipped);
+  if (!info) return <PlaceholderIcon size={size} />;
 
-  if (status === "completed") {
-    const alt = isAlpenglow ? "Slot was replayed" : "Slot was processed";
-    return (
-      <Tooltip content={alt}>
-        <img src={processedIcon} alt={alt} className={className} />
-      </Tooltip>
-    );
-  }
-
-  if (status === "optimistically_confirmed") {
-    const alt = "Slot was optimistically confirmed";
-    return (
-      <Tooltip content={alt}>
-        <img src={optimisticalyConfirmedIcon} alt={alt} className={className} />
-      </Tooltip>
-    );
-  }
-
-  if (status === "notarized" || status === "skip_notarized") {
-    const alt = "Slot was notarized";
-    return (
-      <Tooltip content={alt}>
-        <img src={notarizedIcon} alt={alt} className={className} />
-      </Tooltip>
-    );
-  }
-
-  if (status === "rooted" || status === "finalized" || status === "skipped") {
-    const alt = isAlpenglow ? "Slot was finalized" : "Slot was rooted";
-    return (
-      <Tooltip content={alt}>
-        <img
-          src={isAlpenglow ? finalizedIcon : rootedIcon}
-          alt={alt}
-          className={className}
-        />
-      </Tooltip>
-    );
-  }
-
-  return <PlaceholderIcon size={size} />;
+  return (
+    <Tooltip content={info.alt}>
+      <img src={info.src} alt={info.alt} className={className} />
+    </Tooltip>
+  );
 }
 
 export function PlaceholderIcon({ size }: { size: IconSize }) {
@@ -101,8 +123,13 @@ export function LoadingIcon({ size }: { size: IconSize }) {
   });
 
   return (
-    <Flex className={clsx(styles[`${size}Icon`])}>
+    <Flex
+      className={clsx(styles[`${size}Icon`])}
+      align="center"
+      justify="center"
+    >
       <CircularProgressbar
+        className={clsx(styles[`${size}Loading`])}
         value={progress}
         styles={buildStyles({
           trailColor: circularProgressTrailColor,
@@ -113,27 +140,5 @@ export function LoadingIcon({ size }: { size: IconSize }) {
         maxValue={100}
       />
     </Flex>
-  );
-}
-
-export function SkippedIcon({
-  isSkipped,
-  canChange,
-  size,
-}: {
-  isSkipped?: boolean;
-  canChange?: boolean;
-  size: IconSize;
-}) {
-  if (!isSkipped) return <PlaceholderIcon size={size} />;
-
-  return (
-    <Tooltip content="Slot was skipped">
-      <img
-        src={skippedIcon}
-        alt="Slot was skipped"
-        className={clsx(styles[`${size}Icon`], canChange && styles.canChange)}
-      />
-    </Tooltip>
   );
 }
