@@ -1,9 +1,23 @@
 .small-icon {
+  width: 23px;
+  height: 14px;
+  object-fit: contain;
+}
+
+.large-icon {
+  width: 25px;
+  height: 15px;
+  object-fit: contain;
+}
+
+.small-loading {
+  display: block;
   width: 14px;
   height: 14px;
 }
 
-.large-icon {
+.large-loading {
+  display: block;
   width: 15px;
   height: 15px;
 }
