@@ -1,15 +1,10 @@
 import { Box, Flex, Text, Tooltip } from "@radix-ui/themes";
-import {
-  getStake,
-  getFmtStake,
-  isDefined,
-  removePortFromIp,
-} from "../../../utils";
+import { getEpochStake, getFmtStake, removePortFromIp } from "../../../utils";
 import { useAtomValue } from "jotai";
 import PeerIcon from "../../../components/PeerIcon";
 import styles from "./cardValidatorSummary.module.css";
 import type { Peer } from "../../../api/types";
-import { peerStatsAtom } from "../../../atoms";
+import { epochStakesAtom, totalNetworkStakeAtom } from "../../../atoms";
 import { formatNumber } from "../../../numUtils";
 import clsx from "clsx";
 import ArrowDropdown from "../../../components/ArrowDropdown";
@@ -43,7 +38,12 @@ export default function CardValidatorSummary({
 
       <Text className={styles.primaryText}>{pubkey}</Text>
 
-      <ValidatorInfoHorizontal slot={slot} peer={peer} showTime={showTime} />
+      <ValidatorInfoHorizontal
+        slot={slot}
+        pubkey={pubkey}
+        peer={peer}
+        showTime={showTime}
+      />
     </Flex>
   );
 }
@@ -65,6 +65,7 @@ export function CardValidatorSummaryTablet({
 
       <ValidatorInfoHorizontal
         slot={slot}
+        pubkey={pubkey}
         peer={peer}
         showTime={showTime}
         full
@@ -86,24 +87,29 @@ export function CardValidatorSummaryMobile({
       <ArrowDropdown align="start">
         <Flex p="1" direction="column" gap="2" className={styles.mobile}>
           <Text>{pubkey}</Text>
-          <ValidatorInfoMobile slot={slot} peer={peer} showTime={showTime} />
+          <ValidatorInfoMobile
+            slot={slot}
+            pubkey={pubkey}
+            peer={peer}
+            showTime={showTime}
+          />
         </Flex>
       </ArrowDropdown>
     </Flex>
   );
 }
 
-function useValidatorInfoData(peer?: Peer) {
-  const peerStats = useAtomValue(peerStatsAtom);
+function useValidatorInfoData(pubkey?: string, peer?: Peer) {
+  const epochStakes = useAtomValue(epochStakesAtom);
+  const totalStake = useAtomValue(totalNetworkStakeAtom);
   const { client, version, countryCode, countryFlag, cityName } =
     usePeerInfo(peer);
 
-  const stake = peer ? getStake(peer) : undefined;
-  const totalStake = peerStats
-    ? peerStats.activeStake + peerStats.delinquentStake
-    : 0n;
+  const stake = getEpochStake(epochStakes, pubkey);
   const stakePct =
-    totalStake > 0n ? (Number(stake) / Number(totalStake)) * 100 : undefined;
+    stake !== undefined && totalStake !== undefined && totalStake > 0n
+      ? (Number(stake) / Number(totalStake)) * 100
+      : undefined;
   const stakeMsg =
     stake !== undefined
       ? `${getFmtStake(stake)}${
@@ -112,12 +118,12 @@ function useValidatorInfoData(peer?: Peer) {
                 significantDigits: 4,
                 trailingZeroes: false,
               })}%`
-            : ""
+            : " • --"
         }`
-      : undefined;
-  const ipWithoutPort = removePortFromIp(peer?.gossip?.sockets["tvu"] ?? "");
-
-  if (!isDefined(client) && !isDefined(stakeMsg) && !ipWithoutPort) return null;
+      : "--";
+  const ipWithoutPort = removePortFromIp(
+    !peer?.removed ? (peer?.gossip?.sockets["tvu"] ?? "") : "",
+  );
 
   return {
     client,
@@ -125,13 +131,17 @@ function useValidatorInfoData(peer?: Peer) {
     countryCode,
     countryFlag,
     cityName,
-    stakeText: stakeMsg ?? "",
-    ipText: ipWithoutPort || "Offline",
+    stakeText: stakeMsg,
+    ipText:
+      !peer?.removed && peer?.gossip != null
+        ? ipWithoutPort || "--"
+        : "Offline",
   };
 }
 
 interface ValidatorInfoProps {
   slot: number;
+  pubkey?: string;
   peer?: Peer;
   showTime?: boolean;
 }
@@ -143,12 +153,12 @@ interface ValidatorInfoHorizontalProps extends ValidatorInfoProps {
 
 function ValidatorInfoHorizontal({
   slot,
+  pubkey,
   peer,
   showTime,
   full,
 }: ValidatorInfoHorizontalProps) {
-  const data = useValidatorInfoData(peer);
-  if (!data) return null;
+  const data = useValidatorInfoData(pubkey, peer);
 
   const {
     client,
@@ -193,7 +203,9 @@ function ValidatorInfoHorizontal({
 
       <Flex gap="4">
         <Flex direction="column" width="180px" align={full ? "end" : "start"}>
-          <Text>{stakeText}</Text>
+          <Tooltip content="Current epoch identity stake and percentage of total network stake, including excluded stake.">
+            <Text>{stakeText}</Text>
+          </Tooltip>
           <Text>{ipText}</Text>
         </Flex>
 
@@ -207,9 +219,13 @@ function ValidatorInfoHorizontal({
   );
 }
 
-function ValidatorInfoMobile({ slot, peer, showTime }: ValidatorInfoProps) {
-  const data = useValidatorInfoData(peer);
-  if (!data) return null;
+function ValidatorInfoMobile({
+  slot,
+  pubkey,
+  peer,
+  showTime,
+}: ValidatorInfoProps) {
+  const data = useValidatorInfoData(pubkey, peer);
 
   const {
     client,
@@ -235,7 +251,9 @@ function ValidatorInfoMobile({ slot, peer, showTime }: ValidatorInfoProps) {
         </Flex>
       )}
 
-      <Text>{stakeText}</Text>
+      <Tooltip content="Current epoch identity stake and percentage of total network stake, including excluded stake.">
+        <Text>{stakeText}</Text>
+      </Tooltip>
       <Text>{ipText}</Text>
 
       {showTime && (

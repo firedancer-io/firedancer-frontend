@@ -10,8 +10,8 @@ import type { GossipNetworkTraffic } from "../../api/types";
 import { treemap, hierarchy, treemapSquarify } from "d3-hierarchy";
 import type { HierarchyRectangularNode } from "d3-hierarchy";
 import { useAtomValue } from "jotai";
-import { peersAtom, totalActivePeersStakeAtom } from "../../atoms";
-import { shuffle, sum } from "lodash";
+import { epochStakesAtom, peersAtom, totalNetworkStakeAtom } from "../../atoms";
+import { shuffle } from "lodash";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { headerGap } from "./consts";
 import styles from "./trafficTreeMap.module.css";
@@ -19,6 +19,8 @@ import {
   copyToClipboard,
   formatBytesAsBits,
   getPeerIconUrl,
+  getEpochStake,
+  getFmtStake,
 } from "../../utils";
 import PeerIcon from "../../components/PeerIcon";
 import { PieChartIcon } from "@radix-ui/react-icons";
@@ -49,9 +51,11 @@ interface TrafficNode {
   children?: TrafficNode[];
 }
 
-type GetPeerValues = (
-  id: string,
-) => { stake: number; name?: string; iconUrl?: string } | undefined;
+type GetPeerValues = (id: string) => {
+  stake?: bigint;
+  name?: string;
+  iconUrl?: string;
+};
 
 interface TrafficTreeMapProps {
   networkTraffic: GossipNetworkTraffic;
@@ -60,6 +64,7 @@ interface TrafficTreeMapProps {
 
 export function TrafficTreeMap({ networkTraffic, label }: TrafficTreeMapProps) {
   const peers = useAtomValue(peersAtom);
+  const epochStakes = useAtomValue(epochStakesAtom);
 
   const data = useMemo(() => {
     const threshold = 0.7;
@@ -97,22 +102,17 @@ export function TrafficTreeMap({ networkTraffic, label }: TrafficTreeMapProps) {
   const getPeerValues = useCallback<GetPeerValues>(
     (id: string) => {
       const peer = peers[id];
-      if (!peer) return;
-
-      const stake = sum(
-        peer.vote.map((v) => (v.delinquent ? 0 : Number(v.activated_stake))),
-      );
-
-      const iconUrl = getPeerIconUrl(peer.info);
-
-      const name = peer.info?.name ?? undefined;
+      const stake = id === "rest" ? undefined : getEpochStake(epochStakes, id);
+      const iconUrl = getPeerIconUrl(peer?.info);
+      const name =
+        id === "rest" ? "Other peers" : (peer?.info?.name ?? undefined);
 
       return { stake, iconUrl, name };
     },
-    [peers],
+    [peers, epochStakes],
   );
 
-  const totalActivePeersStake = useAtomValue(totalActivePeersStakeAtom);
+  const totalNetworkStake = useAtomValue(totalNetworkStakeAtom);
 
   if (!data) return;
 
@@ -146,7 +146,7 @@ export function TrafficTreeMap({ networkTraffic, label }: TrafficTreeMapProps) {
               width={width}
               height={height}
               getPeerValues={getPeerValues}
-              totalActivePeersStake={totalActivePeersStake}
+              totalNetworkStake={totalNetworkStake}
             />
           )}
         </AutoSizer>
@@ -161,14 +161,14 @@ type TreemapTwoLevelProps = {
   width: number;
   height: number;
   getPeerValues: GetPeerValues;
-  totalActivePeersStake: bigint | undefined;
+  totalNetworkStake: bigint | undefined;
 };
 
 export default function TreemapTwoLevel({
   sortedData,
   width,
   height,
-  totalActivePeersStake,
+  totalNetworkStake,
   getPeerValues,
 }: TreemapTwoLevelProps) {
   const [tooltipIdPosition, _setTooltipIdPosition] = useState<string>();
@@ -254,7 +254,7 @@ export default function TreemapTwoLevel({
             key={leaf.data.id}
             leaf={leaf}
             color={colorsByIdx[i]}
-            totalActivePeersStake={totalActivePeersStake}
+            totalNetworkStake={totalNetworkStake}
             getPeerValues={getPeerValues}
             tooltipText={isTooltipOpen ? tooltipText : undefined}
             openTooltip={() => setTooltipIdPosition(idPositionKey)}
@@ -269,7 +269,7 @@ export default function TreemapTwoLevel({
 interface LeafProps {
   leaf: HierarchyRectangularNode<TrafficNode>;
   color: string;
-  totalActivePeersStake: bigint | undefined;
+  totalNetworkStake: bigint | undefined;
   getPeerValues: GetPeerValues;
   tooltipText: string | undefined;
   openTooltip: () => void;
@@ -279,7 +279,7 @@ interface LeafProps {
 function Leaf({
   leaf,
   color,
-  totalActivePeersStake,
+  totalNetworkStake,
   getPeerValues,
   tooltipText,
   openTooltip,
@@ -287,12 +287,24 @@ function Leaf({
 }: LeafProps) {
   const leafWidth = leaf.x1 - leaf.x0;
   const leafHeight = leaf.y1 - leaf.y0;
+  const stake = getPeerValues(leaf.data.id).stake;
 
   return (
     <Tooltip
       open={!!tooltipText}
       className={styles.tooltip}
-      content={tooltipText}
+      content={
+        <Flex as="span" direction="column" gap="1">
+          {leaf.data.id !== "rest" && (
+            <Text>
+              Epoch stake: {getFmtStake(stake) ?? "--"}
+              {stake !== undefined && ` (${stake.toLocaleString()} lamports)`}.
+              Percentage uses total network stake, including excluded stake.
+            </Text>
+          )}
+          <Text>{tooltipText}</Text>
+        </Flex>
+      }
       disableHoverableContent
       side="bottom"
       onOpenChange={(isOpen) => {
@@ -322,7 +334,7 @@ function Leaf({
           width={leafWidth}
           height={leafHeight}
           leaf={leaf}
-          totalActivePeersStake={totalActivePeersStake}
+          totalNetworkStake={totalNetworkStake}
           getPeerValues={getPeerValues}
         />
       </Box>
@@ -334,7 +346,7 @@ interface LeafContentProps {
   width: number;
   height: number;
   leaf: HierarchyRectangularNode<TrafficNode>;
-  totalActivePeersStake: bigint | undefined;
+  totalNetworkStake: bigint | undefined;
   getPeerValues: GetPeerValues;
 }
 
@@ -342,7 +354,7 @@ function LeafContent({
   width,
   height,
   leaf,
-  totalActivePeersStake,
+  totalNetworkStake,
   getPeerValues,
 }: LeafContentProps) {
   const id = leaf.data.id;
@@ -398,10 +410,10 @@ function LeafContent({
           gap="5px"
         >
           <LeafThroughput value={leaf.value} />
-          {includeStakePct && peerValues?.stake !== undefined && (
+          {includeStakePct && id !== "rest" && (
             <LeafStakePct
               stake={peerValues.stake}
-              totalActivePeersStake={totalActivePeersStake}
+              totalNetworkStake={totalNetworkStake}
             />
           )}
         </Flex>
@@ -423,22 +435,28 @@ function LeafThroughput({ value }: LeafThroughputProps) {
 }
 
 interface LeafStakePctProps {
-  stake: number;
-  totalActivePeersStake: bigint | undefined;
+  stake: bigint | undefined;
+  totalNetworkStake: bigint | undefined;
 }
-function LeafStakePct({ stake, totalActivePeersStake }: LeafStakePctProps) {
+function LeafStakePct({ stake, totalNetworkStake }: LeafStakePctProps) {
   const stakePct = useMemo(() => {
-    if (stake === 0) return "0";
-    const pct = (100 * stake) / Number(totalActivePeersStake);
-    if (pct < 0.01) return "<.01";
+    if (
+      stake === undefined ||
+      totalNetworkStake === undefined ||
+      totalNetworkStake === 0n
+    )
+      return "--";
+    if (stake === 0n) return "0%";
+    const pct = (100 * Number(stake)) / Number(totalNetworkStake);
+    if (pct < 0.01) return "<.01%";
 
-    return pct.toFixed(2);
-  }, [stake, totalActivePeersStake]);
+    return `${pct.toFixed(2)}%`;
+  }, [stake, totalNetworkStake]);
 
   return (
     <Flex align="center" justify="center" gap="3px">
       <PieChartIcon width={8} height={8} />
-      <Text truncate>{stakePct}%</Text>
+      <Text truncate>{stakePct}</Text>
     </Flex>
   );
 }

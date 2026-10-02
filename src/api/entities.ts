@@ -848,10 +848,6 @@ export const gossipNetworkHealthSchema = z.object({
   num_pull_response_entries_rx_duplicate: z.number(),
 
   total_peers: z.number(),
-  total_stake: z.coerce.bigint(),
-  connected_stake: z.coerce.bigint(),
-  connected_staked_peers: z.number(),
-  connected_unstaked_peers: z.number(),
 });
 
 export const gossipNetworkTrafficSchema = z.object({
@@ -939,7 +935,6 @@ const peerUpdateGossipSchema = z.object({
 
 const peerUpdateVoteAccountSchema = z.object({
   vote_account: z.string(),
-  activated_stake: z.coerce.bigint(),
   last_vote: z.nullable(z.number()),
   root_slot: z.nullable(z.number()),
   epoch_credits: z.number(),
