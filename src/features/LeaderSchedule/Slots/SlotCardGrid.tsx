@@ -72,6 +72,14 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
             {isAlpenglow ? <>Rewarded</> : <>Vote&nbsp;Latency</>}
           </Text>
         )}
+        {isFiredancer && isAlpenglow && (
+          <Text
+            className={clsx(styles.headerText, styles.votesHeader)}
+            align="right"
+          >
+            Vote&nbsp;Count
+          </Text>
+        )}
         {!isAlpenglow && (
           <Text
             className={clsx(styles.headerText, styles.votesHeader)}
@@ -179,6 +187,7 @@ function SlotText({ slot, isCurrent }: SlotTextProps) {
 
 interface RowValues {
   voteTxns: string;
+  voteCount: string;
   txns: string;
   totalFees: string;
   transactionFeeFull: string;
@@ -278,6 +287,8 @@ function getRowValues(
 
   return {
     voteTxns: (voteTxnsSuccess + voteTxnsFailure).toLocaleString(),
+    voteCount:
+      publish.vote_count != null ? publish.vote_count.toLocaleString() : "-",
     txns: (txnsSuccess + txnsFailure).toLocaleString(),
     totalFees,
     transactionFeeFull,
@@ -358,6 +369,11 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
           style={{ color: values?.voteLatency?.color }}
         >
           {getText(values?.voteLatency.text)}
+        </Text>
+      )}
+      {isFiredancer && isAlpenglow && (
+        <Text className={valueClassName} align="right">
+          {getText(values?.voteCount)}
         </Text>
       )}
       {!isAlpenglow && (
