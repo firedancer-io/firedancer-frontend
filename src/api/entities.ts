@@ -1402,6 +1402,24 @@ export const txnMetaResponseSchema = z.object({
   txn_error_code: z.number().array(),
 });
 
+export const txnTimestampsResponseSchema = z.object({
+  granularity: z.enum(["txn", "txn_batch"]),
+  reference_slot: z.number().nullable(),
+  reference_ts: z.coerce.bigint().nullable(),
+  slot_delta: z.number().array(),
+  txn_idx: z.number().array(),
+  txn_exec_idx: z.number().array(),
+  txn_sigverify_exec_idx: z.number().array(),
+  txn_sigverify_start_ts_delta: z.coerce.bigint().array(),
+  txn_sigverify_end_ts_delta: z.coerce.bigint().array(),
+  txn_load_start_ts_delta: z.coerce.bigint().array(),
+  txn_check_start_ts_delta: z.coerce.bigint().nullable().array(),
+  txn_exec_start_ts_delta: z.coerce.bigint().nullable().array(),
+  txn_commit_start_ts_delta: z.coerce.bigint().nullable().array(),
+  txn_commit_end_ts_delta: z.coerce.bigint().array(),
+  txn_error_code: z.number().array(),
+});
+
 export const timelineSchema = z.discriminatedUnion("key", [
   timelineTopicSchema.extend({
     id: z.number(),
@@ -1418,10 +1436,22 @@ export const timelineSchema = z.discriminatedUnion("key", [
     value: txnMetaResponseSchema,
     id: z.number(),
   }),
+  timelineTopicSchema.extend({
+    key: z.literal("query_txn_timestamps"),
+    value: txnTimestampsResponseSchema,
+    id: z.number(),
+  }),
 ]);
 
-export const timelineErrorSchema = timelineTopicSchema.extend({
-  key: z.enum(["query_txn_meta"]),
-  error: errorBodySchema,
-  id: z.number(),
-});
+export const timelineErrorSchema = z.discriminatedUnion("key", [
+  timelineTopicSchema.extend({
+    key: z.literal("query_txn_meta"),
+    error: errorBodySchema,
+    id: z.number(),
+  }),
+  timelineTopicSchema.extend({
+    key: z.literal("query_txn_timestamps"),
+    error: errorBodySchema,
+    id: z.number(),
+  }),
+]);

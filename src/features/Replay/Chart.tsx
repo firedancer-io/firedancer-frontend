@@ -7,8 +7,11 @@ import { nsPerMs } from "../../consts.ts";
 import { calcRelativeMs, getInitVisibleRange } from "./utils.ts";
 import VisibleRangeInfo from "./VisibleRangeInfo.tsx";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
+import ExecrpTrack from "./ExecrpTrack/ExecrpTrack.tsx";
 import { txnMetaCache } from "./RevenueTrack/txnMeta/txnMetaCache.ts";
 import { useTxnMetaResponses } from "./RevenueTrack/txnMeta/txnMetaRequests.ts";
+import { txnTimestampsCaches } from "./ExecrpTrack/txnTimestampsCache.ts";
+import { useTxnTimestampsResponses } from "./ExecrpTrack/txnTimestampsRequests.ts";
 import { RevenueType } from "../../api/entities.ts";
 import { useExplorableChart } from "./useExplorableChart.ts";
 import { getDefaultStore, useAtomValue } from "jotai";
@@ -51,6 +54,18 @@ export default function Chart() {
     return () => {
       unsub();
       txnMetaCache.reset();
+    };
+  }, []);
+
+  // Drive the per-granularity txn timestamps caches used by the execrp track
+  useTxnTimestampsResponses();
+  useEffect(() => {
+    const unsubs = Object.values(txnTimestampsCaches).map((cache) =>
+      cache.init(),
+    );
+    return () => {
+      for (const unsub of unsubs) unsub();
+      for (const cache of Object.values(txnTimestampsCaches)) cache.reset();
     };
   }, []);
 
@@ -155,6 +170,11 @@ export default function Chart() {
           <Flex direction="column" gapY="4" position="relative">
             <RevenueTrack
               type={RevenueType.TxnFees}
+              width={width}
+              {...explorableChartProps}
+              {...markerLinesProps}
+            />
+            <ExecrpTrack
               width={width}
               {...explorableChartProps}
               {...markerLinesProps}
