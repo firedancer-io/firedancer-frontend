@@ -520,6 +520,7 @@ export const towerSlotPublishSchema = slotPublishBaseSchema
       success_transaction_cnt: success_nonvote_transaction_cnt,
       failed_transaction_cnt: failed_nonvote_transaction_cnt,
       vote_rewarded: null,
+      vote_count: null,
     }),
   );
 
@@ -534,6 +535,7 @@ export const alpenglowSlotPublishSchema = slotPublishBaseSchema
       .nullable()
       .optional(),
     vote_rewarded: z.boolean().nullable().optional(),
+    vote_count: z.number().nullable().optional(),
   })
   .transform((p) => ({
     ...p,

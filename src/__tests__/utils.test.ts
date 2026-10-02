@@ -362,6 +362,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       completed_time_nanos: null,
       vote_latency: 2,
       vote_rewarded: null,
+      vote_count: null,
     };
     expect(hasLateVote(publish)).toBeFalsy();
     expect(
@@ -392,6 +393,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       completed_time_nanos: null,
       vote_latency: null,
       vote_rewarded: null,
+      vote_count: null,
     };
     expect(hasLateVote(publish)).toBeTruthy();
     expect(hasLateVote({ ...publish, skipped: true })).toBeFalsy();
@@ -417,6 +419,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       completed_time_nanos: null,
       vote_latency: 2,
       vote_rewarded: null,
+      vote_count: null,
     };
     expect(hasLateVote(publish)).toBeTruthy();
     expect(
@@ -448,6 +451,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       completed_time_nanos: null,
       vote_latency: 5,
       vote_rewarded: null,
+      vote_count: null,
     };
     expect(hasLateVote(publish)).toBeTruthy();
     expect(
@@ -479,6 +483,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       completed_time_nanos: null,
       vote_latency: 5,
       vote_rewarded: null,
+      vote_count: null,
     };
     expect(hasLateVote(publish)).toBeTruthy();
     expect(
@@ -510,6 +515,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
       completed_time_nanos: null,
       vote_latency: 5,
       vote_rewarded: null,
+      vote_count: null,
     };
     expect(hasLateVote(publish)).toBeTruthy();
     expect(
@@ -541,6 +547,7 @@ describe("hasLateVote and getDiscountedVoteLatency", () => {
     vote_latency_exact: null,
     is_voter: true,
     vote_rewarded: null,
+    vote_count: null,
     ...overrides,
   });
 
