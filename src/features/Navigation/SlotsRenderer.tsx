@@ -339,11 +339,20 @@ const MSlotStatus = memo(function SlotStatus({
 
 function getSlotStatusColorStyles(publish?: SlotPublish): CSSProperties {
   if (!publish) return {};
-  if (publish.skipped) return { backgroundColor: slotStatusRed };
+
+  if (
+    publish.skipped &&
+    publish.level !== "skip_notarized" &&
+    publish.level !== "skipped"
+  ) {
+    // non-alpenglow skipped
+    return { backgroundColor: slotStatusRed };
+  }
   switch (publish.level) {
     case "skipped":
-    case "skip_notarized":
       return { backgroundColor: slotStatusRed };
+    case "skip_notarized":
+      return { borderColor: slotStatusRed };
     case "incomplete":
       return {};
     case "completed":

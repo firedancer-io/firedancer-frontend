@@ -1,11 +1,11 @@
 .small-icon {
-  width: 23px;
+  width: 14px;
   height: 14px;
   object-fit: contain;
 }
 
 .large-icon {
-  width: 25px;
+  width: 15px;
   height: 15px;
   object-fit: contain;
 }
@@ -20,8 +20,4 @@
   display: block;
   width: 15px;
   height: 15px;
-}
-
-.can-change {
-  opacity: 0.45;
 }

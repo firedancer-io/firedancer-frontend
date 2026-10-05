@@ -179,7 +179,6 @@ function SlotText({ slot, isCurrent }: SlotTextProps) {
         isCurrent={isCurrent}
         size="small"
         isSkipped={queryPublish.publish?.skipped}
-        canChange={queryPublish.publish?.level === "skip_notarized"}
       />
     </Flex>
   );
