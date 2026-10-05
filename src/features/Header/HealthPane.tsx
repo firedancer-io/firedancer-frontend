@@ -3,6 +3,7 @@ import HowToVoteIcon from "@material-design-icons/svg/filled/how_to_vote.svg?rea
 import LayersIcon from "@material-design-icons/svg/filled/layers.svg?react";
 import CycloneIcon from "@material-design-icons/svg/filled/cyclone.svg?react";
 import ReplayIcon from "@material-design-icons/svg/filled/replay_circle_filled.svg?react";
+import BuilderIcon from "@material-design-icons/svg/filled/view_in_ar.svg?react";
 import { useMemo, type FC, type SVGProps } from "react";
 import styles from "./healthPane.module.css";
 import clsx from "clsx";
@@ -11,6 +12,7 @@ import { useAtomValue } from "jotai";
 import { blockEngineAtom, healthAtom } from "../../api/atoms";
 import PopoverDropdown from "../../components/PopoverDropdown";
 import type {
+  BuilderHealth,
   BundleHealth,
   ReplayHealth,
   TurbineHealth,
@@ -281,6 +283,37 @@ function getTurbineHealthData(
   }
 }
 
+function getBuilderHealthData(
+  state?: BuilderHealth,
+): HealthStatusData | undefined {
+  switch (state) {
+    case "disconnected":
+      return {
+        status: HealthStatus.Unhealthy,
+        description: "The block builder is disconnected.",
+      };
+    case "connecting":
+      return {
+        status: HealthStatus.Intermediate,
+        description: "The block builder connection is being established.",
+      };
+    case "unhealthy":
+      return {
+        status: HealthStatus.Unhealthy,
+        description:
+          "The block builder is connected but is not in a usable state.",
+      };
+    case "connected":
+      return {
+        status: HealthStatus.Healthy,
+        description: "The block builder is connected and healthy.",
+      };
+    case "disabled":
+    case undefined:
+      return;
+  }
+}
+
 function useBlockEngineDescription(): string | undefined {
   const blockEngine = useAtomValue(blockEngineAtom);
   return blockEngine
@@ -289,7 +322,8 @@ function useBlockEngineDescription(): string | undefined {
 }
 
 function useHealthData(): HealthData[] {
-  const { vote, bundle, turbine, replay } = useAtomValue(healthAtom) ?? {};
+  const { vote, bundle, turbine, replay, builder } =
+    useAtomValue(healthAtom) ?? {};
   const voteData = useMemo(() => {
     const data = getVoteHealthData(vote);
     if (!data) return;
@@ -344,8 +378,24 @@ function useHealthData(): HealthData[] {
     };
   }, [replay]);
 
-  const healthData = [voteData, bundleData, turbineData, replayData].filter(
-    (d) => d != null,
-  );
+  const builderData = useMemo(() => {
+    const data = getBuilderHealthData(builder);
+    if (!data) return;
+
+    return {
+      ...data,
+      title: "Block Builder",
+      Icon: BuilderIcon,
+      statusText: startCase(builder),
+    };
+  }, [builder]);
+
+  const healthData = [
+    voteData,
+    bundleData,
+    builderData,
+    turbineData,
+    replayData,
+  ].filter((d) => d != null);
   return healthData;
 }

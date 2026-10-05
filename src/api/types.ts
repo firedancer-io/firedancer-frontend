@@ -72,6 +72,7 @@ import type {
   bundleHealthSchema,
   replayHealthSchema,
   turbineHealthSchema,
+  builderHealthSchema,
   healthSchema,
   accountsStatsSchema,
   accountsPartitionSchema,
@@ -215,6 +216,7 @@ export type VoteHealth = z.infer<typeof voteHealthSchema>;
 export type BundleHealth = z.infer<typeof bundleHealthSchema>;
 export type ReplayHealth = z.infer<typeof replayHealthSchema>;
 export type TurbineHealth = z.infer<typeof turbineHealthSchema>;
+export type BuilderHealth = z.infer<typeof builderHealthSchema>;
 
 export type IsAlpenglow = z.infer<typeof isAlpenglowSchema>;
 
