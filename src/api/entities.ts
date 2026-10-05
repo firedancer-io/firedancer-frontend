@@ -631,12 +631,20 @@ export const turbineHealthSchema = z.enum([
   "repair_outpacing",
   "running",
 ]);
+export const builderHealthSchema = z.enum([
+  "disabled",
+  "disconnected",
+  "connecting",
+  "unhealthy",
+  "connected",
+]);
 
 export const healthSchema = z.object({
   vote: voteHealthSchema,
   bundle: bundleHealthSchema,
   replay: replayHealthSchema,
   turbine: turbineHealthSchema,
+  builder: builderHealthSchema,
 });
 
 export const isAlpenglowSchema = z.boolean();
