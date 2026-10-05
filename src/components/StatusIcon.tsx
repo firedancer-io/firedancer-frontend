@@ -81,17 +81,14 @@ export function StatusIcon({
   isCurrent,
   size,
   isSkipped,
-  canChange,
 }: {
   slot: number;
   isCurrent: boolean;
   size: IconSize;
   isSkipped?: boolean;
-  canChange?: boolean;
 }) {
   const status = useAtomValue(getSlotStatus(slot));
   const isAlpenglow = useAtomValue(isAlpenglowAtom);
-  const className = clsx(styles[`${size}Icon`], canChange && styles.canChange);
 
   if (isCurrent) return <LoadingIcon size={size} />;
 
@@ -100,13 +97,13 @@ export function StatusIcon({
 
   return (
     <Tooltip content={info.alt}>
-      <img src={info.src} alt={info.alt} className={className} />
+      <img src={info.src} alt={info.alt} className={styles[`${size}Icon`]} />
     </Tooltip>
   );
 }
 
 export function PlaceholderIcon({ size }: { size: IconSize }) {
-  return <div className={clsx(styles[`${size}Icon`])} />;
+  return <div className={styles[`${size}Icon`]} />;
 }
 
 export function LoadingIcon({ size }: { size: IconSize }) {
