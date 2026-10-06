@@ -1,4 +1,5 @@
 .priority-count {
+  justify-content: space-evenly;
   .critical {
     color: var(--gold-10);
   }
