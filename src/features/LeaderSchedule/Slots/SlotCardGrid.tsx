@@ -28,7 +28,7 @@ import {
 import clsx from "clsx";
 import { identityKeyAtom, isAlpenglowAtom } from "../../../api/atoms";
 import { usePubKey } from "../../../hooks/usePubKey";
-import { StatusIcon } from "../../../components/StatusIcon";
+import { SlotStatusIcon } from "../../../components/StatusIcon";
 import LinkedSlotText from "./SlotText";
 import { isFiredancer } from "../../../client";
 
@@ -174,7 +174,7 @@ function SlotText({ slot, isCurrent }: SlotTextProps) {
     >
       <LinkedSlotText slot={slot} isLeader={isLeader} />
 
-      <StatusIcon
+      <SlotStatusIcon
         slot={slot}
         isCurrent={isCurrent}
         size="small"

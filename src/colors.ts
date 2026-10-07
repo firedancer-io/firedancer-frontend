@@ -191,6 +191,21 @@ export const epochTextColor = "#FAFAFA";
 export const epochNotLiveColor = "#3CB4FF";
 export const epochSliderProgressColor = "#142D53";
 export const epochSkippedSlotColor = "#FF5353";
+export const epochBarLeaderSlotColor = "#2a7edf";
+// TODO: update with opacity
+export const epochBarOtherSkippedSlotColor = "#FF5353";
+
+// replay headers
+export const headerSlotGroupColor0 = "#0090FF";
+export const headerSlotGroupColor1 = "#205D9E";
+export const headerSlotGroupColor2 = "#004074";
+export const headerSlotGroupColor3 = "#0D2847";
+export const headerSlotBorderColor = "#3C4652";
+export const headerSkippedSlotBorderColor = "#CA4245";
+export const headerSkippedSlotFontColor = epochSkippedSlotColor;
+export const headerSkippedGroupBackground = "#201314";
+export const headerSkippedGroupBorderColor = "#DF2A2A";
+export const headerMineGroupBorderColor = "#5199EF";
 
 // sankey
 export const sankeyStartEndNodeColor = "#525463";
