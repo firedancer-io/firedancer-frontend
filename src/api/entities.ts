@@ -1372,6 +1372,8 @@ export const aggSlotsSchema = z.object({
   start_slot: z.array(z.number().nullable()),
   end_slot: z.array(z.number().nullable()),
   skipped: z.array(z.number().nullable()),
+  mine: z.array(z.number().nullable()),
+  mine_skipped: z.array(z.number().nullable()),
 });
 
 export enum RevenueType {
@@ -1406,7 +1408,24 @@ export const aggShredsSchema = z.object({
   [AggShredEventType.Published]: z.array(z.number().nullable()),
 });
 
+export const timelineSlotsSchema = z.object({
+  available_start_ns: z.coerce.bigint().nullable(),
+  available_end_ns: z.coerce.bigint().nullable(),
+  reference_slot: z.number().nullable(),
+  reference_ts: z.coerce.bigint().nullable(),
+  slot_delta: z.array(z.number()),
+  start_ts_delta: z.array(z.coerce.bigint()),
+  end_ts_delta: z.array(z.coerce.bigint()),
+  skipped: z.array(z.number()),
+  mine: z.array(z.number()),
+});
+
 export const timelineSchema = z.discriminatedUnion("key", [
+  timelineTopicSchema.extend({
+    id: z.number(),
+    key: z.literal("query_slots"),
+    value: timelineSlotsSchema,
+  }),
   timelineTopicSchema.extend({
     id: z.number(),
     key: z.literal("query_agg_slots"),

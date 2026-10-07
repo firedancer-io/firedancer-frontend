@@ -10,6 +10,8 @@ export interface SlotCounts {
   start_slot: number | null;
   end_slot: number | null;
   skipped: number | null;
+  mine: number | null;
+  mine_skipped: number | null;
 }
 
 /**
@@ -45,6 +47,8 @@ export const [
           start_slot,
           end_slot,
           skipped,
+          mine,
+          mine_skipped,
         }: AggSlots,
       ) => {
         if (start_slot.length === 0) {
@@ -67,6 +71,8 @@ export const [
               start_slot: start_slot[i],
               end_slot: end_slot[i],
               skipped: skipped[i],
+              mine: mine[i],
+              mine_skipped: mine_skipped[i],
             };
 
             const bucketIdx = startBucketIdx + i;

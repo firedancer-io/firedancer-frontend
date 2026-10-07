@@ -1,15 +1,16 @@
 import type * as THREE from "three";
 import type { WebglResources, RectMesh } from "../../WebGl/webglUtils";
 
-// TODO: set to reasonable transition value
-export const HEADER_AGG_THRESHOLD_MS = 0;
+export const HEADER_AGG_THRESHOLD_MS = 90_000;
 
-export const trackHeight = 25;
+export const slotGroupRowHeight = 12;
+export const slotNumberRowHeight = 24;
+export const slotBorderHeight = 3;
+export const trackHeight = slotGroupRowHeight + slotNumberRowHeight;
 
 export type RendererObj = {
   renderer: THREE.WebGLRenderer;
   aggResources: AggRendererResources;
-  // TODO: add nonAggResources
   cleanUp: () => void;
 };
 

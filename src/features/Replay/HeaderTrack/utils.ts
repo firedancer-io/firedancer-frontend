@@ -19,7 +19,7 @@ import {
   type RendererObj,
 } from "./const";
 import { omit } from "lodash";
-import type { SlotBucketsByGranularity } from "./atoms";
+import type { SlotBucketsByGranularity } from "./aggAtoms";
 import { getAggGranularity, OVERSCAN_BUCKETS } from "./useAggHeaderQuery";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
 import { getBucketColorRatios, colorStates, colors } from "../slotUtils";
@@ -144,6 +144,8 @@ export function drawAggSlots(
       slotCounts.start_slot,
       slotCounts.end_slot,
       slotCounts.skipped,
+      slotCounts.mine,
+      slotCounts.mine_skipped,
       minHeightRatio,
     );
 

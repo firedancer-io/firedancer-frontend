@@ -88,3 +88,13 @@ export function getBucketIdx(
   }
   return Number(idx);
 }
+
+export function getTileIdx(tsNs: bigint, tileSizeNs: bigint, isEndTs: boolean) {
+  const idx = tsNs / tileSizeNs;
+
+  // for end ts on tile boundary, return previous tile idx
+  if (isEndTs && idx * tileSizeNs === tsNs) {
+    return Number(idx) - 1;
+  }
+  return Number(idx);
+}
