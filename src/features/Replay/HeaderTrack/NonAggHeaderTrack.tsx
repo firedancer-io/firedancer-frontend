@@ -1,10 +1,4 @@
 import { Box, Flex, Text } from "@radix-ui/themes";
-import {
-  slotBorderHeight,
-  slotGroupRowHeight,
-  slotNumberRowHeight,
-  trackHeight,
-} from "./const";
 import { getDefaultStore } from "jotai";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms";
 import {
@@ -34,6 +28,27 @@ const store = getDefaultStore();
 
 const logoSize = 8;
 
+/**
+ * Get tile position relative to track width that represents the visible range
+ */
+function getTilePx(
+  idx: number,
+  absStartNs: bigint,
+  absEndNs: bigint,
+  width: number,
+) {
+  const windowSizeNs = absEndNs - absStartNs;
+  const tileStartNs = BigInt(idx) * tileSizeNs;
+  const widthPx = (Number(tileSizeNs) / Number(windowSizeNs)) * width;
+  const leftPx =
+    (Number(tileStartNs - absStartNs) / Number(windowSizeNs)) * width;
+  return { widthPx, leftPx };
+}
+
+function getTileElId(tileIdx: number) {
+  return `non-agg-header-tile-${tileIdx}`;
+}
+
 const slotGroupColorClasses = [
   styles.group0,
   styles.group1,
@@ -47,6 +62,49 @@ const SHOW_GROUP_NAME_MIN_PX = 22;
 
 type GroupTier = "groupIcon" | "iconOnly";
 type SlotTier = "numberStatusBar" | "statusBar" | "barOnly";
+
+function getSlotTier(estimatedSlotPx: number): SlotTier {
+  return estimatedSlotPx >= SHOW_SLOT_TEXT_MIN_PX
+    ? "numberStatusBar"
+    : estimatedSlotPx >= SHOW_SLOT_ICON_MIN_PX
+      ? "statusBar"
+      : "barOnly";
+}
+
+function getGroupTier(estimatedGroupPx: number): GroupTier {
+  return estimatedGroupPx >= SHOW_GROUP_NAME_MIN_PX ? "groupIcon" : "iconOnly";
+}
+
+const slotTierClasses: Record<SlotTier, string | undefined> = {
+  numberStatusBar: styles.slotTierNumberStatusBar,
+  statusBar: styles.slotTierStatusBar,
+  barOnly: styles.slotTierBarOnly,
+};
+
+const groupTierClasses: Record<GroupTier, string | undefined> = {
+  groupIcon: styles.groupTierGroupIcon,
+  iconOnly: styles.groupTierIconOnly,
+};
+
+const allTierClasses = [
+  ...Object.values(slotTierClasses),
+  ...Object.values(groupTierClasses),
+].filter((cls): cls is string => cls != null);
+
+function applyTierClasses(
+  el: HTMLElement,
+  slotTier: SlotTier,
+  groupTier: GroupTier,
+) {
+  const active = new Set(
+    [slotTierClasses[slotTier], groupTierClasses[groupTier]].filter(
+      (cls): cls is string => cls != null,
+    ),
+  );
+  for (const cls of allTierClasses) {
+    el.classList.toggle(cls, active.has(cls));
+  }
+}
 
 const chartId = "non-agg-header-track";
 
@@ -95,7 +153,7 @@ export function NonAggHeaderTrack({
 
   const nonAggQuery = useNonAggHeaderQuery(chartId);
 
-  const updatePositions = useCallback(
+  const updateDrawInfo = useCallback(
     (referenceNs: bigint, visibleRange: TsRange) => {
       const absStartNs = calcAbsoluteNs(referenceNs, visibleRange[0]);
       const absEndNs = calcAbsoluteNs(referenceNs, visibleRange[1]);
@@ -106,16 +164,8 @@ export function NonAggHeaderTrack({
         store.get(epochAtom)?.target_slot_duration_nanos ?? 400 * nsPerMs;
       const pxPerNs = width / Number(windowSizeNs);
       const estimatedSlotPx = targetSlotDurationNs * pxPerNs;
-      const slotTier: SlotTier =
-        estimatedSlotPx >= SHOW_SLOT_TEXT_MIN_PX
-          ? "numberStatusBar"
-          : estimatedSlotPx >= SHOW_SLOT_ICON_MIN_PX
-            ? "statusBar"
-            : "barOnly";
-
-      const estimatedGroupPx = estimatedSlotPx * slotsPerLeader;
-      const groupTier: GroupTier =
-        estimatedGroupPx >= SHOW_GROUP_NAME_MIN_PX ? "groupIcon" : "iconOnly";
+      const slotTier = getSlotTier(estimatedSlotPx);
+      const groupTier = getGroupTier(estimatedSlotPx * slotsPerLeader);
 
       const startIdx =
         getTileIdx(absStartNs, tileSizeNs, false) - OVERSCAN_TILES_COUNT;
@@ -124,7 +174,6 @@ export function NonAggHeaderTrack({
 
       const timelineSlots = store.get(timelineSlotsAtom);
 
-      const tileWidthPx = (Number(tileSizeNs) / Number(windowSizeNs)) * width;
       const tilePositions: TilePosition[] = [];
 
       for (let idx = startIdx; idx <= endIdx; idx++) {
@@ -132,8 +181,12 @@ export function NonAggHeaderTrack({
         if (!tile) continue;
 
         const tileStartNs = BigInt(idx) * tileSizeNs;
-        const tileLeftPx =
-          (Number(tileStartNs - absStartNs) / Number(windowSizeNs)) * width;
+        const { widthPx: tileWidthPx, leftPx: tileLeftPx } = getTilePx(
+          idx,
+          absStartNs,
+          absEndNs,
+          width,
+        );
 
         const slots: SlotPosition[] = [];
         const slotGroups = new Map<number, SlotGroupPosition>();
@@ -206,10 +259,43 @@ export function NonAggHeaderTrack({
     [width],
   );
 
-  const throttledUpdatePositions = useThrottledCallbackIfVisible(
-    updatePositions,
+  const throttledUpdateDrawInfo = useThrottledCallbackIfVisible(
+    updateDrawInfo,
     30,
     { leading: true, trailing: true },
+  );
+
+  const updateTilePositionsOnly = useCallback(
+    (referenceNs: bigint, visibleRange: TsRange) => {
+      const absStartNs = calcAbsoluteNs(referenceNs, visibleRange[0]);
+      const absEndNs = calcAbsoluteNs(referenceNs, visibleRange[1]);
+      const windowSizeNs = absEndNs - absStartNs;
+      const targetSlotDurationNs =
+        store.get(epochAtom)?.target_slot_duration_nanos ?? 400 * nsPerMs;
+
+      const estimatedSlotPx =
+        targetSlotDurationNs * (width / Number(windowSizeNs));
+
+      const slotTier = getSlotTier(estimatedSlotPx);
+      const groupTier = getGroupTier(estimatedSlotPx * slotsPerLeader);
+
+      const startIdx =
+        getTileIdx(absStartNs, tileSizeNs, false) - OVERSCAN_TILES_COUNT;
+      const endIdx =
+        getTileIdx(absEndNs, tileSizeNs, true) + OVERSCAN_TILES_COUNT;
+
+      for (let idx = startIdx; idx <= endIdx; idx++) {
+        const el = document.getElementById(getTileElId(idx));
+        if (!el) continue;
+
+        const { widthPx, leftPx } = getTilePx(idx, absStartNs, absEndNs, width);
+        el.style.width = `${widthPx}px`;
+        el.style.transform = `translateX(${leftPx}px)`;
+        // temporarily hide elements for this tier on pan / zoom, until react renders the updated tile props
+        applyTierClasses(el, slotTier, groupTier);
+      }
+    },
+    [width],
   );
 
   const throttledRelativeTsQuery = useThrottledCallbackIfVisible(
@@ -233,9 +319,9 @@ export function NonAggHeaderTrack({
       return;
     }
 
-    throttledUpdatePositions(referenceNs, visibleRange);
+    updateTilePositionsOnly(referenceNs, visibleRange);
     throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
-  }, [throttledUpdatePositions, throttledRelativeTsQuery]);
+  }, [updateTilePositionsOnly, throttledRelativeTsQuery]);
 
   const throttledUpdateAndShow = useThrottledCallbackIfVisible(
     useCallback(() => {
@@ -245,9 +331,9 @@ export function NonAggHeaderTrack({
         return;
       }
 
-      throttledUpdatePositions(referenceNs, visibleRange);
+      throttledUpdateDrawInfo(referenceNs, visibleRange);
       showNonAgg();
-    }, [showNonAgg, throttledUpdatePositions]),
+    }, [showNonAgg, throttledUpdateDrawInfo]),
     50,
     { leading: true, trailing: true },
   );
@@ -267,14 +353,14 @@ export function NonAggHeaderTrack({
     return () => {
       emitter.removeListener(drawEventType, throttledUpdateAndShow);
       throttledUpdateAndShow.cancel();
-      throttledUpdatePositions.cancel();
+      throttledUpdateDrawInfo.cancel();
       throttledRelativeTsQuery.cancel();
       unsubscribeRange();
     };
   }, [
     onRangeChange,
     throttledUpdateAndShow,
-    throttledUpdatePositions,
+    throttledUpdateDrawInfo,
     throttledRelativeTsQuery,
   ]);
 
@@ -285,8 +371,8 @@ export function NonAggHeaderTrack({
     if (referenceNs == null || !visibleRange || isAggregate(visibleRange)) {
       return;
     }
-    throttledUpdatePositions(referenceNs, visibleRange);
-  }, [throttledUpdatePositions, width]);
+    throttledUpdateDrawInfo(referenceNs, visibleRange);
+  }, [throttledUpdateDrawInfo, width]);
 
   if (drawInfo == null) return null;
 
@@ -321,25 +407,24 @@ interface TileProps {
  * Translate tile X position on pan.
  */
 function Tile({ tile, groupTier, slotTier }: TileProps) {
-  // When slots collapse to bars, give the reclaimed height to the group row.
-  const isBarOnly = slotTier === "barOnly";
-  const groupRowPx = isBarOnly
-    ? trackHeight - slotBorderHeight
-    : slotGroupRowHeight;
-  const slotRowPx = isBarOnly ? slotBorderHeight : slotNumberRowHeight;
-
   return (
     <Box
+      id={getTileElId(tile.idx)}
+      // Tier classes drive row heights + sub-element visibility via CSS, so the
+      // fast zoom/pan path can hide dropped elements imperatively (applyTierClasses)
+      // before the next render mounts/unmounts them.
+      className={clsx(slotTierClasses[slotTier], groupTierClasses[groupTier])}
       position="absolute"
       top="0"
       left="0"
       bottom="0"
       style={{
+        // initial widths; may be updated through el.style on range change
         width: `${tile.widthPx}px`,
         transform: `translateX(${tile.leftPx}px)`,
       }}
     >
-      <Box position="relative" width="100%" height={`${groupRowPx}px`}>
+      <Box className={styles.groupRow} position="relative" width="100%">
         {[...tile.slotGroups.entries()].map(([leaderSlot, group]) => (
           <SlotGroup
             key={leaderSlot}
@@ -352,7 +437,7 @@ function Tile({ tile, groupTier, slotTier }: TileProps) {
           />
         ))}
       </Box>
-      <Box position="relative" width="100%" height={`${slotRowPx}px`}>
+      <Box className={styles.slotRow} position="relative" width="100%">
         {tile.slots.map((slot) => (
           <Slot
             key={slot.slot}
@@ -462,7 +547,11 @@ const Slot = memo(function Slot({
           {slot}
         </Text>
       )}
-      {slotTier !== "barOnly" && <SlotStatus slot={slot} skipped={skipped} />}
+      {slotTier !== "barOnly" && (
+        <Flex className={styles.slotStatus} align="center">
+          <SlotStatus slot={slot} skipped={skipped} />
+        </Flex>
+      )}
     </Flex>
   );
 });

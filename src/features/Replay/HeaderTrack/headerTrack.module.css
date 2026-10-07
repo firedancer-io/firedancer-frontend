@@ -22,6 +22,40 @@
   }
 }
 
+.group-row {
+  height: 12px;
+}
+.slot-row {
+  height: 24px;
+}
+
+/* temporarily hide elements on pan / zoom, until react renders the updated tile props */
+.slot-tier-bar-only {
+  .group-row {
+    height: 33px;
+  }
+  .slot-row {
+    height: 3px;
+  }
+
+  .slot-number,
+  .slot-status {
+    display: none;
+  }
+}
+
+.slot-tier-status-bar {
+  .slot-number {
+    display: none;
+  }
+}
+
+.group-tier-icon-only {
+  .slot-group-name {
+    display: none;
+  }
+}
+
 .slot {
   position: absolute;
   top: 0;
