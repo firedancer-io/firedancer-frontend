@@ -336,6 +336,9 @@ export function useTiledQueries<Granularity extends string>({
     [getTileSizeNs, overscanTilesCount, getNewQueryId, dispatchSingleTileQuery],
   );
 
+  /**
+   * Mark tile associated with query ID as fetched, and return query info
+   */
   const markQueryComplete = useCallback(
     (queryId: number) => {
       const queryInfo = pendingQueriesRef.current.get(queryId);

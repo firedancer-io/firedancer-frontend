@@ -98,14 +98,11 @@ export function useAggShredsQuery(chartId: string) {
 
   useTimelineServerMessage(
     QUERY_KEY,
-    useCallback(
-      (message: { id: number; value: AggShreds }) => {
-        if (!markQueryComplete(message.id)) return;
+    (message: { id: number; value: AggShreds }) => {
+      if (!markQueryComplete(message.id)) return;
 
-        addAggShreds(message.value);
-      },
-      [addAggShreds, markQueryComplete],
-    ),
+      addAggShreds(message.value);
+    },
   );
 
   // trigger redraw if panning to already fetched data

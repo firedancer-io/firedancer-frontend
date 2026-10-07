@@ -21,6 +21,7 @@ import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import clsx from "clsx";
 import styles from "../track.module.css";
 import TrackControls from "../TrackControls.tsx";
+import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 
 const height = 300;
 const chartId = "shreds-track";
@@ -98,7 +99,7 @@ function ShredsTrack({
     renderActive();
   }, [renderActive, throttledRelativeTsQuery]);
 
-  const throttledDrawAgg = useThrottledCallback(
+  const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
@@ -144,6 +145,7 @@ function ShredsTrack({
     return () => {
       // TODO: handle non-agg shreds (clean up dirty slot tracking)
       aggEmitter.removeListener(drawEventType, throttledDrawAgg);
+      throttledRelativeTsQuery.cancel();
       unsubscribeRange();
       cleanUpRenderer();
       rendererRef.current = undefined;
@@ -153,6 +155,7 @@ function ShredsTrack({
     setUpContextListeners,
     getWasContextLost,
     throttledDrawAgg,
+    throttledRelativeTsQuery,
   ]);
 
   // handle chart resize

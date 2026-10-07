@@ -5,16 +5,13 @@ import type { AggGranularity, AggSlots } from "../../../api/types";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
 import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
 import { useTiledQueries } from "../useTiledQueries";
-import useAggSlotsQuery from "../useAggSlotsQuery";
-import type { TimelineQueryKey } from "../atoms";
+import { AGG_SLOTS_QUERY_KEY, useSlotsQuery } from "../useSlotsQuery";
 import {
   addAggSlotsAtom,
   deleteAggSlotsBucketsAtom,
   drawEventType,
   aggHeaderEmitterAtom,
-} from "./atoms";
-
-const QUERY_KEY = "query_agg_slots" satisfies TimelineQueryKey;
+} from "./aggAtoms";
 
 /**
  * At most, how many buckets should be visible
@@ -46,7 +43,7 @@ export function useAggHeaderQuery(chartId: string) {
   const addAggSlots = useSetAtom(addAggSlotsAtom);
   const deleteAggSlotsBuckets = useSetAtom(deleteAggSlotsBucketsAtom);
   const emitter = useAtomValue(aggHeaderEmitterAtom);
-  const slotsQuery = useAggSlotsQuery();
+  const slotsQuery = useSlotsQuery();
 
   const sendQuery = useCallback(
     (
@@ -80,7 +77,7 @@ export function useAggHeaderQuery(chartId: string) {
       chartId,
       getTileSizeNs,
       overscanTilesCount: OVERSCAN_TILES_COUNT,
-      queryKey: QUERY_KEY,
+      queryKey: AGG_SLOTS_QUERY_KEY,
       sendQuery,
       tileEvictionHighWatermark: TILE_EVICTION_HIGH_WATERMARK,
       tileEvictionLowWatermark: TILE_EVICTION_LOW_WATERMARK,
@@ -88,15 +85,12 @@ export function useAggHeaderQuery(chartId: string) {
     });
 
   useTimelineServerMessage(
-    QUERY_KEY,
-    useCallback(
-      (message: { id: number; value: AggSlots }) => {
-        if (!markQueryComplete(message.id)) return;
+    AGG_SLOTS_QUERY_KEY,
+    (message: { id: number; value: AggSlots }) => {
+      if (!markQueryComplete(message.id)) return;
 
-        addAggSlots(message.value);
-      },
-      [addAggSlots, markQueryComplete],
-    ),
+      addAggSlots(message.value);
+    },
   );
 
   // trigger redraw if panning to already fetched data

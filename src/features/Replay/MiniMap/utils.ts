@@ -107,8 +107,15 @@ export function drawMiniMap(
   referenceNs: bigint,
 ) {
   const { mesh } = rendererObj;
-  const { granularity, reference_ts_ns, start_slot, end_slot, skipped } =
-    newData;
+  const {
+    granularity,
+    reference_ts_ns,
+    start_slot,
+    end_slot,
+    skipped,
+    mine,
+    mine_skipped,
+  } = newData;
 
   if (newData.granularity !== rendererObj.meshReferences?.granularity) {
     // reset mesh on granularity change
@@ -161,6 +168,8 @@ export function drawMiniMap(
       start_slot[i],
       end_slot[i],
       skipped[i],
+      mine[i],
+      mine_skipped[i],
       minHeightRatio,
     );
 

@@ -25,7 +25,7 @@
 
 .skipped-slot {
   width: 100%;
-  background: #ff5353;
+  background: var(--epoch-skipped-slot-color);
   height: 3px;
   position: absolute;
   &:hover {

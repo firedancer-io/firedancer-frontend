@@ -830,6 +830,7 @@ function useUpdateAtoms() {
             case "query_agg_shreds":
             case "query_agg_revenue":
             case "query_agg_slots":
+            case "query_slots":
             case "query_txn_meta": {
               // listen in component
               break;
