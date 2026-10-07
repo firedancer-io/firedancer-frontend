@@ -3,11 +3,6 @@ import { useWebSocketSend } from "../../api/ws/utils";
 import type { AggGranularity } from "../../api/types";
 import type { NsTsRange } from "../WebGl/webglUtils";
 
-export enum StartQueryId {
-  MiniMap = 0,
-  HeaderTrack = 1,
-}
-
 export default function useAggSlotsQuery() {
   const wsSend = useWebSocketSend();
 

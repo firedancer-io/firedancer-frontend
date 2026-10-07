@@ -5,13 +5,16 @@ import type { AggGranularity, AggSlots } from "../../../api/types";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
 import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
 import { useTiledQueries } from "../useTiledQueries";
-import useAggSlotsQuery, { StartQueryId } from "../useAggSlotsQuery";
+import useAggSlotsQuery from "../useAggSlotsQuery";
+import type { TimelineQueryKey } from "../atoms";
 import {
   addAggSlotsAtom,
   deleteAggSlotsBucketsAtom,
   drawEventType,
   aggHeaderEmitterAtom,
 } from "./atoms";
+
+const QUERY_KEY = "query_agg_slots" satisfies TimelineQueryKey;
 
 /**
  * At most, how many buckets should be visible
@@ -76,7 +79,7 @@ export function useAggHeaderQuery(chartId: string) {
     chartId,
     getTileSizeNs,
     overscanTilesCount: OVERSCAN_TILES_COUNT,
-    startQueryId: StartQueryId.HeaderTrack,
+    queryKey: QUERY_KEY,
     sendQuery,
     tileEvictionHighWatermark: TILE_EVICTION_HIGH_WATERMARK,
     tileEvictionLowWatermark: TILE_EVICTION_LOW_WATERMARK,
@@ -84,13 +87,12 @@ export function useAggHeaderQuery(chartId: string) {
   });
 
   useTimelineServerMessage(
-    "query_agg_slots",
+    QUERY_KEY,
     useCallback(
       (message: { id: number; value: AggSlots }) => {
-        // ignore other requesters sharing this channel (e.g. the mini map)
-        if (message.id < StartQueryId.HeaderTrack) return;
+        if (!markQueryComplete(message.id)) return;
+
         addAggSlots(message.value);
-        markQueryComplete(message.id);
       },
       [addAggSlots, markQueryComplete],
     ),
