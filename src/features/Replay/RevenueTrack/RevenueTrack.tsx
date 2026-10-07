@@ -22,6 +22,8 @@ import {
   drawEventType,
   aggRevenueEmitterAtom,
 } from "./atoms.ts";
+import clsx from "clsx";
+import styles from "../track.module.css";
 
 const height = 150;
 const store = getDefaultStore();
@@ -181,23 +183,12 @@ function RevenueTrack({
   }, [renderActive, width, isInitialized]);
 
   return (
-    <div
-      style={{
-        position: "relative",
-        width: "100%",
-        height: `${height}px`,
-      }}
-    >
+    <div className={styles.trackContainer} style={{ height: `${height}px` }}>
       <div
         ref={containerRef}
-        className={markerLinesClassName}
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-        }}
+        className={clsx(styles.trackCanvasContainer, markerLinesClassName)}
       />
-      <div style={{ position: "absolute", top: 0, left: "5px" }}>
+      <div className={styles.bucketSizeLabel}>
         Bucket size: {granularity ?? "-"}
       </div>
     </div>
