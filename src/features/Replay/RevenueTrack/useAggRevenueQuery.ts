@@ -100,14 +100,11 @@ export default function useAggRevenueQuery() {
 
   useTimelineServerMessage(
     QUERY_KEY,
-    useCallback(
-      (message: { id: number; value: AggRevenue }) => {
-        if (!markQueryComplete(message.id)) return;
+    (message: { id: number; value: AggRevenue }) => {
+      if (!markQueryComplete(message.id)) return;
 
-        addAggRevenue(message.value);
-      },
-      [addAggRevenue, markQueryComplete],
-    ),
+      addAggRevenue(message.value);
+    },
   );
 
   // trigger redraw if panning to already fetched data
