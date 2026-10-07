@@ -1,7 +1,7 @@
 import { getDefaultStore } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
 import { type ExplorableChartProps, type MarkerLinesProps } from "../const.ts";
-import { useThrottledCallback } from "use-debounce";
+import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -22,6 +22,8 @@ import {
   drawEventType,
   aggRevenueEmitterAtom,
 } from "./atoms.ts";
+import clsx from "clsx";
+import styles from "../track.module.css";
 
 const height = 150;
 const store = getDefaultStore();
@@ -60,7 +62,7 @@ function RevenueTrack({
     remount,
   });
 
-  const throttledRelativeTsQuery = useThrottledCallback(
+  const throttledRelativeTsQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
       if (isAggregate(visibleRange)) {
         const queryGranularity = getGranularity(
@@ -107,7 +109,7 @@ function RevenueTrack({
     renderActive();
   }, [renderActive, throttledRelativeTsQuery]);
 
-  const throttledDrawAgg = useThrottledCallback(
+  const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
@@ -156,6 +158,9 @@ function RevenueTrack({
     // cleanup
     return () => {
       aggEmitter.removeListener(drawEventType, throttledDrawAgg);
+      // cancel pending trailing timers so they don't accumulate across remounts
+      throttledDrawAgg.cancel();
+      throttledRelativeTsQuery.cancel();
       unsubscribeRange();
       cleanUpRenderer();
       rendererRef.current = undefined;
@@ -167,6 +172,7 @@ function RevenueTrack({
     setUpContextListeners,
     getWasContextLost,
     throttledDrawAgg,
+    throttledRelativeTsQuery,
   ]);
 
   // handle chart resize
@@ -177,23 +183,12 @@ function RevenueTrack({
   }, [renderActive, width, isInitialized]);
 
   return (
-    <div
-      style={{
-        position: "relative",
-        width: "100%",
-        height: `${height}px`,
-      }}
-    >
+    <div className={styles.trackContainer} style={{ height: `${height}px` }}>
       <div
         ref={containerRef}
-        className={markerLinesClassName}
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-        }}
+        className={clsx(styles.trackCanvasContainer, markerLinesClassName)}
       />
-      <div style={{ position: "absolute", top: 0, left: "5px" }}>
+      <div className={styles.bucketSizeLabel}>
         Bucket size: {granularity ?? "-"}
       </div>
     </div>

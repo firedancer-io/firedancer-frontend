@@ -1,28 +1,26 @@
 import { useCallback } from "react";
-import { ascBucketGranularities, msBucketSizes, nsBucketSizes } from "../const";
-import type { AggGranularity, AggRevenue } from "../../../api/types";
-import { useWebSocketSend } from "../../../api/ws/utils";
-import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
-import {
-  addAggRevenueAtom,
-  deleteAggRevenueBucketsAtom,
-  drawEventType,
-  aggRevenueEmitterAtom,
-} from "./atoms";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useTiledQueries } from "../useTiledQueries";
+import { ascBucketGranularities, msBucketSizes, nsBucketSizes } from "../const";
+import type { AggGranularity, AggSlots } from "../../../api/types";
+import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
 import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
+import { useTiledQueries } from "../useTiledQueries";
+import useAggSlotsQuery from "../useAggSlotsQuery";
 import type { TimelineQueryKey } from "../atoms";
+import {
+  addAggSlotsAtom,
+  deleteAggSlotsBucketsAtom,
+  drawEventType,
+  aggHeaderEmitterAtom,
+} from "./atoms";
 
-const QUERY_KEY = "query_agg_revenue" satisfies TimelineQueryKey;
-
-const chartId = "revenue-track";
+const QUERY_KEY = "query_agg_slots" satisfies TimelineQueryKey;
 
 /**
  * At most, how many buckets should be visible
  */
 const BUCKET_COUNT_THRESHOLD = 1000;
-export function getGranularity(windowSizeMs: number) {
+export function getAggGranularity(windowSizeMs: number) {
   return (
     ascBucketGranularities.find((g) => {
       return windowSizeMs < BUCKET_COUNT_THRESHOLD * msBucketSizes[g];
@@ -44,11 +42,11 @@ export function getTileSizeNs(granularity: AggGranularity) {
   return BigInt(BUCKETS_PER_TILE) * nsBucketSizes[granularity];
 }
 
-export default function useAggRevenueQuery() {
-  const addAggRevenue = useSetAtom(addAggRevenueAtom);
-  const deleteAggRevenueBuckets = useSetAtom(deleteAggRevenueBucketsAtom);
-  const emitter = useAtomValue(aggRevenueEmitterAtom);
-  const wsSend = useWebSocketSend();
+export function useAggHeaderQuery(chartId: string) {
+  const addAggSlots = useSetAtom(addAggSlotsAtom);
+  const deleteAggSlotsBuckets = useSetAtom(deleteAggSlotsBucketsAtom);
+  const emitter = useAtomValue(aggHeaderEmitterAtom);
+  const slotsQuery = useAggSlotsQuery();
 
   const sendQuery = useCallback(
     (
@@ -57,18 +55,9 @@ export default function useAggRevenueQuery() {
       endNs: bigint,
       granularity: AggGranularity,
     ) => {
-      wsSend({
-        topic: "timeline",
-        key: QUERY_KEY,
-        id: queryId,
-        params: {
-          start_ns: startNs.toString(),
-          end_ns: endNs.toString(),
-          granularity,
-        },
-      });
+      slotsQuery(queryId, [startNs, endNs], granularity);
     },
-    [wsSend],
+    [slotsQuery],
   );
 
   const onEvictTiles = useCallback(
@@ -81,9 +70,9 @@ export default function useAggRevenueQuery() {
         }
         return acc;
       }, []);
-      deleteAggRevenueBuckets(granularity, bucketIdxs);
+      deleteAggSlotsBuckets(granularity, bucketIdxs);
     },
-    [deleteAggRevenueBuckets],
+    [deleteAggSlotsBuckets],
   );
 
   const { queryRange, markQueryComplete } = useTiledQueries<AggGranularity>({
@@ -100,12 +89,12 @@ export default function useAggRevenueQuery() {
   useTimelineServerMessage(
     QUERY_KEY,
     useCallback(
-      (message: { id: number; value: AggRevenue }) => {
+      (message: { id: number; value: AggSlots }) => {
         if (!markQueryComplete(message.id)) return;
 
-        addAggRevenue(message.value);
+        addAggSlots(message.value);
       },
-      [addAggRevenue, markQueryComplete],
+      [addAggSlots, markQueryComplete],
     ),
   );
 

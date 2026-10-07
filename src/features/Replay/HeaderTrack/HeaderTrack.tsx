@@ -1,45 +1,42 @@
 import { getDefaultStore } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
 import { type ExplorableChartProps, type MarkerLinesProps } from "../const.ts";
-import { useThrottledCallback } from "use-debounce";
+import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import {
-  drawAggShreds,
+  drawAggSlots,
   isAggregate,
   moveAggCamera,
   setUpRenderers,
 } from "./utils.ts";
-// TODO: handle non-agg shreds (minDirtySlotByChartAtom dirty-slot tracking)
-import { type RendererObj } from "./const.ts";
-import { useAggShredsQuery, getAggGranularity } from "./useAggShredsQuery.ts";
+import { trackHeight, type RendererObj } from "./const.ts";
+import { useAggHeaderQuery, getAggGranularity } from "./useAggHeaderQuery.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
-import { aggShredsAtom, drawEventType, aggShredsEmitterAtom } from "./atoms.ts";
+import { aggSlotsAtom, drawEventType, aggHeaderEmitterAtom } from "./atoms.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import clsx from "clsx";
 import styles from "../track.module.css";
 
-const height = 300;
-const chartId = "shreds-track";
+const chartId = "header-track";
 const store = getDefaultStore();
 
-interface ShredsTrackProps
+interface HeaderTrackProps
   extends WebGlRemountProps,
     ExplorableChartProps,
     MarkerLinesProps {
   width: number;
 }
 
-function ShredsTrack({
+function HeaderTrack({
   remount,
   setUpExploreListeners,
   markerLinesClassName,
   width,
-}: ShredsTrackProps) {
+}: HeaderTrackProps) {
   const [isInitialized, setIsInitialized] = useState(false);
-  // TODO: handle non-agg shreds granularity
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
   );
@@ -51,9 +48,9 @@ function ShredsTrack({
     remount,
   });
 
-  const aggQuery = useAggShredsQuery(chartId);
+  const aggQuery = useAggHeaderQuery(chartId);
 
-  const throttledRelativeTsQuery = useThrottledCallback(
+  const throttledRelativeTsQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
       if (isAggregate(visibleRange)) {
         const queryGranularity = getAggGranularity(
@@ -93,21 +90,20 @@ function ShredsTrack({
     if (isAggregate(visibleRange)) {
       moveAggCamera(rendererRef.current.aggResources, visibleRange);
     } else {
-      // TODO: handle non-agg shreds
+      // TODO: handle non-agg slots
     }
 
     throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
     renderActive();
   }, [renderActive, throttledRelativeTsQuery]);
 
-  const throttledDrawAgg = useThrottledCallback(
+  const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
-      const aggShreds = store.get(aggShredsAtom);
+      const aggSlots = store.get(aggSlotsAtom);
       if (!rendererRef.current || !visibleRange || referenceNs == null) return;
-
-      drawAggShreds(rendererRef.current, referenceNs, visibleRange, aggShreds);
+      drawAggSlots(rendererRef.current, referenceNs, visibleRange, aggSlots);
       renderActive();
     }, [renderActive]),
     50,
@@ -120,14 +116,11 @@ function ShredsTrack({
 
     const rendererObj = setUpRenderers(
       0,
-      height,
+      trackHeight,
       setUpContextListeners,
       getWasContextLost,
     );
     if (!rendererObj) return;
-
-    // TODO: handle non-agg shreds (set up dirty slot tracking via
-    // minDirtySlotByChartAtom)
 
     rendererRef.current = rendererObj;
     containerRef.current.replaceChildren(rendererObj.renderer.domElement);
@@ -135,8 +128,9 @@ function ShredsTrack({
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
     const cleanUpExploreListeners = setUpExploreListeners(containerRef.current);
     const cleanUpRenderer = rendererRef.current.cleanUp;
-    // listen for agg shreds draw events
-    const aggEmitter = store.get(aggShredsEmitterAtom);
+
+    // listen for agg slots draw events
+    const aggEmitter = store.get(aggHeaderEmitterAtom);
     aggEmitter.addListener(drawEventType, throttledDrawAgg);
 
     // trigger initial draw
@@ -145,8 +139,10 @@ function ShredsTrack({
 
     // cleanup
     return () => {
-      // TODO: handle non-agg shreds (clean up dirty slot tracking)
       aggEmitter.removeListener(drawEventType, throttledDrawAgg);
+      // cancel pending trailing timers so they don't accumulate across remounts
+      throttledDrawAgg.cancel();
+      throttledRelativeTsQuery.cancel();
       unsubscribeRange();
       cleanUpRenderer();
       rendererRef.current = undefined;
@@ -158,17 +154,21 @@ function ShredsTrack({
     setUpContextListeners,
     getWasContextLost,
     throttledDrawAgg,
+    throttledRelativeTsQuery,
   ]);
 
   // handle chart resize
   useLayoutEffect(() => {
     if (!isInitialized || !rendererRef.current) return;
-    rendererRef.current.renderer.setSize(width, height);
+    rendererRef.current.renderer.setSize(width, trackHeight);
     renderActive();
-  }, [renderActive, width, isInitialized]);
+  }, [isInitialized, renderActive, width]);
 
   return (
-    <div className={styles.trackContainer} style={{ height: `${height}px` }}>
+    <div
+      className={styles.trackContainer}
+      style={{ height: `${trackHeight}px` }}
+    >
       <div
         ref={containerRef}
         className={clsx(styles.trackCanvasContainer, markerLinesClassName)}
@@ -180,5 +180,5 @@ function ShredsTrack({
   );
 }
 
-const ShredsTrackWithRemount = withWebGlRemount(ShredsTrack);
-export default ShredsTrackWithRemount;
+const HeaderTrackWithRemount = withWebGlRemount(HeaderTrack);
+export default HeaderTrackWithRemount;

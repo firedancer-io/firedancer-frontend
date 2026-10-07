@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, getDefaultStore } from "jotai";
 import type { NsTsRange } from "../WebGl/webglUtils";
+import { reserveNextQueryIdAtom, type TimelineQueryKey } from "./atoms";
 
 interface TileStates {
   fetched: Set<number>;
   pending: Set<number>;
 }
 
-interface ChartQueryState {
-  /** granularity -> tile states */
-  tileStates: Map<string, TileStates>;
-  nextQueryId: number;
-}
+/** granularity -> tile states */
+type ChartQueryState = Map<string, TileStates>;
 
 const store = getDefaultStore();
 const tileQueryStateByChartIdAtom = atom<Map<string, ChartQueryState>>(
@@ -25,6 +23,8 @@ interface UseTiledQueriesOpts<Granularity extends string> {
    * Extra tiles to be fetched on either side of the query range
    */
   overscanTilesCount: number;
+  /** query key used to reserve a unique query ID */
+  queryKey: TimelineQueryKey;
   sendQuery: (
     queryId: number,
     startNs: bigint,
@@ -53,6 +53,7 @@ export function useTiledQueries<Granularity extends string>({
   chartId,
   getTileSizeNs,
   overscanTilesCount,
+  queryKey,
   sendQuery,
   tileEvictionHighWatermark,
   tileEvictionLowWatermark,
@@ -73,7 +74,7 @@ export function useTiledQueries<Granularity extends string>({
       const byChartId = store.get(tileQueryStateByChartIdAtom);
       let chartState = byChartId.get(chartId);
       if (!chartState) {
-        chartState = { tileStates: new Map(), nextQueryId: 0 };
+        chartState = new Map();
         byChartId.set(chartId, chartState);
       }
       return chartState;
@@ -83,7 +84,7 @@ export function useTiledQueries<Granularity extends string>({
      * Get or create tile states for this granularity
      */
     const getTileStates = (granularity: Granularity): TileStates => {
-      const { tileStates } = getChartState();
+      const tileStates = getChartState();
       let states = tileStates.get(granularity);
       if (!states) {
         states = {
@@ -110,21 +111,20 @@ export function useTiledQueries<Granularity extends string>({
         return;
       }
 
-      const chartState = getChartState();
-      const queryId = chartState.nextQueryId++;
+      const queryId = store.set(reserveNextQueryIdAtom, queryKey);
       tileQueryStates.pending.add(tileIdx);
       pendingQueriesRef.current.set(queryId, { tileIdx, granularity });
       return queryId;
     };
 
     return { getChartState, getTileStates, getNewQueryId };
-  }, [chartId]);
+  }, [chartId, queryKey]);
 
   // On unmount, abandon in-flight queries
   useEffect(() => {
     const pendingQueries = pendingQueriesRef.current;
     return () => {
-      for (const { pending } of getChartState().tileStates.values()) {
+      for (const { pending } of getChartState().values()) {
         pending.clear();
       }
       pendingQueries.clear();
@@ -264,8 +264,16 @@ export function useTiledQueries<Granularity extends string>({
   );
 
   const markQueryComplete = useCallback(
-    (queryId: number) => {
+    (
+      queryId: number,
+    ):
+      | {
+          tileIdx: number;
+          granularity: Granularity;
+        }
+      | undefined => {
       const queryInfo = pendingQueriesRef.current.get(queryId);
+      // query id was not found
       if (queryInfo == null) return;
 
       const { granularity, tileIdx } = queryInfo;
@@ -277,6 +285,7 @@ export function useTiledQueries<Granularity extends string>({
 
       // evict if needed
       evictTilesIfNeeded(granularity);
+      return queryInfo;
     },
     [evictTilesIfNeeded, getTileStates],
   );
