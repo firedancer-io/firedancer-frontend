@@ -18,7 +18,7 @@ import {
 } from "./atoms.ts";
 import MiniMap from "./MiniMap/MiniMap.tsx";
 import useAggRevenueQuery from "./RevenueTrack/useAggRevenueQuery.ts";
-import HeaderTrack from "./HeaderTrack/HeaderTrack.tsx";
+import HeaderTrack from "./HeaderTrack/index.tsx";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 import ExecrpTrack from "./ExecrpTrack/ExecrpTrack.tsx";
 import { useTxnTimestampsCache } from "./ExecrpTrack/useTxnTimestampsCache.ts";

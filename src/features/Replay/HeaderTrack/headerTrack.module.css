@@ -1,0 +1,83 @@
+.header-track {
+  .agg-container {
+    display: none;
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .non-agg-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  &.show-agg {
+    .agg-container {
+      display: block;
+    }
+    .non-agg-container {
+      display: none;
+    }
+  }
+}
+
+.slot {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border: 1px solid var(--header-slot-border-color);
+  /* Colored bar sits on the bottom of the slot */
+  border-bottom: 3px solid;
+  opacity: 0.85;
+}
+
+.group0 {
+  border-bottom-color: var(--header-slot-group-color-0);
+}
+.group1 {
+  border-bottom-color: var(--header-slot-group-color-1);
+}
+.group2 {
+  border-bottom-color: var(--header-slot-group-color-2);
+}
+.group3 {
+  border-bottom-color: var(--header-slot-group-color-3);
+}
+
+.skipped {
+  border-bottom-color: var(--header-skipped-slot-border-color);
+  border-left-color: var(--header-skipped-slot-border-color);
+  border-right-color: var(--header-skipped-slot-border-color);
+  color: var(--header-skipped-slot-font-color);
+}
+
+.slot-number {
+  font-size: 12px;
+  direction: rtl;
+  min-width: 0;
+}
+
+.slot-group-label {
+  box-sizing: border-box;
+  opacity: 0.85;
+  border: 1px solid var(--header-slot-border-color);
+  background: var(--slot-details-background-color);
+
+  &.skipped {
+    border-color: var(--header-skipped-group-border-color);
+    background: var(--header-skipped-group-background);
+  }
+
+  &.mine {
+    border-top-color: var(--header-mine-group-border-color);
+  }
+
+  .slot-group-name {
+    font-size: 8px;
+    color: var(--header-label-text-color);
+  }
+}
