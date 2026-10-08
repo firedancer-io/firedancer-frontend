@@ -24,12 +24,16 @@ export const [nextQueryIdByKeyAtom, reserveNextQueryIdAtom] = (function () {
 })();
 
 export const {
+  isLiveAtom,
   isInitializedAtom,
   referenceNsAtom,
   initializeVisibleRangeAtom,
   visibleRangeAtom,
   worldRangeAtom,
+  selectedMsAtom,
 } = (function getReplayChartAtoms() {
+  const _isLiveAtom = atom(true);
+  const _selectedMsAtom = atom<number | undefined>(undefined);
   const referenceNsAtom = atom((get) => get(startupTimeAtom)?.startupTimeNanos);
   const visibleRangeAtom = atom<TsRange | undefined>(undefined);
 
@@ -49,11 +53,36 @@ export const {
     return [0, worldEnd] satisfies TsRange;
   });
 
+  const liveVisibleRangeAtom = atom((get) => {
+    const visibleRange = get(visibleRangeAtom);
+    const worldRange = get(worldRangeAtom);
+    if (!visibleRange || !worldRange) return;
+
+    const visibleWindowSize = visibleRange[1] - visibleRange[0];
+
+    // live mode: show same visible window size but at world end
+    return [worldRange[1] - visibleWindowSize, worldRange[1]] satisfies TsRange;
+  });
+
+  const isLiveAtom = atom(
+    (get) => get(_isLiveAtom),
+    (get, set, isLive: boolean) => {
+      set(_isLiveAtom, (prev) => {
+        if (prev && !isLive) {
+          // store the current live visible range as the static visible range
+          set(visibleRangeAtom, get(liveVisibleRangeAtom));
+        }
+        return isLive;
+      });
+    },
+  );
+
   const isInitializedAtom = atom((get) => {
     return !!get(worldRangeAtom);
   });
 
   return {
+    isLiveAtom,
     isInitializedAtom,
     referenceNsAtom,
     worldRangeAtom,
@@ -66,12 +95,33 @@ export const {
 
       set(visibleRangeAtom, (prev) => {
         if (prev) return prev;
-        return getInitVisibleRange(get(selectedMsAtom), worldRange);
+        return getInitVisibleRange(get(_selectedMsAtom), worldRange);
       });
     }),
+    /**
+     * selected ts in ms. Assigning a value exits live mode.
+     */
+    selectedMsAtom: atom(
+      (get) => get(_selectedMsAtom),
+      (_, set, value: number | undefined) => {
+        if (value != null) set(isLiveAtom, false);
+        set(_selectedMsAtom, value);
+      },
+    ),
+    /**
+     * get static visible range or live visible range
+     */
     visibleRangeAtom: atom(
-      (get) => get(visibleRangeAtom),
+      (get) => {
+        const isLive = get(isLiveAtom);
+        if (isLive) {
+          return get(liveVisibleRangeAtom);
+        }
+        return get(visibleRangeAtom);
+      },
       (_, set, value: TsRange) => {
+        // a manual range change (pan/zoom) exits live mode
+        set(isLiveAtom, false);
         set(visibleRangeAtom, (prev) => {
           if (prev && prev[0] === value[0] && prev[1] === value[1]) return prev;
           return value;
@@ -80,5 +130,3 @@ export const {
     ),
   };
 })();
-
-export const selectedMsAtom = atom<number | undefined>();
