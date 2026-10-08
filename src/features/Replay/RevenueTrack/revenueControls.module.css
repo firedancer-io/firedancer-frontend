@@ -1,0 +1,8 @@
+.controls {
+  font-size: 12px;
+  color: var(--replay-primary-text-color);
+}
+
+.scale-trigger {
+  min-width: 4rem;
+}

@@ -5,6 +5,7 @@ import styles from "./chart.module.css";
 import type { MarkerLinesProps } from "./const.ts";
 import VisibleRangeInfo from "./VisibleRangeInfo.tsx";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
+import { useTxnMetaCache } from "./RevenueTrack/txnMeta/useTxnMetaCache.ts";
 import { RevenueType } from "../../api/entities.ts";
 import { useExplorableChart } from "./useExplorableChart.ts";
 import { getDefaultStore, useAtomValue } from "jotai";
@@ -99,6 +100,9 @@ export default function Chart() {
 
   // shared query cache if there are multiple revenue tracks
   const aggRevenueQuery = useAggRevenueQuery();
+
+  // Drive the shared txn meta cache used by the revenue tracks' non-agg view
+  useTxnMetaCache();
 
   if (!isInitialized) return <Spinner />;
 
