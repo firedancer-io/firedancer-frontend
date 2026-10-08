@@ -255,6 +255,17 @@ export function useTiledQueries<Granularity extends string>({
         return;
       }
 
+      // fetch tiles closest to the visible center first
+      const visibleCenterTile =
+        (getStartTileIdx(visibleStartNs, tileSizeNs) +
+          getEndTileIdx(visibleEndNs, tileSizeNs)) /
+        2;
+      toFetch.sort(
+        (a, b) =>
+          Math.abs(a.tileIdx - visibleCenterTile) -
+          Math.abs(b.tileIdx - visibleCenterTile),
+      );
+
       // fetch one tile at a time
       for (const { queryId, tileIdx } of toFetch) {
         dispatchSingleTileQuery(granularity, queryId, tileIdx);
