@@ -151,7 +151,7 @@ export function drawMiniMap(
   // from the mesh reference
   let rectIdx = startBucketIdx * colorStates.length;
   const endRectIdx = rectIdx + start_slot.length * colorStates.length;
-  ensureCapacity(mesh, endRectIdx + 1);
+  ensureRectCapacity(mesh, endRectIdx + 1);
 
   const startX =
     // use bigint to prevent ms rounding imprecision
