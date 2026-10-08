@@ -1,13 +1,13 @@
 import type * as THREE from "three";
 import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
+import type { NonAggRendererResources } from "../../Overview/ShredsProgression/WebGl/chartUtils";
 
-// TODO: set to reasonable transition value
-export const SHREDS_AGG_THRESHOLD_MS = 0;
+export const SHREDS_AGG_THRESHOLD_MS = 180_000;
 
 export type RendererObj = {
   renderer: THREE.WebGLRenderer;
   aggResources: AggRendererResources;
-  // TODO: add nonAggResources
+  nonAggResources: NonAggRendererResources;
   cleanUp: () => void;
 };
 

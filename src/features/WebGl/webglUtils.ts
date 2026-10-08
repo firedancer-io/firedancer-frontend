@@ -17,6 +17,15 @@ export type RectMesh = {
   count: number;
   /** optionally store mesh positions relative to referenceX. This allows GPU to see small coordinates */
   referenceX: number | undefined;
+  /** slot number this mesh currently holds (set by drawShreds). */
+  slotNumber?: number;
+  /**
+   * the data source this mesh currently holds (set by drawShreds). Used by the
+   * non-agg shared pool to keep a distinct mesh per (slot, granularity) so a
+   * slot's shred and fec geometry don't collide on the same mesh. Left undefined
+   * by the Overview live chart, which keys meshes by slot number only.
+   */
+  meshSource?: string;
 };
 
 const vertexShader = /* glsl */ `

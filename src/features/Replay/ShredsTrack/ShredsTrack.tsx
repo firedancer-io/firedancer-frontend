@@ -1,4 +1,4 @@
-import { getDefaultStore } from "jotai";
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
 import { type ExplorableChartProps, type MarkerLinesProps } from "../const.ts";
 import { useThrottledCallback } from "use-debounce";
@@ -6,17 +6,30 @@ import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import {
+  convertToShredsRange,
   drawAggShreds,
+  drawNonAggShreds,
   isAggregate,
   moveAggCamera,
+  moveNonAggCamera,
   setUpRenderers,
 } from "./utils.ts";
-// TODO: handle non-agg shreds (minDirtySlotByChartAtom dirty-slot tracking)
 import { type RendererObj } from "./const.ts";
 import { useAggShredsQuery, getAggGranularity } from "./useAggShredsQuery.ts";
-import type { AggGranularity } from "../../../api/types.ts";
+import {
+  getNonAggGranularity,
+  useNonAggShredsQuery,
+} from "./useNonAggShredsQuery.ts";
+import type { AggGranularity, ShredsGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
-import { aggShredsAtom, drawEventType, aggShredsEmitterAtom } from "./atoms.ts";
+import {
+  aggShredsAtom,
+  drawEventType,
+  aggShredsEmitterAtom,
+  timelineShredsAtoms,
+  timelineFecShredsAtoms,
+} from "./atoms.ts";
+import { minDirtySlotByChartAtom } from "../../Overview/ShredsProgression/atoms.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import clsx from "clsx";
 import styles from "../track.module.css";
@@ -40,19 +53,30 @@ function ShredsTrack({
   width,
 }: ShredsTrackProps) {
   const [isInitialized, setIsInitialized] = useState(false);
-  // TODO: handle non-agg shreds granularity
-  const [granularity, setGranularity] = useState<AggGranularity | undefined>(
-    undefined,
-  );
+  const [granularity, setGranularity] = useState<
+    AggGranularity | ShredsGranularity | undefined
+  >(undefined);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<RendererObj | undefined>();
+  // active non-agg granularity, kept in a ref so the throttled draw/camera
+  // closures always read the latest without re-creating the callback
+  const nonAggGranularityRef = useRef<ShredsGranularity>(
+    getNonAggGranularity(0),
+  );
 
   const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
     remount,
   });
 
   const aggQuery = useAggShredsQuery(chartId);
+  const { query: nonAggQuery, hasPendingTiles } = useNonAggShredsQuery(chartId);
+
+  // non-agg data updates drive redraws (parallel to the agg emitter)
+  const shredLastUpdateTs = useAtomValue(timelineShredsAtoms.lastUpdateTs);
+  const fecLastUpdateTs = useAtomValue(timelineFecShredsAtoms.lastUpdateTs);
+
+  const setMinDirtySlotByChart = useSetAtom(minDirtySlotByChartAtom);
 
   const throttledRelativeTsQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
@@ -63,8 +87,12 @@ function ShredsTrack({
         aggQuery(referenceNs, visibleRange, worldRange, queryGranularity);
         setGranularity(queryGranularity);
       } else {
-        // TODO: non-aggregate query
-        setGranularity(undefined);
+        const queryGranularity = getNonAggGranularity(
+          visibleRange[1] - visibleRange[0],
+        );
+        nonAggQuery(referenceNs, visibleRange, worldRange, queryGranularity);
+        nonAggGranularityRef.current = queryGranularity;
+        setGranularity(queryGranularity);
       }
     },
     100,
@@ -73,11 +101,47 @@ function ShredsTrack({
 
   const renderActive = useCallback(() => {
     if (!rendererRef.current) return;
-    const { renderer, aggResources } = rendererRef.current;
-    // TODO: add non-aggregate resources
-    const { camera, scene } = aggResources;
+    const { renderer, aggResources, nonAggResources } = rendererRef.current;
+    const visibleRange = store.get(visibleRangeAtom);
+    if (!visibleRange) return;
+
+    const { camera, scene } = isAggregate(visibleRange)
+      ? aggResources
+      : nonAggResources;
     renderer.render(scene, camera);
   }, []);
+
+  // The actual non-agg draw. Extracted so it can run either throttled (on data
+  // update) or synchronously (on range change / granularity switch, where the
+  // shared mesh pool must be redrawn against the new reference in the same frame).
+  const runDrawNonAgg = useCallback(
+    (visibleRange: TsRange, referenceNs: bigint) => {
+      if (!rendererRef.current) return;
+
+      const nonAggGranularity = nonAggGranularityRef.current;
+      const shredsVisibleRange = convertToShredsRange(
+        visibleRange,
+        referenceNs,
+        nonAggGranularity,
+      );
+      if (!shredsVisibleRange) return;
+
+      const { camera } = rendererRef.current.nonAggResources;
+
+      // Move camera now because reference ts may have been missing before first data
+      moveNonAggCamera(camera, visibleRange, referenceNs, nonAggGranularity);
+
+      drawNonAggShreds(
+        rendererRef.current,
+        nonAggGranularity,
+        shredsVisibleRange,
+        [0, width],
+        chartId,
+        hasPendingTiles(),
+      );
+    },
+    [hasPendingTiles, width],
+  );
 
   /**
    * Update camera and query data for new range
@@ -90,16 +154,21 @@ function ShredsTrack({
     const visibleRange = store.get(visibleRangeAtom);
     if (referenceNs == null || !visibleRange || !worldRange) return;
 
+    throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
+
     // Move camera before querying, because query may trigger immediate draw if data is already available
     if (isAggregate(visibleRange)) {
       moveAggCamera(rendererRef.current.aggResources, visibleRange);
     } else {
-      // TODO: handle non-agg shreds
+      // Order matters: the query above marks tiles pending synchronously, THEN
+      // we redraw. The redraw reads hasPendingTiles() to gate hiding of
+      // incomplete slots — drawing before querying would read the previous
+      // (settled) state and let an incomplete slot paint a bar to the edge.
+      runDrawNonAgg(visibleRange, referenceNs);
     }
 
-    throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
     renderActive();
-  }, [renderActive, throttledRelativeTsQuery]);
+  }, [renderActive, runDrawNonAgg, throttledRelativeTsQuery]);
 
   const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
@@ -111,6 +180,21 @@ function ShredsTrack({
       drawAggShreds(rendererRef.current, referenceNs, visibleRange, aggShreds);
       renderActive();
     }, [renderActive]),
+    50,
+    { leading: true, trailing: true },
+  );
+
+  // redraw non-agg track when shred/fec data updates (mirrors throttledDrawAgg)
+  const throttledDrawNonAgg = useThrottledCallbackIfVisible(
+    useCallback(() => {
+      const referenceNs = store.get(referenceNsAtom);
+      const visibleRange = store.get(visibleRangeAtom);
+      if (!rendererRef.current || !visibleRange || referenceNs == null) return;
+      if (isAggregate(visibleRange)) return;
+
+      runDrawNonAgg(visibleRange, referenceNs);
+      renderActive();
+    }, [renderActive, runDrawNonAgg]),
     50,
     { leading: true, trailing: true },
   );
@@ -127,8 +211,11 @@ function ShredsTrack({
     );
     if (!rendererObj) return;
 
-    // TODO: handle non-agg shreds (set up dirty slot tracking via
-    // minDirtySlotByChartAtom)
+    // setup dirty slot tracking (trigger draw of every slot)
+    setMinDirtySlotByChart((prev) => {
+      prev.set(chartId, -Infinity);
+      return prev;
+    });
 
     rendererRef.current = rendererObj;
     containerRef.current.replaceChildren(rendererObj.renderer.domElement);
@@ -146,7 +233,10 @@ function ShredsTrack({
 
     // cleanup
     return () => {
-      // TODO: handle non-agg shreds (clean up dirty slot tracking)
+      setMinDirtySlotByChart((prev) => {
+        prev.delete(chartId);
+        return prev;
+      });
       aggEmitter.removeListener(drawEventType, throttledDrawAgg);
       throttledRelativeTsQuery.cancel();
       unsubscribeRange();
@@ -161,6 +251,7 @@ function ShredsTrack({
     getWasContextLost,
     throttledDrawAgg,
     throttledRelativeTsQuery,
+    setMinDirtySlotByChart,
   ]);
 
   // handle chart resize
@@ -169,6 +260,12 @@ function ShredsTrack({
     rendererRef.current.renderer.setSize(width, height);
     renderActive();
   }, [renderActive, width, isInitialized]);
+
+  // redraw non-agg track on new shred/fec data
+  useLayoutEffect(() => {
+    if (!isInitialized) return;
+    throttledDrawNonAgg();
+  }, [isInitialized, shredLastUpdateTs, fecLastUpdateTs, throttledDrawNonAgg]);
 
   return (
     <div className={styles.trackContainer} style={{ height: `${height}px` }}>

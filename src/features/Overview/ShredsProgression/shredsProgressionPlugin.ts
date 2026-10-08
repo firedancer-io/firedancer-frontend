@@ -126,6 +126,7 @@ export function shredsProgressionPlugin(
             maxSlot,
             liveShreds,
             xRange,
+            skippedSlotsCluster,
           );
 
           const canvasHeight = isOnStartupScreen

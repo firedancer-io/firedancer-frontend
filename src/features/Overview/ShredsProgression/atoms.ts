@@ -382,7 +382,7 @@ function addEventToShred(
 /**
  * Mutate slot by marking as complete, or adding an event to the shreds array
  */
-function addEventToSlot(
+export function addEventToSlot(
   shredIdx: number | null,
   event: ShredEvent,
   eventTsDelta: number,

@@ -293,9 +293,22 @@ export function useTiledQueries<Granularity extends string>({
     [evictTilesIfNeeded, getTileStates],
   );
 
+  // whether any tile is still in flight for a granularity. With per-response
+  // forwarding there is no buffered-but-unapplied state, so "pending" is the only
+  // unsettled state. Used by the draw layer to decide whether to hide trailing
+  // incomplete slots (their data may not be settled yet).
+  const hasPendingTiles = useCallback(
+    (granularity: Granularity): boolean => {
+      const tilesState = getTileStates(granularity);
+      return !!tilesState && tilesState.pending.size > 0;
+    },
+    [getTileStates],
+  );
+
   return {
     queryRange,
     markQueryComplete,
+    hasPendingTiles,
   };
 }
 

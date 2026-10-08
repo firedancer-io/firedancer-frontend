@@ -12,6 +12,7 @@ import {
   liveShredsDataAtom,
   liveShredsPostStartupRangeAtom,
   minDirtySlotByChartAtom,
+  type LiveShredsData,
 } from "../atoms";
 import { shredEventDescPriorities } from "../const";
 import { updateLabels } from "../shredsProgressionPlugin";
@@ -28,6 +29,7 @@ import {
   convertToWebGlColor,
   createRectResources,
   disposeRectResources,
+  createRenderer,
 } from "../../../WebGl/webglUtils";
 import {
   shredPublishedColor,
@@ -48,13 +50,12 @@ import {
 } from "../utils";
 import { MAX_WEBGL_PX_RATIO, msPerDay } from "../../../../consts";
 import type { ContextHelpers } from "../../../WebGl/useWebGlEventHandlers";
-import { isWebgl2SupportedAtom } from "../../../WebGl/atoms";
 
 const store = getDefaultStore();
 
-const SHREDS_OPACITY = 0.8;
 // 700 shreds, all events except completion could have a rectangle
 const SHRED_MESH_CAPACITY = 700 * (SHRED_EVENT_TYPES_COUNT - 1);
+export const SHREDS_OPACITY = 0.8;
 const SKIPPED_SLOT_DOT_DURATION_MS = 10;
 
 const tempEventPositions = new Map<
@@ -62,15 +63,21 @@ const tempEventPositions = new Map<
   { x: number; w: number }
 >();
 
-export type RendererObj = {
-  renderer: THREE.WebGLRenderer;
+export interface NonAggRendererResources {
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
-  meshes: Map<number, RectMesh>;
+  // keyed by slot number (Overview) or a granularity-qualified key (Replay
+  // non-agg shared pool, so a slot's shred and fec meshes coexist). See
+  // meshKeyForSlot in drawShreds.
+  meshes: Map<string | number, RectMesh>;
   availableMeshes: RectMesh[];
-  worldTsRange: TsRange;
   // resources shared by this renderer's slot meshes
   resources: RectResources;
+}
+
+export type RendererObj = NonAggRendererResources & {
+  renderer: THREE.WebGLRenderer;
+  worldTsRange: TsRange;
   cleanUpRenderer: () => void;
 };
 
@@ -107,65 +114,115 @@ export function setUpRenderer(
   // store world range for future pause / pan
   const worldTsRange: TsRange = [worldStartTs, worldEndTs];
 
+  const rendererObj = createRenderer(
+    canvasWidth,
+    canvasHeight,
+    MAX_WEBGL_PX_RATIO,
+    setUpContextListeners,
+    getWasContextLost,
+  );
+  if (!rendererObj) return;
+
+  const { renderer, cleanUpRenderer: cleanUpRendererOnly } = rendererObj;
+  const {
+    camera,
+    scene,
+    meshes,
+    availableMeshes,
+    resources,
+    cleanUpResources,
+  } = setUpRendererResources(getWasContextLost);
+
+  // render once so the context is initialized before context listeners run
+  renderer.render(scene, camera);
+
+  const cleanUpRenderer = () => {
+    cleanUpResources();
+    cleanUpRendererOnly();
+  };
+
+  return {
+    renderer,
+    camera,
+    scene,
+    meshes,
+    availableMeshes,
+    worldTsRange,
+    resources,
+    cleanUpRenderer,
+  };
+}
+
+export function setUpRendererResources(
+  getWasContextLost: ContextHelpers["getWasContextLost"],
+) {
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(0, 0, 0, 0, 0.5, 10);
   camera.position.z = 1;
 
-  try {
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio, MAX_WEBGL_PX_RATIO),
-    );
-    renderer.setSize(canvasWidth, canvasHeight);
-    renderer.setClearColor(0x000000, 0);
-
-    const meshes = new Map<number, RectMesh>();
-    const availableMeshes: RectMesh[] = [];
-    const resources = createRectResources(SHREDS_OPACITY);
-    renderer.render(scene, camera);
-    const clearContextListeners = setUpContextListeners(renderer.domElement);
-
-    const cleanUpRenderer = () => {
-      // If context was lost at some point, its GPU objects are already gone so skip objects disposal,
-      // to prevent warnings e.g. WebGL: INVALID_OPERATION: delete: object does not belong to this context
-      // Three doesn't restore GPU objects for restored contexts unless there's a render.
-      // Remount on restore to reset the context listeners state
-      if (!getWasContextLost()) {
-        for (const rectMesh of meshes.values()) {
-          rectMesh.mesh.geometry.dispose();
-        }
-        for (const rectMesh of availableMeshes) {
-          rectMesh.mesh.geometry.dispose();
-        }
-        // dispose this chart's own unitQuad / rectMaterial
-        disposeRectResources(resources);
-
-        renderer.dispose();
+  const meshes = new Map<string | number, RectMesh>();
+  const availableMeshes: RectMesh[] = [];
+  const resources = createRectResources(SHREDS_OPACITY);
+  const cleanUpResources = () => {
+    // If context was lost at some point, its GPU objects are already gone so skip objects disposal,
+    // to prevent warnings e.g. WebGL: INVALID_OPERATION: delete: object does not belong to this context
+    // Three doesn't restore GPU objects for restored contexts unless there's a render.
+    // Remount on restore to reset the context listeners state
+    if (!getWasContextLost()) {
+      for (const slotMesh of meshes.values()) {
+        slotMesh.mesh.geometry.dispose();
       }
-
-      // release currently live context (may be the restored one)
-      // make sure context listeners are removed beforehand
-      clearContextListeners();
-      if (!renderer.getContext().isContextLost()) {
-        renderer.forceContextLoss();
+      for (const slotMesh of availableMeshes) {
+        slotMesh.mesh.geometry.dispose();
       }
-    };
+      disposeRectResources(resources);
+    }
+  };
 
-    return {
-      renderer,
-      camera,
-      scene,
-      meshes,
-      availableMeshes,
-      worldTsRange,
-      resources,
-      cleanUpRenderer,
-    };
-  } catch {
-    // context creation can still fail despite the probe (e.g. too many live
-    // contexts, driver crash). Mark as unsupported to trigger fallback to canvas chart
-    store.set(isWebgl2SupportedAtom, false);
+  return {
+    camera,
+    scene,
+    meshes,
+    availableMeshes,
+    resources,
+    cleanUpResources,
+  };
+}
+
+export function updateCameraXRange(
+  newVisibleTsRange: TsRange,
+  camera: THREE.OrthographicCamera,
+): boolean {
+  if (
+    camera.left === newVisibleTsRange[0] &&
+    camera.right === newVisibleTsRange[1]
+  ) {
+    return false;
   }
+  camera.left = newVisibleTsRange[0];
+  camera.right = newVisibleTsRange[1];
+  camera.updateProjectionMatrix();
+  return true;
+}
+
+export function updateCameraYRange(
+  camera: THREE.OrthographicCamera,
+  maxShredCount: number,
+): boolean {
+  if (camera.bottom === -maxShredCount) return false;
+  camera.top = 0;
+  camera.bottom = -maxShredCount;
+  camera.updateProjectionMatrix();
+  return true;
+}
+
+export function render(rendererObj: {
+  renderer: THREE.WebGLRenderer;
+  scene: THREE.Scene;
+  camera: THREE.OrthographicCamera;
+}) {
+  const { renderer, scene, camera } = rendererObj;
+  renderer.render(scene, camera);
 }
 
 export function draw(
@@ -180,11 +237,8 @@ export function draw(
   forceDraw: boolean,
   cssRange: [min: number, max: number],
 ) {
-  const {
-    slotsShreds: liveShreds,
-    range: slotRange,
-    minCompletedSlot,
-  } = store.get(liveShredsDataAtom) ?? {};
+  const data = store.get(liveShredsDataAtom) ?? {};
+  const { slotsShreds: liveShreds, minCompletedSlot } = data;
   const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
   const rangeAfterStartup = store.get(liveShredsPostStartupRangeAtom);
   const smoothedNow = store.get(smoothedNowMsAtom);
@@ -195,7 +249,7 @@ export function draw(
   // from min completed.
   if (
     !liveShreds ||
-    !slotRange ||
+    !data.range ||
     store.get(showStartupProgressAtom) ||
     minCompletedSlot == null ||
     !rangeAfterStartup ||
@@ -211,98 +265,26 @@ export function draw(
     maxReferenceTs,
   ];
 
-  // for now, use this xRange to be able to reuse the canvas helper functions
-  const xRange: XRange = {
-    minDeltaTs: visibleTsRange[0],
-    maxDeltaTs: visibleTsRange[1],
-    minCanvasPos: 0,
-    maxCanvasPos: 0,
-    minCssPos: cssRange[0],
-    maxCssPos: cssRange[1],
-  };
+  // update visible range
+  visibleTsRangeRef.current = visibleTsRange;
+  const cameraUpdated = updateCameraXRange(visibleTsRange, rendererObj.camera);
 
-  const minSlot = Math.max(slotRange.min, minCompletedSlot ?? slotRange.min);
-  const maxSlot = slotRange.max;
-
-  const { maxShreds, orderedSlotNumbers } = getDrawInfo(
-    minSlot,
-    maxSlot,
-    liveShreds,
-    xRange,
-  );
-
-  const cameraChanged = updateVisibleXRange(
-    visibleTsRangeRef,
+  const xRange = drawShreds(
+    data,
     visibleTsRange,
-    rendererObj.camera,
-    maxShreds,
+    cssRange,
+    rendererObj,
+    forceDraw || cameraUpdated,
+    chartId,
+    skippedSlotsCluster,
   );
 
-  let anythingDrawn = false;
-  const minDirtySlot = store.get(minDirtySlotByChartAtom).get(chartId);
-
-  for (const slotNumber of orderedSlotNumbers) {
-    const slot = liveShreds.slots.get(slotNumber);
-    if (!slot?.shreds) continue;
-
-    let slotMesh = rendererObj.meshes.get(slotNumber);
-    const isNewMesh = !slotMesh;
-    if (!slotMesh) {
-      const lastMesh = rendererObj.availableMeshes.pop();
-      slotMesh =
-        lastMesh ?? createRectMesh(rendererObj.resources, SHRED_MESH_CAPACITY);
-      rendererObj.meshes.set(slotNumber, slotMesh);
-      rendererObj.scene.add(slotMesh.mesh);
-    }
-
-    // skip drawing if not dirty slot
-    if (!isNewMesh && minDirtySlot != null && slotNumber < minDirtySlot) {
-      continue;
-    }
-
-    const isSlotSkipped = skippedSlotsCluster.has(slotNumber);
-
-    let rectangleIdx = 0;
-    for (let shredIdx = 0; shredIdx < slot.shreds.length; shredIdx++) {
-      const shred = slot.shreds[shredIdx];
-      if (!shred) continue;
-
-      tempEventPositions.clear();
-      const rectanglesAdded = addEventsForRow({
-        tempEventPositions,
-        slotMesh,
-        startRectangleIdx: rectangleIdx,
-        eventTsDeltas: shred,
-        slotCompletionTsDelta: slot.completionTsDelta,
-        isSlotSkipped,
-        y: -shredIdx,
-        visibleTsRange,
-      });
-      rectangleIdx += rectanglesAdded;
-      if (rectanglesAdded) {
-        anythingDrawn = true;
-      }
-    }
-    updateRectMeshCounts(slotMesh, rectangleIdx);
-  }
+  if (!xRange) return;
 
   store.set(minDirtySlotByChartAtom, (prev) => {
     prev.set(chartId, Infinity);
     return prev;
   });
-
-  const orderedSet = new Set(orderedSlotNumbers);
-  for (const [slotNumber, slotMesh] of rendererObj.meshes.entries()) {
-    if (!orderedSet.has(slotNumber)) {
-      rendererObj.scene.remove(slotMesh.mesh);
-      rendererObj.meshes.delete(slotNumber);
-      rendererObj.availableMeshes.push(slotMesh);
-    }
-  }
-
-  if (forceDraw || anythingDrawn || cameraChanged) {
-    rendererObj.renderer.render(rendererObj.scene, rendererObj.camera);
-  }
 
   const { prevLabels, tempNewLabels } = labelsRef.current;
   updateLabels(
@@ -322,28 +304,146 @@ export function draw(
   prevLabels.slots.clear();
 }
 
-function updateVisibleXRange(
-  visibleTsRangeRef: MutableRefObject<TsRange | undefined>,
-  newVisibleTsRange: TsRange,
-  camera: THREE.OrthographicCamera,
-  maxShredCount: number,
-): boolean {
-  const prev = visibleTsRangeRef.current;
-  if (
-    prev &&
-    prev[0] === newVisibleTsRange[0] &&
-    prev[1] === newVisibleTsRange[1] &&
-    camera.bottom === -maxShredCount
-  ) {
-    return false;
+/**
+ * Assumes camera x values were already updated.
+ * Returns the drawn XRange when a render happened (so callers can update labels /
+ * dirty-slot state), or undefined when there was nothing to draw.
+ */
+export function drawShreds(
+  data: LiveShredsData,
+  visibleTsRange: TsRange,
+  cssRange: [min: number, max: number],
+  rendererObj: NonAggRendererResources & {
+    renderer: THREE.WebGLRenderer;
+  },
+  forceDraw: boolean,
+  chartId: string,
+  skippedSlots: Set<number>,
+  // Optional wider range (visible + extra tiles each side) that controls which
+  // slots are drawn/resident. Camera Y still scales to visibleTsRange only.
+  // Defaults to visibleTsRange (no padding).
+  drawTsRange: TsRange = visibleTsRange,
+  // Whether any tile is still in flight for the active granularity (non-agg
+  // path). While true, trailing incomplete+unskipped slots are hidden so they
+  // don't stretch a bar to the edge before their data settles. Omitted/false for
+  // the Overview live chart, which never hides.
+  hasPendingTiles?: boolean,
+  // Per-slot row height (in shred-index units). Defaults to 1 for every slot.
+  // The Replay fec path returns SHREDS_PER_FEC_SET for fec-sourced slots so each
+  // fec-set row fills its full band; those slots' shreds arrays are pre-scaled so
+  // shreds.length (== camera-Y extent) already reflects the stacked height. Row
+  // height is per-slot because per-slot fallback can mix granularities in one draw.
+  rowHeightForSlot: (slotNumber: number) => number = () => 1,
+  // Maps a slot number to the key its mesh is stored under. Defaults to the slot
+  // number itself (Overview). The Replay non-agg shared pool folds the slot's
+  // source granularity into the key so a slot's shred and fec meshes are distinct
+  // objects and a granularity switch draws into the correct one instead of
+  // reusing the other's geometry.
+  meshKeyForSlot: (slotNumber: number) => string | number = (s) => s,
+  // Tag recorded on each (re)assigned mesh describing the source it holds.
+  // Defaults to undefined (Overview). Paired with meshKeyForSlot for the non-agg
+  // shared pool.
+  meshSourceForSlot: (slotNumber: number) => string | undefined = () =>
+    undefined,
+): XRange | undefined {
+  const { slotsShreds: liveShreds, range: slotRange, minCompletedSlot } = data;
+
+  if (!liveShreds || !slotRange || minCompletedSlot == null) return;
+
+  // for now, use this xRange to be able to reuse the canvas helper functions.
+  // Use the (possibly padded) draw range so extra tiles on each side are drawn.
+  const xRange: XRange = {
+    minDeltaTs: drawTsRange[0],
+    maxDeltaTs: drawTsRange[1],
+    minCanvasPos: 0,
+    maxCanvasPos: 0,
+    minCssPos: cssRange[0],
+    maxCssPos: cssRange[1],
+  };
+
+  const minSlot = Math.max(slotRange.min, minCompletedSlot ?? slotRange.min);
+  const maxSlot = slotRange.max;
+
+  const { maxShreds, orderedSlotNumbers } = getDrawInfo(
+    minSlot,
+    maxSlot,
+    liveShreds,
+    xRange,
+    skippedSlots,
+    // camera Y scales to the visible range only, not the padded draw range
+    { minDeltaTs: visibleTsRange[0], maxDeltaTs: visibleTsRange[1] },
+    hasPendingTiles,
+  );
+
+  const cameraChanged = updateCameraYRange(rendererObj.camera, maxShreds);
+
+  let anythingDrawn = false;
+  const minDirtySlot = store.get(minDirtySlotByChartAtom).get(chartId);
+
+  for (const slotNumber of orderedSlotNumbers) {
+    const slot = liveShreds.slots.get(slotNumber);
+    if (!slot?.shreds) continue;
+
+    const meshKey = meshKeyForSlot(slotNumber);
+    let slotMesh = rendererObj.meshes.get(meshKey);
+    const isNewMesh = !slotMesh;
+    if (!slotMesh) {
+      const lastMesh = rendererObj.availableMeshes.pop();
+
+      slotMesh =
+        lastMesh ?? createRectMesh(rendererObj.resources, SHRED_MESH_CAPACITY);
+      slotMesh.slotNumber = slotNumber;
+      slotMesh.meshSource = meshSourceForSlot(slotNumber);
+      rendererObj.meshes.set(meshKey, slotMesh);
+      rendererObj.scene.add(slotMesh.mesh);
+    }
+
+    // skip drawing if not dirty slot
+    if (!isNewMesh && minDirtySlot != null && slotNumber < minDirtySlot) {
+      continue;
+    }
+
+    const isSlotSkipped = skippedSlots.has(slotNumber);
+    const rowHeight = rowHeightForSlot(slotNumber);
+
+    let rectangleIdx = 0;
+    for (let shredIdx = 0; shredIdx < slot.shreds.length; shredIdx++) {
+      const shred = slot.shreds[shredIdx];
+      if (!shred) continue;
+
+      tempEventPositions.clear();
+      const rectanglesAdded = addEventsForRow({
+        tempEventPositions,
+        slotMesh,
+        startRectangleIdx: rectangleIdx,
+        eventTsDeltas: shred,
+        slotCompletionTsDelta: slot.completionTsDelta,
+        isSlotSkipped,
+        y: -shredIdx,
+        rowHeight,
+        visibleTsRange: drawTsRange,
+      });
+      rectangleIdx += rectanglesAdded;
+      if (rectanglesAdded) {
+        anythingDrawn = true;
+      }
+    }
+    updateRectMeshCounts(slotMesh, rectangleIdx);
   }
-  visibleTsRangeRef.current = newVisibleTsRange;
-  camera.left = newVisibleTsRange[0];
-  camera.right = newVisibleTsRange[1];
-  camera.top = 0;
-  camera.bottom = -maxShredCount;
-  camera.updateProjectionMatrix();
-  return true;
+
+  const orderedSet = new Set(orderedSlotNumbers.map(meshKeyForSlot));
+  for (const [meshKey, slotMesh] of rendererObj.meshes.entries()) {
+    if (!orderedSet.has(meshKey)) {
+      rendererObj.scene.remove(slotMesh.mesh);
+      rendererObj.meshes.delete(meshKey);
+      rendererObj.availableMeshes.push(slotMesh);
+    }
+  }
+
+  if (forceDraw || anythingDrawn || cameraChanged) {
+    render(rendererObj);
+    return xRange;
+  }
 }
 
 interface AddEventsForRowArgs {
@@ -357,6 +457,9 @@ interface AddEventsForRowArgs {
   slotCompletionTsDelta: number | undefined;
   isSlotSkipped: boolean;
   y: number;
+  // height of each drawn row rect. Defaults to 1 (raw shreds). Fec rows pass
+  // SHREDS_PER_FEC_SET so a fec set fills its full band on the shred-index axis.
+  rowHeight: number;
   visibleTsRange: TsRange;
 }
 
@@ -373,6 +476,7 @@ function addEventsForRow({
   slotCompletionTsDelta,
   isSlotSkipped,
   y,
+  rowHeight,
   visibleTsRange,
 }: AddEventsForRowArgs) {
   let endTs: number =
@@ -409,7 +513,7 @@ function addEventsForRow({
 
     const rectangleIdx = startRectangleIdx + rectanglesAdded;
     ensureRectCapacity(slotMesh, rectangleIdx + 1);
-    addRectangleToMesh(slotMesh, rectangleIdx, x, y, w, 1, color);
+    addRectangleToMesh(slotMesh, rectangleIdx, x, y, w, rowHeight, color);
     rectanglesAdded++;
   }
   return rectanglesAdded;
