@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const errorBodySchema = z.object({ code: z.string() });
+
 export const clientSchema = z.enum(["Frankendancer", "Firedancer"]);
 export const ClientEnum = clientSchema.enum;
 
@@ -1390,6 +1392,21 @@ export const aggRevenueSchema = z.object({
   [RevenueType.Tips]: z.array(z.coerce.bigint().nullable()),
 });
 
+export const txnMetaResponseSchema = z.object({
+  reference_slot: z.number().nullable(),
+  reference_ts: z.coerce.bigint().nullable(),
+  slot_delta: z.number().array(),
+  txn_idx: z.number().array(),
+  txn_exec_idx: z.number().array(),
+  txn_sigverify_exec_idx: z.number().nullable().array(),
+  txn_transaction_fee: z.coerce.bigint().array(),
+  txn_priority_fee: z.coerce.bigint().array(),
+  txn_tips: z.coerce.bigint().array(),
+  txn_load_start_ts_delta: z.coerce.bigint().array(),
+  txn_commit_end_ts_delta: z.coerce.bigint().array(),
+  txn_error_code: z.number().array(),
+});
+
 export enum AggShredEventType {
   Turbine = "turbine",
   Repair = "repair",
@@ -1418,8 +1435,19 @@ export const timelineSchema = z.discriminatedUnion("key", [
     value: aggRevenueSchema,
   }),
   timelineTopicSchema.extend({
+    key: z.literal("query_txn_meta"),
+    value: txnMetaResponseSchema,
+    id: z.number(),
+  }),
+  timelineTopicSchema.extend({
     id: z.number(),
     key: z.literal("query_agg_shreds"),
     value: aggShredsSchema,
   }),
 ]);
+
+export const timelineErrorSchema = timelineTopicSchema.extend({
+  key: z.enum(["query_txn_meta"]),
+  error: errorBodySchema,
+  id: z.number(),
+});

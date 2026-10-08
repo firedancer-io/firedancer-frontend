@@ -18,11 +18,11 @@ const chartId = "revenue-track";
 /**
  * At most, how many buckets should be visible
  */
-const BUCKET_COUNT_THRESHOLD = 1000;
+export const AGG_BUCKET_COUNT_THRESHOLD = 600;
 export function getGranularity(windowSizeMs: number) {
   return (
     ascBucketGranularities.find((g) => {
-      return windowSizeMs < BUCKET_COUNT_THRESHOLD * msBucketSizes[g];
+      return windowSizeMs < AGG_BUCKET_COUNT_THRESHOLD * msBucketSizes[g];
     }) ?? ascBucketGranularities[ascBucketGranularities.length - 1]
   );
 }
@@ -112,18 +112,18 @@ export default function useAggRevenueQuery() {
   return useCallback(
     (
       referenceNs: bigint,
-      visibleRange: TsRange,
-      worldRange: TsRange,
+      visibleRangeMs: TsRange,
+      worldRangeMs: TsRange,
       granularity: AggGranularity,
     ) => {
       const visibleRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, visibleRange[0]),
-        calcAbsoluteNs(referenceNs, visibleRange[1]),
+        calcAbsoluteNs(referenceNs, visibleRangeMs[0]),
+        calcAbsoluteNs(referenceNs, visibleRangeMs[1]),
       ];
 
       const worldRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, worldRange[0]),
-        calcAbsoluteNs(referenceNs, worldRange[1]),
+        calcAbsoluteNs(referenceNs, worldRangeMs[0]),
+        calcAbsoluteNs(referenceNs, worldRangeMs[1]),
       ];
       queryRange(visibleRangeNs, worldRangeNs, granularity, onNothingToFetch);
     },
