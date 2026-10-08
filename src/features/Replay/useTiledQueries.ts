@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, getDefaultStore } from "jotai";
 import type { NsTsRange } from "../WebGl/webglUtils";
-import { reserveNextQueryIdAtom, type TimelineQueryKey } from "./atoms";
+import {
+  referenceNsAtom,
+  reserveNextQueryIdAtom,
+  worldRangeAtom,
+  type TimelineQueryKey,
+} from "./atoms";
+import { calcAbsoluteNs } from "./utils";
 
 interface TileStates {
   fetched: Set<number>;
@@ -60,10 +66,19 @@ export function useTiledQueries<Granularity extends string>({
   onEvictTiles,
 }: UseTiledQueriesOpts<Granularity>) {
   const pendingQueriesRef = useRef(
-    new Map<number, { tileIdx: number; granularity: Granularity }>(),
+    new Map<
+      number,
+      { tileIdx: number; granularity: Granularity; doNotCache: boolean }
+    >(),
   );
-  const latestVisibleRangeRef = useRef<
-    [startNs: bigint, endNs: bigint] | undefined
+  const latestRequestRef = useRef<
+    | {
+        visibleRangeNs: [startNs: bigint, endNs: bigint];
+        granularity: Granularity;
+        /** whether any tile in the last request overlapped the world end */
+        hasWorldEndTile: boolean;
+      }
+    | undefined
   >();
 
   const { getChartState, getTileStates, getNewQueryId } = useMemo(() => {
@@ -102,6 +117,7 @@ export function useTiledQueries<Granularity extends string>({
     const getNewQueryId = (
       granularity: Granularity,
       tileIdx: number,
+      doNotCache: boolean,
     ): number | undefined => {
       const tileQueryStates = getTileStates(granularity);
       if (
@@ -113,7 +129,11 @@ export function useTiledQueries<Granularity extends string>({
 
       const queryId = store.set(reserveNextQueryIdAtom, queryKey);
       tileQueryStates.pending.add(tileIdx);
-      pendingQueriesRef.current.set(queryId, { tileIdx, granularity });
+      pendingQueriesRef.current.set(queryId, {
+        tileIdx,
+        granularity,
+        doNotCache,
+      });
       return queryId;
     };
 
@@ -163,7 +183,7 @@ export function useTiledQueries<Granularity extends string>({
       const countToEvict = fetched.size - tileEvictionLowWatermark;
       if (countToEvict <= 0) return;
 
-      const visibleRange = latestVisibleRangeRef.current;
+      const visibleRange = latestRequestRef.current?.visibleRangeNs;
       if (visibleRange == null) {
         // grab the first few tiles to evict
         const toEvict = [...fetched].slice(0, countToEvict);
@@ -214,40 +234,41 @@ export function useTiledQueries<Granularity extends string>({
   const queryRange = useCallback(
     (
       [visibleStartNs, visibleEndNs]: NsTsRange,
-      [worldStartNs, worldEndNs]: NsTsRange,
+      [, worldEndNs]: NsTsRange,
       granularity: Granularity,
       onNothingToFetch?: (granularity: Granularity) => void,
     ) => {
       if (visibleEndNs <= visibleStartNs) {
-        latestVisibleRangeRef.current = undefined;
+        latestRequestRef.current = undefined;
         return;
       }
 
-      latestVisibleRangeRef.current = [visibleStartNs, visibleEndNs];
-
       const tileSizeNs = getTileSizeNs(granularity);
 
-      // clamp query to world bounds
-      const worldFirstTile = getStartTileIdx(worldStartNs, tileSizeNs);
-      const worldLastTile = getEndTileIdx(worldEndNs, tileSizeNs);
-
-      const firstTile = Math.max(
-        worldFirstTile,
-        getStartTileIdx(visibleStartNs, tileSizeNs) - overscanTilesCount,
-      );
-      const lastTile = Math.min(
-        worldLastTile,
-        getEndTileIdx(visibleEndNs, tileSizeNs) + overscanTilesCount,
-      );
+      const firstTile =
+        getStartTileIdx(visibleStartNs, tileSizeNs) - overscanTilesCount;
+      const lastTile =
+        getEndTileIdx(visibleEndNs, tileSizeNs) + overscanTilesCount;
 
       const toFetch: { queryId: number; tileIdx: number }[] = [];
+      let hasWorldEndTile = false;
 
       // mark missing tiles as pending
       for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
-        const queryId = getNewQueryId(granularity, tileIdx);
+        const tileEndNs = BigInt(tileIdx + 1) * tileSizeNs;
+        const doNotCache = tileEndNs >= worldEndNs;
+        if (doNotCache) hasWorldEndTile = true;
+
+        const queryId = getNewQueryId(granularity, tileIdx, doNotCache);
         if (queryId == null) continue;
         toFetch.push({ queryId, tileIdx });
       }
+
+      latestRequestRef.current = {
+        visibleRangeNs: [visibleStartNs, visibleEndNs],
+        granularity,
+        hasWorldEndTile,
+      };
 
       // nothing to fetch
       if (!toFetch.length) {
@@ -279,15 +300,19 @@ export function useTiledQueries<Granularity extends string>({
       // query id was not found
       if (queryInfo == null) return;
 
-      const { granularity, tileIdx } = queryInfo;
+      const { granularity, tileIdx, doNotCache } = queryInfo;
       const tilesState = getTileStates(granularity);
 
       pendingQueriesRef.current.delete(queryId);
       tilesState.pending.delete(tileIdx);
-      tilesState.fetched.add(tileIdx);
 
-      // evict if needed
-      evictTilesIfNeeded(granularity);
+      // don't cache tiles that include the progressing world end
+      if (!doNotCache) {
+        tilesState.fetched.add(tileIdx);
+        // evict if needed
+        evictTilesIfNeeded(granularity);
+      }
+
       return queryInfo;
     },
     [evictTilesIfNeeded, getTileStates],
@@ -304,6 +329,29 @@ export function useTiledQueries<Granularity extends string>({
     },
     [getTileStates],
   );
+
+  // When the world end advances, repeat the last query if it included the world end
+  useEffect(() => {
+    return store.sub(worldRangeAtom, () => {
+      const latestRequest = latestRequestRef.current;
+      if (!latestRequest?.hasWorldEndTile) return;
+
+      const worldRange = store.get(worldRangeAtom);
+      const referenceNs = store.get(referenceNsAtom);
+      if (!worldRange || referenceNs == null) return;
+
+      const worldRangeNs: NsTsRange = [
+        calcAbsoluteNs(referenceNs, worldRange[0]),
+        calcAbsoluteNs(referenceNs, worldRange[1]),
+      ];
+
+      queryRange(
+        latestRequest.visibleRangeNs,
+        worldRangeNs,
+        latestRequest.granularity,
+      );
+    });
+  }, [queryRange]);
 
   return {
     queryRange,

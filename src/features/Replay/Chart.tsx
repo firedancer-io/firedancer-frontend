@@ -22,6 +22,7 @@ import HeaderTrack from "./HeaderTrack/index.tsx";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 import ExecrpTrack from "./ExecrpTrack/ExecrpTrack.tsx";
 import { useTxnTimestampsCache } from "./ExecrpTrack/useTxnTimestampsCache.ts";
+import ResetLiveButton from "./ResetLiveButton.tsx";
 
 const store = getDefaultStore();
 
@@ -124,6 +125,7 @@ export default function Chart() {
               {...explorableChartProps}
               {...markerLinesProps}
             />
+            <ResetLiveButton />
             <ShredsTrack
               width={width}
               {...explorableChartProps}
