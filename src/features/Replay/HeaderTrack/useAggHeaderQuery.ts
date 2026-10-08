@@ -75,16 +75,17 @@ export function useAggHeaderQuery(chartId: string) {
     [deleteAggSlotsBuckets],
   );
 
-  const { queryRange, markQueryComplete } = useTiledQueries<AggGranularity>({
-    chartId,
-    getTileSizeNs,
-    overscanTilesCount: OVERSCAN_TILES_COUNT,
-    queryKey: QUERY_KEY,
-    sendQuery,
-    tileEvictionHighWatermark: TILE_EVICTION_HIGH_WATERMARK,
-    tileEvictionLowWatermark: TILE_EVICTION_LOW_WATERMARK,
-    onEvictTiles,
-  });
+  const { queryRange, markQueryComplete, pauseStaleRefreshes } =
+    useTiledQueries<AggGranularity>({
+      chartId,
+      getTileSizeNs,
+      overscanTilesCount: OVERSCAN_TILES_COUNT,
+      queryKey: QUERY_KEY,
+      sendQuery,
+      tileEvictionHighWatermark: TILE_EVICTION_HIGH_WATERMARK,
+      tileEvictionLowWatermark: TILE_EVICTION_LOW_WATERMARK,
+      onEvictTiles,
+    });
 
   useTimelineServerMessage(
     QUERY_KEY,
@@ -103,7 +104,7 @@ export function useAggHeaderQuery(chartId: string) {
     emitter.emit(drawEventType);
   }, [emitter]);
 
-  return useCallback(
+  const query = useCallback(
     (
       referenceNs: bigint,
       visibleRange: TsRange,
@@ -123,4 +124,6 @@ export function useAggHeaderQuery(chartId: string) {
     },
     [onNothingToFetch, queryRange],
   );
+
+  return { query, pauseStaleRefreshes };
 }

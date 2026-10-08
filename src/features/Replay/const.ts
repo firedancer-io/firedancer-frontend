@@ -5,6 +5,10 @@ export const DEFAULT_WINDOW_MS = 12_000;
 export const MIN_VISIBLE_MS = 0.001;
 export const CHART_NOW_DELAY_MS = 500;
 
+// Resume live if pan / zoom places the visible range's right edge within this
+// fraction of the visible window width from world end
+export const RESUME_LIVE_THRESHOLD_FRAC = 0.02;
+
 export const msBucketSizes: Record<AggGranularity, number> = {
   "250ms": 250,
   "500ms": 500,

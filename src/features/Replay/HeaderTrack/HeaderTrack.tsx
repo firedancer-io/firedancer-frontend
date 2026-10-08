@@ -45,7 +45,7 @@ function HeaderTrack({
     remount,
   });
 
-  const aggQuery = useAggHeaderQuery(chartId);
+  const { query: aggQuery, pauseStaleRefreshes } = useAggHeaderQuery(chartId);
 
   const throttledRelativeTsQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
@@ -56,6 +56,7 @@ function HeaderTrack({
         aggQuery(referenceNs, visibleRange, worldRange, queryGranularity);
         setGranularity(queryGranularity);
       } else {
+        pauseStaleRefreshes();
         // TODO: non-aggregate query
         setGranularity(undefined);
       }
