@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import type { FromWorkerMessage, ToWorkerMessage } from "./types";
 import { createTypedWorker, type TypedWorker } from "./typedWorker";
 import type { SendMessage } from "../ws/types";
@@ -92,6 +92,10 @@ function stopWorker() {
   }
 }
 
+export const sendMessage: SendMessage = (data) => {
+  worker?.postMessage({ type: "send", value: data });
+};
+
 export function useWsWorker({
   websocketUrl,
   compress,
@@ -103,10 +107,6 @@ export function useWsWorker({
     startWorker(websocketUrl, compress);
     return () => stopWorker();
   }, [websocketUrl, compress]);
-
-  const sendMessage = useCallback<SendMessage>((data) => {
-    worker?.postMessage({ type: "send", value: data });
-  }, []);
 
   return { sendMessage, emitter };
 }

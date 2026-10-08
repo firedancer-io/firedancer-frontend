@@ -15,13 +15,13 @@ import {
   shredEventDescPriorities,
   SKIPPED_SLOT_DOT_DURATION_MS,
 } from "../const";
-import { colors } from "./const";
+import { colors, SHRED_MESH_CAPACITY } from "./const";
 import { updateLabels } from "../../Overview/ShredsProgression/shredsProgressionPlugin";
 import { getDrawInfo } from "../chartUtils";
 import {
   createRectMesh,
   updateRectMeshCounts,
-  ensureCapacity,
+  ensureRectCapacity,
   addRectangleToMesh,
   type TsRange,
   type RectMesh,
@@ -108,7 +108,8 @@ export function draw(
     const isNewMesh = !slotMesh;
     if (!slotMesh) {
       const lastMesh = rendererObj.availableMeshes.pop();
-      slotMesh = lastMesh ?? createRectMesh(rendererObj.resources);
+      slotMesh =
+        lastMesh ?? createRectMesh(rendererObj.resources, SHRED_MESH_CAPACITY);
       rendererObj.meshes.set(slotNumber, slotMesh);
       rendererObj.scene.add(slotMesh.mesh);
     }
@@ -267,7 +268,7 @@ function addEventsForRow({
     if (color == null) continue;
 
     const rectangleIdx = startRectangleIdx + rectanglesAdded;
-    ensureCapacity(slotMesh, rectangleIdx + 1);
+    ensureRectCapacity(slotMesh, rectangleIdx + 1);
     addRectangleToMesh(slotMesh, rectangleIdx, x, y, w, 1, color);
     rectanglesAdded++;
   }

@@ -7,8 +7,8 @@ import { getDelayedNow } from "../../Overview/ShredsProgression/utils";
 import { MAX_WEBGL_PX_RATIO, msPerDay } from "../../../consts";
 import type { RectMesh, TsRange } from "../../WebGl/webglUtils";
 import {
-  createWebglResources,
-  disposeWebglResources,
+  createRectResources,
+  disposeRectResources,
 } from "../../WebGl/webglUtils";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers";
 import { isWebgl2SupportedAtom } from "../../WebGl/atoms";
@@ -53,7 +53,7 @@ export function setUpRenderer(
 
     const meshes = new Map<number, RectMesh>();
     const availableMeshes: RectMesh[] = [];
-    const resources = createWebglResources(SHREDS_OPACITY);
+    const resources = createRectResources(SHREDS_OPACITY);
     renderer.render(scene, camera);
     const clearContextListeners = setUpContextListeners(renderer.domElement);
 
@@ -70,7 +70,7 @@ export function setUpRenderer(
           slotMesh.mesh.geometry.dispose();
         }
         // dispose this chart's own unitQuad / sharedMaterial
-        disposeWebglResources(resources);
+        disposeRectResources(resources);
 
         renderer.dispose();
       }
