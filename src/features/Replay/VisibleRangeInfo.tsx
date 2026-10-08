@@ -1,5 +1,5 @@
 import { Flex } from "@radix-ui/themes";
-import { Duration, DateTime } from "luxon";
+import { DateTime } from "luxon";
 import { memo, useMemo } from "react";
 import { nsPerMs } from "../../consts";
 import { useAtomValue } from "jotai";
@@ -10,6 +10,27 @@ const formatAbsoluteTs = (absoluteNs: bigint) => {
   return DateTime.fromMillis(
     Number(absoluteNs / BigInt(nsPerMs)),
   ).toLocaleString(DateTime.DATETIME_MED_WITH_SECONDS);
+};
+
+const DURATION_UNITS: [label: string, ns: bigint][] = [
+  ["h", 3_600_000_000_000n],
+  ["m", 60_000_000_000n],
+  ["s", 1_000_000_000n],
+  ["ms", 1_000_000n],
+  ["µs", 1_000n],
+  ["ns", 1n],
+];
+
+const formatWindowDuration = (durationNs: bigint, maxSignificantUnits = 2) => {
+  let remaining = durationNs < 0n ? -durationNs : durationNs;
+  const parts: string[] = [];
+  for (const [label, unitNs] of DURATION_UNITS) {
+    const count = remaining / unitNs;
+    if (count > 0n) parts.push(`${count} ${label}`);
+    remaining %= unitNs;
+  }
+  if (parts.length === 0) return "0 ns";
+  return parts.slice(0, maxSignificantUnits).join(", ");
 };
 
 export default memo(function VisibleRangeInfo() {
@@ -32,15 +53,9 @@ export default memo(function VisibleRangeInfo() {
 
   const durationText = useMemo(() => {
     if (start == null || end == null || referenceNs == null) return;
-    const durationMs = end - start;
-
-    return Duration.fromMillis(durationMs)
-      .shiftTo("days", "hours", "minutes", "seconds", "milliseconds")
-      .normalize()
-      .toHuman({ unitDisplay: "short", maximumFractionDigits: 0 })
-      .split(", ")
-      .filter((part) => !part.startsWith("0 "))
-      .join(", ");
+    const durationNs =
+      calcAbsoluteNs(referenceNs, end) - calcAbsoluteNs(referenceNs, start);
+    return formatWindowDuration(durationNs);
   }, [end, referenceNs, start]);
 
   return (
