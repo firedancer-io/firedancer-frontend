@@ -1,11 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, getDefaultStore } from "jotai";
 import type { NsTsRange } from "../WebGl/webglUtils";
-import { reserveNextQueryIdAtom, type TimelineQueryKey } from "./atoms";
+import {
+  isLiveAtom,
+  referenceNsAtom,
+  reserveNextQueryIdAtom,
+  worldRangeAtom,
+  type TimelineQueryKey,
+} from "./atoms";
+import { calcAbsoluteNs } from "./utils";
+import { useThrottledCallbackIfVisible } from "../../api/useDebounceIfVisible";
 
 interface TileStates {
   fetched: Set<number>;
   pending: Set<number>;
+  /**
+   * tiles that include the world end and require refreshing
+   */
+  stale: Set<number>;
 }
 
 /** granularity -> tile states */
@@ -60,10 +72,19 @@ export function useTiledQueries<Granularity extends string>({
   onEvictTiles,
 }: UseTiledQueriesOpts<Granularity>) {
   const pendingQueriesRef = useRef(
-    new Map<number, { tileIdx: number; granularity: Granularity }>(),
+    new Map<
+      number,
+      { tileIdx: number; granularity: Granularity; isStale: boolean }
+    >(),
   );
-  const latestVisibleRangeRef = useRef<
-    [startNs: bigint, endNs: bigint] | undefined
+  const latestRequestRef = useRef<
+    | {
+        visibleRangeNs: NsTsRange;
+        granularity: Granularity;
+        /** whether any tile in the last request overlapped the world end */
+        hasWorldEndTile: boolean;
+      }
+    | undefined
   >();
 
   const { getChartState, getTileStates, getNewQueryId } = useMemo(() => {
@@ -90,6 +111,7 @@ export function useTiledQueries<Granularity extends string>({
         states = {
           fetched: new Set(),
           pending: new Set(),
+          stale: new Set(),
         };
         tileStates.set(granularity, states);
       }
@@ -102,6 +124,7 @@ export function useTiledQueries<Granularity extends string>({
     const getNewQueryId = (
       granularity: Granularity,
       tileIdx: number,
+      isStale: boolean,
     ): number | undefined => {
       const tileQueryStates = getTileStates(granularity);
       if (
@@ -113,7 +136,11 @@ export function useTiledQueries<Granularity extends string>({
 
       const queryId = store.set(reserveNextQueryIdAtom, queryKey);
       tileQueryStates.pending.add(tileIdx);
-      pendingQueriesRef.current.set(queryId, { tileIdx, granularity });
+      pendingQueriesRef.current.set(queryId, {
+        tileIdx,
+        granularity,
+        isStale,
+      });
       return queryId;
     };
 
@@ -143,44 +170,70 @@ export function useTiledQueries<Granularity extends string>({
 
   const evictTiles = useCallback(
     (granularity: Granularity, tileIdxs: number[]) => {
-      const fetched = getTileStates(granularity).fetched;
-      for (const tileIdx of tileIdxs) fetched.delete(tileIdx);
+      const { fetched, stale } = getTileStates(granularity);
+      for (const tileIdx of tileIdxs) {
+        fetched.delete(tileIdx);
+        stale.delete(tileIdx);
+      }
       onEvictTiles(granularity, tileIdxs);
     },
     [getTileStates, onEvictTiles],
   );
 
   /**
-   * Once the fetched count exceeds the high watermark, evict fetched tiles
-   * (excluding currently visible ones) down to the low watermark for this granularity.
-   * Farthest tiles from the current range are evicted first
+   * Once the fetched count exceeds the high watermark, evict tiles
+   * (excluding currently visible ones) down to the low watermark for this
+   * granularity. Evict stale tiles first, then tiles farthest from the current range.
+   * Return the tile idxs that are evicted.
    */
   const evictTilesIfNeeded = useCallback(
-    (granularity: Granularity) => {
-      const fetched = getTileStates(granularity).fetched;
-      if (fetched.size <= tileEvictionHighWatermark) return;
+    (granularity: Granularity): number[] => {
+      const { fetched, stale } = getTileStates(granularity);
+      const storedCount = fetched.size + stale.size;
+      if (storedCount <= tileEvictionHighWatermark) return [];
 
-      const countToEvict = fetched.size - tileEvictionLowWatermark;
-      if (countToEvict <= 0) return;
+      let countToEvict = storedCount - tileEvictionLowWatermark;
+      if (countToEvict <= 0) return [];
 
-      const visibleRange = latestVisibleRangeRef.current;
-      if (visibleRange == null) {
-        // grab the first few tiles to evict
-        const toEvict = [...fetched].slice(0, countToEvict);
-        evictTiles(granularity, toEvict);
-        return;
-      }
-
+      const visibleRange = latestRequestRef.current?.visibleRangeNs;
       const tileSizeNs = getTileSizeNs(granularity);
 
+      if (visibleRange == null) {
+        // grab the first few tiles to evict
+        const toEvict = [...stale, ...fetched].slice(0, countToEvict);
+        evictTiles(granularity, toEvict);
+        return toEvict;
+      }
+
+      const toEvict: number[] = [];
+
+      // Evict all off-screen stale tiles first
+      for (const tileIdx of stale) {
+        const tileStart = tileSizeNs * BigInt(tileIdx);
+        if (
+          calcDistanceBetween(visibleRange, [
+            tileStart,
+            tileStart + tileSizeNs,
+          ]) != null
+        ) {
+          toEvict.push(tileIdx);
+          countToEvict--;
+
+          if (countToEvict <= 0) {
+            evictTiles(granularity, toEvict);
+            return toEvict;
+          }
+        }
+      }
+
+      // Evict farthest from the visible range first.
       const evictable = [...fetched].reduce<[dist: bigint, tileIdx: number][]>(
         (acc, tileIdx) => {
           const tileStart = tileSizeNs * BigInt(tileIdx);
-          const tileRange = [
+          const dist = calcDistanceBetween(visibleRange, [
             tileStart,
             tileStart + tileSizeNs,
-          ] satisfies NsTsRange;
-          const dist = calcDistanceBetween(visibleRange, tileRange);
+          ]);
           if (dist != null) {
             acc.push([dist, tileIdx]);
           }
@@ -189,18 +242,18 @@ export function useTiledQueries<Granularity extends string>({
         [],
       );
 
-      const sortedEvictable = evictable.sort(([dist1], [dist2]) => {
+      evictable.sort(([dist1], [dist2]) => {
         if (dist1 < dist2) return 1;
         if (dist1 > dist2) return -1;
-        // delete older fetched tile for ties
         return 0;
       });
 
-      if (sortedEvictable.length === 0) return;
-      const toEvict = sortedEvictable
-        .slice(0, countToEvict)
-        .map(([_, tileIdx]) => tileIdx);
-      evictTiles(granularity, toEvict);
+      for (const [, tileIdx] of evictable.slice(0, countToEvict)) {
+        toEvict.push(tileIdx);
+      }
+
+      if (toEvict.length > 0) evictTiles(granularity, toEvict);
+      return toEvict;
     },
     [
       getTileStates,
@@ -219,35 +272,44 @@ export function useTiledQueries<Granularity extends string>({
       onNothingToFetch?: (granularity: Granularity) => void,
     ) => {
       if (visibleEndNs <= visibleStartNs) {
-        latestVisibleRangeRef.current = undefined;
+        latestRequestRef.current = undefined;
         return;
       }
 
-      latestVisibleRangeRef.current = [visibleStartNs, visibleEndNs];
-
       const tileSizeNs = getTileSizeNs(granularity);
 
-      // clamp query to world bounds
+      // no overscan before world start
       const worldFirstTile = getStartTileIdx(worldStartNs, tileSizeNs);
-      const worldLastTile = getEndTileIdx(worldEndNs, tileSizeNs);
-
       const firstTile = Math.max(
         worldFirstTile,
         getStartTileIdx(visibleStartNs, tileSizeNs) - overscanTilesCount,
       );
+      const worldLastTile = getEndTileIdx(worldEndNs, tileSizeNs);
+      // no overscan past world end
       const lastTile = Math.min(
         worldLastTile,
         getEndTileIdx(visibleEndNs, tileSizeNs) + overscanTilesCount,
       );
 
       const toFetch: { queryId: number; tileIdx: number }[] = [];
+      let hasWorldEndTile = false;
 
       // mark missing tiles as pending
       for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
-        const queryId = getNewQueryId(granularity, tileIdx);
+        const tileEndNs = BigInt(tileIdx + 1) * tileSizeNs;
+        const isStale = tileEndNs >= worldEndNs;
+        if (isStale) hasWorldEndTile = true;
+
+        const queryId = getNewQueryId(granularity, tileIdx, isStale);
         if (queryId == null) continue;
         toFetch.push({ queryId, tileIdx });
       }
+
+      latestRequestRef.current = {
+        visibleRangeNs: [visibleStartNs, visibleEndNs],
+        granularity,
+        hasWorldEndTile,
+      };
 
       // nothing to fetch
       if (!toFetch.length) {
@@ -275,35 +337,83 @@ export function useTiledQueries<Granularity extends string>({
   );
 
   const markQueryComplete = useCallback(
-    (
-      queryId: number,
-    ):
-      | {
-          tileIdx: number;
-          granularity: Granularity;
-        }
-      | undefined => {
+    (queryId: number) => {
       const queryInfo = pendingQueriesRef.current.get(queryId);
       // query id was not found
       if (queryInfo == null) return;
 
-      const { granularity, tileIdx } = queryInfo;
+      const { granularity, tileIdx, isStale } = queryInfo;
       const tilesState = getTileStates(granularity);
 
       pendingQueriesRef.current.delete(queryId);
       tilesState.pending.delete(tileIdx);
-      tilesState.fetched.add(tileIdx);
 
-      // evict if needed
-      evictTilesIfNeeded(granularity);
+      if (isStale) {
+        tilesState.stale.add(tileIdx);
+      } else {
+        tilesState.stale.delete(tileIdx);
+        tilesState.fetched.add(tileIdx);
+      }
+
+      // If the new query is evicted (data no longer in range), return undefined
+      // to indicate the response was not cached.
+      const evicted = evictTilesIfNeeded(granularity);
+      if (evicted.includes(tileIdx)) return;
+
       return queryInfo;
     },
     [evictTilesIfNeeded, getTileStates],
   );
 
+  const queryWorldEnd = useThrottledCallbackIfVisible(() => {
+    // in live mode, the visible range will automatically query the last tile
+    // so skip this query
+    if (store.get(isLiveAtom)) return;
+
+    const latestRequest = latestRequestRef.current;
+    if (!latestRequest?.hasWorldEndTile) return;
+
+    const worldRange = store.get(worldRangeAtom);
+    const referenceNs = store.get(referenceNsAtom);
+    if (!worldRange || referenceNs == null) return;
+
+    const worldRangeNs: NsTsRange = [
+      calcAbsoluteNs(referenceNs, worldRange[0]),
+      calcAbsoluteNs(referenceNs, worldRange[1]),
+    ];
+
+    queryRange(
+      latestRequest.visibleRangeNs,
+      worldRangeNs,
+      latestRequest.granularity,
+    );
+  }, 100);
+
+  /**
+   * Refresh stale world end data if it was past of the latest request
+   */
+  useEffect(() => {
+    const unsub = store.sub(worldRangeAtom, queryWorldEnd);
+    return () => {
+      queryWorldEnd.cancel();
+      unsub();
+    };
+  }, [queryWorldEnd]);
+
+  /**
+   * Store refreshing stale tiles.
+   * Call when this view becomes inactive (e.g. the track switched to a
+   * different granularity / aggregate mode).
+   */
+  const pauseStaleRefreshes = useCallback(() => {
+    latestRequestRef.current = undefined;
+    queryWorldEnd.cancel();
+  }, [queryWorldEnd]);
+
   return {
     queryRange,
     markQueryComplete,
+    pauseStaleRefreshes,
   };
 }
 

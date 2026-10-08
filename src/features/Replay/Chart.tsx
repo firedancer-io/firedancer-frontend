@@ -20,6 +20,7 @@ import MiniMap from "./MiniMap/MiniMap.tsx";
 import useAggRevenueQuery from "./RevenueTrack/useAggRevenueQuery.ts";
 import HeaderTrack from "./HeaderTrack/HeaderTrack.tsx";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
+import ResetLiveButton from "./ResetLiveButton.tsx";
 
 const store = getDefaultStore();
 
@@ -135,6 +136,7 @@ export default function Chart() {
             position="relative"
           >
             <HeaderTrack width={width} {...markerLinesProps} />
+            <ResetLiveButton />
             <ShredsTrack width={width} {...markerLinesProps} />
             <RevenueTrack
               aggQuery={aggRevenueQuery}

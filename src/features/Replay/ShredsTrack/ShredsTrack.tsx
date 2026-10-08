@@ -48,7 +48,7 @@ function ShredsTrack({
     remount,
   });
 
-  const aggQuery = useAggShredsQuery(chartId);
+  const { query: aggQuery, pauseStaleRefreshes } = useAggShredsQuery(chartId);
 
   const throttledRelativeTsQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
@@ -59,6 +59,7 @@ function ShredsTrack({
         aggQuery(referenceNs, visibleRange, worldRange, queryGranularity);
         setGranularity(queryGranularity);
       } else {
+        pauseStaleRefreshes();
         // TODO: non-aggregate query
         setGranularity(undefined);
       }
