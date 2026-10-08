@@ -27,7 +27,7 @@ import styles from "./slotNavigation.module.css";
 import clsx from "clsx";
 import MeasureOffscreen from "../../components/MeasureOffscreen";
 import { skippedSlotsAtom } from "../../api/atoms";
-import { StatusIcon } from "../../components/StatusIcon";
+import { SlotStatusIcon } from "../../components/StatusIcon";
 import { useSlotQueryPublish } from "../../hooks/useSlotQuery";
 import { getSlotGroupLeader } from "../../utils";
 import { clamp } from "lodash";
@@ -287,7 +287,7 @@ function SlotNavItem({
       disabled={isDisabled}
     >
       <Text>{slot}</Text>
-      <StatusIcon
+      <SlotStatusIcon
         isCurrent={false}
         slot={slot}
         size="large"

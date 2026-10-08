@@ -813,6 +813,7 @@ function useUpdateAtoms() {
           switch (key) {
             case "query_agg_shreds":
             case "query_agg_revenue":
+            case "query_slots":
             case "query_agg_slots": {
               // listen in component
               break;

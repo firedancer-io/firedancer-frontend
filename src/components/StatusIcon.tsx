@@ -1,6 +1,6 @@
 import { Flex, Tooltip } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
-import { useRef, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { getSlotStatus, slotDurationAtom } from "../atoms";
 import { isAlpenglowAtom } from "../api/atoms";
 import { buildStyles, CircularProgressbar } from "react-circular-progressbar";
@@ -27,8 +27,33 @@ import styles from "./statusIcon.module.css";
 import clsx from "clsx";
 import type { SlotLevel } from "../api/types";
 
-type IconSize = "small" | "large";
+type IconSize = "xsmall" | "small" | "large";
 type IconInfo = { src: string; alt: string };
+
+interface SlotStatusIconProps {
+  slot: number;
+  isCurrent: boolean;
+  size: IconSize;
+  isSkipped?: boolean;
+}
+
+export function SlotStatusIcon({
+  slot,
+  isCurrent,
+  size,
+  isSkipped,
+}: SlotStatusIconProps) {
+  const status = useAtomValue(getSlotStatus(slot));
+
+  return (
+    <StatusIcon
+      status={status}
+      isCurrent={isCurrent}
+      size={size}
+      isSkipped={isSkipped}
+    />
+  );
+}
 
 function getIconInfo(
   status: SlotLevel,
@@ -76,18 +101,19 @@ function getIconInfo(
   }
 }
 
-export function StatusIcon({
-  slot,
-  isCurrent,
-  size,
-  isSkipped,
-}: {
-  slot: number;
+interface StatusIconProps {
+  status: SlotLevel;
   isCurrent: boolean;
   size: IconSize;
   isSkipped?: boolean;
-}) {
-  const status = useAtomValue(getSlotStatus(slot));
+}
+
+export const StatusIcon = memo(function StatusIcon({
+  status,
+  isCurrent,
+  size,
+  isSkipped,
+}: StatusIconProps) {
   const isAlpenglow = useAtomValue(isAlpenglowAtom);
 
   if (isCurrent) return <LoadingIcon size={size} />;
@@ -100,7 +126,7 @@ export function StatusIcon({
       <img src={info.src} alt={info.alt} className={styles[`${size}Icon`]} />
     </Tooltip>
   );
-}
+});
 
 export function PlaceholderIcon({ size }: { size: IconSize }) {
   return <div className={styles[`${size}Icon`]} />;

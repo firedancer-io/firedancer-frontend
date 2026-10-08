@@ -1,14 +1,12 @@
 import { useCallback, useRef } from "react";
 import { useSetAtom } from "jotai";
 import { ascBucketGranularities, msBucketSizes } from "../const";
-import useAggSlotsQuery from "../useAggSlotsQuery";
-import { reserveNextQueryIdAtom, type TimelineQueryKey } from "../atoms";
+import { reserveNextQueryIdAtom } from "../atoms";
 import type { AggGranularity, AggSlots } from "../../../api/types";
+import { AGG_SLOTS_QUERY_KEY, useAggSlotsQuery } from "../useSlotsQuery";
 import type { NsTsRange } from "../../WebGl/webglUtils";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible";
 import { useTimelineServerMessage } from "../utils";
-
-const QUERY_KEY = "query_agg_slots" satisfies TimelineQueryKey;
 
 export default function useMiniMapQuery(
   onMessage: (message: { id: number; value: AggSlots }) => void,
@@ -35,7 +33,7 @@ export default function useMiniMapQuery(
     [onMessage],
   );
 
-  useTimelineServerMessage(QUERY_KEY, handleMessage);
+  useTimelineServerMessage(AGG_SLOTS_QUERY_KEY, handleMessage);
 
   return useThrottledCallbackIfVisible(
     useCallback(
@@ -51,7 +49,7 @@ export default function useMiniMapQuery(
           }
 
           // fetch only missing data at end
-          const queryId = reserveNextQueryId(QUERY_KEY);
+          const queryId = reserveNextQueryId(AGG_SLOTS_QUERY_KEY);
           query(
             queryId,
             [lastRequest.worldRangeNs[1], worldRangeNs[1]],
@@ -60,7 +58,7 @@ export default function useMiniMapQuery(
           pendingQueryIdsRef.current.add(queryId);
         } else {
           // fetch entire world on granularity change or on start range change
-          const queryId = reserveNextQueryId(QUERY_KEY);
+          const queryId = reserveNextQueryId(AGG_SLOTS_QUERY_KEY);
           query(queryId, worldRangeNs, granularity);
           pendingQueryIdsRef.current.add(queryId);
         }
