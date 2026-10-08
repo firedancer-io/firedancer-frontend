@@ -284,19 +284,11 @@ function RevenueTrack({
     throttledDrawAgg();
   }, [isAgg, throttledDrawAgg]);
 
-  // Trigger refresh for nonAgg mode entry or a rows/scale change.
+  // Trigger refresh for nonAgg mode entry or a rows/scale/type/timeline-reference change
   useLayoutEffect(() => {
     if (isAgg) return;
     renderActive();
-  }, [isAgg, numRows, opts.scale, renderActive]);
-
-  // Trigger sync for nonAgg mode entry or a type/timeline-reference change
-  useLayoutEffect(() => {
-    const renderer = rendererRef.current;
-    if (!renderer || isAgg) return;
-    syncNonAggRef.current(renderer);
-    renderActive();
-  }, [isAgg, type, getRelativeMs, renderActive]);
+  }, [isAgg, numRows, opts.scale, type, getRelativeMs, renderActive]);
 
   /**
    * Trigger updates for nonAgg data changes.

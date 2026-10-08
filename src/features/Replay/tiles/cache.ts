@@ -1,6 +1,6 @@
 import { getDefaultStore } from "jotai";
 import type { SendMessage } from "../../../api/ws/types";
-import { socketStateAtom } from "../../../api/ws/atoms";
+import { isConnectedAtom, socketStateAtom } from "../../../api/ws/atoms";
 import { SocketState } from "../../../api/ws/types";
 import type { NsTsRange } from "../../WebGl/webglUtils";
 import { splitFetch, type FetchResult, type Interval } from "./splitFetch";
@@ -53,12 +53,8 @@ export interface TileCache<TData, TMeta> {
     listener: (delta: TileCacheDelta<TData, TMeta>) => void,
   ) => Unsubscribe;
   getTiles: () => Tile<TData, TMeta>[];
-  requestRange: (
-    wsSend: SendMessage,
-    visibleRangeNs: NsTsRange,
-    worldEndNs: bigint,
-  ) => void;
-  init: () => Unsubscribe;
+  requestRange: (visibleRangeNs: NsTsRange, worldEndNs: bigint) => void;
+  init: (wsSend: SendMessage) => Unsubscribe;
   reset: () => void;
 }
 
@@ -108,6 +104,7 @@ export function createTileCache<TData, TMeta>({
   const sortedTileIds: number[] = [];
   const requestedTilesForView = new Set<number>();
 
+  let send: SendMessage | null = null;
   let generation = 0;
   let cachedItems = 0;
   let lastStartNs: bigint | null = null;
@@ -127,14 +124,10 @@ export function createTileCache<TData, TMeta>({
     return Number(ns / tileNs);
   }
 
-  // Used to prevent a fetch response requested before a cache reset from clobbering
-  // current cache state
+  // Used to prevent a fetch that resolved before a cache reset from clobbering
+  // current cache state when its handling runs after the reset
   function isStale(gen: number): boolean {
     return gen !== generation;
-  }
-
-  function isConnected(): boolean {
-    return store.get(socketStateAtom) === SocketState.Connected;
   }
 
   function getRange(id: number): Interval {
@@ -142,7 +135,7 @@ export function createTileCache<TData, TMeta>({
     return [startNs, startNs + tileNs - 1n];
   }
 
-  function viewTileRange(): [number, number] {
+  function getViewTileRange(): [number, number] {
     if (lastStartNs === null || lastEndNs === null) return [0, -1];
     return [tileIdOf(lastStartNs), tileIdOf(lastEndNs)];
   }
@@ -163,18 +156,11 @@ export function createTileCache<TData, TMeta>({
   }
 
   function isTileInView(tileId: number): boolean {
-    const [viewStartTileId, viewEndTileId] = viewTileRange();
+    const [viewStartTileId, viewEndTileId] = getViewTileRange();
     if (viewEndTileId < viewStartTileId) return false;
     return (
       viewStartTileId - overscan <= tileId && tileId <= viewEndTileId + overscan
     );
-  }
-
-  function isLiveTileVisible(worldEndNs: bigint): boolean {
-    const [viewStartTileId, viewEndTileId] = viewTileRange();
-    if (viewEndTileId < viewStartTileId) return false;
-    const liveTileId = tileIdOf(worldEndNs);
-    return viewStartTileId <= liveTileId && liveTileId <= viewEndTileId;
   }
 
   function isCacheOverBudget(): boolean {
@@ -188,7 +174,7 @@ export function createTileCache<TData, TMeta>({
   function evictToBudget(): void {
     if (!isCacheOverBudget()) return;
 
-    const [viewStartTileId, viewEndTileId] = viewTileRange();
+    const [viewStartTileId, viewEndTileId] = getViewTileRange();
     while (sortedTileIds.length > 0 && isCacheOverBudget()) {
       const earliestTileId = sortedTileIds[0];
       const latestTileId = sortedTileIds[sortedTileIds.length - 1];
@@ -226,7 +212,7 @@ export function createTileCache<TData, TMeta>({
     publish({ kind: "add", tiles: [{ startNs, endNs, data, meta }] });
   }
 
-  function fetchDataForRange(wsSend: SendMessage, range: Interval) {
+  function fetchDataForRange(range: Interval) {
     const gen = generation;
     return splitFetch<TData>(range, {
       minWindowInterval: minSubTileNs,
@@ -234,9 +220,9 @@ export function createTileCache<TData, TMeta>({
       merge,
       filterOwned,
       fetch: (window) =>
-        isStale(gen)
+        isStale(gen) || send === null
           ? Promise.resolve<FetchResult<TData>>({ errorCode: "cancelled" })
-          : fetch(wsSend, window, nextRequestId++),
+          : fetch(send, window, nextRequestId++),
     });
   }
 
@@ -244,7 +230,7 @@ export function createTileCache<TData, TMeta>({
   function nextTileToFetch(): number | undefined {
     const liveTileId =
       lastWorldEndNs === null ? null : tileIdOf(lastWorldEndNs);
-    const [viewStartTileId, viewEndTileId] = viewTileRange();
+    const [viewStartTileId, viewEndTileId] = getViewTileRange();
     if (viewEndTileId < viewStartTileId || liveTileId === null)
       return undefined;
 
@@ -269,9 +255,10 @@ export function createTileCache<TData, TMeta>({
     return nextTile;
   }
 
-  async function fetchNextTile(wsSend: SendMessage): Promise<void> {
+  async function fetchNextTile(): Promise<void> {
     if (inFlightTileId !== null) return;
-    if (!isConnected()) return;
+    if (send === null) return;
+    if (!store.get(isConnectedAtom)) return;
 
     const tileId = nextTileToFetch();
     if (tileId === undefined) return;
@@ -279,15 +266,12 @@ export function createTileCache<TData, TMeta>({
     const gen = generation;
     requestedTilesForView.add(tileId);
     inFlightTileId = tileId;
-    const { data, canRetry } = await fetchDataForRange(
-      wsSend,
-      getRange(tileId),
-    );
+    const { data, canRetry } = await fetchDataForRange(getRange(tileId));
     if (isStale(gen)) return;
 
     if (!canRetry) cacheTile(tileId, data);
     inFlightTileId = null;
-    void fetchNextTile(wsSend);
+    void fetchNextTile();
   }
 
   function startLive(tileId: number): void {
@@ -305,20 +289,14 @@ export function createTileCache<TData, TMeta>({
     live.lastQueryTime = -Infinity;
   }
 
-  async function fetchLiveRange(
-    wsSend: SendMessage,
-    endNs: bigint,
-  ): Promise<boolean> {
+  async function fetchLiveRange(endNs: bigint): Promise<boolean> {
     if (live.acc === null) return false;
 
     const startNs = live.acc.fetchedEndNs + 1n;
     if (endNs < startNs) return false;
 
     const gen = generation;
-    const { data, canRetry } = await fetchDataForRange(wsSend, [
-      startNs,
-      endNs,
-    ]);
+    const { data, canRetry } = await fetchDataForRange([startNs, endNs]);
     if (isStale(gen)) return false;
     if (canRetry) return true;
     if (live.acc === null || startNs !== live.acc.fetchedEndNs + 1n)
@@ -341,27 +319,23 @@ export function createTileCache<TData, TMeta>({
     return false;
   }
 
-  async function advanceLive(
-    wsSend: SendMessage,
-    worldEndNs: bigint,
-  ): Promise<void> {
+  async function advanceLive(worldEndNs: bigint): Promise<void> {
+    if (send === null) return;
     const worldEndTileId = tileIdOf(worldEndNs);
     if (!isTileInView(worldEndTileId)) {
       if (live.acc !== null) {
         resetLive();
         publish({ kind: "clearLive" });
-        void fetchNextTile(wsSend);
+        void fetchNextTile();
       }
       return;
     }
-
-    if (!isLiveTileVisible(worldEndNs)) return;
 
     if (!live.inFlight && live.acc !== null && !isTileInView(live.acc.tileId)) {
       live.acc = null;
     }
 
-    if (!isConnected()) return;
+    if (!store.get(isConnectedAtom)) return;
 
     if (live.acc === null) startLive(worldEndTileId);
 
@@ -380,7 +354,7 @@ export function createTileCache<TData, TMeta>({
     while (live.acc !== null && live.acc.tileId < worldEndTileId) {
       const tileId = live.acc.tileId;
       const [, tileEndNs] = getRange(tileId);
-      const canRetry = await fetchLiveRange(wsSend, tileEndNs);
+      const canRetry = await fetchLiveRange(tileEndNs);
       if (isStale(gen)) return;
       if (live.acc === null || live.acc.tileId !== tileId) break;
       if (canRetry) {
@@ -394,7 +368,7 @@ export function createTileCache<TData, TMeta>({
     if (live.acc?.tileId === worldEndTileId) {
       const alignedEndNs =
         (worldEndNs / LIVE_QUERY_STEP_NS) * LIVE_QUERY_STEP_NS - 1n;
-      const canRetry = await fetchLiveRange(wsSend, alignedEndNs);
+      const canRetry = await fetchLiveRange(alignedEndNs);
       if (isStale(gen)) return;
       if (canRetry) {
         live.inFlight = false;
@@ -406,15 +380,11 @@ export function createTileCache<TData, TMeta>({
     if (live.targetEndNs !== null) {
       const next = live.targetEndNs;
       live.targetEndNs = null;
-      void advanceLive(wsSend, next);
+      void advanceLive(next);
     }
   }
 
-  function requestRange(
-    wsSend: SendMessage,
-    visibleRangeNs: NsTsRange,
-    worldEndNs: bigint,
-  ): void {
+  function requestRange(visibleRangeNs: NsTsRange, worldEndNs: bigint): void {
     const [startNs, endNs] = visibleRangeNs;
     if (endNs <= startNs) return;
 
@@ -428,13 +398,19 @@ export function createTileCache<TData, TMeta>({
 
     if (viewChanged) {
       requestedTilesForView.clear();
-      void fetchNextTile(wsSend);
+      void fetchNextTile();
     }
 
-    if (worldChanged) void advanceLive(wsSend, worldEndNs);
+    if (worldChanged) void advanceLive(worldEndNs);
   }
 
-  function init(): () => void {
+  function init(wsSend: SendMessage): () => void {
+    send = wsSend;
+
+    // If a range was already requested while send was still not set, pick it back up now.
+    if (lastStartNs !== null && lastEndNs !== null) void fetchNextTile();
+    if (lastWorldEndNs !== null) void advanceLive(lastWorldEndNs);
+
     return store.sub(socketStateAtom, () => {
       if (store.get(socketStateAtom) === SocketState.Disconnected) {
         failPendingRequests();

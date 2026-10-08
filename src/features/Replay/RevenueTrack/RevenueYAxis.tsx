@@ -20,6 +20,7 @@ interface RevenueYAxisProps {
 }
 
 const AXIS_TICK_COUNT = 5;
+const LABEL_SIG_DIGITS = 3;
 
 export default function RevenueYAxis({
   maxValue,
@@ -100,7 +101,7 @@ function buildRevenueAxisTicks(
       maxNum,
     );
     const valueSol = (value / lamportsPerSol).toLocaleString(undefined, {
-      maximumSignificantDigits: 2,
+      maximumSignificantDigits: LABEL_SIG_DIGITS,
     });
     const valuePct = `${((value / maxNum) * 100).toFixed(0)}%`;
 

@@ -6,12 +6,14 @@ import {
   type Tile,
   type TileCacheDelta,
 } from "../../tiles/cache";
+import { createPendingRequests } from "../../tiles/requests";
 import type { Interval } from "../../tiles/splitFetch";
 import { referenceNsAtom } from "../../atoms";
 import { calcRelativeMs } from "../../utils";
-import { txnMetaRequests } from "./txnMetaRequests";
 
 const store = getDefaultStore();
+
+export const txnMetaRequests = createPendingRequests<TimelineTxnMeta>();
 
 type TxnMetaMaxima = Record<RevenueType, bigint>;
 
@@ -89,6 +91,10 @@ function itemCount(txns: TxnMetaColumns): number {
   return txns.txn_exec_idx.length;
 }
 
+/**
+ * Keeps only txns whose commit-end falls within the interval, so each tile
+ * owns a txn exactly once.
+ */
 function filterOwned(
   txns: TxnMetaColumns,
   [startNs, endNs]: Interval,

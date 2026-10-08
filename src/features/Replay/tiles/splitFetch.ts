@@ -8,6 +8,8 @@ export interface SplitFetchOpts<TData> {
   minWindowInterval: bigint;
   empty: () => TData;
   merge: (acc: TData, add: TData) => void;
+  /** Drops items a window doesn't own so boundary-straddling items aren't
+  double-counted when halves merge. */
   filterOwned: (data: TData, window: Interval) => TData;
   fetch: (window: Interval, nodeIdx: number) => Promise<FetchResult<TData>>;
 }

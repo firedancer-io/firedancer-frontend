@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import { useWebSocketSend } from "../../../api/ws/utils";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
 import { calcAbsoluteNs } from "../utils";
 import type { TileCache, TileCacheDelta } from "./cache";
@@ -16,8 +15,6 @@ export function useTileCacheQuery<TData, TMeta>(
   visibleRangeMs: TsRange,
   worldRangeMs: TsRange,
 ) => void {
-  const wsSend = useWebSocketSend();
-
   return useCallback(
     (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
       const visibleRangeNs: NsTsRange = [
@@ -25,9 +22,9 @@ export function useTileCacheQuery<TData, TMeta>(
         calcAbsoluteNs(referenceNs, visibleRangeMs[1]),
       ];
       const worldEndNs = calcAbsoluteNs(referenceNs, worldRangeMs[1]);
-      cache.requestRange(wsSend, visibleRangeNs, worldEndNs);
+      cache.requestRange(visibleRangeNs, worldEndNs);
     },
-    [cache, wsSend],
+    [cache],
   );
 }
 

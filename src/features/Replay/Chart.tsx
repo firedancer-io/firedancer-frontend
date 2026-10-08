@@ -1,12 +1,11 @@
 import { Flex, Spinner } from "@radix-ui/themes";
-import { useRef, useCallback, useLayoutEffect, useEffect } from "react";
+import { useRef, useCallback, useLayoutEffect } from "react";
 import { useMeasure } from "react-use";
 import styles from "./chart.module.css";
 import type { MarkerLinesProps } from "./const.ts";
 import VisibleRangeInfo from "./VisibleRangeInfo.tsx";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
-import { txnMetaCache } from "./RevenueTrack/txnMeta/txnMetaCache.ts";
-import { useTxnMetaResponses } from "./RevenueTrack/txnMeta/txnMetaRequests.ts";
+import { useTxnMetaCache } from "./RevenueTrack/txnMeta/useTxnMetaCache.ts";
 import { RevenueType } from "../../api/entities.ts";
 import { useExplorableChart } from "./useExplorableChart.ts";
 import { getDefaultStore, useAtomValue } from "jotai";
@@ -103,14 +102,7 @@ export default function Chart() {
   const aggRevenueQuery = useAggRevenueQuery();
 
   // Drive the shared txn meta cache used by the revenue tracks' non-agg view
-  useTxnMetaResponses();
-  useEffect(() => {
-    const unsub = txnMetaCache.init();
-    return () => {
-      unsub();
-      txnMetaCache.reset();
-    };
-  }, []);
+  useTxnMetaCache();
 
   if (!isInitialized) return <Spinner />;
 
