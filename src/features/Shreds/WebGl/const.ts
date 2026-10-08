@@ -1,3 +1,4 @@
+import { SHRED_EVENT_TYPES_COUNT } from "../../../api/entities";
 import {
   shredPublishedColor,
   shredReceivedRepairColor,
@@ -11,6 +12,8 @@ import {
 import { convertToWebGlColor } from "../../WebGl/webglUtils";
 
 export const SHREDS_OPACITY = 0.8;
+// 700 shreds, all events except completion could have a rectangle
+export const SHRED_MESH_CAPACITY = 700 * (SHRED_EVENT_TYPES_COUNT - 1);
 
 export const colors = {
   skipped: convertToWebGlColor(shredSkippedColor),

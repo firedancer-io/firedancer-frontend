@@ -1,5 +1,5 @@
 import type * as THREE from "three";
-import type { WebglResources, RectMesh } from "../../WebGl/webglUtils";
+import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
 
 // TODO: set to reasonable transition value
 export const SHREDS_AGG_THRESHOLD_MS = 0;
@@ -14,7 +14,7 @@ export type RendererObj = {
 export interface AggRendererResources {
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
-  resources: WebglResources;
+  resources: RectResources;
   mesh: RectMesh;
   /**
    * origin ms subtracted from both the camera bounds and

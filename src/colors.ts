@@ -352,3 +352,7 @@ export const resourcesSharedColor = "#363A3F";
 export const resourcesOtherColor = "#43484E";
 export const resourcesAvailableColor = "#272A2D";
 export const resourcesMoreTilesColor = "#5A6169";
+
+// Replay
+export const replayPrimaryTextColor = "#8E909D";
+export const replaySecondaryTextColor = "#67696A";

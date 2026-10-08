@@ -1,5 +1,5 @@
 import type * as THREE from "three";
-import type { RectMesh, TsRange, WebglResources } from "../WebGl/webglUtils";
+import type { RectMesh, RectResources, TsRange } from "../WebGl/webglUtils";
 
 export type RendererObj = {
   renderer: THREE.WebGLRenderer;
@@ -9,7 +9,7 @@ export type RendererObj = {
   availableMeshes: RectMesh[];
   worldTsRange: TsRange;
   // resources shared by this renderer's slot meshes
-  resources: WebglResources;
+  resources: RectResources;
   cleanUpRenderer: () => void;
 };
 

@@ -1,5 +1,10 @@
 import { logDebug, logError, logWarning } from "../../logger";
-import { WsMessageSchema, type WsEntity, type ToWorkerMessage } from "./types";
+import {
+  WsMessageSchema,
+  WsErrorSchema,
+  type WsEntity,
+  type ToWorkerMessage,
+} from "./types";
 import { createMessageHandler } from "./messageHandler";
 import { loadZstd, type ZstdDecoder } from "./zstd/zstd";
 
@@ -106,6 +111,12 @@ function connect(url: string, zstd: ZstdDecoder | undefined) {
 
         if (result.success) {
           enqueue(result.data);
+          return;
+        }
+
+        const errorResult = WsErrorSchema.safeParse(json);
+        if (errorResult.success) {
+          ctx.postMessage({ type: "error", ...errorResult.data });
           return;
         }
 

@@ -4,11 +4,11 @@ import * as THREE from "three";
 import { MAX_WEBGL_PX_RATIO } from "../../../consts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers";
 import {
-  createWebglResources,
+  createRectResources,
   createRectMesh,
-  disposeWebglResources,
+  disposeRectResources,
   createRenderer,
-  ensureCapacity,
+  ensureRectCapacity,
   addRectangleToMesh,
   updateRectMeshCounts,
   type TsRange,
@@ -64,7 +64,7 @@ export function setUpAggResources(
   const camera = new THREE.OrthographicCamera(0, 1, 0, -1, 0.5, 10);
   camera.position.z = 1;
 
-  const resources = createWebglResources(1);
+  const resources = createRectResources(1);
   const mesh = createRectMesh(resources);
 
   scene.add(mesh.mesh);
@@ -77,7 +77,7 @@ export function setUpAggResources(
     if (!getWasContextLost()) {
       mesh.mesh.geometry.dispose();
       // dispose this chart's own unitQuad / sharedMaterial
-      disposeWebglResources(resources);
+      disposeRectResources(resources);
     }
   };
 
@@ -149,7 +149,7 @@ export function drawAggShreds(
       const count = eventCounts[eventType as AggShredEventType];
       if (!count) continue;
 
-      ensureCapacity(mesh, rectIdx + 1);
+      ensureRectCapacity(mesh, rectIdx + 1);
       addRectangleToMesh(
         mesh,
         rectIdx,

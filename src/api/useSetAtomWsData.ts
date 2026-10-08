@@ -211,6 +211,9 @@ export function useSetAtomWsData() {
         case "kv":
           updateAtoms(msg);
           break;
+        case "error":
+          // currently unused here, handled in component
+          break;
         // currently unused, would map to EmaCache object
         case "ema":
           break;
@@ -826,7 +829,8 @@ function useUpdateAtoms() {
           switch (key) {
             case "query_agg_shreds":
             case "query_agg_revenue":
-            case "query_agg_slots": {
+            case "query_agg_slots":
+            case "query_txn_meta": {
               // listen in component
               break;
             }
