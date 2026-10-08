@@ -1,0 +1,392 @@
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+
+.top-sections {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .top-sections {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* ── Section / NUMA headings ────────────────────────────────────────────── */
+
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--container-border-color);
+}
+
+.card-title {
+  color: #b2bcc9;
+}
+
+.section-label {
+  color: #b2bcc9;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.section-value {
+  flex-shrink: 0;
+  color: #949494;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.numa-subhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.numa-label {
+  flex-shrink: 0;
+  color: #b2bcc9;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ── CPU grid ───────────────────────────────────────────────────────────── */
+
+.die-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.die-panel {
+  /* Grow to share the row evenly; a lone die fills the full width. Basis 238px
+     (an exact 3-core fit) keeps multi-die rows from packing uncomfortably tight
+     before they wrap. */
+  display: flex;
+  flex: 1 1 238px;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--space-2);
+  border: 1px solid rgba(250, 250, 250, 0.12);
+  border-radius: 4px;
+  background: rgba(250, 250, 250, 0.05);
+}
+
+.die-label {
+  color: #949494;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cpu-grid {
+  /* One column per physical core, each stretching to fill the die width so the
+     CPU rectangles have no leftover gap on the right. auto-fit collapses unused
+     tracks, so a wider die simply gives each core more width. */
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  align-items: start;
+  gap: 4px 8px;
+}
+
+.cpu-grid-placeholder {
+  height: 96px;
+  border: 1px solid var(--container-border-color);
+  border-radius: 6px;
+  background: var(--progress-gutter-background-color);
+}
+
+/* A physical core: sibling chips sit side by side. Each chip is its own hover
+   target, so the group is just a layout wrapper keeping siblings adjacent. */
+.core-group {
+  display: flex;
+  min-width: 0;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.cpu-chip {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.cpu-chip:hover {
+  background: var(--progress-gutter-background-color);
+}
+
+.cpu {
+  display: flex;
+  width: 100%;
+  height: 12px;
+  box-sizing: border-box;
+  padding-right: 2px;
+  justify-content: flex-end;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--radix-gray10, #777b84);
+  border-radius: 2px;
+  background: transparent;
+}
+
+/* Online CPU with no tile assigned: just the outline. */
+.cpu-idle {
+  background: transparent;
+}
+
+.cpu-offline {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 2px,
+    #434952 2px,
+    #434952 3px
+  );
+  opacity: 0.55;
+}
+
+.cpu-badge {
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+.cpu-cell-label {
+  max-width: 100%;
+  overflow: hidden;
+  color: #8e909d;
+  font-size: 11px;
+  line-height: 13px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cpu-tooltip {
+  min-width: 170px;
+  font-size: 12px;
+}
+
+/* Resources-card tooltips use a darker container than the app-wide default. */
+:global(.rt-TooltipContent).resource-tooltip {
+  background: #111113;
+}
+
+:global(.rt-TooltipContent).resource-tooltip :global(.rt-TooltipArrow) {
+  fill: #111113;
+}
+
+.tooltip-label {
+  color: #949494;
+}
+
+.tooltip-value {
+  color: #cbcbcb;
+}
+
+:global(.rt-Separator).tooltip-separator {
+  background: #2e343e;
+}
+
+/* ── Memory breakdown legend (swatch · label · value, flowing inline) ────── */
+
+.memory-legend {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: opacity 0.1s ease;
+}
+
+.legend-row-interactive {
+  cursor: pointer;
+}
+
+.legend-row-active {
+  background: var(--progress-gutter-background-color);
+}
+
+.legend-row-dimmed {
+  opacity: 0.4;
+}
+
+.legend-swatch {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+}
+
+/* Memory breakdown legend uses thin vertical bars matching the segmented bar. */
+.memory-legend .legend-swatch {
+  width: 3px;
+  height: 10px;
+}
+
+.legend-label {
+  flex: 0 0 auto;
+  color: #949494;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.legend-value {
+  flex-shrink: 0;
+  color: #cbcbcb;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* ── Compact inline legend ([swatch] label value), e.g. CPU / Disk keys ─── */
+
+.legend-key-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #949494;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.legend-key-value {
+  color: #cbcbcb;
+}
+
+.legend-key-swatch {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+}
+
+/* Thin vertical bar swatch (matches the segmented bar), e.g. disk legend. */
+.legend-bar {
+  width: 3px;
+  height: 10px;
+}
+
+/* Continuous util ramp (green→red), bookended by 0% / 100% labels. */
+.cpu-key-gradient {
+  width: 120px;
+  height: 8px;
+  flex-shrink: 0;
+  background: linear-gradient(
+    to right,
+    var(--tile-busy-green-color),
+    var(--tile-busy-red-color)
+  );
+}
+
+.cpu-key-idle {
+  border: 1px solid var(--container-border-color);
+  background: transparent;
+}
+
+.cpu-key-offline {
+  background: repeating-linear-gradient(
+    -45deg,
+    #2a2e34,
+    #2a2e34 2px,
+    #434952 2px,
+    #434952 3px
+  );
+}
+
+/* ── Segmented bars ─────────────────────────────────────────────────────── */
+
+.segmented-bar {
+  display: flex;
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 2px;
+  background-color: #3a3a3a;
+}
+
+/* Memory per-tile breakdown bar sits under the taller overview bar. */
+.bar-breakdown {
+  height: 6px;
+}
+
+.bar-segment {
+  display: flex;
+  min-width: 1px;
+  flex-grow: 0;
+  flex-shrink: 1;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.segment-active {
+  box-shadow: inset 0 0 0 2px #eef2f6;
+}
+
+.segment-dimmed {
+  opacity: 0.35;
+}
+
+.segment-interactive {
+  cursor: pointer;
+}
+
+/* ── Disk ───────────────────────────────────────────────────────────────── */
+
+.disk-placeholder {
+  height: 18px;
+  border-radius: 4px;
+  background: var(--progress-gutter-background-color);
+}
+
+.mount-name {
+  flex-shrink: 0;
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--overview-text-color);
+  font-family: "Roboto Mono", monospace;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty-text {
+  color: var(--regular-text-color);
+  font-size: 12px;
+}
+
+/* ── Utility ────────────────────────────────────────────────────────────── */
+
+.hidden {
+  display: none;
+}
