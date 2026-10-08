@@ -181,7 +181,7 @@ function ShredsTrack({
       renderActive();
     }, [renderActive]),
     50,
-    { leading: true, trailing: true },
+    { leading: false, trailing: true },
   );
 
   // redraw non-agg track when shred/fec data updates (mirrors throttledDrawAgg)

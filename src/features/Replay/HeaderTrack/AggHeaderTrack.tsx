@@ -119,7 +119,7 @@ function AggHeaderTrack({
       showAgg();
     }, [showAgg, renderIfActive]),
     50,
-    { leading: true, trailing: true },
+    { leading: false, trailing: true },
   );
 
   // set up renderer and subscribe to range change, to trigger queries
