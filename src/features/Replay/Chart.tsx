@@ -40,6 +40,19 @@ export default function Chart() {
   const [measureRef, { width }] = useMeasure<HTMLDivElement>();
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  const { setUpExploreListeners, setUpMiniMap } = useExplorableChart();
+
+  const cleanUpExploreListenersRef = useRef<(() => void) | null>(null);
+  const setTracksContainerRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      cleanUpExploreListenersRef.current?.();
+      cleanUpExploreListenersRef.current = el
+        ? setUpExploreListeners(el)
+        : null;
+    },
+    [setUpExploreListeners],
+  );
+
   const refreshSelectedMarker = useCallback((isWorld: boolean) => {
     if (!containerRef.current) return;
 
@@ -95,8 +108,6 @@ export default function Chart() {
     }
   }, [isInitialized]);
 
-  const { explorableChartProps, miniMapProps } = useExplorableChart();
-
   // shared query cache if there are multiple revenue tracks
   const aggRevenueQuery = useAggRevenueQuery();
 
@@ -107,18 +118,22 @@ export default function Chart() {
       {!!width && (
         <>
           <VisibleRangeInfo />
-          <MiniMap width={width} {...miniMapProps} {...markerLinesProps} />
-          <Flex direction="column" gapY="4" position="relative">
-            <ShredsTrack
-              width={width}
-              {...explorableChartProps}
-              {...markerLinesProps}
-            />
+          <MiniMap
+            width={width}
+            setUpMiniMap={setUpMiniMap}
+            {...markerLinesProps}
+          />
+          <Flex
+            ref={setTracksContainerRef}
+            direction="column"
+            gapY="4"
+            position="relative"
+          >
+            <ShredsTrack width={width} {...markerLinesProps} />
             <RevenueTrack
               aggQuery={aggRevenueQuery}
               type={RevenueType.TxnFees}
               width={width}
-              {...explorableChartProps}
               {...markerLinesProps}
             />
           </Flex>

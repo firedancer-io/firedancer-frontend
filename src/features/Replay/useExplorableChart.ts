@@ -1,10 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import type { TsRange } from "../WebGl/webglUtils";
-import {
-  MIN_VISIBLE_MS,
-  type ExplorableChartProps,
-  type MiniMapSetupProps,
-} from "./const";
+import { MIN_VISIBLE_MS } from "./const";
 import { getDefaultStore } from "jotai";
 import { selectedMsAtom, visibleRangeAtom, worldRangeAtom } from "./atoms";
 import { clamp as minMaxClamp } from "lodash";
@@ -14,18 +10,37 @@ import { clampToWorld } from "./utils";
 const PAN_THRESHOLD_PX = 0;
 const ZOOM_INTENSITY = 0.002;
 
+// Some elements (ex. labels, buttons) are excluded from triggering chart exploration
+function isExcludedTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    target.closest(`.${styles.noChartExplore}`) != null
+  );
+}
+
 const LINE_HEIGHT_PX = 40;
 const PAGE_HEIGHT_PX = 800;
 
-function normalizeWheelDeltaY(e: WheelEvent) {
+function deltaModeScale(e: WheelEvent) {
   switch (e.deltaMode) {
     case WheelEvent.DOM_DELTA_LINE:
-      return e.deltaY * LINE_HEIGHT_PX;
+      return LINE_HEIGHT_PX;
     case WheelEvent.DOM_DELTA_PAGE:
-      return e.deltaY * PAGE_HEIGHT_PX;
+      return PAGE_HEIGHT_PX;
     default:
-      return e.deltaY;
+      return 1;
   }
+}
+
+function normalizeWheelDeltaY(e: WheelEvent) {
+  return e.deltaY * deltaModeScale(e);
+}
+
+// Use larger of x or y delta
+function normalizeWheelPanDelta(e: WheelEvent) {
+  const dominant =
+    Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  return dominant * deltaModeScale(e);
 }
 
 function clientXToTs(
@@ -50,10 +65,7 @@ function addListener<K extends keyof HTMLElementEventMap>(
 
 const store = getDefaultStore();
 
-export function useExplorableChart(): {
-  explorableChartProps: ExplorableChartProps;
-  miniMapProps: MiniMapSetupProps;
-} {
+export function useExplorableChart() {
   const dragStartRef = useRef<{
     clientX: number;
     ts: number;
@@ -121,6 +133,24 @@ export function useExplorableChart(): {
         ]);
       };
 
+      const wheelPan = (deltaPx: number) => {
+        const visibleRange = store.get(visibleRangeAtom);
+        const window = isWorldTrack ? store.get(worldRangeAtom) : visibleRange;
+        if (!window || !visibleRange) return;
+
+        const trackWidth = trackEl.getBoundingClientRect().width;
+        if (!trackWidth) return;
+
+        const span = window[1] - window[0];
+
+        // scrolling down/right pans forward in time
+        const diff = (deltaPx / trackWidth) * span;
+        setClampedVisibleRange([
+          visibleRange[0] + diff,
+          visibleRange[1] + diff,
+        ]);
+      };
+
       const zoom = (clientX: number, deltaY: number) => {
         const visibleRange = store.get(visibleRangeAtom);
         if (!visibleRange) return;
@@ -154,6 +184,8 @@ export function useExplorableChart(): {
         },
         onMouseDown: (e: MouseEvent) => {
           if (e.button !== 0) return;
+          // keep native behavior for excluded elements
+          if (isExcludedTarget(e.target)) return;
           startDrag(e.clientX);
           e.preventDefault();
         },
@@ -163,17 +195,31 @@ export function useExplorableChart(): {
         },
         onTouchStart: (e: TouchEvent) => {
           if (e.touches.length !== 1) return;
+          if (isExcludedTarget(e.target)) return;
           startDrag(e.touches[0].clientX);
           e.preventDefault();
         },
         onTouchMove: (e: TouchEvent) => {
           if (e.touches.length !== 1) return;
+          // let excluded elements keep native touch scrolling/selection
+          if (isExcludedTarget(e.target)) return;
           moveDrag(e.touches[0].clientX);
           e.preventDefault();
         },
         onWheel: (e: WheelEvent) => {
-          e.preventDefault();
-          zoom(e.clientX, normalizeWheelDeltaY(e));
+          if (isExcludedTarget(e.target)) return;
+          // ctrl (or cmd on mac) + wheel => zoom
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            zoom(e.clientX, normalizeWheelDeltaY(e));
+            return;
+          }
+          // shift + wheel => pan
+          if (e.shiftKey) {
+            e.preventDefault();
+            wheelPan(normalizeWheelPanDelta(e));
+            return;
+          }
         },
       };
     },
@@ -392,8 +438,8 @@ export function useExplorableChart(): {
     };
 
     return {
-      explorableChartProps: { setUpExploreListeners },
-      miniMapProps: { setUpMiniMap },
+      setUpExploreListeners,
+      setUpMiniMap,
     };
   }, [createCallbacks, setClampedVisibleRange]);
 }

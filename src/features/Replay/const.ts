@@ -40,19 +40,6 @@ export const ascBucketGranularities = Object.keys(msBucketSizes).sort(
     msBucketSizes[a as AggGranularity] - msBucketSizes[b as AggGranularity],
 ) as AggGranularity[];
 
-export interface ExplorableChartProps {
-  setUpExploreListeners: (trackEl: HTMLDivElement) => () => void;
-}
-
-export interface MiniMapSetupProps {
-  setUpMiniMap: (
-    trackEl: HTMLDivElement,
-    visibleRangeEl: HTMLDivElement,
-    leftHandleEl: HTMLDivElement,
-    rightHandleEl: HTMLDivElement,
-  ) => () => void;
-}
-
 export interface MarkerLinesProps {
   markerLinesClassName: string;
   miniMapMarkerLinesClassName: string;
