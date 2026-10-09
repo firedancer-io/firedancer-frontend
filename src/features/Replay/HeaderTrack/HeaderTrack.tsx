@@ -1,6 +1,6 @@
 import { getDefaultStore } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import { type ExplorableChartProps, type MarkerLinesProps } from "../const.ts";
+import { type MarkerLinesProps } from "../const.ts";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
@@ -19,20 +19,17 @@ import { aggSlotsAtom, drawEventType, aggHeaderEmitterAtom } from "./atoms.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import clsx from "clsx";
 import styles from "../track.module.css";
+import chartStyles from "../chart.module.css";
 
 const chartId = "header-track";
 const store = getDefaultStore();
 
-interface HeaderTrackProps
-  extends WebGlRemountProps,
-    ExplorableChartProps,
-    MarkerLinesProps {
+interface HeaderTrackProps extends WebGlRemountProps, MarkerLinesProps {
   width: number;
 }
 
 function HeaderTrack({
   remount,
-  setUpExploreListeners,
   markerLinesClassName,
   width,
 }: HeaderTrackProps) {
@@ -126,7 +123,6 @@ function HeaderTrack({
     containerRef.current.replaceChildren(rendererObj.renderer.domElement);
 
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
-    const cleanUpExploreListeners = setUpExploreListeners(containerRef.current);
     const cleanUpRenderer = rendererRef.current.cleanUp;
 
     // listen for agg slots draw events
@@ -146,11 +142,9 @@ function HeaderTrack({
       unsubscribeRange();
       cleanUpRenderer();
       rendererRef.current = undefined;
-      cleanUpExploreListeners();
     };
   }, [
     onRangeChange,
-    setUpExploreListeners,
     setUpContextListeners,
     getWasContextLost,
     throttledDrawAgg,
@@ -173,7 +167,7 @@ function HeaderTrack({
         ref={containerRef}
         className={clsx(styles.trackCanvasContainer, markerLinesClassName)}
       />
-      <div className={styles.bucketSizeLabel}>
+      <div className={clsx(chartStyles.noChartExplore, styles.bucketSizeLabel)}>
         Bucket size: {granularity ?? "-"}
       </div>
     </div>
