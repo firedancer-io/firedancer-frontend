@@ -3,12 +3,17 @@
   border-radius: 8px;
   flex-shrink: 0;
 
-  .grab-cursor * {
+  .grab-cursor {
     cursor: grab;
+    .no-chart-explore {
+      cursor: auto;
+    }
   }
+  .grabbing-cursor,
   .grabbing-cursor * {
     cursor: grabbing !important;
   }
+  .resizing-cursor,
   .resizing-cursor * {
     cursor: ew-resize !important;
   }

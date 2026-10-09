@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import clsx from "clsx";
 import { Flex, Select, Switch, Text } from "@radix-ui/themes";
 import {
   revenueScaleOptions,
@@ -7,6 +8,7 @@ import {
 } from "./consts.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import styles from "./revenueControls.module.css";
+import chartStyles from "../chart.module.css";
 
 interface RevenueControlsProps {
   isAgg: boolean;
@@ -22,7 +24,12 @@ export default function RevenueControls({
   setOpts,
 }: RevenueControlsProps) {
   return (
-    <Flex className={styles.controls} justify="end" align="center" gap="4">
+    <Flex
+      className={clsx(chartStyles.noChartExplore, styles.controls)}
+      justify="end"
+      align="center"
+      gap="4"
+    >
       <Text>Bucket size: {isAgg ? (granularity ?? "-") : "Txn"}</Text>
 
       <Flex gap="1" align="center">

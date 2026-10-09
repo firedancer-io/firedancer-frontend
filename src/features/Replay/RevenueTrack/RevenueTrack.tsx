@@ -1,9 +1,9 @@
 import { Flex } from "@radix-ui/themes";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import { type ExplorableChartProps, type MarkerLinesProps } from "../const.ts";
 import { DEFAULT_REVENUE_VIEW_OPTS, type RevenueViewOpts } from "./consts.ts";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
+import { type MarkerLinesProps } from "../const.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -51,10 +51,7 @@ const store = getDefaultStore();
 const getNumRows = (splitByRow: boolean, tileCount: number) =>
   splitByRow ? Math.max(tileCount, 1) : 1;
 
-interface RevenueTrackProps
-  extends WebGlRemountProps,
-    ExplorableChartProps,
-    MarkerLinesProps {
+interface RevenueTrackProps extends WebGlRemountProps, MarkerLinesProps {
   width: number;
   type: RevenueType;
   aggQuery: (
@@ -67,7 +64,6 @@ interface RevenueTrackProps
 
 function RevenueTrack({
   remount,
-  setUpExploreListeners,
   markerLinesClassName,
   width,
   type,
@@ -245,7 +241,6 @@ function RevenueTrack({
     const unsubscribeWorld = store.sub(worldRangeAtom, () =>
       onRangeChange(false),
     );
-    const cleanUpExploreListeners = setUpExploreListeners(containerRef.current);
     const cleanUpRenderer = rendererRef.current.cleanUp;
 
     // listen for agg revenue draw events
@@ -266,11 +261,9 @@ function RevenueTrack({
       unsubscribeWorld();
       cleanUpRenderer();
       rendererRef.current = undefined;
-      cleanUpExploreListeners();
     };
   }, [
     onRangeChange,
-    setUpExploreListeners,
     setUpContextListeners,
     getWasContextLost,
     throttledDrawAgg,
