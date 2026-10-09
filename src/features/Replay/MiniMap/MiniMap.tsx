@@ -1,5 +1,5 @@
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import { type MarkerLinesProps, type MiniMapSetupProps } from "../const.ts";
+import { type MarkerLinesProps } from "../const.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -25,10 +25,13 @@ import { getDefaultStore } from "jotai";
 
 const store = getDefaultStore();
 
-interface MiniMapProps
-  extends WebGlRemountProps,
-    MiniMapSetupProps,
-    MarkerLinesProps {
+interface MiniMapProps extends WebGlRemountProps, MarkerLinesProps {
+  setUpMiniMap: (
+    trackEl: HTMLDivElement,
+    visibleRangeEl: HTMLDivElement,
+    leftHandleEl: HTMLDivElement,
+    rightHandleEl: HTMLDivElement,
+  ) => () => void;
   width: number;
 }
 

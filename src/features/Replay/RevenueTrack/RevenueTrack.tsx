@@ -1,6 +1,7 @@
 import { getDefaultStore } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import { type ExplorableChartProps, type MarkerLinesProps } from "../const.ts";
+import { type MarkerLinesProps } from "../const.ts";
+import chartStyles from "../chart.module.css";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
@@ -26,10 +27,7 @@ import {
 const height = 150;
 const store = getDefaultStore();
 
-interface RevenueTrackProps
-  extends WebGlRemountProps,
-    ExplorableChartProps,
-    MarkerLinesProps {
+interface RevenueTrackProps extends WebGlRemountProps, MarkerLinesProps {
   width: number;
   type: RevenueType;
   aggQuery: (
@@ -42,7 +40,6 @@ interface RevenueTrackProps
 
 function RevenueTrack({
   remount,
-  setUpExploreListeners,
   markerLinesClassName,
   width,
   type,
@@ -142,7 +139,6 @@ function RevenueTrack({
     containerRef.current.replaceChildren(rendererObj.renderer.domElement);
 
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
-    const cleanUpExploreListeners = setUpExploreListeners(containerRef.current);
     const cleanUpRenderer = rendererRef.current.cleanUp;
 
     // listen for agg revenue draw events
@@ -159,11 +155,9 @@ function RevenueTrack({
       unsubscribeRange();
       cleanUpRenderer();
       rendererRef.current = undefined;
-      cleanUpExploreListeners();
     };
   }, [
     onRangeChange,
-    setUpExploreListeners,
     setUpContextListeners,
     getWasContextLost,
     throttledDrawAgg,
@@ -193,7 +187,10 @@ function RevenueTrack({
           height: "100%",
         }}
       />
-      <div style={{ position: "absolute", top: 0, left: "5px" }}>
+      <div
+        className={chartStyles.noChartExplore}
+        style={{ position: "absolute", top: 0, left: "5px" }}
+      >
         Bucket size: {granularity ?? "-"}
       </div>
     </div>
