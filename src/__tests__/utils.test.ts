@@ -4,10 +4,146 @@ import {
   formatTimeNanos,
   getDiscountedVoteLatency,
   getDurationText,
+  getEpochStake,
+  getEpochStakes,
+  getLeaderSlots,
   hasLateVote,
 } from "../utils";
 import { Duration } from "luxon";
-import type { SlotPublish } from "../api/types";
+import type { Epoch, SlotPublish } from "../api/types";
+
+function makeEpoch(overrides: Partial<Epoch> = {}): Epoch {
+  return {
+    epoch: 1,
+    start_slot: 100,
+    end_slot: 199,
+    start_time_nanos: null,
+    end_time_nanos: null,
+    staked_pubkeys: ["a"],
+    staked_lamports: [10n],
+    excluded_stake_lamports: 0n,
+    leader_slots: [],
+    ...overrides,
+  };
+}
+
+describe("getEpochStakes", () => {
+  it("sums lamports and excluded stake exactly beyond safe number precision", () => {
+    const epoch = makeEpoch({
+      staked_pubkeys: ["a", "b"],
+      staked_lamports: [9_007_199_254_740_993n, 9_007_199_254_740_995n],
+      excluded_stake_lamports: 9_007_199_254_740_997n,
+    });
+
+    expect(getEpochStakes(epoch)).toEqual({
+      stakeByIdentity: new Map([
+        ["a", 9_007_199_254_740_993n],
+        ["b", 9_007_199_254_740_995n],
+      ]),
+      totalStake: 27_021_597_764_222_985n,
+      excludedStake: 9_007_199_254_740_997n,
+      knownStakedValidatorCount: 2,
+    });
+  });
+
+  it("aggregates duplicate identities without changing leader schedule arrays", () => {
+    const epoch = makeEpoch({
+      staked_pubkeys: ["b", "a", "b", "zero", "a"],
+      staked_lamports: [3n, 0n, 7n, 0n, 5n],
+      leader_slots: [2, 1, 0, 3],
+    });
+    Object.freeze(epoch.staked_pubkeys);
+    Object.freeze(epoch.staked_lamports);
+    Object.freeze(epoch.leader_slots);
+
+    expect(getEpochStakes(epoch)).toEqual({
+      stakeByIdentity: new Map([
+        ["b", 10n],
+        ["a", 5n],
+        ["zero", 0n],
+      ]),
+      totalStake: 15n,
+      excludedStake: 0n,
+      knownStakedValidatorCount: 2,
+    });
+    expect(epoch.staked_pubkeys).toEqual(["b", "a", "b", "zero", "a"]);
+    expect(epoch.staked_lamports).toEqual([3n, 0n, 7n, 0n, 5n]);
+    expect(epoch.leader_slots).toEqual([2, 1, 0, 3]);
+    expect(getLeaderSlots(epoch, "b")).toEqual([100, 108]);
+    expect(getLeaderSlots(epoch, "a")).toEqual([104]);
+  });
+
+  it.each([0n, 17n])(
+    "supports empty arrays with %s excluded stake",
+    (excludedStake) => {
+      expect(
+        getEpochStakes(
+          makeEpoch({
+            staked_pubkeys: [],
+            staked_lamports: [],
+            excluded_stake_lamports: excludedStake,
+          }),
+        ),
+      ).toEqual({
+        stakeByIdentity: new Map(),
+        totalStake: excludedStake,
+        excludedStake,
+        knownStakedValidatorCount: 0,
+      });
+    },
+  );
+
+  it.each([
+    ["too few amounts", { staked_lamports: [] }],
+    ["too many amounts", { staked_lamports: [10n, 20n] }],
+    ["negative amount", { staked_lamports: [-1n] }],
+    [
+      "negative duplicate amount",
+      { staked_pubkeys: ["a", "a"], staked_lamports: [10n, -1n] },
+    ],
+    ["negative excluded amount", { excluded_stake_lamports: -1n }],
+    ["number amount", { staked_lamports: [10] }],
+    ["number excluded amount", { excluded_stake_lamports: 0 }],
+    ["missing amounts", { staked_lamports: undefined }],
+    ["missing identities", { staked_pubkeys: undefined }],
+    ["missing excluded amount", { excluded_stake_lamports: undefined }],
+    ["invalid identity", { staked_pubkeys: [null] }],
+    ["missing array entry", { staked_lamports: [undefined] }],
+  ])(
+    "returns unknown for %s instead of partial stake data",
+    (_name, overrides) => {
+      const epoch = { ...makeEpoch(), ...overrides } as unknown as Epoch;
+      expect(getEpochStakes(epoch)).toBeUndefined();
+    },
+  );
+});
+
+describe("getEpochStake", () => {
+  it("returns unknown without epoch stakes or an identity", () => {
+    expect(getEpochStake(undefined, "a")).toBeUndefined();
+    expect(
+      getEpochStake(getEpochStakes(makeEpoch()), undefined),
+    ).toBeUndefined();
+  });
+
+  it.each([0n, 20n])(
+    "preserves mapped positive and zero stakes with %s excluded",
+    (excludedStake) => {
+      const stakes = getEpochStakes(
+        makeEpoch({
+          staked_pubkeys: ["a", "zero"],
+          staked_lamports: [10n, 0n],
+          excluded_stake_lamports: excludedStake,
+        }),
+      );
+      expect(getEpochStake(stakes, "a")).toBe(10n);
+      expect(getEpochStake(stakes, "zero")).toBe(0n);
+      expect(getEpochStake(stakes, "missing")).toBe(
+        excludedStake === 0n ? 0n : undefined,
+      );
+    },
+  );
+});
 
 describe("formatSIBytes", () => {
   describe("auto unit selection", () => {

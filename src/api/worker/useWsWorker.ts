@@ -85,6 +85,17 @@ function startWorker(websocketUrl: string, compress: boolean) {
 function stopWorker() {
   cancelPendingFlush();
   buffer = [];
+  if (worker) worker.onmessage = null;
+  try {
+    emitter.emit(messageEventType, { type: "disconnected" });
+  } catch (e) {
+    logError(
+      "useWsWorker",
+      "Error processing worker message:",
+      "disconnected",
+      e,
+    );
+  }
   if (worker) {
     worker.postMessage({ type: "disconnect" });
     worker.terminate();

@@ -5,7 +5,13 @@
   width: 100%;
 
   > div {
-    flex: 1 1 auto;
+    flex: 1 1 130px;
+    min-width: 0;
+
+    > span,
+    > div > span {
+      text-wrap: wrap;
+    }
     &:first-child {
       flex-grow: 0;
       min-width: 80px;

@@ -12,6 +12,7 @@ import type {
   estimatedTpsSchema,
   commitHashSchema,
   identityKeySchema,
+  voteKeySchema,
   liveTilePrimaryMetricSchema,
   liveTxnWaterfallSchema,
   optimisticallyConfirmedSlotSchema,
@@ -92,6 +93,8 @@ export type Cluster = z.infer<typeof clusterSchema>;
 export type CommitHash = z.infer<typeof commitHashSchema>;
 
 export type IdentityKey = z.infer<typeof identityKeySchema>;
+
+export type VoteKey = z.infer<typeof voteKeySchema>;
 
 export type StartupTimeNanos = z.infer<typeof startupTimeNanosSchema>;
 

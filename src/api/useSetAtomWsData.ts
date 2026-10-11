@@ -22,8 +22,8 @@ import {
   setSlotResponseAtom,
   epochAtom,
   setSlotStatusAtom,
-  updatePeersAtom,
-  removePeersAtom,
+  applyPeersBatchAtom,
+  peersInitializedAtom,
   addSkippedClusterSlotsAtom,
   currentSlotAtom,
   deleteSkippedClusterSlotAtom,
@@ -63,6 +63,7 @@ import {
   clusterAtom,
   commitHashAtom,
   identityKeyAtom,
+  voteKeyAtom,
   tilesAtom,
   identityBalanceAtom,
   voteBalanceAtom,
@@ -145,7 +146,7 @@ import {
 export function useSetAtomWsData() {
   const setSocketState = useSetAtom(socketStateAtom);
 
-  const updateAtoms = useUpdateAtoms();
+  const { updateAtoms, resetPeersStream } = useUpdateAtoms();
 
   const setNetworkMetricsEmaIngress = useSetAtom(networkMetricsEmaIngressAtom);
   const setNetworkMetricsEmaEgress = useSetAtom(networkMetricsEmaEgressAtom);
@@ -197,9 +198,11 @@ export function useSetAtomWsData() {
           setSocketState(SocketState.Connected);
           break;
         case "connecting":
+          resetPeersStream();
           setSocketState(SocketState.Connecting);
           break;
         case "disconnected":
+          resetPeersStream();
           setSocketState(SocketState.Disconnected);
           break;
         case "kvb":
@@ -228,7 +231,13 @@ export function useSetAtomWsData() {
           break;
       }
     },
-    [setSocketState, updateAtoms, updateHistoryArray, updateEmaHistoryObject],
+    [
+      setSocketState,
+      resetPeersStream,
+      updateAtoms,
+      updateHistoryArray,
+      updateEmaHistoryObject,
+    ],
   );
 
   useServerMessages(onMessage);
@@ -239,6 +248,7 @@ function useUpdateAtoms() {
   const setCluster = useSetAtom(clusterAtom);
   const setCommitHash = useSetAtom(commitHashAtom);
   const setIdentityKey = useSetAtom(identityKeyAtom);
+  const setVoteKey = useSetAtom(voteKeyAtom);
 
   const setTiles = useSetAtom(tilesAtom);
 
@@ -354,8 +364,8 @@ function useUpdateAtoms() {
   const setGossipPeersRows = useSetAtom(gossipPeersRowsUpdateAtom);
   const setGossipPeersCells = useSetAtom(gossipPeersCellUpdateAtom);
 
-  const updatePeers = useSetAtom(updatePeersAtom);
-  const removePeers = useSetAtom(removePeersAtom);
+  const applyPeersBatch = useSetAtom(applyPeersBatchAtom);
+  const setPeersInitialized = useSetAtom(peersInitializedAtom);
 
   const setBlockEngine = useSetAtom(blockEngineAtom);
 
@@ -485,30 +495,45 @@ function useUpdateAtoms() {
 
   const peersBuffer = useRef(new Map<string, Peer>());
   const removePeersBuffer = useRef(new Map<string, PeerRemove>());
+  const peersEventPending = useRef(false);
 
   const dbFlushBuffer = useDebouncedCallbackIfVisible(
     () => {
-      updatePeers([...peersBuffer.current.values()]);
-      removePeers([...removePeersBuffer.current.values()]);
+      if (!peersEventPending.current) return;
+      const peers = [...peersBuffer.current.values()];
+      const removedPeers = [...removePeersBuffer.current.values()];
       peersBuffer.current.clear();
       removePeersBuffer.current.clear();
+      peersEventPending.current = false;
+      applyPeersBatch(peers, removedPeers);
     },
     1_000,
     { maxWait: 1_000 },
   );
 
+  const resetPeersStream = useCallback(() => {
+    dbFlushBuffer.cancel();
+    peersBuffer.current.clear();
+    removePeersBuffer.current.clear();
+    peersEventPending.current = false;
+    setPeersInitialized(false);
+  }, [dbFlushBuffer, setPeersInitialized]);
+
+  useEffect(() => resetPeersStream, [resetPeersStream]);
+
   const addToPeersBuffer = useCallback(
     (value: z.infer<typeof peersSchema>["value"]) => {
+      peersEventPending.current = true;
       if (value.add) {
         for (const add of value.add) {
           peersBuffer.current.set(add.identity_pubkey, add);
           removePeersBuffer.current.delete(add.identity_pubkey);
         }
       }
-      // todo: might need to fix updates overwriting with nulls
       if (value.update) {
         for (const update of value.update) {
           peersBuffer.current.set(update.identity_pubkey, update);
+          removePeersBuffer.current.delete(update.identity_pubkey);
         }
       }
       if (value.remove) {
@@ -585,6 +610,10 @@ function useUpdateAtoms() {
             }
             case "identity_key": {
               setIdentityKey(value);
+              break;
+            }
+            case "vote_key": {
+              setVoteKey(value);
               break;
             }
             case "vote_commission": {
@@ -723,7 +752,6 @@ function useUpdateAtoms() {
             case "tps_history":
             case "estimated_slot":
             case "ping":
-            case "vote_key":
             case "active_fork_count":
               break;
           }
@@ -848,6 +876,7 @@ function useUpdateAtoms() {
       setCluster,
       setCommitHash,
       setIdentityKey,
+      setVoteKey,
       setVoteCommission,
       setVoteBalance,
       setStartupTime,
@@ -989,5 +1018,5 @@ function useUpdateAtoms() {
     bootPhase === BootPhaseEnum.waiting_for_supermajority ? 1_000 : null,
   );
 
-  return updateAtoms;
+  return { updateAtoms, resetPeersStream };
 }

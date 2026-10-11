@@ -3,11 +3,16 @@ import {
   identityBalanceAtom,
   voteBalanceAtom,
   voteCommissionAtom,
+  voteKeyAtom,
 } from "../../api/atoms";
 import { Text, Flex } from "@radix-ui/themes";
 import styles from "./identityKey.module.css";
 import PeerIcon from "../../components/PeerIcon";
-import { myStakePctAtom, myStakeAmountAtom } from "../../atoms";
+import {
+  myStakePctAtom,
+  myStakeAmountAtom,
+  myVoteAccountAtom,
+} from "../../atoms";
 import type { PropsWithChildren } from "react";
 import { Fragment, useEffect } from "react";
 import { getSolString, getDurationValues } from "../../utils";
@@ -122,9 +127,9 @@ function ValidatorName({ shouldShrink }: { shouldShrink?: boolean }) {
 }
 
 function VotePubkey() {
-  const { peer } = useIdentityPeer();
+  const voteKey = useAtomValue(voteKeyAtom);
 
-  return <Label label="Vote Pubkey">{peer?.vote[0]?.vote_account}</Label>;
+  return <Label label="Vote Pubkey">{voteKey ?? "--"}</Label>;
 }
 
 function VoteBalance() {
@@ -172,7 +177,7 @@ function StakePct({ showTooltip }: TooltipProps) {
       label="Stake %"
       tooltip={
         showTooltip
-          ? "What percentage of total stake is delegated to this validator"
+          ? "This identity's current epoch stake as a percentage of total network stake, including excluded stake."
           : undefined
       }
     >
@@ -190,7 +195,7 @@ function StakeValue({ showTooltip }: TooltipProps) {
       label="Stake Amount"
       tooltip={
         showTooltip
-          ? "Amount of total stake that is delegated to this validator"
+          ? "Current epoch stake delegated to this validator identity, independent of connectivity and voting status."
           : undefined
       }
     >
@@ -212,23 +217,11 @@ function Commission() {
 }
 
 function FrankendancerCommissionValue() {
-  const { peer } = useIdentityPeer();
+  const voteAccount = useAtomValue(myVoteAccountAtom);
 
-  const maxCommission = peer?.vote.reduce<{
-    maxStake: bigint;
-    commission?: number;
-  }>(
-    (acc, vote) => {
-      if (vote.activated_stake > acc.maxStake) {
-        return { maxStake: vote.activated_stake, commission: vote.commission };
-      }
-      return acc;
-    },
-    { maxStake: 0n, commission: undefined },
-  );
   return (
     <ValueWithSuffix
-      value={maxCommission?.commission?.toLocaleString()}
+      value={voteAccount?.commission?.toLocaleString()}
       suffix="%"
     />
   );
@@ -322,6 +315,8 @@ function ValueWithSuffix({
   valueColor?: string;
   excludeSpace?: boolean;
 }) {
+  if (value === undefined) return <>--</>;
+
   return (
     <>
       <span style={{ color: valueColor }}>
