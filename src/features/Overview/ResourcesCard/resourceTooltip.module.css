@@ -1,0 +1,34 @@
+.tooltip-label {
+  color: var(--header-label-text-color);
+}
+
+.tooltip-value {
+  color: var(--resources-value-text-color);
+}
+
+.key-value-tooltip {
+  font-size: 12px;
+}
+
+.scrollable-tooltip {
+  max-height: 240px;
+  margin-right: calc(-1 * var(--space-2));
+  padding-right: var(--space-2);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbcbcb20 transparent;
+}
+
+:global(.rt-TooltipContent).resource-tooltip {
+  border-radius: 8px;
+  background: var(--resources-tooltip-background-color);
+  border: none;
+}
+
+:global(.rt-TooltipContent).resource-tooltip :global(.rt-TooltipArrow) {
+  fill: var(--resources-tooltip-background-color);
+}
+
+:global(.rt-Separator).tooltip-separator {
+  background: var(--row-separator-background-color);
+}

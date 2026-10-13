@@ -5,9 +5,10 @@ import {
   tileTimerValueAtomFamily,
   type TileRowMetrics,
 } from "./atoms";
-import { type WriteEl, useRowState, writeRow } from "./utils";
+import { type WriteEl, timerToPct, useRowState, writeRow } from "./utils";
 import { Flex, Table, Text } from "@radix-ui/themes";
 import tableStyles from "../../../components/dataTable.module.css";
+import tileBusyStyles from "../../../components/tileBusy.module.css";
 import { Bars } from "../../StartupProgress/Firedancer/Bars";
 import TileSparkLine from "../SlotPerformance/TileSparkLine";
 import type { Priority } from "../../../api/types";
@@ -251,9 +252,6 @@ interface UtilizationProps {
 
 const liveTileMetricsSparklineDebounceMs = 300;
 
-const timerToPct = (tileTimer: number | null | undefined) =>
-  tileTimer != null && tileTimer >= 0 ? 1 - Math.max(0, tileTimer) : -1;
-
 const barsPct = (value: number) => (!value ? 0 : clamp(value, 0, 1));
 
 const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
@@ -376,7 +374,11 @@ export const DataRow = memo(function DataRow({ idx }: DataRowProps) {
         idx={idx}
         write={writeWork}
         align="right"
-        className={clsx(tableStyles.pctGradient, tableStyles.rightBorder)}
+        className={clsx(
+          tileBusyStyles.tileBusyColor,
+          tableStyles.pctGradient,
+          tableStyles.rightBorder,
+        )}
       />
 
       <LiveSchedCells idx={idx} />
