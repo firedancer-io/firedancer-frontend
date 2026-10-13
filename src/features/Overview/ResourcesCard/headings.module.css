@@ -1,0 +1,21 @@
+.section-heading {
+  border-bottom: 1px solid var(--container-border-color);
+}
+
+.section-label {
+  color: var(--primary-text-color);
+  font-size: 14px;
+}
+
+.section-value {
+  color: var(--header-label-text-color);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.subheading-label {
+  min-width: 0;
+  color: var(--primary-text-color);
+  font-size: 12px;
+  font-weight: 500;
+}

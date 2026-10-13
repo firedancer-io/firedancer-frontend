@@ -1,0 +1,30 @@
+.legend-item-key {
+  color: var(--header-label-text-color);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.legend-item-value {
+  color: var(--resources-value-text-color);
+}
+
+.legend-item-active {
+  border-radius: 2px;
+  background: var(--resources-legend-item-active-color);
+  box-shadow:
+    -2px 0 0 var(--resources-legend-item-active-color),
+    2px 0 0 var(--resources-legend-item-active-color);
+}
+
+.segmented-bar {
+  border-radius: 2px;
+  background-color: #3a3a3a;
+}
+
+.segment-active {
+  box-shadow: inset 0 0 0 1px rgba(250, 250, 250, 0.36);
+}
+
+.dimmed {
+  opacity: 0.5;
+}

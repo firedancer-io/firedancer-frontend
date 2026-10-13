@@ -341,3 +341,14 @@ export const accountsPartitionCompactionTriggerColor = "var(--yellow-9)";
 export const accountsPartitionCompactionColor = "var(--amber-9)";
 export const accountsPartitionCompactionHeadColor = "#d9d9d9";
 export const accountsPartitionWriteHeadColor = "#838383";
+
+// Resources
+export const resourcesValueTextColor = "#CBCBCB";
+export const resourcesCpuOutlineColor = "#777B84";
+export const resourcesTooltipBackgroundColor = "#111113";
+export const resourcesLegendItemActiveColor = "#303134";
+export const resourcesFiredancerColor = "#00AAD5";
+export const resourcesSharedColor = "#363A3F";
+export const resourcesOtherColor = "#43484E";
+export const resourcesAvailableColor = "#272A2D";
+export const resourcesMoreTilesColor = "#5A6169";

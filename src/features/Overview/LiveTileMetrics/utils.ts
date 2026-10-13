@@ -46,3 +46,6 @@ export const writeRow: WriteEl<HTMLTableRowElement> = (el, c, p) => {
   el.style.display = alive === 2 || !hasTimers ? "none" : "";
   el.classList.toggle(tableStyles.faded, priority === PriorityEnum.floating);
 };
+
+export const timerToPct = (tileTimer: number | null | undefined) =>
+  tileTimer != null && tileTimer >= 0 ? 1 - Math.max(0, tileTimer) : -1;
