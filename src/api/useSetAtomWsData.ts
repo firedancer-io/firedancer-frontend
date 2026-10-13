@@ -71,6 +71,7 @@ import {
   estimatedSlotDurationAtom,
   estimatedTpsAtom,
   liveNetworkMetricsAtom,
+  liveSystemResourcesAtom,
   networkMetricsEmaIngressAtom,
   networkMetricsEmaEgressAtom,
   gossipHealthEmaAtom,
@@ -111,6 +112,7 @@ import {
 import {
   tpsSampleIntervalMs,
   liveNetworkMetricsDebounceMs,
+  liveSystemResourcesDebounceMs,
   liveTileMetricsDebounceMs,
   liveMetricsDebounceMs,
   waterfallDebounceMs,
@@ -134,6 +136,7 @@ import type {
   RepairSlot,
   Peer,
   PeerRemove,
+  SystemLive,
 } from "./types";
 import { SocketState } from "./ws/types";
 import { useServerMessages } from "./ws/utils";
@@ -286,6 +289,14 @@ function useUpdateAtoms() {
       setLiveNetworkMetrics(value);
     },
     liveNetworkMetricsDebounceMs,
+  );
+
+  const setLiveSystemResources = useSetAtom(liveSystemResourcesAtom);
+  const setDbLiveSystemResources = useThrottledCallbackIfVisible(
+    (value?: SystemLive) => {
+      setLiveSystemResources(value);
+    },
+    liveSystemResourcesDebounceMs,
   );
 
   const setLiveTileMetrics = useSetAtom(liveTileMetricsAtom);
@@ -708,6 +719,10 @@ function useUpdateAtoms() {
               setDbLiveNetworkMetrics(value);
               break;
             }
+            case "live_system_resources": {
+              setDbLiveSystemResources(value);
+              break;
+            }
             case "live_tile_metrics":
               setDbLiveTileMetrics(value);
               break;
@@ -879,6 +894,7 @@ function useUpdateAtoms() {
       addRepairSlots,
       setServerTimeNanos,
       setDbLiveNetworkMetrics,
+      setDbLiveSystemResources,
       setEpoch,
       setDbGossipNetworkStats,
       setDbGossipPeersSize,
