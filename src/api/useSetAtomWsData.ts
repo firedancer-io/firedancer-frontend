@@ -817,7 +817,8 @@ function useUpdateAtoms() {
             case "query_agg_shreds":
             case "query_agg_revenue":
             case "query_agg_slots":
-            case "query_txn_meta": {
+            case "query_txn_meta":
+            case "query_txn_timestamps": {
               // listen in component
               break;
             }

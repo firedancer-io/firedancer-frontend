@@ -20,6 +20,8 @@ import MiniMap from "./MiniMap/MiniMap.tsx";
 import useAggRevenueQuery from "./RevenueTrack/useAggRevenueQuery.ts";
 import HeaderTrack from "./HeaderTrack/HeaderTrack.tsx";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
+import ExecrpTrack from "./ExecrpTrack/ExecrpTrack.tsx";
+import { useTxnTimestampsCache } from "./ExecrpTrack/useTxnTimestampsCache.ts";
 
 const store = getDefaultStore();
 
@@ -105,6 +107,9 @@ export default function Chart() {
   // Drive the shared txn meta cache used by the revenue tracks' non-agg view
   useTxnMetaCache();
 
+  // Drive the txn timestamps caches used by the execrp track
+  useTxnTimestampsCache();
+
   if (!isInitialized) return <Spinner />;
 
   return (
@@ -128,6 +133,11 @@ export default function Chart() {
             <RevenueTrack
               aggQuery={aggRevenueQuery}
               type={RevenueType.TxnFees}
+              width={width}
+              {...explorableChartProps}
+              {...markerLinesProps}
+            />
+            <ExecrpTrack
               width={width}
               {...explorableChartProps}
               {...markerLinesProps}

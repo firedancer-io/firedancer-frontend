@@ -150,6 +150,7 @@ export const DEFAULT_RECT_CAPACITY = 2 ** 10;
 export function createRectMesh(
   resources: RectResources,
   initialCapacity = DEFAULT_RECT_CAPACITY,
+  material: THREE.RawShaderMaterial = resources.rectMaterial,
 ): RectMesh {
   const rectArray = new Float32Array(initialCapacity * 4);
   const colorArray = new Float32Array(initialCapacity * 3);
@@ -171,7 +172,7 @@ export function createRectMesh(
   geometry.instanceCount = 0;
   geometry.boundingSphere = new THREE.Sphere();
 
-  const mesh = new THREE.Mesh(geometry, resources.rectMaterial);
+  const mesh = new THREE.Mesh(geometry, material);
   mesh.frustumCulled = false;
 
   return {
