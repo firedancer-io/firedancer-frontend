@@ -1,6 +1,4 @@
 .container {
-  padding: 32px;
-  border-radius: 8px;
   flex-shrink: 0;
 
   .grab-cursor {

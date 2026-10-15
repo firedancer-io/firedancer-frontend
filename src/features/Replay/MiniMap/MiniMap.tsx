@@ -19,8 +19,11 @@ import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible
 import styles from "./miniMap.module.css";
 import clsx from "clsx";
 import { Box } from "@radix-ui/themes";
+import { Popover } from "radix-ui";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
-import { getDefaultStore } from "jotai";
+import VisibleRangeInfo from "../VisibleRangeInfo.tsx";
+import { containerElAtom } from "../../../atoms.ts";
+import { getDefaultStore, useAtomValue } from "jotai";
 
 const store = getDefaultStore();
 
@@ -41,6 +44,8 @@ function MiniMap({
   width,
 }: MiniMapProps) {
   const [isInitialized, setIsInitialized] = useState(false);
+
+  const popoverContainerEl = useAtomValue(containerElAtom);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -194,14 +199,61 @@ function MiniMap({
         ref={chartContainerRef}
         className={clsx(styles.miniMapTrack, miniMapMarkerLinesClassName)}
       />
-      <div ref={visibleRangeElRef} className={styles.visibleRangeBox}>
-        <div ref={leftHandleRef} className={clsx(styles.handle, styles.left)} />
-        <div
-          ref={rightHandleRef}
-          className={clsx(styles.handle, styles.right)}
-        />
-      </div>
+      <Popover.Root open>
+        <Popover.Anchor asChild>
+          <div ref={visibleRangeElRef} className={styles.visibleRangeBox}>
+            <div
+              ref={leftHandleRef}
+              className={clsx(styles.handle, styles.left)}
+            />
+            <div
+              ref={rightHandleRef}
+              className={clsx(styles.handle, styles.right)}
+            />
+          </div>
+        </Popover.Anchor>
+        <Popover.Portal container={popoverContainerEl}>
+          <Popover.Content
+            className={styles.miniMapPopover}
+            side="top"
+            sideOffset={0}
+            collisionPadding={{ top: -9999, left: 0, right: 0, bottom: 8 }}
+            arrowPadding={0}
+            // permanently-open, don't steal focus or trap it
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={(e) => e.preventDefault()}
+          >
+            <VisibleRangeInfo width={width} />
+            <PopoverBottomArrow />
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
     </Box>
+  );
+}
+
+/**
+ * Downward-pointing popover arrow. Specify border color and background color as
+ * stroke and fill
+ */
+function PopoverBottomArrow() {
+  return (
+    <Popover.Arrow
+      asChild
+      width={10}
+      height={5}
+      fill="var(--replay-popover-background-color)"
+      stroke="var(--replay-popover-border-color)"
+      strokeWidth={1}
+    >
+      <svg
+        viewBox="0 0 30 10"
+        preserveAspectRatio="none"
+        className={styles.miniMapPopoverArrow}
+      >
+        <path d="M0 0 L15 10 L30 0" vectorEffect="non-scaling-stroke" />
+      </svg>
+    </Popover.Arrow>
   );
 }
 

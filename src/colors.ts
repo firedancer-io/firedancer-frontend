@@ -345,3 +345,9 @@ export const accountsPartitionWriteHeadColor = "#838383";
 // Replay
 export const replayPrimaryTextColor = "#8E909D";
 export const replaySecondaryTextColor = "#67696A";
+
+// Replay visible-range popover
+export const replayPopoverBackgroundColor = "#131923";
+export const replayPopoverBorderColor = "#2E343E";
+export const replayPopoverBehindTextColor = "#D6D7DC";
+export const replayPauseIconColor = "#C9CBD3";

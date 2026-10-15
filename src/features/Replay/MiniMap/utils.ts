@@ -19,7 +19,7 @@ import type { AggGranularity, AggSlots } from "../../../api/types.ts";
 import { calcRelativeMs } from "../utils.ts";
 import { getBucketColorRatios, colorStates, colors } from "../slotUtils.ts";
 
-export const trackHeight = 25;
+export const trackHeight = 16;
 const opacity = 1;
 const minY = 0;
 const maxY = 1;
