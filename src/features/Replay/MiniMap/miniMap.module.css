@@ -1,7 +1,6 @@
 .mini-map-container {
   cursor: pointer;
   position: relative;
-  margin-bottom: 20px;
 
   .mini-map-track {
     width: 100%;
@@ -47,5 +46,23 @@
 
   &:hover .handle {
     display: block;
+  }
+}
+
+/* Portaled out of the container */
+.mini-map-popover {
+  z-index: 1;
+  pointer-events: none;
+  box-sizing: border-box;
+  height: 20px;
+  margin: 0 7px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--replay-popover-border-color);
+  background: var(--replay-popover-background-color);
+
+  .mini-map-popover-arrow {
+    /* move up to cover bottom border of popover */
+    margin-top: -1px;
   }
 }
