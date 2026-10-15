@@ -3,7 +3,6 @@ import { useRef, useCallback, useLayoutEffect } from "react";
 import { useMeasure } from "react-use";
 import styles from "./chart.module.css";
 import type { MarkerLinesProps } from "./const.ts";
-import VisibleRangeInfo from "./VisibleRangeInfo.tsx";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
 import { useTxnMetaCache } from "./RevenueTrack/txnMeta/useTxnMetaCache.ts";
 import { RevenueType } from "../../api/entities.ts";
@@ -122,26 +121,22 @@ export default function Chart() {
     <div className={styles.container} ref={setContainerRefs}>
       {!!width && (
         <>
-          <VisibleRangeInfo />
           <MiniMap
             width={width}
             setUpMiniMap={setUpMiniMap}
             {...markerLinesProps}
           />
-          <Flex
-            ref={setTracksContainerRef}
-            direction="column"
-            gapY="4"
-            position="relative"
-          >
+          <Flex ref={setTracksContainerRef} direction="column">
             <HeaderTrack width={width} {...markerLinesProps} />
-            <ShredsTrack width={width} {...markerLinesProps} />
-            <RevenueTrack
-              aggQuery={aggRevenueQuery}
-              type={RevenueType.TxnFees}
-              width={width}
-              {...markerLinesProps}
-            />
+            <Flex direction="column" gap="6px">
+              <ShredsTrack width={width} {...markerLinesProps} />
+              <RevenueTrack
+                aggQuery={aggRevenueQuery}
+                type={RevenueType.TxnFees}
+                width={width}
+                {...markerLinesProps}
+              />
+            </Flex>
           </Flex>
         </>
       )}
