@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { getDefaultStore } from "jotai";
 import { smoothedNowMsAtom } from "../../../atoms";
 import { xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
-import { liveShredsDataAtom } from "../../Overview/ShredsProgression/atoms";
+import { shredsAtoms } from "../../Overview/ShredsProgression/atoms";
 import { getDelayedNow } from "../../Overview/ShredsProgression/utils";
 import { MAX_WEBGL_PX_RATIO, msPerDay } from "../../../consts";
 import type { SlotMesh } from "../../WebGl/webglUtils";
@@ -30,7 +30,7 @@ export function setUpRenderer(
 
   const delayedNow = getDelayedNow(smoothedNowMs);
 
-  const referenceTs = store.get(liveShredsDataAtom)?.slotsShreds?.referenceTs;
+  const referenceTs = store.get(shredsAtoms.slotsShreds)?.referenceTs;
   if (referenceTs == null) return;
 
   const worldStartTs = delayedNow - xRangeMs - referenceTs;

@@ -1,4 +1,4 @@
-import type { SlotsShreds, XRange } from "./types";
+import type { SlotsShreds, TsRange } from "./types";
 
 /**
  * Get slots in draw order
@@ -8,8 +8,9 @@ export function getDrawInfo(
   minSlotNumber: number,
   maxSlotNumber: number,
   liveShreds: SlotsShreds,
-  xRange: XRange,
+  tsRange: TsRange,
 ) {
+  const [minDeltaTs, maxDeltaTs] = tsRange;
   const orderedSlotNumbers = [];
   let maxShreds = 0;
 
@@ -24,15 +25,12 @@ export function getDrawInfo(
       continue;
     }
 
-    if (slot.minEventTsDelta > xRange.maxDeltaTs) {
+    if (slot.minEventTsDelta > maxDeltaTs) {
       // slot started after chart max X
       continue;
     }
 
-    if (
-      slot.completionTsDelta != null &&
-      slot.completionTsDelta < xRange.minDeltaTs
-    ) {
+    if (slot.completionTsDelta != null && slot.completionTsDelta < minDeltaTs) {
       // slot completed before chart min X
       continue;
     }

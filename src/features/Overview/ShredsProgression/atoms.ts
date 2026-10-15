@@ -16,12 +16,6 @@ import type {
   SlotsShreds,
 } from "../../Shreds/types";
 
-export interface LiveShredsData {
-  minCompletedSlot?: number;
-  range?: { min: number; max: number };
-  slotsShreds?: SlotsShreds;
-}
-
 /**
  * Store live shreds
  * Use reference / delta slot number and timestamp to minimize memory usage
@@ -282,15 +276,6 @@ function isBeforeChartX(
 }
 
 export const shredsAtoms = createLiveShredsAtoms();
-
-/**
- * Live shreds data assembled from the main-thread atoms
- */
-export const liveShredsDataAtom = atom<LiveShredsData>((get) => ({
-  slotsShreds: get(shredsAtoms.slotsShreds),
-  range: get(shredsAtoms.range),
-  minCompletedSlot: get(shredsAtoms.minCompletedSlot),
-}));
 
 export const liveShredsPostStartupRangeAtom = atom((get) =>
   get(shredsAtoms.rangeAfterStartup),
