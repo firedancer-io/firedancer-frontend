@@ -4,38 +4,17 @@ import { ShredEvent } from "../../../api/entities";
 import { xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
 import { getSlotGroupLeader } from "../../../utils";
-import {
-  smoothedNowMsAtom,
-  epochAtom,
-  skippedClusterSlotsAtom,
-} from "../../../atoms";
+import { smoothedNowMsAtom, epochAtom } from "../../../atoms";
 import { slotCaughtUpAtom } from "../../../api/atoms";
 import { getDelayedNow } from "./utils";
 import { epochNow } from "../../../clockUtils";
-
-type ShredEventTsDeltaMs = number | undefined;
-/**
- * Array of <event ts delta in ms>.
- * Array index, i corresponds to the shred event type.
- * The ts delta is relative to the referenceTs.
- */
-export type ShredEventTsDeltas = ShredEventTsDeltaMs[];
-
-export type Slot = {
-  shreds: (ShredEventTsDeltas | undefined)[];
-  /**
-   * earliest event (start) of the slot
-   */
-  minEventTsDelta?: number;
-  maxEventTsDelta?: number;
-  completionTsDelta?: number;
-};
-
-export type SlotsShreds = {
-  referenceTs: number;
-  // slot number to Slot
-  slots: Map<number, Slot>;
-};
+import { setMinDirtySlotByChartIfSmaller } from "../../Shreds/atoms";
+import type {
+  ShredEventTsDeltaMs,
+  ShredEventTsDeltas,
+  Slot,
+  SlotsShreds,
+} from "../../Shreds/types";
 
 export interface LiveShredsData {
   minCompletedSlot?: number;
@@ -315,39 +294,6 @@ export const liveShredsDataAtom = atom<LiveShredsData>((get) => ({
 
 export const liveShredsPostStartupRangeAtom = atom((get) =>
   get(shredsAtoms.rangeAfterStartup),
-);
-
-export const minDirtySlotByChartAtom = atom<Map<string, number>>(new Map());
-
-/*
- * Maps chartId to the minimum slot number that received a shred update since the last draw.
- * Reset each entry to Infinity after the chart consumes it (do not delete, so new updates can accumulate).
- */
-export const setMinDirtySlotByChartIfSmaller = atom(
-  null,
-  (_get, set, updatedSlot: number) => {
-    set(minDirtySlotByChartAtom, (prev) => {
-      for (const [chartId, minDirtySlot] of prev) {
-        if (updatedSlot < minDirtySlot) {
-          prev.set(chartId, updatedSlot);
-        }
-      }
-      return prev;
-    });
-  },
-);
-
-/**
- * Mark a slot as dirty if skipped state changed
- */
-export const setDirtySlotOnSkippedChangeAtom = atom(
-  null,
-  (get, set, slot: number, isSkipped: boolean) => {
-    const wasSkipped = get(skippedClusterSlotsAtom).has(slot);
-    if (wasSkipped === isSkipped) return;
-
-    set(setMinDirtySlotByChartIfSmaller, slot);
-  },
 );
 
 /**

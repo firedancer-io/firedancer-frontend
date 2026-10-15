@@ -1,5 +1,5 @@
 import { Flex, Text } from "@radix-ui/themes";
-import { legend } from "./const";
+import { legend } from "../../Shreds/const";
 import styles from "./shreds.module.css";
 
 export function ShredsChartLegend() {
