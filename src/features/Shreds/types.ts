@@ -15,15 +15,6 @@ export type RendererObj = {
   cleanUpRenderer: () => void;
 };
 
-export type XRange = {
-  minDeltaTs: number;
-  maxDeltaTs: number;
-  minCanvasPos: number;
-  maxCanvasPos: number;
-  minCssPos: number;
-  maxCssPos: number;
-};
-
 export type ShredEventTsDeltaMs = number | undefined;
 /**
  * Array of <event ts delta in ms>.
