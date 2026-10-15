@@ -44,10 +44,8 @@ import {
   deleteSupermajorityDeltaEntriesAtom,
   resetSupermajorityAtom,
 } from "../atoms";
-import {
-  shredsAtoms,
-  setDirtySlotOnSkippedChangeAtom,
-} from "../features/Overview/ShredsProgression/atoms";
+import { shredsAtoms } from "../features/Overview/ShredsProgression/atoms";
+import { setDirtySlotOnSkippedChangeAtom } from "../features/Shreds/atoms";
 import { xRangeMs } from "./worker/cache/shreds/shredsCalc";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
 import { isFrankendancer } from "../client";

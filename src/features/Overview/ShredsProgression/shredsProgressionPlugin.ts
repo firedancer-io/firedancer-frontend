@@ -5,7 +5,10 @@ import {
   liveShredsPostStartupLeaderSlotsAtom,
   liveShredsPostStartupRangeAtom,
 } from "./atoms";
-import { rowShredEventDescPriorities, shredEventDescPriorities } from "./const";
+import {
+  rowShredEventDescPriorities,
+  shredEventDescPriorities,
+} from "../../Shreds/const";
 import { showStartupProgressAtom } from "../../StartupProgress/atoms";
 import {
   gridLineColor,
@@ -24,17 +27,17 @@ import { ShredEvent } from "../../../api/entities";
 import {
   createLabelsState,
   getDelayedNow,
-  getDrawInfo,
   getSlotGroupLabelId,
   getSlotGroupNameId,
   getSlotLabelId,
   type LabelState,
-  type XRange,
 } from "./utils";
+import { getDrawInfo } from "../../Shreds/chartUtils";
+import type { XRange } from "../../Shreds/types";
 import styles from "./shreds.module.css";
 
 import { slotsPerLeader } from "../../../consts";
-import type { SlotsShreds, ShredEventTsDeltas } from "./atoms";
+import type { SlotsShreds, ShredEventTsDeltas } from "../../Shreds/types";
 
 const store = getDefaultStore();
 

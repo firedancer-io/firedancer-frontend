@@ -1,165 +1,42 @@
-import * as THREE from "three";
+import type * as THREE from "three";
 import type { MutableRefObject } from "react";
-import { ShredEvent } from "../../../../api/entities";
-import {
-  delayMs,
-  xRangeMs,
-} from "../../../../api/worker/cache/shreds/shredsCalc";
-import type { ShredEventTsDeltas } from "../../../../api/worker/cache/shreds/types";
-import { smoothedNowMsAtom, skippedClusterSlotsAtom } from "../../../../atoms";
-import { showStartupProgressAtom } from "../../../StartupProgress/atoms";
+import { ShredEvent } from "../../../api/entities";
+import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
+import type { ShredEventTsDeltas } from "../../../api/worker/cache/shreds/types";
+import { smoothedNowMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
+import { showStartupProgressAtom } from "../../StartupProgress/atoms";
 import {
   liveShredsDataAtom,
   liveShredsPostStartupRangeAtom,
-  minDirtySlotByChartAtom,
-} from "../atoms";
-import { shredEventDescPriorities } from "../const";
-import { updateLabels } from "../shredsProgressionPlugin";
-import type { SlotMesh, WebglResources } from "../../../WebGl/webglUtils";
+} from "../../Overview/ShredsProgression/atoms";
+import { minDirtySlotByChartAtom } from "../atoms";
+import type { RendererObj, TsRange, XRange } from "../types";
+import {
+  shredEventDescPriorities,
+  SKIPPED_SLOT_DOT_DURATION_MS,
+} from "../const";
+import { colors } from "./const";
+import { updateLabels } from "../../Overview/ShredsProgression/shredsProgressionPlugin";
+import { getDrawInfo } from "../chartUtils";
+import type { SlotMesh } from "../../WebGl/webglUtils";
 import {
   createSlotMesh,
   updateSlotMeshCounts,
   ensureCapacity,
   addRectangleToMesh,
-  convertToWebGlColor,
-  createWebglResources,
-  disposeWebglResources,
-} from "../../../WebGl/webglUtils";
-import {
-  shredPublishedColor,
-  shredReceivedRepairColor,
-  shredReceivedTurbineColor,
-  shredRepairRequestedColor,
-  shredReplayedNothingColor,
-  shredReplayedRepairColor,
-  shredReplayedTurbineColor,
-  shredSkippedColor,
-} from "../../../../colors";
+} from "../../WebGl/webglUtils";
 import { getDefaultStore } from "jotai";
 import {
   getDelayedNow,
-  getDrawInfo,
   type LabelsState,
-  type XRange,
-} from "../utils";
-import { MAX_WEBGL_PX_RATIO, msPerDay } from "../../../../consts";
-import type { ContextHelpers } from "../../../WebGl/useWebGlEventHandlers";
-import { isWebgl2SupportedAtom } from "../../../WebGl/atoms";
+} from "../../Overview/ShredsProgression/utils";
 
 const store = getDefaultStore();
-
-const SKIPPED_SLOT_DOT_DURATION_MS = 10;
 
 const tempEventPositions = new Map<
   Exclude<ShredEvent, ShredEvent.slot_complete>,
   { x: number; w: number }
 >();
-
-export type RendererObj = {
-  renderer: THREE.WebGLRenderer;
-  camera: THREE.OrthographicCamera;
-  scene: THREE.Scene;
-  meshes: Map<number, SlotMesh>;
-  availableMeshes: SlotMesh[];
-  worldTsRange: TsRange;
-  // resources shared by this renderer's slot meshes
-  resources: WebglResources;
-  cleanUpRenderer: () => void;
-};
-
-const colors = {
-  skipped: convertToWebGlColor(shredSkippedColor),
-  repairRequested: convertToWebGlColor(shredRepairRequestedColor),
-  receivedTurbine: convertToWebGlColor(shredReceivedTurbineColor),
-  receivedRepair: convertToWebGlColor(shredReceivedRepairColor),
-  replayedRepair: convertToWebGlColor(shredReplayedRepairColor),
-  replayedTurbine: convertToWebGlColor(shredReplayedTurbineColor),
-  replayedNothing: convertToWebGlColor(shredReplayedNothingColor),
-  published: convertToWebGlColor(shredPublishedColor),
-};
-
-/**
- * Set up renderer world, setup according to shred reference ts
- */
-export function setUpRenderer(
-  canvasWidth: number,
-  canvasHeight: number,
-  setUpContextListeners: ContextHelpers["setUpContextListeners"],
-  getWasContextLost: ContextHelpers["getWasContextLost"],
-): RendererObj | undefined {
-  const smoothedNowMs = store.get(smoothedNowMsAtom);
-  if (smoothedNowMs == null) return;
-
-  const delayedNow = getDelayedNow(smoothedNowMs);
-
-  const referenceTs = store.get(liveShredsDataAtom)?.slotsShreds?.referenceTs;
-  if (referenceTs == null) return;
-
-  const worldStartTs = delayedNow - xRangeMs - referenceTs;
-  const worldEndTs = worldStartTs + 365 * msPerDay;
-  // store world range for future pause / pan
-  const worldTsRange: TsRange = [worldStartTs, worldEndTs];
-
-  const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(0, 0, 0, 0, 0.5, 10);
-  camera.position.z = 1;
-
-  try {
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio, MAX_WEBGL_PX_RATIO),
-    );
-    renderer.setSize(canvasWidth, canvasHeight);
-    renderer.setClearColor(0x000000, 0);
-
-    const meshes = new Map<number, SlotMesh>();
-    const availableMeshes: SlotMesh[] = [];
-    const resources = createWebglResources();
-    renderer.render(scene, camera);
-    const clearContextListeners = setUpContextListeners(renderer.domElement);
-
-    const cleanUpRenderer = () => {
-      // If context was lost at some point, its GPU objects are already gone so skip objects disposal,
-      // to prevent warnings e.g. WebGL: INVALID_OPERATION: delete: object does not belong to this context
-      // Three doesn't restore GPU objects for restored contexts unless there's a render.
-      // Remount on restore to reset the context listeners state
-      if (!getWasContextLost()) {
-        for (const slotMesh of meshes.values()) {
-          slotMesh.mesh.geometry.dispose();
-        }
-        for (const slotMesh of availableMeshes) {
-          slotMesh.mesh.geometry.dispose();
-        }
-        // dispose this chart's own unitQuad / sharedMaterial
-        disposeWebglResources(resources);
-
-        renderer.dispose();
-      }
-
-      // release currently live context (may be the restored one)
-      // make sure context listeners are removed beforehand
-      clearContextListeners();
-      if (!renderer.getContext().isContextLost()) {
-        renderer.forceContextLoss();
-      }
-    };
-
-    return {
-      renderer,
-      camera,
-      scene,
-      meshes,
-      availableMeshes,
-      worldTsRange,
-      resources,
-      cleanUpRenderer,
-    };
-  } catch {
-    // context creation can still fail despite the probe (e.g. too many live
-    // contexts, driver crash). Mark as unsupported to trigger fallback to canvas chart
-    store.set(isWebgl2SupportedAtom, false);
-  }
-}
 
 export function draw(
   chartId: string,
@@ -337,8 +214,6 @@ function updateVisibleXRange(
   camera.updateProjectionMatrix();
   return true;
 }
-
-export type TsRange = [startTs: number, endTs: number];
 
 interface AddEventsForRowArgs {
   tempEventPositions: Map<

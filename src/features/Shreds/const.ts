@@ -1,4 +1,4 @@
-import { ShredEvent } from "../../../api/entities";
+import { ShredEvent } from "../../api/entities";
 import {
   shredPublishedColor,
   shredReceivedRepairColor,
@@ -8,7 +8,7 @@ import {
   shredReplayedRepairColor,
   shredReplayedTurbineColor,
   shredSkippedColor,
-} from "../../../colors";
+} from "../../colors";
 
 /**
  * Draw highest to lowest priority events.
@@ -51,3 +51,5 @@ export const legend = {
   Skipped: shredSkippedColor,
   Published: shredPublishedColor,
 };
+
+export const SKIPPED_SLOT_DOT_DURATION_MS = 10;

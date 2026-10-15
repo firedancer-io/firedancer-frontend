@@ -1,6 +1,5 @@
 import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import { getSlotGroupLeader } from "../../../utils";
-import type { SlotsShreds } from "./atoms";
 
 export function getSlotGroupLabelId(slot: number) {
   return `slot-group-label-${getSlotGroupLeader(slot)}`;
@@ -40,62 +39,6 @@ export const getXIncrs = (scale: number) => {
 
 export function getDelayedNow(smoothedNow: number) {
   return smoothedNow - delayMs;
-}
-
-export type XRange = {
-  minDeltaTs: number;
-  maxDeltaTs: number;
-  minCanvasPos: number;
-  maxCanvasPos: number;
-  minCssPos: number;
-  maxCssPos: number;
-};
-
-/**
- * Get slots in draw order
- * and max shreds count per slot for scaling
- */
-export function getDrawInfo(
-  minSlotNumber: number,
-  maxSlotNumber: number,
-  liveShreds: SlotsShreds,
-  xRange: XRange,
-) {
-  const orderedSlotNumbers = [];
-  let maxShreds = 0;
-
-  for (
-    let slotNumber = minSlotNumber;
-    slotNumber <= maxSlotNumber;
-    slotNumber++
-  ) {
-    const slot = liveShreds.slots.get(slotNumber);
-    if (!slot?.shreds.length || slot.minEventTsDelta == null) {
-      // slot has no events
-      continue;
-    }
-
-    if (slot.minEventTsDelta > xRange.maxDeltaTs) {
-      // slot started after chart max X
-      continue;
-    }
-
-    if (
-      slot.completionTsDelta != null &&
-      slot.completionTsDelta < xRange.minDeltaTs
-    ) {
-      // slot completed before chart min X
-      continue;
-    }
-
-    orderedSlotNumbers.push(slotNumber);
-    maxShreds = Math.max(maxShreds, slot.shreds.length);
-  }
-
-  return {
-    maxShreds,
-    orderedSlotNumbers,
-  };
 }
 
 export type LabelState = {
