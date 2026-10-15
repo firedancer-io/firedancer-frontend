@@ -6,11 +6,11 @@ import type { ShredEventTsDeltas } from "../../../api/worker/cache/shreds/types"
 import { smoothedNowMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
 import { showStartupProgressAtom } from "../../StartupProgress/atoms";
 import {
-  liveShredsDataAtom,
+  shredsAtoms,
   liveShredsPostStartupRangeAtom,
 } from "../../Overview/ShredsProgression/atoms";
 import { minDirtySlotByChartAtom } from "../atoms";
-import type { RendererObj, TsRange, XRange } from "../types";
+import type { RendererObj, TsRange } from "../types";
 import {
   shredEventDescPriorities,
   SKIPPED_SLOT_DOT_DURATION_MS,
@@ -50,11 +50,9 @@ export function draw(
   forceDraw: boolean,
   cssRange: [min: number, max: number],
 ) {
-  const {
-    slotsShreds: liveShreds,
-    range: slotRange,
-    minCompletedSlot,
-  } = store.get(liveShredsDataAtom) ?? {};
+  const liveShreds = store.get(shredsAtoms.slotsShreds);
+  const slotRange = store.get(shredsAtoms.range);
+  const minCompletedSlot = store.get(shredsAtoms.minCompletedSlot);
   const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
   const rangeAfterStartup = store.get(liveShredsPostStartupRangeAtom);
   const smoothedNow = store.get(smoothedNowMsAtom);
@@ -81,16 +79,6 @@ export function draw(
     maxReferenceTs,
   ];
 
-  // for now, use this xRange to be able to reuse the canvas helper functions
-  const xRange: XRange = {
-    minDeltaTs: visibleTsRange[0],
-    maxDeltaTs: visibleTsRange[1],
-    minCanvasPos: 0,
-    maxCanvasPos: 0,
-    minCssPos: cssRange[0],
-    maxCssPos: cssRange[1],
-  };
-
   const minSlot = Math.max(slotRange.min, minCompletedSlot ?? slotRange.min);
   const maxSlot = slotRange.max;
 
@@ -98,7 +86,7 @@ export function draw(
     minSlot,
     maxSlot,
     liveShreds,
-    xRange,
+    visibleTsRange,
   );
 
   const cameraChanged = updateVisibleXRange(
@@ -178,7 +166,8 @@ export function draw(
     rangeAfterStartup,
     liveShreds.slots,
     skippedSlotsCluster,
-    xRange,
+    visibleTsRange,
+    cssRange,
     prevLabels,
     tempNewLabels,
   );

@@ -1,7 +1,7 @@
 import type uPlot from "uplot";
 import { getDefaultStore } from "jotai";
 import {
-  liveShredsDataAtom,
+  shredsAtoms,
   liveShredsPostStartupLeaderSlotsAtom,
   liveShredsPostStartupRangeAtom,
 } from "./atoms";
@@ -33,11 +33,14 @@ import {
   type LabelState,
 } from "./utils";
 import { getDrawInfo } from "../../Shreds/chartUtils";
-import type { XRange } from "../../Shreds/types";
 import styles from "./shreds.module.css";
 
 import { slotsPerLeader } from "../../../consts";
-import type { SlotsShreds, ShredEventTsDeltas } from "../../Shreds/types";
+import type {
+  SlotsShreds,
+  ShredEventTsDeltas,
+  TsRange,
+} from "../../Shreds/types";
 
 const store = getDefaultStore();
 
@@ -76,11 +79,9 @@ export function shredsProgressionPlugin(
           const smoothedNow = store.get(smoothedNowMsAtom);
           if (!smoothedNow) return;
 
-          const {
-            slotsShreds: liveShreds,
-            range: slotRange,
-            minCompletedSlot,
-          } = store.get(liveShredsDataAtom) ?? {};
+          const liveShreds = store.get(shredsAtoms.slotsShreds);
+          const slotRange = store.get(shredsAtoms.range);
+          const minCompletedSlot = store.get(shredsAtoms.minCompletedSlot);
           const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
           const rangeAfterStartup = store.get(liveShredsPostStartupRangeAtom);
 
@@ -110,14 +111,15 @@ export function shredsProgressionPlugin(
           const maxReferenceTs = delayedNow - liveShreds.referenceTs;
           const tsSpan = maxXScale - minXScale;
 
-          const xRange: XRange = {
-            minDeltaTs: maxReferenceTs - tsSpan,
-            maxDeltaTs: maxReferenceTs,
-            minCanvasPos: u.bbox.left,
-            maxCanvasPos: u.bbox.left + u.bbox.width,
-            minCssPos: u.valToPos(minXScale, shredsXScaleKey, false),
-            maxCssPos: u.valToPos(maxXScale, shredsXScaleKey, false),
-          };
+          const tsRange: TsRange = [maxReferenceTs - tsSpan, maxReferenceTs];
+          const canvasRange: TsRange = [
+            u.bbox.left,
+            u.bbox.left + u.bbox.width,
+          ];
+          const cssRange: TsRange = [
+            u.valToPos(minXScale, shredsXScaleKey, false),
+            u.valToPos(maxXScale, shredsXScaleKey, false),
+          ];
 
           const minSlot = isOnStartupScreen
             ? slotRange.min
@@ -128,7 +130,7 @@ export function shredsProgressionPlugin(
             minSlot,
             maxSlot,
             liveShreds,
-            xRange,
+            tsRange,
           );
 
           const canvasHeight = isOnStartupScreen
@@ -204,7 +206,8 @@ export function shredsProgressionPlugin(
                 drawOnlyDots: isOnStartupScreen,
                 y: (rowPxHeight + gapPxHeight) * rowIdx + u.bbox.top,
                 getYOffset,
-                xRange,
+                tsRange,
+                canvasRange,
               });
             }
 
@@ -231,7 +234,8 @@ export function shredsProgressionPlugin(
               rangeAfterStartup,
               liveShreds.slots,
               skippedSlotsCluster,
-              xRange,
+              tsRange,
+              cssRange,
               prevLabels,
               tempNewLabels,
             );
@@ -266,12 +270,13 @@ function drawStartupChartAxes(u: uPlot) {
   u.ctx.restore();
 }
 
-function getXPos(tsDelta: number, xRange: XRange, isCanvasPos: boolean) {
-  const tsRange = xRange.maxDeltaTs - xRange.minDeltaTs;
-  const minPos = isCanvasPos ? xRange.minCanvasPos : xRange.minCssPos;
-  const maxPos = isCanvasPos ? xRange.maxCanvasPos : xRange.maxCssPos;
-  const posRange = maxPos - minPos;
-  return minPos + posRange * ((tsDelta - xRange.minDeltaTs) / tsRange);
+function getXPos(tsDelta: number, tsRange: TsRange, posRange: TsRange) {
+  const [minDeltaTs, maxDeltaTs] = tsRange;
+  const [minPos, maxPos] = posRange;
+  const posSpan = maxPos - minPos;
+  return (
+    minPos + posSpan * ((tsDelta - minDeltaTs) / (maxDeltaTs - minDeltaTs))
+  );
 }
 
 interface AddEventsForRowArgs {
@@ -286,7 +291,8 @@ interface AddEventsForRowArgs {
   getYOffset?: (
     eventType: Exclude<ShredEvent, ShredEvent.slot_complete>,
   ) => number;
-  xRange: XRange;
+  tsRange: TsRange;
+  canvasRange: TsRange;
 }
 /**
  * Draw rows for shreds, with rectangles or dots for events.
@@ -303,7 +309,8 @@ function addEventsForRow({
   isSlotSkipped,
   y,
   getYOffset,
-  xRange,
+  tsRange,
+  canvasRange,
 }: AddEventsForRowArgs) {
   const shredIdx = getShredIdxToDrawForRow(firstShredIdx, lastShredIdx, shreds);
 
@@ -314,8 +321,8 @@ function addEventsForRow({
   let endXPos: number =
     slotCompletionTsDelta == null
       ? // event goes to max x
-        xRange.maxCanvasPos
-      : getXPos(slotCompletionTsDelta, xRange, true);
+        canvasRange[1]
+      : getXPos(slotCompletionTsDelta, tsRange, canvasRange);
 
   const eventPositions = new Map<
     Exclude<ShredEvent, ShredEvent.slot_complete>,
@@ -327,7 +334,7 @@ function addEventsForRow({
     const tsDelta = eventTsDeltas[eventType];
     if (tsDelta == null) continue;
 
-    const startXPos = getXPos(tsDelta, xRange, true);
+    const startXPos = getXPos(tsDelta, tsRange, canvasRange);
 
     // ignore overlapping events with lower priority
     if (startXPos >= endXPos) continue;
@@ -418,7 +425,8 @@ export function updateLabels(
   },
   slots: SlotsShreds["slots"],
   skippedSlotsCluster: Set<number>,
-  xRange: XRange,
+  tsRange: TsRange,
+  cssRange: TsRange,
   prevLabels: {
     groups: Map<number, LabelState>;
     slots: Map<number, LabelState>;
@@ -444,7 +452,7 @@ export function updateLabels(
     if (!leaderEl) continue;
 
     const groupRange = groupTsDeltas[leaderSlot];
-    const groupPos = getPosFromTsDeltaRange(groupRange, xRange);
+    const groupPos = getPosFromTsDeltaRange(groupRange, tsRange, cssRange);
 
     let isGroupSkipped = false;
     for (let slot = leaderSlot; slot < leaderSlot + slotsPerLeader; slot++) {
@@ -461,7 +469,7 @@ export function updateLabels(
       leaderSlot,
       prevLabels.groups,
       newLabels.groups,
-      xRange.maxCssPos,
+      cssRange[1],
       isGroupSkipped,
     );
 
@@ -473,7 +481,11 @@ export function updateLabels(
       const slotEl = document.getElementById(getSlotLabelId(slotNumber));
       if (!slotEl) continue;
 
-      const slotPos = getPosFromTsDeltaRange(slotTsDeltas[slotNumber], xRange);
+      const slotPos = getPosFromTsDeltaRange(
+        slotTsDeltas[slotNumber],
+        tsRange,
+        cssRange,
+      );
 
       // position slot relative to its slot group
       const relativeSlotPos =
@@ -488,7 +500,7 @@ export function updateLabels(
         slotNumber,
         prevLabels.slots,
         newLabels.slots,
-        xRange.maxCssPos,
+        cssRange[1],
         skippedSlotsCluster.has(slotNumber),
       );
     }
@@ -814,18 +826,19 @@ export function getGroupTsDeltas(
  */
 function getPosFromTsDeltaRange(
   tsDeltaRange: TsDeltaRange | undefined,
-  xRange: XRange,
+  tsRange: TsRange,
+  cssRange: TsRange,
 ): Position | undefined {
   if (!tsDeltaRange) return;
 
-  const xStartPos = getXPos(tsDeltaRange[0], xRange, false);
+  const xStartPos = getXPos(tsDeltaRange[0], tsRange, cssRange);
   const xEndVal = tsDeltaRange[1];
 
   if (xEndVal == null) {
     return [xStartPos, undefined];
   }
 
-  const xEndPos = getXPos(xEndVal, xRange, false);
+  const xEndPos = getXPos(xEndVal, tsRange, cssRange);
   return [xStartPos, xEndPos - xStartPos];
 }
 
