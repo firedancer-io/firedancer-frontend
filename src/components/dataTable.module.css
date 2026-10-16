@@ -84,11 +84,7 @@
         vertical-align: middle;
 
         &.pct-gradient {
-          color: color-mix(
-            in srgb,
-            var(--tile-busy-green-color),
-            var(--tile-busy-red-color) var(--pct)
-          );
+          color: var(--tile-busy-color);
         }
 
         &.no-padding {

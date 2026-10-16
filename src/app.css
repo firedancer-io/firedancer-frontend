@@ -63,6 +63,14 @@
   font-family: Inter Tight;
 }
 
+.tile-busy-color {
+  --tile-busy-color: color-mix(
+    in srgb,
+    var(--tile-busy-green-color),
+    var(--tile-busy-red-color) var(--pct)
+  );
+}
+
 .mono-text {
   font-family:
     Roboto Mono,
