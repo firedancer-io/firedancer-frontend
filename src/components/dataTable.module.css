@@ -56,6 +56,33 @@
         }
       }
 
+      &.clickable {
+        cursor: pointer;
+      }
+
+      .select-toggle {
+        flex-shrink: 0;
+        width: 13px;
+        height: 13px;
+        color: var(--table-body-color);
+        .selected-icon {
+          display: none;
+        }
+      }
+
+      &.selected {
+        background-color: var(--gray-a3);
+        mix-blend-mode: hard-light;
+        .select-toggle {
+          .selected-icon {
+            display: block;
+          }
+          .select-icon {
+            display: none;
+          }
+        }
+      }
+
       .green {
         color: var(--green-9);
       }

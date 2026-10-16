@@ -332,30 +332,33 @@ const MUtilization = memo(function Utilization({ idx }: UtilizationProps) {
           tableStyles.noFadeCell,
         )}
       >
-        <TileSparkLine
-          value={avgValue}
-          history={initialHistory}
-          background={tileChartDarkBackground}
-          windowMs={60_000}
-          height={chartHeight}
-          updateIntervalMs={liveTileMetricsSparklineDebounceMs}
-          tickMs={1_000}
-        />
+        <Flex align="center">
+          <TileSparkLine
+            value={avgValue}
+            history={initialHistory}
+            background={tileChartDarkBackground}
+            windowMs={60_000}
+            height={chartHeight}
+            updateIntervalMs={liveTileMetricsSparklineDebounceMs}
+            tickMs={1_000}
+          />
+        </Flex>
       </Table.Cell>
     </>
   );
 });
 
 interface DataRowProps {
+  id: string;
   idx: number;
 }
 
-export const DataRow = memo(function DataRow({ idx }: DataRowProps) {
+export const DataRow = memo(function DataRow({ id, idx }: DataRowProps) {
   const rowRef = useRef<HTMLTableRowElement>(null);
   useRowState(idx, rowRef, writeRow);
 
   return (
-    <Table.Row ref={rowRef} className={tableStyles.dataRow}>
+    <Table.Row id={id} ref={rowRef} className={tableStyles.dataRow}>
       <LiveCell idx={idx} write={writeCpu} align="right" />
       <LiveCell idx={idx} write={writeAlive} align="right" />
       <LiveCell idx={idx} write={writePriority} align="right" />
