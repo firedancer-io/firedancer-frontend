@@ -21,7 +21,7 @@ import {
   type RendererObj,
 } from "./utils.ts";
 import { calcRelativeMs } from "../utils.ts";
-import { getGranularity } from "./useAggRevenueQuery.ts";
+import { getGranularity, type AggRevenueQuery } from "./useAggRevenueQuery.ts";
 import type { RevenueType } from "../../../api/entities.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
@@ -54,12 +54,7 @@ const getNumRows = (splitByRow: boolean, tileCount: number) =>
 interface RevenueTrackProps extends WebGlRemountProps, MarkerLinesProps {
   width: number;
   type: RevenueType;
-  aggQuery: (
-    referenceNs: bigint,
-    visibleRangeMs: TsRange,
-    worldRangeMs: TsRange,
-    granularity: AggGranularity,
-  ) => void;
+  aggQuery: AggRevenueQuery;
 }
 
 function RevenueTrack({
@@ -67,7 +62,7 @@ function RevenueTrack({
   markerLinesClassName,
   width,
   type,
-  aggQuery,
+  aggQuery: { query: aggQuery, pauseStaleRefreshes },
 }: RevenueTrackProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
@@ -107,6 +102,7 @@ function RevenueTrack({
         aggQuery(referenceNs, visibleRangeMs, worldRangeMs, queryGranularity);
         setGranularity(queryGranularity);
       } else {
+        pauseStaleRefreshes();
         txnMetaQuery(referenceNs, visibleRangeMs, worldRangeMs);
         setGranularity(undefined);
       }

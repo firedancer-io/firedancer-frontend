@@ -2,7 +2,7 @@ import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../atoms";
 import type { TsRange } from "../WebGl/webglUtils";
 import { atom } from "jotai";
-import { CHART_NOW_DELAY_MS } from "./const";
+import { CHART_NOW_DELAY_MS, RESUME_LIVE_THRESHOLD_FRAC } from "./const";
 import { calcRelativeMs, getInitVisibleRange } from "./utils";
 import type { WsEntity } from "../../api/worker/types";
 
@@ -24,14 +24,16 @@ export const [nextQueryIdByKeyAtom, reserveNextQueryIdAtom] = (function () {
 })();
 
 export const {
+  isLiveAtom,
   isInitializedAtom,
   referenceNsAtom,
   initializeVisibleRangeAtom,
   visibleRangeAtom,
   worldRangeAtom,
 } = (function getReplayChartAtoms() {
+  const isLiveAtom = atom(true);
   const referenceNsAtom = atom((get) => get(startupTimeAtom)?.startupTimeNanos);
-  const visibleRangeAtom = atom<TsRange | undefined>(undefined);
+  const staticVisibleRangeAtom = atom<TsRange | undefined>(undefined);
 
   /**
    * Auto-increments as server time progresses
@@ -49,11 +51,25 @@ export const {
     return [0, worldEnd] satisfies TsRange;
   });
 
+  /**
+   * live mode: show same visible window size but at world end
+   */
+  const liveVisibleRangeAtom = atom((get) => {
+    const staticVisibleRange = get(staticVisibleRangeAtom);
+    const worldRange = get(worldRangeAtom);
+    if (!staticVisibleRange || !worldRange) return;
+
+    const visibleWindowSize = staticVisibleRange[1] - staticVisibleRange[0];
+
+    return [worldRange[1] - visibleWindowSize, worldRange[1]] satisfies TsRange;
+  });
+
   const isInitializedAtom = atom((get) => {
     return !!get(worldRangeAtom);
   });
 
   return {
+    isLiveAtom,
     isInitializedAtom,
     referenceNsAtom,
     worldRangeAtom,
@@ -64,21 +80,43 @@ export const {
       const worldRange = get(worldRangeAtom);
       if (!worldRange) return;
 
-      set(visibleRangeAtom, (prev) => {
+      set(staticVisibleRangeAtom, (prev) => {
         if (prev) return prev;
         return getInitVisibleRange(get(selectedMsAtom), worldRange);
       });
     }),
+    /**
+     * get static visible range or live visible range
+     */
     visibleRangeAtom: atom(
-      (get) => get(visibleRangeAtom),
-      (_, set, value: TsRange) => {
-        set(visibleRangeAtom, (prev) => {
-          if (prev && prev[0] === value[0] && prev[1] === value[1]) return prev;
+      (get) => {
+        const isLive = get(isLiveAtom);
+        return get(isLive ? liveVisibleRangeAtom : staticVisibleRangeAtom);
+      },
+      (get, set, value: TsRange) => {
+        const worldRange = get(worldRangeAtom);
+        // A pan/zoom whose right edge reaches world end resumes live mode;
+        // any other manual range change exits live mode.
+
+        // Resume live if new window is within this distance from world end
+        const liveThreshold =
+          (value[1] - value[0]) * RESUME_LIVE_THRESHOLD_FRAC;
+        const resumeLive =
+          worldRange != null && value[1] >= worldRange[1] - liveThreshold;
+
+        set(staticVisibleRangeAtom, (prev) => {
+          if (prev && prev[0] === value[0] && prev[1] === value[1]) {
+            return prev;
+          }
           return value;
         });
+        set(isLiveAtom, resumeLive);
       },
     ),
   };
 })();
 
-export const selectedMsAtom = atom<number | undefined>();
+/**
+ * selected ts in ms
+ */
+export const selectedMsAtom = atom<number | undefined>(undefined);
