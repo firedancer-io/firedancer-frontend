@@ -20,6 +20,7 @@ import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import clsx from "clsx";
 import styles from "../track.module.css";
 import chartStyles from "../chart.module.css";
+import { Box } from "@radix-ui/themes";
 
 const chartId = "header-track";
 const store = getDefaultStore();
@@ -159,8 +160,10 @@ function HeaderTrack({
   }, [isInitialized, renderActive, width]);
 
   return (
-    <div
-      className={styles.trackContainer}
+    <Box
+      mt="6px"
+      mb="4px"
+      className={clsx(styles.trackContainer)}
       style={{ height: `${trackHeight}px` }}
     >
       <div
@@ -170,7 +173,7 @@ function HeaderTrack({
       <div className={clsx(chartStyles.noChartExplore, styles.bucketSizeLabel)}>
         Bucket size: {granularity ?? "-"}
       </div>
-    </div>
+    </Box>
   );
 }
 

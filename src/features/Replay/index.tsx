@@ -1,23 +1,15 @@
-import { Card, Flex } from "@radix-ui/themes";
-import CardHeader from "../../components/CardHeader";
+import { Flex, Text } from "@radix-ui/themes";
 import Chart from "./Chart";
 import { useAtomValue } from "jotai";
 import { isWebgl2SupportedAtom } from "../WebGl/atoms";
+import styles from "./replay.module.css";
 
 export default function Replay() {
   const isWebGl2Supported = useAtomValue(isWebgl2SupportedAtom);
   return (
-    <Flex direction="column" gap="4" height="100%">
-      {isWebGl2Supported ? (
-        <Card>
-          <CardHeader text="Replay" />
-          <Flex direction="column" gap="4" mt="2">
-            <Chart />
-          </Flex>
-        </Card>
-      ) : (
-        <div>WebGL2 support required</div>
-      )}
+    <Flex direction="column" gap="3px" height="100%">
+      <Text className={styles.title}>Replay</Text>
+      {isWebGl2Supported ? <Chart /> : <div>WebGL2 support required</div>}
     </Flex>
   );
 }
