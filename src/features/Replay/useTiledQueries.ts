@@ -10,6 +10,7 @@ import {
 } from "./atoms";
 import { calcAbsoluteNs } from "./utils";
 import { useThrottledCallbackIfVisible } from "../../api/useDebounceIfVisible";
+import { getTileIdx, getTileIdxRangeWithOverscan } from "./utils";
 
 interface TileStates {
   fetched: Set<number>;
@@ -46,14 +47,14 @@ interface UseTiledQueriesOpts<Granularity extends string> {
   /**
    * When a query completes and the fetched tile count for a granularity exceeds
    * this high watermark, evict tiles outside the visible range (farthest first)
-   * down to `tileEvictionLowWatermark`.
+   * down to `getTileEvictionLowWatermark`.
    */
-  tileEvictionHighWatermark: number;
+  getTileEvictionHighWatermark: (granularity: Granularity) => number;
   /**
    * Evict down to this many tiles.
-   * Must be <= tileEvictionHighWatermark.
+   * Must be <= getTileEvictionHighWatermark.
    */
-  tileEvictionLowWatermark: number;
+  getTileEvictionLowWatermark: (granularity: Granularity) => number;
   onEvictTiles: (granularity: Granularity, tileIdxs: number[]) => void;
 }
 
@@ -67,8 +68,8 @@ export function useTiledQueries<Granularity extends string>({
   overscanTilesCount,
   queryKey,
   sendQuery,
-  tileEvictionHighWatermark,
-  tileEvictionLowWatermark,
+  getTileEvictionHighWatermark,
+  getTileEvictionLowWatermark,
   onEvictTiles,
 }: UseTiledQueriesOpts<Granularity>) {
   const pendingQueriesRef = useRef(
@@ -190,9 +191,9 @@ export function useTiledQueries<Granularity extends string>({
     (granularity: Granularity): number[] => {
       const { fetched, stale } = getTileStates(granularity);
       const storedCount = fetched.size + stale.size;
-      if (storedCount <= tileEvictionHighWatermark) return [];
+      if (storedCount <= getTileEvictionHighWatermark(granularity)) return [];
 
-      let countToEvict = storedCount - tileEvictionLowWatermark;
+      let countToEvict = storedCount - getTileEvictionLowWatermark(granularity);
       if (countToEvict <= 0) return [];
 
       const visibleRange = latestRequestRef.current?.visibleRangeNs;
@@ -257,8 +258,8 @@ export function useTiledQueries<Granularity extends string>({
     },
     [
       getTileStates,
-      tileEvictionHighWatermark,
-      tileEvictionLowWatermark,
+      getTileEvictionHighWatermark,
+      getTileEvictionLowWatermark,
       getTileSizeNs,
       evictTiles,
     ],
@@ -278,17 +279,11 @@ export function useTiledQueries<Granularity extends string>({
 
       const tileSizeNs = getTileSizeNs(granularity);
 
-      // no overscan before world start
-      const worldFirstTile = getStartTileIdx(worldStartNs, tileSizeNs);
-      const firstTile = Math.max(
-        worldFirstTile,
-        getStartTileIdx(visibleStartNs, tileSizeNs) - overscanTilesCount,
-      );
-      const worldLastTile = getEndTileIdx(worldEndNs, tileSizeNs);
-      // no overscan past world end
-      const lastTile = Math.min(
-        worldLastTile,
-        getEndTileIdx(visibleEndNs, tileSizeNs) + overscanTilesCount,
+      const { firstTile, lastTile } = getTileIdxRangeWithOverscan(
+        [visibleStartNs, visibleEndNs],
+        [worldStartNs, worldEndNs],
+        tileSizeNs,
+        overscanTilesCount,
       );
 
       const toFetch: { queryId: number; tileIdx: number }[] = [];
@@ -319,8 +314,8 @@ export function useTiledQueries<Granularity extends string>({
 
       // fetch tiles closest to the visible center first
       const visibleCenterTile =
-        (getStartTileIdx(visibleStartNs, tileSizeNs) +
-          getEndTileIdx(visibleEndNs, tileSizeNs)) /
+        (getTileIdx(visibleStartNs, tileSizeNs, false) +
+          getTileIdx(visibleEndNs, tileSizeNs, true)) /
         2;
       toFetch.sort(
         (a, b) =>
@@ -418,20 +413,6 @@ export function useTiledQueries<Granularity extends string>({
     markQueryComplete,
     pauseStaleRefreshes,
   };
-}
-
-/**
- * Get containing floor tile
- */
-function getStartTileIdx(tsNs: bigint, tileSizeNs: bigint) {
-  return Number(tsNs / tileSizeNs);
-}
-
-/**
- * Get containing tile or the smaller time if on boundary
- */
-function getEndTileIdx(tsNs: bigint, tileSizeNs: bigint) {
-  return Number((tsNs - 1n) / tileSizeNs);
 }
 
 /**

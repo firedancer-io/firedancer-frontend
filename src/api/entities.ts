@@ -1097,7 +1097,7 @@ export const liveShredsSchema = z.object({
   slot_delta: z.number().array(),
   shred_idx: z.number().nullable().array(),
   event: z.number().array(),
-  event_ts_delta: z.coerce.number().array(),
+  event_ts_delta: z.coerce.bigint().array(),
 });
 
 export const slotSchema = z.discriminatedUnion("key", [
@@ -1437,6 +1437,19 @@ export const timelineSlotsSchema = z.object({
   mine: z.array(z.number()),
 });
 
+export const shredsGranularitySchema = z.enum(["shred", "fec"]);
+export const ShredsGranularityEnum = shredsGranularitySchema.enum;
+export const timelineShredsSchema = z.object({
+  granularity: shredsGranularitySchema,
+  reference_slot: z.number().nullable(),
+  reference_ts: z.coerce.bigint().nullable(),
+  slot_delta: z.number().array(),
+  idx: z.number().nullable().array(),
+  event: z.number().array(),
+  event_ts_delta: z.coerce.bigint().array(),
+  skipped: z.number().array(),
+});
+
 export const timelineSchema = z.discriminatedUnion("key", [
   timelineTopicSchema.extend({
     id: z.number(),
@@ -1457,6 +1470,11 @@ export const timelineSchema = z.discriminatedUnion("key", [
     key: z.literal("query_txn_meta"),
     value: txnMetaResponseSchema,
     id: z.number(),
+  }),
+  timelineTopicSchema.extend({
+    id: z.number(),
+    key: z.literal("query_shreds"),
+    value: timelineShredsSchema,
   }),
   timelineTopicSchema.extend({
     id: z.number(),

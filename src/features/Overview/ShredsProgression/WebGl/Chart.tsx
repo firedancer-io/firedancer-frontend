@@ -7,8 +7,8 @@ import { useShredsChartScale } from "../useShredsChartScale";
 import { useSetAtom } from "jotai";
 import { minDirtySlotByChartAtom } from "../../../Shreds/atoms";
 import type { RendererObj } from "../../../Shreds/types";
-import { draw } from "../../../Shreds/WebGl/drawUtils";
-import { setUpRenderer } from "../../../Shreds/WebGl/setupUtils";
+import { drawLive } from "./utils";
+import { setUpLiveRenderer } from "../../../Shreds/WebGl/setupUtils";
 import ShredsSlotLabels from "../ShredsSlotLabels";
 import { MChartAxes, xAxisHeight } from "./ChartAxes";
 import { createLabelsState, type LabelsState } from "../utils";
@@ -16,7 +16,6 @@ import withWebGlRemount, {
   type WebGlRemountProps,
 } from "../../../WebGl/withWebGlRemount";
 import { useWebGlEventHandlers } from "../../../WebGl/useWebGlEventHandlers";
-import type { TsRange } from "../../../WebGl/webglUtils";
 
 const REDRAW_INTERVAL_MS = 15;
 
@@ -39,7 +38,6 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<RendererObj | undefined>();
-  const visibleTsRangeRef = useRef<TsRange | undefined>();
   const labelsRef = useRef<{
     prevLabels: LabelsState;
     tempNewLabels: LabelsState;
@@ -81,10 +79,9 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
     const { renderer } = rendererRef.current;
     renderer.setSize(width, height);
 
-    draw(
+    drawLive(
       chartId,
       rendererRef.current,
-      visibleTsRangeRef,
       labelsRef,
       scale,
       true /* force redraw */,
@@ -106,20 +103,15 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
 
     lastRedrawRef.current = time;
     if (rendererRef.current) {
-      draw(
-        chartId,
-        rendererRef.current,
-        visibleTsRangeRef,
-        labelsRef,
-        scale,
-        false,
-        [0, width],
-      );
+      drawLive(chartId, rendererRef.current, labelsRef, scale, false, [
+        0,
+        width,
+      ]);
       return;
     }
 
     // set up renderer
-    const rendererObj = setUpRenderer(
+    const rendererObj = setUpLiveRenderer(
       width,
       height,
       setUpContextListeners,

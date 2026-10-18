@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type uPlot from "uplot";
 import { chartAxisColor, gridLineColor, gridTicksColor } from "../../../colors";
 import type { AlignedData } from "uplot";
-import { xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
+import { xRangeMs } from "../../Shreds/const";
 import { useMeasure, useRafLoop } from "react-use";
 import {
   shredsProgressionPlugin,

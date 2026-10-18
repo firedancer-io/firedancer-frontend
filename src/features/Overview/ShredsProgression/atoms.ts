@@ -1,20 +1,17 @@
 import { atom } from "jotai";
 import type { LiveShreds } from "../../../api/types";
-import { ShredEvent } from "../../../api/entities";
-import { xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
+import { xRangeMs } from "../../Shreds/const";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
 import { getSlotGroupLeader } from "../../../utils";
-import { smoothedNowMsAtom, epochAtom } from "../../../atoms";
+import { smoothedNowNsAtom, epochAtom } from "../../../atoms";
 import { slotCaughtUpAtom } from "../../../api/atoms";
-import { getDelayedNow } from "./utils";
+import { getDelayedNowNs } from "./utils";
 import { epochNow } from "../../../clockUtils";
+import { msToNs } from "../../../numUtils";
+import { calcRelativeMs } from "../../Replay/utils";
 import { setMinDirtySlotByChartIfSmaller } from "../../Shreds/atoms";
-import type {
-  ShredEventTsDeltaMs,
-  ShredEventTsDeltas,
-  Slot,
-  SlotsShreds,
-} from "../../Shreds/types";
+import { mergeShredEvents } from "../../Shreds/dataUtils";
+import type { SlotRange, SlotsShreds } from "../../Shreds/types";
 
 /**
  * Store live shreds
@@ -80,72 +77,44 @@ export function createLiveShredsAtoms() {
           event_ts_delta,
         }: LiveShreds,
       ) => {
-        let slotRange = get(_slotRangeAtom);
-        const minCompletedSlot = get(_minCompletedSlotAtom);
-        let newMinCompletedSlot = minCompletedSlot;
-
         let minEventSlot = Infinity;
+        let newMinCompletedSlot: number | undefined;
+        let slotRange: SlotRange | undefined;
 
         set(_liveShredsAtom, (prev) => {
           const updated: SlotsShreds = prev ?? {
-            referenceTs: Math.round(Number(reference_ts) / nsPerMs),
+            referenceTs: reference_ts,
             slots: new Map(),
           };
 
-          for (let i = 0; i < event.length; i++) {
-            const ev = event[i];
-            // unsupported event type
-            if (!(ev in ShredEvent)) {
-              console.debug(`received unsupported shred event type ${ev}`);
-              continue;
-            }
+          ({ minEventSlot, newMinCompletedSlot, slotRange } = mergeShredEvents(
+            {
+              reference_slot,
+              reference_ts,
+              slot_delta,
+              idx: shred_idx,
+              event,
+              event_ts_delta,
+            },
+            updated,
+          ));
 
-            if (slot_delta[i] == null || event_ts_delta[i] == null) {
-              console.error(`invalid shred data arrays, missing index ${i}`);
-              break;
-            }
-
-            const slotNumber = reference_slot + slot_delta[i];
-            minEventSlot = Math.min(minEventSlot, slotNumber);
-
-            const shredIdx = shred_idx[i];
-
-            // convert to current reference and delta
-            const eventTsDelta = Math.round(
-              (Number(reference_ts) + event_ts_delta[i]) / nsPerMs -
-                updated.referenceTs,
-            );
-
-            // add event to slot shred
-            updated.slots.set(
-              slotNumber,
-              addEventToSlot(
-                shredIdx,
-                ev,
-                eventTsDelta,
-                updated.slots.get(slotNumber),
-              ),
-            );
-
-            if (ev === ShredEvent.slot_complete) {
-              newMinCompletedSlot = Math.min(
-                slotNumber,
-                newMinCompletedSlot ?? slotNumber,
-              );
-            }
-
-            // update range
-            slotRange = {
-              min: Math.min(slotNumber, slotRange?.min ?? slotNumber),
-              max: Math.max(slotNumber, slotRange?.max ?? slotNumber),
+          set(_slotRangeAtom, (prevRange) => {
+            if (!slotRange) return prevRange;
+            return {
+              min: Math.min(slotRange.min, prevRange?.min ?? slotRange.min),
+              max: Math.max(slotRange.max, prevRange?.max ?? slotRange.max),
             };
-          }
+          });
 
           return updated;
         });
 
-        set(_slotRangeAtom, slotRange);
-        set(_minCompletedSlotAtom, newMinCompletedSlot);
+        // fold this message's results into the stored min completed slot
+        set(_minCompletedSlotAtom, (prev) => {
+          if (newMinCompletedSlot == null) return prev;
+          return Math.min(newMinCompletedSlot, prev ?? newMinCompletedSlot);
+        });
 
         // mark slot for redraw
         set(setMinDirtySlotByChartIfSmaller, minEventSlot);
@@ -167,8 +136,8 @@ export function createLiveShredsAtoms() {
 
         set(_liveShredsAtom, (prev) => {
           const slotRange = get(_slotRangeAtom);
-          const delayedNow = getDelayedNow(
-            get(smoothedNowMsAtom) ?? epochNow(),
+          const delayedNowNs = getDelayedNowNs(
+            get(smoothedNowNsAtom) ?? msToNs(epochNow()),
           );
 
           if (!prev || !slotRange) return prev;
@@ -186,7 +155,7 @@ export function createLiveShredsAtoms() {
                 slot.maxEventTsDelta == null ||
                 isBeforeChartX(
                   slot.maxEventTsDelta,
-                  delayedNow,
+                  delayedNowNs,
                   prev.referenceTs,
                 )
               ) {
@@ -232,7 +201,7 @@ export function createLiveShredsAtoms() {
                 slot.completionTsDelta != null &&
                 isBeforeChartX(
                   slot.completionTsDelta,
-                  delayedNow,
+                  delayedNowNs,
                   prev.referenceTs,
                 )
               ) {
@@ -268,10 +237,10 @@ export function createLiveShredsAtoms() {
 
 function isBeforeChartX(
   tsDelta: number,
-  delayedNow: number,
-  referenceTs: number,
+  delayedNowNs: bigint,
+  referenceTs: bigint,
 ) {
-  const nowDelta = delayedNow - referenceTs;
+  const nowDelta = calcRelativeMs(referenceTs, delayedNowNs);
   return nowDelta - tsDelta > xRangeMs;
 }
 
@@ -293,67 +262,3 @@ export const liveShredsPostStartupLeaderSlotsAtom = atom((get) => {
     max: getSlotGroupLeader(rangeAfterStartup.max),
   };
 });
-
-/**
- * Mutate shred by adding an event ts to event index
- */
-function addEventToShred(
-  event: Exclude<ShredEvent, ShredEvent.slot_complete>,
-  eventTsDelta: number,
-  shredToMutate: ShredEventTsDeltas | undefined,
-): ShredEventTsDeltas {
-  const shred = shredToMutate ?? new Array<ShredEventTsDeltaMs>();
-
-  // in case of duplicate events, keep the min ts
-  shred[event] = Math.min(eventTsDelta, shred[event] ?? eventTsDelta);
-
-  return shred;
-}
-
-/**
- * Mutate slot by marking as complete, or adding an event to the shreds array
- */
-function addEventToSlot(
-  shredIdx: number | null,
-  event: ShredEvent,
-  eventTsDelta: number,
-  slotToMutate: Slot | undefined,
-): Slot {
-  const slot = slotToMutate ?? {
-    shreds: [],
-  };
-
-  // update slot min event ts
-  slot.minEventTsDelta = Math.min(
-    eventTsDelta,
-    slot.minEventTsDelta ?? eventTsDelta,
-  );
-
-  // update slot max event ts
-  slot.maxEventTsDelta = Math.max(
-    eventTsDelta,
-    slot.maxEventTsDelta ?? eventTsDelta,
-  );
-
-  if (event === ShredEvent.slot_complete) {
-    slot.completionTsDelta = Math.min(
-      eventTsDelta,
-      slot.completionTsDelta ?? eventTsDelta,
-    );
-    return slot;
-  }
-
-  if (shredIdx == null) {
-    console.error("Missing shred ID");
-    return slot;
-  }
-
-  // update shred
-  slot.shreds[shredIdx] = addEventToShred(
-    event,
-    eventTsDelta,
-    slot.shreds[shredIdx],
-  );
-
-  return slot;
-}
