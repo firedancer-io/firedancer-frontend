@@ -1,4 +1,4 @@
-import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
+import { delayNs, xRangeMs } from "../../Shreds/const";
 import { getSlotGroupLeader } from "../../../utils";
 
 export function getSlotGroupLabelId(slot: number) {
@@ -37,8 +37,8 @@ export const getXIncrs = (scale: number) => {
   return incrs;
 };
 
-export function getDelayedNow(smoothedNow: number) {
-  return smoothedNow - delayMs;
+export function getDelayedNowNs(smoothedNowNs: bigint) {
+  return smoothedNowNs - delayNs;
 }
 
 export type LabelState = {

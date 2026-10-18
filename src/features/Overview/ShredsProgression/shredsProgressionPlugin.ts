@@ -21,18 +21,19 @@ import {
   shredReplayedTurbineColor,
   shredSkippedColor,
 } from "../../../colors";
-import { smoothedNowMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
+import { smoothedNowNsAtom, skippedClusterSlotsAtom } from "../../../atoms";
 import { clamp } from "lodash";
 import { ShredEvent } from "../../../api/entities";
 import {
   createLabelsState,
-  getDelayedNow,
+  getDelayedNowNs,
   getSlotGroupLabelId,
   getSlotGroupNameId,
   getSlotLabelId,
   type LabelState,
 } from "./utils";
 import { getDrawInfo } from "../../Shreds/chartUtils";
+import { calcRelativeMs } from "../../Replay/utils";
 import styles from "./shreds.module.css";
 
 import { slotsPerLeader } from "../../../consts";
@@ -42,6 +43,8 @@ import type { TsRange } from "../../WebGl/webglUtils";
 const store = getDefaultStore();
 
 export const shredsXScaleKey = "shredsXScaleKey";
+
+const MAX_ROW_PX_HEIGHT = 10;
 
 type Coordinates = [x: number, y: number, width?: number];
 type EventsByFillStyle = {
@@ -73,8 +76,8 @@ export function shredsProgressionPlugin(
             drawStartupChartAxes(u);
           }
 
-          const smoothedNow = store.get(smoothedNowMsAtom);
-          if (!smoothedNow) return;
+          const smoothedNowNs = store.get(smoothedNowNsAtom);
+          if (smoothedNowNs == null) return;
 
           const liveShreds = store.get(shredsAtoms.slotsShreds);
           const slotRange = store.get(shredsAtoms.range);
@@ -104,8 +107,11 @@ export function shredsProgressionPlugin(
             if (!rangeAfterStartup) return;
           }
 
-          const delayedNow = getDelayedNow(smoothedNow);
-          const maxReferenceTs = delayedNow - liveShreds.referenceTs;
+          const delayedNowNs = getDelayedNowNs(smoothedNowNs);
+          const maxReferenceTs = calcRelativeMs(
+            liveShreds.referenceTs,
+            delayedNowNs,
+          );
           const tsSpan = maxXScale - minXScale;
 
           const tsRange: TsRange = [maxReferenceTs - tsSpan, maxReferenceTs];
@@ -123,12 +129,21 @@ export function shredsProgressionPlugin(
             : Math.max(slotRange.min, minCompletedSlot ?? slotRange.min);
           const maxSlot = slotRange.max;
 
-          const { maxShreds, orderedSlotNumbers } = getDrawInfo(
+          const msPerPx = u.bbox.width > 0 ? tsSpan / u.bbox.width : 0;
+          const skippedDotMaxDuration = MAX_ROW_PX_HEIGHT * msPerPx;
+
+          const { maxShreds, slots: drawSlots } = getDrawInfo(
             minSlot,
             maxSlot,
-            liveShreds,
+            { isFec: false, slotsShreds: liveShreds },
+            undefined,
             tsRange,
+            // no draw overscan
+            tsRange,
+            (_slot, slotNumber) => skippedSlotsCluster.has(slotNumber),
+            skippedDotMaxDuration,
           );
+          const orderedSlotNumbers = drawSlots.map((d) => d.slotNumber);
 
           const canvasHeight = isOnStartupScreen
             ? Math.trunc(u.bbox.height / 3)
@@ -153,7 +168,11 @@ export function shredsProgressionPlugin(
             : undefined;
 
           // each row is at least 1 px
-          const rowPxHeight = clamp(canvasHeight / maxShreds, 1, 10);
+          const rowPxHeight = clamp(
+            canvasHeight / maxShreds,
+            1,
+            MAX_ROW_PX_HEIGHT,
+          );
           const gapPxHeight = 1;
 
           const dotSize = Math.max(rowPxHeight, 3);

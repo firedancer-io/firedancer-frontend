@@ -9,15 +9,32 @@ import {
 } from "../../../colors";
 import { colors as shredWebGlColors } from "../../Shreds/WebGl/const";
 
-// TODO: set to reasonable transition value
-export const SHREDS_AGG_THRESHOLD_MS = 0;
+export const SHREDS_AGG_THRESHOLD_MS = 180_000;
+
+export const AGG_SHREDS_CHART_ID = "agg-shreds-track";
+export const NON_AGG_SHREDS_CHART_ID = "non-agg-shreds-track";
 
 export type RendererObj = {
   renderer: THREE.WebGLRenderer;
   aggResources: AggRendererResources;
-  // TODO: add nonAggResources
+  nonAggResources: NonAggRendererResources;
   cleanUp: () => void;
 };
+
+export interface NonAggRendererResources {
+  camera: THREE.OrthographicCamera;
+  scene: THREE.Scene;
+  meshes: Map<string, RectMesh>;
+  availableMeshes: RectMesh[];
+  resources: RectResources;
+  /**
+   * origin ms subtracted from both the camera bounds and
+   * the rectangle geometry so the GPU works with small, float32-precise coordinates
+   * instead of ~3.4e8.
+   * Mesh position x values must be updated when this changes
+   */
+  cameraReferenceMs: number;
+}
 
 export interface AggRendererResources {
   camera: THREE.OrthographicCamera;

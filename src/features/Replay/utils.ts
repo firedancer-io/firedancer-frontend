@@ -104,6 +104,9 @@ export function getBucketIdx(
   return Number(idx);
 }
 
+/**
+ * Assumes ts > 0
+ */
 export function getTileIdx(tsNs: bigint, tileSizeNs: bigint, isEndTs: boolean) {
   const idx = tsNs / tileSizeNs;
 
@@ -112,4 +115,30 @@ export function getTileIdx(tsNs: bigint, tileSizeNs: bigint, isEndTs: boolean) {
     return Number(idx) - 1;
   }
   return Number(idx);
+}
+
+/**
+ * Get first and last tile idx for the visible range including overscan.
+ * Clamp to world range tiles.
+ */
+export function getTileIdxRangeWithOverscan(
+  [visibleStartNs, visibleEndNs]: readonly [bigint, bigint],
+  [worldStartNs, worldEndNs]: readonly [bigint, bigint],
+  tileSizeNs: bigint,
+  overscanTilesCount: number,
+): { firstTile: number; lastTile: number } {
+  // clamp query to world bounds
+  const worldFirstTile = getTileIdx(worldStartNs, tileSizeNs, false);
+  const worldLastTile = getTileIdx(worldEndNs, tileSizeNs, true);
+
+  const firstTile = Math.max(
+    worldFirstTile,
+    getTileIdx(visibleStartNs, tileSizeNs, false) - overscanTilesCount,
+  );
+  const lastTile = Math.min(
+    worldLastTile,
+    getTileIdx(visibleEndNs, tileSizeNs, true) + overscanTilesCount,
+  );
+
+  return { firstTile, lastTile };
 }

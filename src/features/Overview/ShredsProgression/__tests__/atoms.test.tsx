@@ -5,10 +5,7 @@ import { createLiveShredsAtoms } from "../atoms";
 import { Provider } from "jotai";
 import type { PropsWithChildren } from "react";
 import { ShredEvent } from "../../../../api/entities";
-import {
-  xRangeMs,
-  delayMs,
-} from "../../../../api/worker/cache/shreds/shredsCalc";
+import { xRangeMs, delayMs } from "../../../Shreds/const";
 import { nsPerMs } from "../../../../consts";
 import { stubPerformanceToFakeClock } from "../../../../testUtils";
 
@@ -56,21 +53,30 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
           99999, // unsupported event type
         ],
         event_ts_delta: [
-          2_000_030, 4_123_456, 5_678_234, 8_000_000, 3_234_123, 7_345_456,
+          2_000_030n,
+          4_123_456n,
+          5_678_234n,
+          8_000_000n,
+          3_234_123n,
+          7_345_456n,
         ],
       });
     });
 
     expect(result.current.slotsShreds).toEqual({
-      referenceTs: 123,
+      referenceTs: 123_000_000n,
       slots: new Map([
         [
           2003,
           {
-            minEventTsDelta: 2,
+            minEventTsDelta: 2.00003,
             maxEventTsDelta: 8,
-            completionTsDelta: 3,
-            shreds: [undefined, undefined, [6, undefined, 2, 7]],
+            completionTsDelta: 3.234123,
+            shreds: [
+              undefined,
+              undefined,
+              [5.678234, undefined, 2.00003, 7.345456],
+            ],
           },
         ],
       ]),
@@ -91,30 +97,34 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
           ShredEvent.shred_received_turbine,
           ShredEvent.shred_replayed,
         ],
-        event_ts_delta: [1_000_030, 5_123_345, 2_345_231],
+        event_ts_delta: [1_000_030n, 5_123_345n, 2_345_231n],
       });
     });
 
     // uses inital reference ts
     // update shred events with min ts
     expect(result.current.slotsShreds).toEqual({
-      referenceTs: 123,
+      referenceTs: 123_000_000n,
       slots: new Map([
         [
           2002,
           {
-            minEventTsDelta: 6,
-            maxEventTsDelta: 6,
-            shreds: [undefined, [undefined, 6]],
+            minEventTsDelta: 6.223345,
+            maxEventTsDelta: 6.223345,
+            shreds: [undefined, [undefined, 6.223345]],
           },
         ],
         [
           2003,
           {
-            minEventTsDelta: 2,
+            minEventTsDelta: 2.00003,
             maxEventTsDelta: 8,
-            completionTsDelta: 3,
-            shreds: [undefined, undefined, [2, undefined, 2, 3]],
+            completionTsDelta: 3.234123,
+            shreds: [
+              undefined,
+              undefined,
+              [2.10003, undefined, 2.00003, 3.445231],
+            ],
           },
         ],
       ]),
@@ -157,29 +167,29 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
           ShredEvent.shred_received_turbine,
           ShredEvent.slot_complete,
         ],
-        event_ts_delta: [2_000_030, 4_123_456, 5_678_234, 8_000_000],
+        event_ts_delta: [2_000_030n, 4_123_456n, 5_678_234n, 8_000_000n],
       });
     });
 
     expect(result.current.slotsShreds).toEqual({
-      referenceTs: 123,
+      referenceTs: 123_000_000n,
       slots: new Map([
         [
           2003,
           {
-            minEventTsDelta: 2,
-            maxEventTsDelta: 4,
-            completionTsDelta: 4,
-            shreds: [undefined, undefined, [undefined, 2]],
+            minEventTsDelta: 2.00003,
+            maxEventTsDelta: 4.123456,
+            completionTsDelta: 4.123456,
+            shreds: [undefined, undefined, [undefined, 2.00003]],
           },
         ],
         [
           2004,
           {
-            minEventTsDelta: 6,
+            minEventTsDelta: 5.678234,
             maxEventTsDelta: 8,
             completionTsDelta: 8,
-            shreds: [undefined, [undefined, 6]],
+            shreds: [undefined, [undefined, 5.678234]],
           },
         ],
       ]),
@@ -198,38 +208,38 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
         slot_delta: [0, 0],
         shred_idx: [0, null],
         event: [ShredEvent.shred_received_turbine, ShredEvent.slot_complete],
-        event_ts_delta: [1_000_030, 2_123_345],
+        event_ts_delta: [1_000_030n, 2_123_345n],
       });
     });
 
     expect(result.current.slotsShreds).toEqual({
-      referenceTs: 123,
+      referenceTs: 123_000_000n,
       slots: new Map([
         [
           2002,
           {
-            minEventTsDelta: 2,
-            maxEventTsDelta: 3,
-            completionTsDelta: 3,
-            shreds: [[undefined, 2]],
+            minEventTsDelta: 2.10003,
+            maxEventTsDelta: 3.223345,
+            completionTsDelta: 3.223345,
+            shreds: [[undefined, 2.10003]],
           },
         ],
         [
           2003,
           {
-            minEventTsDelta: 2,
-            maxEventTsDelta: 4,
-            completionTsDelta: 4,
-            shreds: [undefined, undefined, [undefined, 2]],
+            minEventTsDelta: 2.00003,
+            maxEventTsDelta: 4.123456,
+            completionTsDelta: 4.123456,
+            shreds: [undefined, undefined, [undefined, 2.00003]],
           },
         ],
         [
           2004,
           {
-            minEventTsDelta: 6,
+            minEventTsDelta: 5.678234,
             maxEventTsDelta: 8,
             completionTsDelta: 8,
-            shreds: [undefined, [undefined, 6]],
+            shreds: [undefined, [undefined, 5.678234]],
           },
         ],
       ]),
@@ -316,12 +326,12 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
         slot_delta: Object.values(events).map((v) => v.slot),
         shred_idx: Object.values(events).map((v) => 0),
         event: Object.values(events).map((v) => v.e),
-        event_ts_delta: Object.values(events).map((v) => v.ts),
+        event_ts_delta: Object.values(events).map((v) => BigInt(v.ts)),
       });
     });
 
     expect(result.current.slotsShreds).toEqual({
-      referenceTs: 0,
+      referenceTs: 0n,
       slots: new Map([
         [0, { shreds: [[-1]], minEventTsDelta: -1, maxEventTsDelta: -1 }],
         [
@@ -373,7 +383,7 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
     });
 
     expect(result.current.slotsShreds).toEqual({
-      referenceTs: 0,
+      referenceTs: 0n,
       slots: new Map([
         [
           3,
@@ -486,12 +496,12 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
         slot_delta: Object.values(events).map((v) => v.slot),
         shred_idx: Object.values(events).map((v) => 0),
         event: Object.values(events).map((v) => v.e),
-        event_ts_delta: Object.values(events).map((v) => v.ts),
+        event_ts_delta: Object.values(events).map((v) => BigInt(v.ts)),
       });
     });
 
     expect(result.current.slotsShreds).toEqual({
-      referenceTs: 0,
+      referenceTs: 0n,
       slots: new Map([
         [0, { shreds: [[-1]], minEventTsDelta: -1, maxEventTsDelta: -1 }],
         [
@@ -535,7 +545,7 @@ describe("live shreds atoms with reference ts and ts deltas", () => {
     });
 
     expect(result.current.slotsShreds).toEqual({
-      referenceTs: 0,
+      referenceTs: 0n,
       slots: new Map([
         [
           1,

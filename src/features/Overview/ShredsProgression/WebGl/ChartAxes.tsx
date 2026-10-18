@@ -1,5 +1,5 @@
 import { Box } from "@radix-ui/themes";
-import { xRangeMs } from "../../../../api/worker/cache/shreds/shredsCalc";
+import { xRangeMs } from "../../../Shreds/const";
 import { useRef, useCallback, useMemo, useEffect, memo } from "react";
 import type { AlignedData } from "uplot";
 import {

@@ -1,4 +1,5 @@
 import { ShredEvent } from "../../api/entities";
+import { nsPerMs } from "../../consts";
 import {
   shredPublishedColor,
   shredReceivedRepairColor,
@@ -53,3 +54,12 @@ export const legend = {
 };
 
 export const SKIPPED_SLOT_DOT_DURATION_MS = 10;
+
+export const xRangeMs = 10_000;
+export const delayMs = 50;
+export const delayNs = BigInt(delayMs * nsPerMs);
+
+/**
+ * FEC set = 32 shreds
+ */
+export const SHREDS_PER_FEC_SET = 32;

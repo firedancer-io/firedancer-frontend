@@ -12,7 +12,6 @@ import {
   timelineSchema,
 } from "../entities";
 import type { GossipHealthEma } from "../atoms";
-import type { LiveShredsData } from "./cache/shreds/types";
 
 export const WsMessageSchema = z.discriminatedUnion("topic", [
   summarySchema,
@@ -144,11 +143,3 @@ export const defaultValidatorState: ValidatorState = {
   serverTimeNanos: undefined,
   isStartup: undefined,
 };
-
-// only one entry for live shreds
-export const liveShredsKey = "liveShreds";
-export type LiveShredsKey = typeof liveShredsKey;
-export interface LiveShredsItem {
-  key: LiveShredsKey;
-  data: LiveShredsData;
-}

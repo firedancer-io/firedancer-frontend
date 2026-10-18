@@ -1,11 +1,11 @@
 import type * as THREE from "three";
 import type { RectMesh, RectResources, TsRange } from "../WebGl/webglUtils";
 
-export type RendererObj = {
+export type RendererObj<MeshKey extends string | number = number> = {
   renderer: THREE.WebGLRenderer;
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
-  meshes: Map<number, RectMesh>;
+  meshes: Map<MeshKey, RectMesh>;
   availableMeshes: RectMesh[];
   worldTsRange: TsRange;
   // resources shared by this renderer's slot meshes
@@ -29,10 +29,24 @@ export type Slot = {
   minEventTsDelta?: number;
   maxEventTsDelta?: number;
   completionTsDelta?: number;
+  /**
+   * Replay only
+   */
+  skipped?: boolean;
+  /**
+   * Replay only
+   */
+  tiles?: Set<number>;
 };
 
 export type SlotsShreds = {
-  referenceTs: number;
+  // reference ts in ns; event ts deltas below are ms relative to this
+  referenceTs: bigint;
   // slot number to Slot
   slots: Map<number, Slot>;
 };
+
+export interface SlotRange {
+  min: number;
+  max: number;
+}

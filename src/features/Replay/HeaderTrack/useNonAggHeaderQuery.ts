@@ -17,6 +17,8 @@ const granularity = "";
 export const OVERSCAN_TILES_COUNT = 2;
 const TILE_EVICTION_HIGH_WATERMARK = 24;
 const TILE_EVICTION_LOW_WATERMARK = 16;
+const getTileEvictionHighWatermark = () => TILE_EVICTION_HIGH_WATERMARK;
+const getTileEvictionLowWatermark = () => TILE_EVICTION_LOW_WATERMARK;
 
 export const tileSizeNs = BigInt(10_000 * nsPerMs);
 
@@ -51,8 +53,8 @@ export function useNonAggHeaderQuery(chartId: string) {
       overscanTilesCount: OVERSCAN_TILES_COUNT,
       queryKey: SLOTS_QUERY_KEY,
       sendQuery,
-      tileEvictionHighWatermark: TILE_EVICTION_HIGH_WATERMARK,
-      tileEvictionLowWatermark: TILE_EVICTION_LOW_WATERMARK,
+      getTileEvictionHighWatermark,
+      getTileEvictionLowWatermark,
       onEvictTiles,
     },
   );

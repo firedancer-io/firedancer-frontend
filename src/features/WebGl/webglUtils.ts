@@ -226,13 +226,13 @@ export function addRectangleToMesh(
   h: number,
   color: RgbColor,
 ) {
-  const ri = rectangleIdx * 4;
+  const ri = rectangleIdx * rectMesh.rectAttr.itemSize;
   rectMesh.rectArray[ri] = x;
   rectMesh.rectArray[ri + 1] = y;
   rectMesh.rectArray[ri + 2] = w;
   rectMesh.rectArray[ri + 3] = h;
 
-  const ci = rectangleIdx * 3;
+  const ci = rectangleIdx * rectMesh.colorAttr.itemSize;
   rectMesh.colorArray[ci] = color[0];
   rectMesh.colorArray[ci + 1] = color[1];
   rectMesh.colorArray[ci + 2] = color[2];
@@ -242,6 +242,14 @@ export function updateRectMeshCounts(rectMesh: RectMesh, count: number) {
   rectMesh.count = count;
   (rectMesh.mesh.geometry as THREE.InstancedBufferGeometry).instanceCount =
     count;
+  // Only upload the used range. This works even if count was reduced, as long as
+  // instanceCount is correctly set.
+  rectMesh.rectAttr.clearUpdateRanges();
+  rectMesh.colorAttr.clearUpdateRanges();
+  if (count > 0) {
+    rectMesh.rectAttr.addUpdateRange(0, count * rectMesh.rectAttr.itemSize);
+    rectMesh.colorAttr.addUpdateRange(0, count * rectMesh.colorAttr.itemSize);
+  }
   rectMesh.rectAttr.needsUpdate = true;
   rectMesh.colorAttr.needsUpdate = true;
 }
