@@ -46,7 +46,7 @@ import {
 } from "../atoms";
 import { shredsAtoms } from "../features/Overview/ShredsProgression/atoms";
 import { setDirtySlotOnSkippedChangeAtom } from "../features/Shreds/atoms";
-import { xRangeMs } from "./worker/cache/shreds/shredsCalc";
+import { xRangeMs } from "../features/Shreds/const";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
 import { isFrankendancer } from "../client";
 import {
@@ -812,6 +812,7 @@ function useUpdateAtoms() {
         }
         case "timeline": {
           switch (key) {
+            case "query_shreds":
             case "query_agg_shreds":
             case "query_agg_revenue":
             case "query_agg_slots":

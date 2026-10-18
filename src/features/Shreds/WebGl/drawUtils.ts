@@ -1,212 +1,168 @@
 import type * as THREE from "three";
-import type { MutableRefObject } from "react";
 import { ShredEvent } from "../../../api/entities";
-import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
-import type { ShredEventTsDeltas } from "../../../api/worker/cache/shreds/types";
-import { smoothedNowMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
-import { showStartupProgressAtom } from "../../StartupProgress/atoms";
-import {
-  shredsAtoms,
-  liveShredsPostStartupRangeAtom,
-} from "../../Overview/ShredsProgression/atoms";
-import { minDirtySlotByChartAtom } from "../atoms";
-import type { RendererObj } from "../types";
+import { delayMs } from "../const";
+import type { ShredEventTsDeltas, Slot } from "../types";
+import type { DrawableSlot } from "../chartUtils";
 import {
   shredEventDescPriorities,
   SKIPPED_SLOT_DOT_DURATION_MS,
+  SHREDS_PER_FEC_SET,
 } from "../const";
-import { colors, SHRED_MESH_CAPACITY } from "./const";
-import { updateLabels } from "../../Overview/ShredsProgression/shredsProgressionPlugin";
-import { getDrawInfo } from "../chartUtils";
+import { colors } from "./const";
 import {
-  createRectMesh,
   updateRectMeshCounts,
   ensureRectCapacity,
   addRectangleToMesh,
   type TsRange,
   type RectMesh,
 } from "../../WebGl/webglUtils";
-import { getDefaultStore } from "jotai";
-import {
-  getDelayedNow,
-  type LabelsState,
-} from "../../Overview/ShredsProgression/utils";
 
-const store = getDefaultStore();
-
-const tempEventPositions = new Map<
+export const tempEventPositions = new Map<
   Exclude<ShredEvent, ShredEvent.slot_complete>,
   { x: number; w: number }
 >();
 
-export function draw(
-  chartId: string,
-  rendererObj: RendererObj,
-  visibleTsRangeRef: MutableRefObject<TsRange | undefined>,
-  labelsRef: MutableRefObject<{
-    prevLabels: LabelsState;
-    tempNewLabels: LabelsState;
-  }>,
-  scale: number,
-  forceDraw: boolean,
-  cssRange: [min: number, max: number],
+/**
+ * Remove a mesh from the scene and return it to the pool for reuse.
+ * Does not render; the next draw repaints.
+ */
+export function releaseMesh<MeshKey>(
+  scene: THREE.Scene,
+  meshes: Map<MeshKey, RectMesh>,
+  availableMeshes: RectMesh[],
+  key: MeshKey,
 ) {
-  const liveShreds = store.get(shredsAtoms.slotsShreds);
-  const slotRange = store.get(shredsAtoms.range);
-  const minCompletedSlot = store.get(shredsAtoms.minCompletedSlot);
-  const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
-  const rangeAfterStartup = store.get(liveShredsPostStartupRangeAtom);
-  const smoothedNow = store.get(smoothedNowMsAtom);
+  const slotMesh = meshes.get(key);
+  if (!slotMesh) return;
+  scene.remove(slotMesh.mesh);
+  meshes.delete(key);
+  availableMeshes.push(slotMesh);
+}
 
-  // if startup is running, prevent drawing non-startup screen chart
-  // Sometimes we've missed the completion event for the first slots
-  // depending on connection time. Ignore those slots, and only draw slots
-  // from min completed.
-  if (
-    !liveShreds ||
-    !slotRange ||
-    store.get(showStartupProgressAtom) ||
-    minCompletedSlot == null ||
-    !rangeAfterStartup ||
-    smoothedNow == null
-  )
-    return;
-
-  const delayedNow = getDelayedNow(smoothedNow);
-  const maxReferenceTs = delayedNow - liveShreds.referenceTs;
-
-  const visibleTsRange: TsRange = [
-    maxReferenceTs - xRangeMs * scale,
-    maxReferenceTs,
-  ];
-
-  const minSlot = Math.max(slotRange.min, minCompletedSlot ?? slotRange.min);
-  const maxSlot = slotRange.max;
-
-  const { maxShreds, orderedSlotNumbers } = getDrawInfo(
-    minSlot,
-    maxSlot,
-    liveShreds,
-    visibleTsRange,
+export function drawSlotShreds(
+  visibleTsRange: TsRange,
+  // visible range + overscan to draw
+  drawTsRange: TsRange,
+  maxShreds: number,
+  orderedSlots: DrawableSlot[],
+  getSlotMesh: (drawSlot: DrawableSlot) => {
+    isNewMesh: boolean;
+    slotMesh: RectMesh;
+  },
+  camera: THREE.OrthographicCamera,
+  // subtract offset from coordinates to make them small for GPU processing
+  cameraReferenceMs = 0,
+  // redraw an existing mesh only when dirty; new meshes always draw
+  isSlotDirty?: (slotNumber: number) => boolean,
+): boolean {
+  const xChanged = updateCameraXRange(
+    [
+      visibleTsRange[0] - cameraReferenceMs,
+      visibleTsRange[1] - cameraReferenceMs,
+    ],
+    camera,
   );
-
-  const cameraChanged = updateVisibleXRange(
-    visibleTsRangeRef,
-    visibleTsRange,
-    rendererObj.camera,
-    maxShreds,
-  );
+  const yChanged = updateCameraYRange(camera, maxShreds);
+  const cameraChanged = xChanged || yChanged;
 
   let anythingDrawn = false;
-  const minDirtySlot = store.get(minDirtySlotByChartAtom).get(chartId);
 
-  for (const slotNumber of orderedSlotNumbers) {
-    const slot = liveShreds.slots.get(slotNumber);
-    if (!slot?.shreds) continue;
+  for (const drawSlot of orderedSlots) {
+    const { slotNumber, slot, isFec, skipped } = drawSlot;
+    if (!slot.shreds) continue;
 
-    let slotMesh = rendererObj.meshes.get(slotNumber);
-    const isNewMesh = !slotMesh;
-    if (!slotMesh) {
-      const lastMesh = rendererObj.availableMeshes.pop();
-      slotMesh =
-        lastMesh ?? createRectMesh(rendererObj.resources, SHRED_MESH_CAPACITY);
-      rendererObj.meshes.set(slotNumber, slotMesh);
-      rendererObj.scene.add(slotMesh.mesh);
-    }
+    const { isNewMesh, slotMesh } = getSlotMesh(drawSlot);
 
-    // skip drawing if not dirty slot
-    if (!isNewMesh && minDirtySlot != null && slotNumber < minDirtySlot) {
+    // skip drawing if the mesh already exists and the slot is not dirty
+    if (!isNewMesh && !isSlotDirty?.(slotNumber)) {
       continue;
     }
 
-    const isSlotSkipped = skippedSlotsCluster.has(slotNumber);
-
-    let rectangleIdx = 0;
-    for (let shredIdx = 0; shredIdx < slot.shreds.length; shredIdx++) {
-      const shred = slot.shreds[shredIdx];
-      if (!shred) continue;
-
-      tempEventPositions.clear();
-      const rectanglesAdded = addEventsForRow({
-        tempEventPositions,
-        slotMesh,
-        startRectangleIdx: rectangleIdx,
-        eventTsDeltas: shred,
-        slotCompletionTsDelta: slot.completionTsDelta,
-        isSlotSkipped,
-        y: -shredIdx,
-        visibleTsRange,
-      });
-      rectangleIdx += rectanglesAdded;
-      if (rectanglesAdded) {
-        anythingDrawn = true;
-      }
-    }
-    updateRectMeshCounts(slotMesh, rectangleIdx);
+    const drawn = drawSingleSlotShreds(
+      slot,
+      skipped,
+      slotMesh,
+      drawTsRange,
+      isFec ? SHREDS_PER_FEC_SET : 1,
+      cameraReferenceMs,
+    );
+    anythingDrawn ||= drawn;
   }
 
-  store.set(minDirtySlotByChartAtom, (prev) => {
-    prev.set(chartId, Infinity);
-    return prev;
-  });
-
-  const orderedSet = new Set(orderedSlotNumbers);
-  for (const [slotNumber, slotMesh] of rendererObj.meshes.entries()) {
-    if (!orderedSet.has(slotNumber)) {
-      rendererObj.scene.remove(slotMesh.mesh);
-      rendererObj.meshes.delete(slotNumber);
-      rendererObj.availableMeshes.push(slotMesh);
-    }
-  }
-
-  if (forceDraw || anythingDrawn || cameraChanged) {
-    rendererObj.renderer.render(rendererObj.scene, rendererObj.camera);
-  }
-
-  const { prevLabels, tempNewLabels } = labelsRef.current;
-  updateLabels(
-    rangeAfterStartup,
-    liveShreds.slots,
-    skippedSlotsCluster,
-    visibleTsRange,
-    cssRange,
-    prevLabels,
-    tempNewLabels,
-  );
-  // switch map for reuse, don't create new maps each render
-  labelsRef.current = {
-    prevLabels: tempNewLabels,
-    tempNewLabels: prevLabels,
-  };
-  prevLabels.groups.clear();
-  prevLabels.slots.clear();
+  return anythingDrawn || cameraChanged;
 }
 
-function updateVisibleXRange(
-  visibleTsRangeRef: MutableRefObject<TsRange | undefined>,
+/**
+ * Draw a single slot into the mesh
+ */
+export function drawSingleSlotShreds(
+  slot: Slot,
+  isSkipped: boolean,
+  slotMesh: RectMesh,
+  visibleTsRangeWithOverscan: TsRange,
+  rowHeight = 1,
+  cameraReferenceMs = 0,
+): boolean {
+  let anythingDrawn = false;
+
+  let rectangleIdx = 0;
+  for (let shredIdx = 0; shredIdx < slot.shreds.length; shredIdx++) {
+    const shred = slot.shreds[shredIdx];
+    if (!shred) continue;
+
+    tempEventPositions.clear();
+    const rectanglesAdded = addEventsForRow({
+      tempEventPositions,
+      slotMesh,
+      startRectangleIdx: rectangleIdx,
+      eventTsDeltas: shred,
+      slotCompletionTsDelta: slot.completionTsDelta,
+      isSlotSkipped: isSkipped,
+      y: -(shredIdx + 1) * rowHeight,
+      rowHeight,
+      visibleTsRange: visibleTsRangeWithOverscan,
+      cameraReferenceMs,
+    });
+    rectangleIdx += rectanglesAdded;
+    if (rectanglesAdded) {
+      anythingDrawn = true;
+    }
+  }
+  updateRectMeshCounts(slotMesh, rectangleIdx);
+  // store offset for easy updates as visible range moves
+  slotMesh.referenceX = cameraReferenceMs;
+  slotMesh.mesh.position.x = 0;
+  return anythingDrawn;
+}
+
+export function updateCameraXRange(
   newVisibleTsRange: TsRange,
   camera: THREE.OrthographicCamera,
-  maxShredCount: number,
 ): boolean {
-  const prev = visibleTsRangeRef.current;
   if (
-    prev &&
-    prev[0] === newVisibleTsRange[0] &&
-    prev[1] === newVisibleTsRange[1] &&
-    camera.bottom === -maxShredCount
+    camera.left === newVisibleTsRange[0] &&
+    camera.right === newVisibleTsRange[1]
   ) {
     return false;
   }
-  visibleTsRangeRef.current = newVisibleTsRange;
   camera.left = newVisibleTsRange[0];
   camera.right = newVisibleTsRange[1];
+  camera.updateProjectionMatrix();
+  return true;
+}
+
+export function updateCameraYRange(
+  camera: THREE.OrthographicCamera,
+  maxShredCount: number,
+): boolean {
+  if (camera.bottom === -maxShredCount) return false;
   camera.top = 0;
   camera.bottom = -maxShredCount;
   camera.updateProjectionMatrix();
   return true;
 }
 
-interface AddEventsForRowArgs {
+export interface AddEventsForRowArgs {
   tempEventPositions: Map<
     Exclude<ShredEvent, ShredEvent.slot_complete>,
     { x: number; w: number }
@@ -217,7 +173,9 @@ interface AddEventsForRowArgs {
   slotCompletionTsDelta: number | undefined;
   isSlotSkipped: boolean;
   y: number;
+  rowHeight: number;
   visibleTsRange: TsRange;
+  cameraReferenceMs?: number;
 }
 
 /**
@@ -225,7 +183,7 @@ interface AddEventsForRowArgs {
  * Each row may represent partial or multiple shreds. Use the row shred priorities to determine
  * which shred to draw.
  */
-function addEventsForRow({
+export function addEventsForRow({
   tempEventPositions,
   slotMesh,
   startRectangleIdx,
@@ -233,18 +191,21 @@ function addEventsForRow({
   slotCompletionTsDelta,
   isSlotSkipped,
   y,
+  rowHeight,
   visibleTsRange,
+  cameraReferenceMs = 0,
 }: AddEventsForRowArgs) {
   let endTs: number =
     slotCompletionTsDelta == null
       ? // event goes to max x
-        visibleTsRange[1] + delayMs
-      : slotCompletionTsDelta;
+        visibleTsRange[1] + delayMs - cameraReferenceMs
+      : slotCompletionTsDelta - cameraReferenceMs;
 
   // draw events from highest to lowest priority
   for (const eventType of shredEventDescPriorities) {
-    const startTs = eventTsDeltas[eventType];
-    if (startTs == null) continue;
+    const rawStartTs = eventTsDeltas[eventType];
+    if (rawStartTs == null) continue;
+    const startTs = rawStartTs - cameraReferenceMs;
 
     // ignore overlapping events with lower priority
     if (startTs >= endTs) continue;
@@ -269,7 +230,7 @@ function addEventsForRow({
 
     const rectangleIdx = startRectangleIdx + rectanglesAdded;
     ensureRectCapacity(slotMesh, rectangleIdx + 1);
-    addRectangleToMesh(slotMesh, rectangleIdx, x, y, w, 1, color);
+    addRectangleToMesh(slotMesh, rectangleIdx, x, y, w, rowHeight, color);
     rectanglesAdded++;
   }
   return rectanglesAdded;

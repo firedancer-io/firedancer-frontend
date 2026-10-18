@@ -34,6 +34,8 @@ export const OVERSCAN_TILES_COUNT = 2;
 export const OVERSCAN_BUCKETS = BUCKETS_PER_TILE * OVERSCAN_TILES_COUNT;
 const TILE_EVICTION_HIGH_WATERMARK = 24;
 const TILE_EVICTION_LOW_WATERMARK = 16;
+const getTileEvictionHighWatermark = () => TILE_EVICTION_HIGH_WATERMARK;
+const getTileEvictionLowWatermark = () => TILE_EVICTION_LOW_WATERMARK;
 
 export function getTileSizeNs(granularity: AggGranularity) {
   return BigInt(BUCKETS_PER_TILE) * nsBucketSizes[granularity];
@@ -79,8 +81,8 @@ export function useAggHeaderQuery(chartId: string) {
       overscanTilesCount: OVERSCAN_TILES_COUNT,
       queryKey: AGG_SLOTS_QUERY_KEY,
       sendQuery,
-      tileEvictionHighWatermark: TILE_EVICTION_HIGH_WATERMARK,
-      tileEvictionLowWatermark: TILE_EVICTION_LOW_WATERMARK,
+      getTileEvictionHighWatermark,
+      getTileEvictionLowWatermark,
       onEvictTiles,
     });
 

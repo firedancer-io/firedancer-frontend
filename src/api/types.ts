@@ -87,6 +87,8 @@ import type {
   txnMetaResponseSchema,
   aggShredsSchema,
   timelineSlotsSchema,
+  timelineShredsSchema,
+  shredsGranularitySchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -233,7 +235,9 @@ export type CompactionState = z.infer<typeof compactionStateSchema>;
 
 export type AggGranularity = z.infer<typeof aggGranularitySchema>;
 export type AggSlots = z.infer<typeof aggSlotsSchema>;
+export type TimelineSlots = z.infer<typeof timelineSlotsSchema>;
 export type AggRevenue = z.infer<typeof aggRevenueSchema>;
 export type TimelineTxnMeta = z.infer<typeof txnMetaResponseSchema>;
 export type AggShreds = z.infer<typeof aggShredsSchema>;
-export type TimelineSlots = z.infer<typeof timelineSlotsSchema>;
+export type ShredsGranularity = z.infer<typeof shredsGranularitySchema>;
+export type TimelineShreds = z.infer<typeof timelineShredsSchema>;
