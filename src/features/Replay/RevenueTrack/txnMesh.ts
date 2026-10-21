@@ -12,13 +12,19 @@ import {
   nonAggMaxAlpha,
   revenueExpBase,
   type RevenueScale,
+  RevenueSeries,
+  revenueSeriesAddends,
 } from "./consts.ts";
+import type { RevenueType } from "../../../api/entities.ts";
+import { REVENUE_COLUMN, type TxnMetaColumns } from "./txnMeta/txnMetaCache.ts";
 
 export interface TxnMesh {
   mesh: THREE.Mesh;
   geometry: THREE.InstancedBufferGeometry;
   instanceArray: Float32Array;
   instanceAttr: THREE.InstancedBufferAttribute;
+  revenueArray: Float32Array;
+  revenueAttr: THREE.InstancedBufferAttribute;
   capacity: number;
   count: number;
   referenceX: number | undefined;
@@ -36,6 +42,22 @@ export const SCALE_UNIFORM = {
 } as const satisfies Record<RevenueScale, number>;
 
 const INITIAL_CAPACITY = 2 ** 15;
+const INSTANCE_SIZE = 3;
+
+/** Order of the addends in the revenue attribute */
+const REVENUE_ADDENDS = Object.keys(REVENUE_COLUMN) as RevenueType[];
+const REVENUE_SIZE = 3;
+
+/** 1 if the series includes the addend in its sum, otherwise 0 */
+export const SERIES_INCLUDED_ADDENDS = Object.fromEntries(
+  Object.values(RevenueSeries).map((series) => {
+    const addends = revenueSeriesAddends[series];
+    const included = REVENUE_ADDENDS.map((addend) =>
+      addends.includes(addend) ? 1 : 0,
+    );
+    return [series, new THREE.Vector3().fromArray(included)];
+  }),
+) as Record<RevenueSeries, THREE.Vector3>;
 
 const vertexShader = /* glsl */ `
 uniform mat4 projectionMatrix;
@@ -46,9 +68,11 @@ uniform float uMinBarMs;
 uniform float uRows;
 uniform int uScale;
 uniform vec3 uColor;
+uniform vec3 uIncludedAddends;
 
 attribute vec2 position;
-attribute vec4 instance;
+attribute vec3 instance;
+attribute vec3 revenue;
 
 varying vec4 vColor;
 
@@ -88,7 +112,7 @@ void main() {
   float x = instance.x;
   float row = instance.y;
   float rawWidthMs = instance.z;
-  float value = instance.w;
+  float value = dot(revenue, uIncludedAddends);
 
   // When txns are split across rows, cull any whose row is outside the visible range.
   // Cull the vertex by setting its position to one guaranteed outside the visible space.
@@ -122,7 +146,7 @@ void main() {
 }
 `;
 
-export function createTxnResources(color: RgbColor): TxnResources {
+export function createTxnResources(): TxnResources {
   const material = new THREE.RawShaderMaterial({
     vertexShader,
     fragmentShader,
@@ -135,7 +159,8 @@ export function createTxnResources(color: RgbColor): TxnResources {
       uMinBarMs: { value: 0 },
       uRows: { value: 1 },
       uScale: { value: SCALE_UNIFORM.linear },
-      uColor: { value: new THREE.Vector3(color[0], color[1], color[2]) },
+      uColor: { value: new THREE.Vector3() },
+      uIncludedAddends: { value: new THREE.Vector3() },
     },
   });
   return { material, unitQuad: createUnitQuad() };
@@ -146,10 +171,17 @@ export function disposeTxnResources(resources: TxnResources) {
   resources.unitQuad.dispose();
 }
 
+function createInstanceAttr(array: Float32Array, itemSize: number) {
+  const attr = new THREE.InstancedBufferAttribute(array, itemSize);
+  attr.setUsage(THREE.DynamicDrawUsage);
+  return attr;
+}
+
 export function createTxnMesh(resources: TxnResources): TxnMesh {
-  const instanceArray = new Float32Array(INITIAL_CAPACITY * 4);
-  const instanceAttr = new THREE.InstancedBufferAttribute(instanceArray, 4);
-  instanceAttr.setUsage(THREE.DynamicDrawUsage);
+  const instanceArray = new Float32Array(INITIAL_CAPACITY * INSTANCE_SIZE);
+  const instanceAttr = createInstanceAttr(instanceArray, INSTANCE_SIZE);
+  const revenueArray = new Float32Array(INITIAL_CAPACITY * REVENUE_SIZE);
+  const revenueAttr = createInstanceAttr(revenueArray, REVENUE_SIZE);
 
   const geometry = new THREE.InstancedBufferGeometry();
   geometry.index = resources.unitQuad.index;
@@ -158,6 +190,7 @@ export function createTxnMesh(resources: TxnResources): TxnMesh {
     resources.unitQuad.getAttribute("position"),
   );
   geometry.setAttribute("instance", instanceAttr);
+  geometry.setAttribute("revenue", revenueAttr);
   geometry.instanceCount = 0;
   geometry.boundingSphere = new THREE.Sphere();
 
@@ -169,6 +202,8 @@ export function createTxnMesh(resources: TxnResources): TxnMesh {
     geometry,
     instanceArray,
     instanceAttr,
+    revenueArray,
+    revenueAttr,
     capacity: INITIAL_CAPACITY,
     count: 0,
     referenceX: undefined,
@@ -181,12 +216,16 @@ export function setTxnMeshUniforms(
   minBarMs: number,
   rows: number,
   scale: RevenueScale,
+  color: RgbColor,
+  includedAddends: THREE.Vector3,
 ) {
   const { uniforms } = resources.material;
+  (uniforms.uColor.value as THREE.Vector3).set(color[0], color[1], color[2]);
   uniforms.uMaxValue.value = maxValue;
   uniforms.uMinBarMs.value = minBarMs;
   uniforms.uRows.value = Math.max(rows, 1);
   uniforms.uScale.value = SCALE_UNIFORM[scale];
+  (uniforms.uIncludedAddends.value as THREE.Vector3).copy(includedAddends);
 }
 
 export function ensureTxnCapacity(txnMesh: TxnMesh, needed: number) {
@@ -195,15 +234,19 @@ export function ensureTxnCapacity(txnMesh: TxnMesh, needed: number) {
   let newCapacity = txnMesh.capacity || INITIAL_CAPACITY;
   while (newCapacity < needed) newCapacity *= 2;
 
-  const instanceArray = new Float32Array(newCapacity * 4);
+  const instanceArray = new Float32Array(newCapacity * INSTANCE_SIZE);
   instanceArray.set(txnMesh.instanceArray);
+  const revenueArray = new Float32Array(newCapacity * REVENUE_SIZE);
+  revenueArray.set(txnMesh.revenueArray);
 
   txnMesh.instanceArray = instanceArray;
-  txnMesh.instanceAttr = new THREE.InstancedBufferAttribute(instanceArray, 4);
-  txnMesh.instanceAttr.setUsage(THREE.DynamicDrawUsage);
+  txnMesh.instanceAttr = createInstanceAttr(instanceArray, INSTANCE_SIZE);
+  txnMesh.revenueArray = revenueArray;
+  txnMesh.revenueAttr = createInstanceAttr(revenueArray, REVENUE_SIZE);
   txnMesh.capacity = newCapacity;
 
   txnMesh.geometry.setAttribute("instance", txnMesh.instanceAttr);
+  txnMesh.geometry.setAttribute("revenue", txnMesh.revenueAttr);
   // @ts-expect-error
   txnMesh.geometry._maxInstanceCount = undefined;
 }
@@ -214,17 +257,24 @@ export function addTxnToMesh(
   x: number,
   row: number,
   rawWidthMs: number,
-  value: number,
+  txns: TxnMetaColumns,
+  txnIdx: number,
 ) {
-  const i = idx * 4;
+  const i = idx * INSTANCE_SIZE;
   txnMesh.instanceArray[i] = x;
   txnMesh.instanceArray[i + 1] = row;
   txnMesh.instanceArray[i + 2] = rawWidthMs;
-  txnMesh.instanceArray[i + 3] = value;
+
+  const r = idx * REVENUE_SIZE;
+  for (let j = 0; j < REVENUE_SIZE; j++) {
+    const column = REVENUE_COLUMN[REVENUE_ADDENDS[j]];
+    txnMesh.revenueArray[r + j] = Number(txns[column][txnIdx]);
+  }
 }
 
 export function updateTxnMeshCount(txnMesh: TxnMesh, count: number) {
   txnMesh.count = count;
   txnMesh.geometry.instanceCount = count;
   txnMesh.instanceAttr.needsUpdate = true;
+  txnMesh.revenueAttr.needsUpdate = true;
 }

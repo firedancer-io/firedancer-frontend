@@ -1,11 +1,9 @@
 import { convertToWebGlColor, type RgbColor } from "../../WebGl/webglUtils.ts";
-import { feesColor } from "../../../colors.ts";
+import { feesColor, incomeColor, tipsColor } from "../../../colors.ts";
 import { RevenueType } from "../../../api/entities.ts";
 
 /** Visible range wider than this switches from txn bars to aggregated buckets. */
 export const AGGREGATE_THRESHOLD_MS = 60_000;
-
-export const REVENUE_COLOR: RgbColor = convertToWebGlColor(feesColor);
 
 /** Vertical bounds of the view/coordinate space */
 export const minY = 0;
@@ -32,12 +30,34 @@ export const revenueScaleOptions: { value: RevenueScale; label: string }[] = [
   { value: "exp", label: "Exponential" },
 ];
 
+export enum RevenueSeries {
+  Fees = "fees",
+  Tips = "tips",
+  Income = "income",
+}
+
+/** Revenue types summed to get each series */
+export const revenueSeriesAddends: Record<
+  RevenueSeries,
+  readonly RevenueType[]
+> = {
+  [RevenueSeries.Fees]: [RevenueType.TxnFees, RevenueType.PrioFees],
+  [RevenueSeries.Tips]: [RevenueType.Tips],
+  [RevenueSeries.Income]: [
+    RevenueType.TxnFees,
+    RevenueType.PrioFees,
+    RevenueType.Tips,
+  ],
+};
+
 export interface RevenueViewOpts {
+  type: RevenueSeries;
   scale: RevenueScale;
   splitByRow: boolean;
 }
 
 export const DEFAULT_REVENUE_VIEW_OPTS: RevenueViewOpts = {
+  type: RevenueSeries.Income,
   scale: DEFAULT_REVENUE_SCALE,
   splitByRow: false,
 };
@@ -45,8 +65,33 @@ export const DEFAULT_REVENUE_VIEW_OPTS: RevenueViewOpts = {
 /** Steepness of the "exp" scale. Larger values concentrate more height on the top values. */
 export const revenueExpBase = 4;
 
-export const revenueTypeLabels: Record<RevenueType, string> = {
-  [RevenueType.TxnFees]: "Transaction Fees",
-  [RevenueType.PrioFees]: "Priority Fees",
-  [RevenueType.Tips]: "Tips",
+export const revenueSeriesLabels: Record<RevenueSeries, string> = {
+  [RevenueSeries.Fees]: "Fees",
+  [RevenueSeries.Tips]: "Tips",
+  [RevenueSeries.Income]: "Income",
 };
+
+const revenueSeriesHexColors: Record<RevenueSeries, string> = {
+  [RevenueSeries.Fees]: feesColor,
+  [RevenueSeries.Tips]: tipsColor,
+  [RevenueSeries.Income]: incomeColor,
+};
+
+const revenueSeriesDescriptions: Partial<Record<RevenueSeries, string>> = {
+  [RevenueSeries.Fees]: "txn + priority",
+  [RevenueSeries.Income]: "fees + tips",
+};
+
+export const revenueSeries = Object.values(RevenueSeries).map((series) => ({
+  value: series,
+  label: revenueSeriesLabels[series],
+  color: revenueSeriesHexColors[series],
+  description: revenueSeriesDescriptions[series],
+}));
+
+export const revenueSeriesColors = Object.fromEntries(
+  Object.values(RevenueSeries).map((series) => [
+    series,
+    convertToWebGlColor(revenueSeriesHexColors[series]),
+  ]),
+) as Record<RevenueSeries, RgbColor>;
