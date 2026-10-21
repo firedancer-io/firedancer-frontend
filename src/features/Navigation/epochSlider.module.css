@@ -11,7 +11,7 @@
 
 .leader-slot {
   width: 100%;
-  background: #2a7edf;
+  background: var(--my-slots-color);
   height: 5px;
   position: absolute;
   opacity: 0.5;
@@ -74,7 +74,7 @@
 }
 
 .slider-track {
-  background: #24262b;
+  background: var(--epoch-slider-track-color);
   flex-grow: 1;
   width: 100%;
 }

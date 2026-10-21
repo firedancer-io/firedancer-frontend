@@ -69,15 +69,15 @@
   color: #4497f7;
 
   &:hover {
-    border-color: #2a7edf;
+    border-color: var(--my-slots-color);
     background: #0d3059;
-    color: #2a7edf;
+    color: var(--my-slots-color);
   }
 
   &[data-state="on"] {
-    border-color: #2a7edf;
+    border-color: var(--my-slots-color);
     background: #073c7b;
-    color: #2a7edf;
+    color: var(--my-slots-color);
   }
 }
 
