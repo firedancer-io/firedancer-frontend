@@ -2,13 +2,22 @@ import { useCallback, useMemo, useRef } from "react";
 import type { TsRange } from "../WebGl/webglUtils";
 import { MIN_VISIBLE_MS } from "./const";
 import { getDefaultStore } from "jotai";
-import { selectedMsAtom, visibleRangeAtom, worldRangeAtom } from "./atoms";
+import {
+  resetToLiveAtom,
+  selectedMsAtom,
+  visibleRangeAtom,
+  worldRangeAtom,
+} from "./atoms";
 import { clamp as minMaxClamp } from "lodash";
 import styles from "./chart.module.css";
 import { clampToWorld } from "./utils";
 
-const PAN_THRESHOLD_PX = 0;
+const PAN_THRESHOLD_PX = 8;
 const ZOOM_INTENSITY = 0.002;
+
+// Thresholds for double tap reset to live
+const DOUBLE_TAP_MS = 300;
+const DOUBLE_TAP_MOVE_PX = 24;
 
 // Some elements (ex. labels, buttons) are excluded from triggering chart exploration
 function isExcludedTarget(target: EventTarget | null) {
@@ -75,6 +84,7 @@ export function useExplorableChart() {
   const isPanningRef = useRef(false);
   const resizeEdgeRef = useRef<"start" | "end">();
   const hasPendingClickPan = useRef(true);
+  const lastTapRef = useRef<{ time: number; x: number; y: number }>();
 
   const setClampedVisibleRange = useCallback((unclampedNewRange: TsRange) => {
     const worldRange = store.get(worldRangeAtom);
@@ -242,15 +252,101 @@ export function useExplorableChart() {
         onWheel,
       } = createCallbacks(trackEl, refreshCursor, false);
 
+      /**
+       * Store if last mouse up panned for dblclick later
+       */
+      let lastMouseUpWasPan = false;
+      const onMouseUp = () => {
+        lastMouseUpWasPan = isPanningRef.current;
+        endDrag();
+      };
+
+      /**
+       * Reset if the second click of the double-click was not a drag/pan
+       */
+      const onDblClick = (e: MouseEvent) => {
+        if (isExcludedTarget(e.target)) return;
+        if (lastMouseUpWasPan) return;
+        store.set(resetToLiveAtom);
+      };
+
+      /**
+       * Track if more than one finger ever touched during the current gesture
+       * for double tap handling
+       */
+      let gestureHadMultipleTouches = false;
+      const onTouchStartWithTapTracking = (e: TouchEvent) => {
+        if (e.touches.length > 1) {
+          gestureHadMultipleTouches = true;
+        }
+        onTouchStart(e);
+      };
+
+      /**
+       * End drag, then check double-tap for reset to live
+       */
+      const onTouchEnd = (e: TouchEvent) => {
+        // get pan state before endDrag clears it
+        const wasPanning = isPanningRef.current;
+        endDrag();
+
+        const wasMultiTouch = gestureHadMultipleTouches;
+        // reset the gesture flag once all fingers have lifted
+        if (e.touches.length === 0) {
+          gestureHadMultipleTouches = false;
+        }
+
+        // only evaluate a tap once all fingers are up, and only for a
+        // single-finger gesture that wasn't a pan
+        if (
+          e.touches.length !== 0 ||
+          wasMultiTouch ||
+          wasPanning ||
+          isExcludedTarget(e.target)
+        ) {
+          lastTapRef.current = undefined;
+          return;
+        }
+
+        const touch = e.changedTouches[0];
+        const now = performance.now();
+        const lastTap = lastTapRef.current;
+
+        if (
+          lastTap &&
+          now - lastTap.time < DOUBLE_TAP_MS &&
+          Math.abs(touch.clientX - lastTap.x) < DOUBLE_TAP_MOVE_PX &&
+          Math.abs(touch.clientY - lastTap.y) < DOUBLE_TAP_MOVE_PX
+        ) {
+          store.set(resetToLiveAtom);
+          lastTapRef.current = undefined;
+          return;
+        }
+
+        lastTapRef.current = { time: now, x: touch.clientX, y: touch.clientY };
+      };
+
+      /**
+       * drop in-progress drag and tap candidates
+       */
+      const onTouchCancel = () => {
+        endDrag();
+        gestureHadMultipleTouches = false;
+        lastTapRef.current = undefined;
+      };
+
       const cleanups = [
         addListener(trackEl, "mousedown", onMouseDown),
         addListener(trackEl, "mousemove", onMouseMove),
-        addListener(trackEl, "mouseup", endDrag),
+        addListener(trackEl, "mouseup", onMouseUp),
         addListener(trackEl, "mouseleave", endDrag),
-        addListener(trackEl, "touchstart", onTouchStart, { passive: false }),
+        addListener(trackEl, "dblclick", onDblClick),
+        addListener(trackEl, "touchstart", onTouchStartWithTapTracking, {
+          passive: false,
+        }),
         addListener(trackEl, "touchmove", onTouchMove, { passive: false }),
-        addListener(trackEl, "touchend", endDrag),
-        addListener(trackEl, "touchcancel", endDrag),
+        addListener(trackEl, "touchend", onTouchEnd),
+        addListener(trackEl, "touchcancel", onTouchCancel),
         addListener(trackEl, "wheel", onWheel, { passive: false }),
       ];
 
