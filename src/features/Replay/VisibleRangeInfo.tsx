@@ -4,8 +4,14 @@ import { memo, useMemo } from "react";
 import { nsPerMs } from "../../consts";
 import { msToNs } from "../../numUtils";
 import { useAtomValue } from "jotai";
-import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "./atoms";
+import {
+  isLiveAtom,
+  referenceNsAtom,
+  visibleRangeAtom,
+  worldRangeAtom,
+} from "./atoms";
 import { calcAbsoluteNs } from "./utils";
+import { replayLiveTextColor } from "../../colors";
 import styles from "./replay.module.css";
 
 /** Below this minimap width, drop the years from the date range to save space. */
@@ -98,19 +104,35 @@ const toDateTime = (referenceNs: bigint, relativeMs: number) =>
     Number(calcAbsoluteNs(referenceNs, relativeMs) / BigInt(nsPerMs)),
   );
 
-function PauseIcon() {
+const PauseIcon = memo(function PauseIcon() {
   return (
     <div className={styles.pauseIcon}>
       <div className={styles.pauseIconBar} />
       <div className={styles.pauseIconBar} />
     </div>
   );
-}
+});
+
+const LiveIcon = memo(function LiveIcon() {
+  return (
+    <svg
+      className={styles.liveIcon}
+      xmlns="http://www.w3.org/2000/svg"
+      width="6"
+      height="6"
+      viewBox="0 0 6 6"
+      fill="none"
+    >
+      <circle cx="3" cy="3" r="3" fill={replayLiveTextColor} />
+    </svg>
+  );
+});
 
 export default memo(function VisibleRangeInfo({ width }: { width: number }) {
   const visibleRange = useAtomValue(visibleRangeAtom);
   const referenceNs = useAtomValue(referenceNsAtom);
   const worldRange = useAtomValue(worldRangeAtom);
+  const isLive = useAtomValue(isLiveAtom);
 
   const start = visibleRange?.[0];
   const end = visibleRange?.[1];
@@ -153,8 +175,17 @@ export default memo(function VisibleRangeInfo({ width }: { width: number }) {
 
   return (
     <Flex height="100%" align="center" gap="6px">
-      <PauseIcon />
-      <span className={styles.behindText}>{behindText}</span>
+      {isLive ? (
+        <>
+          <LiveIcon />
+          <span className={styles.liveText}>Live</span>
+        </>
+      ) : (
+        <>
+          <PauseIcon />
+          <span className={styles.behindText}>{behindText}</span>
+        </>
+      )}
       <div className={styles.divider} />
       <span className={styles.windowSizeText}>{windowSizeText}</span>
       <div className={styles.divider} />
