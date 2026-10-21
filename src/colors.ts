@@ -358,3 +358,15 @@ export const replayLiveIconGlowColor = "rgba(60, 255, 115, 0.55)";
 export const replayMiniMapVisibleRangeBorderColor = "#0090FF";
 export const replayMiniMapVisibleRangeBackgroundColor =
   "rgba(0, 144, 255, 0.22)";
+
+// Replay tracks
+export const replayTrackBackgroundColor = "#070B14";
+export const replayTrackNameColor = "#D6D7DC";
+export const replayYAxisLabelBackgroundColor = "rgba(7, 11, 20, 0.86)";
+export const replayTrackControlsOpenBorderColor = "rgba(255, 255, 255, 0.18)";
+export const replayDropdownPrimaryTextColor = "#C9CBD3";
+export const replayDropdownSecondaryTextColor = "#777B84";
+export const replayDropdownSelectedTextColor = "#FFF";
+export const replayDropdownSelectedBackgroundColor = "rgba(0, 144, 255, 0.16)";
+export const replayDropdownHoverBackgroundColor = "rgba(255, 255, 255, 0.06)";
+export const replayDropdownDividerColor = "#333333";

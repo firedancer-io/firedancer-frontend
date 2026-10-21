@@ -1,12 +1,16 @@
 import clsx from "clsx";
-import { Fragment } from "react";
 import { lamportsPerSol } from "../../../consts.ts";
 import styles from "../chart.module.css";
-import { maxHeightRatio, minHeightRatio, type RevenueScale } from "./consts.ts";
+import {
+  maxHeightRatio,
+  minHeightRatio,
+  topInsetPx,
+  type RevenueScale,
+} from "./consts.ts";
 import { invertRevenueRatio } from "./scale.ts";
 
 interface RevenueAxisTick {
-  topPct: number;
+  topRatio: number;
   prefix: string;
   label: string;
   suffix: string;
@@ -32,30 +36,37 @@ export default function RevenueYAxis({
   if (maxValue <= 0n) return null;
 
   const ticks = buildRevenueAxisTicks(maxValue, scale);
-  const maxLabelWidth = Math.max(...ticks.map((tick) => tick.label.length));
+  // top tick is left unlabeled to make room for track controls
+  const labeledTicks = ticks.slice(1);
+  const maxLabelWidth = Math.max(
+    0,
+    ...labeledTicks.map((tick) => tick.label.length),
+  );
 
   return (
     <div className={styles.yAxis}>
       {ticks.map((tick, i) => (
-        <Fragment key={i}>
-          <div
-            className={styles.yAxisGridLine}
-            style={{ top: `${tick.topPct}%` }}
-          />
-          <div
-            className={clsx("mono-text", styles.yAxisTick)}
-            style={{ top: `${tick.topPct}%` }}
+        <div
+          key={i}
+          className={styles.yAxisGridLine}
+          style={{ top: insetTop(tick.topRatio) }}
+        />
+      ))}
+      {labeledTicks.map((tick, i) => (
+        <div
+          key={i}
+          className={clsx("mono-text", styles.yAxisTick)}
+          style={{ top: insetTop(tick.topRatio) }}
+        >
+          <span className={styles.yAxisTickPrefix}>{tick.prefix}</span>
+          <span
+            className={styles.yAxisTickLabel}
+            style={{ width: `${maxLabelWidth}ch` }}
           >
-            <span className={styles.yAxisTickPrefix}>{tick.prefix}</span>
-            <span
-              className={styles.yAxisTickLabel}
-              style={{ width: `${maxLabelWidth}ch` }}
-            >
-              {tick.label}
-            </span>
-            <span className={styles.yAxisTickSuffix}>{tick.suffix}</span>
-          </div>
-        </Fragment>
+            {tick.label}
+          </span>
+          <span className={styles.yAxisTickSuffix}>{tick.suffix}</span>
+        </div>
       ))}
     </div>
   );
@@ -67,19 +78,23 @@ function RowLabels({ numRows }: { numRows: number }) {
   return (
     <div className={styles.yAxis}>
       {Array.from({ length: numRows }, (_, row) => {
-        const centerPct = ((row + 0.5) / numRows) * 100;
+        const centerRatio = (row + 0.5) / numRows;
         return (
           <div
             key={row}
             className={styles.yAxisTick}
-            style={{ top: `${centerPct}%` }}
+            style={{ top: insetTop(centerRatio) }}
           >
-            <span className={styles.yAxisTickLabel}>{`execrp ${row}`}</span>
+            <span className={styles.yAxisTickLabel}>{row}</span>
           </div>
         );
       })}
     </div>
   );
+}
+
+function insetTop(ratio: number) {
+  return `calc(${topInsetPx}px + ${ratio} * (100% - ${topInsetPx}px))`;
 }
 
 function buildRevenueAxisTicks(
@@ -109,7 +124,7 @@ function buildRevenueAxisTicks(
     const prefix = heightRatio === minHeightRatio ? "≤" : "";
 
     return {
-      topPct: (1 - heightRatio) * 100,
+      topRatio: 1 - heightRatio,
       prefix,
       label: `${valueSol} SOL`,
       suffix: valuePct,
