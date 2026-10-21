@@ -127,7 +127,11 @@ export default function Chart() {
             setUpMiniMap={setUpMiniMap}
             {...markerLinesProps}
           />
-          <Flex ref={setTracksContainerRef} direction="column">
+          <Flex
+            ref={setTracksContainerRef}
+            direction="column"
+            position="relative"
+          >
             <HeaderTrack width={width} {...markerLinesProps} />
             <ResetLiveButton />
 
