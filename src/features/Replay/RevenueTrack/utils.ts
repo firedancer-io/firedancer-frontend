@@ -15,15 +15,15 @@ import {
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils.ts";
 import { msBucketSizes, nsBucketSizes } from "../const.ts";
-import type { RevenueType } from "../../../api/entities.ts";
 import { omit } from "lodash";
 import {
   AGGREGATE_THRESHOLD_MS,
-  REVENUE_COLOR,
+  revenueSeriesColors,
   maxHeightRatio,
   cameraMaxY,
   minY,
   type RevenueScale,
+  type RevenueSeries,
 } from "./consts.ts";
 import { getRevenueRatio } from "./scale.ts";
 import {
@@ -31,14 +31,22 @@ import {
   getGranularity,
   OVERSCAN_BUCKETS,
 } from "./useAggRevenueQuery.ts";
-import { type RevenueBucketsByGranularity } from "./atoms.ts";
-import { getTxnValue, type TxnMetaTile } from "./txnMeta/txnMetaCache.ts";
+import {
+  getAggRevenueValue,
+  type RevenueBucketsByGranularity,
+} from "./atoms.ts";
+import {
+  getSeriesColumns,
+  hasRevenue,
+  type TxnMetaTile,
+} from "./txnMeta/txnMetaCache.ts";
 import {
   createTxnMesh,
   createTxnResources,
   disposeTxnResources,
   ensureTxnCapacity,
   addTxnToMesh,
+  SERIES_INCLUDED_ADDENDS,
   setTxnMeshUniforms,
   updateTxnMeshCount,
   type TxnMesh,
@@ -157,7 +165,7 @@ export function drawAggRevenue(
   rendererObj: RendererObj,
   referenceNs: bigint,
   visibleRangeMs: TsRange,
-  type: RevenueType,
+  type: RevenueSeries,
   aggRevenue: RevenueBucketsByGranularity,
   scale: RevenueScale,
 ): bigint {
@@ -202,7 +210,7 @@ export function drawAggRevenue(
   ) {
     const isOverscan = bucketIdx < startIdx || bucketIdx > endIdx;
     const revenues = revenueByBucketIdx.get(bucketIdx);
-    const value = revenues?.[type];
+    const value = revenues && getAggRevenueValue(revenues, type);
     // don't draw missing or zero values
     if (!value) continue;
 
@@ -226,7 +234,7 @@ export function drawAggRevenue(
       minY,
       bucketSizeMs,
       getRevenueRatio(scale, maxVisibleValue, value) * maxHeightRatio,
-      REVENUE_COLOR,
+      revenueSeriesColors[type],
     );
   }
   updateRectMeshCounts(mesh, toDraw.length);
@@ -264,7 +272,7 @@ export function setUpNonAggResources(
   const camera = new THREE.OrthographicCamera(0, 1, cameraMaxY, minY, 0.5, 10);
   camera.position.z = 1;
 
-  const resources = createTxnResources(REVENUE_COLOR);
+  const resources = createTxnResources();
   const tileMeshes = new Map<bigint, TxnMesh>();
   const availableMeshes: TxnMesh[] = [];
 
@@ -291,7 +299,6 @@ export function setUpNonAggResources(
 
 function buildTxnMeshFromTile(
   mesh: TxnMesh,
-  type: RevenueType,
   tile: TxnMetaTile,
   getRelativeMs: (absoluteNs: bigint) => number,
   cameraReferenceMs: number,
@@ -302,14 +309,13 @@ function buildTxnMeshFromTile(
     mesh.referenceX = referenceX;
     mesh.mesh.position.x = referenceX - cameraReferenceMs;
   }
-  const endIdx = appendTxnsToMesh(mesh, type, tile, startIdx, getRelativeMs);
+  const endIdx = appendTxnsToMesh(mesh, tile, startIdx, getRelativeMs);
   updateTxnMeshCount(mesh, endIdx);
   return endIdx;
 }
 
 function appendTxnsToMesh(
   mesh: TxnMesh,
-  type: RevenueType,
   tile: TxnMetaTile,
   startIdx: number,
   getRelativeMs: (absoluteNs: bigint) => number,
@@ -323,8 +329,7 @@ function appendTxnsToMesh(
 
   let idx = startIdx;
   for (let i = 0; i < txns.txn_exec_idx.length; i++) {
-    const value = getTxnValue(txns, i, type);
-    if (value <= 0n) continue;
+    if (!hasRevenue(txns, i)) continue;
 
     // A txn that straddles a tile boundary is returned in both tiles'
     // queries. Only include the txn in the mesh if the tile owns its
@@ -342,7 +347,8 @@ function appendTxnsToMesh(
       startMs - referenceX,
       txns.txn_exec_idx[i],
       endMs - startMs,
-      Number(value),
+      txns,
+      i,
     );
     idx++;
   }
@@ -364,7 +370,6 @@ function addTileMesh(nonAgg: NonAggResources, startNs: bigint): TxnMesh {
  */
 export function syncNonAggMeshes(
   rendererObj: RendererObj,
-  type: RevenueType,
   getRelativeMs: (absoluteNs: bigint) => number,
   tiles: TxnMetaTile[],
 ) {
@@ -384,7 +389,7 @@ export function syncNonAggMeshes(
     if (tileMeshes.has(tile.startNs)) continue;
 
     const mesh = addTileMesh(rendererObj.nonAggResources, tile.startNs);
-    buildTxnMeshFromTile(mesh, type, tile, getRelativeMs, cameraReferenceMs);
+    buildTxnMeshFromTile(mesh, tile, getRelativeMs, cameraReferenceMs);
   }
 
   // Evicts meshes for tiles no longer cached and return them to the pool to
@@ -400,7 +405,7 @@ export function syncNonAggMeshes(
 
 export function refreshNonAggView(
   rendererObj: RendererObj,
-  type: RevenueType,
+  type: RevenueSeries,
   tiles: TxnMetaTile[],
   getRelativeMs: (absoluteNs: bigint) => number,
   rows: number,
@@ -430,7 +435,15 @@ export function refreshNonAggView(
     if (maxValue < visibleMax) maxValue = visibleMax;
   }
 
-  setTxnMeshUniforms(resources, Number(maxValue), minBarMs, rows, scale);
+  setTxnMeshUniforms(
+    resources,
+    Number(maxValue),
+    minBarMs,
+    rows,
+    scale,
+    revenueSeriesColors[type],
+    SERIES_INCLUDED_ADDENDS[type],
+  );
 
   return maxValue;
 }
@@ -438,7 +451,7 @@ export function refreshNonAggView(
 /** Max value of a tile's txns that fall within the visible range. */
 function visibleTileMax(
   tile: TxnMetaTile,
-  type: RevenueType,
+  type: RevenueSeries,
   getRelativeMs: (absoluteNs: bigint) => number,
   visibleStartMs: number,
   visibleEndMs: number,
@@ -454,12 +467,14 @@ function visibleTileMax(
 
   let maxValue = 0n;
   const { data: txns } = tile;
+  const columns = getSeriesColumns(txns, type);
   for (let i = 0; i < txns.txn_exec_idx.length; i++) {
     const startMs = txns.txn_load_start_ms[i];
     const endMs = txns.txn_commit_end_ms[i];
     if (startMs >= endMs || visibleStartMs > endMs || startMs > visibleEndMs)
       continue;
-    const value = getTxnValue(txns, i, type);
+    let value = 0n;
+    for (const column of columns) value += column[i];
     if (maxValue < value) maxValue = value;
   }
   return maxValue;
@@ -467,7 +482,6 @@ function visibleTileMax(
 
 export function appendLiveTxns(
   rendererObj: RendererObj,
-  type: RevenueType,
   tile: TxnMetaTile,
   newData: TxnMetaTile["data"],
   isNewTile: boolean,
@@ -500,7 +514,6 @@ export function appendLiveTxns(
   };
   buildTxnMeshFromTile(
     mesh,
-    type,
     dataTile,
     getRelativeMs,
     resources.cameraReferenceMs,

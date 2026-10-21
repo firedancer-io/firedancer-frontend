@@ -4,10 +4,23 @@ import type TypedEmitter from "typed-emitter";
 import type { AggGranularity, AggRevenue } from "../../../api/types";
 import type { RevenueType } from "../../../api/entities";
 import { getBucketIdx } from "../utils";
+import { revenueSeriesAddends, type RevenueSeries } from "./consts";
 
 export const drawEventType = "draw";
 
 type Revenues = Record<RevenueType, bigint | null>;
+
+export function getAggRevenueValue(
+  revenues: Revenues,
+  series: RevenueSeries,
+): bigint | null {
+  let sum: bigint | null = null;
+  for (const addend of revenueSeriesAddends[series]) {
+    const value = revenues[addend];
+    if (value != null) sum = (sum ?? 0n) + value;
+  }
+  return sum;
+}
 /**
  * Buckets start at idx 0 of absolute world time
  */

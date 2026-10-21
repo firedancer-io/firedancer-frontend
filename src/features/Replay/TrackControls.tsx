@@ -7,24 +7,28 @@ import PopoverDropdown from "../../components/PopoverDropdown.tsx";
 import chartStyles from "./chart.module.css";
 import styles from "./trackControls.module.css";
 
-export interface LegendItem {
+export interface LegendItem<T extends string = string> {
   label: string;
   color: string;
+  value?: T;
+  description?: string;
 }
 
-interface TrackControlsProps {
+interface TrackControlsProps<T extends string> {
   name: string;
   bucketSize: string | undefined;
-  legend?: LegendItem[];
+  legend?: LegendItem<T>[];
+  legendSelection?: { value: T; onChange: (value: T) => void };
   children?: ReactNode;
 }
 
-export default function TrackControls({
+export default function TrackControls<T extends string>({
   name,
   bucketSize,
   legend,
+  legendSelection,
   children,
-}: TrackControlsProps) {
+}: TrackControlsProps<T>) {
   return (
     <PopoverDropdown
       align="start"
@@ -35,7 +39,7 @@ export default function TrackControls({
           width="100%"
           className={styles.dropdownContent}
         >
-          {legend && <Legend items={legend} />}
+          {legend && <Legend items={legend} selection={legendSelection} />}
           {legend && children && <TrackControlsDivider />}
           {children}
         </Flex>
@@ -53,22 +57,65 @@ export default function TrackControls({
   );
 }
 
-function Legend({ items }: { items: LegendItem[] }) {
-  return (
-    <Flex direction="column" gap="1">
-      <Text className={styles.sectionHeader}>Series</Text>
-      {items.map(({ label, color }) => (
-        <Flex
-          key={label}
-          align="center"
-          gap="6px"
-          className={styles.legendItem}
-        >
-          <div className={styles.swatch} style={{ background: color }} />
-          <Text className={styles.legendLabel}>{label}</Text>
+interface LegendProps<T extends string> {
+  items: LegendItem<T>[];
+  selection: TrackControlsProps<T>["legendSelection"];
+}
+
+function Legend<T extends string>({ items, selection }: LegendProps<T>) {
+  if (selection) {
+    return (
+      <RadioGroup.Root
+        value={selection.value}
+        onValueChange={(value) => selection.onChange(value as T)}
+        aria-label="Series"
+        asChild
+      >
+        <Flex direction="column">
+          <Text className={styles.sectionHeader}>Series</Text>
+          {items.map(({ value, ...item }) => (
+            <RadioGroup.Item
+              key={item.label}
+              value={value ?? item.label}
+              className={clsx(styles.option, styles.legendItem)}
+            >
+              <LegendItemContent {...item} />
+            </RadioGroup.Item>
+          ))}
         </Flex>
+      </RadioGroup.Root>
+    );
+  }
+
+  // For non-interactive legends, show all series as selected
+  return (
+    <Flex direction="column">
+      <Text className={styles.sectionHeader}>Series</Text>
+      {items.map(({ value: _, ...item }) => (
+        <div
+          key={item.label}
+          className={clsx(styles.option, styles.legendItem, styles.static)}
+        >
+          <LegendItemContent {...item} />
+        </div>
       ))}
     </Flex>
+  );
+}
+
+function LegendItemContent({
+  label,
+  color,
+  description,
+}: Omit<LegendItem, "value">) {
+  return (
+    <>
+      <div className={styles.swatch} style={{ background: color }} />
+      {label}
+      {description && (
+        <span className={styles.legendDescription}>{description}</span>
+      )}
+    </>
   );
 }
 
@@ -96,7 +143,7 @@ export function TrackControlsOptions<T extends string>({
       aria-label={label}
       asChild
     >
-      <Flex direction="column" gap="1" width="100%">
+      <Flex direction="column" width="100%">
         <Text className={styles.sectionHeader}>{label}</Text>
         {options.map((option) => (
           <RadioGroup.Item

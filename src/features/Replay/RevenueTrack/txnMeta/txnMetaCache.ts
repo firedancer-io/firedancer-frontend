@@ -11,14 +11,15 @@ import { createPendingRequests } from "../../tiles/requests";
 import type { Interval } from "../../tiles/splitFetch";
 import { referenceNsAtom } from "../../atoms";
 import { calcRelativeMs } from "../../utils";
+import { RevenueSeries, revenueSeriesAddends } from "../consts";
 
 const store = getDefaultStore();
 
 export const txnMetaRequests = createPendingRequests<TimelineTxnMeta>();
 
-type TxnMetaMaxima = Record<RevenueType, bigint>;
+type TxnMetaMaxima = Record<RevenueSeries, bigint>;
 
-interface TxnMetaColumns {
+export interface TxnMetaColumns {
   slots: number[];
   txn_exec_idx: number[];
   txn_transaction_fee: bigint[];
@@ -28,13 +29,13 @@ interface TxnMetaColumns {
   txn_commit_end_ms: number[];
 }
 
-const REVENUE_COLUMN = {
+export const REVENUE_COLUMN = {
   [RevenueType.TxnFees]: "txn_transaction_fee",
   [RevenueType.PrioFees]: "txn_priority_fee",
   [RevenueType.Tips]: "txn_tips",
 } as const satisfies Record<RevenueType, keyof TxnMetaColumns>;
 
-const ALL_REVENUE_TYPES = Object.values(RevenueType);
+const ALL_REVENUE_COLUMNS = Object.values(REVENUE_COLUMN);
 
 function emptyTxnColumns(): TxnMetaColumns {
   return {
@@ -131,27 +132,40 @@ function filterOwned(
   return owned;
 }
 
-export function getTxnValue(
+export function getSeriesColumns(
   txns: TxnMetaColumns,
-  txnIdx: number,
-  type: RevenueType,
-): bigint {
-  return txns[REVENUE_COLUMN[type]][txnIdx];
+  series: RevenueSeries,
+): bigint[][] {
+  return revenueSeriesAddends[series].map(
+    (addend) => txns[REVENUE_COLUMN[addend]],
+  );
+}
+
+export function hasRevenue(txns: TxnMetaColumns, txnIdx: number): boolean {
+  for (const column of ALL_REVENUE_COLUMNS) {
+    if (txns[column][txnIdx] > 0n) return true;
+  }
+  return false;
 }
 
 function computeMaxima(txns: TxnMetaColumns): TxnMetaMaxima {
-  const maxima: TxnMetaMaxima = {
-    [RevenueType.TxnFees]: 0n,
-    [RevenueType.PrioFees]: 0n,
-    [RevenueType.Tips]: 0n,
-  };
-  for (let i = 0; i < itemCount(txns); i++) {
-    for (const type of ALL_REVENUE_TYPES) {
-      const value = getTxnValue(txns, i, type);
-      if (value > maxima[type]) maxima[type] = value;
-    }
+  let maxFees = 0n;
+  let maxTips = 0n;
+  let maxIncome = 0n;
+  const count = itemCount(txns);
+  for (let i = 0; i < count; i++) {
+    const fees = txns.txn_transaction_fee[i] + txns.txn_priority_fee[i];
+    const tips = txns.txn_tips[i];
+    const income = fees + tips;
+    if (fees > maxFees) maxFees = fees;
+    if (tips > maxTips) maxTips = tips;
+    if (income > maxIncome) maxIncome = income;
   }
-  return maxima;
+  return {
+    [RevenueSeries.Fees]: maxFees,
+    [RevenueSeries.Tips]: maxTips,
+    [RevenueSeries.Income]: maxIncome,
+  };
 }
 
 const CACHE_MAX_ITEMS = 1_000_000;

@@ -1,6 +1,6 @@
 import { Grid } from "@radix-ui/themes";
 import UplotTooltip from "../../../../../uplotReact/UplotTooltip";
-import { incomePerCuToggleControlColor } from "../../../../../colors";
+import { incomeColor } from "../../../../../colors";
 import { formatNumberLamports } from "../../../../Overview/ValidatorsCard/formatAmt";
 import { maxSolDecimals } from "../../../../../consts";
 import { ChartTooltipRow } from "../../ChartTooltipRow";
@@ -32,7 +32,7 @@ export default function IncomeScatterChartTooltip({
           <ChartTooltipRow
             label="Income"
             value={`${formatNumberLamports(data.y, maxSolDecimals)} SOL`}
-            color={incomePerCuToggleControlColor}
+            color={incomeColor}
           />
         </Grid>
       )}

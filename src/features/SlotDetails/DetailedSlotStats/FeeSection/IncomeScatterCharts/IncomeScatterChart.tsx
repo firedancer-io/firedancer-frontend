@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react";
 import AutoSizer from "react-virtualized-auto-sizer";
-import {
-  chartAxisColor,
-  incomePerCuToggleControlColor,
-} from "../../../../../colors";
+import { chartAxisColor, incomeColor } from "../../../../../colors";
 import UplotReact from "../../../../../uplotReact/UplotReact";
 import { lamportsScaleKey } from "../../../../Overview/SlotPerformance/ComputeUnitsCard/consts";
 import { hexToRgba } from "../../../../../colorUtils";
@@ -113,7 +110,7 @@ export default function IncomeScatterChart({
           points: {
             show: true,
             size: incomeChartPointRadius * 2,
-            fill: hexToRgba(incomePerCuToggleControlColor, 0.3),
+            fill: hexToRgba(incomeColor, 0.3),
             space: 0,
           },
         },

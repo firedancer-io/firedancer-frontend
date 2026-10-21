@@ -20,7 +20,7 @@ import {
   successToggleColor,
   tipsColor,
   requestedToggleControlColor,
-  incomePerCuToggleControlColor,
+  incomeColor,
   iconButtonColor,
 } from "../../../../colors";
 import { solDecimals, txnErrorCodeMap } from "../../../../consts";
@@ -213,7 +213,7 @@ function IncomeDisplay({ transactions, txnIdx }: DisplayProps) {
       value={`${calcTxnIncome(transactions, txnIdx)?.toLocaleString(undefined, {
         maximumFractionDigits: solDecimals,
       })}${rankText}`}
-      color={incomePerCuToggleControlColor}
+      color={incomeColor}
     />
   );
 }

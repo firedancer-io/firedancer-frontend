@@ -225,6 +225,7 @@ export const computeUnitsColor = "#D19DFF";
 export const feesColor = "#4CCCE6";
 export const tipsColor = "#1FD8A4";
 export const nextAuctionColor = "#D19DFF";
+export const incomeColor = "#9EB1FF";
 export const elapsedTimeColor = "#6A6A6E";
 
 // transaction bars
@@ -232,7 +233,6 @@ export const chartGridStrokeColor = "rgba(250, 250, 250, 0.05)";
 export const successToggleColor = "#30A46C";
 export const errorToggleColor = "#E5484D";
 export const requestedToggleControlColor = "#FF8DCC";
-export const incomePerCuToggleControlColor = "#9EB1FF";
 export const toggleItemBackgroundColor = "#292929";
 export const toggleItemTextColor = "#9e9e9e";
 export const focusedBorderColor = "#1d6fba";

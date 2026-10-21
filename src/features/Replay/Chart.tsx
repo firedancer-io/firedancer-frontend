@@ -4,8 +4,6 @@ import { useMeasure } from "react-use";
 import styles from "./chart.module.css";
 import type { MarkerLinesProps } from "./const.ts";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
-import { useTxnMetaCache } from "./RevenueTrack/txnMeta/useTxnMetaCache.ts";
-import { RevenueType } from "../../api/entities.ts";
 import { useExplorableChart } from "./useExplorableChart.ts";
 import { getDefaultStore, useAtomValue } from "jotai";
 import {
@@ -16,7 +14,6 @@ import {
   worldRangeAtom,
 } from "./atoms.ts";
 import MiniMap from "./MiniMap/MiniMap.tsx";
-import useAggRevenueQuery from "./RevenueTrack/useAggRevenueQuery.ts";
 import HeaderTrack from "./HeaderTrack/index.tsx";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
@@ -110,12 +107,6 @@ export default function Chart() {
     }
   }, [isInitialized]);
 
-  // shared query cache if there are multiple revenue tracks
-  const aggRevenueQuery = useAggRevenueQuery();
-
-  // Drive the shared txn meta cache used by the revenue tracks' non-agg view
-  useTxnMetaCache();
-
   if (!isInitialized) return <Spinner />;
 
   return (
@@ -137,12 +128,7 @@ export default function Chart() {
 
             <Flex direction="column" gap="6px">
               <ShredsTrack width={width} {...markerLinesProps} />
-              <RevenueTrack
-                aggQuery={aggRevenueQuery}
-                type={RevenueType.TxnFees}
-                width={width}
-                {...markerLinesProps}
-              />
+              <RevenueTrack width={width} {...markerLinesProps} />
             </Flex>
           </Flex>
         </>
