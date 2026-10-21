@@ -1,7 +1,10 @@
-import { Flex } from "@radix-ui/themes";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import { DEFAULT_REVENUE_VIEW_OPTS, type RevenueViewOpts } from "./consts.ts";
+import {
+  DEFAULT_REVENUE_VIEW_OPTS,
+  revenueTrackHeight,
+  type RevenueViewOpts,
+} from "./consts.ts";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import { type MarkerLinesProps } from "../const.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
@@ -45,7 +48,6 @@ import {
 import clsx from "clsx";
 import styles from "../track.module.css";
 
-const height = 150;
 const store = getDefaultStore();
 
 const getNumRows = (splitByRow: boolean, tileCount: number) =>
@@ -222,7 +224,7 @@ function RevenueTrack({
 
     const rendererObj = setUpRenderers(
       0,
-      height,
+      revenueTrackHeight,
       setUpContextListeners,
       getWasContextLost,
     );
@@ -269,7 +271,7 @@ function RevenueTrack({
   // handle chart resize
   useLayoutEffect(() => {
     if (!isInitialized || !rendererRef.current) return;
-    rendererRef.current.renderer.setSize(width, height);
+    rendererRef.current.renderer.setSize(width, revenueTrackHeight);
     renderActive();
   }, [renderActive, width, isInitialized]);
 
@@ -319,31 +321,28 @@ function RevenueTrack({
   useTileCacheSubscription(txnMetaCache, onCacheDelta);
 
   return (
-    <Flex direction="column" gap="2" width="100%">
+    <div
+      className={styles.trackContainer}
+      style={{ height: `${revenueTrackHeight}px` }}
+    >
+      <div
+        ref={containerRef}
+        className={clsx(styles.trackCanvasContainer, markerLinesClassName)}
+      />
+      <RevenueYAxis
+        maxValue={isAgg ? aggAxisMax : nonAggAxisMax}
+        scale={opts.scale}
+        splitRows={!isAgg && opts.splitByRow}
+        numRows={numRows}
+      />
       <RevenueControls
+        type={type}
         isAgg={isAgg}
         granularity={granularity}
         opts={opts}
         setOpts={setOpts}
       />
-      <div
-        className={styles.trackContainer}
-        style={{
-          height: `${height}px`,
-        }}
-      >
-        <div
-          ref={containerRef}
-          className={clsx(styles.trackCanvasContainer, markerLinesClassName)}
-        />
-        <RevenueYAxis
-          maxValue={isAgg ? aggAxisMax : nonAggAxisMax}
-          scale={opts.scale}
-          splitRows={!isAgg && opts.splitByRow}
-          numRows={numRows}
-        />
-      </div>
-    </Flex>
+    </div>
   );
 }
 

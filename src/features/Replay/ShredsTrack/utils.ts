@@ -1,4 +1,3 @@
-import { colors } from "../../Shreds/WebGl/const";
 import { msBucketSizes, nsBucketSizes } from "../const";
 import * as THREE from "three";
 import { MAX_WEBGL_PX_RATIO } from "../../../consts";
@@ -12,17 +11,16 @@ import {
   addRectangleToMesh,
   updateRectMeshCounts,
   type TsRange,
-  type RgbColor,
 } from "../../WebGl/webglUtils";
 import {
   SHREDS_AGG_THRESHOLD_MS,
+  shredEventSeries,
   type AggRendererResources,
   type RendererObj,
 } from "./const";
 import { omit } from "lodash";
 import type { ShredBucketsByGranularity } from "./atoms";
 import { getAggGranularity, OVERSCAN_BUCKETS } from "./useAggShredsQuery";
-import { AggShredEventType } from "../../../api/entities";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
 
 export function setUpRenderers(
@@ -91,13 +89,6 @@ export function setUpAggResources(
   };
 }
 
-const orderedEventColors: Record<AggShredEventType, RgbColor> = {
-  [AggShredEventType.Repair]: colors.replayedRepair,
-  [AggShredEventType.Reconstructed]: colors.replayedNothing,
-  [AggShredEventType.Turbine]: colors.replayedTurbine,
-  [AggShredEventType.Published]: colors.published,
-};
-
 /**
  * Redraw all available data in the visible range at the appropriate granularity level
  */
@@ -145,8 +136,8 @@ export function drawAggShreds(
     const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
 
     let shredsInBucket = 0;
-    for (const [eventType, color] of Object.entries(orderedEventColors)) {
-      const count = eventCounts[eventType as AggShredEventType];
+    for (const { type, webGlColor } of shredEventSeries) {
+      const count = eventCounts[type];
       if (!count) continue;
 
       ensureRectCapacity(mesh, rectIdx + 1);
@@ -157,7 +148,7 @@ export function drawAggShreds(
         -shredsInBucket - count,
         bucketSizeMs,
         count,
-        color,
+        webGlColor,
       );
 
       shredsInBucket += count;

@@ -1,5 +1,13 @@
 import type * as THREE from "three";
 import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
+import { AggShredEventType } from "../../../api/entities";
+import {
+  shredPublishedColor,
+  shredReplayedNothingColor,
+  shredReplayedRepairColor,
+  shredReplayedTurbineColor,
+} from "../../../colors";
+import { colors as shredWebGlColors } from "../../Shreds/WebGl/const";
 
 // TODO: set to reasonable transition value
 export const SHREDS_AGG_THRESHOLD_MS = 0;
@@ -24,3 +32,31 @@ export interface AggRendererResources {
    */
   cameraReferenceMs: number;
 }
+
+/** Listed in stacking order */
+export const shredEventSeries = [
+  {
+    type: AggShredEventType.Repair,
+    label: "Repair",
+    color: shredReplayedRepairColor,
+    webGlColor: shredWebGlColors.replayedRepair,
+  },
+  {
+    type: AggShredEventType.Reconstructed,
+    label: "Reconstructed",
+    color: shredReplayedNothingColor,
+    webGlColor: shredWebGlColors.replayedNothing,
+  },
+  {
+    type: AggShredEventType.Turbine,
+    label: "Turbine",
+    color: shredReplayedTurbineColor,
+    webGlColor: shredWebGlColors.replayedTurbine,
+  },
+  {
+    type: AggShredEventType.Published,
+    label: "Published",
+    color: shredPublishedColor,
+    webGlColor: shredWebGlColors.published,
+  },
+];
