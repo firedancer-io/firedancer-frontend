@@ -10,11 +10,12 @@ import {
   ensureRectCapacity,
   addRectangleToMesh,
   updateRectMeshCounts,
+  convertToWebGlColor,
+  type RgbColor,
   type TsRange,
 } from "../../WebGl/webglUtils";
 import {
   HEADER_AGG_THRESHOLD_MS,
-  trackHeight,
   type AggRendererResources,
   type RendererObj,
 } from "./const";
@@ -22,10 +23,35 @@ import { omit } from "lodash";
 import type { SlotBucketsByGranularity } from "./aggAtoms";
 import { getAggGranularity, OVERSCAN_BUCKETS } from "./useAggHeaderQuery";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
-import { getBucketColorRatios, colorStates, colors } from "../slotUtils";
+import {
+  replayAggHeaderBackgroundColor,
+  replayMiniMapSkippedColor,
+} from "../../../colors";
 
 const minY = 0;
 const maxY = 1;
+
+const backgroundColor = convertToWebGlColor(replayAggHeaderBackgroundColor);
+const skippedColor = convertToWebGlColor(replayMiniMapSkippedColor);
+
+const minSkippedRatio = 0.3;
+
+function getBucketColor(
+  slotCount: number,
+  skippedCount: number | null,
+): RgbColor {
+  const skipped = skippedCount ?? 0;
+  const skippedRatio = skipped
+    ? Math.max(minSkippedRatio, skipped / slotCount)
+    : 0;
+
+  const notSkippedRatio = 1 - skippedRatio;
+  return [
+    backgroundColor[0] * notSkippedRatio + skippedColor[0] * skippedRatio,
+    backgroundColor[1] * notSkippedRatio + skippedColor[1] * skippedRatio,
+    backgroundColor[2] * notSkippedRatio + skippedColor[2] * skippedRatio,
+  ];
+}
 
 export function setUpRenderers(
   canvasWidth: number,
@@ -126,48 +152,38 @@ export function drawAggSlots(
     calcRelativeMs(referenceNs, BigInt(startIdx) * nsBucketSizes[granularity]) -
     cameraReferenceMs;
 
-  // min 1px
-  const minHeightRatio = (maxY - minY) / trackHeight;
+  const height = maxY - minY;
+
+  // one rectangle per bucket
+  const firstBucketIdx = startIdx - OVERSCAN_BUCKETS;
+  const lastBucketIdx = endIdx + OVERSCAN_BUCKETS;
+  ensureRectCapacity(mesh, lastBucketIdx - firstBucketIdx + 1);
 
   let rectIdx = 0;
   for (
-    let bucketIdx = startIdx - OVERSCAN_BUCKETS;
-    bucketIdx <= endIdx + OVERSCAN_BUCKETS;
+    let bucketIdx = firstBucketIdx;
+    bucketIdx <= lastBucketIdx;
     bucketIdx++
   ) {
     const slotCounts = slotsByBucketIdx.get(bucketIdx);
     if (!slotCounts) continue;
 
-    const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
-
-    const bucketColorRatios = getBucketColorRatios(
-      slotCounts.start_slot,
-      slotCounts.end_slot,
-      slotCounts.skipped,
-      slotCounts.mine,
-      slotCounts.mine_skipped,
-      minHeightRatio,
-    );
+    const { start_slot, end_slot, skipped } = slotCounts;
+    const slotCount =
+      start_slot != null && end_slot != null && end_slot >= start_slot
+        ? end_slot - start_slot + 1
+        : 0;
 
     // don't draw empty buckets
-    if (!bucketColorRatios) continue;
+    if (slotCount === 0) continue;
 
-    let y = minY;
-    for (const colorState of colorStates) {
-      const startY = y;
-      const ratio = bucketColorRatios[colorState];
-      if (ratio === 0) continue;
+    const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
 
-      // keep a non-zero band visible (at least 1px)
-      const height = ratio * (maxY - minY);
-      const color = colors[colorState];
+    const color = getBucketColor(slotCount, skipped);
 
-      ensureRectCapacity(mesh, rectIdx + 1);
-      addRectangleToMesh(mesh, rectIdx, x, startY, bucketSizeMs, height, color);
+    addRectangleToMesh(mesh, rectIdx, x, minY, bucketSizeMs, height, color);
 
-      y = startY + height;
-      rectIdx++;
-    }
+    rectIdx++;
   }
   updateRectMeshCounts(mesh, rectIdx);
 
