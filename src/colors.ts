@@ -351,3 +351,10 @@ export const replayPopoverBackgroundColor = "#131923";
 export const replayPopoverBorderColor = "#2E343E";
 export const replayPopoverBehindTextColor = "#D6D7DC";
 export const replayPauseIconColor = "#C9CBD3";
+export const replayLiveTextColor = "#3CFF73";
+export const replayLiveIconGlowColor = "rgba(60, 255, 115, 0.55)";
+
+// Replay minimap
+export const replayMiniMapVisibleRangeBorderColor = "#0090FF";
+export const replayMiniMapVisibleRangeBackgroundColor =
+  "rgba(0, 144, 255, 0.22)";
