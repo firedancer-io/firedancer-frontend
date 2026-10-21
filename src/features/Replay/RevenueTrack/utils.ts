@@ -21,7 +21,7 @@ import {
   AGGREGATE_THRESHOLD_MS,
   REVENUE_COLOR,
   maxHeightRatio,
-  maxY,
+  cameraMaxY,
   minY,
   type RevenueScale,
 } from "./consts.ts";
@@ -120,7 +120,7 @@ export function setUpAggResources(
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): AggResources & { cleanUpResources: () => void } {
   const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(0, 1, maxY, minY, 0.5, 10);
+  const camera = new THREE.OrthographicCamera(0, 1, cameraMaxY, minY, 0.5, 10);
   camera.position.z = 1;
 
   const resources = createRectResources();
@@ -261,7 +261,7 @@ export function setUpNonAggResources(
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): NonAggResources & { cleanUpResources: () => void } {
   const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(0, 1, maxY, minY, 0.5, 10);
+  const camera = new THREE.OrthographicCamera(0, 1, cameraMaxY, minY, 0.5, 10);
   camera.position.z = 1;
 
   const resources = createTxnResources(REVENUE_COLOR);

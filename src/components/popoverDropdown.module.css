@@ -2,7 +2,7 @@
   cursor: pointer;
 }
 
-.popover-content {
+:where(.popover-content) {
   box-sizing: border-box;
 
   max-width: var(--radix-popover-content-available-width);

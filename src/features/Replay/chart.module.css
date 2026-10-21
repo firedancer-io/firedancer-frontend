@@ -3,9 +3,6 @@
 
   .grab-cursor {
     cursor: grab;
-    .no-chart-explore {
-      cursor: auto;
-    }
   }
   .grabbing-cursor,
   .grabbing-cursor * {
@@ -15,6 +12,10 @@
   .resizing-cursor * {
     cursor: ew-resize !important;
   }
+}
+
+:where(.container .grab-cursor .no-chart-explore) {
+  cursor: auto;
 }
 
 .with-marker-lines,
@@ -49,16 +50,18 @@
 
 .y-axis-tick {
   position: absolute;
-  left: 0;
+  left: 1px;
   transform: translateY(-50%);
-  font-size: 8px;
+  font-size: 9px;
   white-space: nowrap;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--replay-y-axis-label-background-color);
   color: var(--replay-primary-text-color);
   text-shadow:
-    1px 0 1px #141720,
-    -1px 0 1px #141720,
-    0 1px 1px #141720,
-    0 -1px 1px #141720;
+    0 0 2px var(--replay-track-background-color),
+    0 0 3px var(--replay-track-background-color),
+    0 0 3px var(--replay-track-background-color);
 }
 
 .y-axis-grid-line {

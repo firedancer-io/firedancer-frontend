@@ -1,7 +1,6 @@
 import { getDefaultStore } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
 import { type MarkerLinesProps } from "../const.ts";
-import chartStyles from "../chart.module.css";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
@@ -13,7 +12,7 @@ import {
   setUpRenderers,
 } from "./utils.ts";
 // TODO: handle non-agg shreds (minDirtySlotByChartAtom dirty-slot tracking)
-import { type RendererObj } from "./const.ts";
+import { shredEventSeries, type RendererObj } from "./const.ts";
 import { useAggShredsQuery, getAggGranularity } from "./useAggShredsQuery.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
@@ -21,6 +20,7 @@ import { aggShredsAtom, drawEventType, aggShredsEmitterAtom } from "./atoms.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import clsx from "clsx";
 import styles from "../track.module.css";
+import TrackControls from "../TrackControls.tsx";
 
 const height = 300;
 const chartId = "shreds-track";
@@ -168,9 +168,11 @@ function ShredsTrack({
         ref={containerRef}
         className={clsx(styles.trackCanvasContainer, markerLinesClassName)}
       />
-      <div className={clsx(chartStyles.noChartExplore, styles.bucketSizeLabel)}>
-        Bucket size: {granularity ?? "-"}
-      </div>
+      <TrackControls
+        name="Shreds"
+        bucketSize={granularity}
+        legend={shredEventSeries}
+      />
     </div>
   );
 }
