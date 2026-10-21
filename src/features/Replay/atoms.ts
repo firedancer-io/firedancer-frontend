@@ -28,6 +28,7 @@ export const {
   isInitializedAtom,
   referenceNsAtom,
   initializeVisibleRangeAtom,
+  resetToLiveAtom,
   visibleRangeAtom,
   worldRangeAtom,
 } = (function getReplayChartAtoms() {
@@ -68,23 +69,28 @@ export const {
     return !!get(worldRangeAtom);
   });
 
+  const resetToLiveAtom = atom(null, (get, set) => {
+    const worldRange = get(worldRangeAtom);
+    if (!worldRange) return;
+
+    set(staticVisibleRangeAtom, getInitVisibleRange(undefined, worldRange));
+    set(isLiveAtom, true);
+  });
+
   return {
     isLiveAtom,
     isInitializedAtom,
     referenceNsAtom,
     worldRangeAtom,
     /**
-     * Call to set initial visible range. Only call when world range and selected ts have been initialized
+     * Set to default live range if world range is initialized but visible range is not initialized
      */
     initializeVisibleRangeAtom: atom(null, (get, set) => {
-      const worldRange = get(worldRangeAtom);
-      if (!worldRange) return;
+      if (get(staticVisibleRangeAtom)) return;
 
-      set(staticVisibleRangeAtom, (prev) => {
-        if (prev) return prev;
-        return getInitVisibleRange(get(selectedMsAtom), worldRange);
-      });
+      set(resetToLiveAtom);
     }),
+    resetToLiveAtom,
     /**
      * get static visible range or live visible range
      */
