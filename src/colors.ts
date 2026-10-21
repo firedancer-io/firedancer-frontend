@@ -191,9 +191,7 @@ export const epochTextColor = "#FAFAFA";
 export const epochNotLiveColor = "#3CB4FF";
 export const epochSliderProgressColor = "#142D53";
 export const epochSkippedSlotColor = "#FF5353";
-export const epochBarLeaderSlotColor = "#2a7edf";
-// TODO: update with opacity
-export const epochBarOtherSkippedSlotColor = "#FF5353";
+export const epochSliderTrackColor = "#24262B";
 
 // replay headers
 export const headerSlotGroupColor0 = "#0090FF";
@@ -322,7 +320,7 @@ export const slotsListMySlotBackgroundColor = "#070B14 ";
 export const slotsListMySlotsBorderColor = "rgba(42, 126, 223, 0.5)";
 export const slotsListNotProcessedMySlotsBorderColor =
   "rgba(125, 125, 125, 0.50)";
-export const slotsListMySlotsSelectedBorderColor = "#2A7EDF";
+export const slotsListMySlotsSelectedBorderColor = mySlotsColor;
 export const slotsListBackgroundColor = "#070a13";
 export const slotsListFutureSlotBackgroundColor = "#0D0D0D";
 export const slotsListSkippedBackgroundColor = "#250f0f";
@@ -373,6 +371,9 @@ export const replayLiveIconGlowColor = "rgba(60, 255, 115, 0.55)";
 export const replayMiniMapVisibleRangeBorderColor = "#0090FF";
 export const replayMiniMapVisibleRangeBackgroundColor =
   "rgba(0, 144, 255, 0.22)";
+export const replayMiniMapSkippedColor = "#CA4245";
+
+export const replayAggHeaderBackgroundColor = "#11151C";
 
 // Replay tracks
 export const replayTrackBackgroundColor = "#070B14";

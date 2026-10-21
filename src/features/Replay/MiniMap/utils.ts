@@ -17,7 +17,7 @@ import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import { msBucketSizes, nsBucketSizes } from "../const.ts";
 import type { AggGranularity, AggSlots } from "../../../api/types.ts";
 import { calcRelativeMs } from "../utils.ts";
-import { getBucketColorRatios, colorStates, colors } from "../slotUtils.ts";
+import { getBucketColor } from "../slotUtils.ts";
 
 export const trackHeight = 10;
 const opacity = 1;
@@ -135,9 +135,6 @@ export function drawMiniMap(
   const bucketSizeMs = msBucketSizes[granularity];
   const bucketSizeNs = nsBucketSizes[granularity];
 
-  // min 1px
-  const minHeightRatio = (maxY - minY) / trackHeight;
-
   // track the range of rectangle indices updated in this draw
   let minIdx = Infinity;
   let maxIdx = -Infinity;
@@ -147,10 +144,8 @@ export function drawMiniMap(
       bucketSizeNs,
   );
 
-  // each bucket reserves colorStates.length consecutive rectangles, indexed
-  // from the mesh reference
-  let rectIdx = startBucketIdx * colorStates.length;
-  const endRectIdx = rectIdx + start_slot.length * colorStates.length;
+  // one rectangle per bucket, indexed from the mesh reference
+  const endRectIdx = startBucketIdx + start_slot.length;
   ensureRectCapacity(mesh, endRectIdx + 1);
 
   const startX =
@@ -161,35 +156,30 @@ export function drawMiniMap(
         BigInt(startBucketIdx) * bucketSizeNs,
     );
 
+  const height = maxY - minY;
+
   for (let i = 0; i < start_slot.length; i++) {
+    const startSlot = start_slot[i];
+    const endSlot = end_slot[i];
+    const slotCount =
+      startSlot != null && endSlot != null && endSlot >= startSlot
+        ? endSlot - startSlot + 1
+        : 0;
+
+    const color = getBucketColor({
+      slotCount,
+      skippedCount: skipped[i],
+      mySlotCount: mine[i],
+      mySkippedSlotCount: mine_skipped[i],
+    });
+
     const x = startX + i * bucketSizeMs;
+    const rectIdx = startBucketIdx + i;
 
-    const bucketColorRatios = getBucketColorRatios(
-      start_slot[i],
-      end_slot[i],
-      skipped[i],
-      mine[i],
-      mine_skipped[i],
-      minHeightRatio,
-    );
+    addRectangleToMesh(mesh, rectIdx, x, minY, bucketSizeMs, height, color);
 
-    let y = minY;
-
-    for (const colorState of colorStates) {
-      const ratio = bucketColorRatios?.[colorState] ?? 0;
-
-      // keep a non-zero band visible (at least 1px);
-      const height = ratio * (maxY - minY);
-      const color = colors[colorState];
-
-      addRectangleToMesh(mesh, rectIdx, x, y, bucketSizeMs, height, color);
-
-      minIdx = Math.min(minIdx, rectIdx);
-      maxIdx = Math.max(maxIdx, rectIdx);
-
-      y += height;
-      rectIdx++;
-    }
+    minIdx = Math.min(minIdx, rectIdx);
+    maxIdx = Math.max(maxIdx, rectIdx);
   }
 
   if (maxIdx < minIdx) return;

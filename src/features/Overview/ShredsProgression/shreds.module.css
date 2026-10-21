@@ -8,7 +8,7 @@
   transform: translateX(-100000px);
 
   &.you {
-    border: 1px solid #2a7edf;
+    border: 1px solid var(--my-slots-color);
   }
 
   & > .slot-group-top-container {
