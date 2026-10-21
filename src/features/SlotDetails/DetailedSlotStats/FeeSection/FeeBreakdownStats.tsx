@@ -1,9 +1,5 @@
 import { Flex, Grid, Text } from "@radix-ui/themes";
-import {
-  tipsColor,
-  feesColor,
-  incomePerCuToggleControlColor,
-} from "../../../../colors";
+import { tipsColor, feesColor, incomeColor } from "../../../../colors";
 import { useSlotTransactionsContext } from "../../SlotTransactionsContext";
 import { formatNumberLamports } from "../../../Overview/ValidatorsCard/formatAmt";
 import { solDecimals } from "../../../../consts";
@@ -137,7 +133,7 @@ function TotalIncomeRow({ tips, fees }: TotalIncomeRowProps) {
       <Text className={styles.label}>Income</Text>
       <Text
         className={styles.value}
-        style={{ color: incomePerCuToggleControlColor }}
+        style={{ color: incomeColor }}
         align="right"
       >
         {`${formatNumberLamports(total, solDecimals, {
@@ -178,7 +174,7 @@ function TotalIncomeRow({ tips, fees }: TotalIncomeRowProps) {
           x={0.5}
           y={0.5}
           opacity={1}
-          stroke={incomePerCuToggleControlColor}
+          stroke={incomeColor}
           strokeWidth={1}
         />
       </svg>
