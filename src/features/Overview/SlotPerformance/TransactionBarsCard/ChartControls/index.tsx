@@ -56,7 +56,7 @@ import {
   tipsColor,
   computeUnitsColor,
   requestedToggleControlColor,
-  incomePerCuToggleControlColor,
+  incomeColor,
 } from "../../../../../colors";
 import { uplotActionAtom } from "../../../../../uplotReact/uplotAtoms";
 import { txnErrorCodeMap } from "../../../../../consts";
@@ -607,7 +607,7 @@ function IncomeControl({ transactions }: WithTransactionsProps) {
       label="Income per CU"
       checked={isEnabled}
       onCheckedChange={handleCheckedChange}
-      color={incomePerCuToggleControlColor}
+      color={incomeColor}
     />
   );
 }

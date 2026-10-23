@@ -2,10 +2,9 @@ import type { Dispatch, SetStateAction } from "react";
 import {
   revenueScaleOptions,
   type RevenueViewOpts,
-  revenueTypeLabels,
+  revenueSeries,
+  revenueSeriesLabels,
 } from "./consts.ts";
-import { feesColor } from "../../../colors.ts";
-import type { RevenueType } from "../../../api/entities.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import TrackControls, {
   TrackControlsDivider,
@@ -14,7 +13,6 @@ import TrackControls, {
 } from "../TrackControls.tsx";
 
 interface RevenueControlsProps {
-  type: RevenueType;
   isAgg: boolean;
   granularity: AggGranularity | undefined;
   opts: RevenueViewOpts;
@@ -22,7 +20,6 @@ interface RevenueControlsProps {
 }
 
 export default function RevenueControls({
-  type,
   isAgg,
   granularity,
   opts,
@@ -30,9 +27,13 @@ export default function RevenueControls({
 }: RevenueControlsProps) {
   return (
     <TrackControls
-      name={revenueTypeLabels[type]}
+      name={revenueSeriesLabels[opts.type]}
       bucketSize={isAgg ? granularity : "txn"}
-      legend={[{ label: revenueTypeLabels[type], color: feesColor }]}
+      legend={revenueSeries}
+      legendSelection={{
+        value: opts.type,
+        onChange: (type) => setOpts((o) => ({ ...o, type })),
+      }}
     >
       <TrackControlsOptions
         label="Scale"

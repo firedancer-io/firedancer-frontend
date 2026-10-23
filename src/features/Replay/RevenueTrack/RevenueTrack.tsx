@@ -24,8 +24,11 @@ import {
   type RendererObj,
 } from "./utils.ts";
 import { calcRelativeMs } from "../utils.ts";
-import { getGranularity, type AggRevenueQuery } from "./useAggRevenueQuery.ts";
-import type { RevenueType } from "../../../api/entities.ts";
+import useAggRevenueQuery, {
+  getGranularity,
+  type AggRevenueQuery,
+} from "./useAggRevenueQuery.ts";
+import { useTxnMetaCache } from "./txnMeta/useTxnMetaCache.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
@@ -53,19 +56,20 @@ const store = getDefaultStore();
 const getNumRows = (splitByRow: boolean, tileCount: number) =>
   splitByRow ? Math.max(tileCount, 1) : 1;
 
-interface RevenueTrackProps extends WebGlRemountProps, MarkerLinesProps {
+interface RevenueTrackProps extends MarkerLinesProps {
   width: number;
-  type: RevenueType;
+}
+
+interface RevenueTrackBodyProps extends RevenueTrackProps, WebGlRemountProps {
   aggQuery: AggRevenueQuery;
 }
 
-function RevenueTrack({
+function RevenueTrackBody({
   remount,
   markerLinesClassName,
   width,
-  type,
   aggQuery: { query: aggQuery, pauseStaleRefreshes },
-}: RevenueTrackProps) {
+}: RevenueTrackBodyProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
@@ -73,6 +77,7 @@ function RevenueTrack({
   const [aggAxisMax, setAggAxisMax] = useState(0n);
   const [nonAggAxisMax, setNonAggAxisMax] = useState(0n);
   const [opts, setOpts] = useState<RevenueViewOpts>(DEFAULT_REVENUE_VIEW_OPTS);
+  const { type } = opts;
 
   const [isAgg, setIsAgg] = useState(true);
   const isAggCurrentRef = useRef(isAgg);
@@ -140,9 +145,9 @@ function RevenueTrack({
   const syncNonAgg = useCallback(
     (renderer: RendererObj) => {
       const tiles = txnMetaCache.getTiles();
-      syncNonAggMeshes(renderer, type, getRelativeMs, tiles);
+      syncNonAggMeshes(renderer, getRelativeMs, tiles);
     },
-    [type, getRelativeMs],
+    [getRelativeMs],
   );
 
   const syncNonAggRef = useRef(syncNonAgg);
@@ -275,11 +280,11 @@ function RevenueTrack({
     renderActive();
   }, [renderActive, width, isInitialized]);
 
-  // Trigger refresh for agg mode entry or a rows/scale change.
+  // Trigger refresh for agg mode entry or a scale/type change.
   useLayoutEffect(() => {
     if (!isAgg) return;
     throttledDrawAgg();
-  }, [isAgg, throttledDrawAgg]);
+  }, [isAgg, opts.scale, type, throttledDrawAgg]);
 
   // Trigger refresh for nonAgg mode entry or a rows/scale/type/timeline-reference change
   useLayoutEffect(() => {
@@ -302,7 +307,6 @@ function RevenueTrack({
       if (delta.kind === "live") {
         appendLiveTxns(
           renderer,
-          type,
           delta.tile,
           delta.newData,
           delta.isNewTile,
@@ -315,7 +319,7 @@ function RevenueTrack({
       // Only render on delta updates when non aggregate view is active
       if (!isAggCurrentRef.current) renderActive();
     },
-    [type, getRelativeMs, renderActive],
+    [getRelativeMs, renderActive],
   );
 
   useTileCacheSubscription(txnMetaCache, onCacheDelta);
@@ -336,7 +340,6 @@ function RevenueTrack({
         numRows={numRows}
       />
       <RevenueControls
-        type={type}
         isAgg={isAgg}
         granularity={granularity}
         opts={opts}
@@ -346,5 +349,10 @@ function RevenueTrack({
   );
 }
 
-const RevenueTrackWithRemount = withWebGlRemount(RevenueTrack);
-export default RevenueTrackWithRemount;
+const RevenueTrackBodyWithRemount = withWebGlRemount(RevenueTrackBody);
+export default function RevenueTrack(props: RevenueTrackProps) {
+  const aggQuery = useAggRevenueQuery();
+  useTxnMetaCache();
+
+  return <RevenueTrackBodyWithRemount aggQuery={aggQuery} {...props} />;
+}

@@ -58,14 +58,6 @@
   border-radius: 2px;
 }
 
-.legend-item {
-  padding: 0 6px;
-}
-
-.legend-label {
-  color: var(--replay-dropdown-primary-text-color);
-}
-
 .divider {
   flex-shrink: 0;
   height: 1px;
@@ -92,9 +84,25 @@
 }
 
 .option[data-state="checked"],
-.option[data-state="checked"]:hover {
+.option[data-state="checked"]:hover,
+.option.static {
   background: var(--replay-dropdown-selected-background-color);
   color: var(--replay-dropdown-selected-text-color);
+}
+
+.option.static {
+  cursor: default;
+}
+
+.legend-item {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.legend-description {
+  margin-left: auto;
+  color: var(--replay-dropdown-secondary-text-color);
 }
 
 .toggle {
