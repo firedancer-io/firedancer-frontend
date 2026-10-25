@@ -1450,6 +1450,19 @@ export const timelineShredsSchema = z.object({
   skipped: z.number().array(),
 });
 
+export enum TimelineEventType {
+  LeaderSkip = 0,
+}
+
+export const timelineEventsSchema = z.object({
+  // TODO: mark data availability
+  available_start_ns: z.coerce.bigint().nullable(),
+  available_end_ns: z.coerce.bigint().nullable(),
+  event: z.array(z.enum(TimelineEventType)),
+  slot: z.array(z.number()),
+  ts: z.array(z.coerce.bigint()),
+});
+
 export const timelineSchema = z.discriminatedUnion("key", [
   timelineTopicSchema.extend({
     id: z.number(),
@@ -1460,6 +1473,11 @@ export const timelineSchema = z.discriminatedUnion("key", [
     id: z.number(),
     key: z.literal("query_agg_slots"),
     value: aggSlotsSchema,
+  }),
+  timelineTopicSchema.extend({
+    id: z.number(),
+    key: z.literal("query_events"),
+    value: timelineEventsSchema,
   }),
   timelineTopicSchema.extend({
     id: z.number(),

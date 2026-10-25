@@ -89,6 +89,7 @@ import type {
   timelineSlotsSchema,
   timelineShredsSchema,
   shredsGranularitySchema,
+  timelineEventsSchema,
 } from "./entities";
 
 export type Client = z.infer<typeof clientSchema>;
@@ -241,3 +242,4 @@ export type TimelineTxnMeta = z.infer<typeof txnMetaResponseSchema>;
 export type AggShreds = z.infer<typeof aggShredsSchema>;
 export type ShredsGranularity = z.infer<typeof shredsGranularitySchema>;
 export type TimelineShreds = z.infer<typeof timelineShredsSchema>;
+export type TimelineEvents = z.infer<typeof timelineEventsSchema>;
