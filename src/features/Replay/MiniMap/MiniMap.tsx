@@ -24,6 +24,7 @@ import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import VisibleRangeInfo from "../VisibleRangeInfo.tsx";
 import { containerElAtom } from "../../../atoms.ts";
 import { getDefaultStore, useAtomValue } from "jotai";
+import EventsTrack from "./EventsTrack/EventsTrack.tsx";
 
 const store = getDefaultStore();
 
@@ -34,10 +35,11 @@ interface MiniMapProps extends WebGlRemountProps {
     leftHandleEl: HTMLDivElement,
     rightHandleEl: HTMLDivElement,
   ) => () => void;
+  panToTs: (ts: number) => void;
   width: number;
 }
 
-function MiniMap({ remount, setUpMiniMap, width }: MiniMapProps) {
+function MiniMap({ remount, setUpMiniMap, width, panToTs }: MiniMapProps) {
   const [isInitialized, setIsInitialized] = useState(false);
 
   const popoverContainerEl = useAtomValue(containerElAtom);
@@ -70,9 +72,10 @@ function MiniMap({ remount, setUpMiniMap, width }: MiniMapProps) {
       const worldRange = worldRangeMs[1] - worldRangeMs[0];
       const pct = ((visibleRangeMs[1] - visibleRangeMs[0]) / worldRange) * 100;
       el.style.width = `${pct}%`;
-      const rightPos =
-        ((worldRangeMs[1] - visibleRangeMs[1]) / worldRange) * 100;
-      el.style.right = `${rightPos}%`;
+
+      const centerTs = (visibleRangeMs[0] + visibleRangeMs[1]) / 2;
+      const leftPct = ((centerTs - worldRangeMs[0]) / worldRange) * 100;
+      el.style.left = `${leftPct}%`;
     }, []),
     30,
     {
@@ -185,11 +188,7 @@ function MiniMap({ remount, setUpMiniMap, width }: MiniMapProps) {
   }, [isInitialized, width]);
 
   return (
-    <Box
-      ref={containerRef}
-      className={styles.miniMapContainer}
-      height={`${trackHeight}px`}
-    >
+    <Box ref={containerRef} className={styles.miniMapContainer}>
       <div ref={chartContainerRef} className={styles.miniMapTrack} />
       <SelectionMarker range="world" />
       <Popover.Root open>
@@ -209,7 +208,7 @@ function MiniMap({ remount, setUpMiniMap, width }: MiniMapProps) {
           <Popover.Content
             className={styles.miniMapPopover}
             side="top"
-            sideOffset={0}
+            sideOffset={4}
             collisionPadding={{ top: -9999, left: 0, right: 0, bottom: 8 }}
             arrowPadding={0}
             // permanently-open, don't steal focus or trap it
@@ -221,6 +220,7 @@ function MiniMap({ remount, setUpMiniMap, width }: MiniMapProps) {
           </Popover.Content>
         </Popover.Portal>
       </Popover.Root>
+      <EventsTrack width={width} panToTs={panToTs} />
     </Box>
   );
 }

@@ -1450,6 +1450,58 @@ export const timelineShredsSchema = z.object({
   skipped: z.number().array(),
 });
 
+export enum TimelineEventType {
+  LeaderSkip = 0,
+}
+
+const timelineEventTypesSet = new Set<number>(
+  Object.values(TimelineEventType).filter(
+    (value): value is number => typeof value === "number",
+  ),
+);
+
+// only log unknown events once each
+const loggedUnknownTimelineEventTypes = new Set<number>();
+
+function isKnownTimelineEventType(event: number): event is TimelineEventType {
+  const isKnown = timelineEventTypesSet.has(event);
+  if (!isKnown && !loggedUnknownTimelineEventTypes.has(event)) {
+    loggedUnknownTimelineEventTypes.add(event);
+    console.error(`Received unrecognized timeline event type: ${event}`);
+  }
+  return isKnown;
+}
+
+export const timelineEventsSchema = z
+  .object({
+    // TODO: mark data availability
+    available_start_ns: z.coerce.bigint().nullable(),
+    available_end_ns: z.coerce.bigint().nullable(),
+    event: z.array(z.number()),
+    slot: z.array(z.number()),
+    ts: z.array(z.coerce.bigint()),
+  })
+  // Drop unknown events from arrays
+  .transform(({ event, slot, ts, ...rest }) => {
+    const filteredEvent: TimelineEventType[] = [];
+    const filteredSlot: number[] = [];
+    const filteredTs: bigint[] = [];
+
+    for (let i = 0; i < event.length; i++) {
+      if (!isKnownTimelineEventType(event[i])) continue;
+      filteredEvent.push(event[i]);
+      filteredSlot.push(slot[i]);
+      filteredTs.push(ts[i]);
+    }
+
+    return {
+      ...rest,
+      event: filteredEvent,
+      slot: filteredSlot,
+      ts: filteredTs,
+    };
+  });
+
 export const timelineSchema = z.discriminatedUnion("key", [
   timelineTopicSchema.extend({
     id: z.number(),
@@ -1460,6 +1512,11 @@ export const timelineSchema = z.discriminatedUnion("key", [
     id: z.number(),
     key: z.literal("query_agg_slots"),
     value: aggSlotsSchema,
+  }),
+  timelineTopicSchema.extend({
+    id: z.number(),
+    key: z.literal("query_events"),
+    value: timelineEventsSchema,
   }),
   timelineTopicSchema.extend({
     id: z.number(),
