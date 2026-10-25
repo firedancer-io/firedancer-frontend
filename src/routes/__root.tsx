@@ -37,6 +37,7 @@ export const Route = createRootRoute({
 
 function Root() {
   const isStartupProgressVisible = useAtomValue(isStartupProgressVisibleAtom);
+  const isReplay = useCurrentRoute() === "Replay";
   return (
     <>
       <Toast />
@@ -49,6 +50,7 @@ function Root() {
             // remove scrollbar for startup screen
             maxHeight: isStartupProgressVisible ? "100vh" : "unset",
             overflowY: isStartupProgressVisible ? "hidden" : "auto",
+            overflowX: isReplay ? "clip" : undefined,
             willChange: "scroll-position",
             contain: "paint",
             // create new stacking context so whatever portals to containerEl will be above content
