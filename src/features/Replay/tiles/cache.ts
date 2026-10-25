@@ -2,6 +2,7 @@ import { getDefaultStore } from "jotai";
 import { isConnectedAtom, socketStateAtom } from "../../../api/ws/atoms";
 import { SocketState } from "../../../api/ws/types";
 import type { NsTsRange } from "../../WebGl/webglUtils";
+import { getSortedInsertIdx } from "../utils";
 import { splitFetch, type FetchResult, type Interval } from "./splitFetch";
 
 const store = getDefaultStore();
@@ -66,14 +67,7 @@ interface LiveState<TData> {
 }
 
 function insertionIndex(sorted: number[], id: number): number {
-  let lo = 0;
-  let hi = sorted.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >>> 1;
-    if (sorted[mid] < id) lo = mid + 1;
-    else hi = mid;
-  }
-  return lo;
+  return getSortedInsertIdx(sorted, id, (a, b) => a - b).idx;
 }
 
 /**

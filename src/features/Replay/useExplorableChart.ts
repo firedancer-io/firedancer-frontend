@@ -93,6 +93,17 @@ export function useExplorableChart() {
     store.set(visibleRangeAtom, clampToWorld(unclampedNewRange, worldRange));
   }, []);
 
+  const panToTs = useCallback(
+    (ts: number) => {
+      const visibleRange = store.get(visibleRangeAtom);
+      if (!visibleRange) return;
+
+      const span = visibleRange[1] - visibleRange[0];
+      setClampedVisibleRange([ts - span / 2, ts + span / 2]);
+    },
+    [setClampedVisibleRange],
+  );
+
   const createCallbacks = useCallback(
     (
       trackEl: HTMLDivElement,
@@ -426,14 +437,12 @@ export function useExplorableChart() {
         _endDrag();
       };
 
-      const panToPoint = (clientX: number) => {
+      const panToCursorPoint = (clientX: number) => {
         const worldRange = store.get(worldRangeAtom);
-        const visibleRange = store.get(visibleRangeAtom);
-        if (!worldRange || !visibleRange) return;
+        if (!worldRange) return;
 
         const cursorTs = clientXToTs(trackEl, clientX, worldRange);
-        const span = visibleRange[1] - visibleRange[0];
-        setClampedVisibleRange([cursorTs - span / 2, cursorTs + span / 2]);
+        panToTs(cursorTs);
       };
 
       const onHandleMouseDown = (edge: "start" | "end") => (e: MouseEvent) => {
@@ -453,7 +462,8 @@ export function useExplorableChart() {
         addListener(
           trackEl,
           "pointerdown",
-          () => {
+          (e) => {
+            if (isExcludedTarget(e.target)) return;
             // track if action is for zoom / drag to pan, or a click to pan
             hasPendingClickPan.current = true;
           },
@@ -477,8 +487,9 @@ export function useExplorableChart() {
           e.stopPropagation(),
         ),
         addListener(trackEl, "click", (e) => {
+          if (isExcludedTarget(e.target)) return;
           if (!hasPendingClickPan.current) return;
-          panToPoint(e.clientX);
+          panToCursorPoint(e.clientX);
         }),
         addListener(trackEl, "mousemove", (e) => {
           if (!(e.buttons & 1)) return;
@@ -533,6 +544,7 @@ export function useExplorableChart() {
     return {
       setUpExploreListeners,
       setUpMiniMap,
+      panToTs,
     };
-  }, [createCallbacks, setClampedVisibleRange]);
+  }, [createCallbacks, setClampedVisibleRange, panToTs]);
 }

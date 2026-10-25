@@ -142,3 +142,42 @@ export function getTileIdxRangeWithOverscan(
 
   return { firstTile, lastTile };
 }
+
+/**
+ * Get low insertion idx into a sorted list. Return info on whether
+ * there's an order duplicate item (compare fn returning 0)
+ */
+export function getSortedInsertIdx<T>(
+  sorted: T[],
+  item: T,
+  compare: (a: T, b: T) => number,
+): { idx: number; isDuplicate: boolean } {
+  // lower bound
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (compare(sorted[mid], item) < 0) lo = mid + 1;
+    else hi = mid;
+  }
+
+  // an item at the insertion point that compares equal is a duplicate
+  const isDuplicate = lo < sorted.length && compare(sorted[lo], item) === 0;
+
+  return { idx: lo, isDuplicate };
+}
+
+/**
+ * Insert into a sorted array. Returns false if item is a duplicate and is not inserted.
+ */
+export function insertSorted<T>(
+  sorted: T[],
+  item: T,
+  compare: (a: T, b: T) => number,
+): boolean {
+  const { idx, isDuplicate } = getSortedInsertIdx(sorted, item, compare);
+  if (isDuplicate) return false;
+
+  sorted.splice(idx, 0, item);
+  return true;
+}

@@ -23,7 +23,7 @@ export default function Chart() {
 
   const [measureRef, { width }] = useMeasure<HTMLDivElement>();
 
-  const { setUpExploreListeners, setUpMiniMap } = useExplorableChart();
+  const { setUpExploreListeners, setUpMiniMap, panToTs } = useExplorableChart();
 
   const cleanUpExploreListenersRef = useRef<(() => void) | null>(null);
   const setTracksContainerRef = useCallback(
@@ -49,7 +49,11 @@ export default function Chart() {
     <div className={styles.container} ref={measureRef}>
       {!!width && (
         <>
-          <MiniMap width={width} setUpMiniMap={setUpMiniMap} />
+          <MiniMap
+            width={width}
+            setUpMiniMap={setUpMiniMap}
+            panToTs={panToTs}
+          />
           <Flex
             ref={setTracksContainerRef}
             direction="column"
