@@ -132,10 +132,11 @@ function RevenueTrackBody({
         getRelativeMs,
         numRows,
         opts.scale,
+        width,
       );
       if (max > 0n) setNonAggAxisMax(max);
     },
-    [type, getRelativeMs, numRows, opts.scale],
+    [type, getRelativeMs, numRows, opts.scale, width],
   );
 
   /**

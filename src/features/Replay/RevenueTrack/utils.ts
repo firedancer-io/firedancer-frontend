@@ -410,6 +410,7 @@ export function refreshNonAggView(
   getRelativeMs: (absoluteNs: bigint) => number,
   rows: number,
   scale: RevenueScale,
+  widthPx: number,
 ): bigint {
   const { cameraReferenceMs, liveTile, camera, resources } =
     rendererObj.nonAggResources;
@@ -418,8 +419,7 @@ export function refreshNonAggView(
   const visibleEndMs = cameraReferenceMs + camera.right;
   const visibleDurationMs = camera.right - camera.left;
 
-  const canvasCssPx = rendererObj.renderer.domElement.clientWidth || 1;
-  const msPerCssPx = visibleDurationMs / canvasCssPx;
+  const msPerCssPx = visibleDurationMs / (widthPx || 1);
   const minBarMs = MIN_BAR_WIDTH_PX * msPerCssPx;
 
   let maxValue = 0n;
