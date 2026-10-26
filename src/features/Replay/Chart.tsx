@@ -10,6 +10,8 @@ import MiniMap from "./MiniMap/MiniMap.tsx";
 import HeaderTrack from "./HeaderTrack/index.tsx";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
+import TileStatesTrack from "./TileStatesTrack/TileStatesTrack.tsx";
+import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
 
 const store = getDefaultStore();
 
@@ -43,6 +45,9 @@ export default function Chart() {
     }
   }, [isInitialized]);
 
+  // Drive the tile states caches used by the tile states tracks
+  useTileStatesCache();
+
   if (!isInitialized) return <Spinner />;
 
   return (
@@ -61,6 +66,8 @@ export default function Chart() {
             <Flex direction="column" gap="6px">
               <ShredsTrack width={width} />
               <RevenueTrack width={width} />
+              <TileStatesTrack kind="execrp" width={width} />
+              <TileStatesTrack kind="replay" width={width} />
             </Flex>
           </Flex>
         </>

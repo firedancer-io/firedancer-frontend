@@ -25,12 +25,24 @@ import {
 } from "./txnBarsPluginUtils";
 import { banksXScaleKey } from "../ComputeUnitsCard/consts";
 import { getTxnState } from "../../../../transactionUtils";
+import {
+  transactionErrorOutlineColor,
+  transactionSuccessOutlineColor,
+} from "../../../../colors";
+import { hexToRgba } from "../../../../colorUtils";
 import type { GetTxnBundleStats } from "../../../SlotDetails/SlotTransactionsContext";
 
 const laneWidth = 1;
 const laneDistr = SPACE_BETWEEN;
 
 let stateSeriesHgt = 0;
+
+const errorStroke = hexToRgba(transactionErrorOutlineColor, 0.5);
+const errorStrokeFocused = hexToRgba(transactionErrorOutlineColor, 0.8);
+const errorStrokeUnfocused = hexToRgba(transactionErrorOutlineColor, 0.1);
+const successStroke = hexToRgba(transactionSuccessOutlineColor, 0.5);
+const successStrokeFocused = hexToRgba(transactionSuccessOutlineColor, 0.8);
+const successStrokeUnfocused = hexToRgba(transactionSuccessOutlineColor, 0.1);
 
 const outOfFocusBrightness = 0.5;
 const focusBrightness = 1.3;
@@ -202,10 +214,10 @@ export function txnBarsPlugin(
             (!focusedTpu ||
               transactionsRef.current?.txn_source_tpu[txnIdx] === focusedTpu)
           ) {
-            return "rgba(162,5,8, .8)";
+            return errorStrokeFocused;
           }
 
-          return errorCode ? "rgba(162,5,8, .1)" : "rgba(19,173,79, .1)";
+          return errorCode ? errorStrokeUnfocused : successStrokeUnfocused;
         }
 
         if (focusedTpu) {
@@ -213,13 +225,13 @@ export function txnBarsPlugin(
             transactionsRef.current?.txn_source_tpu[txnIdx] === focusedTpu &&
             (!focusedErrorCode || errorCode === focusedErrorCode)
           ) {
-            return errorCode ? "rgba(162,5,8, .8)" : "rgba(19,173,79, .8)";
+            return errorCode ? errorStrokeFocused : successStrokeFocused;
           }
 
-          return errorCode ? "rgba(162,5,8, .1)" : "rgba(19,173,79, .1)";
+          return errorCode ? errorStrokeUnfocused : successStrokeUnfocused;
         }
 
-        return errorCode ? "rgba(162,5,8, .5)" : "rgba(19,173,79, .5)";
+        return errorCode ? errorStroke : successStroke;
       }
 
       return "";

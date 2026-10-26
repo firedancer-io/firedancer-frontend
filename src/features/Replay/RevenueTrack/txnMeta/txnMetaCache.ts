@@ -192,10 +192,15 @@ export const txnMetaCache = createTileCache<TxnMetaColumns, TxnMetaMaxima>({
       topic: "timeline",
       key: "query_txn_meta",
       id: requestId,
-      params: { start_ns: startNs.toString(), end_ns: endNs.toString() },
+      params: { start_ns: startNs.toString(), end_ns: (endNs + 1n).toString() },
     });
     const result = await txnMetaRequests.awaitResponse(requestId);
-    return "value" in result ? { value: parseTxnMeta(result.value) } : result;
+    return "value" in result
+      ? {
+          value: parseTxnMeta(result.value),
+          availableEndNs: result.value.available_end_ns,
+        }
+      : result;
   },
   failPendingRequests: txnMetaRequests.failAll,
 });

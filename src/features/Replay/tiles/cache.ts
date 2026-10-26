@@ -1,6 +1,8 @@
 import { getDefaultStore } from "jotai";
+import { uniqueId } from "lodash";
 import { isConnectedAtom, socketStateAtom } from "../../../api/ws/atoms";
 import { SocketState } from "../../../api/ws/types";
+import { smoothedNowNsAtom } from "../../../atoms";
 import type { NsTsRange } from "../../WebGl/webglUtils";
 import { splitFetch, type FetchResult, type Interval } from "./splitFetch";
 
@@ -26,7 +28,7 @@ export interface TileCacheConfig<TData, TMeta> {
   merge: (acc: TData, add: TData) => void;
   itemCount: (data: TData) => number;
   deriveMeta: (data: TData) => TMeta;
-  filterOwned: (data: TData, window: Interval) => TData;
+  filterOwned?: (data: TData, window: Interval) => TData;
   fetch: (window: Interval, requestId: number) => Promise<FetchResult<TData>>;
   failPendingRequests: () => void;
 }
@@ -106,8 +108,8 @@ export function createTileCache<TData, TMeta>({
   let lastStartNs: bigint | null = null;
   let lastEndNs: bigint | null = null;
   let lastWorldEndNs: bigint | null = null;
+  let availableEndNs: bigint | null = null;
   let inFlightTileId: number | null = null;
-  let nextRequestId = 0;
 
   const live: LiveState<TData> = {
     acc: null,
@@ -209,7 +211,14 @@ export function createTileCache<TData, TMeta>({
       empty,
       merge,
       filterOwned,
-      fetch: (window) => fetch(window, nextRequestId++),
+      fetch: async (window) => {
+        const result = await fetch(window, Number(uniqueId()));
+        const resultEndNs = "value" in result ? result.availableEndNs : null;
+        if (resultEndNs != null && resultEndNs > (availableEndNs ?? -1n)) {
+          availableEndNs = resultEndNs;
+        }
+        return result;
+      },
       signal,
     });
   }
@@ -336,8 +345,17 @@ export function createTileCache<TData, TMeta>({
     live.lastQueryTime = performance.now();
     live.inFlight = true;
 
+    let fetchEndNs = worldEndNs;
+    const serverNowNs = store.get(smoothedNowNsAtom);
+    if (availableEndNs !== null && serverNowNs != null) {
+      const recordedEndNs = availableEndNs - 1n;
+      fetchEndNs = serverNowNs < recordedEndNs ? serverNowNs : recordedEndNs;
+      if (fetchEndNs < worldEndNs) fetchEndNs = worldEndNs;
+    }
+    const fetchEndTileId = tileIdOf(fetchEndNs);
+
     const { signal } = controller;
-    while (live.acc !== null && live.acc.tileId < worldEndTileId) {
+    while (live.acc !== null && live.acc.tileId < fetchEndTileId) {
       const tileId = live.acc.tileId;
       const [, tileEndNs] = getRange(tileId);
       const canRetry = await fetchLiveRange(tileEndNs);
@@ -351,9 +369,9 @@ export function createTileCache<TData, TMeta>({
       startLive(tileId + 1);
     }
 
-    if (live.acc?.tileId === worldEndTileId) {
+    if (live.acc?.tileId === fetchEndTileId) {
       const alignedEndNs =
-        (worldEndNs / LIVE_QUERY_STEP_NS) * LIVE_QUERY_STEP_NS - 1n;
+        (fetchEndNs / LIVE_QUERY_STEP_NS) * LIVE_QUERY_STEP_NS - 1n;
       const canRetry = await fetchLiveRange(alignedEndNs);
       if (signal.aborted) return;
       if (canRetry) {
@@ -410,6 +428,7 @@ export function createTileCache<TData, TMeta>({
     lastStartNs = null;
     lastEndNs = null;
     lastWorldEndNs = null;
+    availableEndNs = null;
     live.inFlight = false;
     resetLive();
     publish({ kind: "reset" });

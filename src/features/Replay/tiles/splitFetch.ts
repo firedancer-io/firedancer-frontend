@@ -1,6 +1,8 @@
 export type Interval = [startNs: bigint, endNs: bigint];
 
-export type FetchResult<TData> = { value: TData } | { errorCode: string };
+export type FetchResult<TData> =
+  | { value: TData; availableEndNs?: bigint | null }
+  | { errorCode: string };
 
 const RESULT_LIMIT_EXCEEDED = "result_limit_exceeded"; // server error code
 
@@ -10,7 +12,7 @@ export interface SplitFetchOpts<TData> {
   merge: (acc: TData, add: TData) => void;
   /** Drops items a window doesn't own so boundary-straddling items aren't
   double-counted when halves merge. */
-  filterOwned: (data: TData, window: Interval) => TData;
+  filterOwned?: (data: TData, window: Interval) => TData;
   fetch: (window: Interval, nodeIdx: number) => Promise<FetchResult<TData>>;
   /** Once aborted, no further windows are fetched. */
   signal?: AbortSignal;
@@ -59,7 +61,10 @@ export async function splitFetch<TData>(
 
   // No need to retry if fetch successfully returned value
   if ("value" in result) {
-    return { data: opts.filterOwned(result.value, window), canRetry: false };
+    const data = opts.filterOwned
+      ? opts.filterOwned(result.value, window)
+      : result.value;
+    return { data, canRetry: false };
   }
 
   if (result.errorCode === RESULT_LIMIT_EXCEEDED) {

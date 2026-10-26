@@ -1395,6 +1395,8 @@ export const aggRevenueSchema = z.object({
 });
 
 export const txnMetaResponseSchema = z.object({
+  available_start_ns: z.coerce.bigint().nullable(),
+  available_end_ns: z.coerce.bigint().nullable(),
   reference_slot: z.number().nullable(),
   reference_ts: z.coerce.bigint().nullable(),
   slot_delta: z.number().array(),
@@ -1407,6 +1409,52 @@ export const txnMetaResponseSchema = z.object({
   txn_load_start_ts_delta: z.coerce.bigint().array(),
   txn_commit_end_ts_delta: z.coerce.bigint().array(),
   txn_error_code: z.number().array(),
+});
+
+export enum TileState {
+  Idle = 0,
+  Sigverify = 1,
+  Loading = 2,
+  Validate = 3,
+  Execute = 4,
+  PostExecute = 5,
+  BlockedOnTiles = 6,
+  BlockedOnConflicts = 7,
+  BlockedOnNetwork = 8,
+  SlotFinish = 9,
+  ExecBatch = 10,
+  SigverifyBatch = 11,
+}
+
+export const tileStatesGranularitySchema = z.enum(["txn", "txn_batch"]);
+
+export const tileStatesResponseSchema = z.object({
+  granularity: tileStatesGranularitySchema,
+  available_start_ns: z.coerce.bigint().nullable(),
+  available_end_ns: z.coerce.bigint().nullable(),
+  start_ts: z.coerce.bigint(),
+  reference_slot: z.number().nullable(),
+  tile: z.number().nullable().array(),
+  state_cnt: z.number().array(),
+  state: z.number().array(),
+  dur: z.number().array(),
+  slot_state_lo: z.number().array(),
+  slot_state_cnt: z.number().array(),
+  slot_delta: z.number().array(),
+  txn_state_lo: z.number().array(),
+  txn_state_cnt: z.number().array(),
+  txn_slot_delta: z.number().array(),
+  txn_idx: z.number().array(),
+  txn_error_code: z.number().nullable().array(),
+});
+
+export const aggTileStatesSchema = z.object({
+  granularity: aggGranularitySchema,
+  reference_ts_ns: z.coerce.bigint(),
+  available_start_ns: z.coerce.bigint().nullable(),
+  available_end_ns: z.coerce.bigint().nullable(),
+  tiles: z.number().nullable().array(),
+  tile_states: z.array(z.array(z.array(z.number().nullable()).nullable())),
 });
 
 export enum AggShredEventType {
@@ -1472,6 +1520,16 @@ export const timelineSchema = z.discriminatedUnion("key", [
     id: z.number(),
   }),
   timelineTopicSchema.extend({
+    key: z.literal("query_tile_states"),
+    value: tileStatesResponseSchema,
+    id: z.number(),
+  }),
+  timelineTopicSchema.extend({
+    id: z.number(),
+    key: z.literal("query_agg_tile_states"),
+    value: aggTileStatesSchema,
+  }),
+  timelineTopicSchema.extend({
     id: z.number(),
     key: z.literal("query_shreds"),
     value: timelineShredsSchema,
@@ -1483,8 +1541,15 @@ export const timelineSchema = z.discriminatedUnion("key", [
   }),
 ]);
 
-export const timelineErrorSchema = timelineTopicSchema.extend({
-  key: z.enum(["query_txn_meta"]),
-  error: errorBodySchema,
-  id: z.number(),
-});
+export const timelineErrorSchema = z.discriminatedUnion("key", [
+  timelineTopicSchema.extend({
+    key: z.literal("query_txn_meta"),
+    error: errorBodySchema,
+    id: z.number(),
+  }),
+  timelineTopicSchema.extend({
+    key: z.literal("query_tile_states"),
+    error: errorBodySchema,
+    id: z.number(),
+  }),
+]);

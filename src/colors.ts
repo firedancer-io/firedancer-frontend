@@ -249,6 +249,8 @@ export const transactionExecuteColor = "rgba(96, 100, 108, .5)";
 export const transactionExecuteTextColor = "#B5B2BC";
 export const transactionPostExecuteColor = "rgba(17, 50, 100, .5)";
 export const transactionPostExecuteTextColor = "#0090FF";
+export const transactionErrorOutlineColor = "#A20508";
+export const transactionSuccessOutlineColor = "#13AD4F";
 
 // leader schedule
 export const summaryPrimaryTextColor = "var(--gray-11)";
