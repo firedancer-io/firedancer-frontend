@@ -1,8 +1,7 @@
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
-import clsx from "clsx";
-import { type MarkerLinesProps } from "../const.ts";
+import SelectionMarker from "../SelectionMarker.tsx";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -56,17 +55,12 @@ function granularityOf(view: TileStatesView): TileStatesGranularity {
   return view === "txn" ? "txn" : "txn_batch";
 }
 
-interface TileStatesTrackProps extends WebGlRemountProps, MarkerLinesProps {
+interface TileStatesTrackProps extends WebGlRemountProps {
   kind: TileKind;
   width: number;
 }
 
-function TileStatesTrack({
-  kind,
-  remount,
-  markerLinesClassName,
-  width,
-}: TileStatesTrackProps) {
+function TileStatesTrack({ kind, remount, width }: TileStatesTrackProps) {
   const [opts, setOpts] = useState<TileStatesViewOpts>(
     DEFAULT_TILE_STATES_VIEW_OPTS,
   );
@@ -298,9 +292,10 @@ function TileStatesTrack({
       <div style={{ position: "relative", height: `${height}px` }}>
         <div
           ref={containerRef}
-          className={clsx(styles.trackCanvasContainer, markerLinesClassName)}
+          className={styles.trackCanvasContainer}
           style={{ visibility: view === "agg" ? "hidden" : undefined }}
         />
+        <SelectionMarker />
         {view === "agg" && <AggTileStates />}
         <TileStatesYAxis labels={rows.map(({ label }) => label)} />
       </div>
