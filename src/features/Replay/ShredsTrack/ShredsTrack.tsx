@@ -1,6 +1,6 @@
 import { getDefaultStore } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import { type MarkerLinesProps } from "../const.ts";
+import SelectionMarker from "../SelectionMarker.tsx";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
@@ -32,7 +32,6 @@ import {
   timelineFecShredsAtoms,
 } from "./atoms.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
-import clsx from "clsx";
 import styles from "../track.module.css";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import TrackControls from "../TrackControls.tsx";
@@ -40,15 +39,11 @@ import TrackControls from "../TrackControls.tsx";
 const height = 300;
 const store = getDefaultStore();
 
-interface ShredsTrackProps extends WebGlRemountProps, MarkerLinesProps {
+interface ShredsTrackProps extends WebGlRemountProps {
   width: number;
 }
 
-function ShredsTrack({
-  remount,
-  markerLinesClassName,
-  width,
-}: ShredsTrackProps) {
+function ShredsTrack({ remount, width }: ShredsTrackProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [granularity, setGranularity] = useState<
     AggGranularity | ShredsGranularity | undefined
@@ -263,10 +258,8 @@ function ShredsTrack({
 
   return (
     <div className={styles.trackContainer} style={{ height: `${height}px` }}>
-      <div
-        ref={containerRef}
-        className={clsx(styles.trackCanvasContainer, markerLinesClassName)}
-      />
+      <div ref={containerRef} className={styles.trackCanvasContainer} />
+      <SelectionMarker />
       <TrackControls
         name="Shreds"
         bucketSize={granularity}

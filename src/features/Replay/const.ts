@@ -43,8 +43,3 @@ export const ascBucketGranularities = Object.keys(msBucketSizes).sort(
   (a, b) =>
     msBucketSizes[a as AggGranularity] - msBucketSizes[b as AggGranularity],
 ) as AggGranularity[];
-
-export interface MarkerLinesProps {
-  markerLinesClassName: string;
-  miniMapMarkerLinesClassName: string;
-}

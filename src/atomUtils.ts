@@ -1,5 +1,27 @@
-import { atom } from "jotai";
+import { atom, getDefaultStore, type Atom } from "jotai";
 import { atomWithImmer } from "jotai-immer";
+import { useLayoutEffect, useRef } from "react";
+
+const store = getDefaultStore();
+
+export function useAtomsSubscription(
+  atoms: readonly Atom<unknown>[],
+  onChange: () => void,
+) {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  useLayoutEffect(() => {
+    const cb = () => onChangeRef.current();
+    cb();
+    const unsubs = atoms.map((a) => store.sub(a, cb));
+    return () => {
+      unsubs.forEach((unsub) => unsub());
+    };
+    // depends on the stable atom references
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...atoms]);
+}
 
 export function rafAtom<T>(initialValue: T) {
   const baseAtom = atom(initialValue);

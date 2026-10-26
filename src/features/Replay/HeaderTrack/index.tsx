@@ -1,19 +1,15 @@
 import { useCallback, useRef } from "react";
-import { type MarkerLinesProps } from "../const.ts";
 import AggHeaderTrack from "./AggHeaderTrack.tsx";
 import { NonAggHeaderTrack } from "./NonAggHeaderTrack.tsx";
 import styles from "./headerTrack.module.css";
 import { Box } from "@radix-ui/themes";
 import { trackHeight } from "./const.ts";
 
-interface HeaderTrackProps extends MarkerLinesProps {
+interface HeaderTrackProps {
   width: number;
 }
 
-export default function HeaderTrack({
-  width,
-  ...markerLinesProps
-}: HeaderTrackProps) {
+export default function HeaderTrack({ width }: HeaderTrackProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   /**
@@ -44,7 +40,6 @@ export default function HeaderTrack({
         className={styles.aggContainer}
         width={width}
         showAgg={showAgg}
-        {...markerLinesProps}
       />
       <NonAggHeaderTrack
         className={styles.nonAggContainer}

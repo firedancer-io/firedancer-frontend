@@ -6,7 +6,7 @@ import {
   type RevenueViewOpts,
 } from "./consts.ts";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
-import { type MarkerLinesProps } from "../const.ts";
+import SelectionMarker from "../SelectionMarker.tsx";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -48,7 +48,6 @@ import {
   txnMetaCache,
   type TxnMetaCacheDelta,
 } from "./txnMeta/txnMetaCache.ts";
-import clsx from "clsx";
 import styles from "../track.module.css";
 
 const store = getDefaultStore();
@@ -56,7 +55,7 @@ const store = getDefaultStore();
 const getNumRows = (splitByRow: boolean, tileCount: number) =>
   splitByRow ? Math.max(tileCount, 1) : 1;
 
-interface RevenueTrackProps extends MarkerLinesProps {
+interface RevenueTrackProps {
   width: number;
 }
 
@@ -66,7 +65,6 @@ interface RevenueTrackBodyProps extends RevenueTrackProps, WebGlRemountProps {
 
 function RevenueTrackBody({
   remount,
-  markerLinesClassName,
   width,
   aggQuery: { query: aggQuery, pauseStaleRefreshes },
 }: RevenueTrackBodyProps) {
@@ -329,10 +327,8 @@ function RevenueTrackBody({
       className={styles.trackContainer}
       style={{ height: `${revenueTrackHeight}px` }}
     >
-      <div
-        ref={containerRef}
-        className={clsx(styles.trackCanvasContainer, markerLinesClassName)}
-      />
+      <div ref={containerRef} className={styles.trackCanvasContainer} />
+      <SelectionMarker />
       <RevenueYAxis
         maxValue={isAgg ? aggAxisMax : nonAggAxisMax}
         scale={opts.scale}
