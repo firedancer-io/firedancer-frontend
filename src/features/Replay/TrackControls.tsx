@@ -19,6 +19,8 @@ interface TrackControlsProps<T extends string> {
   bucketSize: string | undefined;
   legend?: LegendItem<T>[];
   legendSelection?: { value: T; onChange: (value: T) => void };
+  legendMultiSelection?: { values: T[]; onChange: (values: T[]) => void };
+  onOpenChange?: (isOpen: boolean) => void;
   children?: ReactNode;
 }
 
@@ -27,6 +29,8 @@ export default function TrackControls<T extends string>({
   bucketSize,
   legend,
   legendSelection,
+  legendMultiSelection,
+  onOpenChange,
   children,
 }: TrackControlsProps<T>) {
   const label = (
@@ -48,13 +52,20 @@ export default function TrackControls<T extends string>({
     <PopoverDropdown
       align="start"
       className={styles.dropdown}
+      onOpenChange={onOpenChange}
       content={
         <Flex
           direction="column"
           width="100%"
           className={styles.dropdownContent}
         >
-          {legend && <Legend items={legend} selection={legendSelection} />}
+          {legend && (
+            <Legend
+              items={legend}
+              selection={legendSelection}
+              multiSelection={legendMultiSelection}
+            />
+          )}
           {legend && children && <TrackControlsDivider />}
           {children}
         </Flex>
@@ -78,19 +89,42 @@ export default function TrackControls<T extends string>({
 interface LegendProps<T extends string> {
   items: LegendItem<T>[];
   selection: TrackControlsProps<T>["legendSelection"];
+  multiSelection: TrackControlsProps<T>["legendMultiSelection"];
 }
 
-function Legend<T extends string>({ items, selection }: LegendProps<T>) {
+function Legend<T extends string>({
+  items,
+  selection,
+  multiSelection,
+}: LegendProps<T>) {
+  if (multiSelection) {
+    return <MultiSelectLegend items={items} multiSelection={multiSelection} />;
+  }
   if (selection) {
-    return (
-      <RadioGroup.Root
-        value={selection.value}
-        onValueChange={(value) => selection.onChange(value as T)}
-        aria-label="Series"
-        asChild
-      >
-        <Flex direction="column">
-          <Text className={styles.sectionHeader}>Series</Text>
+    return <SingleSelectLegend items={items} selection={selection} />;
+  }
+  return <StaticLegend items={items} />;
+}
+
+interface SingleSelectLegendProps<T extends string> {
+  items: LegendItem<T>[];
+  selection: NonNullable<TrackControlsProps<T>["legendSelection"]>;
+}
+
+function SingleSelectLegend<T extends string>({
+  items,
+  selection,
+}: SingleSelectLegendProps<T>) {
+  return (
+    <RadioGroup.Root
+      value={selection.value}
+      onValueChange={(value) => selection.onChange(value as T)}
+      aria-label="Series"
+      asChild
+    >
+      <Flex direction="column">
+        <Text className={styles.sectionHeader}>Series</Text>
+        <Flex direction="column" className={styles.legendItems}>
           {items.map(({ value, ...item }) => (
             <RadioGroup.Item
               key={item.label}
@@ -101,22 +135,74 @@ function Legend<T extends string>({ items, selection }: LegendProps<T>) {
             </RadioGroup.Item>
           ))}
         </Flex>
-      </RadioGroup.Root>
-    );
-  }
+      </Flex>
+    </RadioGroup.Root>
+  );
+}
 
-  // For non-interactive legends, show all series as selected
+// For non-interactive legends, show all series as selected
+function StaticLegend<T extends string>({ items }: { items: LegendItem<T>[] }) {
   return (
     <Flex direction="column">
       <Text className={styles.sectionHeader}>Series</Text>
-      {items.map(({ value: _, ...item }) => (
-        <div
-          key={item.label}
-          className={clsx(styles.option, styles.legendItem, styles.static)}
-        >
-          <LegendItemContent {...item} />
-        </div>
-      ))}
+      <Flex direction="column" className={styles.legendItems}>
+        {items.map(({ value: _, ...item }) => (
+          <div
+            key={item.label}
+            className={clsx(styles.option, styles.legendItem, styles.static)}
+          >
+            <LegendItemContent {...item} />
+          </div>
+        ))}
+      </Flex>
+    </Flex>
+  );
+}
+
+interface MultiSelectLegendProps<T extends string> {
+  items: LegendItem<T>[];
+  multiSelection: NonNullable<TrackControlsProps<T>["legendMultiSelection"]>;
+}
+
+function MultiSelectLegend<T extends string>({
+  items,
+  multiSelection: { values, onChange },
+}: MultiSelectLegendProps<T>) {
+  const getItemValue = ({ value, label }: LegendItem<T>) =>
+    value ?? (label as T);
+
+  return (
+    <Flex direction="column" role="group" aria-label="Series">
+      <Text className={styles.sectionHeader}>Series</Text>
+      <Flex direction="column" className={styles.legendItems}>
+        {items.map((item) => {
+          const itemValue = getItemValue(item);
+          const checked = values.includes(itemValue);
+          return (
+            <button
+              key={item.label}
+              type="button"
+              role="checkbox"
+              aria-checked={checked}
+              data-state={checked ? "checked" : "unchecked"}
+              className={clsx(styles.option, styles.legendItem)}
+              onClick={() =>
+                onChange(
+                  checked
+                    ? values.filter((v) => v !== itemValue)
+                    : [...values, itemValue],
+                )
+              }
+            >
+              <LegendItemContent
+                label={item.label}
+                color={item.color}
+                description={item.description}
+              />
+            </button>
+          );
+        })}
+      </Flex>
     </Flex>
   );
 }

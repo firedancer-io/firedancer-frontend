@@ -1473,6 +1473,12 @@ export const aggShredsSchema = z.object({
   [AggShredEventType.Published]: z.array(z.number().nullable()),
 });
 
+export const aggCpuSchema = z.object({
+  granularity: aggGranularitySchema,
+  reference_ts_ns: z.coerce.bigint(),
+  utilization: z.array(z.array(z.number().nullable())),
+});
+
 export const timelineSlotsSchema = z.object({
   available_start_ns: z.coerce.bigint().nullable(),
   available_end_ns: z.coerce.bigint().nullable(),
@@ -1538,6 +1544,11 @@ export const timelineSchema = z.discriminatedUnion("key", [
     id: z.number(),
     key: z.literal("query_agg_shreds"),
     value: aggShredsSchema,
+  }),
+  timelineTopicSchema.extend({
+    id: z.number(),
+    key: z.literal("query_agg_cpu"),
+    value: aggCpuSchema,
   }),
 ]);
 

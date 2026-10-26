@@ -105,6 +105,18 @@
   align-items: center;
 }
 
+.legend-items {
+  max-height: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--replay-popover-border-color) transparent;
+
+  &:hover {
+    scrollbar-color: var(--replay-dropdown-secondary-text-color) transparent;
+  }
+}
+
 .legend-description {
   margin-left: auto;
   color: var(--replay-dropdown-secondary-text-color);

@@ -814,6 +814,7 @@ function useUpdateAtoms() {
           switch (key) {
             case "query_shreds":
             case "query_agg_shreds":
+            case "query_agg_cpu":
             case "query_agg_revenue":
             case "query_agg_slots":
             case "query_slots":

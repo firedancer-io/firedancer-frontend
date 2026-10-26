@@ -12,6 +12,7 @@ import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
 import TileStatesTrack from "./TileStatesTrack/TileStatesTrack.tsx";
 import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
+import CpuTrack from "./CpuTrack/CpuTrack.tsx";
 
 const store = getDefaultStore();
 
@@ -68,6 +69,7 @@ export default function Chart() {
               <RevenueTrack width={width} />
               <TileStatesTrack kind="execrp" width={width} />
               <TileStatesTrack kind="replay" width={width} />
+              <CpuTrack width={width} />
             </Flex>
           </Flex>
         </>
