@@ -1,5 +1,5 @@
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import { type MarkerLinesProps } from "../const.ts";
+import SelectionMarker from "../SelectionMarker.tsx";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -27,7 +27,7 @@ import { getDefaultStore, useAtomValue } from "jotai";
 
 const store = getDefaultStore();
 
-interface MiniMapProps extends WebGlRemountProps, MarkerLinesProps {
+interface MiniMapProps extends WebGlRemountProps {
   setUpMiniMap: (
     trackEl: HTMLDivElement,
     visibleRangeEl: HTMLDivElement,
@@ -37,12 +37,7 @@ interface MiniMapProps extends WebGlRemountProps, MarkerLinesProps {
   width: number;
 }
 
-function MiniMap({
-  remount,
-  setUpMiniMap,
-  miniMapMarkerLinesClassName,
-  width,
-}: MiniMapProps) {
+function MiniMap({ remount, setUpMiniMap, width }: MiniMapProps) {
   const [isInitialized, setIsInitialized] = useState(false);
 
   const popoverContainerEl = useAtomValue(containerElAtom);
@@ -195,10 +190,8 @@ function MiniMap({
       className={styles.miniMapContainer}
       height={`${trackHeight}px`}
     >
-      <div
-        ref={chartContainerRef}
-        className={clsx(styles.miniMapTrack, miniMapMarkerLinesClassName)}
-      />
+      <div ref={chartContainerRef} className={styles.miniMapTrack} />
+      <SelectionMarker range="world" />
       <Popover.Root open>
         <Popover.Anchor asChild>
           <div ref={visibleRangeElRef} className={styles.visibleRangeBox}>

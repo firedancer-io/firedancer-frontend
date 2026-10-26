@@ -1,6 +1,6 @@
 import { getDefaultStore } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import { type MarkerLinesProps } from "../const.ts";
+import SelectionMarker from "../SelectionMarker.tsx";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
@@ -28,7 +28,7 @@ import {
 const chartId = "agg-header-track";
 const store = getDefaultStore();
 
-interface AggHeaderTrackProps extends WebGlRemountProps, MarkerLinesProps {
+interface AggHeaderTrackProps extends WebGlRemountProps {
   width: number;
   className: string;
   showAgg: () => void;
@@ -36,7 +36,6 @@ interface AggHeaderTrackProps extends WebGlRemountProps, MarkerLinesProps {
 
 function AggHeaderTrack({
   remount,
-  markerLinesClassName,
   width,
   className,
   showAgg,
@@ -181,10 +180,8 @@ function AggHeaderTrack({
 
   return (
     <div className={clsx(className, styles.trackContainer)}>
-      <div
-        ref={containerRef}
-        className={clsx(styles.trackCanvasContainer, markerLinesClassName)}
-      />
+      <div ref={containerRef} className={styles.trackCanvasContainer} />
+      <SelectionMarker />
       <div className={clsx(chartStyles.noChartExplore, styles.bucketSizeLabel)}>
         Bucket size: {granularity ?? "-"}
       </div>

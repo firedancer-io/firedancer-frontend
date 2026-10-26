@@ -2,31 +2,16 @@ import { Flex, Spinner } from "@radix-ui/themes";
 import { useRef, useCallback, useLayoutEffect } from "react";
 import { useMeasure } from "react-use";
 import styles from "./chart.module.css";
-import type { MarkerLinesProps } from "./const.ts";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
 import { useExplorableChart } from "./useExplorableChart.ts";
 import { getDefaultStore, useAtomValue } from "jotai";
-import {
-  initializeVisibleRangeAtom,
-  isInitializedAtom,
-  selectedMsAtom,
-  visibleRangeAtom,
-  worldRangeAtom,
-} from "./atoms.ts";
+import { initializeVisibleRangeAtom, isInitializedAtom } from "./atoms.ts";
 import MiniMap from "./MiniMap/MiniMap.tsx";
 import HeaderTrack from "./HeaderTrack/index.tsx";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
 
 const store = getDefaultStore();
-
-const MARKER_PCT_VAR = "--marker-lines-pct";
-const WORLD_MARKER_PCT_VAR = "--world-marker-lines-pct";
-
-const markerLinesProps: MarkerLinesProps = {
-  markerLinesClassName: styles.withMarkerLines,
-  miniMapMarkerLinesClassName: styles.withWorldMarkerLines,
-};
 
 /**
  * Set up Replay chart, which keeps track of a reference ts (startup time), and
@@ -37,7 +22,6 @@ export default function Chart() {
   const isInitialized = useAtomValue(isInitializedAtom);
 
   const [measureRef, { width }] = useMeasure<HTMLDivElement>();
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const { setUpExploreListeners, setUpMiniMap } = useExplorableChart();
 
@@ -52,54 +36,6 @@ export default function Chart() {
     [setUpExploreListeners],
   );
 
-  const refreshSelectedMarker = useCallback((isWorld: boolean) => {
-    if (!containerRef.current) return;
-
-    const cssVar = isWorld ? WORLD_MARKER_PCT_VAR : MARKER_PCT_VAR;
-
-    const selectedMs = store.get(selectedMsAtom);
-    if (selectedMs == null) {
-      // off screen
-      containerRef.current.style.setProperty(cssVar, "-300%");
-      return;
-    }
-
-    const range = store.get(isWorld ? worldRangeAtom : visibleRangeAtom);
-    if (!range) return;
-
-    const pct = (100 * (selectedMs - range[0])) / (range[1] - range[0]);
-    containerRef.current.style.setProperty(cssVar, `${pct}%`);
-  }, []);
-
-  const setContainerRefs = useCallback(
-    (el: HTMLDivElement | null) => {
-      containerRef.current = el;
-      if (el) {
-        measureRef(el);
-        refreshSelectedMarker(true);
-        refreshSelectedMarker(false);
-      }
-    },
-    [measureRef, refreshSelectedMarker],
-  );
-
-  useLayoutEffect(() => {
-    const unsubs = [
-      // world end advances continuously, so the world marker's percentage
-      // must be recomputed as the world range grows
-      store.sub(worldRangeAtom, () => refreshSelectedMarker(true)),
-      store.sub(visibleRangeAtom, () => refreshSelectedMarker(false)),
-      store.sub(selectedMsAtom, () => {
-        refreshSelectedMarker(true);
-        refreshSelectedMarker(false);
-      }),
-    ];
-
-    return () => {
-      unsubs.forEach((unsub) => unsub());
-    };
-  }, [refreshSelectedMarker]);
-
   useLayoutEffect(() => {
     if (isInitialized) {
       // TODO: make sure selected ts is initialized from query param before this
@@ -110,25 +46,21 @@ export default function Chart() {
   if (!isInitialized) return <Spinner />;
 
   return (
-    <div className={styles.container} ref={setContainerRefs}>
+    <div className={styles.container} ref={measureRef}>
       {!!width && (
         <>
-          <MiniMap
-            width={width}
-            setUpMiniMap={setUpMiniMap}
-            {...markerLinesProps}
-          />
+          <MiniMap width={width} setUpMiniMap={setUpMiniMap} />
           <Flex
             ref={setTracksContainerRef}
             direction="column"
             position="relative"
           >
-            <HeaderTrack width={width} {...markerLinesProps} />
+            <HeaderTrack width={width} />
             <ResetLiveButton />
 
             <Flex direction="column" gap="6px">
-              <ShredsTrack width={width} {...markerLinesProps} />
-              <RevenueTrack width={width} {...markerLinesProps} />
+              <ShredsTrack width={width} />
+              <RevenueTrack width={width} />
             </Flex>
           </Flex>
         </>
