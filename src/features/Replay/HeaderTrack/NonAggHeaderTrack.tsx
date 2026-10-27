@@ -1,4 +1,4 @@
-import { Flex, Text } from "@radix-ui/themes";
+import { Text } from "@radix-ui/themes";
 import { getDefaultStore } from "jotai";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms";
 import {
@@ -43,6 +43,7 @@ import { trackHeight } from "./const";
 const store = getDefaultStore();
 const logoSize = 8;
 const chartId = "non-agg-header-track";
+const containerWindowMs = Number(tileSizeNs) / nsPerMs;
 
 /**
  * Shared range math: resolve the absolute visible window, the overscanned tile
@@ -154,11 +155,10 @@ export function NonAggHeaderTrack({
     slotGroups: SlotGroup[];
     slotTier: SlotTier;
     groupTier: GroupTier;
-    // ms range of container
     containerStartMs: number;
-    containerDurationMs: number;
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const containerStartMsRef = useRef(0);
 
   const nonAggQuery = useNonAggHeaderQuery(chartId);
 
@@ -205,37 +205,12 @@ export function NonAggHeaderTrack({
         referenceNs,
         BigInt(startIdx) * tileSizeNs,
       );
-      const containerDurationMs =
-        Number(BigInt(endIdx + 1 - startIdx) * tileSizeNs) / nsPerMs;
 
-      setRenderState((prev) => {
-        // If zooming in, don't remove previously rendered slot groups so they are around if user zooms out
-        const isSubset =
-          prev != null &&
-          nextSlotGroups.length > 0 &&
-          nextSlotGroups.every((group) =>
-            prev.slotGroups.some((g) => g.leaderSlot === group.leaderSlot),
-          );
-
-        return isSubset
-          ? {
-              // refresh data
-              slotGroups: prev.slotGroups.map(
-                (group) => slotGroupsMap.get(group.leaderSlot) ?? group,
-              ),
-              slotTier,
-              groupTier,
-              // when keeping the previous (wider) group set, keep the container range that covers it
-              containerStartMs: prev.containerStartMs,
-              containerDurationMs: prev.containerDurationMs,
-            }
-          : {
-              slotGroups: nextSlotGroups,
-              slotTier,
-              groupTier,
-              containerStartMs,
-              containerDurationMs,
-            };
+      setRenderState({
+        slotGroups: nextSlotGroups,
+        slotTier,
+        groupTier,
+        containerStartMs,
       });
     },
     30,
@@ -243,7 +218,7 @@ export function NonAggHeaderTrack({
   );
 
   /**
-   * Update container position and width. This will auto-scale slot groups.
+   * Update container position and width. Slot groups are positioned relative to the container.
    */
   const updateGroupPositionsOnly = useCallback(
     (referenceNs: bigint, visibleRange: TsRange) => {
@@ -252,15 +227,13 @@ export function NonAggHeaderTrack({
 
       if (!containerRef.current) return;
 
-      // trigger container to update position / width
-      containerRef.current.style.setProperty(
-        "--visible-range-start-ms",
-        `${visibleStartMs}`,
-      );
-      containerRef.current.style.setProperty(
-        "--visible-range-duration-ms",
-        `${visibleEndMs - visibleStartMs}`,
-      );
+      // set styles directly, inherited css vars would restyle every slot
+      const pxPerMs = width / (visibleEndMs - visibleStartMs);
+      const containerWidth = `${containerWindowMs * pxPerMs}px`;
+      if (containerRef.current.style.width !== containerWidth) {
+        containerRef.current.style.width = containerWidth;
+      }
+      containerRef.current.style.transform = `translateX(${(containerStartMsRef.current - visibleStartMs) * pxPerMs}px)`;
 
       // temporarily hide elements for this tier on pan / zoom, until react renders the updated tile props
       applyTierClasses(containerRef.current, slotTier, groupTier);
@@ -349,21 +322,24 @@ export function NonAggHeaderTrack({
     throttledUpdateGroups(referenceNs, visibleRange);
   }, [throttledUpdateGroups, width]);
 
+  const containerStartMs = renderState?.containerStartMs ?? 0;
+
+  // reposition container before paint when its start changes
+  useLayoutEffect(() => {
+    containerStartMsRef.current = containerStartMs;
+    const referenceNs = store.get(referenceNsAtom);
+    const visibleRange = store.get(visibleRangeAtom);
+    if (referenceNs == null || !visibleRange) return;
+    updateGroupPositionsOnly(referenceNs, visibleRange);
+  }, [containerStartMs, updateGroupPositionsOnly]);
+
   return (
     <div className={className}>
-      <div
-        ref={containerRef}
-        className={styles.container}
-        style={
-          {
-            "--container-start-ms": `${renderState?.containerStartMs ?? 0}`,
-            "--container-duration-ms": `${renderState?.containerDurationMs ?? 0}`,
-          } as CSSProperties
-        }
-      >
+      <div ref={containerRef} className={styles.container}>
         {renderState?.slotGroups.map((group) => (
           <SlotGroupContainer
             key={group.leaderSlot}
+            containerStartMs={containerStartMs}
             leaderSlot={group.leaderSlot}
             slots={group.slots}
             groupTier={renderState.groupTier}
@@ -376,6 +352,7 @@ export function NonAggHeaderTrack({
 }
 
 interface SlotGroupContainerProps {
+  containerStartMs: number;
   leaderSlot: number;
   slots: Map<number, SlotInfo>;
   groupTier: GroupTier;
@@ -383,6 +360,7 @@ interface SlotGroupContainerProps {
 }
 
 const SlotGroupContainer = memo(function SlotGroupContainer({
+  containerStartMs,
   leaderSlot,
   slots,
   groupTier,
@@ -408,6 +386,8 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
           height: `${trackHeight}px`,
           "--group-start-ms": `${groupStartMs}`,
           "--group-duration-ms": `${groupDurationMs}`,
+          left: `${((groupStartMs - containerStartMs) / containerWindowMs) * 100}%`,
+          width: `${(groupDurationMs / containerWindowMs) * 100}%`,
         } as CSSProperties
       }
     >
@@ -447,15 +427,10 @@ const SlotGroupHeader = memo(function SlotGroupHeader({
   const { peer, name, countryFlag } = useSlotInfo(leaderSlot);
 
   return (
-    <Flex
-      height="13px"
-      overflow="hidden"
-      width="100%"
-      gap="4px"
-      align="center"
-      justify="center"
-      px={groupTier === "none" || groupTier === "icon" ? "0" : "2px"}
-      className={styles.slotGroupHeader}
+    <div
+      className={clsx(styles.slotGroupHeader, {
+        [styles.noPad]: groupTier === "none" || groupTier === "icon",
+      })}
     >
       {(groupTier === "flag" ||
         groupTier === "name" ||
@@ -482,7 +457,7 @@ const SlotGroupHeader = memo(function SlotGroupHeader({
       {groupTier === "flag" && countryFlag && (
         <MonoText className={styles.countryFlag}>{countryFlag}</MonoText>
       )}
-    </Flex>
+    </div>
   );
 });
 
