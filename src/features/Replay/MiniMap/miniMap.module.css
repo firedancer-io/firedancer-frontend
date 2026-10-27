@@ -15,6 +15,7 @@
     cursor: grab;
     box-sizing: border-box;
     position: absolute;
+    z-index: 1;
     bottom: 5px;
     transform: translate(-50%, 50%);
     width: 100%;
@@ -27,7 +28,7 @@
       content: "";
       position: absolute;
       /* expand clickable range */
-      inset: -5px -10px;
+      inset: 0 -10px -5px;
     }
   }
 

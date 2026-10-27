@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, type CSSProperties } from "react";
 import { Box, Flex, Tooltip } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
 import { HoverCard } from "radix-ui";
@@ -25,12 +25,11 @@ const PinContainer = memo(function PinContainer({
 }: PinContainerProps) {
   return (
     <Flex
-      data-type={type}
-      data-ts={ts}
       className={styles.pinContainer}
       position="absolute"
       // full-width container positioned with translate x
       inset="0"
+      style={{ "--event-ts": `${ts}` } as CSSProperties}
     >
       {slots.length > 1 ? (
         <MultiPin slots={slots} type={type} panToTs={panToTs} />

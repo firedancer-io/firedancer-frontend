@@ -1,11 +1,10 @@
 import { memo, useRef, useCallback, useLayoutEffect, useState } from "react";
-import type { NsTsRange } from "../../../WebGl/webglUtils.ts";
 import useTimelineEventsQuery from "../../Events/useTimelineEventsQuery.ts";
 import { timelineEventTypes, eventsByTypeFamily } from "../../Events/atoms.ts";
-import { calcAbsoluteNs } from "../../utils.ts";
 import { Box } from "@radix-ui/themes";
 import { referenceNsAtom, worldRangeAtom } from "../../atoms.ts";
 import { getDefaultStore } from "jotai";
+import { rootSlotAtom } from "../../../../api/atoms.ts";
 import type { TimelineEventType } from "../../../../api/entities.ts";
 import { useThrottledCallbackIfVisible } from "../../../../api/useDebounceIfVisible.ts";
 import PinContainer from "./EventMarker.tsx";
@@ -48,47 +47,47 @@ const EventsTrack = memo(function EventsTrack({
     { leading: true, trailing: true },
   );
 
-  const updatePositions = useCallback((eventType?: TimelineEventType) => {
+  const updatePositions = useCallback(() => {
     const worldRange = store.get(worldRangeAtom);
-    if (!worldRange) return;
-    const [worldStartMs, worldEndMs] = worldRange;
-    const worldSpanMs = worldEndMs - worldStartMs;
-    if (worldSpanMs <= 0) return;
+    if (!worldRange || !containerRef.current) return;
 
-    for (const child of containerRef.current?.children ?? []) {
-      const el = child as HTMLElement;
-      // update events of specific type
-      if (eventType != null && Number(el.dataset.type) !== eventType) continue;
-
-      const ts = Number(el.dataset.ts);
-      if (Number.isNaN(ts)) continue;
-      // position as a % of the visible world range so pins scale with the track
-      const leftPct = ((ts - worldStartMs) / worldSpanMs) * 100;
-      el.style.transform = `translateX(${leftPct}%)`;
-    }
+    containerRef.current.style.setProperty(
+      "--world-start-ms",
+      `${worldRange[0]}`,
+    );
+    containerRef.current.style.setProperty(
+      "--world-duration-ms",
+      `${worldRange[1] - worldRange[0]}`,
+    );
   }, []);
 
   const onWorldRangeChange = useCallback(() => {
+    updatePositions();
+    throttledUpdatePxPerMs();
+  }, [throttledUpdatePxPerMs, updatePositions]);
+
+  const onRootSlotChange = useCallback(() => {
     const referenceNs = store.get(referenceNsAtom);
     const worldRange = store.get(worldRangeAtom);
     if (referenceNs == null || !worldRange) return;
 
-    const worldRangeNs: NsTsRange = [
-      calcAbsoluteNs(referenceNs, worldRange[0]),
-      calcAbsoluteNs(referenceNs, worldRange[1]),
-    ];
-    query(worldRangeNs);
-    throttledUpdatePxPerMs();
-  }, [query, throttledUpdatePxPerMs]);
+    query(referenceNs, worldRange);
+  }, [query]);
 
   // subscribe
   useLayoutEffect(() => {
     const unsubscribeWorld = store.sub(worldRangeAtom, onWorldRangeChange);
+    const unsubscribeRootSlot = store.sub(rootSlotAtom, onRootSlotChange);
+
+    // set initial positions and fetch initial window
+    onWorldRangeChange();
+    onRootSlotChange();
 
     return () => {
       unsubscribeWorld();
+      unsubscribeRootSlot();
     };
-  }, [onWorldRangeChange]);
+  }, [onWorldRangeChange, onRootSlotChange]);
 
   // recompute px/ms on resize
   useLayoutEffect(() => {
@@ -104,7 +103,6 @@ const EventsTrack = memo(function EventsTrack({
           key={type}
           eventType={type}
           pxPerMs={pxPerMs}
-          updatePositions={updatePositions}
           panToTs={panToTs}
         />
       ))}
@@ -117,16 +115,10 @@ export default EventsTrack;
 interface EventTypeTrackProps {
   eventType: TimelineEventType;
   pxPerMs: number;
-  updatePositions: (eventType: TimelineEventType) => void;
   panToTs: (ts: number) => void;
 }
 
-function EventTypeTrack({
-  eventType,
-  pxPerMs,
-  updatePositions,
-  panToTs,
-}: EventTypeTrackProps) {
+function EventTypeTrack({ eventType, pxPerMs, panToTs }: EventTypeTrackProps) {
   const [eventGroups, setEventGroups] = useState<EventGroup[]>([]);
 
   const throttledUpdateEventGroups = useThrottledCallbackIfVisible(
@@ -197,16 +189,10 @@ function EventTypeTrack({
     };
   }, [eventType, throttledUpdateEventGroups]);
 
-  // handle chart resize
+  // handle chart resize, which may re-group pins
   useLayoutEffect(() => {
-    updatePositions(eventType);
     throttledUpdateEventGroups();
-  }, [throttledUpdateEventGroups, pxPerMs, updatePositions, eventType]);
-
-  // update positions of new groups
-  useLayoutEffect(() => {
-    updatePositions(eventType);
-  }, [eventGroups, eventType, updatePositions]);
+  }, [throttledUpdateEventGroups, pxPerMs]);
 
   return (
     <>

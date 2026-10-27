@@ -1,18 +1,46 @@
 import { useCallback, useRef } from "react";
-import { useSetAtom } from "jotai";
+import { getDefaultStore, useSetAtom } from "jotai";
 import { useWebSocketSend } from "../../../api/ws/utils";
 import { reserveNextQueryIdAtom, type TimelineQueryKey } from "../atoms";
 import type { TimelineEvents } from "../../../api/types";
-import type { NsTsRange } from "../../WebGl/webglUtils";
+import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible";
-import { useTimelineServerMessage } from "../utils";
+import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
 import { appendTimelineEventsAtom } from "./atoms";
+import { rootSlotAtom } from "../../../api/atoms";
+import { slotPublishAtomFamily } from "../../../atoms";
 
 const QUERY_KEY = "query_events" satisfies TimelineQueryKey;
 
+const store = getDefaultStore();
+
+/**
+ * Data fetched before this ts will not change
+ */
+function getRootSlotNs(): bigint | undefined {
+  const rootSlot = store.get(rootSlotAtom);
+  if (rootSlot == null) return undefined;
+  return (
+    store.get(slotPublishAtomFamily(rootSlot))?.completed_time_nanos ??
+    undefined
+  );
+}
+
 export default function useTimelineEventsQuery() {
-  const pendingQueryIdsRef = useRef(new Set<number>());
-  const lastRequestEndNsRef = useRef<bigint | undefined>(undefined);
+  // only query one at a time
+  const pendingQueryRef = useRef<{
+    queryId: number;
+    stableNs: bigint | undefined;
+  } | null>(null);
+
+  // only store one at a time
+  const nextQueryRef = useRef<{
+    referenceNs: bigint;
+    worldRange: TsRange;
+  } | null>(null);
+
+  // data before this ts will not change. Query from this ts on
+  const lastStableNsRef = useRef<bigint | undefined>();
 
   const wsSend = useWebSocketSend();
   const reserveNextQueryId = useSetAtom(reserveNextQueryIdAtom);
@@ -34,44 +62,66 @@ export default function useTimelineEventsQuery() {
     [wsSend],
   );
 
+  /**
+   * Query one at a time
+   */
+  const sendQuery = useThrottledCallbackIfVisible(
+    (referenceNs: bigint, worldRange: TsRange) => {
+      if (pendingQueryRef.current != null) {
+        nextQueryRef.current = { referenceNs, worldRange };
+        return;
+      }
+
+      const worldStartNs = calcAbsoluteNs(referenceNs, worldRange[0]);
+      const worldEndNs = calcAbsoluteNs(referenceNs, worldRange[1]);
+
+      const startNs = lastStableNsRef.current ?? worldStartNs;
+      const rootSlotNs = getRootSlotNs();
+
+      // known stable data boundary for this request's response
+      const stableNs =
+        rootSlotNs == null
+          ? lastStableNsRef.current
+          : // min of root slot or world end
+            rootSlotNs <= worldEndNs
+            ? rootSlotNs
+            : worldEndNs;
+
+      if (startNs >= worldEndNs) {
+        // trigger next query if there is one
+        const nextQuery = nextQueryRef.current;
+        if (nextQuery) {
+          nextQueryRef.current = null;
+          sendQuery(nextQuery.referenceNs, nextQuery.worldRange);
+        }
+        return;
+      }
+
+      const queryId = reserveNextQueryId(QUERY_KEY);
+      query(queryId, [startNs, worldEndNs]);
+      pendingQueryRef.current = { queryId, stableNs };
+    },
+    200,
+    { leading: true, trailing: true },
+  );
+
   useTimelineServerMessage(
     QUERY_KEY,
     (message: { id: number; value: TimelineEvents }) => {
-      if (!pendingQueryIdsRef.current.has(message.id)) return;
+      if (pendingQueryRef.current?.queryId !== message.id) return;
 
-      pendingQueryIdsRef.current.delete(message.id);
+      lastStableNsRef.current = pendingQueryRef.current.stableNs;
+      pendingQueryRef.current = null;
       appendTimelineEvents(message.value);
+
+      // trigger next query if there is one
+      const nextQuery = nextQueryRef.current;
+      if (nextQuery) {
+        nextQueryRef.current = null;
+        sendQuery(nextQuery.referenceNs, nextQuery.worldRange);
+      }
     },
   );
 
-  return useThrottledCallbackIfVisible(
-    useCallback(
-      (worldRangeNs: NsTsRange) => {
-        const lastRequestEndNs = lastRequestEndNsRef.current;
-        if (lastRequestEndNs == null) {
-          // fetch entire world on start range change
-          const queryId = reserveNextQueryId(QUERY_KEY);
-          query(queryId, worldRangeNs);
-          pendingQueryIdsRef.current.add(queryId);
-        } else {
-          if (lastRequestEndNs === worldRangeNs[1]) {
-            // nothing to fetch
-            return;
-          }
-
-          // fetch only missing data at end
-          const queryId = reserveNextQueryId(QUERY_KEY);
-          query(queryId, [lastRequestEndNs, worldRangeNs[1]]);
-          pendingQueryIdsRef.current.add(queryId);
-        }
-        lastRequestEndNsRef.current = worldRangeNs[1];
-      },
-      [query, reserveNextQueryId],
-    ),
-    200,
-    {
-      leading: true,
-      trailing: true,
-    },
-  );
+  return sendQuery;
 }
