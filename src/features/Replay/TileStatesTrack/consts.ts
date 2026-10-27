@@ -33,7 +33,14 @@ export const BAR_HEIGHT_PX = 22;
 /** Space above the rows for the track controls. */
 export const TOP_INSET_PX = 24;
 
-export const FILL_ALPHA = 0.5;
+/**
+ * Minimum px width a state counts as when mixing a column's color. Without it a
+ * column's color is purely time-weighted, so states that are frequent but very
+ * short (e.g. sigverify between long execute runs) vanish into their long
+ * neighbors once zoomed out. Only affects color; opacity is always plain time
+ * coverage (see createResolveMaterial), so this can't change brightness.
+ */
+export const MIN_STATE_WEIGHT_PX = 0.25;
 export const OUTLINE_ALPHA = 0.5;
 export const OUTLINE_BORDER_PX = 1.5;
 

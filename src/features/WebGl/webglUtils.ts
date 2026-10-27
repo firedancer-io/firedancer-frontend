@@ -55,9 +55,10 @@ export function createRenderer(
   maxWebGlPixelRatio: number,
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
+  antialias = true,
 ) {
   try {
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias, alpha: true });
     renderer.setPixelRatio(
       Math.min(window.devicePixelRatio, maxWebGlPixelRatio),
     );

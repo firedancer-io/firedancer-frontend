@@ -164,8 +164,9 @@ function TileStatesTrack({ kind, remount, width }: TileStatesTrackProps) {
       throttledQuery(refNs, visibleRangeMs, worldRangeMs);
 
       if (!updateView) return;
-      setVisibleRange(renderer, visibleRangeMs);
-      render(renderer);
+      // Skip the (multi-pass) render when the move is too small to change
+      // any pixel; see setVisibleRange
+      if (setVisibleRange(renderer, visibleRangeMs)) render(renderer);
     },
     [syncRender, throttledQuery],
   );
@@ -221,7 +222,17 @@ function TileStatesTrack({ kind, remount, width }: TileStatesTrackProps) {
     // pixel-snapped bars that beats into wide bands of dimmer columns.
     const { renderer: r } = renderer;
     const pixelRatio = r.getPixelRatio();
-    const bufferWidth = Math.floor(width * pixelRatio);
+    let bufferWidth = Math.floor(width * pixelRatio);
+    // Layout rounds CSS widths to 1/64 px (LayoutUnit). If width / pixelRatio
+    // isn't a multiple of 1/64, the canvas' displayed size ends up a fraction
+    // of a device px off its buffer size and the compositor resamples the
+    // whole canvas, which shows up as faint vertical bands. Shrink the buffer
+    // by up to 64 device px until its CSS width is exactly representable.
+    for (let i = 0; i < 64; i++) {
+      const layoutUnits = (bufferWidth / pixelRatio) * 64;
+      if (Math.abs(layoutUnits - Math.round(layoutUnits)) < 1e-6) break;
+      bufferWidth--;
+    }
     const bufferHeight = Math.round(height * pixelRatio);
     // +0.5 so three's floor(size * pixelRatio) lands exactly on the buffer size.
     r.setSize(
@@ -229,8 +240,30 @@ function TileStatesTrack({ kind, remount, width }: TileStatesTrackProps) {
       (bufferHeight + 0.5) / pixelRatio,
       false,
     );
+    // This was the cause of the execrp color seams. three.js rounds in
+    // setViewport but floors when switching render targets, so with the +0.5
+    // above the GL viewport came out 1px wider than the buffer. Every x was
+    // then scaled by (W+1)/W, so a pixel-snapped edge drifted by a growing
+    // fraction of a px across the canvas and states visibly changed color /
+    // jumped at fixed screen positions (W/2 without MSAA, the odd eighths of W
+    // with it). +0.25 rounds and floors to the same buffer size.
+    r.setViewport(
+      0,
+      0,
+      (bufferWidth + 0.25) / pixelRatio,
+      (bufferHeight + 0.25) / pixelRatio,
+    );
     r.domElement.style.width = `${bufferWidth / pixelRatio}px`;
     r.domElement.style.height = `${bufferHeight / pixelRatio}px`;
+    // Same resampling problem for position: at fractional devicePixelRatio
+    // (e.g. 1.5) the canvas' left edge can land mid device px, so the
+    // compositor resamples it. Measure the edge without any transform, then
+    // nudge the canvas by the fraction so its pixels line up 1:1 with the
+    // screen's. Recomputed on resize, which is when layout can move it.
+    r.domElement.style.transform = "";
+    const leftPx = r.domElement.getBoundingClientRect().left * devicePixelRatio;
+    const snapPx = Math.round(leftPx) - leftPx;
+    r.domElement.style.transform = `translateX(${snapPx / devicePixelRatio}px)`;
     refreshSizeUniforms(renderer);
     render(renderer);
   }, [width, height]);

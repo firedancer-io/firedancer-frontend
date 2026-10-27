@@ -23,6 +23,7 @@ import {
 import {
   createFillMaterial,
   createOutlineMaterial,
+  createResolveMaterial,
   setViewUniforms,
   updateOutlineUniforms,
 } from "./tileStatesMesh.ts";
@@ -31,7 +32,7 @@ import {
   ROW_HEIGHT_PX,
   minY,
   maxY,
-  FILL_ALPHA,
+  MIN_STATE_WEIGHT_PX,
   OUTLINE_ALPHA,
   OUTLINE_BORDER_PX,
   OUTLINE_ERROR_RGB,
@@ -132,7 +133,22 @@ const ANCHOR_STEP_PX = 2 ** 16;
 export interface RendererObj {
   renderer: THREE.WebGLRenderer;
   camera: THREE.OrthographicCamera;
+  /** Fill meshes only; drawn into `accum` and `accumTime`, never the canvas */
   scene: THREE.Scene;
+  /** Per column: sum(color * weight) in rgb, sum(weight) in alpha (min-weighted) */
+  accum: THREE.WebGLRenderTarget;
+  /** Per column: plain time coverage in alpha, used for the final opacity */
+  accumTime: THREE.WebGLRenderTarget;
+  /**
+   * One uniform object shared by every fill material, so render() can flip
+   * all of them between the color and time passes with a single write
+   */
+  fillTimeOnly: THREE.IUniform<number>;
+  /** Fullscreen quad combining `accum` + `accumTime` onto the canvas */
+  resolveScene: THREE.Scene;
+  resolveMaterial: THREE.RawShaderMaterial;
+  /** Outline meshes, drawn straight onto the canvas after the resolve */
+  outlineScene: THREE.Scene;
   fillResources: RectResources;
   // Keyed by `${startNs}:${endNs}` so txn and batch tiles that share a startNs
   // (a batch tile is a multiple of a txn tile) never collide.
@@ -163,15 +179,49 @@ export function setUpRenderer(
     MAX_WEBGL_PX_RATIO,
     setUpContextListeners,
     getWasContextLost,
+    // No MSAA: fills compute their own exact coverage and are resolved by a
+    // fullscreen quad, and outlines smooth their own edges, so it would only
+    // cost memory and fill rate
+    false,
   );
   if (!created) return;
   const { renderer, cleanUpRenderer } = created;
+  // render() draws several passes into different targets and clears each one
+  // itself; autoClear would wipe the canvas between the resolve and outlines
+  renderer.autoClear = false;
 
   const scene = new THREE.Scene();
+  // Outlines are drawn after the resolve, directly onto the canvas, so they
+  // live in their own scene instead of being accumulated with the fills
+  const outlineScene = new THREE.Scene();
+  // Float so sums of many states don't clip or band (half float is enough
+  // precision and more widely renderable than full float); nearest so the
+  // resolve reads exactly one column per texel
+  const targetOptions = {
+    type: THREE.HalfFloatType,
+    minFilter: THREE.NearestFilter,
+    magFilter: THREE.NearestFilter,
+    depthBuffer: false,
+  };
+  const accum = new THREE.WebGLRenderTarget(1, 1, targetOptions);
+  const accumTime = new THREE.WebGLRenderTarget(1, 1, targetOptions);
+  const resolveScene = new THREE.Scene();
+  const resolveMaterial = createResolveMaterial(
+    accum.texture,
+    accumTime.texture,
+  );
+  const resolveMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 2),
+    resolveMaterial,
+  );
+  // The quad is positioned directly in clip space by its shader, so the
+  // camera-based culling would wrongly drop it
+  resolveMesh.frustumCulled = false;
+  resolveScene.add(resolveMesh);
   const camera = new THREE.OrthographicCamera(0, 1, maxY, minY, 0.5, 10);
   camera.position.z = 1;
 
-  const fillResources = createRectResources(FILL_ALPHA);
+  const fillResources = createRectResources();
 
   const tileMeshes = new Map<string, TileMeshes>();
   const availableMeshes: TileMeshes[] = [];
@@ -182,6 +232,10 @@ export function setUpRenderer(
       for (const tm of tileMeshes.values()) disposeTileMeshes(tm);
       for (const tm of availableMeshes) disposeTileMeshes(tm);
       disposeRectResources(fillResources);
+      accum.dispose();
+      accumTime.dispose();
+      resolveMesh.geometry.dispose();
+      resolveMaterial.dispose();
     }
     cleanUpRenderer();
   };
@@ -190,6 +244,12 @@ export function setUpRenderer(
     renderer,
     camera,
     scene,
+    accum,
+    accumTime,
+    fillTimeOnly: { value: 0 },
+    resolveScene,
+    resolveMaterial,
+    outlineScene,
     fillResources,
     tileMeshes,
     availableMeshes,
@@ -206,14 +266,45 @@ export function setUpRenderer(
 }
 
 export function render(rendererObj: RendererObj) {
-  const { renderer, scene, camera } = rendererObj;
+  const {
+    renderer,
+    scene,
+    camera,
+    accum,
+    accumTime,
+    resolveScene,
+    outlineScene,
+  } = rendererObj;
+
+  // 1. Color: every fill, min-weighted, summed per column
+  renderer.setRenderTarget(accum);
+  renderer.clear();
   renderer.render(scene, camera);
+  // 2. Opacity: the same fills again with plain time coverage. A second pass
+  // (rather than MRT) keeps this WebGL-version agnostic and the fill pass is
+  // cheap; it's the same instanced draw per tile.
+  rendererObj.fillTimeOnly.value = 1;
+  renderer.setRenderTarget(accumTime);
+  renderer.clear();
+  renderer.render(scene, camera);
+  rendererObj.fillTimeOnly.value = 0;
+  // 3. Combine onto the canvas, then 4. outlines on top
+  renderer.setRenderTarget(null);
+  renderer.clear();
+  renderer.render(resolveScene, camera);
+  if (rendererObj.showOutlines) renderer.render(outlineScene, camera);
 }
 
 /** Refresh size-dependent uniforms (after size changes). */
 export function refreshSizeUniforms(rendererObj: RendererObj) {
   const { tileMeshes, availableMeshes, renderer, lastVisibleRangeMs } =
     rendererObj;
+  // Targets match the drawing buffer 1:1 so one texel is one canvas px column
+  const width = Math.max(renderer.domElement.width, 1);
+  const height = Math.max(renderer.domElement.height, 1);
+  rendererObj.accum.setSize(width, height);
+  rendererObj.accumTime.setSize(width, height);
+  rendererObj.resolveMaterial.uniforms.uTexelX.value = 1 / width;
   for (const tm of [...tileMeshes.values(), ...availableMeshes]) {
     updateOutlineUniforms(
       tm.outline.mesh.material as THREE.RawShaderMaterial,
@@ -231,6 +322,8 @@ export function setVisibleRange(
   visibleRangeMs: TsRange,
 ) {
   const { tileMeshes, renderer } = rendererObj;
+  const prevStartPx = rendererObj.viewStartPx;
+  const prevMsPerPx = rendererObj.msPerPx;
 
   const durationMs = visibleRangeMs[1] - visibleRangeMs[0];
   const canvasPx = renderer.domElement.width;
@@ -243,6 +336,16 @@ export function setVisibleRange(
   rendererObj.lastVisibleRangeMs = visibleRangeMs;
 
   for (const tm of tileMeshes.values()) positionTileMeshes(rendererObj, tm);
+
+  // Returns whether the image can have changed, so callers can skip render().
+  // The shader only sees the whole-px view start and msPerPx as a float32, so
+  // if neither changed the output is pixel-identical. This matters because
+  // visibleRangeAtom updates every frame in live mode even when the move is
+  // under a pixel, and each render is now 3 passes.
+  return (
+    rendererObj.viewStartPx !== prevStartPx ||
+    Math.fround(msPerPx) !== Math.fround(prevMsPerPx)
+  );
 }
 
 /** Update a tile's view uniforms for the current visible range. */
@@ -359,7 +462,7 @@ function createTileMeshes(rendererObj: RendererObj): TileMeshes {
   const fill = createRectMesh(
     fillResources,
     undefined,
-    createFillMaterial(FILL_ALPHA),
+    createFillMaterial(MIN_STATE_WEIGHT_PX, rendererObj.fillTimeOnly),
   );
   // The outline mesh reuses the shared instanced-rect layout with the SDF material.
   const outlineMaterial = createOutlineMaterial(
@@ -382,7 +485,8 @@ function createTileMeshes(rendererObj: RendererObj): TileMeshes {
 function acquireTileMeshes(rendererObj: RendererObj): TileMeshes {
   const tm = rendererObj.availableMeshes.pop() ?? createTileMeshes(rendererObj);
   tm.outline.mesh.visible = rendererObj.showOutlines;
-  rendererObj.scene.add(tm.fill.mesh, tm.outline.mesh);
+  rendererObj.scene.add(tm.fill.mesh);
+  rendererObj.outlineScene.add(tm.outline.mesh);
   return tm;
 }
 
@@ -395,7 +499,8 @@ export function setOutlinesVisible(rendererObj: RendererObj, visible: boolean) {
 }
 
 function poolTileMeshes(rendererObj: RendererObj, tm: TileMeshes) {
-  rendererObj.scene.remove(tm.fill.mesh, tm.outline.mesh);
+  rendererObj.scene.remove(tm.fill.mesh);
+  rendererObj.outlineScene.remove(tm.outline.mesh);
   rendererObj.availableMeshes.push(tm);
 }
 
