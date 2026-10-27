@@ -12,6 +12,7 @@
     position: relative;
     width: 100%;
     height: 100%;
+    overflow: hidden;
   }
 
   &.show-agg {
@@ -24,21 +25,49 @@
   }
 }
 
-.slot-group-container {
+.container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  will-change: transform;
+
   width: calc(
-    var(--group-duration-ms) / var(--visible-range-duration-ms) * 100%
+    var(--container-duration-ms) / var(--visible-range-duration-ms) * 100%
   );
   /*
-   * translateX % is relative to this element's own (variable) width, so divide
-   * the offset by --group-duration-ms to cancel that scaling and land on the
-   * correct parent-relative pixel position.
+   * translateX % is relative to this element's own (variable) width, so divide the
+   * offset by --container-duration-ms to cancel that scaling and land on the correct
+   * parent-relative pixel position.
    */
   transform: translateX(
     calc(
-      (var(--group-start-ms) - var(--visible-range-start-ms)) /
+      (var(--container-start-ms) - var(--visible-range-start-ms)) /
+        var(--container-duration-ms) * 100%
+    )
+  );
+}
+
+.slot-group-container {
+  box-sizing: border-box;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: calc(var(--group-duration-ms) / var(--container-duration-ms) * 100%);
+  /*
+   * translateX % is relative to this element's own (variable) width, so divide the
+   * offset by --group-duration-ms to cancel that scaling and land on the correct
+   * container-relative position.
+   */
+  transform: translateX(
+    calc(
+      (var(--group-start-ms) - var(--container-start-ms)) /
         var(--group-duration-ms) * 100%
     )
   );
+  will-change: transform;
   border-radius: 4px;
   border: 1px solid var(--header-group-border-color);
   background: var(--replay-agg-header-background-color);
@@ -81,7 +110,17 @@
     }
   }
 
+  .slot-row {
+    flex-grow: 1;
+    position: relative;
+  }
+
   .slot {
+    box-sizing: border-box;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
     width: calc(var(--slot-duration-ms) / var(--group-duration-ms) * 100%);
     /*
      * translateX % is relative to this slot's own width, so divide the offset
@@ -94,6 +133,14 @@
           var(--slot-duration-ms) * 100%
       )
     );
+
+    .slot-content {
+      display: flex;
+      flex-grow: 1;
+      gap: 6px;
+      align-items: center;
+      justify-content: center;
+    }
 
     &.left-border {
       border-left: 1px solid var(--replay-dropdown-hover-background-color);
@@ -108,7 +155,20 @@
     }
 
     .slot-bar {
+      flex-grow: 0;
+      height: 3px;
+      margin: 0 2px 2px;
       border-radius: 1px;
+
+      &.slot-bar-block {
+        flex-grow: 1;
+        margin-top: 2px;
+      }
+
+      &.slot-bar-narrow {
+        margin-left: 1px;
+        margin-right: 1px;
+      }
 
       &.skipped {
         background: var(--header-skipped-slot-border-color);
@@ -133,6 +193,11 @@
     font-size: 11px;
     direction: rtl;
     min-width: 0;
+  }
+
+  .slot-status {
+    display: flex;
+    align-items: center;
   }
 }
 

@@ -1,4 +1,4 @@
-import { Box, Flex, Text } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import { getDefaultStore } from "jotai";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms";
 import {
@@ -8,7 +8,7 @@ import {
   timelineSlotsAtom,
   timelineSlotsEmitterAtom,
 } from "./nonAggAtoms";
-import { calcAbsoluteNs, getTileIdx } from "../utils";
+import { calcAbsoluteNs, calcRelativeMs, getTileIdx } from "../utils";
 import {
   OVERSCAN_DRAW_TILES_COUNT,
   tileSizeNs,
@@ -154,6 +154,9 @@ export function NonAggHeaderTrack({
     slotGroups: SlotGroup[];
     slotTier: SlotTier;
     groupTier: GroupTier;
+    // ms range of container
+    containerStartMs: number;
+    containerDurationMs: number;
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -198,6 +201,13 @@ export function NonAggHeaderTrack({
         (a, b) => a.leaderSlot - b.leaderSlot,
       );
 
+      const containerStartMs = calcRelativeMs(
+        referenceNs,
+        BigInt(startIdx) * tileSizeNs,
+      );
+      const containerDurationMs =
+        Number(BigInt(endIdx + 1 - startIdx) * tileSizeNs) / nsPerMs;
+
       setRenderState((prev) => {
         // If zooming in, don't remove previously rendered slot groups so they are around if user zooms out
         const isSubset =
@@ -207,16 +217,25 @@ export function NonAggHeaderTrack({
             prev.slotGroups.some((g) => g.leaderSlot === group.leaderSlot),
           );
 
-        return {
-          slotGroups: isSubset
-            ? // refresh data
-              prev.slotGroups.map(
+        return isSubset
+          ? {
+              // refresh data
+              slotGroups: prev.slotGroups.map(
                 (group) => slotGroupsMap.get(group.leaderSlot) ?? group,
-              )
-            : nextSlotGroups,
-          slotTier,
-          groupTier,
-        };
+              ),
+              slotTier,
+              groupTier,
+              // when keeping the previous (wider) group set, keep the container range that covers it
+              containerStartMs: prev.containerStartMs,
+              containerDurationMs: prev.containerDurationMs,
+            }
+          : {
+              slotGroups: nextSlotGroups,
+              slotTier,
+              groupTier,
+              containerStartMs,
+              containerDurationMs,
+            };
       });
     },
     30,
@@ -224,7 +243,7 @@ export function NonAggHeaderTrack({
   );
 
   /**
-   * Update all rendered groups' positions and widths
+   * Update container position and width. This will auto-scale slot groups.
    */
   const updateGroupPositionsOnly = useCallback(
     (referenceNs: bigint, visibleRange: TsRange) => {
@@ -232,6 +251,8 @@ export function NonAggHeaderTrack({
         getRangeInfo(referenceNs, visibleRange, width);
 
       if (!containerRef.current) return;
+
+      // trigger container to update position / width
       containerRef.current.style.setProperty(
         "--visible-range-start-ms",
         `${visibleStartMs}`,
@@ -329,24 +350,28 @@ export function NonAggHeaderTrack({
   }, [throttledUpdateGroups, width]);
 
   return (
-    <Box
-      ref={containerRef}
-      className={className}
-      position="relative"
-      width="100%"
-      height="100%"
-      overflowX="hidden"
-    >
-      {renderState?.slotGroups.map((group) => (
-        <SlotGroupContainer
-          key={group.leaderSlot}
-          leaderSlot={group.leaderSlot}
-          slots={group.slots}
-          groupTier={renderState.groupTier}
-          slotTier={renderState.slotTier}
-        />
-      ))}
-    </Box>
+    <div className={className}>
+      <div
+        ref={containerRef}
+        className={styles.container}
+        style={
+          {
+            "--container-start-ms": `${renderState?.containerStartMs ?? 0}`,
+            "--container-duration-ms": `${renderState?.containerDurationMs ?? 0}`,
+          } as CSSProperties
+        }
+      >
+        {renderState?.slotGroups.map((group) => (
+          <SlotGroupContainer
+            key={group.leaderSlot}
+            leaderSlot={group.leaderSlot}
+            slots={group.slots}
+            groupTier={renderState.groupTier}
+            slotTier={renderState.slotTier}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -373,17 +398,14 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
   const groupDurationMs = groupEndMs - groupStartMs;
 
   return (
-    <Flex
-      position="absolute"
-      inset="0"
-      direction="column"
-      height={`${trackHeight}px`}
+    <div
       className={clsx(styles.slotGroupContainer, {
         [styles.skipped]: hasSkipped,
         [styles.mine]: isMine,
       })}
       style={
         {
+          height: `${trackHeight}px`,
           "--group-start-ms": `${groupStartMs}`,
           "--group-duration-ms": `${groupDurationMs}`,
         } as CSSProperties
@@ -394,7 +416,7 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
         isMine={isMine}
         groupTier={groupTier}
       />
-      <Flex flexGrow="1" position="relative">
+      <div className={styles.slotRow}>
         {sortedSlots.map((slotInfo) => {
           return (
             <Slot
@@ -406,8 +428,8 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
             />
           );
         })}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 });
 
@@ -496,10 +518,7 @@ const Slot = memo(function Slot({
   const showBlock = liveIsBlock || !showStatus;
 
   return (
-    <Flex
-      position="absolute"
-      inset="0"
-      direction="column"
+    <div
       className={clsx(styles.slot, {
         [styles.earliestStart]: isEarliestStart,
         [styles.latestEnd]: isLatestEnd,
@@ -513,31 +532,28 @@ const Slot = memo(function Slot({
       }
     >
       {!showBlock && (
-        <Flex gap="6px" flexGrow="1" justify="center" align="center">
+        <div className={styles.slotContent}>
           {showNumber && (
             <Text truncate className={styles.slotNumber}>
               {slot}
             </Text>
           )}
           {showStatus && (
-            <Flex className={styles.slotStatus} align="center">
+            <div className={styles.slotStatus}>
               <SlotStatus slot={slot} skipped={isSkipped} />
-            </Flex>
+            </div>
           )}
-        </Flex>
+        </div>
       )}
 
-      <Box
-        flexGrow={showBlock ? "1" : "0"}
-        height="3px"
-        mx={slotTier === "narrowBlock" ? "1px" : "2px"}
-        mt={showBlock ? "2px" : "0"}
-        mb="2px"
+      <div
         className={clsx(styles.slotBar, {
+          [styles.slotBarBlock]: showBlock,
+          [styles.slotBarNarrow]: slotTier === "narrowBlock",
           [styles.skipped]: isSkipped,
           [styles[`slotBar${idx}`]]: !isSkipped,
         })}
       />
-    </Flex>
+    </div>
   );
 });
