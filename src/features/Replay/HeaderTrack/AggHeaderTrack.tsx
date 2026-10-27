@@ -11,7 +11,7 @@ import {
   moveAggCamera,
   setUpRenderers,
 } from "./utils.ts";
-import { trackHeight, type RendererObj } from "./const.ts";
+import { aggTrackHeight, type RendererObj } from "./const.ts";
 import { useAggHeaderQuery, getAggGranularity } from "./useAggHeaderQuery.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
@@ -24,6 +24,7 @@ import {
   aggSlotsAtom,
   drawEventType,
 } from "./aggAtoms.ts";
+import { Box } from "@radix-ui/themes";
 
 const chartId = "agg-header-track";
 const store = getDefaultStore();
@@ -134,7 +135,7 @@ function AggHeaderTrack({
 
     const rendererObj = setUpRenderers(
       0,
-      trackHeight,
+      aggTrackHeight,
       setUpContextListeners,
       getWasContextLost,
     );
@@ -174,18 +175,21 @@ function AggHeaderTrack({
   // handle chart resize
   useLayoutEffect(() => {
     if (!isInitialized || !rendererRef.current) return;
-    rendererRef.current.renderer.setSize(width, trackHeight);
+    rendererRef.current.renderer.setSize(width, aggTrackHeight);
     renderIfActive();
   }, [isInitialized, renderIfActive, width]);
 
   return (
-    <div className={clsx(className, styles.trackContainer)}>
+    <Box
+      height={`${aggTrackHeight}px`}
+      className={clsx(className, styles.trackContainer)}
+    >
       <div ref={containerRef} className={styles.trackCanvasContainer} />
       <SelectionMarker />
       <div className={clsx(chartStyles.noChartExplore, styles.bucketSizeLabel)}>
         Bucket size: {granularity ?? "-"}
       </div>
-    </div>
+    </Box>
   );
 }
 
