@@ -3,10 +3,8 @@ import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
 
 export const HEADER_AGG_THRESHOLD_MS = 90_000;
 
-export const slotGroupRowHeight = 12;
-export const slotNumberRowHeight = 24;
-export const slotBorderHeight = 3;
-export const trackHeight = slotGroupRowHeight + slotNumberRowHeight;
+export const trackHeight = 36;
+export const aggTrackHeight = 30;
 
 export type RendererObj = {
   renderer: THREE.WebGLRenderer;

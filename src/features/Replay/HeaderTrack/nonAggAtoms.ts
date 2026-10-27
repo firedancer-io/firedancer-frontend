@@ -2,23 +2,28 @@ import { atom } from "jotai";
 import EventEmitter from "events";
 import type TypedEmitter from "typed-emitter";
 import type { TimelineSlots } from "../../../api/types";
+import { referenceNsAtom } from "../atoms";
+import { calcRelativeMs } from "../utils";
+import { getSlotGroupLeader } from "../../../utils";
 
 export const drawEventType = "draw";
 
-export interface TileSlots {
-  referenceSlot: number;
-  referenceNs: bigint;
-  slotDeltas: number[];
-  startTsDeltas: bigint[];
-  endTsDeltas: bigint[];
-  skippedDeltas: Set<number>;
-  mineDeltas: Set<number>;
+/**
+ * ts relative to replay referenceNs
+ */
+export interface SlotInfo {
+  slot: number;
+  startMs: number;
+  endMs: number;
+  isSkipped: boolean;
+  isMine: boolean;
 }
 
-/**
- * Tiles start at idx 0 for 0n absolute ns ts
- */
-type SlotsByTileIdx = Map<number, TileSlots>;
+export interface SlotGroup {
+  leaderSlot: number;
+  slots: Map<number, SlotInfo>;
+  tileIdxs: Set<number>;
+}
 
 export const [
   timelineSlotsEmitterAtom,
@@ -27,7 +32,10 @@ export const [
   /** delete tiles, but don't emit a draw (skip redraw trigger) */
   deleteTimelineSlotTilesAtom,
 ] = (function getNonAggSlotsAtom() {
-  const _timelineSlotsAtom = atom<SlotsByTileIdx>(new Map());
+  const _timelineSlotGroupsAtom = atom({
+    slotGroups: new Map<number, SlotGroup>(),
+    tileSlotGroups: new Map<number, Set<number>>(),
+  });
 
   return [
     atom(
@@ -35,7 +43,7 @@ export const [
         [drawEventType]: () => void;
       }>,
     ),
-    atom((get) => get(_timelineSlotsAtom)),
+    atom((get) => get(_timelineSlotGroupsAtom)),
     atom(
       null,
       (
@@ -56,30 +64,103 @@ export const [
           reference_slot == null ||
           reference_ts == null ||
           slot_delta.length === 0
-        )
+        ) {
+          get(timelineSlotsEmitterAtom).emit(drawEventType);
           return;
+        }
 
-        set(_timelineSlotsAtom, (prev) => {
-          prev.set(tileIdx, {
-            referenceSlot: reference_slot,
-            referenceNs: reference_ts,
-            slotDeltas: slot_delta,
-            startTsDeltas: start_ts_delta,
-            endTsDeltas: end_ts_delta,
-            skippedDeltas: new Set(skipped),
-            mineDeltas: new Set(mine),
-          });
-          return prev;
+        const referenceNs = get(referenceNsAtom);
+        if (referenceNs == null) return;
+
+        set(_timelineSlotGroupsAtom, (prev) => {
+          const { slotGroups, tileSlotGroups } = prev;
+
+          for (let i = 0; i < slot_delta.length; i++) {
+            const slotDelta = slot_delta[i];
+            const slot = slotDelta + reference_slot;
+            const startMs = calcRelativeMs(
+              referenceNs,
+              start_ts_delta[i] + reference_ts,
+            );
+            const endMs = calcRelativeMs(
+              referenceNs,
+              end_ts_delta[i] + reference_ts,
+            );
+
+            const leaderSlot = getSlotGroupLeader(slot);
+            let group = slotGroups.get(leaderSlot);
+            if (!group) {
+              group = {
+                leaderSlot,
+                slots: new Map(),
+                tileIdxs: new Set(),
+              };
+              slotGroups.set(leaderSlot, group);
+            }
+
+            const slotInfo: SlotInfo = {
+              slot,
+              startMs,
+              endMs,
+              isSkipped: false,
+              isMine: false,
+            };
+            // create new reference to be picked up with render
+            group.slots = new Map(group.slots);
+            group.slots.set(slot, slotInfo);
+
+            // update tile mappings
+            group.tileIdxs.add(tileIdx);
+
+            const tileGroups = tileSlotGroups.get(tileIdx) ?? new Set();
+            tileGroups.add(leaderSlot);
+            tileSlotGroups.set(tileIdx, tileGroups);
+          }
+
+          for (const slotDelta of skipped) {
+            const slot = slotDelta + reference_slot;
+            const leaderSlot = getSlotGroupLeader(slot);
+            const slotInfo = slotGroups.get(leaderSlot)?.slots.get(slot);
+            if (slotInfo) slotInfo.isSkipped = true;
+          }
+
+          for (const slotDelta of mine) {
+            const slot = slotDelta + reference_slot;
+            const leaderSlot = getSlotGroupLeader(slot);
+            const slotInfo = slotGroups.get(leaderSlot)?.slots.get(slot);
+            if (slotInfo) slotInfo.isMine = true;
+          }
+
+          return { slotGroups, tileSlotGroups };
         });
+
         get(timelineSlotsEmitterAtom).emit(drawEventType);
       },
     ),
     atom(null, (_get, set, tileIdxs: number[]) => {
-      set(_timelineSlotsAtom, (prev) => {
+      set(_timelineSlotGroupsAtom, (prev) => {
+        const { slotGroups, tileSlotGroups } = prev;
+
         for (const tileIdx of tileIdxs) {
-          prev.delete(tileIdx);
+          const leaderSlots = tileSlotGroups.get(tileIdx);
+          if (!leaderSlots) continue;
+
+          for (const leaderSlot of leaderSlots) {
+            const group = slotGroups.get(leaderSlot);
+            if (!group) continue;
+
+            group.tileIdxs.delete(tileIdx);
+
+            // delete the whole group only once every tile it belonged to is gone
+            if (group.tileIdxs.size === 0) {
+              slotGroups.delete(leaderSlot);
+            }
+          }
+
+          tileSlotGroups.delete(tileIdx);
         }
-        return prev;
+
+        return { slotGroups, tileSlotGroups };
       });
     }),
   ];

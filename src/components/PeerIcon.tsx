@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import privateIcon from "../assets/private.svg";
 import privateYouIcon from "../assets/privateYou.svg";
 import { Tooltip } from "@radix-ui/themes";
@@ -15,7 +15,7 @@ interface PeerIconProps {
   hideTooltip?: boolean;
 }
 
-export default function PeerIcon({
+function PeerIcon({
   url,
   size,
   hideFallback,
@@ -75,3 +75,5 @@ export default function PeerIcon({
     </>
   );
 }
+
+export default memo(PeerIcon);
