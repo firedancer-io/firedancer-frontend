@@ -204,6 +204,15 @@ export const headerSkippedSlotFontColor = epochSkippedSlotColor;
 export const headerSkippedGroupBackground = "#201314";
 export const headerSkippedGroupBorderColor = "#DF2A2A";
 export const headerMineGroupBorderColor = "#5199EF";
+export const headerGroupBorderColor = "rgba(255, 255, 255, 0.07)";
+export const headerGroupLabelBackgroundColor = "rgba(255, 255, 255, 0.04)";
+export const headerGroupLabelTextColor = "#A3A6B1";
+export const headerSkippedGroupContainerBorderColor = "rgba(223, 42, 42, 0.75)";
+export const headerSkippedGroupContainerBackground = "#1D1213";
+export const headerSkippedGroupLabelBackgroundColor = "rgba(223, 42, 42, 0.14)";
+export const headerSkippedGroupLabelTextColor = "#FF9A9A";
+export const headerMineGroupContainerBorderColor = "rgba(42, 126, 223, 0.65)";
+export const headerMineGroupBackgroundColor = "rgba(42, 126, 223, 0.2)";
 
 // sankey
 export const sankeyStartEndNodeColor = "#525463";

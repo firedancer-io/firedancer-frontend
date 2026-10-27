@@ -1,15 +1,15 @@
-import { Box, Flex, Text } from "@radix-ui/themes";
 import { getDefaultStore } from "jotai";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms";
 import {
   drawEventType,
-  type TileSlots,
+  type SlotGroup,
+  type SlotInfo,
   timelineSlotsAtom,
   timelineSlotsEmitterAtom,
 } from "./nonAggAtoms";
-import { calcAbsoluteNs, getTileIdx } from "../utils";
+import { calcAbsoluteNs, calcRelativeMs, getTileIdx } from "../utils";
 import {
-  OVERSCAN_TILES_COUNT,
+  OVERSCAN_DRAW_TILES_COUNT,
   tileSizeNs,
   useNonAggHeaderQuery,
 } from "./useNonAggHeaderQuery";
@@ -26,8 +26,8 @@ import styles from "./headerTrack.module.css";
 import {
   memo,
   useCallback,
+  useDeferredValue,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -35,27 +35,13 @@ import {
   aggHeaderEmitterAtom,
   drawEventType as aggDrawEventType,
 } from "./aggAtoms";
+import MonoText from "../../../components/MonoText";
+import { trackHeight } from "./const";
 
 const store = getDefaultStore();
-
 const logoSize = 8;
-
-/**
- * Get tile position relative to track width that represents the visible range
- */
-function getTilePx(
-  idx: number,
-  absStartNs: bigint,
-  absEndNs: bigint,
-  width: number,
-) {
-  const windowSizeNs = absEndNs - absStartNs;
-  const tileStartNs = BigInt(idx) * tileSizeNs;
-  const widthPx = (Number(tileSizeNs) / Number(windowSizeNs)) * width;
-  const leftPx =
-    (Number(tileStartNs - absStartNs) / Number(windowSizeNs)) * width;
-  return { widthPx, leftPx };
-}
+const chartId = "non-agg-header-track";
+const containerWindowMs = Number(tileSizeNs) / nsPerMs;
 
 /**
  * Shared range math: resolve the absolute visible window, the overscanned tile
@@ -78,109 +64,58 @@ function getRangeInfo(
   const groupTier = getGroupTier(estimatedSlotPx * slotsPerLeader);
 
   const startIdx =
-    getTileIdx(absStartNs, tileSizeNs, false) - OVERSCAN_TILES_COUNT;
-  const endIdx = getTileIdx(absEndNs, tileSizeNs, true) + OVERSCAN_TILES_COUNT;
+    getTileIdx(absStartNs, tileSizeNs, false) - OVERSCAN_DRAW_TILES_COUNT;
+  const endIdx =
+    getTileIdx(absEndNs, tileSizeNs, true) + OVERSCAN_DRAW_TILES_COUNT;
 
-  return { absStartNs, absEndNs, startIdx, endIdx, slotTier, groupTier };
+  return {
+    visibleStartMs: visibleRange[0],
+    visibleEndMs: visibleRange[1],
+    startIdx,
+    endIdx,
+    slotTier,
+    groupTier,
+  };
 }
 
-/**
- * Derive the slot and slot-group positions (as percentages of the tile) from a
- * raw tile's slot data.
- */
-function getTileSlots(idx: number, tile: TileSlots) {
-  const tileStartNs = BigInt(idx) * tileSizeNs;
-  const slots: SlotPosition[] = [];
-  const slotGroups = new Map<number, SlotGroupPosition>();
-  for (let i = 0; i < tile.slotDeltas.length; i++) {
-    const slotDelta = tile.slotDeltas[i];
-    const slot = slotDelta + tile.referenceSlot;
-    const slotStartNs = tile.startTsDeltas[i] + tile.referenceNs;
-    const slotEndNs = tile.endTsDeltas[i] + tile.referenceNs;
-    const leftPct =
-      (Number(slotStartNs - tileStartNs) / Number(tileSizeNs)) * 100;
-    const widthPct =
-      (Number(slotEndNs - slotStartNs) / Number(tileSizeNs)) * 100;
-    const isSkipped = tile.skippedDeltas.has(slotDelta);
-    const isMine = tile.mineDeltas.has(slotDelta);
-
-    slots.push({
-      slot,
-      leftPct,
-      widthPct,
-      isSkipped,
-      isMine,
-    });
-
-    const firstSlot = slot - (slot % slotsPerLeader);
-    const endPct = leftPct + widthPct;
-    const isFirstSlot = slot % slotsPerLeader === 0;
-    const group = slotGroups.get(firstSlot);
-    if (!group) {
-      slotGroups.set(firstSlot, {
-        leftPct,
-        endPct,
-        hasFirstSlot: isFirstSlot,
-        hasSkipped: isSkipped,
-        hasMine: isMine,
-      });
-    } else {
-      if (leftPct < group.leftPct) {
-        group.leftPct = leftPct;
-      }
-      if (endPct > group.endPct) {
-        group.endPct = endPct;
-      }
-      if (isFirstSlot) {
-        group.hasFirstSlot = true;
-      }
-      if (isSkipped) {
-        group.hasSkipped = true;
-      }
-      if (isMine) {
-        group.hasMine = true;
-      }
-    }
-  }
-
-  return { slots, slotGroups };
-}
-
-const slotGroupColorClasses = [
-  styles.group0,
-  styles.group1,
-  styles.group2,
-  styles.group3,
-];
-
-const SHOW_SLOT_TEXT_MIN_PX = 40;
-const SHOW_SLOT_ICON_MIN_PX = 16;
-const SHOW_GROUP_NAME_MIN_PX = 22;
-
-type GroupTier = "groupIcon" | "iconOnly";
-type SlotTier = "numberStatusBar" | "statusBar" | "barOnly";
+type GroupTier = "flag" | "name" | "icon" | "none";
+type SlotTier = "number" | "status" | "block" | "narrowBlock" | "none";
 
 function getSlotTier(estimatedSlotPx: number): SlotTier {
-  return estimatedSlotPx >= SHOW_SLOT_TEXT_MIN_PX
-    ? "numberStatusBar"
-    : estimatedSlotPx >= SHOW_SLOT_ICON_MIN_PX
-      ? "statusBar"
-      : "barOnly";
+  return estimatedSlotPx >= 104
+    ? "number"
+    : estimatedSlotPx >= 17
+      ? "status"
+      : estimatedSlotPx >= 4
+        ? "block"
+        : estimatedSlotPx >= 2
+          ? "narrowBlock"
+          : "none";
 }
 
 function getGroupTier(estimatedGroupPx: number): GroupTier {
-  return estimatedGroupPx >= SHOW_GROUP_NAME_MIN_PX ? "groupIcon" : "iconOnly";
+  return estimatedGroupPx >= 58
+    ? "flag"
+    : estimatedGroupPx >= 39
+      ? "name"
+      : estimatedGroupPx >= 10
+        ? "icon"
+        : "none";
 }
 
 const slotTierClasses: Record<SlotTier, string | undefined> = {
-  numberStatusBar: styles.slotTierNumberStatusBar,
-  statusBar: styles.slotTierStatusBar,
-  barOnly: styles.slotTierBarOnly,
+  number: styles.slotTierNumber,
+  status: styles.slotTierStatus,
+  block: styles.slotTierBlock,
+  narrowBlock: styles.slotTierNarrowBlock,
+  none: styles.slotTierNone,
 };
 
 const groupTierClasses: Record<GroupTier, string | undefined> = {
-  groupIcon: styles.groupTierGroupIcon,
-  iconOnly: styles.groupTierIconOnly,
+  flag: styles.groupTierFlag,
+  name: styles.groupTierName,
+  icon: styles.groupTierIcon,
+  none: styles.groupTierNone,
 };
 
 const allTierClasses = [
@@ -203,29 +138,6 @@ function applyTierClasses(
   }
 }
 
-const chartId = "non-agg-header-track";
-
-interface SlotPosition {
-  slot: number;
-  leftPct: number;
-  widthPct: number;
-  isSkipped: boolean;
-  isMine: boolean;
-}
-
-interface SlotGroupPosition {
-  leftPct: number;
-  endPct: number;
-  hasFirstSlot: boolean;
-  hasSkipped: boolean;
-  hasMine: boolean;
-}
-
-interface RenderTiles {
-  idx: number;
-  tileSlots: TileSlots;
-}
-
 export interface NonAggHeaderTrackProps {
   className: string;
   width: number;
@@ -237,12 +149,14 @@ export function NonAggHeaderTrack({
   width,
   showNonAgg,
 }: NonAggHeaderTrackProps) {
-  const [tiles, setTiles] = useState<{
-    tiles: RenderTiles[];
-    groupTier: GroupTier;
+  const [renderState, setRenderState] = useState<{
+    slotGroups: SlotGroup[];
     slotTier: SlotTier;
+    groupTier: GroupTier;
+    containerStartMs: number;
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const containerStartMsRef = useRef(0);
 
   const nonAggQuery = useNonAggHeaderQuery(chartId);
 
@@ -255,29 +169,46 @@ export function NonAggHeaderTrack({
   );
 
   /**
-   * Update which tiles are renderered
+   * Update which slot groups are rendered
    */
-  const throttledUpdateTiles = useThrottledCallbackIfVisible(
+  const throttledUpdateGroups = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRange: TsRange) => {
-      const timelineSlots = store.get(timelineSlotsAtom);
+      const { slotGroups, tileSlotGroups } = store.get(timelineSlotsAtom);
       const { startIdx, endIdx, slotTier, groupTier } = getRangeInfo(
         referenceNs,
         visibleRange,
         width,
       );
 
-      const tiles: RenderTiles[] = [];
+      const slotGroupsMap = new Map<number, SlotGroup>();
       for (let idx = startIdx; idx <= endIdx; idx++) {
-        const tileSlots = timelineSlots.get(idx);
-        if (!tileSlots) continue;
+        const tileGroups = tileSlotGroups.get(idx);
+        if (!tileGroups) continue;
 
-        tiles.push({ idx, tileSlots });
+        for (const leaderSlot of tileGroups) {
+          if (slotGroupsMap.has(leaderSlot)) continue;
+
+          const group = slotGroups.get(leaderSlot);
+          if (!group) continue;
+
+          slotGroupsMap.set(leaderSlot, group);
+        }
       }
 
-      setTiles({
-        tiles,
-        groupTier,
+      const nextSlotGroups = [...slotGroupsMap.values()].sort(
+        (a, b) => a.leaderSlot - b.leaderSlot,
+      );
+
+      const containerStartMs = calcRelativeMs(
+        referenceNs,
+        BigInt(startIdx) * tileSizeNs,
+      );
+
+      setRenderState({
+        slotGroups: nextSlotGroups,
         slotTier,
+        groupTier,
+        containerStartMs,
       });
     },
     30,
@@ -285,33 +216,32 @@ export function NonAggHeaderTrack({
   );
 
   /**
-   * Update all renderer tiles' positions and widths
+   * Update container position and width. This will auto-scale slot groups.
    */
-  const updateTilePositionsOnly = useCallback(
+  const updateGroupPositionsOnly = useCallback(
     (referenceNs: bigint, visibleRange: TsRange) => {
-      const { absStartNs, absEndNs, slotTier, groupTier } = getRangeInfo(
-        referenceNs,
-        visibleRange,
-        width,
-      );
+      const { visibleStartMs, visibleEndMs, slotTier, groupTier } =
+        getRangeInfo(referenceNs, visibleRange, width);
 
-      for (const child of containerRef.current?.children ?? []) {
-        const el = child as HTMLElement;
-        const idx = Number(el.dataset.tileidx);
-        if (Number.isNaN(idx)) continue;
+      if (!containerRef.current) return;
 
-        const { widthPx, leftPx } = getTilePx(idx, absStartNs, absEndNs, width);
-        el.style.width = `${widthPx}px`;
-        el.style.transform = `translateX(${leftPx}px)`;
-        // temporarily hide elements for this tier on pan / zoom, until react renders the updated tile props
-        applyTierClasses(el, slotTier, groupTier);
+      // Set container width / position
+      // NOTE: don't use css var here, as it will restyle dependents
+      const pxPerMs = width / (visibleEndMs - visibleStartMs);
+      const containerWidth = `${containerWindowMs * pxPerMs}px`;
+      if (containerRef.current.style.width !== containerWidth) {
+        containerRef.current.style.width = containerWidth;
       }
+      containerRef.current.style.transform = `translateX(${(containerStartMsRef.current - visibleStartMs) * pxPerMs}px)`;
+
+      // temporarily hide elements for this tier on pan / zoom, until react renders the updated tile props
+      applyTierClasses(containerRef.current, slotTier, groupTier);
     },
     [width],
   );
 
   /**
-   * Update tile positions and query for data
+   * Update positions and query for data
    */
   const onRangeChange = useCallback(() => {
     const referenceNs = store.get(referenceNsAtom);
@@ -321,17 +251,17 @@ export function NonAggHeaderTrack({
       return;
     }
 
-    updateTilePositionsOnly(referenceNs, visibleRange);
+    updateGroupPositionsOnly(referenceNs, visibleRange);
 
     if (isAggregate(visibleRange)) return;
 
     throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
-  }, [updateTilePositionsOnly, throttledRelativeTsQuery]);
+  }, [updateGroupPositionsOnly, throttledRelativeTsQuery]);
 
   /**
-   * Update tiles that are renderered and switch to showing non-agg
+   * Update groups that are rendered and switch to showing non-agg
    */
-  const throttledUpdateTilesAndShow = useThrottledCallbackIfVisible(
+  const throttledUpdateGroupsAndShow = useThrottledCallbackIfVisible(
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
@@ -339,9 +269,9 @@ export function NonAggHeaderTrack({
         return;
       }
 
-      throttledUpdateTiles(referenceNs, visibleRange);
+      throttledUpdateGroups(referenceNs, visibleRange);
       showNonAgg();
-    }, [showNonAgg, throttledUpdateTiles]),
+    }, [showNonAgg, throttledUpdateGroups]),
     70,
     { leading: true, trailing: true },
   );
@@ -350,238 +280,245 @@ export function NonAggHeaderTrack({
   useLayoutEffect(() => {
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
 
-    // listen for agg slots draw events
+    // listen for non-agg slots draw events
     const emitter = store.get(timelineSlotsEmitterAtom);
-    emitter.addListener(drawEventType, throttledUpdateTilesAndShow);
+    emitter.addListener(drawEventType, throttledUpdateGroupsAndShow);
 
     const aggEmitter = store.get(aggHeaderEmitterAtom);
-    const clearTilesIfAgg = () => {
+    const clearIfAgg = () => {
       const visibleRange = store.get(visibleRangeAtom);
       if (!visibleRange || !isAggregate(visibleRange)) return;
-      setTiles(null);
+      setRenderState(null);
     };
-    aggEmitter.addListener(aggDrawEventType, clearTilesIfAgg);
+    aggEmitter.addListener(aggDrawEventType, clearIfAgg);
 
     // trigger initial draw
     onRangeChange();
 
     // cleanup
     return () => {
-      emitter.removeListener(drawEventType, throttledUpdateTilesAndShow);
-      aggEmitter.removeListener(aggDrawEventType, clearTilesIfAgg);
-      throttledUpdateTilesAndShow.cancel();
-      throttledUpdateTiles.cancel();
+      emitter.removeListener(drawEventType, throttledUpdateGroupsAndShow);
+      aggEmitter.removeListener(aggDrawEventType, clearIfAgg);
+      throttledUpdateGroupsAndShow.cancel();
+      throttledUpdateGroups.cancel();
       throttledRelativeTsQuery.cancel();
       unsubscribeRange();
     };
   }, [
     onRangeChange,
-    throttledUpdateTilesAndShow,
-    throttledUpdateTiles,
+    throttledUpdateGroupsAndShow,
+    throttledUpdateGroups,
     throttledRelativeTsQuery,
   ]);
 
-  // handle chart resize
+  // handle chart resize, which may trigger tier changes depending on new width
   useLayoutEffect(() => {
     const referenceNs = store.get(referenceNsAtom);
     const visibleRange = store.get(visibleRangeAtom);
     if (referenceNs == null || !visibleRange) {
       return;
     }
-    throttledUpdateTiles(referenceNs, visibleRange);
-  }, [throttledUpdateTiles, width]);
+    throttledUpdateGroups(referenceNs, visibleRange);
+  }, [throttledUpdateGroups, width]);
 
-  // position freshly rendered tiles before paint
+  const containerStartMs = renderState?.containerStartMs ?? 0;
+
+  // reposition container before paint on anchor changes
   useLayoutEffect(() => {
+    containerStartMsRef.current = containerStartMs;
     const referenceNs = store.get(referenceNsAtom);
     const visibleRange = store.get(visibleRangeAtom);
-    if (referenceNs == null || !visibleRange) {
-      return;
-    }
-    updateTilePositionsOnly(referenceNs, visibleRange);
-  }, [tiles, updateTilePositionsOnly]);
+    if (referenceNs == null || !visibleRange) return;
 
-  if (tiles == null) return null;
+    updateGroupPositionsOnly(referenceNs, visibleRange);
+  }, [containerStartMs, updateGroupPositionsOnly]);
 
   return (
-    <Box
-      ref={containerRef}
-      className={className}
-      position="relative"
-      width="100%"
-      height="100%"
-      overflowX="hidden"
-    >
-      {tiles.tiles.map(({ idx, tileSlots }) => (
-        <Tile
-          key={idx}
-          idx={idx}
-          tileSlots={tileSlots}
-          groupTier={tiles.groupTier}
-          slotTier={tiles.slotTier}
-        />
-      ))}
-    </Box>
+    <div className={className}>
+      <div ref={containerRef} className={styles.container}>
+        {renderState?.slotGroups.map((group) => (
+          <SlotGroupContainer
+            key={group.leaderSlot}
+            containerStartMs={containerStartMs}
+            leaderSlot={group.leaderSlot}
+            slots={group.slots}
+            groupTier={renderState.groupTier}
+            slotTier={renderState.slotTier}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
-interface TileProps {
-  idx: number;
-  tileSlots: TileSlots;
+interface SlotGroupContainerProps {
+  containerStartMs: number;
+  leaderSlot: number;
+  slots: Map<number, SlotInfo>;
   groupTier: GroupTier;
   slotTier: SlotTier;
 }
 
-/**
- * Render slot groups and slots that fall within this tile.
- * Width and positions are set separately
- */
-const Tile = memo(function Tile({
-  idx,
-  tileSlots,
+const SlotGroupContainer = memo(function SlotGroupContainer({
+  containerStartMs,
+  leaderSlot,
+  slots,
   groupTier,
   slotTier,
-}: TileProps) {
-  const { slots, slotGroups } = useMemo(
-    () => getTileSlots(idx, tileSlots),
-    [idx, tileSlots],
-  );
+}: SlotGroupContainerProps) {
+  const sortedSlots = [...slots.values()].sort((a, b) => a.slot - b.slot);
+
+  const hasSkipped = sortedSlots.some((s) => s.isSkipped);
+  const isMine = sortedSlots.some((s) => s.isMine);
+
+  const groupStartMs = Math.min(...sortedSlots.map((s) => s.startMs));
+  const groupEndMs = Math.max(...sortedSlots.map((s) => s.endMs));
+  const groupDurationMs = groupEndMs - groupStartMs;
 
   return (
-    <Box
-      data-tileidx={idx}
-      className={clsx(slotTierClasses[slotTier], groupTierClasses[groupTier])}
-      position="absolute"
-      top="0"
-      left="0"
-      bottom="0"
+    <div
+      className={clsx(styles.slotGroupContainer, {
+        [styles.skipped]: hasSkipped,
+        [styles.mine]: isMine,
+      })}
+      style={{
+        height: `${trackHeight}px`,
+        left: `${((groupStartMs - containerStartMs) / containerWindowMs) * 100}%`,
+        width: `${(groupDurationMs / containerWindowMs) * 100}%`,
+      }}
     >
-      <Box className={styles.groupRow} position="relative" width="100%">
-        {[...slotGroups.entries()].map(([leaderSlot, group]) => (
-          <SlotGroup
-            key={leaderSlot}
-            leaderSlot={leaderSlot}
-            leftPct={group.leftPct}
-            widthPct={group.endPct - group.leftPct}
-            showName={groupTier === "groupIcon"}
-            hasSkipped={group.hasSkipped}
-            hasMine={group.hasMine}
-          />
-        ))}
-      </Box>
-      <Box className={styles.slotRow} position="relative" width="100%">
-        {slots.map((slot) => (
-          <Slot
-            key={slot.slot}
-            slot={slot.slot}
-            leftPct={slot.leftPct}
-            widthPct={slot.widthPct}
-            slotTier={slotTier}
-            skipped={slot.isSkipped}
-          />
-        ))}
-      </Box>
-    </Box>
+      <SlotGroupHeader
+        leaderSlot={leaderSlot}
+        isMine={isMine}
+        groupTier={groupTier}
+      />
+      <div className={styles.slotRow}>
+        {sortedSlots.map((slotInfo) => {
+          return (
+            <Slot
+              key={slotInfo.slot}
+              isEarliestStart={groupStartMs === slotInfo.startMs}
+              isLatestEnd={groupEndMs === slotInfo.endMs}
+              groupStartMs={groupStartMs}
+              groupDurationMs={groupDurationMs}
+              {...slotInfo}
+              slotTier={slotTier}
+            />
+          );
+        })}
+      </div>
+    </div>
   );
 });
 
-interface SlotGroupProps {
+interface SlotGroupHeaderProps {
   leaderSlot: number;
-  // left/width as percent of the parent tile.
-  leftPct: number;
-  widthPct: number;
-  showName: boolean;
-  hasSkipped: boolean;
-  hasMine: boolean;
+  isMine: boolean;
+  groupTier: GroupTier;
 }
-const SlotGroup = memo(function SlotGroup({
-  leaderSlot: firstSlot,
-  leftPct,
-  widthPct,
-  showName,
-  hasSkipped,
-  hasMine,
-}: SlotGroupProps) {
-  const { peer, name, isLeader } = useSlotInfo(firstSlot);
+
+const SlotGroupHeader = memo(function SlotGroupHeader({
+  leaderSlot,
+  isMine,
+  groupTier,
+}: SlotGroupHeaderProps) {
+  const { peer, name, countryFlag } = useSlotInfo(leaderSlot);
 
   return (
-    <Flex
-      minHeight="0"
-      direction="column"
-      gap="2px"
-      position="absolute"
-      top="0"
-      bottom="0"
-      width={`${widthPct}%`}
-      px="2px"
-      overflow="hidden"
-      className={clsx(styles.slotGroupLabel, {
-        [styles.skipped]: hasSkipped,
-        [styles.mine]: hasMine,
+    <div
+      className={clsx(styles.slotGroupHeader, {
+        [styles.noPad]: groupTier === "none" || groupTier === "icon",
       })}
-      style={{ left: `${leftPct}%` }}
     >
-      <Flex justify="center" flexGrow="1" minHeight="0" minWidth="0" px="2px">
-        <Flex align="center" gap="4px" minWidth="0">
-          <PeerIcon
-            url={peer?.info?.icon_url}
-            size={logoSize}
-            isYou={isLeader}
-            hideTooltip
-          />
-          {showName && (
-            <Text truncate className={styles.slotGroupName}>
-              {name}
-            </Text>
-          )}
-        </Flex>
-      </Flex>
-    </Flex>
+      {(groupTier === "flag" ||
+        groupTier === "name" ||
+        groupTier === "icon") && (
+        <PeerIcon
+          url={peer?.info?.icon_url}
+          size={logoSize}
+          isYou={isMine}
+          hideTooltip
+        />
+      )}
+      {(groupTier === "flag" || groupTier === "name") && (
+        <>
+          {isMine && <span className={styles.youText}>You</span>}
+          <span className={styles.slotGroupName}>{name}</span>
+        </>
+      )}
+      {groupTier === "flag" && countryFlag && (
+        <MonoText className={styles.countryFlag}>{countryFlag}</MonoText>
+      )}
+    </div>
   );
 });
 
 interface SlotProps {
+  isEarliestStart: boolean;
+  isLatestEnd: boolean;
+  groupStartMs: number;
+  groupDurationMs: number;
   slot: number;
-  // left/width as percent of the parent tile.
-  leftPct: number;
-  widthPct: number;
+  startMs: number;
+  endMs: number;
+  isSkipped: boolean;
   slotTier: SlotTier;
-  skipped: boolean;
 }
 const Slot = memo(function Slot({
+  isEarliestStart,
+  isLatestEnd,
+  groupStartMs,
+  groupDurationMs,
   slot,
-  leftPct,
-  widthPct,
+  startMs,
+  endMs,
+  isSkipped,
   slotTier,
-  skipped,
 }: SlotProps) {
+  // prevent status render from blocking smooth zoom, etc
+  const deferredSlotTier = useDeferredValue(slotTier);
+
+  if (slotTier === "none") return null;
+
+  const idx = slot % slotsPerLeader;
+  const liveIsBlock = slotTier === "block" || slotTier === "narrowBlock";
+  const showNumber = deferredSlotTier === "number";
+  const showStatus =
+    deferredSlotTier === "number" || deferredSlotTier === "status";
+
+  const showBlock = liveIsBlock || !showStatus;
+
   return (
-    <Flex
-      align="center"
-      justify="center"
-      gap="2"
-      position="absolute"
-      top="0"
-      bottom="0"
-      width={`${widthPct}%`}
-      className={clsx(
-        styles.slot,
-        skipped ? styles.skipped : slotGroupColorClasses[slot % 4],
-      )}
+    <div
+      className={clsx(styles.slot, {
+        [styles.earliestStart]: isEarliestStart,
+        [styles.latestEnd]: isLatestEnd,
+        [styles.leftBorder]: !isEarliestStart && !showBlock,
+      })}
       style={{
-        left: `${leftPct}%`,
+        left: `${((startMs - groupStartMs) / groupDurationMs) * 100}%`,
+        width: `${((endMs - startMs) / groupDurationMs) * 100}%`,
       }}
     >
-      {slotTier === "numberStatusBar" && (
-        <Text truncate className={styles.slotNumber}>
-          {slot}
-        </Text>
+      {!showBlock && (
+        <div className={styles.slotContent}>
+          {showNumber && <span className={styles.slotNumber}>{slot}</span>}
+          {showStatus && (
+            <div className={styles.slotStatus}>
+              <SlotStatus slot={slot} skipped={isSkipped} />
+            </div>
+          )}
+        </div>
       )}
-      {slotTier !== "barOnly" && (
-        <Flex className={styles.slotStatus} align="center">
-          <SlotStatus slot={slot} skipped={skipped} />
-        </Flex>
-      )}
-    </Flex>
+
+      <div
+        className={clsx(styles.slotBar, {
+          [styles.slotBarBlock]: showBlock,
+          [styles.slotBarNarrow]: slotTier === "narrowBlock",
+          [styles.skipped]: isSkipped,
+          [styles[`slotBar${idx}`]]: !isSkipped,
+        })}
+      />
+    </div>
   );
 });

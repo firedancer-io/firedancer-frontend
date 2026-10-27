@@ -15,6 +15,7 @@ import {
 const granularity = "";
 
 export const OVERSCAN_TILES_COUNT = 2;
+export const OVERSCAN_DRAW_TILES_COUNT = 1;
 const TILE_EVICTION_HIGH_WATERMARK = 24;
 const TILE_EVICTION_LOW_WATERMARK = 16;
 const getTileEvictionHighWatermark = () => TILE_EVICTION_HIGH_WATERMARK;
