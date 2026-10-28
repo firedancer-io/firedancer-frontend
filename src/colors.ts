@@ -252,12 +252,17 @@ export const transactionDefaultColor = "rgba(0, 0, 0, .5)";
 export const transactionPreloadingColor = "rgba(125, 94, 84, .5)";
 export const transactionPreloadingTextColor = "#A18072";
 export const transactionValidateColor = "#6C4E62";
-export const transactionLoadingColor = "rgba(158, 108, 0, .5)";
+export const transactionLoadingSolidColor = "#9E6C00";
+export const transactionLoadingColor = `${transactionLoadingSolidColor}80`;
 export const transactionLoadingTextColor = "#836A21";
-export const transactionExecuteColor = "rgba(96, 100, 108, .5)";
+export const transactionExecuteSolidColor = "#60646C";
+export const transactionExecuteColor = `${transactionExecuteSolidColor}80`;
 export const transactionExecuteTextColor = "#B5B2BC";
-export const transactionPostExecuteColor = "rgba(17, 50, 100, .5)";
+export const transactionPostExecuteSolidColor = "#113264";
+export const transactionPostExecuteColor = `${transactionPostExecuteSolidColor}80`;
 export const transactionPostExecuteTextColor = "#0090FF";
+export const transactionErrorOutlineColor = "#A20508";
+export const transactionSuccessOutlineColor = "#13AD4F";
 
 // leader schedule
 export const summaryPrimaryTextColor = "var(--gray-11)";

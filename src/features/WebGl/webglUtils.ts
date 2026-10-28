@@ -55,12 +55,12 @@ export function createRenderer(
   maxWebGlPixelRatio: number,
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
+  antialias = true,
+  pixelRatio = Math.min(window.devicePixelRatio, maxWebGlPixelRatio),
 ) {
   try {
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio, maxWebGlPixelRatio),
-    );
+    const renderer = new THREE.WebGLRenderer({ antialias, alpha: true });
+    renderer.setPixelRatio(pixelRatio);
     renderer.setSize(canvasWidth, canvasHeight);
     renderer.setClearColor(0x000000, 0);
 
@@ -150,6 +150,7 @@ export const DEFAULT_RECT_CAPACITY = 2 ** 10;
 export function createRectMesh(
   resources: RectResources,
   initialCapacity = DEFAULT_RECT_CAPACITY,
+  material: THREE.RawShaderMaterial = resources.rectMaterial,
 ): RectMesh {
   const rectArray = new Float32Array(initialCapacity * 4);
   const colorArray = new Float32Array(initialCapacity * 3);
@@ -171,7 +172,7 @@ export function createRectMesh(
   geometry.instanceCount = 0;
   geometry.boundingSphere = new THREE.Sphere();
 
-  const mesh = new THREE.Mesh(geometry, resources.rectMaterial);
+  const mesh = new THREE.Mesh(geometry, material);
   mesh.frustumCulled = false;
 
   return {
