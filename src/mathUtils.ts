@@ -52,6 +52,18 @@ export function clampNonZeroValue(value: number, lower: number, upper: number) {
   return clamp(value, lower, upper);
 }
 
+export function bigIntMin(first: bigint, ...rest: bigint[]): bigint {
+  let min = first;
+  for (const value of rest) if (value < min) min = value;
+  return min;
+}
+
+export function bigIntMax(first: bigint, ...rest: bigint[]): bigint {
+  let max = first;
+  for (const value of rest) if (value > max) max = value;
+  return max;
+}
+
 /**
  * Convert ms timestamp to ns timestamp while keeping as much
  * precision as possible

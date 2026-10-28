@@ -3,6 +3,10 @@
   width: 100%;
 }
 
+.top-inset {
+  padding-top: 12px;
+}
+
 .track-canvas-container {
   position: relative;
   width: 100%;
