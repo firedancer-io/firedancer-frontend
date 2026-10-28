@@ -1,0 +1,5 @@
+# Unmodified upstream sources (see src/third_party/zstd/vendor.sh)
+src/third_party/zstd/lib/** -diff linguist-vendored=true
+
+# Built by src/api/worker/zstd/build.sh
+*.wasm binary linguist-generated=true
