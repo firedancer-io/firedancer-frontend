@@ -1,7 +1,8 @@
 import { ascBucketGranularities, msBucketSizes } from "../const";
 import type { AggShreds } from "../../../api/types";
-import { useAggQuery } from "../useAggQuery";
+import { createAggCache } from "../aggCache";
 import type { TimelineQueryKey } from "../atoms";
+import { AGG_SHREDS_CHART_ID } from "./const";
 import {
   addAggShredsAtom,
   deleteAggShredsBucketsAtom,
@@ -22,12 +23,10 @@ export function getAggGranularity(windowSizeMs: number) {
   );
 }
 
-export function useAggShredsQuery(chartId: string) {
-  return useAggQuery<AggShreds>({
-    chartId,
-    queryKey: QUERY_KEY,
-    addAtom: addAggShredsAtom,
-    deleteBucketsAtom: deleteAggShredsBucketsAtom,
-    emitterAtom: aggShredsEmitterAtom,
-  });
-}
+export const aggShredsCache = createAggCache<AggShreds>({
+  chartId: AGG_SHREDS_CHART_ID,
+  queryKey: QUERY_KEY,
+  addAtom: addAggShredsAtom,
+  deleteBucketsAtom: deleteAggShredsBucketsAtom,
+  emitterAtom: aggShredsEmitterAtom,
+});

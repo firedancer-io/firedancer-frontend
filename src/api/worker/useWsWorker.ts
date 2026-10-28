@@ -13,7 +13,9 @@ const store = getDefaultStore();
 
 let worker: TypedWorker<ToWorkerMessage, FromWorkerMessage> | null = null;
 // Singleton so existing listeners keep receiving events if the worker is recreated
-const emitter = new EventEmitter().setMaxListeners(1e3) as MessageEmitter;
+export const emitter = new EventEmitter().setMaxListeners(
+  1e3,
+) as MessageEmitter;
 
 /**
  * Buffer worker messages and flush once per frame to prevent worker

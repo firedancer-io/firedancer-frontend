@@ -17,7 +17,7 @@ import {
   type RendererObj,
 } from "./const";
 import { type ShredBucketsByGranularity } from "./atoms";
-import { getAggGranularity } from "./useAggShredsQuery";
+import { getAggGranularity } from "./aggShredsCache";
 import { OVERSCAN_BUCKETS } from "../useAggQuery";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
 

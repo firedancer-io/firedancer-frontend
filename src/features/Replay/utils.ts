@@ -4,7 +4,13 @@ import { clamp } from "../../uplotReact/utils.ts";
 import type { TsRange } from "../WebGl/webglUtils.ts";
 import { convertToNsTimestamp } from "../../mathUtils.ts";
 import { useServerMessages } from "../../api/ws/utils.ts";
-import type { WsEntity, WsError } from "../../api/worker/types.ts";
+import { emitter } from "../../api/worker/useWsWorker.ts";
+import { messageEventType } from "../../api/ws/ConnectionContext.ts";
+import type {
+  FromWorkerMessage,
+  WsEntity,
+  WsError,
+} from "../../api/worker/types.ts";
 import type { AggGranularity } from "../../api/types.ts";
 
 export function clampToWorld(range: TsRange, worldRange: TsRange) {
@@ -65,28 +71,55 @@ function isTimelineKey<
   return message.topic === "timeline" && message.key === key;
 }
 
+function handleTimelineMessage<TKey extends string>(
+  message: FromWorkerMessage,
+  key: TKey,
+  onMessage: (message: TimelineEntityForKey<TKey>) => void,
+  onError?: (message: TimelineErrorForKey<TKey>) => void,
+) {
+  if (message.type === "kv" && isTimelineKey(message, key)) {
+    onMessage(message);
+  } else if (message.type === "kvb") {
+    for (const item of message.items) {
+      if (isTimelineKey(item, key)) {
+        onMessage(item);
+      }
+    }
+  } else if (
+    onError &&
+    message.type === "error" &&
+    isTimelineKey(message, key)
+  ) {
+    onError(message);
+  }
+}
+
 export function useTimelineServerMessage<TKey extends string>(
   key: TKey,
   onMessage: (message: TimelineEntityForKey<TKey>) => void,
   onError?: (message: TimelineErrorForKey<TKey>) => void,
 ) {
   useServerMessages((message) => {
-    if (message.type === "kv" && isTimelineKey(message, key)) {
-      onMessage(message);
-    } else if (message.type === "kvb") {
-      for (const item of message.items) {
-        if (isTimelineKey(item, key)) {
-          onMessage(item);
-        }
-      }
-    } else if (
-      onError &&
-      message.type === "error" &&
-      isTimelineKey(message, key)
-    ) {
-      onError(message);
-    }
+    handleTimelineMessage(message, key, onMessage, onError);
   });
+}
+
+/**
+ * Non-hook equivalent of `useTimelineServerMessage`. Subscribes to the message
+ * emitter directly and returns an unsubscribe function.
+ */
+export function subscribeToTimelineMessages<TKey extends string>(
+  key: TKey,
+  onMessage: (message: TimelineEntityForKey<TKey>) => void,
+  onError?: (message: TimelineErrorForKey<TKey>) => void,
+): () => void {
+  const cb = (message: FromWorkerMessage) => {
+    handleTimelineMessage(message, key, onMessage, onError);
+  };
+  emitter.addListener(messageEventType, cb);
+  return () => {
+    emitter.removeListener(messageEventType, cb);
+  };
 }
 
 export function getBucketIdx(

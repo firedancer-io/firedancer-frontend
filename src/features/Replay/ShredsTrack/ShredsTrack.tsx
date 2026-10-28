@@ -15,12 +15,11 @@ import {
 } from "./nonAggUtils.ts";
 import { releaseMesh } from "../../Shreds/WebGl/drawUtils.ts";
 import {
-  AGG_SHREDS_CHART_ID,
   NON_AGG_SHREDS_CHART_ID,
   shredEventSeries,
   type RendererObj,
 } from "./const.ts";
-import { useAggShredsQuery, getAggGranularity } from "./useAggShredsQuery.ts";
+import { aggShredsCache, getAggGranularity } from "./aggShredsCache.ts";
 import { useNonAggShredsQuery } from "./useNonAggShredsQuery.ts";
 import type { AggGranularity, ShredsGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
@@ -57,7 +56,7 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
   });
 
   const { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes } =
-    useAggShredsQuery(AGG_SHREDS_CHART_ID);
+    aggShredsCache;
 
   // Free meshes for slots whose data was just refetched, so the next draw
   // rebuilds them. Does not render; the stale frame stays until that draw.
@@ -211,6 +210,8 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
     rendererRef.current = rendererObj;
     containerRef.current.replaceChildren(rendererObj.renderer.domElement);
 
+    // listen for agg shreds server messages
+    aggShredsCache.init();
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
     const cleanUpRenderer = rendererRef.current.cleanUp;
     // listen for agg shreds draw events
@@ -230,6 +231,7 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
 
     // cleanup
     return () => {
+      aggShredsCache.dispose();
       aggEmitter.removeListener(drawEventType, throttledDrawAgg);
       shredEmitter.removeListener(drawEventType, throttledDrawNonAgg);
       fecEmitter.removeListener(drawEventType, throttledDrawNonAgg);
