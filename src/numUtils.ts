@@ -127,6 +127,17 @@ export function formatFrequency(n: number) {
 }
 
 /**
+ * Returns the largest of the given bigints, like Math.max.
+ */
+export function bigIntMax(first: bigint, ...rest: bigint[]): bigint {
+  let max = first;
+  for (const value of rest) {
+    if (value > max) max = value;
+  }
+  return max;
+}
+
+/**
  * Convert ms number to ns bigint, keeping as much precision as possible
  */
 export function msToNs(ms: number): bigint {
