@@ -1,16 +1,10 @@
-import { useCallback } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
-import { ascBucketGranularities, msBucketSizes, nsBucketSizes } from "../const";
-import { useWebSocketSend } from "../../../api/ws/utils";
-import type { AggGranularity, AggShreds } from "../../../api/types";
-import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
-import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
-import { useTiledQueries } from "../useTiledQueries";
+import { ascBucketGranularities, msBucketSizes } from "../const";
+import type { AggShreds } from "../../../api/types";
+import { useAggQuery } from "../useAggQuery";
 import type { TimelineQueryKey } from "../atoms";
 import {
   addAggShredsAtom,
   deleteAggShredsBucketsAtom,
-  drawEventType,
   aggShredsEmitterAtom,
 } from "./atoms";
 
@@ -28,110 +22,12 @@ export function getAggGranularity(windowSizeMs: number) {
   );
 }
 
-/**
- * Number of current granularity buckets per fetch tile.
- * The tile ns size increases as a bucket size increases.
- */
-export const BUCKETS_PER_TILE = 250;
-export const OVERSCAN_TILES_COUNT = 2;
-export const OVERSCAN_BUCKETS = BUCKETS_PER_TILE * OVERSCAN_TILES_COUNT;
-const TILE_EVICTION_HIGH_WATERMARK = 24;
-const TILE_EVICTION_LOW_WATERMARK = 16;
-const getTileEvictionHighWatermark = () => TILE_EVICTION_HIGH_WATERMARK;
-const getTileEvictionLowWatermark = () => TILE_EVICTION_LOW_WATERMARK;
-
-export function getTileSizeNs(granularity: AggGranularity) {
-  return BigInt(BUCKETS_PER_TILE) * nsBucketSizes[granularity];
-}
-
 export function useAggShredsQuery(chartId: string) {
-  const addAggShreds = useSetAtom(addAggShredsAtom);
-  const deleteAggShredsBuckets = useSetAtom(deleteAggShredsBucketsAtom);
-  const emitter = useAtomValue(aggShredsEmitterAtom);
-  const wsSend = useWebSocketSend();
-
-  const sendQuery = useCallback(
-    (
-      queryId: number,
-      startNs: bigint,
-      endNs: bigint,
-      granularity: AggGranularity,
-    ) => {
-      wsSend({
-        topic: "timeline",
-        key: QUERY_KEY,
-        id: queryId,
-        params: {
-          start_ns: startNs.toString(),
-          end_ns: endNs.toString(),
-          granularity,
-        },
-      });
-    },
-    [wsSend],
-  );
-
-  const onEvictTiles = useCallback(
-    (granularity: AggGranularity, tileIdxs: number[]) => {
-      const bucketIdxs = tileIdxs.reduce<number[]>((acc, tileIdx) => {
-        const start = tileIdx * BUCKETS_PER_TILE;
-        const end = start + BUCKETS_PER_TILE;
-        for (let i = start; i < end; i++) {
-          acc.push(i);
-        }
-        return acc;
-      }, []);
-      deleteAggShredsBuckets(granularity, bucketIdxs);
-    },
-    [deleteAggShredsBuckets],
-  );
-
-  const { queryRange, markQueryComplete, pauseStaleRefreshes } =
-    useTiledQueries<AggGranularity>({
-      chartId,
-      getTileSizeNs,
-      overscanTilesCount: OVERSCAN_TILES_COUNT,
-      queryKey: QUERY_KEY,
-      sendQuery,
-      getTileEvictionHighWatermark,
-      getTileEvictionLowWatermark,
-      onEvictTiles,
-    });
-
-  useTimelineServerMessage(
-    QUERY_KEY,
-    (message: { id: number; value: AggShreds }) => {
-      if (!markQueryComplete(message.id)) return;
-
-      addAggShreds(message.value);
-    },
-  );
-
-  // trigger redraw if panning to already fetched data
-  const onNothingToFetch = useCallback(() => {
-    emitter.emit(drawEventType);
-  }, [emitter]);
-
-  const query = useCallback(
-    (
-      referenceNs: bigint,
-      visibleRange: TsRange,
-      worldRange: TsRange,
-      granularity: AggGranularity,
-    ) => {
-      const visibleRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, visibleRange[0]),
-        calcAbsoluteNs(referenceNs, visibleRange[1]),
-      ];
-
-      const worldRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, worldRange[0]),
-        calcAbsoluteNs(referenceNs, worldRange[1]),
-      ];
-      queryRange(visibleRangeNs, worldRangeNs, granularity, onNothingToFetch);
-    },
-    [onNothingToFetch, queryRange],
-  );
-
-  return { query, pauseStaleRefreshes };
+  return useAggQuery<AggShreds>({
+    chartId,
+    queryKey: QUERY_KEY,
+    addAtom: addAggShredsAtom,
+    deleteBucketsAtom: deleteAggShredsBucketsAtom,
+    emitterAtom: aggShredsEmitterAtom,
+  });
 }
