@@ -14,13 +14,9 @@ import {
   moveNonAggCamera,
 } from "./nonAggUtils.ts";
 import { releaseMesh } from "../../Shreds/WebGl/drawUtils.ts";
-import {
-  NON_AGG_SHREDS_CHART_ID,
-  shredEventSeries,
-  type RendererObj,
-} from "./const.ts";
+import { shredEventSeries, type RendererObj } from "./const.ts";
 import { aggShredsCache, getAggGranularity } from "./aggShredsCache.ts";
-import { useNonAggShredsQuery } from "./useNonAggShredsQuery.ts";
+import { nonAggShredsCache } from "./nonAggShredsCache.ts";
 import type { AggGranularity, ShredsGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import {
@@ -78,7 +74,7 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
   );
 
   const { query: nonAggQuery, pauseStaleRefreshes: pauseStaleNonAggRefreshes } =
-    useNonAggShredsQuery(NON_AGG_SHREDS_CHART_ID, resetMeshes);
+    nonAggShredsCache;
 
   const throttledRelativeTsQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
@@ -212,6 +208,8 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
 
     // listen for agg shreds server messages
     aggShredsCache.init();
+    // listen for non-agg shreds server messages
+    nonAggShredsCache.init(resetMeshes);
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
     const cleanUpRenderer = rendererRef.current.cleanUp;
     // listen for agg shreds draw events
@@ -232,6 +230,7 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
     // cleanup
     return () => {
       aggShredsCache.dispose();
+      nonAggShredsCache.dispose();
       aggEmitter.removeListener(drawEventType, throttledDrawAgg);
       shredEmitter.removeListener(drawEventType, throttledDrawNonAgg);
       fecEmitter.removeListener(drawEventType, throttledDrawNonAgg);
@@ -244,6 +243,7 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
     };
   }, [
     onRangeChange,
+    resetMeshes,
     setUpContextListeners,
     getWasContextLost,
     throttledDrawAgg,

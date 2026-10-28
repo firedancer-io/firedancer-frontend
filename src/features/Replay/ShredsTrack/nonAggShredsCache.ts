@@ -1,14 +1,16 @@
-import { useCallback } from "react";
-import { useStore } from "jotai";
-import { useWebSocketSend } from "../../../api/ws/utils";
+import { getDefaultStore } from "jotai";
+import { sendMessage } from "../../../api/worker/useWsWorker";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
 import type { TimelineShreds, ShredsGranularity } from "../../../api/types";
 import { ShredsGranularityEnum } from "../../../api/entities";
-import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
+import { calcAbsoluteNs, subscribeToTimelineMessages } from "../utils";
 import { drawEventType, getNonAggAtoms } from "./atoms";
 import { nsPerMs } from "../../../consts";
-import { useTiledQueries } from "../useTiledQueries";
+import { createParallelCache } from "../parallelCache";
 import type { TimelineQueryKey } from "../atoms";
+import { NON_AGG_SHREDS_CHART_ID } from "./const";
+
+const store = getDefaultStore();
 
 const QUERY_KEY = "query_shreds" satisfies TimelineQueryKey;
 
@@ -38,56 +40,56 @@ function getTileSizeNs() {
   return tileSizeNs;
 }
 
-export function useNonAggShredsQuery(
-  chartId: string,
-  resetMeshes: (granularity: ShredsGranularity, slotNumbers: number[]) => void,
-) {
-  const store = useStore();
-  const wsSend = useWebSocketSend();
+const sendQuery = (
+  queryId: number,
+  startNs: bigint,
+  endNs: bigint,
+  granularity: ShredsGranularity,
+) => {
+  sendMessage({
+    topic: "timeline",
+    key: QUERY_KEY,
+    id: queryId,
+    params: {
+      start_ns: startNs.toString(),
+      end_ns: endNs.toString(),
+      granularity,
+    },
+  });
+};
 
-  const sendQuery = useCallback(
-    (
-      queryId: number,
-      startNs: bigint,
-      endNs: bigint,
+const onEvictTiles = (granularity: ShredsGranularity, tileIdxs: number[]) => {
+  store.set(getNonAggAtoms(granularity).deleteTilesData, tileIdxs);
+};
+
+function createNonAggShredsCache() {
+  const {
+    queryRange,
+    markQueryComplete,
+    pauseStaleRefreshes,
+    dispose: disposeParallelCache,
+  } = createParallelCache<ShredsGranularity>({
+    chartId: NON_AGG_SHREDS_CHART_ID,
+    getTileSizeNs,
+    overscanTilesCount: OVERSCAN_TILES_COUNT,
+    queryKey: QUERY_KEY,
+    sendQuery,
+    getTileEvictionHighWatermark,
+    getTileEvictionLowWatermark,
+    onEvictTiles,
+  });
+
+  let unsubscribe: (() => void) | undefined;
+
+  const init = (
+    resetMeshes: (
       granularity: ShredsGranularity,
-    ) => {
-      wsSend({
-        topic: "timeline",
-        key: QUERY_KEY,
-        id: queryId,
-        params: {
-          start_ns: startNs.toString(),
-          end_ns: endNs.toString(),
-          granularity,
-        },
-      });
-    },
-    [wsSend],
-  );
-
-  const onEvictTiles = useCallback(
-    (granularity: ShredsGranularity, tileIdxs: number[]) => {
-      store.set(getNonAggAtoms(granularity).deleteTilesData, tileIdxs);
-    },
-    [store],
-  );
-
-  const { queryRange, markQueryComplete, pauseStaleRefreshes } =
-    useTiledQueries<ShredsGranularity>({
-      chartId,
-      getTileSizeNs,
-      overscanTilesCount: OVERSCAN_TILES_COUNT,
-      queryKey: QUERY_KEY,
-      sendQuery,
-      getTileEvictionHighWatermark,
-      getTileEvictionLowWatermark,
-      onEvictTiles,
-    });
-
-  useTimelineServerMessage(
-    QUERY_KEY,
-    useCallback(
+      slotNumbers: number[],
+    ) => void,
+  ) => {
+    unsubscribe?.();
+    unsubscribe = subscribeToTimelineMessages(
+      QUERY_KEY,
       (message: { id: number; value: TimelineShreds }) => {
         const queryInfo = markQueryComplete(message.id);
         if (queryInfo == null) return;
@@ -101,40 +103,38 @@ export function useNonAggShredsQuery(
         resetMeshes(granularity, touchedSlots);
         store.get(getNonAggAtoms(granularity).emitter).emit(drawEventType);
       },
-      [store, markQueryComplete, resetMeshes],
-    ),
-  );
+    );
+  };
 
   // trigger redraw if panning to already fetched data
-  const onNothingToFetch = useCallback(
-    (granularity: ShredsGranularity) => {
-      store.get(getNonAggAtoms(granularity).emitter).emit(drawEventType);
-    },
-    [store],
-  );
-
-  const query = useCallback(
-    (
-      referenceNs: bigint,
-      visibleRange: TsRange,
-      worldRange: TsRange,
-      granularity: ShredsGranularity,
-    ) => {
-      const visibleRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, visibleRange[0]),
-        calcAbsoluteNs(referenceNs, visibleRange[1]),
-      ];
-      const worldRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, worldRange[0]),
-        calcAbsoluteNs(referenceNs, worldRange[1]),
-      ];
-      queryRange(visibleRangeNs, worldRangeNs, granularity, onNothingToFetch);
-    },
-    [onNothingToFetch, queryRange],
-  );
-
-  return {
-    query,
-    pauseStaleRefreshes,
+  const onNothingToFetch = (granularity: ShredsGranularity) => {
+    store.get(getNonAggAtoms(granularity).emitter).emit(drawEventType);
   };
+
+  const query = (
+    referenceNs: bigint,
+    visibleRange: TsRange,
+    worldRange: TsRange,
+    granularity: ShredsGranularity,
+  ) => {
+    const visibleRangeNs: NsTsRange = [
+      calcAbsoluteNs(referenceNs, visibleRange[0]),
+      calcAbsoluteNs(referenceNs, visibleRange[1]),
+    ];
+    const worldRangeNs: NsTsRange = [
+      calcAbsoluteNs(referenceNs, worldRange[0]),
+      calcAbsoluteNs(referenceNs, worldRange[1]),
+    ];
+    queryRange(visibleRangeNs, worldRangeNs, granularity, onNothingToFetch);
+  };
+
+  const dispose = () => {
+    unsubscribe?.();
+    unsubscribe = undefined;
+    disposeParallelCache();
+  };
+
+  return { query, pauseStaleRefreshes, init, dispose };
 }
+
+export const nonAggShredsCache = createNonAggShredsCache();

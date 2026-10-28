@@ -19,7 +19,7 @@ import {
   getTileIdxRangeWithOverscan,
 } from "../utils";
 import { getNonAggAtoms } from "./atoms";
-import { OVERSCAN_TILES_COUNT, tileSizeNs } from "./useNonAggShredsQuery";
+import { OVERSCAN_TILES_COUNT, tileSizeNs } from "./nonAggShredsCache";
 import { type NonAggRendererResources, type RendererObj } from "./const";
 
 const store = getDefaultStore();
