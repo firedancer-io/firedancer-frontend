@@ -198,25 +198,10 @@ export function NonAggHeaderTrack({
         (a, b) => a.leaderSlot - b.leaderSlot,
       );
 
-      setRenderState((prev) => {
-        // If zooming in, don't remove previously rendered slot groups so they are around if user zooms out
-        const isSubset =
-          prev != null &&
-          nextSlotGroups.length > 0 &&
-          nextSlotGroups.every((group) =>
-            prev.slotGroups.some((g) => g.leaderSlot === group.leaderSlot),
-          );
-
-        return {
-          slotGroups: isSubset
-            ? // refresh data
-              prev.slotGroups.map(
-                (group) => slotGroupsMap.get(group.leaderSlot) ?? group,
-              )
-            : nextSlotGroups,
-          slotTier,
-          groupTier,
-        };
+      setRenderState({
+        slotGroups: nextSlotGroups,
+        slotTier,
+        groupTier,
       });
     },
     30,
