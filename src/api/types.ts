@@ -85,6 +85,9 @@ import type {
   aggRevenueSchema,
   aggSlotsSchema,
   txnMetaResponseSchema,
+  tileStatesGranularitySchema,
+  tileStatesResponseSchema,
+  aggTileStatesSchema,
   aggShredsSchema,
   timelineSlotsSchema,
   timelineShredsSchema,
@@ -239,6 +242,9 @@ export type AggSlots = z.infer<typeof aggSlotsSchema>;
 export type TimelineSlots = z.infer<typeof timelineSlotsSchema>;
 export type AggRevenue = z.infer<typeof aggRevenueSchema>;
 export type TimelineTxnMeta = z.infer<typeof txnMetaResponseSchema>;
+export type TileStatesGranularity = z.infer<typeof tileStatesGranularitySchema>;
+export type TimelineTileStates = z.infer<typeof tileStatesResponseSchema>;
+export type AggTileStates = z.infer<typeof aggTileStatesSchema>;
 export type AggShreds = z.infer<typeof aggShredsSchema>;
 export type ShredsGranularity = z.infer<typeof shredsGranularitySchema>;
 export type TimelineShreds = z.infer<typeof timelineShredsSchema>;

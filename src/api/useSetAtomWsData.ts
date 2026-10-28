@@ -818,7 +818,9 @@ function useUpdateAtoms() {
             case "query_agg_slots":
             case "query_slots":
             case "query_events":
-            case "query_txn_meta": {
+            case "query_txn_meta":
+            case "query_tile_states":
+            case "query_agg_tile_states": {
               // listen in component
               break;
             }
