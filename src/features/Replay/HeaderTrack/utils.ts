@@ -21,7 +21,8 @@ import {
 } from "./const";
 import { omit } from "lodash";
 import type { SlotBucketsByGranularity } from "./aggAtoms";
-import { getAggGranularity, OVERSCAN_BUCKETS } from "./useAggHeaderQuery";
+import { getAggGranularity } from "./useAggHeaderQuery";
+import { OVERSCAN_BUCKETS } from "../useAggQuery";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
 import {
   replayAggHeaderBackgroundColor,

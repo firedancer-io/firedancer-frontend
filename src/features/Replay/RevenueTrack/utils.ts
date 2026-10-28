@@ -29,8 +29,8 @@ import { getRevenueRatio } from "./scale.ts";
 import {
   AGG_BUCKET_COUNT_THRESHOLD,
   getGranularity,
-  OVERSCAN_BUCKETS,
 } from "./useAggRevenueQuery.ts";
+import { OVERSCAN_BUCKETS } from "../useAggQuery.ts";
 import {
   getAggRevenueValue,
   type RevenueBucketsByGranularity,
