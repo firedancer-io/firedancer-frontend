@@ -9,15 +9,12 @@ import {
   timelineSlotsEmitterAtom,
 } from "./nonAggAtoms";
 import { calcAbsoluteNs, getTileIdx } from "../utils";
-import {
-  OVERSCAN_DRAW_TILES_COUNT,
-  tileSizeNs,
-  useNonAggHeaderQuery,
-} from "./useNonAggHeaderQuery";
+import { tileSizeNs, useNonAggHeaderQuery } from "./useNonAggHeaderQuery";
 import { isAggregate } from "./utils";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible";
 import type { TsRange } from "../../WebGl/webglUtils";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
+import { bigIntMax } from "../../../numUtils";
 import { epochAtom } from "../../../atoms";
 import clsx from "clsx";
 import PeerIcon from "../../../components/PeerIcon";
@@ -44,6 +41,9 @@ const store = getDefaultStore();
 const logoSize = 8;
 const chartId = "non-agg-header-track";
 
+/** How many visible-range widths to overscan on each side when drawing. */
+const OVERSCAN_DRAW_RANGE_MULTIPLIER = 1;
+
 /**
  * Shared range math: resolve the absolute visible window, the overscanned tile
  * index range to render, and the slot/group tiers for the current zoom level.
@@ -64,14 +64,21 @@ function getRangeInfo(
   const slotTier = getSlotTier(estimatedSlotPx);
   const groupTier = getGroupTier(estimatedSlotPx * slotsPerLeader);
 
-  const startIdx =
-    getTileIdx(absStartNs, tileSizeNs, false) - OVERSCAN_DRAW_TILES_COUNT;
-  const endIdx =
-    getTileIdx(absEndNs, tileSizeNs, true) + OVERSCAN_DRAW_TILES_COUNT;
+  const overscanMs =
+    (visibleRange[1] - visibleRange[0]) * OVERSCAN_DRAW_RANGE_MULTIPLIER;
+  const drawStartMs = visibleRange[0] - overscanMs;
+  const drawEndMs = visibleRange[1] + overscanMs;
+
+  const drawStartNs = bigIntMax(0n, calcAbsoluteNs(referenceNs, drawStartMs));
+  const drawEndNs = bigIntMax(0n, calcAbsoluteNs(referenceNs, drawEndMs));
+  const startIdx = getTileIdx(drawStartNs, tileSizeNs, false);
+  const endIdx = getTileIdx(drawEndNs, tileSizeNs, true);
 
   return {
     visibleStartMs: visibleRange[0],
     visibleEndMs: visibleRange[1],
+    drawStartMs,
+    drawEndMs,
     startIdx,
     endIdx,
     slotTier,
@@ -173,12 +180,10 @@ export function NonAggHeaderTrack({
   const throttledUpdateGroups = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRange: TsRange) => {
       const { slotGroups, tileSlotGroups } = store.get(timelineSlotsAtom);
-      const { startIdx, endIdx, slotTier, groupTier } = getRangeInfo(
-        referenceNs,
-        visibleRange,
-        width,
-      );
+      const { startIdx, endIdx, drawStartMs, drawEndMs, slotTier, groupTier } =
+        getRangeInfo(referenceNs, visibleRange, width);
 
+      // get groups that are within the draw window
       const slotGroupsMap = new Map<number, SlotGroup>();
       for (let idx = startIdx; idx <= endIdx; idx++) {
         const tileGroups = tileSlotGroups.get(idx);
@@ -190,7 +195,13 @@ export function NonAggHeaderTrack({
           const group = slotGroups.get(leaderSlot);
           if (!group) continue;
 
-          slotGroupsMap.set(leaderSlot, group);
+          // Only render groups with a slot that falls within the draw window
+          for (const slot of group.slots.values()) {
+            if (slot.endMs >= drawStartMs && slot.startMs <= drawEndMs) {
+              slotGroupsMap.set(leaderSlot, group);
+              break;
+            }
+          }
         }
       }
 
