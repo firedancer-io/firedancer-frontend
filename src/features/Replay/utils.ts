@@ -13,6 +13,10 @@ import { useServerMessages } from "../../api/ws/utils.ts";
 import type { WsEntity, WsError } from "../../api/worker/types.ts";
 import type { AggGranularity } from "../../api/types.ts";
 import type { TimelineAggQueryKey } from "./atoms.ts";
+import {
+  OVERSCAN_DRAW_TILES_COUNT,
+  tileSizeNs,
+} from "./HeaderTrack/useNonAggHeaderQuery.ts";
 
 export function clampToWorld(range: TsRange, worldRange: TsRange) {
   return clamp(
@@ -25,21 +29,10 @@ export function clampToWorld(range: TsRange, worldRange: TsRange) {
   );
 }
 
-export function getInitVisibleRange(
-  selectedMs: number | undefined,
-  worldRange: TsRange,
-): TsRange {
-  if (selectedMs == null) {
-    return clampToWorld(
-      // show right most data
-      [worldRange[1] - DEFAULT_WINDOW_MS, worldRange[1]],
-      worldRange,
-    );
-  }
-
-  // try to center around selected ts
+export function getInitVisibleRange(worldRange: TsRange): TsRange {
   return clampToWorld(
-    [selectedMs - DEFAULT_WINDOW_MS / 2, selectedMs + DEFAULT_WINDOW_MS / 2],
+    // show right most data
+    [worldRange[1] - DEFAULT_WINDOW_MS, worldRange[1]],
     worldRange,
   );
 }
@@ -148,6 +141,25 @@ export function getTileIdxRangeWithOverscan(
   );
 
   return { firstTile, lastTile };
+}
+
+/**
+ * Inclusive tile idxs for slots. Used for slot headers and slot hover
+ */
+export function getSlotDrawTileIdxs(
+  referenceNs: bigint,
+  visibleRange: TsRange,
+): { startIdx: number; endIdx: number } {
+  const startIdx =
+    getTileIdx(
+      calcAbsoluteNs(referenceNs, visibleRange[0]),
+      tileSizeNs,
+      false,
+    ) - OVERSCAN_DRAW_TILES_COUNT;
+  const endIdx =
+    getTileIdx(calcAbsoluteNs(referenceNs, visibleRange[1]), tileSizeNs, true) +
+    OVERSCAN_DRAW_TILES_COUNT;
+  return { startIdx, endIdx };
 }
 
 /**

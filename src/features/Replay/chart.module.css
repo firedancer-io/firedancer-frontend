@@ -1,9 +1,6 @@
 .container {
   flex-shrink: 0;
 
-  .grab-cursor {
-    cursor: grab;
-  }
   .grabbing-cursor,
   .grabbing-cursor * {
     cursor: grabbing !important;
@@ -14,7 +11,7 @@
   }
 }
 
-:where(.container .grab-cursor .no-chart-explore) {
+:where(.container .no-chart-explore) {
   cursor: auto;
 }
 
