@@ -18,12 +18,12 @@ import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import clsx from "clsx";
 import styles from "../track.module.css";
-import chartStyles from "../chart.module.css";
 import {
   aggHeaderEmitterAtom,
   aggSlotsAtom,
   drawEventType,
 } from "./aggAtoms.ts";
+import TrackControls from "../TrackControls.tsx";
 import { Box } from "@radix-ui/themes";
 
 const chartId = "agg-header-track";
@@ -186,9 +186,7 @@ function AggHeaderTrack({
     >
       <div ref={containerRef} className={styles.trackCanvasContainer} />
       <SelectionMarker />
-      <div className={clsx(chartStyles.noChartExplore, styles.bucketSizeLabel)}>
-        Bucket size: {granularity ?? "-"}
-      </div>
+      <TrackControls name="Slots" bucketSize={granularity} />
     </Box>
   );
 }
