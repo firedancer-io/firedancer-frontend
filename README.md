@@ -1,12 +1,12 @@
 ## Prerequisites
 
-- Node 20+
+- Node 22.15+
 
 ## Install
 
 - `sudo npm install -g npm@10.8.2`
 - `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash`
-- `nvm install && nvm use` (use a version >= 22.12.0)
+- `nvm install && nvm use` (use a version >= 22.15.0)
 
 # Running locally
 

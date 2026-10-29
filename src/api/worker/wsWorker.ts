@@ -1,7 +1,7 @@
-import { ZstdInit, type ZstdDec } from "@oneidentity/zstd-js/decompress";
 import { logDebug, logError, logWarning } from "../../logger";
 import { WsMessageSchema, type WsEntity, type ToWorkerMessage } from "./types";
 import { createMessageHandler } from "./messageHandler";
+import { loadZstd, type ZstdDecoder } from "./zstd/zstd";
 
 const reconnectDelayMs = 3_000;
 const flushDelayMs = 32; // ~30fps
@@ -62,7 +62,7 @@ function flush() {
   }
 }
 
-function connect(url: string, zstd: ZstdDec | undefined) {
+function connect(url: string, zstd: ZstdDecoder | undefined) {
   logDebug("WS", `Connecting to API WebSocket ${url.toString()}`);
   handler.onConnectionChange({ type: "connecting" });
   ws = new WebSocket(url, zstd ? ["compress-zstd"] : undefined);
@@ -98,7 +98,7 @@ function connect(url: string, zstd: ZstdDec | undefined) {
         json = JSON.parse(message) as unknown;
       } else if (message instanceof ArrayBuffer && zstd) {
         json = JSON.parse(
-          decoder.decode(zstd.ZstdStream.decompress(new Uint8Array(message))),
+          decoder.decode(zstd.decompress(new Uint8Array(message))),
         ) as unknown;
       }
 
@@ -134,10 +134,10 @@ ctx.onmessage = (e: MessageEvent<ToWorkerMessage>) => {
   switch (msg.type) {
     case "connect":
       void (async () => {
-        let zstd: ZstdDec | undefined;
+        let zstd: ZstdDecoder | undefined;
         if (msg.compress) {
           try {
-            zstd = await ZstdInit();
+            zstd = await loadZstd();
           } catch (e) {
             logError(
               "WS",
