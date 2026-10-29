@@ -1,5 +1,4 @@
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import SelectionMarker from "../SelectionMarker.tsx";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -190,7 +189,6 @@ function MiniMap({ remount, setUpMiniMap, width, panToTs }: MiniMapProps) {
   return (
     <Box ref={containerRef} className={styles.miniMapContainer}>
       <div ref={chartContainerRef} className={styles.miniMapTrack} />
-      <SelectionMarker range="world" />
       <Popover.Root open>
         <Popover.Anchor asChild>
           <div ref={visibleRangeElRef} className={styles.visibleRangeBox}>

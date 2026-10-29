@@ -1,6 +1,5 @@
 import { getDefaultStore } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import SelectionMarker from "../SelectionMarker.tsx";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
@@ -259,7 +258,6 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
   return (
     <div className={styles.trackContainer} style={{ height: `${height}px` }}>
       <div ref={containerRef} className={styles.trackCanvasContainer} />
-      <SelectionMarker />
       <TrackControls
         name="Shreds"
         bucketSize={granularity}

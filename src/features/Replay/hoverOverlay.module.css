@@ -1,0 +1,44 @@
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  pointer-events: none;
+}
+
+.band {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+
+  &.other {
+    background-color: var(--color-background);
+    opacity: 0.35;
+  }
+
+  &.slot {
+    background: rgba(255, 255, 255, 0.02);
+  }
+}
+
+/*
+ * 1px boundary line
+ */
+.divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  box-sizing: border-box;
+  margin-left: -0.5px;
+  border-left: 1px solid transparent;
+  transform-origin: left;
+
+  &.group-divider {
+    border-left-color: rgba(255, 255, 255, 0.07);
+  }
+
+  &.slot-divider {
+    border-left-color: rgba(255, 255, 255, 0.12);
+  }
+}

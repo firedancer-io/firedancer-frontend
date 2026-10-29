@@ -2,7 +2,6 @@ import { getDefaultStore, useAtomValue } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
 import clsx from "clsx";
-import SelectionMarker from "../SelectionMarker.tsx";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -240,7 +239,6 @@ function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
           className={styles.trackCanvasContainer}
           style={{ visibility: isAgg ? "hidden" : undefined }}
         />
-        <SelectionMarker />
         {isAgg && <AggTileStates />}
         <TileStatesYAxis labels={rows.map(({ label }) => label)} />
       </div>
