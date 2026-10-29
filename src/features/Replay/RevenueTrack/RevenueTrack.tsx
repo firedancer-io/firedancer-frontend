@@ -6,7 +6,6 @@ import {
   type RevenueViewOpts,
 } from "./consts.ts";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
-import SelectionMarker from "../SelectionMarker.tsx";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -329,7 +328,6 @@ function RevenueTrackBody({
       style={{ height: `${revenueTrackHeight}px` }}
     >
       <div ref={containerRef} className={styles.trackCanvasContainer} />
-      <SelectionMarker />
       <RevenueYAxis
         maxValue={isAgg ? aggAxisMax : nonAggAxisMax}
         scale={opts.scale}

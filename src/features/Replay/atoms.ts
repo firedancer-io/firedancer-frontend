@@ -82,7 +82,7 @@ export const {
     const worldRange = get(worldRangeAtom);
     if (!worldRange) return;
 
-    set(staticVisibleRangeAtom, getInitVisibleRange(undefined, worldRange));
+    set(staticVisibleRangeAtom, getInitVisibleRange(worldRange));
     set(isLiveAtom, true);
   });
 
@@ -130,11 +130,6 @@ export const {
     ),
   };
 })();
-
-/**
- * selected ts in ms
- */
-export const selectedMsAtom = atom<number | undefined>(undefined);
 
 /** cursor position in px, in viewport coords */
 export interface ClientPos {

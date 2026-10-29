@@ -18,21 +18,10 @@ export function clampToWorld(range: TsRange, worldRange: TsRange) {
   );
 }
 
-export function getInitVisibleRange(
-  selectedMs: number | undefined,
-  worldRange: TsRange,
-): TsRange {
-  if (selectedMs == null) {
-    return clampToWorld(
-      // show right most data
-      [worldRange[1] - DEFAULT_WINDOW_MS, worldRange[1]],
-      worldRange,
-    );
-  }
-
-  // try to center around selected ts
+export function getInitVisibleRange(worldRange: TsRange): TsRange {
   return clampToWorld(
-    [selectedMs - DEFAULT_WINDOW_MS / 2, selectedMs + DEFAULT_WINDOW_MS / 2],
+    // show right most data
+    [worldRange[1] - DEFAULT_WINDOW_MS, worldRange[1]],
     worldRange,
   );
 }
