@@ -7,6 +7,10 @@ import { calcRelativeMs, getInitVisibleRange } from "./utils";
 import type { WsEntity } from "../../api/worker/types";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
+export type TimelineAggQueryKey = Extract<
+  TimelineQueryKey,
+  `query_agg_${string}`
+>;
 
 /** query key -> next id to assign for that key */
 export const [nextQueryIdByKeyAtom, reserveNextQueryIdAtom] = (function () {

@@ -1,4 +1,5 @@
 import type { AggGranularity } from "../../api/types";
+import type { TimelineAggQueryKey } from "./atoms";
 import { nsPerMs } from "../../consts";
 
 export const DEFAULT_WINDOW_MS = 12_000;
@@ -10,6 +11,9 @@ export const CHART_NOW_DELAY_MS = 500;
 export const RESUME_LIVE_THRESHOLD_FRAC = 0.02;
 
 export const msBucketSizes: Record<AggGranularity, number> = {
+  "25ms": 25,
+  "50ms": 50,
+  "100ms": 100,
   "250ms": 250,
   "500ms": 500,
   "1s": 1_000,
@@ -43,3 +47,13 @@ export const ascBucketGranularities = Object.keys(msBucketSizes).sort(
   (a, b) =>
     msBucketSizes[a as AggGranularity] - msBucketSizes[b as AggGranularity],
 ) as AggGranularity[];
+
+/** Finest granularity the server supports for each agg query */
+export const minAggGranularities: Record<TimelineAggQueryKey, AggGranularity> =
+  {
+    query_agg_cpu: "25ms",
+    query_agg_revenue: "100ms",
+    query_agg_shreds: "250ms",
+    query_agg_slots: "250ms",
+    query_agg_tile_states: "2s",
+  };

@@ -408,10 +408,20 @@ export function useTiledQueries<Granularity extends string>({
     queryWorldEnd.cancel();
   }, [queryWorldEnd]);
 
+  /**
+   * Clear fetched tiles and drop in-flight queries
+   */
+  const resetQueries = useCallback(() => {
+    getChartState().clear();
+    pendingQueriesRef.current.clear();
+    pauseStaleRefreshes();
+  }, [getChartState, pauseStaleRefreshes]);
+
   return {
     queryRange,
     markQueryComplete,
     pauseStaleRefreshes,
+    resetQueries,
   };
 }
 

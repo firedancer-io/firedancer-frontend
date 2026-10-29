@@ -90,6 +90,7 @@ import type {
   tileStatesResponseSchema,
   aggTileStatesSchema,
   aggShredsSchema,
+  aggCpuSchema,
   timelineSlotsSchema,
   timelineShredsSchema,
   shredsGranularitySchema,
@@ -249,6 +250,7 @@ export type TileStatesGranularity = z.infer<typeof tileStatesGranularitySchema>;
 export type TimelineTileStates = z.infer<typeof tileStatesResponseSchema>;
 export type AggTileStates = z.infer<typeof aggTileStatesSchema>;
 export type AggShreds = z.infer<typeof aggShredsSchema>;
+export type AggCpu = z.infer<typeof aggCpuSchema>;
 export type ShredsGranularity = z.infer<typeof shredsGranularitySchema>;
 export type TimelineShreds = z.infer<typeof timelineShredsSchema>;
 export type TimelineEvents = z.infer<typeof timelineEventsSchema>;

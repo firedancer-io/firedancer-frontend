@@ -1,11 +1,18 @@
 import { nsPerMs } from "../../consts.ts";
-import { DEFAULT_WINDOW_MS, nsBucketSizes } from "./const.ts";
+import {
+  ascBucketGranularities,
+  DEFAULT_WINDOW_MS,
+  minAggGranularities,
+  msBucketSizes,
+  nsBucketSizes,
+} from "./const.ts";
 import { clamp } from "../../uplotReact/utils.ts";
 import type { TsRange } from "../WebGl/webglUtils.ts";
 import { convertToNsTimestamp } from "../../mathUtils.ts";
 import { useServerMessages } from "../../api/ws/utils.ts";
 import type { WsEntity, WsError } from "../../api/worker/types.ts";
 import type { AggGranularity } from "../../api/types.ts";
+import type { TimelineAggQueryKey } from "./atoms.ts";
 
 export function clampToWorld(range: TsRange, worldRange: TsRange) {
   return clamp(
@@ -180,4 +187,24 @@ export function insertSorted<T>(
 
   sorted.splice(idx, 0, item);
   return true;
+}
+
+/**
+ * Gets the finest granularity allowed for a query that shows at most
+ * `bucketCountThreshold` buckets in the window
+ */
+export function getAggGranularityForQuery(
+  queryKey: TimelineAggQueryKey,
+  windowSizeMs: number,
+  bucketCountThreshold: number,
+) {
+  const minMs = msBucketSizes[minAggGranularities[queryKey]];
+  return (
+    ascBucketGranularities.find((g) => {
+      return (
+        msBucketSizes[g] >= minMs &&
+        windowSizeMs < bucketCountThreshold * msBucketSizes[g]
+      );
+    }) ?? ascBucketGranularities[ascBucketGranularities.length - 1]
+  );
 }
