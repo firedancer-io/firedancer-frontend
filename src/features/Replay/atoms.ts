@@ -3,8 +3,17 @@ import { smoothedNowNsAtom } from "../../atoms";
 import type { TsRange } from "../WebGl/webglUtils";
 import { atom } from "jotai";
 import { CHART_NOW_DELAY_MS, RESUME_LIVE_THRESHOLD_FRAC } from "./const";
-import { calcRelativeMs, getInitVisibleRange } from "./utils";
+import {
+  calcAbsoluteNs,
+  calcRelativeMs,
+  getInitVisibleRange,
+  getTileIdx,
+} from "./utils";
 import type { WsEntity } from "../../api/worker/types";
+import { slotsPerLeader } from "../../consts";
+import { getSlotGroupLeader } from "../../utils";
+import { timelineSlotsAtom, type SlotInfo } from "./HeaderTrack/nonAggAtoms";
+import { tileSizeNs } from "./HeaderTrack/useNonAggHeaderQuery";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -77,7 +86,7 @@ export const {
     const worldRange = get(worldRangeAtom);
     if (!worldRange) return;
 
-    set(staticVisibleRangeAtom, getInitVisibleRange(undefined, worldRange));
+    set(staticVisibleRangeAtom, getInitVisibleRange(worldRange));
     set(isLiveAtom, true);
   });
 
@@ -130,3 +139,133 @@ export const {
  * selected ts in ms
  */
 export const selectedMsAtom = atom<number | undefined>(undefined);
+
+/** cursor position in px, in viewport coords */
+export interface ClientPos {
+  x: number;
+  y: number;
+}
+
+export interface HoverInfo {
+  owner: string;
+  cursorMs: number;
+  /** cursor position in px, in viewport coords */
+  clientPos: ClientPos;
+}
+
+export const [
+  hoveredSlotAtom,
+  hoveredMsAtom,
+  hoveredClientPosAtom,
+  setHoverInfoAtom,
+  clearHoverInfoAtom,
+] = (function getHoveredSlotAtoms() {
+  const _hoverInfoAtom = atom<HoverInfo | undefined>(undefined);
+
+  /** hovered cursor ts in ms, or undefined when nothing is hovered */
+  const hoveredMsAtom = atom((get) => get(_hoverInfoAtom)?.cursorMs);
+
+  /** hovered cursor position in px (viewport coords), or undefined */
+  const hoveredClientPosAtom = atom((get) => get(_hoverInfoAtom)?.clientPos);
+
+  /**
+   * The hovered slot number, resolved from the cursor ms against the timeline
+   * slots, or undefined when nothing is hovered.
+   */
+  const hoveredSlotAtom = atom<number | undefined>((get) => {
+    const hoverInfo = get(_hoverInfoAtom);
+    const referenceNs = get(referenceNsAtom);
+    if (!hoverInfo || referenceNs == null) return;
+
+    const { cursorMs } = hoverInfo;
+    const { slotGroups, tileSlotGroups } = get(timelineSlotsAtom);
+
+    const cursorTileIdx = getTileIdx(
+      calcAbsoluteNs(referenceNs, cursorMs),
+      tileSizeNs,
+      false,
+    );
+
+    const leaderSlots = tileSlotGroups.get(cursorTileIdx);
+    if (!leaderSlots) return;
+
+    // find highest slot number under the cursor.
+    const descLeaders = [...leaderSlots].sort((a, b) => b - a);
+
+    for (const leaderSlot of descLeaders) {
+      const group = slotGroups.get(leaderSlot);
+      if (!group) continue;
+
+      for (
+        let slotNumber = leaderSlot + slotsPerLeader - 1;
+        slotNumber >= leaderSlot;
+        slotNumber--
+      ) {
+        const slot = group.slots.get(slotNumber);
+        if (slot && slot.startMs <= cursorMs && cursorMs <= slot.endMs) {
+          return slot.slot;
+        }
+      }
+    }
+  });
+
+  return [
+    hoveredSlotAtom,
+    hoveredMsAtom,
+    hoveredClientPosAtom,
+    atom(null, (_get, set, value: HoverInfo) => {
+      set(_hoverInfoAtom, value);
+    }),
+    atom(null, (get, set, owner: string) => {
+      // clear only if the value owner is still the current owner
+      if (get(_hoverInfoAtom)?.owner === owner) {
+        set(_hoverInfoAtom, undefined);
+      }
+    }),
+  ] as const;
+})();
+
+/** slot range and enclosing group range for the hovered slot */
+export interface HoveredRange {
+  group: TsRange;
+  slot: TsRange;
+}
+
+/**
+ * ms ranges of the hovered slot and its enclosing group, resolved from the
+ * hovered slot against the timeline slot
+ */
+export const hoveredRangeAtom = atom<HoveredRange | undefined>((get) => {
+  const hoveredSlot = get(hoveredSlotAtom);
+  if (hoveredSlot === undefined) return;
+
+  const { slotGroups } = get(timelineSlotsAtom);
+  const group = slotGroups.get(getSlotGroupLeader(hoveredSlot));
+  const slotInfo = group?.slots.get(hoveredSlot);
+  if (!group || group.slots.size === 0 || !slotInfo) return;
+
+  let groupStartMs = Infinity;
+  let groupEndMs = -Infinity;
+  for (const { startMs, endMs } of group.slots.values()) {
+    if (startMs < groupStartMs) groupStartMs = startMs;
+    if (endMs > groupEndMs) groupEndMs = endMs;
+  }
+
+  return {
+    group: [groupStartMs, groupEndMs],
+    slot: [slotInfo.startMs, slotInfo.endMs],
+  };
+});
+
+/**
+ * Full SlotInfo for the hovered slot (startMs/endMs/isSkipped/isMine), resolved
+ * from the timeline slots.
+ */
+export const hoveredSlotInfoAtom = atom<SlotInfo | undefined>((get) => {
+  const hoveredSlot = get(hoveredSlotAtom);
+  if (hoveredSlot === undefined) return;
+
+  const { slotGroups } = get(timelineSlotsAtom);
+  const group = slotGroups.get(getSlotGroupLeader(hoveredSlot));
+  return group?.slots.get(hoveredSlot);
+});
