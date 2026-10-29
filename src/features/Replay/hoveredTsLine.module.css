@@ -1,0 +1,22 @@
+/*
+ * Container to clip line box
+ */
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  pointer-events: none;
+}
+
+.line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  box-sizing: border-box;
+  margin-left: -0.5px;
+  border-left: 1px solid var(--hovered-ts-line-color);
+  transform-origin: left;
+  will-change: transform;
+}

@@ -250,8 +250,6 @@ export function useExplorableChart() {
         trackEl.classList.toggle(styles.grabbingCursor, isPanningRef.current);
       };
 
-      // default cursor
-      trackEl.classList.add(styles.grabCursor);
       refreshCursor();
 
       const {

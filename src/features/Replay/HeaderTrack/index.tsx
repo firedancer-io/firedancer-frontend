@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import AggHeaderTrack from "./AggHeaderTrack.tsx";
 import { NonAggHeaderTrack } from "./NonAggHeaderTrack.tsx";
+import HoveredSlotTooltip from "./HoveredSlotTooltip.tsx";
 import styles from "./headerTrack.module.css";
 import { Box } from "@radix-ui/themes";
 import { trackHeight } from "./const.ts";
@@ -46,6 +47,7 @@ export default function HeaderTrack({ width }: HeaderTrackProps) {
         width={width}
         showNonAgg={showNonAgg}
       />
+      <HoveredSlotTooltip />
     </Box>
   );
 }

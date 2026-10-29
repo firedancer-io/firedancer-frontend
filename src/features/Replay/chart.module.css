@@ -1,9 +1,6 @@
 .container {
   flex-shrink: 0;
 
-  .grab-cursor {
-    cursor: grab;
-  }
   .grabbing-cursor,
   .grabbing-cursor * {
     cursor: grabbing !important;
@@ -12,10 +9,6 @@
   .resizing-cursor * {
     cursor: ew-resize !important;
   }
-}
-
-:where(.container .grab-cursor .no-chart-explore) {
-  cursor: auto;
 }
 
 .y-axis {
