@@ -1,4 +1,4 @@
-import { ascBucketGranularities, msBucketSizes } from "../const";
+import { getAggGranularityForQuery } from "../utils";
 import type { AggShreds } from "../../../api/types";
 import { useAggQuery } from "../useAggQuery";
 import type { TimelineQueryKey } from "../atoms";
@@ -15,10 +15,10 @@ const QUERY_KEY = "query_agg_shreds" satisfies TimelineQueryKey;
  */
 const BUCKET_COUNT_THRESHOLD = 1000;
 export function getAggGranularity(windowSizeMs: number) {
-  return (
-    ascBucketGranularities.find((g) => {
-      return windowSizeMs < BUCKET_COUNT_THRESHOLD * msBucketSizes[g];
-    }) ?? ascBucketGranularities[ascBucketGranularities.length - 1]
+  return getAggGranularityForQuery(
+    QUERY_KEY,
+    windowSizeMs,
+    BUCKET_COUNT_THRESHOLD,
   );
 }
 

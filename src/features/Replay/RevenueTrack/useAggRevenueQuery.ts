@@ -1,4 +1,4 @@
-import { ascBucketGranularities, msBucketSizes } from "../const";
+import { getAggGranularityForQuery } from "../utils";
 import type { AggRevenue } from "../../../api/types";
 import { useAggQuery } from "../useAggQuery";
 import type { TimelineQueryKey } from "../atoms";
@@ -17,10 +17,10 @@ const chartId = "revenue-track";
  */
 export const AGG_BUCKET_COUNT_THRESHOLD = 600;
 export function getGranularity(windowSizeMs: number) {
-  return (
-    ascBucketGranularities.find((g) => {
-      return windowSizeMs < AGG_BUCKET_COUNT_THRESHOLD * msBucketSizes[g];
-    }) ?? ascBucketGranularities[ascBucketGranularities.length - 1]
+  return getAggGranularityForQuery(
+    QUERY_KEY,
+    windowSizeMs,
+    AGG_BUCKET_COUNT_THRESHOLD,
   );
 }
 
