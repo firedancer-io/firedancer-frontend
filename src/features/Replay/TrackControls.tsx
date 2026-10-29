@@ -29,6 +29,18 @@ export default function TrackControls<T extends string>({
   legendSelection,
   children,
 }: TrackControlsProps<T>) {
+  const className = clsx(chartStyles.noChartExplore, styles.controls);
+  const content = (
+    <>
+      <Text className={styles.name}>{name}</Text>
+      {bucketSize && <Text>per {bucketSize}</Text>}
+    </>
+  );
+
+  if (!legend && !children) {
+    return <div className={className}>{content}</div>;
+  }
+
   return (
     <PopoverDropdown
       align="start"
@@ -45,12 +57,8 @@ export default function TrackControls<T extends string>({
         </Flex>
       }
     >
-      <button
-        type="button"
-        className={clsx(chartStyles.noChartExplore, styles.controls)}
-      >
-        <Text className={styles.name}>{name}</Text>
-        {bucketSize && <Text>per {bucketSize}</Text>}
+      <button type="button" className={clsx(className, styles.trigger)}>
+        {content}
         <CaretDownIcon className={styles.caret} />
       </button>
     </PopoverDropdown>
