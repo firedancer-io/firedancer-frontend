@@ -1,13 +1,11 @@
 import { atom } from "jotai";
 import EventEmitter from "events";
-import type TypedEmitter from "typed-emitter";
 import type { AggCpu, AggGranularity } from "../../../api/types";
 import { getBucketIdx } from "../utils";
 import { tilesAtom } from "../../../api/atoms";
 import { DEFAULT_SELECTED_KINDS, getTileKey, MAX_QUERY_TILES } from "./const";
 import { getCpuRows } from "./utils";
-
-export const drawEventType = "draw";
+import { drawEventType, type DrawEmitter } from "../const";
 
 export type TilesUtilization = (number | null)[];
 
@@ -73,11 +71,7 @@ export const [
   const _tilesKeyAtom = atom<string | undefined>(undefined);
 
   return [
-    atom(
-      new EventEmitter() as TypedEmitter<{
-        [drawEventType]: () => void;
-      }>,
-    ),
+    atom(new EventEmitter() as DrawEmitter),
     atom((get) => get(_aggCpuAtom)),
     atom(
       null,

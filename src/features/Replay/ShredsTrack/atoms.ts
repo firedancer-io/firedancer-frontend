@@ -1,6 +1,5 @@
 import { atom } from "jotai";
 import EventEmitter from "events";
-import type TypedEmitter from "typed-emitter";
 import type {
   AggGranularity,
   AggShreds,
@@ -15,10 +14,9 @@ import { getBucketIdx } from "../utils";
 import { mergeShredEvents } from "../../Shreds/dataUtils";
 import type { SlotsShreds } from "../../Shreds/types";
 import { referenceNsAtom } from "../atoms";
+import { drawEventType, type DrawEmitter } from "../const";
 
 export type ShredEventCounts = Record<AggShredEventType, number | null>;
-
-export const drawEventType = "draw";
 
 /**
  * Buckets start at idx 0 of absolute world time
@@ -36,11 +34,7 @@ export const [
   const _aggShredsAtom = atom<ShredBucketsByGranularity>(new Map());
 
   return [
-    atom(
-      new EventEmitter() as TypedEmitter<{
-        [drawEventType]: () => void;
-      }>,
-    ),
+    atom(new EventEmitter() as DrawEmitter),
     atom((get) => get(_aggShredsAtom)),
     atom(
       null,
@@ -113,11 +107,7 @@ export const [
  * Use replay reference ts for all ts deltas
  */
 export function createShredAtoms() {
-  const _emitterAtom = atom(
-    new EventEmitter() as TypedEmitter<{
-      [drawEventType]: () => void;
-    }>,
-  );
+  const _emitterAtom = atom(new EventEmitter() as DrawEmitter);
   const _slotsShredAtom = atom<SlotsShreds>();
   const _tileToSlotsAtom = atom<Map<number, Set<number>>>(new Map());
 

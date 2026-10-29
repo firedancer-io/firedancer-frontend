@@ -29,7 +29,6 @@ import { ShredsGranularityEnum } from "../../../api/entities.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import {
   aggShredsAtom,
-  drawEventType,
   aggShredsEmitterAtom,
   timelineShredsAtoms,
   timelineFecShredsAtoms,
@@ -42,6 +41,7 @@ import {
   worldRangeAtom,
 } from "../atoms.ts";
 import { calcAbsoluteNs, getBucketIdx } from "../utils.ts";
+import { drawEventType } from "../const.ts";
 import styles from "../track.module.css";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import TrackControls from "../TrackControls.tsx";

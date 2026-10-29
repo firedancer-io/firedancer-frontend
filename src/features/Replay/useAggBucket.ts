@@ -1,7 +1,7 @@
 import { getDefaultStore, type Atom } from "jotai";
 import { useEffect, useState } from "react";
 import type { AggGranularity } from "../../api/types";
-import { drawEventType, type DrawEmitter } from "./useAggQuery";
+import { drawEventType, type DrawEmitter } from "./const";
 
 const store = getDefaultStore();
 

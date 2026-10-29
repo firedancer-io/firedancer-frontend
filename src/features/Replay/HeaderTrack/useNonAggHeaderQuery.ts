@@ -3,15 +3,15 @@ import { useAtomValue, useSetAtom } from "jotai";
 import type { TimelineSlots } from "../../../api/types";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
 import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
-import { useTiledQueries } from "../useTiledQueries";
+import { useTiledQueries } from "../parallelQueriesCache";
 import { SLOTS_QUERY_KEY, useSlotsQuery } from "../useSlotsQuery";
 import { nsPerMs } from "../../../consts";
 import {
   addTimelineSlotsAtom,
   deleteTimelineSlotTilesAtom,
-  drawEventType,
   timelineSlotsEmitterAtom,
 } from "./nonAggAtoms";
+import { drawEventType } from "../const";
 const granularity = "";
 
 export const OVERSCAN_TILES_COUNT = 2;
