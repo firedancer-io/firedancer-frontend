@@ -1,7 +1,6 @@
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
-import SelectionMarker from "../SelectionMarker.tsx";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
@@ -199,7 +198,6 @@ function CpuTrackBody({
   return (
     <div className={trackStyles.trackContainer} style={{ height }}>
       <div ref={containerRef} className={trackStyles.trackCanvasContainer} />
-      <SelectionMarker />
       <CpuYAxis rows={rows} />
       <TrackControls
         name="CPU"
