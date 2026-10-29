@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import { useSetAtom } from "jotai";
-import { ascBucketGranularities, msBucketSizes } from "../const";
+import { getAggGranularityForQuery } from "../utils";
 import { reserveNextQueryIdAtom } from "../atoms";
 import type { AggGranularity, AggSlots } from "../../../api/types";
 import { AGG_SLOTS_QUERY_KEY, useSlotsQuery } from "../useSlotsQuery";
@@ -81,9 +81,9 @@ export default function useMiniMapQuery(
  */
 const BUCKET_COUNT_THRESHOLD = 1000;
 export function getMiniMapGranularity(worldSizeMs: number) {
-  return (
-    ascBucketGranularities.find((g) => {
-      return worldSizeMs < BUCKET_COUNT_THRESHOLD * msBucketSizes[g];
-    }) ?? ascBucketGranularities[ascBucketGranularities.length - 1]
+  return getAggGranularityForQuery(
+    AGG_SLOTS_QUERY_KEY,
+    worldSizeMs,
+    BUCKET_COUNT_THRESHOLD,
   );
 }

@@ -1,4 +1,4 @@
-import { ascBucketGranularities, msBucketSizes } from "../const";
+import { getAggGranularityForQuery } from "../utils";
 import type { AggSlots } from "../../../api/types";
 import { useAggQuery } from "../useAggQuery";
 import { AGG_SLOTS_QUERY_KEY } from "../useSlotsQuery";
@@ -13,10 +13,10 @@ import {
  */
 const BUCKET_COUNT_THRESHOLD = 1000;
 export function getAggGranularity(windowSizeMs: number) {
-  return (
-    ascBucketGranularities.find((g) => {
-      return windowSizeMs < BUCKET_COUNT_THRESHOLD * msBucketSizes[g];
-    }) ?? ascBucketGranularities[ascBucketGranularities.length - 1]
+  return getAggGranularityForQuery(
+    AGG_SLOTS_QUERY_KEY,
+    windowSizeMs,
+    BUCKET_COUNT_THRESHOLD,
   );
 }
 

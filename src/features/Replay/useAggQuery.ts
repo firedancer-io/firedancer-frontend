@@ -33,21 +33,23 @@ type AddAtom<TValue> = WritableAtom<null, [TValue], void>;
 
 type DeleteBucketsAtom = WritableAtom<null, [AggGranularity, number[]], void>;
 
-interface UseAggQueryOpts<TValue> {
+interface UseAggQueryOpts<TValue, TParams extends object> {
   chartId: string;
   queryKey: TimelineQueryKey;
   addAtom: AddAtom<TValue>;
   deleteBucketsAtom: DeleteBucketsAtom;
   emitterAtom: Atom<DrawEmitter>;
+  params?: TParams;
 }
 
-export function useAggQuery<TValue>({
+export function useAggQuery<TValue, TParams extends object = object>({
   chartId,
   queryKey,
   addAtom,
   deleteBucketsAtom,
   emitterAtom,
-}: UseAggQueryOpts<TValue>) {
+  params,
+}: UseAggQueryOpts<TValue, TParams>) {
   const addValue = useSetAtom(addAtom);
   const deleteBuckets = useSetAtom(deleteBucketsAtom);
   const emitter = useAtomValue(emitterAtom);
@@ -68,10 +70,11 @@ export function useAggQuery<TValue>({
           start_ns: startNs.toString(),
           end_ns: endNs.toString(),
           granularity,
+          ...params,
         },
       });
     },
-    [wsSend, queryKey],
+    [wsSend, queryKey, params],
   );
 
   const onEvictTiles = useCallback(
@@ -89,7 +92,7 @@ export function useAggQuery<TValue>({
     [deleteBuckets],
   );
 
-  const { queryRange, markQueryComplete, pauseStaleRefreshes } =
+  const { queryRange, markQueryComplete, pauseStaleRefreshes, resetQueries } =
     useTiledQueries<AggGranularity>({
       chartId,
       getTileSizeNs,
@@ -133,5 +136,5 @@ export function useAggQuery<TValue>({
     [onNothingToFetch, queryRange],
   );
 
-  return { query, pauseStaleRefreshes };
+  return { query, pauseStaleRefreshes, resetQueries };
 }
