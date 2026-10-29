@@ -1,0 +1,52 @@
+.tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 110;
+  visibility: hidden;
+  min-width: 230px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--replay-slot-tooltip-background-color);
+  box-shadow: 0 8px 24px var(--replay-slot-tooltip-shadow-color);
+  font-size: 12px;
+  color: var(--replay-slot-tooltip-label-color);
+  pointer-events: none;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.header {
+  font-weight: 700;
+  color: var(--replay-slot-tooltip-value-color);
+  margin-bottom: 2px;
+}
+
+/* skipped slots show a red header, matching the header track skipped styling */
+.header[data-skipped] {
+  color: var(--header-skipped-slot-border-color);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  height: 17px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.label {
+  min-width: 105px;
+  color: var(--replay-slot-tooltip-label-color);
+}
+
+.value {
+  font-family: "Roboto Mono", monospace;
+  color: var(--replay-slot-tooltip-value-color);
+}
+
+.unit {
+  font-family: "Roboto Mono", monospace;
+  margin-left: 2px;
+}

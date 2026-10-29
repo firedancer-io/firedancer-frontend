@@ -76,6 +76,10 @@
     }
   }
 
+  &.hovered {
+    border: 1px solid var(--header-hovered-group-border-color);
+  }
+
   &.skipped {
     border: 1px solid var(--header-skipped-group-container-border-color);
     background: var(--header-skipped-group-container-background);
@@ -83,6 +87,10 @@
     .slot-group-header {
       background: var(--header-skipped-group-label-background-color);
       color: var(--header-skipped-group-label-text-color);
+    }
+
+    &.hovered {
+      border: 1px solid var(--header-hovered-skipped-group-border-color);
     }
   }
 
@@ -94,6 +102,10 @@
     .slot-group-header .you-text {
       font-weight: 600;
       color: var(--header-mine-group-border-color);
+    }
+
+    &.hovered {
+      border-color: var(--header-hovered-mine-group-border-color);
     }
   }
 
@@ -121,6 +133,11 @@
 
     &.left-border {
       border-left: 1px solid var(--replay-dropdown-hover-background-color);
+    }
+
+    &.hover-slot {
+      border: 1px solid var(--header-hovered-slot-border-color);
+      border-radius: 2px 2px 0 0;
     }
 
     &.earliest-start .slot-bar {
