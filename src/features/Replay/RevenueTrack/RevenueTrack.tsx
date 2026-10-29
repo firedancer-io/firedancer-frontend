@@ -30,10 +30,10 @@ import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import {
   aggRevenueAtom,
-  drawEventType,
   aggRevenueEmitterAtom,
   revenueViewOptsAtom,
 } from "./atoms.ts";
+import { drawEventType } from "../const.ts";
 import { tileCountAtom } from "../../Overview/SlotPerformance/atoms.ts";
 import RevenueYAxis from "./RevenueYAxis.tsx";
 import RevenueControls from "./RevenueControls.tsx";

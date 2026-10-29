@@ -6,7 +6,6 @@ import {
   worldRangeAtom,
 } from "../atoms";
 import {
-  drawEventType,
   type SlotGroup,
   type SlotInfo,
   timelineSlotsAtom,
@@ -34,10 +33,8 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  aggHeaderEmitterAtom,
-  drawEventType as aggDrawEventType,
-} from "./aggAtoms";
+import { aggHeaderEmitterAtom } from "./aggAtoms";
+import { drawEventType } from "../const";
 import MonoText from "../../../components/MonoText";
 import { trackHeight } from "./const";
 
@@ -290,7 +287,7 @@ export function NonAggHeaderTrack({
       if (!visibleRange || !isAggregate(visibleRange)) return;
       setRenderState(null);
     };
-    aggEmitter.addListener(aggDrawEventType, clearIfAgg);
+    aggEmitter.addListener(drawEventType, clearIfAgg);
 
     // trigger initial draw
     onRangeChange();
@@ -298,7 +295,7 @@ export function NonAggHeaderTrack({
     // cleanup
     return () => {
       emitter.removeListener(drawEventType, throttledUpdateGroupsAndShow);
-      aggEmitter.removeListener(aggDrawEventType, clearIfAgg);
+      aggEmitter.removeListener(drawEventType, clearIfAgg);
       throttledUpdateGroupsAndShow.cancel();
       throttledUpdateGroups.cancel();
       throttledRelativeTsQuery.cancel();

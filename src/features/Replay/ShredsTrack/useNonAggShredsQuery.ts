@@ -9,9 +9,10 @@ import {
   getChunksEndNs,
   useTimelineServerMessage,
 } from "../utils";
-import { drawEventType, getNonAggAtoms } from "./atoms";
+import { getNonAggAtoms } from "./atoms";
+import { drawEventType } from "../const";
 import { nsPerMs } from "../../../consts";
-import { useTiledQueries } from "../useTiledQueries";
+import { useTiledQueries } from "../parallelQueriesCache";
 import type { TimelineQueryKey } from "../atoms";
 
 const QUERY_KEY = "query_shreds" satisfies TimelineQueryKey;

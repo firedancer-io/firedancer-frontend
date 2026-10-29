@@ -20,12 +20,12 @@ import {
   cpuRowsAtom,
   cpuSelectedKindsAtom,
   cpuSplitByTileAtom,
-  drawEventType,
   queryTilesAtom,
   queryTilesKeyAtom,
   syncAggCpuTilesAtom,
 } from "./atoms.ts";
 import { AGG_CPU_CHART_ID } from "./const.ts";
+import { drawEventType } from "../const.ts";
 import {
   getAggGranularity,
   useAggCpuQuery,

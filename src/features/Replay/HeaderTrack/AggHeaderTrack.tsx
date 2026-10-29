@@ -18,11 +18,8 @@ import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import clsx from "clsx";
 import styles from "../track.module.css";
-import {
-  aggHeaderEmitterAtom,
-  aggSlotsAtom,
-  drawEventType,
-} from "./aggAtoms.ts";
+import { aggHeaderEmitterAtom, aggSlotsAtom } from "./aggAtoms.ts";
+import { drawEventType } from "../const.ts";
 import TrackControls from "../TrackControls.tsx";
 import { Box } from "@radix-ui/themes";
 
