@@ -1,5 +1,10 @@
-import { getDefaultStore } from "jotai";
-import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms";
+import { getDefaultStore, useAtomValue } from "jotai";
+import {
+  hoveredSlotAtom,
+  referenceNsAtom,
+  visibleRangeAtom,
+  worldRangeAtom,
+} from "../atoms";
 import {
   drawEventType,
   type SlotGroup,
@@ -7,12 +12,8 @@ import {
   timelineSlotsAtom,
   timelineSlotsEmitterAtom,
 } from "./nonAggAtoms";
-import { calcAbsoluteNs, calcRelativeMs, getTileIdx } from "../utils";
-import {
-  OVERSCAN_DRAW_TILES_COUNT,
-  tileSizeNs,
-  useNonAggHeaderQuery,
-} from "./useNonAggHeaderQuery";
+import { calcAbsoluteNs, calcRelativeMs, getSlotDrawTileIdxs } from "../utils";
+import { tileSizeNs, useNonAggHeaderQuery } from "./useNonAggHeaderQuery";
 import { isAggregate } from "./utils";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible";
 import type { TsRange } from "../../WebGl/webglUtils";
@@ -63,10 +64,7 @@ function getRangeInfo(
   const slotTier = getSlotTier(estimatedSlotPx);
   const groupTier = getGroupTier(estimatedSlotPx * slotsPerLeader);
 
-  const startIdx =
-    getTileIdx(absStartNs, tileSizeNs, false) - OVERSCAN_DRAW_TILES_COUNT;
-  const endIdx =
-    getTileIdx(absEndNs, tileSizeNs, true) + OVERSCAN_DRAW_TILES_COUNT;
+  const { startIdx, endIdx } = getSlotDrawTileIdxs(referenceNs, visibleRange);
 
   return {
     visibleStartMs: visibleRange[0],
@@ -375,11 +373,15 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
   const groupEndMs = Math.max(...sortedSlots.map((s) => s.endMs));
   const groupDurationMs = groupEndMs - groupStartMs;
 
+  const hoveredSlot = useAtomValue(hoveredSlotAtom);
+  const isHovered = hoveredSlot != null && slots.has(hoveredSlot);
+
   return (
     <div
       className={clsx(styles.slotGroupContainer, {
         [styles.skipped]: hasSkipped,
         [styles.mine]: isMine,
+        [styles.hovered]: isHovered,
       })}
       style={{
         height: `${trackHeight}px`,
@@ -403,6 +405,7 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
               groupDurationMs={groupDurationMs}
               {...slotInfo}
               slotTier={slotTier}
+              isHovered={hoveredSlot === slotInfo.slot}
             />
           );
         })}
@@ -463,6 +466,7 @@ interface SlotProps {
   endMs: number;
   isSkipped: boolean;
   slotTier: SlotTier;
+  isHovered: boolean;
 }
 const Slot = memo(function Slot({
   isEarliestStart,
@@ -474,6 +478,7 @@ const Slot = memo(function Slot({
   endMs,
   isSkipped,
   slotTier,
+  isHovered,
 }: SlotProps) {
   // prevent status render from blocking smooth zoom, etc
   const deferredSlotTier = useDeferredValue(slotTier);
@@ -494,6 +499,7 @@ const Slot = memo(function Slot({
         [styles.earliestStart]: isEarliestStart,
         [styles.latestEnd]: isLatestEnd,
         [styles.leftBorder]: !isEarliestStart && !showBlock,
+        [styles.hoverSlot]: isHovered,
       })}
       style={{
         left: `${((startMs - groupStartMs) / groupDurationMs) * 100}%`,

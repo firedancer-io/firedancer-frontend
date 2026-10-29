@@ -1,6 +1,5 @@
 import { getDefaultStore } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import SelectionMarker from "../SelectionMarker.tsx";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
@@ -185,7 +184,6 @@ function AggHeaderTrack({
       className={clsx(className, styles.trackContainer)}
     >
       <div ref={containerRef} className={styles.trackCanvasContainer} />
-      <SelectionMarker />
       <TrackControls name="Slots" bucketSize={granularity} />
     </Box>
   );

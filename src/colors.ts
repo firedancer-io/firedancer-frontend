@@ -214,6 +214,13 @@ export const headerSkippedGroupLabelTextColor = "#FF9A9A";
 export const headerMineGroupContainerBorderColor = "rgba(42, 126, 223, 0.65)";
 export const headerMineGroupBackgroundColor = "rgba(42, 126, 223, 0.2)";
 
+// hovered group container borders
+export const headerHoveredGroupBorderColor = "rgba(255, 255, 255, 0.45)";
+export const headerHoveredSkippedGroupBorderColor = "#FF6B6B";
+export const headerHoveredMineGroupBorderColor = "rgba(81, 153, 239, 0.95)";
+export const headerHoveredSlotBorderColor = "rgba(255, 255, 255, 0.55)";
+export const hoveredTsLineColor = "rgba(0, 144, 255, 0.75)";
+
 // sankey
 export const sankeyStartEndNodeColor = "#525463";
 export const sankeyIncomingLinkColor = "#23639E";
