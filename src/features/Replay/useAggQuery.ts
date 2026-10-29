@@ -1,15 +1,12 @@
 import { useCallback } from "react";
 import { useAtomValue, useSetAtom, type Atom, type WritableAtom } from "jotai";
-import type TypedEmitter from "typed-emitter";
 import { useWebSocketSend } from "../../api/ws/utils";
 import type { AggGranularity } from "../../api/types";
 import type { NsTsRange, TsRange } from "../WebGl/webglUtils";
 import { calcAbsoluteNs, useTimelineServerMessage } from "./utils";
 import { useTiledQueries } from "./useTiledQueries";
-import { nsBucketSizes } from "./const";
+import { drawEventType, nsBucketSizes, type DrawEmitter } from "./const";
 import type { TimelineQueryKey } from "./atoms";
-
-const drawEventType = "draw";
 
 /**
  * Number of current granularity buckets per fetch tile.
@@ -26,8 +23,6 @@ const getTileEvictionLowWatermark = () => TILE_EVICTION_LOW_WATERMARK;
 export function getTileSizeNs(granularity: AggGranularity) {
   return BigInt(BUCKETS_PER_TILE) * nsBucketSizes[granularity];
 }
-
-type DrawEmitter = TypedEmitter<{ [drawEventType]: () => void }>;
 
 type AddAtom<TValue> = WritableAtom<null, [TValue], void>;
 

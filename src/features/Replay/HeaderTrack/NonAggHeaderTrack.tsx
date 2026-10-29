@@ -1,7 +1,6 @@
 import { getDefaultStore } from "jotai";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms";
 import {
-  drawEventType,
   type SlotGroup,
   type SlotInfo,
   timelineSlotsAtom,
@@ -31,12 +30,10 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  aggHeaderEmitterAtom,
-  drawEventType as aggDrawEventType,
-} from "./aggAtoms";
+import { aggHeaderEmitterAtom } from "./aggAtoms";
 import MonoText from "../../../components/MonoText";
 import { trackHeight } from "./const";
+import { drawEventType } from "../const";
 
 const store = getDefaultStore();
 const logoSize = 8;
@@ -290,7 +287,7 @@ export function NonAggHeaderTrack({
       if (!visibleRange || !isAggregate(visibleRange)) return;
       setRenderState(null);
     };
-    aggEmitter.addListener(aggDrawEventType, clearIfAgg);
+    aggEmitter.addListener(drawEventType, clearIfAgg);
 
     // trigger initial draw
     onRangeChange();
@@ -298,7 +295,7 @@ export function NonAggHeaderTrack({
     // cleanup
     return () => {
       emitter.removeListener(drawEventType, throttledUpdateGroupsAndShow);
-      aggEmitter.removeListener(aggDrawEventType, clearIfAgg);
+      aggEmitter.removeListener(drawEventType, clearIfAgg);
       throttledUpdateGroupsAndShow.cancel();
       throttledUpdateGroups.cancel();
       throttledRelativeTsQuery.cancel();
