@@ -10,6 +10,7 @@ import MiniMap from "./MiniMap/MiniMap.tsx";
 import HeaderTrack from "./HeaderTrack/index.tsx";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
+import HoverOverlay from "./HoverOverlay.tsx";
 
 const store = getDefaultStore();
 
@@ -62,6 +63,8 @@ export default function Chart() {
               <ShredsTrack width={width} />
               <RevenueTrack width={width} />
             </Flex>
+
+            <HoverOverlay />
           </Flex>
         </>
       )}

@@ -5,6 +5,8 @@ import { atom } from "jotai";
 import { CHART_NOW_DELAY_MS, RESUME_LIVE_THRESHOLD_FRAC } from "./const";
 import { calcRelativeMs, getInitVisibleRange } from "./utils";
 import type { WsEntity } from "../../api/worker/types";
+import { timelineSlotsAtom } from "./HeaderTrack/nonAggAtoms";
+import { getSlotGroupLeader } from "../../utils";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 
@@ -126,3 +128,69 @@ export const {
  * selected ts in ms
  */
 export const selectedMsAtom = atom<number | undefined>(undefined);
+
+export interface HoveredSlot {
+  /** who set the value and can remove it */
+  owner: string;
+  slot: number;
+  ranges: {
+    group: TsRange;
+    slot: TsRange;
+  };
+}
+
+export interface PartialHoveredSlot extends Omit<HoveredSlot, "ranges"> {
+  ranges: HoveredSlot["ranges"] | undefined;
+}
+
+export const [hoveredSlotAtom, setHoveredSlotAtom, clearHoveredSlotAtom] =
+  (function getHoveredSlotAtoms() {
+    const _hoveredSlotAtom = atom<PartialHoveredSlot | undefined>(undefined);
+
+    /**
+     * atom with populated ranges
+     */
+    const hoveredSlotAtom = atom<HoveredSlot | undefined>((get) => {
+      const hoveredSlot = get(_hoveredSlotAtom);
+      if (!hoveredSlot) return;
+
+      // has ranges already
+      const { ranges } = hoveredSlot;
+      if (ranges) return { ...hoveredSlot, ranges };
+
+      const { slotGroups } = get(timelineSlotsAtom);
+      const group = slotGroups.get(getSlotGroupLeader(hoveredSlot.slot));
+      const slotInfo = group?.slots.get(hoveredSlot.slot);
+
+      // not enough info
+      if (!group || group.slots.size === 0 || !slotInfo) return undefined;
+
+      let groupStartMs = Infinity;
+      let groupEndMs = -Infinity;
+      for (const { startMs, endMs } of group.slots.values()) {
+        if (startMs < groupStartMs) groupStartMs = startMs;
+        if (endMs > groupEndMs) groupEndMs = endMs;
+      }
+
+      return {
+        ...hoveredSlot,
+        ranges: {
+          group: [groupStartMs, groupEndMs],
+          slot: [slotInfo.startMs, slotInfo.endMs],
+        },
+      };
+    });
+
+    return [
+      hoveredSlotAtom,
+      atom(null, (_get, set, value: PartialHoveredSlot) => {
+        set(_hoveredSlotAtom, value);
+      }),
+      atom(null, (get, set, owner: string) => {
+        // clear only if the value owner is still the current owner
+        if (get(_hoveredSlotAtom)?.owner === owner) {
+          set(_hoveredSlotAtom, undefined);
+        }
+      }),
+    ] as const;
+  })();

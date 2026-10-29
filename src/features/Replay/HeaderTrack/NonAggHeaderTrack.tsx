@@ -1,6 +1,13 @@
 import { Box, Flex, Text } from "@radix-ui/themes";
-import { getDefaultStore } from "jotai";
-import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms";
+import { getDefaultStore, useAtomValue } from "jotai";
+import {
+  clearHoveredSlotAtom,
+  hoveredSlotAtom,
+  referenceNsAtom,
+  setHoveredSlotAtom,
+  visibleRangeAtom,
+  worldRangeAtom,
+} from "../atoms";
 import {
   drawEventType,
   type SlotGroup,
@@ -32,6 +39,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent,
 } from "react";
 import {
   aggHeaderEmitterAtom,
@@ -157,6 +165,14 @@ export function NonAggHeaderTrack({
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Latest rendered groups
+  const slotGroupsRef = useRef<SlotGroup[]>([]);
+  slotGroupsRef.current = renderState?.slotGroups ?? [];
+
+  // Track last cursor position, so we know what is hovered
+  // during live mode when elements move but cursor doesn't
+  const lastClientXRef = useRef<number>();
+
   const nonAggQuery = useNonAggHeaderQuery(chartId);
 
   const throttledRelativeTsQuery = useThrottledCallbackIfVisible(
@@ -232,6 +248,75 @@ export function NonAggHeaderTrack({
     [width],
   );
 
+  // update or clear hovered slot based on last cursor position
+  // and last rendered slot groups
+  const updateHoveredSlot = useCallback(() => {
+    const clientX = lastClientXRef.current;
+    const container = containerRef.current;
+    const visibleRange = store.get(visibleRangeAtom);
+    if (clientX == null || !container || !visibleRange) {
+      store.set(clearHoveredSlotAtom, chartId);
+      return;
+    }
+
+    const rect = container.getBoundingClientRect();
+    if (rect.width === 0) {
+      store.set(clearHoveredSlotAtom, chartId);
+      return;
+    }
+
+    const fraction = (clientX - rect.left) / rect.width;
+    const ms = visibleRange[0] + fraction * (visibleRange[1] - visibleRange[0]);
+
+    // find the group under the cursor, then the highest slot within it
+    let hovered: SlotInfo | undefined;
+    let hoveredGroup: SlotGroup | undefined;
+    for (const group of slotGroupsRef.current) {
+      for (const slot of group.slots.values()) {
+        if (slot.startMs <= ms && ms <= slot.endMs) {
+          if (!hovered || slot.slot > hovered.slot) {
+            hovered = slot;
+            hoveredGroup = group;
+          }
+        }
+      }
+    }
+
+    if (!hovered || !hoveredGroup) {
+      store.set(clearHoveredSlotAtom, chartId);
+      return;
+    }
+
+    let groupStartMs = Infinity;
+    let groupEndMs = -Infinity;
+    for (const { startMs, endMs } of hoveredGroup.slots.values()) {
+      if (startMs < groupStartMs) groupStartMs = startMs;
+      if (endMs > groupEndMs) groupEndMs = endMs;
+    }
+
+    store.set(setHoveredSlotAtom, {
+      slot: hovered.slot,
+      owner: chartId,
+      ranges: {
+        group: [groupStartMs, groupEndMs],
+        slot: [hovered.startMs, hovered.endMs],
+      },
+    });
+  }, []);
+
+  const onMouseMove = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      lastClientXRef.current = e.clientX;
+      updateHoveredSlot();
+    },
+    [updateHoveredSlot],
+  );
+
+  const onMouseLeave = useCallback(() => {
+    lastClientXRef.current = undefined;
+    store.set(clearHoveredSlotAtom, chartId);
+  }, []);
+
   /**
    * Update positions and query for data
    */
@@ -271,6 +356,7 @@ export function NonAggHeaderTrack({
   // set up renderer and subscribe to range change, to trigger queries
   useLayoutEffect(() => {
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
+    const unsubscribeHover = store.sub(visibleRangeAtom, updateHoveredSlot);
 
     // listen for non-agg slots draw events
     const emitter = store.get(timelineSlotsEmitterAtom);
@@ -295,9 +381,11 @@ export function NonAggHeaderTrack({
       throttledUpdateGroups.cancel();
       throttledRelativeTsQuery.cancel();
       unsubscribeRange();
+      unsubscribeHover();
     };
   }, [
     onRangeChange,
+    updateHoveredSlot,
     throttledUpdateGroupsAndShow,
     throttledUpdateGroups,
     throttledRelativeTsQuery,
@@ -305,13 +393,16 @@ export function NonAggHeaderTrack({
 
   // handle chart resize, which may trigger tier changes depending on new width
   useLayoutEffect(() => {
+    // check hovered state with new group positions
+    updateHoveredSlot();
+
     const referenceNs = store.get(referenceNsAtom);
     const visibleRange = store.get(visibleRangeAtom);
     if (referenceNs == null || !visibleRange) {
       return;
     }
     throttledUpdateGroups(referenceNs, visibleRange);
-  }, [throttledUpdateGroups, width]);
+  }, [updateHoveredSlot, throttledUpdateGroups, width]);
 
   return (
     <Box
@@ -321,6 +412,8 @@ export function NonAggHeaderTrack({
       width="100%"
       height="100%"
       overflowX="hidden"
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
     >
       {renderState?.slotGroups.map((group) => (
         <SlotGroupContainer
@@ -357,6 +450,9 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
   const groupEndMs = Math.max(...sortedSlots.map((s) => s.endMs));
   const groupDurationMs = groupEndMs - groupStartMs;
 
+  const hoveredSlot = useAtomValue(hoveredSlotAtom);
+  const isHovered = hoveredSlot != null && slots.has(hoveredSlot.slot);
+
   return (
     <Flex
       position="absolute"
@@ -366,6 +462,7 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
       className={clsx(styles.slotGroupContainer, {
         [styles.skipped]: hasSkipped,
         [styles.mine]: isMine,
+        [styles.hovered]: isHovered,
       })}
       style={
         {
@@ -388,6 +485,7 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
               isLatestEnd={groupEndMs === slotInfo.endMs}
               {...slotInfo}
               slotTier={slotTier}
+              isHovered={hoveredSlot?.slot === slotInfo.slot}
             />
           );
         })}
@@ -457,6 +555,7 @@ interface SlotProps {
   endMs: number;
   isSkipped: boolean;
   slotTier: SlotTier;
+  isHovered: boolean;
 }
 const Slot = memo(function Slot({
   isEarliestStart,
@@ -466,6 +565,7 @@ const Slot = memo(function Slot({
   endMs,
   isSkipped,
   slotTier,
+  isHovered,
 }: SlotProps) {
   // prevent status render from blocking smooth zoom, etc
   const deferredSlotTier = useDeferredValue(slotTier);
@@ -489,6 +589,7 @@ const Slot = memo(function Slot({
         [styles.earliestStart]: isEarliestStart,
         [styles.latestEnd]: isLatestEnd,
         [styles.leftBorder]: !isEarliestStart && !showBlock,
+        [styles.hoverSlot]: isHovered,
       })}
       style={
         {
