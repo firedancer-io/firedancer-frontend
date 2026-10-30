@@ -32,11 +32,8 @@ import { useTxnMetaCache } from "./txnMeta/useTxnMetaCache.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
-import {
-  aggRevenueAtom,
-  drawEventType,
-  aggRevenueEmitterAtom,
-} from "./atoms.ts";
+import { aggRevenueAtom, aggRevenueEmitterAtom } from "./atoms.ts";
+import { drawEventType } from "../const.ts";
 import { tileCountAtom } from "../../Overview/SlotPerformance/atoms.ts";
 import RevenueYAxis from "./RevenueYAxis.tsx";
 import RevenueControls from "./RevenueControls.tsx";

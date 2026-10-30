@@ -9,9 +9,9 @@ import { nsPerMs } from "../../../consts";
 import {
   addTimelineSlotsAtom,
   deleteTimelineSlotTilesAtom,
-  drawEventType,
   timelineSlotsEmitterAtom,
 } from "./nonAggAtoms";
+import { drawEventType } from "../const";
 const granularity = "";
 
 export const OVERSCAN_TILES_COUNT = 2;

@@ -1,12 +1,10 @@
 import { atom } from "jotai";
 import EventEmitter from "events";
-import type TypedEmitter from "typed-emitter";
 import type { TimelineSlots } from "../../../api/types";
 import { referenceNsAtom } from "../atoms";
 import { calcRelativeMs } from "../utils";
 import { getSlotGroupLeader } from "../../../utils";
-
-export const drawEventType = "draw";
+import { drawEventType, type DrawEmitter } from "../const";
 
 /**
  * ts relative to replay referenceNs
@@ -38,11 +36,7 @@ export const [
   });
 
   return [
-    atom(
-      new EventEmitter() as TypedEmitter<{
-        [drawEventType]: () => void;
-      }>,
-    ),
+    atom(new EventEmitter() as DrawEmitter),
     atom((get) => get(_timelineSlotGroupsAtom)),
     atom(
       null,

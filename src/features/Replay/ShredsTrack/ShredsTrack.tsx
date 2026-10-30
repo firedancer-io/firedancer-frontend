@@ -26,11 +26,11 @@ import type { AggGranularity, ShredsGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import {
   aggShredsAtom,
-  drawEventType,
   aggShredsEmitterAtom,
   timelineShredsAtoms,
   timelineFecShredsAtoms,
 } from "./atoms.ts";
+import { drawEventType } from "../const.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import styles from "../track.module.css";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
