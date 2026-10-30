@@ -17,6 +17,7 @@ import { TileStatesGranularityEnum } from "../../../api/entities.ts";
 import TrackControls, {
   TrackControlsDivider,
   TrackControlsOptions,
+  TrackControlsSlider,
   TrackControlsToggle,
   type LegendItem,
 } from "../TrackControls.tsx";
@@ -31,6 +32,9 @@ interface TileStatesControlsProps {
   isAgg: boolean;
   availableModes: TileStatesMode[];
   mode: TileStatesMode;
+  /** Whether the displayed mode weighs idle time */
+  showIdleWeight: boolean;
+  showSplitLanes: boolean;
   aggGranularity: AggGranularity | undefined;
   opts: TileStatesViewOpts;
   setOpts: Dispatch<SetStateAction<TileStatesViewOpts>>;
@@ -42,6 +46,8 @@ export default function TileStatesControls({
   isAgg,
   availableModes,
   mode,
+  showIdleWeight,
+  showSplitLanes,
   aggGranularity,
   opts,
   setOpts,
@@ -68,6 +74,31 @@ export default function TileStatesControls({
         value={mode}
         onChange={(mode) => setOpts((o) => ({ ...o, mode }))}
       />
+      {showSplitLanes && (
+        <>
+          <TrackControlsDivider />
+          <TrackControlsToggle
+            label="Split by lane"
+            checked={opts.separateLanes}
+            onChange={(separateLanes) =>
+              setOpts((o) => ({ ...o, separateLanes }))
+            }
+          />
+        </>
+      )}
+      {showIdleWeight && (
+        <>
+          <TrackControlsDivider />
+          <TrackControlsSlider
+            label="Idle weight"
+            value={opts.idleWeight}
+            min={0}
+            max={1}
+            step={0.05}
+            onChange={(idleWeight) => setOpts((o) => ({ ...o, idleWeight }))}
+          />
+        </>
+      )}
       {showErrorStates && (
         <>
           <TrackControlsDivider />

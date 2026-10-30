@@ -34,13 +34,20 @@ export function isAggregate(rangeMs: TsRange) {
 }
 
 /**
- * Weight of idle time relative to busy states in the heatmap color.
- * 1 counts idle like any state and 0 ignores it to show only the busy mix.
+ * Default weight of idle time relative to busy states, in the heatmap color and
+ * stacked bar heights. 1 counts idle like any state and 0 ignores it to show
+ * only the busy mix.
  */
-export const HEATMAP_IDLE_WEIGHT = 1;
+export const IDLE_WEIGHT = 0.05;
 
-export const ROW_HEIGHT_PX = 24;
+/** Default bar height, for tracks without lane labels */
 export const BAR_HEIGHT_PX = 22;
+/** Space above each row's bar */
+export const BAR_GAP_PX = 2;
+/** Height of each state's lane when the state labels are shown */
+export const LANE_HEIGHT_PX = 17;
+/** Space between lanes when the state labels are shown */
+export const LANE_GAP_PX = 2;
 
 export const ERROR_STATES_ALPHA = 0.5;
 export const ERROR_STATES_BORDER_PX = 1.5;
@@ -150,6 +157,11 @@ export interface TileStatesModeOption {
   minMs?: number;
   // shown when this mode isn't available at the visible range
   fallback?: TileStatesMode;
+  /**
+   * Stacked only: whether each state's bar starts in its own lane instead of
+   * stacked. Setting it either way adds a toggle for it to the controls.
+   */
+  separateLanes?: boolean;
 }
 
 export const DEFAULT_TILE_STATES_MODE_OPTIONS: TileStatesModeOption[] = (
@@ -182,10 +194,22 @@ export function getDisplayMode(
 }
 
 export interface TileStatesViewOpts {
+  /** Stacked only: each state's bar in its own lane */
+  separateLanes: boolean;
   showErrorStates: boolean;
   mode: TileStatesMode;
+  idleWeight: number;
 }
 
-export function getDefaultViewOpts(mode: TileStatesMode): TileStatesViewOpts {
-  return { showErrorStates: false, mode };
+export function getDefaultViewOpts(
+  mode: TileStatesMode,
+  separateLanes: boolean,
+  idleWeight: number,
+): TileStatesViewOpts {
+  return {
+    showErrorStates: false,
+    mode,
+    separateLanes,
+    idleWeight,
+  };
 }

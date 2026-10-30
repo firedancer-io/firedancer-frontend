@@ -1,9 +1,5 @@
 import * as THREE from "three";
-import {
-  BAR_HEIGHT_PX,
-  ERROR_STATES_ALPHA,
-  ERROR_STATES_BORDER_PX,
-} from "./consts.ts";
+import { ERROR_STATES_ALPHA, ERROR_STATES_BORDER_PX } from "./consts.ts";
 
 const createVertexShader = (colorCount: number) => /* glsl */ `
 uniform mat4 modelViewMatrix; // the anchor as hi + lo
@@ -169,22 +165,24 @@ export function createStateCoverageMaterial(
 export function createErrorStatesMaterial(
   pixelRatio: number,
   colors: THREE.Vector3[],
+  barHeightPx: number,
 ) {
   const material = createMaterial(errorStatesFragmentShader, colors, {
     uBorderPx: { value: 0 },
     uBarHeightPx: { value: 0 },
     uOpacity: { value: ERROR_STATES_ALPHA },
   });
-  setErrorStatesPixelRatio(material, pixelRatio);
+  setErrorStatesPixelRatio(material, pixelRatio, barHeightPx);
   return material;
 }
 
 export function setErrorStatesPixelRatio(
   material: THREE.RawShaderMaterial,
   pixelRatio: number,
+  barHeightPx: number,
 ) {
   material.uniforms.uBorderPx.value = ERROR_STATES_BORDER_PX * pixelRatio;
-  material.uniforms.uBarHeightPx.value = BAR_HEIGHT_PX * pixelRatio;
+  material.uniforms.uBarHeightPx.value = barHeightPx * pixelRatio;
 }
 
 export interface StatesMesh {

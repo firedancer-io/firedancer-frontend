@@ -10,6 +10,7 @@ import {
   type TsRange,
 } from "../../WebGl/webglUtils.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
+import { createLaneMaxReducer, type LaneMaxReducer } from "./laneMax.ts";
 import type { Tile, TileStatesGranularity } from "../../../api/types.ts";
 import {
   type TileState,
@@ -30,9 +31,9 @@ import {
   type StatesMesh,
 } from "./tileStatesMesh.ts";
 import {
+  BAR_GAP_PX,
   BAR_HEIGHT_PX,
-  HEATMAP_IDLE_WEIGHT,
-  ROW_HEIGHT_PX,
+  IDLE_WEIGHT,
   ErrorState,
   errorStateColors,
   tileStateColors,
@@ -86,10 +87,16 @@ export interface RendererObj {
   stateCoverageMaterial: THREE.RawShaderMaterial;
   /** Per state px coverage, a channel per coverage state and 4 per texture */
   coverageTarget: THREE.WebGLRenderTarget;
+  laneMaxReducer: LaneMaxReducer;
   coverageCompositeScene: THREE.Scene;
   coverageCompositeMaterial: THREE.RawShaderMaterial;
   /** Displayed mode for the visible span */
   mode: TileStatesMode;
+  /** Displayed mode's separateLanes option */
+  separateLanes: boolean;
+  barHeightPx: number;
+  /** Bar height / row height */
+  barFrac: number;
   kind: TileKind;
   dataTileMeshes: Map<string, DataTileMeshes>;
   availableMeshes: DataTileMeshes[];
@@ -175,7 +182,8 @@ const shaderModeIds: Record<TileStatesMode, number> = {
  * Heatmap: busy state colors mixed by time in linear light over the
  * background, with idle time weighted by uIdleWeight.
  * Stacked: lane states bottom-up in reverse, so top-down they read in lane
- * order like gantt. Idle isn't drawn, so the bar height is the busy fraction.
+ * order like gantt. Idle isn't drawn, and its weight sets how much of the bar
+ * it takes up, so 1 makes the bar height the busy fraction.
  * Gantt: a lane per state top-down, shaded by the state's coverage.
  */
 const createCoverageCompositeFragmentShader = (targetCount: number) => {
@@ -196,6 +204,10 @@ uniform int uMode;
 uniform float uIdleWeight;
 uniform float uLaneChannels[${MAX_LANES}];
 uniform float uLaneCount;
+uniform bool uSeparateLanes;
+uniform float uBarHeightPx;
+uniform float uLaneGapPx;
+${indices.map((i) => `uniform sampler2D uLaneMax${i};`).join("\n")}
 
 vec3 linearToSrgb(vec3 c) {
   return mix(
@@ -203,6 +215,19 @@ vec3 linearToSrgb(vec3 c) {
     1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055,
     step(0.0031308, c)
   );
+}
+
+/**
+ * Sets the lane at barY, top-down. Returns the height from the lane's bottom
+ * over its drawn height, or -1 in the gap above every lane but the first.
+ */
+float laneHeightAt(float barY, out float lane) {
+  float lanePos = (1.0 - barY) * uLaneCount;
+  lane = floor(lanePos);
+  float gapFrac = lane > 0.0 ? uLaneGapPx * uLaneCount / uBarHeightPx : 0.0;
+  float fromTop = lanePos - lane;
+  if (fromTop < gapFrac) return -1.0;
+  return (1.0 - fromTop) / (1.0 - gapFrac);
 }
 
 void main() {
@@ -237,28 +262,64 @@ ${indices
         );
       }
     } else if (uMode == ${shaderModeIds[TileStatesMode.Gantt]}) {
-      float lane = floor((1.0 - barY) * uLaneCount);
+      float lane;
+      float laneY = laneHeightAt(barY, lane);
       float laneChannel = -1.0;
       for (int i = 0; i < ${MAX_LANES}; i++) {
         if (float(i) == lane) laneChannel = uLaneChannels[i];
       }
       for (int i = 0; i < ${channelCount}; i++) {
-        if (float(i) == laneChannel) {
+        if (float(i) == laneChannel && laneY >= 0.0) {
           color = mix(uBackground, uChannelColors[i], min(coverage[i], 1.0));
         }
       }
     } else {
-      float top = 0.0;
-      for (int lane = ${MAX_LANES} - 1; lane >= 0; lane--) {
-        if (float(lane) >= uLaneCount) continue;
-        float laneChannel = uLaneChannels[lane];
+      float busy = 0.0;
+      for (int i = 0; i < ${channelCount}; i++) busy += coverage[i];
+      float total = busy + uIdleWeight * max(1.0 - busy, 0.0);
+      if (uSeparateLanes) {
+        // lanes top-down like gantt, each bar growing from its lane's bottom,
+        // scaled to its state's max share of busy time in view
+        float lane;
+        float laneY = laneHeightAt(barY, lane);
+        vec2 laneMaxUv = vec2(0.5, (floor(uv.y / rowH) + 0.5) / uRowCount);
+        float laneMax[${channelCount}];
+${indices
+  .map(
+    (i) => `        vec4 m${i} = texture2D(uLaneMax${i}, laneMaxUv);
+        laneMax[${i * 4}] = m${i}.r; laneMax[${i * 4 + 1}] = m${i}.g;
+        laneMax[${i * 4 + 2}] = m${i}.b; laneMax[${i * 4 + 3}] = m${i}.a;`,
+  )
+  .join("\n")}
+        float laneChannel = -1.0;
+        for (int i = 0; i < ${MAX_LANES}; i++) {
+          if (float(i) == lane) laneChannel = uLaneChannels[i];
+        }
         for (int i = 0; i < ${channelCount}; i++) {
-          if (float(i) == laneChannel) {
-            top += coverage[i];
-            if (barY < top) color = uChannelColors[i];
+          if (
+            float(i) == laneChannel &&
+            busy > 0.0 &&
+            laneY >= 0.0 &&
+            laneMax[i] > 0.0 &&
+            laneY < coverage[i] / busy / laneMax[i]
+          ) {
+            color = uChannelColors[i];
           }
         }
-        if (barY < top) break;
+      } else {
+        float top = 0.0;
+        for (int lane = ${MAX_LANES} - 1; lane >= 0; lane--) {
+          if (total <= 0.0) break;
+          if (float(lane) >= uLaneCount) continue;
+          float laneChannel = uLaneChannels[lane];
+          for (int i = 0; i < ${channelCount}; i++) {
+            if (float(i) == laneChannel) {
+              top += coverage[i] / total;
+              if (barY < top) color = uChannelColors[i];
+            }
+          }
+          if (barY < top) break;
+        }
       }
     }
   }
@@ -279,7 +340,9 @@ function getChannelColors(
 
 function createCoverageCompositeMaterial(
   coverageTarget: THREE.WebGLRenderTarget,
+  laneMaxTarget: THREE.WebGLRenderTarget,
   channelStates: TileState[],
+  barFrac: number,
 ) {
   const { textures } = coverageTarget;
   return new THREE.RawShaderMaterial({
@@ -290,9 +353,15 @@ function createCoverageCompositeMaterial(
       ...Object.fromEntries(
         textures.map((texture, i) => [`uCoverage${i}`, { value: texture }]),
       ),
+      ...Object.fromEntries(
+        laneMaxTarget.textures.map((texture, i) => [
+          `uLaneMax${i}`,
+          { value: texture },
+        ]),
+      ),
       uCanvasSize: { value: new THREE.Vector2(1, 1) },
       uRowCount: { value: 1 },
-      uBarFrac: { value: BAR_HEIGHT_PX / ROW_HEIGHT_PX },
+      uBarFrac: { value: barFrac },
       uBackground: { value: new THREE.Vector3(...BACKGROUND_SRGB) },
       uBackgroundLinear: { value: new THREE.Vector3(...BACKGROUND_LINEAR) },
       uChannelColors: { value: getChannelColors(channelStates, SRGB_PALETTE) },
@@ -300,9 +369,12 @@ function createCoverageCompositeMaterial(
         value: getChannelColors(channelStates, TILE_STATE_PALETTE),
       },
       uMode: { value: shaderModeIds[TileStatesMode.Heatmap] },
-      uIdleWeight: { value: HEATMAP_IDLE_WEIGHT },
+      uIdleWeight: { value: IDLE_WEIGHT },
       uLaneChannels: { value: new Array<number>(MAX_LANES).fill(-1) },
       uLaneCount: { value: 1 },
+      uSeparateLanes: { value: false },
+      uBarHeightPx: { value: BAR_HEIGHT_PX },
+      uLaneGapPx: { value: 0 },
     },
   });
 }
@@ -341,7 +413,9 @@ export function setUpRenderer(
   const errorStatesMaterial = createErrorStatesMaterial(
     devicePixelRatio,
     ERROR_STATE_PALETTE,
+    BAR_HEIGHT_PX,
   );
+  const barFrac = BAR_HEIGHT_PX / (BAR_HEIGHT_PX + BAR_GAP_PX);
 
   const canBlendFloat32 =
     renderer.extensions.has("EXT_color_buffer_float") &&
@@ -349,9 +423,10 @@ export function setUpRenderer(
   // Each px's time per coverage state, written to every texture in one pass.
   // The composite pass shades every mode from these
   const channelStates = coverageStates[kind];
+  const targetType = canBlendFloat32 ? THREE.FloatType : THREE.HalfFloatType;
   const coverageTarget = new THREE.WebGLRenderTarget(1, 1, {
     count: Math.ceil(channelStates.length / 4),
-    type: canBlendFloat32 ? THREE.FloatType : THREE.HalfFloatType,
+    type: targetType,
     minFilter: THREE.NearestFilter,
     magFilter: THREE.NearestFilter,
     depthBuffer: false,
@@ -361,9 +436,16 @@ export function setUpRenderer(
     TILE_STATE_PALETTE.map((_, state) => channelStates.indexOf(state)),
     coverageTarget.textures.length,
   );
+  const laneMaxReducer = createLaneMaxReducer(
+    coverageTarget,
+    rectResources.unitQuad,
+    targetType,
+  );
   const coverageCompositeMaterial = createCoverageCompositeMaterial(
     coverageTarget,
+    laneMaxReducer.target,
     channelStates,
+    barFrac,
   );
   const coverageCompositeMesh = new THREE.Mesh(
     rectResources.unitQuad,
@@ -393,6 +475,7 @@ export function setUpRenderer(
       errorStatesMaterial.dispose();
       stateCoverageMaterial.dispose();
       coverageTarget.dispose();
+      laneMaxReducer.dispose();
       coverageCompositeMaterial.dispose();
     }
     cleanUpRenderer();
@@ -407,9 +490,13 @@ export function setUpRenderer(
     errorStatesScene,
     stateCoverageMaterial,
     coverageTarget,
+    laneMaxReducer,
     coverageCompositeScene,
     coverageCompositeMaterial,
     mode,
+    separateLanes: false,
+    barHeightPx: BAR_HEIGHT_PX,
+    barFrac,
     kind,
     dataTileMeshes,
     availableMeshes,
@@ -436,7 +523,11 @@ export function resizeCanvas(
   heightPx: number,
 ) {
   rendererObj.renderer.setSize(widthPx, heightPx, false);
-  setErrorStatesPixelRatio(rendererObj.errorStatesMaterial, devicePixelRatio);
+  setErrorStatesPixelRatio(
+    rendererObj.errorStatesMaterial,
+    devicePixelRatio,
+    rendererObj.barHeightPx,
+  );
   const visibleRangeMs = store.get(visibleRangeAtom);
   if (visibleRangeMs) setVisibleRange(rendererObj, visibleRangeMs);
   render(rendererObj);
@@ -466,6 +557,7 @@ export function render(rendererObj: RendererObj) {
     : rendererObj.tileStatesScene;
   const { uniforms } = coverageCompositeMaterial;
   uniforms.uMode.value = shaderModeIds[rendererObj.mode];
+  uniforms.uRowCount.value = Math.max(getRowOfTile(rendererObj.kind).size, 1);
   const laneStates =
     trackStates[rendererObj.kind][
       rendererObj.renderedGranularity ?? TileStatesGranularityEnum.txn
@@ -477,10 +569,21 @@ export function render(rendererObj: RendererObj) {
       i < laneStates.length ? channelStates.indexOf(laneStates[i]) : -1;
   }
   uniforms.uLaneCount.value = laneStates.length;
+  uniforms.uSeparateLanes.value = rendererObj.separateLanes;
 
   renderer.setRenderTarget(coverageTarget);
   renderer.clear();
   renderer.render(statesScene, camera);
+  if (
+    rendererObj.mode === TileStatesMode.Stacked &&
+    rendererObj.separateLanes
+  ) {
+    rendererObj.laneMaxReducer.reduce(
+      renderer,
+      uniforms.uRowCount.value as number,
+      rendererObj.barFrac,
+    );
+  }
   renderer.setRenderTarget(null);
   renderer.render(coverageCompositeScene, camera);
   if (
@@ -608,7 +711,13 @@ function buildDataTileMeshes(
   const tileStatesStart = appendData ? meshes.tileStates.count : 0;
   setStatesCount(
     meshes.tileStates,
-    appendTileStates(meshes.tileStates, data, tileStatesStart, rowOfTile),
+    appendTileStates(
+      meshes.tileStates,
+      data,
+      tileStatesStart,
+      rowOfTile,
+      rendererObj.barFrac,
+    ),
     tileStatesStart,
   );
 
@@ -616,7 +725,13 @@ function buildDataTileMeshes(
     const errorStatesStart = appendData ? meshes.errorStates.count : 0;
     setStatesCount(
       meshes.errorStates,
-      appendErrorStates(meshes.errorStates, data, errorStatesStart, rowOfTile),
+      appendErrorStates(
+        meshes.errorStates,
+        data,
+        errorStatesStart,
+        rowOfTile,
+        rendererObj.barFrac,
+      ),
       errorStatesStart,
     );
   }
@@ -641,10 +756,6 @@ export function syncMeshes(rendererObj: RendererObj, rebuild = false) {
     ? tileStatesCaches[renderedGranularity].getTiles()
     : [];
   const rowOfTile = getRowOfTile(rendererObj.kind);
-  rendererObj.coverageCompositeMaterial.uniforms.uRowCount.value = Math.max(
-    rowOfTile.size,
-    1,
-  );
 
   const keys = new Set<string>();
 
@@ -711,10 +822,29 @@ export function clearLiveMarkerIfAdded(
   clearLiveMarker(rendererObj);
 }
 
+/** Sets the bar height. Callers rebuild the meshes, since they're laid out from it */
+export function setBarHeight(
+  rendererObj: RendererObj,
+  barHeightPx: number,
+  laneGapPx: number,
+) {
+  rendererObj.barHeightPx = barHeightPx;
+  rendererObj.barFrac = barHeightPx / (barHeightPx + BAR_GAP_PX);
+  const { uniforms } = rendererObj.coverageCompositeMaterial;
+  uniforms.uBarFrac.value = rendererObj.barFrac;
+  uniforms.uBarHeightPx.value = barHeightPx;
+  uniforms.uLaneGapPx.value = laneGapPx;
+  setErrorStatesPixelRatio(
+    rendererObj.errorStatesMaterial,
+    devicePixelRatio,
+    barHeightPx,
+  );
+}
+
 /** Row height and bar height in [0, 1] view space. */
-export function getRowLayout(rowOfTile: RowOfTile) {
+export function getRowLayout(rowOfTile: RowOfTile, barFrac: number) {
   const rowH = 1 / rowOfTile.size;
-  return { rowH, barH: (rowH * BAR_HEIGHT_PX) / ROW_HEIGHT_PX };
+  return { rowH, barH: rowH * barFrac };
 }
 
 function appendTileStates(
@@ -722,6 +852,7 @@ function appendTileStates(
   data: TileStateColumns,
   start: number,
   rowOfTile: RowOfTile,
+  barFrac: number,
 ): number {
   if (rowOfTile.size === 0) return start;
 
@@ -731,7 +862,7 @@ function appendTileStates(
   }
   ensureStatesCapacity(mesh, start + needed);
 
-  const { rowH, barH } = getRowLayout(rowOfTile);
+  const { rowH, barH } = getRowLayout(rowOfTile, barFrac);
   let count = start;
   for (let i = 0; i < data.state.length; i++) {
     const row = rowOfTile.get(data.state_tile[i]);
@@ -754,6 +885,7 @@ function appendErrorStates(
   data: TileStateColumns,
   start: number,
   rowOfTile: RowOfTile,
+  barFrac: number,
 ): number {
   if (rowOfTile.size === 0) return start;
 
@@ -764,7 +896,7 @@ function appendErrorStates(
   }
   ensureStatesCapacity(mesh, start + needed);
 
-  const { rowH, barH } = getRowLayout(rowOfTile);
+  const { rowH, barH } = getRowLayout(rowOfTile, barFrac);
   let count = start;
   for (let i = 0; i < data.txn_idx.length; i++) {
     const row = rowOfTile.get(data.txn_tile[i]);

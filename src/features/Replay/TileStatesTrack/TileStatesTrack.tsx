@@ -26,6 +26,7 @@ import {
   setVisibleRange,
   render,
   resizeCanvas,
+  setBarHeight,
   setUpRenderer,
   syncMeshes,
   type RendererObj,
@@ -33,12 +34,19 @@ import {
 import {
   DEFAULT_TILE_STATES_MODE_OPTIONS,
   getDefaultViewOpts,
+  IDLE_WEIGHT,
   getDisplayMode,
   getAvailableModes,
   getTileStatesGranularity,
   isAggregate,
   type TileStatesModeOption,
-  ROW_HEIGHT_PX,
+  BAR_GAP_PX,
+  BAR_HEIGHT_PX,
+  LANE_GAP_PX,
+  LANE_HEIGHT_PX,
+  TileStatesMode,
+  tileStateLabels,
+  trackStates,
   type TileStatesViewOpts,
   type TileKind,
 } from "./consts.ts";
@@ -47,7 +55,9 @@ import type {
   TileStatesGranularity,
 } from "../../../api/types.ts";
 import { TileStatesGranularityEnum } from "../../../api/entities.ts";
-import TileStatesYAxis from "./TileStatesYAxis.tsx";
+import TileStatesYAxis, { type YAxisTick } from "./TileStatesYAxis.tsx";
+
+const FIRST_LABEL_OFFSET_PX = 5;
 import {
   aggTileStatesAtom,
   aggTileStatesEmitterAtom,
@@ -67,6 +77,13 @@ const store = getDefaultStore();
 interface TileStatesTrackProps {
   kind: TileKind;
   canControlsOverlapRows?: boolean;
+  /**
+   * In modes drawn as lanes (gantt, or stacked with separateLanes), sizes each
+   * lane to fit its state's label, shown instead of the tile's
+   */
+  showStateLabels?: boolean;
+  /** Starting idle weight for the heatmap and stacked bars */
+  defaultIdleWeight?: number;
   modes?: TileStatesModeOption[];
 }
 
@@ -79,13 +96,23 @@ interface TileStatesTrackBodyProps
 function TileStatesTrackBody({
   kind,
   canControlsOverlapRows = false,
+  showStateLabels = false,
+  defaultIdleWeight = IDLE_WEIGHT,
   modes = DEFAULT_TILE_STATES_MODE_OPTIONS,
   remount,
   aggQuery: { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes },
 }: TileStatesTrackBodyProps) {
   const defaultMode = modes[0].mode;
+  const stackedOption = modes.find(
+    ({ mode }) => mode === TileStatesMode.Stacked,
+  );
+  const canSplitLanes = stackedOption?.separateLanes !== undefined;
   const [opts, setOpts] = useState<TileStatesViewOpts>(() =>
-    getDefaultViewOpts(defaultMode),
+    getDefaultViewOpts(
+      defaultMode,
+      stackedOption?.separateLanes ?? false,
+      defaultIdleWeight,
+    ),
   );
   const [mode, setMode] = useState(defaultMode);
   const [availableModes, setAvailableModes] = useState(() =>
@@ -104,6 +131,8 @@ function TileStatesTrackBody({
   modesRef.current = modes;
   const selectedModeRef = useRef(opts.mode);
   selectedModeRef.current = opts.mode;
+  const separateLanesRef = useRef(opts.separateLanes);
+  separateLanesRef.current = opts.separateLanes;
 
   /** Resolves the displayed and available modes for the visible span */
   const updateMode = useCallback(
@@ -114,6 +143,8 @@ function TileStatesTrackBody({
         selectedModeRef.current,
         spanMs,
       );
+      renderer.separateLanes =
+        renderer.mode === TileStatesMode.Stacked && separateLanesRef.current;
       setMode(renderer.mode);
       const available = getAvailableModes(modesRef.current, spanMs);
       setAvailableModes((prev) =>
@@ -128,7 +159,42 @@ function TileStatesTrackBody({
 
   const tiles = useAtomValue(tilesAtom);
   const rows = useMemo(() => getTileRows(tiles, kind), [tiles, kind]);
-  const height = Math.max(rows.length, 1) * ROW_HEIGHT_PX;
+  const isLaneMode =
+    mode === TileStatesMode.Gantt ||
+    (mode === TileStatesMode.Stacked && opts.separateLanes);
+  const showLaneLabels = showStateLabels && isLaneMode;
+  // fit the most lanes of any granularity, so the height doesn't change on zoom
+  const barHeightPx = showLaneLabels
+    ? LANE_HEIGHT_PX *
+      Math.max(...Object.values(trackStates[kind]).map(({ length }) => length))
+    : BAR_HEIGHT_PX;
+  const laneGapPx = showLaneLabels ? LANE_GAP_PX : 0;
+  const rowHeightPx = barHeightPx + BAR_GAP_PX;
+  const height = Math.max(rows.length, 1) * rowHeightPx;
+  const laneStates =
+    trackStates[kind][isAgg ? TileStatesGranularityEnum.txn : granularity];
+  const yAxisTicks: YAxisTick[] = showLaneLabels
+    ? rows.flatMap(({ label }, row) =>
+        laneStates.map((state, lane) => ({
+          label:
+            rows.length > 1
+              ? `${label} ${tileStateLabels[state]}`
+              : tileStateLabels[state],
+          // centered in the lane, below the gap above every lane but the first
+          topPx:
+            row * rowHeightPx +
+            BAR_GAP_PX +
+            ((lane + 0.5) * barHeightPx) / laneStates.length +
+            (lane > 0 ? laneGapPx / 2 : 0),
+        })),
+      )
+    : rows.map(({ label }, row) => ({
+        label,
+        topPx:
+          (row + 0.5) * rowHeightPx +
+          // move the first label clear of the track controls
+          (row === 0 && canControlsOverlapRows ? FIRST_LABEL_OFFSET_PX : 0),
+      }));
 
   const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
     remount,
@@ -319,12 +385,33 @@ function TileStatesTrackBody({
 
   useLayoutEffect(() => {
     const renderer = rendererRef.current;
+    if (!renderer) return;
+    renderer.coverageCompositeMaterial.uniforms.uIdleWeight.value =
+      opts.idleWeight;
+    render(renderer);
+  }, [opts.idleWeight]);
+
+  // meshes are laid out from the bar height, so rebuild them
+  useLayoutEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    setBarHeight(renderer, barHeightPx, laneGapPx);
+    if (renderer.isAgg) {
+      drawAgg();
+      return;
+    }
+    if (renderer.renderedGranularity) syncMeshes(renderer, true);
+    render(renderer);
+  }, [barHeightPx, laneGapPx, drawAgg]);
+
+  useLayoutEffect(() => {
+    const renderer = rendererRef.current;
     const visibleRangeMs = store.get(visibleRangeAtom);
     if (!renderer || !visibleRangeMs) return;
     updateMode(renderer, visibleRangeMs);
     if (renderer.isAgg) drawAgg();
     else render(renderer);
-  }, [opts.mode, updateMode, drawAgg]);
+  }, [opts.mode, opts.separateLanes, updateMode, drawAgg]);
 
   const handleDelta = useCallback(
     (granularity: TileStatesGranularity, delta: TileStatesCacheDelta) => {
@@ -370,10 +457,7 @@ function TileStatesTrackBody({
       <div style={{ position: "relative", height: `${height}px` }}>
         <div ref={containerRef} className={styles.trackCanvasContainer} />
         <SelectionMarker />
-        <TileStatesYAxis
-          labels={rows.map(({ label }) => label)}
-          offsetFirstLabel={canControlsOverlapRows}
-        />
+        <TileStatesYAxis ticks={yAxisTicks} />
       </div>
       <TileStatesControls
         kind={kind}
@@ -381,6 +465,9 @@ function TileStatesTrackBody({
         isAgg={isAgg}
         availableModes={availableModes}
         mode={mode}
+        // lanes show each state on its own, so idle doesn't weigh in
+        showIdleWeight={!isLaneMode}
+        showSplitLanes={canSplitLanes && mode === TileStatesMode.Stacked}
         aggGranularity={aggGranularity}
         opts={opts}
         setOpts={setOpts}

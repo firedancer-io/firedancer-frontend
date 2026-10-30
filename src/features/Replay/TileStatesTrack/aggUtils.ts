@@ -56,7 +56,7 @@ export function buildAggStatesMesh(
     );
     updateDataTileMeshPositions(rendererObj, rendererObj.aggMeshes);
 
-    const { rowH, barH } = getRowLayout(rowOfTile);
+    const { rowH, barH } = getRowLayout(rowOfTile, rendererObj.barFrac);
     for (let bucketIdx = startIdx; bucketIdx <= endIdx; bucketIdx++) {
       const statesByTile = statesByBucketIdx.get(bucketIdx);
       if (!statesByTile) continue;

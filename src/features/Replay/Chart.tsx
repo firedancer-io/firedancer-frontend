@@ -26,9 +26,19 @@ const execrpModes: TileStatesModeOption[] = [
   { mode: TileStatesMode.Gantt, maxMs: 250, fallback: TileStatesMode.Stacked },
 ];
 
+/** Gantt up to 10s and stacked above it, each falling back to the other */
 const replayModes: TileStatesModeOption[] = [
-  { mode: TileStatesMode.Gantt },
-  { mode: TileStatesMode.Stacked },
+  {
+    mode: TileStatesMode.Gantt,
+    maxMs: 10_000,
+    fallback: TileStatesMode.Stacked,
+  },
+  {
+    mode: TileStatesMode.Stacked,
+    minMs: 10_000,
+    fallback: TileStatesMode.Gantt,
+    separateLanes: true,
+  },
 ];
 
 /**
@@ -91,7 +101,12 @@ export default function Chart() {
                 canControlsOverlapRows
                 modes={execrpModes}
               />
-              <TileStatesTrack kind="replay" modes={replayModes} />
+              <TileStatesTrack
+                kind="replay"
+                modes={replayModes}
+                showStateLabels
+                defaultIdleWeight={1}
+              />
               <CpuTrack width={width} />
             </Flex>
           </Flex>
