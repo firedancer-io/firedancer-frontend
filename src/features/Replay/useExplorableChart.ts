@@ -2,12 +2,7 @@ import { useCallback, useMemo, useRef } from "react";
 import type { TsRange } from "../WebGl/webglUtils";
 import { MIN_VISIBLE_MS } from "./const";
 import { getDefaultStore } from "jotai";
-import {
-  resetToLiveAtom,
-  selectedMsAtom,
-  visibleRangeAtom,
-  worldRangeAtom,
-} from "./atoms";
+import { resetToLiveAtom, visibleRangeAtom, worldRangeAtom } from "./atoms";
 import { clamp as minMaxClamp } from "lodash";
 import styles from "./chart.module.css";
 import { clampToWorld } from "./utils";
@@ -127,9 +122,6 @@ export function useExplorableChart() {
 
         isPanningRef.current = false;
         refreshCursor();
-        if (!isWorldTrack) {
-          store.set(selectedMsAtom, dragStartRef.current.ts);
-        }
       };
 
       const moveDrag = (clientX: number) => {
@@ -250,8 +242,6 @@ export function useExplorableChart() {
         trackEl.classList.toggle(styles.grabbingCursor, isPanningRef.current);
       };
 
-      // default cursor
-      trackEl.classList.add(styles.grabCursor);
       refreshCursor();
 
       const {
