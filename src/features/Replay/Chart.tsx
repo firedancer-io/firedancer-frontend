@@ -42,26 +42,28 @@ export default function Chart() {
   // as the hovered ts. Re-resolve when the visible range shifts (e.g. live mode)
   // or the container resizes, even if the cursor doesn't move.
   const tracksContainerRef = useRef<HTMLDivElement | null>(null);
-  const lastClientXRef = useRef<number>();
+  const lastClientPosRef = useRef<{ x: number; y: number }>();
   // cache rect because getBoundingClientRect() forces a synchronous layout
   const containerRectRef = useRef<{ left: number; width: number }>();
 
   const updateHoveredTs = useCallback(() => {
-    const clientX = lastClientXRef.current;
     const rect = containerRectRef.current;
     const visibleRange = store.get(visibleRangeAtom);
-    if (clientX === undefined || !rect || rect.width === 0 || !visibleRange) {
+    const clientPos = lastClientPosRef.current;
+
+    if (clientPos == null || !rect || rect.width === 0 || !visibleRange) {
       store.set(clearHoverInfoAtom, hoverOwner);
       return;
     }
 
-    const fraction = (clientX - rect.left) / rect.width;
+    const fraction = (clientPos.x - rect.left) / rect.width;
     const cursorMs =
       visibleRange[0] + fraction * (visibleRange[1] - visibleRange[0]);
 
     store.set(setHoverInfoAtom, {
       owner: hoverOwner,
       cursorMs,
+      clientPos,
     });
   }, []);
 
@@ -80,18 +82,18 @@ export default function Chart() {
     (e: React.MouseEvent<HTMLDivElement>) => {
       // Clear hover state if over a portaled element outside this container subtree
       if (!e.currentTarget.contains(e.target as Node)) {
-        lastClientXRef.current = undefined;
+        lastClientPosRef.current = undefined;
         store.set(clearHoverInfoAtom, hoverOwner);
         return;
       }
-      lastClientXRef.current = e.clientX;
+      lastClientPosRef.current = { x: e.clientX, y: e.clientY };
       updateHoveredTs();
     },
     [updateHoveredTs],
   );
 
   const onMouseLeave = useCallback(() => {
-    lastClientXRef.current = undefined;
+    lastClientPosRef.current = undefined;
     store.set(clearHoverInfoAtom, hoverOwner);
   }, []);
 

@@ -10,6 +10,7 @@ import {
 } from "./utils";
 import type { WsEntity } from "../../api/worker/types";
 import { timelineSlotsAtom } from "./HeaderTrack/nonAggAtoms";
+import type { SlotInfo } from "./HeaderTrack/nonAggAtoms";
 import { getSlotGroupLeader } from "../../utils";
 import { slotsPerLeader } from "../../consts";
 import { isAggregate } from "./HeaderTrack/utils";
@@ -134,14 +135,23 @@ export const {
   };
 })();
 
+/** cursor position in px, in viewport coords */
+export interface ClientPos {
+  x: number;
+  y: number;
+}
+
 export interface HoverInfo {
   owner: string;
   cursorMs: number;
+  /** cursor position in px, in viewport coords */
+  clientPos: ClientPos;
 }
 
 export const [
   hoveredSlotAtom,
   hoveredMsAtom,
+  hoveredClientPosAtom,
   setHoverInfoAtom,
   clearHoverInfoAtom,
 ] = (function getHoveredSlotAtoms() {
@@ -149,6 +159,9 @@ export const [
 
   /** hovered cursor ts in ms, or undefined when nothing is hovered */
   const hoveredMsAtom = atom((get) => get(_hoverInfoAtom)?.cursorMs);
+
+  /** hovered cursor position in px (viewport coords), or undefined */
+  const hoveredClientPosAtom = atom((get) => get(_hoverInfoAtom)?.clientPos);
 
   /**
    * The hovered slot number, resolved from the cursor ms against the timeline
@@ -198,6 +211,7 @@ export const [
   return [
     hoveredSlotAtom,
     hoveredMsAtom,
+    hoveredClientPosAtom,
     atom(null, (_get, set, value: HoverInfo) => {
       set(_hoverInfoAtom, value);
     }),
@@ -240,4 +254,17 @@ export const hoveredRangeAtom = atom<
     group: [groupStartMs, groupEndMs],
     slot: [slotInfo.startMs, slotInfo.endMs],
   };
+});
+
+/**
+ * Full SlotInfo for the hovered slot (startMs/endMs/isSkipped/isMine), resolved
+ * from the timeline slots.
+ */
+export const hoveredSlotInfoAtom = atom<SlotInfo | undefined>((get) => {
+  const hoveredSlot = get(hoveredSlotAtom);
+  if (hoveredSlot === undefined) return;
+
+  const { slotGroups } = get(timelineSlotsAtom);
+  const group = slotGroups.get(getSlotGroupLeader(hoveredSlot));
+  return group?.slots.get(hoveredSlot);
 });

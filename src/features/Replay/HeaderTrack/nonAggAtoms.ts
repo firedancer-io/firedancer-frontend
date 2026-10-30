@@ -17,6 +17,7 @@ export interface SlotInfo {
   endMs: number;
   isSkipped: boolean;
   isMine: boolean;
+  shredCnt: number | null;
 }
 
 export interface SlotGroup {
@@ -58,6 +59,7 @@ export const [
           end_ts_delta,
           skipped,
           mine,
+          shred_cnt,
         }: TimelineSlots,
       ) => {
         if (
@@ -104,6 +106,7 @@ export const [
               endMs,
               isSkipped: false,
               isMine: false,
+              shredCnt: shred_cnt[i] ?? null,
             };
             // create new reference to be picked up with render
             group.slots = new Map(group.slots);

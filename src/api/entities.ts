@@ -1493,6 +1493,7 @@ export const timelineSlotsSchema = z.object({
   end_ts_delta: z.array(z.coerce.bigint()),
   skipped: z.array(z.number()),
   mine: z.array(z.number()),
+  shred_cnt: z.array(z.number().nullable()),
 });
 
 export const shredsGranularitySchema = z.enum(["shred", "fec"]);

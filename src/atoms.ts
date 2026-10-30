@@ -32,6 +32,7 @@ import {
 } from "./utils";
 import { searchLeaderSlotsAtom } from "./features/LeaderSchedule/atoms";
 import { selectedSlotAtom } from "./features/Overview/SlotPerformance/atoms";
+import { hoveredSlotAtom } from "./features/Replay/atoms";
 import { atomFamily } from "jotai/utils";
 import memoize from "micro-memoize";
 import { isFrankendancer } from "./client";
@@ -259,6 +260,7 @@ export const setSlotResponseAtom = atom(
 export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
   const slotOverride = get(slotOverrideAtom);
   const selectedSlot = get(selectedSlotAtom);
+  const hoveredSlot = get(hoveredSlotAtom);
 
   const currentSlot = get(currentSlotAtom);
   const searchSlots = get(searchLeaderSlotsAtom);
@@ -283,6 +285,14 @@ export const deleteSlotResponseBoundsAtom = atom(null, (get, set) => {
         if (
           selectedSlot !== undefined &&
           slotGroupStart === getSlotGroupLeader(selectedSlot)
+        ) {
+          continue;
+        }
+
+        // keep replay hovered slot
+        if (
+          hoveredSlot !== undefined &&
+          slotGroupStart === getSlotGroupLeader(hoveredSlot)
         ) {
           continue;
         }
