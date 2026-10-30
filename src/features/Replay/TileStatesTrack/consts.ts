@@ -40,6 +40,12 @@ export function isAggregate(rangeMs: TsRange) {
  */
 export const IDLE_WEIGHT = 0.05;
 
+/**
+ * Default floor on the coverage of any state present in a px, so brief states
+ * aren't buried. 0 turns it off.
+ */
+export const MIN_STATE_WEIGHT = 0;
+
 /** Default bar height, for tracks without lane labels */
 export const BAR_HEIGHT_PX = 22;
 /** Space above each row's bar */
@@ -199,6 +205,7 @@ export interface TileStatesViewOpts {
   showErrorStates: boolean;
   mode: TileStatesMode;
   idleWeight: number;
+  minStateWeight: number;
 }
 
 export function getDefaultViewOpts(
@@ -211,5 +218,6 @@ export function getDefaultViewOpts(
     mode,
     separateLanes,
     idleWeight,
+    minStateWeight: MIN_STATE_WEIGHT,
   };
 }

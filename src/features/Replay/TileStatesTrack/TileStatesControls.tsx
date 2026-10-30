@@ -99,6 +99,17 @@ export default function TileStatesControls({
           />
         </>
       )}
+      <TrackControlsDivider />
+      <TrackControlsSlider
+        label="Min state weight"
+        value={opts.minStateWeight}
+        min={0}
+        max={0.5}
+        step={0.01}
+        onChange={(minStateWeight) =>
+          setOpts((o) => ({ ...o, minStateWeight }))
+        }
+      />
       {showErrorStates && (
         <>
           <TrackControlsDivider />

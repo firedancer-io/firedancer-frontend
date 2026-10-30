@@ -391,6 +391,14 @@ function TileStatesTrackBody({
     render(renderer);
   }, [opts.idleWeight]);
 
+  useLayoutEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    renderer.coverageCompositeMaterial.uniforms.uMinStateWeight.value =
+      opts.minStateWeight;
+    render(renderer);
+  }, [opts.minStateWeight]);
+
   // meshes are laid out from the bar height, so rebuild them
   useLayoutEffect(() => {
     const renderer = rendererRef.current;

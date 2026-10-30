@@ -34,6 +34,7 @@ import {
   BAR_GAP_PX,
   BAR_HEIGHT_PX,
   IDLE_WEIGHT,
+  MIN_STATE_WEIGHT,
   ErrorState,
   errorStateColors,
   tileStateColors,
@@ -202,6 +203,7 @@ uniform vec3 uChannelColors[${channelCount}]; // srgb
 uniform vec3 uChannelLinearColors[${channelCount}];
 uniform int uMode;
 uniform float uIdleWeight;
+uniform float uMinStateWeight;
 uniform float uLaneChannels[${MAX_LANES}];
 uniform float uLaneCount;
 uniform bool uSeparateLanes;
@@ -245,6 +247,10 @@ ${indices
     coverage[${i * 4 + 2}] = c${i}.b; coverage[${i * 4 + 3}] = c${i}.a;`,
   )
   .join("\n")}
+    // floor present states so brief ones aren't buried
+    for (int i = 0; i < ${channelCount}; i++) {
+      if (coverage[i] > 0.0) coverage[i] = max(coverage[i], uMinStateWeight);
+    }
     if (uMode == ${shaderModeIds[TileStatesMode.Heatmap]}) {
       vec3 busyColor = vec3(0.0);
       float busy = 0.0;
@@ -370,6 +376,7 @@ function createCoverageCompositeMaterial(
       },
       uMode: { value: shaderModeIds[TileStatesMode.Heatmap] },
       uIdleWeight: { value: IDLE_WEIGHT },
+      uMinStateWeight: { value: MIN_STATE_WEIGHT },
       uLaneChannels: { value: new Array<number>(MAX_LANES).fill(-1) },
       uLaneCount: { value: 1 },
       uSeparateLanes: { value: false },
@@ -582,6 +589,7 @@ export function render(rendererObj: RendererObj) {
       renderer,
       uniforms.uRowCount.value as number,
       rendererObj.barFrac,
+      uniforms.uMinStateWeight.value as number,
     );
   }
   renderer.setRenderTarget(null);

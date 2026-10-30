@@ -26,6 +26,7 @@ ${indices.map((i) => `uniform sampler2D uInput${i};`).join("\n")}
 uniform float uInputWidth; // px
 uniform float uRowCount;
 uniform float uBarFrac;    // bar height / row height
+uniform float uMinStateWeight;
 
 ${indices.map((i) => `layout(location = ${i}) out vec4 outMax${i};`).join("\n")}
 
@@ -41,7 +42,13 @@ ${indices.map((i) => `  vec4 m${i} = vec4(0.0);`).join("\n")}
 ${indices.map((i) => `    vec4 c${i} = texture(uInput${i}, uv);`).join("\n")}
 ${
   isFirstPass
-    ? `    float busy = ${sum};
+    ? `${indices
+        .map(
+          (i) =>
+            `    c${i} = mix(c${i}, max(c${i}, vec4(uMinStateWeight)), step(1e-9, c${i}));`,
+        )
+        .join("\n")}
+    float busy = ${sum};
     if (busy > 0.0) {
 ${indices.map((i) => `      m${i} = max(m${i}, c${i} / busy);`).join("\n")}
     }`
@@ -60,6 +67,7 @@ export interface LaneMaxReducer {
     renderer: THREE.WebGLRenderer,
     rowCount: number,
     barFrac: number,
+    minStateWeight: number,
   ) => void;
   dispose: () => void;
 }
@@ -99,6 +107,7 @@ export function createLaneMaxReducer(
         uInputWidth: { value: 1 },
         uRowCount: { value: 1 },
         uBarFrac: { value: 1 },
+        uMinStateWeight: { value: 0 },
       },
     });
   const firstPassMaterial = createMaterial(true);
@@ -110,7 +119,12 @@ export function createLaneMaxReducer(
   scene.add(mesh);
   const camera = new THREE.Camera();
 
-  const reduce: LaneMaxReducer["reduce"] = (renderer, rowCount, barFrac) => {
+  const reduce: LaneMaxReducer["reduce"] = (
+    renderer,
+    rowCount,
+    barFrac,
+    minStateWeight,
+  ) => {
     let input = coverageTarget;
     let inputWidth = coverageTarget.width;
     for (let level = 0; inputWidth > 1 || level === 0; level++) {
@@ -126,6 +140,7 @@ export function createLaneMaxReducer(
       material.uniforms.uInputWidth.value = inputWidth;
       material.uniforms.uRowCount.value = rowCount;
       material.uniforms.uBarFrac.value = barFrac;
+      material.uniforms.uMinStateWeight.value = minStateWeight;
       mesh.material = material;
 
       renderer.setRenderTarget(output);
