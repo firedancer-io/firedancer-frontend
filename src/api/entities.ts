@@ -1564,6 +1564,10 @@ export const timelineSlotsSchema = z.object({
   end_ts_delta: z.array(z.coerce.bigint()),
   skipped: z.array(z.number()),
   mine: z.array(z.number()),
+  shred_cnt: z.array(z.number().nullable()),
+  txn_fees: z.array(z.coerce.bigint().nullable()),
+  prio_fees: z.array(z.coerce.bigint().nullable()),
+  tips: z.array(z.coerce.bigint().nullable()),
 });
 
 export const shredsGranularitySchema = z.enum(["shred", "fec"]);

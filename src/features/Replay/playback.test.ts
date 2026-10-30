@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { atom, createStore, type PrimitiveAtom } from "jotai";
 import { startupTimeAtom } from "../../api/atoms";
-import { smoothedNowNsAtom } from "../../atoms";
+import { smoothedNowNsAtom } from "../../nowAtoms";
 import {
   initializeVisibleRangeAtom,
   isLiveAtom,
@@ -15,7 +15,7 @@ import {
 } from "./atoms";
 import { CHART_NOW_DELAY_MS, DEFAULT_WINDOW_MS } from "./const";
 
-vi.mock("../../atoms", async (importOriginal) => ({
+vi.mock("../../nowAtoms", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   smoothedNowNsAtom: atom<bigint | undefined>(undefined),
 }));

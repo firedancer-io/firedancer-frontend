@@ -1,7 +1,8 @@
 import type { MutableRefObject } from "react";
 import type { RendererObj } from "../../../Shreds/types";
 import { getDelayedNowNs, type LabelsState } from "../utils";
-import { skippedClusterSlotsAtom, smoothedNowNsAtom } from "../../../../atoms";
+import { skippedClusterSlotsAtom } from "../../../../atoms";
+import { smoothedNowNsAtom } from "../../../../nowAtoms";
 import { getDrawInfo } from "../../../Shreds/chartUtils";
 import { xRangeMs } from "../../../Shreds/const";
 import { SHRED_MESH_CAPACITY } from "../../../Shreds/WebGl/const";

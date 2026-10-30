@@ -407,6 +407,12 @@ export const replayMiniMapSkippedColor = "#CA4245";
 
 export const replayAggHeaderBackgroundColor = "#11151C";
 
+// Replay slot hover tooltip
+export const replaySlotTooltipBackgroundColor = "#111111";
+export const replaySlotTooltipShadowColor = "rgba(0, 0, 0, 0.6)";
+export const replaySlotTooltipLabelColor = "#777B84";
+export const replaySlotTooltipValueColor = "#F7F8F8";
+
 // Replay tracks
 export const replayTrackBackgroundColor = "#070B14";
 export const replayTrackNameColor = "#D6D7DC";
