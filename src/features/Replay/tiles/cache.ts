@@ -2,7 +2,7 @@ import { getDefaultStore } from "jotai";
 import { uniqueId } from "lodash";
 import { isConnectedAtom, socketStateAtom } from "../../../api/ws/atoms";
 import { SocketState } from "../../../api/ws/types";
-import { smoothedNowNsAtom } from "../../../atoms";
+import { smoothedNowNsAtom } from "../../../nowAtoms";
 import { bigIntMax, bigIntMin } from "../../../mathUtils";
 import type { NsTsRange } from "../../WebGl/webglUtils";
 import { getSortedInsertIdx } from "../utils";
@@ -47,11 +47,21 @@ export type TileCacheDelta<TData, TMeta> =
   | { kind: "reset" };
 
 export type Unsubscribe = () => void;
+
 export interface TileCache<TData, TMeta> {
   subscribe: (
     listener: (delta: TileCacheDelta<TData, TMeta>) => void,
   ) => Unsubscribe;
   getTiles: () => Tile<TData, TMeta>[];
+  /**
+   * Get the data of all tiles overlapping [startNs, endNs], including the live
+   * tile's current data. Include boolean indicating whether there are missing
+   * cached tiles.
+   */
+  getDataInRange: (
+    startNs: bigint,
+    endNs: bigint,
+  ) => { data: TData[]; hasAllTilesCached: boolean };
   requestRange: (visibleRangeNs: NsTsRange, worldEndNs: bigint) => void;
   init: () => Unsubscribe;
   reset: () => void;
@@ -140,6 +150,39 @@ export function createTileCache<TData, TMeta>({
       tiles.push({ startNs, endNs, data: cached.data, meta: cached.meta });
     }
     return tiles;
+  }
+
+  function getDataInRange(
+    startNs: bigint,
+    endNs: bigint,
+  ): { data: TData[]; hasAllTilesCached: boolean } {
+    const data: TData[] = [];
+    if (endNs < startNs) {
+      return { data, hasAllTilesCached: true };
+    }
+
+    const firstId = tileIdOf(startNs);
+    const lastId = tileIdOf(endNs);
+    const liveTileId = live.acc?.tileId;
+
+    let hasAllTilesCached = true;
+    for (let id = firstId; id <= lastId; id++) {
+      const cached = tileCache.get(id);
+      if (cached) {
+        data.push(cached.data);
+        continue;
+      }
+
+      if (id === liveTileId && live.acc) {
+        data.push(live.acc.data);
+        continue;
+      }
+
+      // bucket is neither settled nor live: an unfetched gap
+      hasAllTilesCached = false;
+    }
+
+    return { data, hasAllTilesCached };
   }
 
   function isTileInView(tileId: number): boolean {
@@ -436,6 +479,7 @@ export function createTileCache<TData, TMeta>({
       return () => listeners.delete(listener);
     },
     getTiles,
+    getDataInRange,
     requestRange,
     init,
     reset,

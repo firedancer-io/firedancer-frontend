@@ -20,6 +20,7 @@
     "*.{ts,tsx}": "eslint --max-warnings 0"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.7.4",
     "@fontsource/inter-tight": "^5.2.5",
     "@fontsource/roboto-mono": "^5.1.0",
     "@material-design-icons/svg": "^0.14.15",
