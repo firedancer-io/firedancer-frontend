@@ -21,7 +21,8 @@ import {
   shredReplayedTurbineColor,
   shredSkippedColor,
 } from "../../../colors";
-import { smoothedNowNsAtom, skippedClusterSlotsAtom } from "../../../atoms";
+import { skippedClusterSlotsAtom } from "../../../atoms";
+import { smoothedNowNsAtom } from "../../../nowAtoms";
 import { clamp } from "lodash";
 import { ShredEvent } from "../../../api/entities";
 import {

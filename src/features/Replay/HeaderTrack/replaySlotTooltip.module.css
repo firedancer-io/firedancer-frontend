@@ -1,0 +1,15 @@
+.skipped {
+  color: var(--header-skipped-slot-border-color);
+}
+
+.income {
+  color: var(--income-color);
+}
+
+.fees {
+  color: var(--fees-color);
+}
+
+.tips {
+  color: var(--tips-color);
+}
