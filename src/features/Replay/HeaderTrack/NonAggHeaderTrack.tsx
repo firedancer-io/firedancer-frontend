@@ -1,4 +1,4 @@
-import { getDefaultStore, useAtomValue } from "jotai";
+import { atom, getDefaultStore, useAtomValue } from "jotai";
 import {
   hoveredSlotAtom,
   referenceNsAtom,
@@ -18,6 +18,7 @@ import { isAggregate } from "./utils";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible";
 import type { TsRange } from "../../WebGl/webglUtils";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
+import { getSlotGroupLeader } from "../../../utils";
 import { epochAtom } from "../../../atoms";
 import clsx from "clsx";
 import PeerIcon from "../../../components/PeerIcon";
@@ -29,6 +30,7 @@ import {
   useCallback,
   useDeferredValue,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -373,8 +375,19 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
   const groupEndMs = Math.max(...sortedSlots.map((s) => s.endMs));
   const groupDurationMs = groupEndMs - groupStartMs;
 
-  const hoveredSlot = useAtomValue(hoveredSlotAtom);
-  const isHovered = hoveredSlot != null && slots.has(hoveredSlot);
+  const isHovered = useAtomValue(
+    useMemo(
+      () =>
+        atom((get) => {
+          const hoveredSlot = get(hoveredSlotAtom);
+          return (
+            hoveredSlot != null &&
+            getSlotGroupLeader(hoveredSlot) === leaderSlot
+          );
+        }),
+      [leaderSlot],
+    ),
+  );
 
   return (
     <div
@@ -405,7 +418,6 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
               groupDurationMs={groupDurationMs}
               {...slotInfo}
               slotTier={slotTier}
-              isHovered={hoveredSlot === slotInfo.slot}
             />
           );
         })}
@@ -466,7 +478,6 @@ interface SlotProps {
   endMs: number;
   isSkipped: boolean;
   slotTier: SlotTier;
-  isHovered: boolean;
 }
 const Slot = memo(function Slot({
   isEarliestStart,
@@ -478,10 +489,13 @@ const Slot = memo(function Slot({
   endMs,
   isSkipped,
   slotTier,
-  isHovered,
 }: SlotProps) {
   // prevent status render from blocking smooth zoom, etc
   const deferredSlotTier = useDeferredValue(slotTier);
+
+  const isHovered = useAtomValue(
+    useMemo(() => atom((get) => get(hoveredSlotAtom) === slot), [slot]),
+  );
 
   if (slotTier === "none") return null;
 

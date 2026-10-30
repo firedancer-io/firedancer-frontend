@@ -43,18 +43,14 @@ export default function Chart() {
   // or the container resizes, even if the cursor doesn't move.
   const tracksContainerRef = useRef<HTMLDivElement | null>(null);
   const lastClientXRef = useRef<number>();
+  // cache rect because getBoundingClientRect() forces a synchronous layout
+  const containerRectRef = useRef<{ left: number; width: number }>();
 
   const updateHoveredTs = useCallback(() => {
     const clientX = lastClientXRef.current;
-    const container = tracksContainerRef.current;
+    const rect = containerRectRef.current;
     const visibleRange = store.get(visibleRangeAtom);
-    if (clientX === undefined || !container || !visibleRange) {
-      store.set(clearHoverInfoAtom, hoverOwner);
-      return;
-    }
-
-    const rect = container.getBoundingClientRect();
-    if (rect.width === 0) {
+    if (clientX === undefined || !rect || rect.width === 0 || !visibleRange) {
       store.set(clearHoverInfoAtom, hoverOwner);
       return;
     }
@@ -68,6 +64,17 @@ export default function Chart() {
       cursorMs,
     });
   }, []);
+
+  // Recompute the cached container rect, then re-resolve the hovered ts so a
+  // resize still shifts the spotlight under a stationary cursor.
+  const refreshContainerAndHover = useCallback(() => {
+    const container = tracksContainerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    containerRectRef.current = { left: rect.left, width: rect.width };
+    updateHoveredTs();
+  }, [updateHoveredTs]);
 
   const onMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -88,11 +95,6 @@ export default function Chart() {
     store.set(clearHoverInfoAtom, hoverOwner);
   }, []);
 
-  // update hovered ts on resize, which shifts slot positions under the cursor
-  useLayoutEffect(() => {
-    updateHoveredTs();
-  }, [updateHoveredTs, width]);
-
   const cleanUpListenersRef = useRef<(() => void) | null>(null);
   const setTracksContainerRef = useCallback(
     (el: HTMLDivElement | null) => {
@@ -108,12 +110,19 @@ export default function Chart() {
       const unsubscribeRange = store.sub(visibleRangeAtom, updateHoveredTs);
       const cleanUpExplore = setUpExploreListeners(el);
 
+      refreshContainerAndHover();
+      const rectObserver = new ResizeObserver(refreshContainerAndHover);
+      rectObserver.observe(el);
+      window.addEventListener("resize", refreshContainerAndHover);
+
       cleanUpListenersRef.current = () => {
         cleanUpExplore();
         unsubscribeRange();
+        rectObserver.disconnect();
+        window.removeEventListener("resize", refreshContainerAndHover);
       };
     },
-    [setUpExploreListeners, updateHoveredTs],
+    [setUpExploreListeners, updateHoveredTs, refreshContainerAndHover],
   );
 
   useLayoutEffect(() => {

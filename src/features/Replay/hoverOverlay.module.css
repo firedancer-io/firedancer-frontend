@@ -9,15 +9,10 @@
   position: absolute;
   inset: 0;
   transform-origin: left;
-  will-change: transform;
 
   &.other {
     background-color: var(--color-background);
     opacity: 0.35;
-  }
-
-  &.group {
-    background: rgba(255, 255, 255, 0.002);
   }
 
   &.slot {
@@ -38,7 +33,6 @@
   margin-left: -0.5px;
   border-left: 1px solid transparent;
   transform-origin: left;
-  will-change: transform;
 
   &.group-divider {
     border-left-color: rgba(255, 255, 255, 0.07);

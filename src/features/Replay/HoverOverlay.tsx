@@ -148,12 +148,9 @@ export default function HoverOverlay() {
   return (
     <div ref={rootRef} className={styles.root}>
       <div ref={leftOtherBandRef} className={clsx(styles.band, styles.other)} />
-      <div ref={leftGroupBandRef} className={clsx(styles.band, styles.group)} />
+      <div ref={leftGroupBandRef} className={styles.band} />
       <div ref={slotBandRef} className={clsx(styles.band, styles.slot)} />
-      <div
-        ref={rightGroupBandRef}
-        className={clsx(styles.band, styles.group)}
-      />
+      <div ref={rightGroupBandRef} className={styles.band} />
       <div
         ref={rightOtherBandRef}
         className={clsx(styles.band, styles.other)}
