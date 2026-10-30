@@ -47,11 +47,20 @@ export type TileCacheDelta<TData, TMeta> =
   | { kind: "reset" };
 
 export type Unsubscribe = () => void;
+
 export interface TileCache<TData, TMeta> {
   subscribe: (
     listener: (delta: TileCacheDelta<TData, TMeta>) => void,
   ) => Unsubscribe;
   getTiles: () => Tile<TData, TMeta>[];
+  /**
+   * Get all tiles overlapping [startNs, endNs], including the live tile's current data.
+   * Include boolean indicating whether there are missing cached tiles.
+   */
+  getTilesInRange: (
+    startNs: bigint,
+    endNs: bigint,
+  ) => { tiles: Tile<TData, TMeta>[]; hasAllTilesCached: boolean };
   requestRange: (visibleRangeNs: NsTsRange, worldEndNs: bigint) => void;
   init: () => Unsubscribe;
   reset: () => void;
@@ -140,6 +149,51 @@ export function createTileCache<TData, TMeta>({
       tiles.push({ startNs, endNs, data: cached.data, meta: cached.meta });
     }
     return tiles;
+  }
+
+  function getTilesInRange(
+    startNs: bigint,
+    endNs: bigint,
+  ): { tiles: Tile<TData, TMeta>[]; hasAllTilesCached: boolean } {
+    const tiles: Tile<TData, TMeta>[] = [];
+    if (endNs < startNs) {
+      return { tiles, hasAllTilesCached: true };
+    }
+
+    const firstId = tileIdOf(startNs);
+    const lastId = tileIdOf(endNs);
+    const liveTileId = live.acc?.tileId;
+
+    let hasAllTilesCached = true;
+    for (let id = firstId; id <= lastId; id++) {
+      const [tileStartNs, tileEndNs] = getRange(id);
+
+      const cached = tileCache.get(id);
+      if (cached) {
+        tiles.push({
+          startNs: tileStartNs,
+          endNs: tileEndNs,
+          data: cached.data,
+          meta: cached.meta,
+        });
+        continue;
+      }
+
+      if (id === liveTileId && live.acc) {
+        tiles.push({
+          startNs: tileStartNs,
+          endNs: tileEndNs,
+          data: live.acc.data,
+          meta: deriveMeta(live.acc.data),
+        });
+        continue;
+      }
+
+      // bucket is neither settled nor live: an unfetched gap
+      hasAllTilesCached = false;
+    }
+
+    return { tiles, hasAllTilesCached };
   }
 
   function isTileInView(tileId: number): boolean {
@@ -436,6 +490,7 @@ export function createTileCache<TData, TMeta>({
       return () => listeners.delete(listener);
     },
     getTiles,
+    getTilesInRange,
     requestRange,
     init,
     reset,

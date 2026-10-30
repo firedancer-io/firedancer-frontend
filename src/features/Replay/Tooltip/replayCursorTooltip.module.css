@@ -1,0 +1,42 @@
+.tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 110;
+  visibility: hidden;
+  pointer-events: none;
+
+  min-width: 230px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--replay-slot-tooltip-background-color);
+  box-shadow: 0 8px 24px var(--replay-slot-tooltip-shadow-color);
+  font-size: 12px;
+  color: var(--replay-slot-tooltip-label-color);
+}
+
+.header {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.defaultHeaderColor {
+  color: var(--replay-slot-tooltip-value-color);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  height: 17px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.label {
+  color: var(--replay-slot-tooltip-label-color);
+}
+
+.defaultValueColor {
+  color: var(--replay-slot-tooltip-value-color);
+}
