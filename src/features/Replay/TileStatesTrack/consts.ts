@@ -2,10 +2,16 @@ import { TileState, TileStatesGranularityEnum } from "../../../api/entities.ts";
 import type { TileStatesGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import {
+  replayBlockedOnConflictsColor,
+  replayBlockedOnNetworkColor,
+  replayBlockedOnTilesColor,
+  replaySlotFinishColor,
+  replayTrackBackgroundColor,
   transactionErrorOutlineColor,
-  transactionExecuteSolidColor,
-  transactionLoadingSolidColor,
-  transactionPostExecuteSolidColor,
+  transactionExecuteColor,
+  transactionLoadingColor,
+  transactionPostExecuteColor,
+  transactionSigverifyColor,
   transactionSuccessOutlineColor,
   transactionValidateColor,
 } from "../../../colors.ts";
@@ -27,6 +33,12 @@ export function isAggregate(rangeMs: TsRange) {
   return rangeMs[1] - rangeMs[0] >= BATCH_MAX_MS;
 }
 
+/**
+ * Weight of idle time relative to busy states in the heatmap color.
+ * 1 counts idle like any state and 0 ignores it to show only the busy mix.
+ */
+export const HEATMAP_IDLE_WEIGHT = 1;
+
 export const ROW_HEIGHT_PX = 24;
 export const BAR_HEIGHT_PX = 22;
 
@@ -44,18 +56,18 @@ export const errorStateColors: Record<ErrorState, string> = {
 };
 
 export const tileStateColors: Record<TileState, string> = {
-  [TileState.Idle]: "#000000",
-  [TileState.Sigverify]: "#B026FF",
-  [TileState.Loading]: transactionLoadingSolidColor,
+  [TileState.Idle]: replayTrackBackgroundColor,
+  [TileState.Sigverify]: transactionSigverifyColor,
+  [TileState.Loading]: transactionLoadingColor,
   [TileState.Validate]: transactionValidateColor,
-  [TileState.Execute]: transactionExecuteSolidColor,
-  [TileState.PostExecute]: transactionPostExecuteSolidColor,
-  [TileState.BlockedOnTiles]: "#B2A65A",
-  [TileState.BlockedOnConflicts]: "#B0604A",
-  [TileState.BlockedOnNetwork]: "#4F6F95",
-  [TileState.SlotFinish]: "#4E8C77",
-  [TileState.ExecBatch]: "#5F544D",
-  [TileState.SigverifyBatch]: "#B026FF",
+  [TileState.Execute]: transactionExecuteColor,
+  [TileState.PostExecute]: transactionPostExecuteColor,
+  [TileState.BlockedOnTiles]: replayBlockedOnTilesColor,
+  [TileState.BlockedOnConflicts]: replayBlockedOnConflictsColor,
+  [TileState.BlockedOnNetwork]: replayBlockedOnNetworkColor,
+  [TileState.SlotFinish]: replaySlotFinishColor,
+  [TileState.ExecBatch]: transactionExecuteColor,
+  [TileState.SigverifyBatch]: transactionSigverifyColor,
 };
 
 export const tileStateLabels: Record<TileState, string> = {
@@ -65,36 +77,97 @@ export const tileStateLabels: Record<TileState, string> = {
   [TileState.Validate]: "Validate",
   [TileState.Execute]: "Execute",
   [TileState.PostExecute]: "Post-Execute",
-  [TileState.BlockedOnTiles]: "Blocked on tiles",
-  [TileState.BlockedOnConflicts]: "Blocked on conflicts",
-  [TileState.BlockedOnNetwork]: "Blocked on network",
-  [TileState.SlotFinish]: "Slot finish",
+  [TileState.BlockedOnTiles]: "Tiles",
+  [TileState.BlockedOnConflicts]: "Conflicts",
+  [TileState.BlockedOnNetwork]: "Network",
+  [TileState.SlotFinish]: "Finish",
   [TileState.ExecBatch]: "Exec batch",
   [TileState.SigverifyBatch]: "Sigverify batch",
 };
 
-export const replayStates: TileState[] = [
+const replayStates: TileState[] = [
   TileState.BlockedOnTiles,
   TileState.BlockedOnConflicts,
   TileState.BlockedOnNetwork,
   TileState.SlotFinish,
 ];
 
-export const execrpStates: Record<TileStatesGranularity, TileState[]> = {
-  txn: [
-    TileState.Sigverify,
-    TileState.Loading,
-    TileState.Validate,
-    TileState.Execute,
-    TileState.PostExecute,
-  ],
-  txn_batch: [TileState.SigverifyBatch, TileState.ExecBatch],
+export const trackStates: Record<
+  TileKind,
+  Record<TileStatesGranularity, TileState[]>
+> = {
+  execrp: {
+    txn: [
+      TileState.Loading,
+      TileState.Validate,
+      TileState.Execute,
+      TileState.PostExecute,
+      TileState.Sigverify,
+    ],
+    txn_batch: [TileState.ExecBatch, TileState.SigverifyBatch],
+  },
+  replay: { txn: replayStates, txn_batch: replayStates },
 };
+
+/**
+ * Heatmap mixes each px's states into one color.
+ * Stacked stacks the states bottom up by time.
+ * Gantt separates states into individual lanes.
+ */
+export enum TileStatesMode {
+  Heatmap = "heatmap",
+  Stacked = "stacked",
+  Gantt = "gantt",
+}
+
+export const tileStatesModeLabels: Record<TileStatesMode, string> = {
+  [TileStatesMode.Heatmap]: "Heatmap",
+  [TileStatesMode.Stacked]: "Stacked",
+  [TileStatesMode.Gantt]: "Gantt",
+};
+
+export interface TileStatesModeOption {
+  mode: TileStatesMode;
+  maxMs?: number;
+  minMs?: number;
+  // shown when this mode isn't available at the visible range
+  fallback?: TileStatesMode;
+}
+
+export const DEFAULT_TILE_STATES_MODE_OPTIONS: TileStatesModeOption[] = (
+  Object.keys(tileStatesModeLabels) as TileStatesMode[]
+).map((mode) => ({ mode }));
+
+export function getAvailableModes(
+  options: TileStatesModeOption[],
+  spanMs: number,
+): TileStatesMode[] {
+  return options
+    .filter(
+      ({ maxMs, minMs }) =>
+        (maxMs === undefined || spanMs <= maxMs) &&
+        (minMs === undefined || spanMs > minMs),
+    )
+    .map(({ mode }) => mode);
+}
+
+export function getDisplayMode(
+  options: TileStatesModeOption[],
+  selected: TileStatesMode,
+  spanMs: number,
+): TileStatesMode {
+  const available = getAvailableModes(options, spanMs);
+  if (available.includes(selected)) return selected;
+  const fallback = options.find(({ mode }) => mode === selected)?.fallback;
+  if (fallback && available.includes(fallback)) return fallback;
+  return available[0] ?? selected;
+}
 
 export interface TileStatesViewOpts {
   showErrorStates: boolean;
+  mode: TileStatesMode;
 }
 
-export const DEFAULT_TILE_STATES_VIEW_OPTS: TileStatesViewOpts = {
-  showErrorStates: false,
-};
+export function getDefaultViewOpts(mode: TileStatesMode): TileStatesViewOpts {
+  return { showErrorStates: false, mode };
+}

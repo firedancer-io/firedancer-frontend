@@ -251,6 +251,7 @@ export const fadedText = "#84858a";
 export const transactionDefaultColor = "rgba(0, 0, 0, .5)";
 export const transactionPreloadingColor = "rgba(125, 94, 84, .5)";
 export const transactionPreloadingTextColor = "#A18072";
+export const transactionSigverifyColor = "#8B5CF6";
 export const transactionValidateColor = "#6C4E62";
 export const transactionLoadingSolidColor = "#9E6C00";
 export const transactionLoadingColor = `${transactionLoadingSolidColor}80`;
@@ -400,3 +401,9 @@ export const replayDropdownSelectedTextColor = "#FFF";
 export const replayDropdownSelectedBackgroundColor = "rgba(0, 144, 255, 0.16)";
 export const replayDropdownHoverBackgroundColor = "rgba(255, 255, 255, 0.06)";
 export const replayDropdownDividerColor = "#333333";
+
+// Replay states
+export const replayBlockedOnTilesColor = "#A19753";
+export const replayBlockedOnConflictsColor = "#9F5845";
+export const replayBlockedOnNetworkColor = "#486588";
+export const replaySlotFinishColor = "#477F6D";

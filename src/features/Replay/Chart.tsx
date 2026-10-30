@@ -11,10 +11,25 @@ import HeaderTrack from "./HeaderTrack/index.tsx";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
 import TileStatesTrack from "./TileStatesTrack/TileStatesTrack.tsx";
+import {
+  TileStatesMode,
+  type TileStatesModeOption,
+} from "./TileStatesTrack/consts.ts";
 import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
 import CpuTrack from "./CpuTrack/CpuTrack.tsx";
 
 const store = getDefaultStore();
+
+const execrpModes: TileStatesModeOption[] = [
+  { mode: TileStatesMode.Heatmap },
+  { mode: TileStatesMode.Stacked, minMs: 250, fallback: TileStatesMode.Gantt },
+  { mode: TileStatesMode.Gantt, maxMs: 250, fallback: TileStatesMode.Stacked },
+];
+
+const replayModes: TileStatesModeOption[] = [
+  { mode: TileStatesMode.Gantt },
+  { mode: TileStatesMode.Stacked },
+];
 
 /**
  * Set up Replay chart, which keeps track of a reference ts (startup time), and
@@ -71,8 +86,12 @@ export default function Chart() {
             <Flex direction="column" gap="6px">
               <ShredsTrack width={width} />
               <RevenueTrack width={width} />
-              <TileStatesTrack kind="execrp" />
-              <TileStatesTrack kind="replay" />
+              <TileStatesTrack
+                kind="execrp"
+                canControlsOverlapRows
+                modes={execrpModes}
+              />
+              <TileStatesTrack kind="replay" modes={replayModes} />
               <CpuTrack width={width} />
             </Flex>
           </Flex>
