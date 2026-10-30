@@ -12,16 +12,20 @@ uniform float uViewWidthPx;
 uniform float uOffsetPx;      // anchor's offset from the view's left edge
 uniform vec3 uColors[${colorCount}];
 
-attribute vec2 position;      // unit quad in [-0.5, 0.5]
-attribute vec4 instanceEdges; // start and end ms as hi + lo
-attribute vec3 instanceBar;   // bottom y and height in [0, 1], uColors index
+in vec2 position;      // unit quad in [-0.5, 0.5]
+in vec4 instanceEdges; // start and end ms as hi + lo
+in vec4 instanceBar;   // bottom y and height in [0, 1], uColors index, weight
 
-varying vec3 vColor;
-varying float vLocalY;  // unit quad y in [-0.5, 0.5]
-varying vec2 vEdgesPx;  // left and right edges from the view's left edge
+out vec3 vColor;
+out float vColorIndex;
+out float vWeight;  // fraction of its time span the state covers
+out float vLocalY;  // unit quad y in [-0.5, 0.5]
+out vec2 vEdgesPx;  // left and right edges from the view's left edge
 
 void main() {
   vColor = uColors[int(instanceBar.z + 0.5)];
+  vColorIndex = instanceBar.z;
+  vWeight = instanceBar.w;
   vLocalY = position.y;
   // Subtract from the anchor hi and lo before converting to px, so edges in
   // view stay exact and don't jitter while zooming
@@ -45,7 +49,7 @@ void main() {
 
 /** Exact fraction of this px's width the rect covers. */
 const xCoverageGlsl = /* glsl */ `
-varying vec2 vEdgesPx;
+in vec2 vEdgesPx;
 
 float xCoverage() {
   float px = gl_FragCoord.x;
@@ -54,17 +58,38 @@ float xCoverage() {
 `;
 
 /**
- * Adds each state's share of the px.
+ * Adds each px's coverage to its state's channel, 4 channels per render target,
+ * writing every target in one pass
  */
-const tileStatesFragmentShader = /* glsl */ `
+const createStateCoverageFragmentShader = (
+  stateCount: number,
+  targetCount: number,
+) => /* glsl */ `
 precision highp float;
+precision highp int;
 ${xCoverageGlsl}
-varying vec3 vColor;
+uniform int uStateChannels[${stateCount}]; // -1 if the state isn't written
+
+in float vColorIndex;
+in float vWeight;
+
+${Array.from(
+  { length: targetCount },
+  (_, i) => `layout(location = ${i}) out vec4 outChannels${i};`,
+).join("\n")}
+
+vec4 channelMask(int channel) {
+  return vec4(equal(ivec4(channel), ivec4(0, 1, 2, 3)));
+}
 
 void main() {
-  float coverage = xCoverage();
-  if (coverage <= 0.0) discard;
-  gl_FragColor = vec4(vColor * coverage, coverage);
+  float coverage = xCoverage() * vWeight;
+  int channel = uStateChannels[int(vColorIndex + 0.5)];
+  if (coverage <= 0.0 || channel < 0) discard;
+${Array.from(
+  { length: targetCount },
+  (_, i) => `  outChannels${i} = channelMask(channel - ${i * 4}) * coverage;`,
+).join("\n")}
 }
 `;
 
@@ -75,8 +100,10 @@ uniform float uBorderPx;
 uniform float uBarHeightPx;
 uniform float uOpacity;
 
-varying vec3 vColor;
-varying float vLocalY;
+in vec3 vColor;
+in float vLocalY;
+
+out vec4 fragColor;
 
 void main() {
   // Distance to the nearest top/bottom edge in device px.
@@ -86,7 +113,7 @@ void main() {
     (1.0 - smoothstep(uBorderPx - 0.5, uBorderPx + 0.5, d)) * xCoverage();
   if (coverage <= 0.0) discard;
 
-  gl_FragColor = vec4(vColor, uOpacity * coverage);
+  fragColor = vec4(vColor, uOpacity * coverage);
 }
 `;
 
@@ -97,6 +124,7 @@ function createMaterial(
   params: THREE.ShaderMaterialParameters = {},
 ) {
   return new THREE.RawShaderMaterial({
+    glslVersion: THREE.GLSL3,
     vertexShader: createVertexShader(colors.length),
     fragmentShader,
     transparent: true,
@@ -112,20 +140,29 @@ function createMaterial(
   });
 }
 
-/** Sums each px's time-weighted state colors and busy fraction. */
-export function createTileStatesMaterial(colors: THREE.Vector3[]) {
+const additiveBlending: THREE.ShaderMaterialParameters = {
+  blending: THREE.CustomBlending,
+  blendEquation: THREE.AddEquation,
+  blendSrc: THREE.OneFactor,
+  blendDst: THREE.OneFactor,
+  blendSrcAlpha: THREE.OneFactor,
+  blendDstAlpha: THREE.OneFactor,
+};
+
+/**
+ * Sums each px's time per state into its channel.
+ * `stateChannels` is each state's channel, or -1 if it isn't written.
+ */
+export function createStateCoverageMaterial(
+  colors: THREE.Vector3[],
+  stateChannels: number[],
+  targetCount: number,
+) {
   return createMaterial(
-    tileStatesFragmentShader,
+    createStateCoverageFragmentShader(colors.length, targetCount),
     colors,
-    {},
-    {
-      blending: THREE.CustomBlending,
-      blendEquation: THREE.AddEquation,
-      blendSrc: THREE.OneFactor,
-      blendDst: THREE.OneFactor,
-      blendSrcAlpha: THREE.OneFactor,
-      blendDstAlpha: THREE.OneFactor,
-    },
+    { uStateChannels: { value: stateChannels } },
+    additiveBlending,
   );
 }
 
@@ -154,7 +191,7 @@ export interface StatesMesh {
   mesh: THREE.Mesh<THREE.InstancedBufferGeometry, THREE.RawShaderMaterial>;
   edges: Float32Array; // [startHi, startLo, endHi, endLo] per rect in ms from referenceX
   edgesAttr: THREE.InstancedBufferAttribute;
-  bar: Float32Array; // [bottomY, height, colorIndex] per rect
+  bar: Float32Array; // [bottomY, height, colorIndex, weight] per rect
   barAttr: THREE.InstancedBufferAttribute;
   capacity: number;
   count: number;
@@ -165,13 +202,13 @@ const INITIAL_CAPACITY = 2 ** 10;
 
 function setInstanceAttrs(statesMesh: StatesMesh, capacity: number) {
   const edges = new Float32Array(capacity * 4);
-  const bar = new Float32Array(capacity * 3);
+  const bar = new Float32Array(capacity * 4);
   edges.set(statesMesh.edges);
   bar.set(statesMesh.bar);
   statesMesh.edges = edges;
   statesMesh.bar = bar;
   statesMesh.edgesAttr = new THREE.InstancedBufferAttribute(edges, 4);
-  statesMesh.barAttr = new THREE.InstancedBufferAttribute(bar, 3);
+  statesMesh.barAttr = new THREE.InstancedBufferAttribute(bar, 4);
   statesMesh.edgesAttr.setUsage(THREE.DynamicDrawUsage);
   statesMesh.barAttr.setUsage(THREE.DynamicDrawUsage);
   statesMesh.capacity = capacity;
@@ -200,7 +237,7 @@ export function createStatesMesh(
     edges: new Float32Array(0),
     edgesAttr: new THREE.InstancedBufferAttribute(new Float32Array(0), 4),
     bar: new Float32Array(0),
-    barAttr: new THREE.InstancedBufferAttribute(new Float32Array(0), 3),
+    barAttr: new THREE.InstancedBufferAttribute(new Float32Array(0), 4),
     capacity: 0,
     count: 0,
     referenceX: 0,

@@ -19,6 +19,24 @@ const store = getDefaultStore();
 
 export const tileStatesRequests = createPendingRequests<TimelineTileStates>();
 
+const tileStatesSet = new Set<number>(
+  Object.values(TileState).filter(
+    (value): value is number => typeof value === "number",
+  ),
+);
+
+// only log unknown states once each
+const loggedUnknownTileStates = new Set<number>();
+
+function isKnownTileState(state: number): state is TileState {
+  const isKnown = tileStatesSet.has(state);
+  if (!isKnown && !loggedUnknownTileStates.has(state)) {
+    loggedUnknownTileStates.add(state);
+    console.error(`Received unrecognized tile state: ${state}`);
+  }
+  return isKnown;
+}
+
 /** Timestamps are relative to referenceNsAtom */
 export interface TileStateColumns {
   // One entry per drawn state (Idle is dropped)
@@ -84,8 +102,15 @@ function parseTileStates(res: TimelineTileStates): TileStateColumns {
       stateStartNs[stateIdx] = startNs;
       stateTile[stateIdx] = tile;
 
-      // Skips idle state because it isn't drawn
-      if (tile < 0 || state === TileState.Idle || endNs === startNs) continue;
+      // Skips idle state because it isn't drawn, and unknown states since
+      // they have no color or channel
+      if (
+        tile < 0 ||
+        state === TileState.Idle ||
+        endNs === startNs ||
+        !isKnownTileState(state)
+      )
+        continue;
       acc.state.push(state);
       acc.state_tile.push(tile);
       acc.state_start_ms.push(startNs / nsPerMs);

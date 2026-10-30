@@ -11,14 +11,17 @@ import {
 } from "../../WebGl/webglUtils.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import type { Tile, TileStatesGranularity } from "../../../api/types.ts";
-import { TileStatesGranularityEnum } from "../../../api/entities.ts";
+import {
+  type TileState,
+  TileStatesGranularityEnum,
+} from "../../../api/entities.ts";
 import {
   tileStatesCaches,
   type TileStateColumns,
   type TileStatesDataTile,
 } from "./tileStatesCache.ts";
 import {
-  createTileStatesMaterial,
+  createStateCoverageMaterial,
   createErrorStatesMaterial,
   createStatesMesh,
   ensureStatesCapacity,
@@ -28,10 +31,14 @@ import {
 } from "./tileStatesMesh.ts";
 import {
   BAR_HEIGHT_PX,
+  HEATMAP_IDLE_WEIGHT,
   ROW_HEIGHT_PX,
   ErrorState,
   errorStateColors,
   tileStateColors,
+  coverageStates,
+  trackStates,
+  TileStatesMode,
   type TileKind,
 } from "./consts.ts";
 import { replayTrackBackgroundColor } from "../../../colors.ts";
@@ -41,7 +48,7 @@ import { calcRelativeMs } from "../utils.ts";
 
 const store = getDefaultStore();
 
-interface TileRow {
+export interface TileRow {
   tileIdx: number;
   label: string;
 }
@@ -57,14 +64,14 @@ export function getTileRows(
   return rows;
 }
 
-type RowOfTile = Map<number, number>;
+export type RowOfTile = Map<number, number>;
 
-function getRowOfTile(kind: TileKind): RowOfTile {
+export function getRowOfTile(kind: TileKind): RowOfTile {
   const rows = getTileRows(store.get(tilesAtom), kind);
   return new Map(rows.map(({ tileIdx }, row) => [tileIdx, row]));
 }
 
-interface DataTileMeshes {
+export interface DataTileMeshes {
   tileStates: StatesMesh;
   errorStates?: StatesMesh;
 }
@@ -74,17 +81,24 @@ export interface RendererObj {
   camera: THREE.Camera;
   rectResources: RectResources;
   tileStatesScene: THREE.Scene;
-  tileStatesMaterial: THREE.RawShaderMaterial;
-  tileStatesTarget: THREE.WebGLRenderTarget;
   errorStatesMaterial: THREE.RawShaderMaterial;
   errorStatesScene: THREE.Scene;
-  compositeScene: THREE.Scene;
-  compositeMaterial: THREE.RawShaderMaterial;
+  stateCoverageMaterial: THREE.RawShaderMaterial;
+  /** Per state px coverage, a channel per coverage state and 4 per texture */
+  coverageTarget: THREE.WebGLRenderTarget;
+  coverageCompositeScene: THREE.Scene;
+  coverageCompositeMaterial: THREE.RawShaderMaterial;
+  /** Displayed mode for the visible span */
+  mode: TileStatesMode;
   kind: TileKind;
   dataTileMeshes: Map<string, DataTileMeshes>;
   availableMeshes: DataTileMeshes[];
   liveDataTileKey: string | undefined;
   renderedGranularity: TileStatesGranularity | undefined;
+  /** Agg buckets as weighted states, shaded by the same passes */
+  aggStatesScene: THREE.Scene;
+  aggMeshes: DataTileMeshes;
+  isAgg: boolean;
   msPerPx: number;
   anchorPx: number;
   viewStartPx: number;
@@ -107,12 +121,29 @@ function toLinear([r, g, b]: RgbColor): RgbColor {
   return [tmpColor.r, tmpColor.g, tmpColor.b];
 }
 
-const BACKGROUND_LINEAR = toLinear(
-  convertToWebGlColor(replayTrackBackgroundColor),
+const BACKGROUND_SRGB = convertToWebGlColor(replayTrackBackgroundColor);
+const BACKGROUND_LINEAR = toLinear(BACKGROUND_SRGB);
+
+/**
+ * Tile states are drawn opaque, so composite #RRGGBBAA colors over the background
+ */
+function convertToOpaqueWebGlColor(hex: string): RgbColor {
+  const rgb = convertToWebGlColor(hex.slice(0, 7));
+  const alpha = hex.length === 9 ? parseInt(hex.slice(7), 16) / 255 : 1;
+  return [
+    rgb[0] * alpha + BACKGROUND_SRGB[0] * (1 - alpha),
+    rgb[1] * alpha + BACKGROUND_SRGB[1] * (1 - alpha),
+    rgb[2] * alpha + BACKGROUND_SRGB[2] * (1 - alpha),
+  ];
+}
+
+/** sRGB, indexed by TileState */
+const TILE_STATE_SRGB_PALETTE = Object.values(tileStateColors).map(
+  convertToOpaqueWebGlColor,
 );
 
-const TILE_STATE_PALETTE = Object.values(tileStateColors).map(
-  (color) => new THREE.Vector3(...toLinear(convertToWebGlColor(color))),
+const TILE_STATE_PALETTE = TILE_STATE_SRGB_PALETTE.map(
+  (color) => new THREE.Vector3(...toLinear(color)),
 );
 const ERROR_STATE_PALETTE = Object.values(errorStateColors).map(
   (color) => new THREE.Vector3(...convertToWebGlColor(color)),
@@ -126,13 +157,45 @@ void main() {
 }
 `;
 
-/** Shades each px's summed states over the background and encodes to sRGB. */
-const compositeFragmentShader = /* glsl */ `
+const SRGB_PALETTE = TILE_STATE_SRGB_PALETTE.map(
+  (color) => new THREE.Vector3(...color),
+);
+
+/** Most lanes of any track, the execrp txn states */
+const MAX_LANES = 5;
+
+const shaderModeIds: Record<TileStatesMode, number> = {
+  [TileStatesMode.Heatmap]: 0,
+  [TileStatesMode.Stacked]: 1,
+  [TileStatesMode.Gantt]: 2,
+};
+
+/**
+ * Shades each px's row bar from its per state time coverage.
+ * Heatmap: busy state colors mixed by time in linear light over the
+ * background, with idle time weighted by uIdleWeight.
+ * Stacked: lane states bottom-up in reverse, so top-down they read in lane
+ * order like gantt. Idle isn't drawn, so the bar height is the busy fraction.
+ * Gantt: a lane per state top-down, shaded by the state's coverage.
+ */
+const createCoverageCompositeFragmentShader = (targetCount: number) => {
+  const channelCount = targetCount * 4;
+  const indices = Array.from({ length: targetCount }, (_, i) => i);
+  return /* glsl */ `
 precision highp float;
 
-uniform sampler2D uStateColors; // linear rgb = sum of color * coverage, a = busy
-uniform vec2 uCanvasSize;       // px in canvas dimensions
-uniform vec3 uBackground;       // linear color
+${indices.map((i) => `uniform sampler2D uCoverage${i};`).join("\n")}
+uniform vec2 uCanvasSize;     // px in canvas dimensions
+uniform float uRowCount;
+uniform float uBarFrac;       // bar height / row height
+uniform vec3 uBackground;     // srgb
+uniform vec3 uBackgroundLinear;
+uniform vec3 uChannelColors[${channelCount}]; // srgb
+uniform vec3 uChannelLinearColors[${channelCount}];
+uniform int uMode;
+uniform float uIdleWeight;
+uniform float uLaneChannels[${MAX_LANES}];
+uniform float uLaneCount;
 
 vec3 linearToSrgb(vec3 c) {
   return mix(
@@ -143,30 +206,110 @@ vec3 linearToSrgb(vec3 c) {
 }
 
 void main() {
-  vec4 s = texture2D(uStateColors, gl_FragCoord.xy / uCanvasSize);
-  vec3 color = s.rgb + uBackground * (1.0 - min(s.a, 1.0));
-  gl_FragColor = vec4(linearToSrgb(color), 1.0);
+  vec2 uv = gl_FragCoord.xy / uCanvasSize;
+  float rowH = 1.0 / uRowCount;
+  // bars sit at the bottom of their rows
+  float barY = mod(uv.y, rowH) / (rowH * uBarFrac);
+  vec3 color = uBackground;
+  if (barY < 1.0) {
+    float coverage[${channelCount}];
+${indices
+  .map(
+    (i) => `    vec4 c${i} = texture2D(uCoverage${i}, uv);
+    coverage[${i * 4}] = c${i}.r; coverage[${i * 4 + 1}] = c${i}.g;
+    coverage[${i * 4 + 2}] = c${i}.b; coverage[${i * 4 + 3}] = c${i}.a;`,
+  )
+  .join("\n")}
+    if (uMode == ${shaderModeIds[TileStatesMode.Heatmap]}) {
+      vec3 busyColor = vec3(0.0);
+      float busy = 0.0;
+      for (int i = 0; i < ${channelCount}; i++) {
+        busyColor += uChannelLinearColors[i] * coverage[i];
+        busy += coverage[i];
+      }
+      // time without a busy state is idle, shown as weighted background
+      float idle = max(1.0 - busy, 0.0);
+      float backgroundWeight = uIdleWeight * idle;
+      float total = busy + backgroundWeight;
+      if (total > 0.0) {
+        color = linearToSrgb(
+          (busyColor + uBackgroundLinear * backgroundWeight) / total
+        );
+      }
+    } else if (uMode == ${shaderModeIds[TileStatesMode.Gantt]}) {
+      float lane = floor((1.0 - barY) * uLaneCount);
+      float laneChannel = -1.0;
+      for (int i = 0; i < ${MAX_LANES}; i++) {
+        if (float(i) == lane) laneChannel = uLaneChannels[i];
+      }
+      for (int i = 0; i < ${channelCount}; i++) {
+        if (float(i) == laneChannel) {
+          color = mix(uBackground, uChannelColors[i], min(coverage[i], 1.0));
+        }
+      }
+    } else {
+      float top = 0.0;
+      for (int lane = ${MAX_LANES} - 1; lane >= 0; lane--) {
+        if (float(lane) >= uLaneCount) continue;
+        float laneChannel = uLaneChannels[lane];
+        for (int i = 0; i < ${channelCount}; i++) {
+          if (float(i) == laneChannel) {
+            top += coverage[i];
+            if (barY < top) color = uChannelColors[i];
+          }
+        }
+        if (barY < top) break;
+      }
+    }
+  }
+  gl_FragColor = vec4(color, 1.0);
 }
 `;
+};
 
-function createCompositeMaterial(
-  stateColors: THREE.Texture,
-  backgroundLinear: [number, number, number],
+/** Pads per channel colors to whole render targets */
+function getChannelColors(
+  channelStates: TileState[],
+  palette: THREE.Vector3[],
 ) {
+  const colors = channelStates.map((state) => palette[state]);
+  while (colors.length % 4) colors.push(new THREE.Vector3());
+  return colors;
+}
+
+function createCoverageCompositeMaterial(
+  coverageTarget: THREE.WebGLRenderTarget,
+  channelStates: TileState[],
+) {
+  const { textures } = coverageTarget;
   return new THREE.RawShaderMaterial({
     vertexShader: compositeVertexShader,
-    fragmentShader: compositeFragmentShader,
+    fragmentShader: createCoverageCompositeFragmentShader(textures.length),
     depthTest: false,
     uniforms: {
-      uStateColors: { value: stateColors },
+      ...Object.fromEntries(
+        textures.map((texture, i) => [`uCoverage${i}`, { value: texture }]),
+      ),
       uCanvasSize: { value: new THREE.Vector2(1, 1) },
-      uBackground: { value: new THREE.Vector3(...backgroundLinear) },
+      uRowCount: { value: 1 },
+      uBarFrac: { value: BAR_HEIGHT_PX / ROW_HEIGHT_PX },
+      uBackground: { value: new THREE.Vector3(...BACKGROUND_SRGB) },
+      uBackgroundLinear: { value: new THREE.Vector3(...BACKGROUND_LINEAR) },
+      uChannelColors: { value: getChannelColors(channelStates, SRGB_PALETTE) },
+      uChannelLinearColors: {
+        value: getChannelColors(channelStates, TILE_STATE_PALETTE),
+      },
+      uMode: { value: shaderModeIds[TileStatesMode.Heatmap] },
+      uIdleWeight: { value: HEATMAP_IDLE_WEIGHT },
+      uLaneChannels: { value: new Array<number>(MAX_LANES).fill(-1) },
+      uLaneCount: { value: 1 },
     },
   });
 }
 
 export function setUpRenderer(
   kind: TileKind,
+  mode: TileStatesMode,
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): RendererObj | undefined {
@@ -195,7 +338,6 @@ export function setUpRenderer(
   const tileStatesScene = new THREE.Scene();
   const errorStatesScene = new THREE.Scene();
   errorStatesScene.visible = false;
-  const tileStatesMaterial = createTileStatesMaterial(TILE_STATE_PALETTE);
   const errorStatesMaterial = createErrorStatesMaterial(
     devicePixelRatio,
     ERROR_STATE_PALETTE,
@@ -204,29 +346,41 @@ export function setUpRenderer(
   const canBlendFloat32 =
     renderer.extensions.has("EXT_color_buffer_float") &&
     renderer.extensions.has("EXT_float_blend");
-  // Holds each pixel's state colors summed by time, and how busy it was in
-  // alpha. The composite pass turns this into the final color.
-  const tileStatesTarget = new THREE.WebGLRenderTarget(1, 1, {
+  // Each px's time per coverage state, written to every texture in one pass.
+  // The composite pass shades every mode from these
+  const channelStates = coverageStates[kind];
+  const coverageTarget = new THREE.WebGLRenderTarget(1, 1, {
+    count: Math.ceil(channelStates.length / 4),
     type: canBlendFloat32 ? THREE.FloatType : THREE.HalfFloatType,
     minFilter: THREE.NearestFilter,
     magFilter: THREE.NearestFilter,
     depthBuffer: false,
   });
-
-  const compositeMaterial = createCompositeMaterial(
-    tileStatesTarget.texture,
-    BACKGROUND_LINEAR,
+  const stateCoverageMaterial = createStateCoverageMaterial(
+    TILE_STATE_PALETTE,
+    TILE_STATE_PALETTE.map((_, state) => channelStates.indexOf(state)),
+    coverageTarget.textures.length,
   );
-  const compositeMesh = new THREE.Mesh(
+  const coverageCompositeMaterial = createCoverageCompositeMaterial(
+    coverageTarget,
+    channelStates,
+  );
+  const coverageCompositeMesh = new THREE.Mesh(
     rectResources.unitQuad,
-    compositeMaterial,
+    coverageCompositeMaterial,
   );
-  compositeMesh.frustumCulled = false;
-  const compositeScene = new THREE.Scene();
-  compositeScene.add(compositeMesh);
+  coverageCompositeMesh.frustumCulled = false;
+  const coverageCompositeScene = new THREE.Scene();
+  coverageCompositeScene.add(coverageCompositeMesh);
 
   const dataTileMeshes = new Map<string, DataTileMeshes>();
   const availableMeshes: DataTileMeshes[] = [];
+
+  const aggMeshes: DataTileMeshes = {
+    tileStates: createStatesMesh(rectResources.unitQuad, stateCoverageMaterial),
+  };
+  const aggStatesScene = new THREE.Scene();
+  aggStatesScene.add(aggMeshes.tileStates.mesh);
 
   const cleanUp = () => {
     // Skip GPU disposal if the context was lost since its objects are already gone.
@@ -234,11 +388,12 @@ export function setUpRenderer(
       for (const meshes of dataTileMeshes.values())
         disposeDataTileMeshes(meshes);
       for (const meshes of availableMeshes) disposeDataTileMeshes(meshes);
+      disposeDataTileMeshes(aggMeshes);
       disposeRectResources(rectResources);
-      tileStatesMaterial.dispose();
       errorStatesMaterial.dispose();
-      tileStatesTarget.dispose();
-      compositeMaterial.dispose();
+      stateCoverageMaterial.dispose();
+      coverageTarget.dispose();
+      coverageCompositeMaterial.dispose();
     }
     cleanUpRenderer();
   };
@@ -248,17 +403,21 @@ export function setUpRenderer(
     camera,
     tileStatesScene,
     rectResources,
-    tileStatesMaterial,
     errorStatesMaterial,
-    tileStatesTarget,
     errorStatesScene,
-    compositeScene,
-    compositeMaterial,
+    stateCoverageMaterial,
+    coverageTarget,
+    coverageCompositeScene,
+    coverageCompositeMaterial,
+    mode,
     kind,
     dataTileMeshes,
     availableMeshes,
     liveDataTileKey: undefined,
     renderedGranularity: undefined,
+    aggStatesScene,
+    aggMeshes,
+    isAgg: false,
     msPerPx: 0,
     anchorPx: 0,
     viewStartPx: 0,
@@ -286,26 +445,48 @@ export function resizeCanvas(
 export function render(rendererObj: RendererObj) {
   const {
     renderer,
-    tileStatesScene,
     camera,
-    tileStatesTarget,
     errorStatesScene,
-    compositeScene,
+    coverageTarget,
+    coverageCompositeScene,
+    coverageCompositeMaterial,
   } = rendererObj;
   const { width, height } = renderer.domElement;
   if (!width || !height) return;
-  if (tileStatesTarget.width !== width || tileStatesTarget.height !== height) {
-    tileStatesTarget.setSize(width, height);
-    (
-      rendererObj.compositeMaterial.uniforms.uCanvasSize.value as THREE.Vector2
-    ).set(width, height);
+  if (coverageTarget.width !== width || coverageTarget.height !== height) {
+    coverageTarget.setSize(width, height);
+    (coverageCompositeMaterial.uniforms.uCanvasSize.value as THREE.Vector2).set(
+      width,
+      height,
+    );
   }
-  renderer.setRenderTarget(tileStatesTarget);
+
+  const statesScene = rendererObj.isAgg
+    ? rendererObj.aggStatesScene
+    : rendererObj.tileStatesScene;
+  const { uniforms } = coverageCompositeMaterial;
+  uniforms.uMode.value = shaderModeIds[rendererObj.mode];
+  const laneStates =
+    trackStates[rendererObj.kind][
+      rendererObj.renderedGranularity ?? TileStatesGranularityEnum.txn
+    ];
+  const channelStates = coverageStates[rendererObj.kind];
+  const laneChannels = uniforms.uLaneChannels.value as number[];
+  for (let i = 0; i < MAX_LANES; i++) {
+    laneChannels[i] =
+      i < laneStates.length ? channelStates.indexOf(laneStates[i]) : -1;
+  }
+  uniforms.uLaneCount.value = laneStates.length;
+
+  renderer.setRenderTarget(coverageTarget);
   renderer.clear();
-  renderer.render(tileStatesScene, camera);
+  renderer.render(statesScene, camera);
   renderer.setRenderTarget(null);
-  renderer.render(compositeScene, camera);
-  if (rendererObj.renderedGranularity === TileStatesGranularityEnum.txn) {
+  renderer.render(coverageCompositeScene, camera);
+  if (
+    !rendererObj.isAgg &&
+    rendererObj.renderedGranularity === TileStatesGranularityEnum.txn
+  ) {
     renderer.render(errorStatesScene, camera);
   }
 }
@@ -317,8 +498,12 @@ export function setVisibleRange(
   rendererObj: RendererObj,
   visibleRangeMs: TsRange,
 ): boolean {
-  const { renderer, dataTileMeshes, tileStatesMaterial, errorStatesMaterial } =
-    rendererObj;
+  const {
+    renderer,
+    dataTileMeshes,
+    stateCoverageMaterial,
+    errorStatesMaterial,
+  } = rendererObj;
 
   const widthPx = Math.max(renderer.domElement.width, 1);
   const prevMsPerPx = rendererObj.msPerPx;
@@ -334,7 +519,7 @@ export function setVisibleRange(
   const anchorMoved = anchorPx !== rendererObj.anchorPx;
   rendererObj.anchorPx = anchorPx;
 
-  for (const material of [tileStatesMaterial, errorStatesMaterial]) {
+  for (const material of [stateCoverageMaterial, errorStatesMaterial]) {
     material.uniforms.uMsPerPx.value = msPerPx;
     material.uniforms.uViewWidthPx.value = widthPx;
     material.uniforms.uOffsetPx.value = anchorPx - viewStartPx;
@@ -344,13 +529,14 @@ export function setVisibleRange(
   if (scaleChanged || anchorMoved) {
     for (const meshes of dataTileMeshes.values())
       updateDataTileMeshPositions(rendererObj, meshes);
+    updateDataTileMeshPositions(rendererObj, rendererObj.aggMeshes);
   }
 
   // Callers can skip rendering if no px value has changed
   return scaleChanged || viewMoved;
 }
 
-function updateDataTileMeshPositions(
+export function updateDataTileMeshPositions(
   rendererObj: RendererObj,
   meshes: DataTileMeshes,
 ) {
@@ -365,11 +551,11 @@ function updateDataTileMeshPositions(
 }
 
 function createDataTileMeshes(rendererObj: RendererObj): DataTileMeshes {
-  const { rectResources, tileStatesMaterial, errorStatesMaterial, kind } =
+  const { rectResources, stateCoverageMaterial, errorStatesMaterial, kind } =
     rendererObj;
   const tileStates = createStatesMesh(
     rectResources.unitQuad,
-    tileStatesMaterial,
+    stateCoverageMaterial,
   );
   // Top/bottom borders drawn over the tile states.
   const errorStates =
@@ -455,6 +641,10 @@ export function syncMeshes(rendererObj: RendererObj, rebuild = false) {
     ? tileStatesCaches[renderedGranularity].getTiles()
     : [];
   const rowOfTile = getRowOfTile(rendererObj.kind);
+  rendererObj.coverageCompositeMaterial.uniforms.uRowCount.value = Math.max(
+    rowOfTile.size,
+    1,
+  );
 
   const keys = new Set<string>();
 
@@ -522,7 +712,7 @@ export function clearLiveMarkerIfAdded(
 }
 
 /** Row height and bar height in [0, 1] view space. */
-function getRowLayout(rowOfTile: RowOfTile) {
+export function getRowLayout(rowOfTile: RowOfTile) {
   const rowH = 1 / rowOfTile.size;
   return { rowH, barH: (rowH * BAR_HEIGHT_PX) / ROW_HEIGHT_PX };
 }
@@ -593,7 +783,11 @@ function appendErrorStates(
   return count;
 }
 
-function addRectToMesh(
+/**
+ * `weight` is the fraction of [startMs, endMs] the state covers, for agg
+ * buckets that sum a state's time
+ */
+export function addRectToMesh(
   mesh: StatesMesh,
   idx: number,
   startMs: number,
@@ -601,6 +795,7 @@ function addRectToMesh(
   y: number,
   height: number,
   colorIndex: number,
+  weight = 1,
 ) {
   const localStart = startMs - mesh.referenceX;
   const localEnd = endMs - mesh.referenceX;
@@ -611,13 +806,14 @@ function addRectToMesh(
   mesh.edges[r + 1] = localStart - startHi;
   mesh.edges[r + 2] = endHi;
   mesh.edges[r + 3] = localEnd - endHi;
-  const b = idx * 3;
+  const b = idx * 4;
   mesh.bar[b] = y;
   mesh.bar[b + 1] = height;
   mesh.bar[b + 2] = colorIndex;
+  mesh.bar[b + 3] = weight;
 }
 
 /** Bottom y of a row, rows stacked top-down. */
-function tileYPosition(row: number, rowH: number) {
+export function tileYPosition(row: number, rowH: number) {
   return 1 - (row + 1) * rowH;
 }

@@ -110,6 +110,24 @@ export const trackStates: Record<
 };
 
 /**
+ * States written to the coverage render targets, one channel each and 4 per
+ * target. Must include every state in the track's trackStates. Idle isn't
+ * drawn, since time without a busy state is idle.
+ */
+export const coverageStates: Record<TileKind, TileState[]> = {
+  execrp: [
+    TileState.Loading,
+    TileState.Validate,
+    TileState.Execute,
+    TileState.PostExecute,
+    TileState.Sigverify,
+    TileState.ExecBatch,
+    TileState.SigverifyBatch,
+  ],
+  replay: replayStates,
+};
+
+/**
  * Heatmap mixes each px's states into one color.
  * Stacked stacks the states bottom up by time.
  * Gantt separates states into individual lanes.
