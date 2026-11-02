@@ -130,11 +130,10 @@ function RevenueTrackBody({
         getRelativeMs,
         numRows,
         opts.scale,
-        width,
       );
       if (max > 0n) setNonAggAxisMax(max);
     },
-    [type, getRelativeMs, numRows, opts.scale, width],
+    [type, getRelativeMs, numRows, opts.scale],
   );
 
   /**
@@ -276,6 +275,9 @@ function RevenueTrackBody({
   useLayoutEffect(() => {
     if (!isInitialized || !rendererRef.current) return;
     rendererRef.current.renderer.setSize(width, revenueTrackHeight);
+    const visibleRangeMs = store.get(visibleRangeAtom);
+    if (!isAggCurrentRef.current && visibleRangeMs)
+      moveNonAggCamera(rendererRef.current, visibleRangeMs);
     renderActive();
   }, [renderActive, width, isInitialized]);
 

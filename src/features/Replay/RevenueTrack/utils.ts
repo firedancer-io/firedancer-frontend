@@ -54,6 +54,7 @@ import {
 } from "./txnMesh.ts";
 
 const MIN_BAR_WIDTH_PX = 1;
+const tmpViewport = new THREE.Vector4();
 
 export interface RendererObj {
   renderer: THREE.WebGLRenderer;
@@ -410,17 +411,19 @@ export function refreshNonAggView(
   getRelativeMs: (absoluteNs: bigint) => number,
   rows: number,
   scale: RevenueScale,
-  widthPx: number,
 ): bigint {
+  const { renderer } = rendererObj;
   const { cameraReferenceMs, liveTile, camera, resources } =
     rendererObj.nonAggResources;
 
   const visibleStartMs = cameraReferenceMs + camera.left;
   const visibleEndMs = cameraReferenceMs + camera.right;
-  const visibleDurationMs = camera.right - camera.left;
 
-  const msPerCssPx = visibleDurationMs / (widthPx || 1);
-  const minBarMs = MIN_BAR_WIDTH_PX * msPerCssPx;
+  const viewWidthPx = renderer.getCurrentViewport(tmpViewport).z || 1;
+  const minBarPx = Math.max(
+    1,
+    Math.round(MIN_BAR_WIDTH_PX * renderer.getPixelRatio()),
+  );
 
   let maxValue = 0n;
   const allTiles = liveTile ? [...tiles, liveTile] : tiles;
@@ -438,7 +441,8 @@ export function refreshNonAggView(
   setTxnMeshUniforms(
     resources,
     Number(maxValue),
-    minBarMs,
+    viewWidthPx,
+    minBarPx,
     rows,
     scale,
     revenueSeriesColors[type],
@@ -544,10 +548,15 @@ export function moveNonAggCamera(
 ) {
   const { camera, tileMeshes } = rendererObj.nonAggResources;
 
-  const cameraReferenceMs = visibleRangeMs[0];
+  const viewWidthPx = rendererObj.renderer.getCurrentViewport(tmpViewport).z;
+  const msPerPx = (visibleRangeMs[1] - visibleRangeMs[0]) / viewWidthPx;
+  // Pan in whole device px so bars keep their spacing
+  const cameraReferenceMs = viewWidthPx
+    ? Math.round(visibleRangeMs[0] / msPerPx) * msPerPx
+    : visibleRangeMs[0];
   rendererObj.nonAggResources.cameraReferenceMs = cameraReferenceMs;
-  camera.left = visibleRangeMs[0] - cameraReferenceMs;
-  camera.right = visibleRangeMs[1] - cameraReferenceMs;
+  camera.left = 0;
+  camera.right = visibleRangeMs[1] - visibleRangeMs[0];
   camera.updateProjectionMatrix();
 
   for (const mesh of tileMeshes.values()) {
