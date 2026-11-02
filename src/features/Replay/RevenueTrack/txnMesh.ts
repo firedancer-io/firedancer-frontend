@@ -64,7 +64,8 @@ uniform mat4 projectionMatrix;
 uniform mat4 modelViewMatrix;
 
 uniform float uMaxValue;
-uniform float uMinBarMs;
+uniform float uViewWidthPx;
+uniform float uMinBarPx;
 uniform float uRows;
 uniform int uScale;
 uniform vec3 uColor;
@@ -101,6 +102,10 @@ float revenueRatio(float value, float maxValue, float minRatio) {
   return ratio == 0.0 ? 0.0 : clamp(ratio, minRatio, 1.0);
 }
 
+float toPx(float clipX) {
+  return (clipX + 1.0) * 0.5 * uViewWidthPx;
+}
+
 float revenueAlpha(float value, float maxValue) {
   if (maxValue <= 0.0 || value <= 0.0) return 0.0;
   float normalized = value / maxValue;
@@ -122,16 +127,21 @@ void main() {
     return;
   }
 
-  float width = max(rawWidthMs, uMinBarMs);
   float rowHeight = MAX_Y / uRows;
   // MAX_HEIGHT_RATIO leaves a gap at the top of each row for spacing
   float usableHeight = rowHeight * MAX_HEIGHT_RATIO;
   float height = usableHeight * revenueRatio(value, uMaxValue, MIN_HEIGHT_RATIO);
 
   float yPos = uRows > 1.0 ? (uRows - 1.0 - row) * rowHeight : 0.0;
-  vec2 rect = vec2(width, height);
-  vec2 world = position * rect + vec2(x, yPos) + rect * 0.5;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(world, 0.0, 1.0);
+  mat4 mvp = projectionMatrix * modelViewMatrix;
+  vec4 clip = mvp * vec4(x, yPos + (position.y + 0.5) * height, 0.0, 1.0);
+
+  // Snap edges to whole device px so thin bars don't shimmer as they move
+  float leftPx = floor(toPx(clip.x) + 0.5);
+  float rightPx = floor(toPx((mvp * vec4(x + rawWidthMs, 0.0, 0.0, 1.0)).x) + 0.5);
+  rightPx = max(rightPx, leftPx + uMinBarPx);
+  clip.x = (position.x < 0.0 ? leftPx : rightPx) / uViewWidthPx * 2.0 - 1.0;
+  gl_Position = clip;
 
   vColor = vec4(uColor, revenueAlpha(value, uMaxValue));
 }
@@ -156,7 +166,8 @@ export function createTxnResources(): TxnResources {
     premultipliedAlpha: true,
     uniforms: {
       uMaxValue: { value: 0 },
-      uMinBarMs: { value: 0 },
+      uViewWidthPx: { value: 1 },
+      uMinBarPx: { value: 1 },
       uRows: { value: 1 },
       uScale: { value: SCALE_UNIFORM.linear },
       uColor: { value: new THREE.Vector3() },
@@ -213,7 +224,8 @@ export function createTxnMesh(resources: TxnResources): TxnMesh {
 export function setTxnMeshUniforms(
   resources: TxnResources,
   maxValue: number,
-  minBarMs: number,
+  viewWidthPx: number,
+  minBarPx: number,
   rows: number,
   scale: RevenueScale,
   color: RgbColor,
@@ -222,7 +234,8 @@ export function setTxnMeshUniforms(
   const { uniforms } = resources.material;
   (uniforms.uColor.value as THREE.Vector3).set(color[0], color[1], color[2]);
   uniforms.uMaxValue.value = maxValue;
-  uniforms.uMinBarMs.value = minBarMs;
+  uniforms.uViewWidthPx.value = viewWidthPx;
+  uniforms.uMinBarPx.value = minBarPx;
   uniforms.uRows.value = Math.max(rows, 1);
   uniforms.uScale.value = SCALE_UNIFORM[scale];
   (uniforms.uIncludedAddends.value as THREE.Vector3).copy(includedAddends);
