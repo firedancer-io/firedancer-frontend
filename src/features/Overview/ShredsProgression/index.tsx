@@ -4,7 +4,6 @@ import { useAtomValue } from "jotai";
 import Card from "../../../components/Card";
 import CardHeader from "../../../components/CardHeader";
 import { ShredsChartLegend } from "./ShredsChartLegend";
-import { isFrankendancer } from "../../../client";
 import { isWebgl2SupportedAtom } from "../../WebGl/atoms";
 
 // Lazy-load so Three.js is split into its own chunk, downloaded only when the
@@ -15,8 +14,6 @@ const ShredsChartCanvas = lazy(() => import("./ShredsChart"));
 
 export default function ShredsProgression() {
   const webgl2Supported = useAtomValue(isWebgl2SupportedAtom);
-
-  if (isFrankendancer) return;
 
   return (
     // extra right padding for x axis label

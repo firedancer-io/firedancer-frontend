@@ -48,7 +48,6 @@ import { shredsAtoms } from "../features/Overview/ShredsProgression/atoms";
 import { setDirtySlotOnSkippedChangeAtom } from "../features/Shreds/atoms";
 import { xRangeMs } from "./worker/cache/shreds/shredsCalc";
 import { rateLiveWaterfallAtom } from "../features/Overview/SlotPerformance/atoms";
-import { isFrankendancer } from "../client";
 import {
   addTurbineSlotsAtom,
   addRepairSlotsAtom,
@@ -79,7 +78,6 @@ import {
   tileTimerAtom,
   tileTimerHistoryAtom,
   bootProgressAtom,
-  startupProgressAtom,
   voteStateAtom,
   voteDistanceAtom,
   skippedSlotsAtom,
@@ -329,7 +327,6 @@ function useUpdateAtoms() {
   }, tileTimerDebounceMs);
 
   const setBootProgress = useSetAtom(bootProgressAtom);
-  const setStartupProgress = useSetAtom(startupProgressAtom);
 
   const setSupermajorityEpoch = useSetAtom(supermajorityEpochAtom);
 
@@ -644,10 +641,6 @@ function useUpdateAtoms() {
               setBootProgress(value);
               break;
             }
-            case "startup_progress": {
-              setStartupProgress(value);
-              break;
-            }
             case "vote_state": {
               setVoteState(value);
               break;
@@ -801,10 +794,7 @@ function useUpdateAtoms() {
               break;
             }
             case "late_votes_history": {
-              if (isFrankendancer && "latency" in value)
-                setLateVoteHistory(value);
-              else if (!isFrankendancer && "latency_exact" in value)
-                setLateVoteHistory(value);
+              setLateVoteHistory(value);
               break;
             }
             case "missed_vote_history": {
@@ -873,7 +863,6 @@ function useUpdateAtoms() {
       setDbLiveTxnWaterfall,
       setDbTileTimer,
       setBootProgress,
-      setStartupProgress,
       setVoteState,
       setVoteDistance,
       setSkipRate,

@@ -14,7 +14,6 @@ import type {
   IdentityBalance,
   StartupTimeNanos,
   LiveTxnWaterfall,
-  StartupProgress,
   LiveTilePrimaryMetric,
   SkippedSlots,
   Tile,
@@ -140,7 +139,6 @@ export const tileTimerHistoryAtom = atom<ValuesWithHistory>(
 );
 
 export const bootProgressAtom = atom<BootProgress | undefined>(undefined);
-export const startupProgressAtom = atom<StartupProgress | undefined>(undefined);
 
 export const gossipNetworkStatsAtom = rafAtom<GossipNetworkStats | undefined>(
   undefined,

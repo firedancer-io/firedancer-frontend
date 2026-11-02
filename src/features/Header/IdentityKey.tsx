@@ -20,7 +20,6 @@ import { identityIconOnlyWidth, maxZIndex } from "../../consts";
 import { useUptimeDuration } from "../../hooks/useUptime";
 import CopyButton from "../../components/CopyButton";
 import ConditionalTooltip from "../../components/ConditionalTooltip";
-import { client, isFiredancer } from "../../client";
 
 export default function IdentityKey() {
   const { peer, identityKey } = useIdentityPeer();
@@ -31,7 +30,7 @@ export default function IdentityKey() {
 
   useEffect(() => {
     const suffix = peer?.info?.name ?? identityKey;
-    document.title = suffix ? `${client} | ${suffix}` : client;
+    document.title = suffix ? `Firedancer | ${suffix}` : "Firedancer";
   }, [identityKey, peer]);
 
   return (
@@ -202,35 +201,8 @@ function StakeValue({ showTooltip }: TooltipProps) {
 function Commission() {
   return (
     <Label label="Commission">
-      {isFiredancer ? (
-        <FiredancerCommissionValue />
-      ) : (
-        <FrankendancerCommissionValue />
-      )}
+      <FiredancerCommissionValue />
     </Label>
-  );
-}
-
-function FrankendancerCommissionValue() {
-  const { peer } = useIdentityPeer();
-
-  const maxCommission = peer?.vote.reduce<{
-    maxStake: bigint;
-    commission?: number;
-  }>(
-    (acc, vote) => {
-      if (vote.activated_stake > acc.maxStake) {
-        return { maxStake: vote.activated_stake, commission: vote.commission };
-      }
-      return acc;
-    },
-    { maxStake: 0n, commission: undefined },
-  );
-  return (
-    <ValueWithSuffix
-      value={maxCommission?.commission?.toLocaleString()}
-      suffix="%"
-    />
   );
 }
 

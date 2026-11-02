@@ -1,7 +1,6 @@
 import { max } from "lodash";
 import type { SlotTransactions } from "./api/types";
 import { TxnState } from "./features/Overview/SlotPerformance/TransactionBarsCard/consts";
-import { isFiredancer, isFrankendancer } from "./client";
 
 export const chartBufferMs = 2_000_000;
 
@@ -41,9 +40,7 @@ export function getTxnStateDurations(
   let endTs = transactions.txn_mb_end_timestamps_nanos[txnIdx];
 
   // for bundle txs, we use the previous/next transaction to bound.
-  const firstPhaseBoundary = isFiredancer
-    ? transactions.txn_start_timestamps_nanos
-    : transactions.txn_preload_end_timestamps_nanos;
+  const firstPhaseBoundary = transactions.txn_start_timestamps_nanos;
   if (bundleTxnIdxs) {
     const bundleIdx = bundleTxnIdxs.indexOf(txnIdx) ?? -1;
     const prevTxnIdx = bundleTxnIdxs[bundleIdx - 1];
@@ -57,35 +54,22 @@ export function getTxnStateDurations(
     }
   }
 
-  // Chronological order differs by client:
-  //   Frankendancer: preload_end < start < load_end < end
-  //   Firedancer:    start < preload_end < load_end < end
+  // Chronological order: start < preload_end < load_end < end
   //
-  // Both clients have 4 phases between startTs and endTs:
+  // There are 4 phases between startTs and endTs:
   //   Pre-Loading, Loading, Validating, Execute
-  // but the order of Loading and Validating is swapped.
   const preload_end = transactions.txn_preload_end_timestamps_nanos[txnIdx];
   const start = transactions.txn_start_timestamps_nanos[txnIdx];
   const load_end = transactions.txn_load_end_timestamps_nanos[txnIdx];
 
-  let preLoading: bigint;
-  let loading: bigint;
-  let validating: bigint;
-  if (isFiredancer) {
-    // Firedancer: startTs -> start(load_start) -> preload_end(check_start) -> load_end(exec_start)
-    preLoading = start - startTs;
-    loading = preload_end - start;
-    validating = load_end - preload_end;
-  } else {
-    // Frankendancer: startTs -> preload_end(check_start) -> start(load_start) -> load_end(exec_start)
-    preLoading = preload_end - startTs;
-    validating = start - preload_end;
-    loading = load_end - start;
-  }
+  // startTs -> start(load_start) -> preload_end(check_start) -> load_end(exec_start)
+  const preLoading = start - startTs;
+  const loading = preload_end - start;
+  const validating = load_end - preload_end;
 
   let execute;
   let postExecute;
-  if (isFrankendancer || !bundleTxnIdxs) {
+  if (!bundleTxnIdxs) {
     execute =
       transactions.txn_end_timestamps_nanos[txnIdx] -
       transactions.txn_load_end_timestamps_nanos[txnIdx];
@@ -131,40 +115,22 @@ export function getTxnState(
     return Number(timestamp - transactions.start_timestamp_nanos);
   };
 
-  // Check transaction stages in chronological order.
-  // The timestamp order differs by client:
-  //   Frankendancer: preload_end < start < load_end  (Pre-Loading, Validate, Loading)
-  //   Firedancer:    start < preload_end < load_end   (Pre-Loading, Loading, Validate)
-  if (isFiredancer) {
-    if (ts < relativeTime(transactions.txn_start_timestamps_nanos[txnIdx])) {
-      return TxnState.PRELOADING;
-    }
-    if (
-      ts < relativeTime(transactions.txn_preload_end_timestamps_nanos[txnIdx])
-    ) {
-      return TxnState.LOADING;
-    }
-    if (ts < relativeTime(transactions.txn_load_end_timestamps_nanos[txnIdx])) {
-      return TxnState.VALIDATE;
-    }
-  } else {
-    if (
-      ts < relativeTime(transactions.txn_preload_end_timestamps_nanos[txnIdx])
-    ) {
-      return TxnState.PRELOADING;
-    }
-    if (ts < relativeTime(transactions.txn_start_timestamps_nanos[txnIdx])) {
-      return TxnState.VALIDATE;
-    }
-    if (ts < relativeTime(transactions.txn_load_end_timestamps_nanos[txnIdx])) {
-      return TxnState.LOADING;
-    }
+  // Check transaction stages in chronological order:
+  //   start < preload_end < load_end   (Pre-Loading, Loading, Validate)
+  if (ts < relativeTime(transactions.txn_start_timestamps_nanos[txnIdx])) {
+    return TxnState.PRELOADING;
+  }
+  if (
+    ts < relativeTime(transactions.txn_preload_end_timestamps_nanos[txnIdx])
+  ) {
+    return TxnState.LOADING;
+  }
+  if (ts < relativeTime(transactions.txn_load_end_timestamps_nanos[txnIdx])) {
+    return TxnState.VALIDATE;
   }
 
-  // Handle execution phase based on client type and bundle conditions
-  const isBundled = !!bundleTxnIdxs;
-
-  if (!isBundled || isFrankendancer) {
+  // Handle execution phase based on bundle conditions
+  if (!bundleTxnIdxs) {
     if (ts < relativeTime(transactions.txn_end_timestamps_nanos[txnIdx])) {
       return TxnState.EXECUTE;
     }
@@ -173,10 +139,9 @@ export function getTxnState(
     const nextTxnIdx = bundleIdx !== -1 ? bundleTxnIdxs[bundleIdx + 1] : -1;
 
     // Use the first phase boundary of the next txn (see comment
-    // in getTxnStateDurations for the per-client ordering).
-    const nextFirstBoundary = isFiredancer
-      ? transactions.txn_start_timestamps_nanos[nextTxnIdx]
-      : transactions.txn_preload_end_timestamps_nanos[nextTxnIdx];
+    // in getTxnStateDurations for the ordering).
+    const nextFirstBoundary =
+      transactions.txn_start_timestamps_nanos[nextTxnIdx];
 
     if (nextTxnIdx > 0) {
       if (ts < relativeTime(nextFirstBoundary)) {

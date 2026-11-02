@@ -39,7 +39,6 @@ export const slotNavBackgroundColor = "#010102";
 // startup
 export const startupBackgroundColor = "#03030C";
 export const startupTextColor = "#A7A7A7";
-export const startupProgressBackgroundColor = "#121213";
 export const startupProgressTealColor = appTeal;
 export const startupCompleteStepColor = "#3BA158";
 

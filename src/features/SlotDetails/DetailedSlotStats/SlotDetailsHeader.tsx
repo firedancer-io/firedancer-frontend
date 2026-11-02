@@ -19,7 +19,6 @@ import { useMedia } from "react-use";
 import CopyButton from "../../../components/CopyButton";
 import MonoText from "../../../components/MonoText";
 import clsx from "clsx";
-import { isFrankendancer } from "../../../client";
 import ConditionalTooltip from "../../../components/ConditionalTooltip";
 
 const gap = "5px";
@@ -257,13 +256,9 @@ function BlockHash({ slot, vertical = false }: BlockHashProps) {
   return (
     <LabelValue
       label="Block Hash"
-      value={
-        isFrankendancer
-          ? "Not available for Frankendancer"
-          : schedulerStats?.block_hash
-      }
+      value={schedulerStats?.block_hash}
       vertical={vertical}
-      allowCopy={!isFrankendancer && schedulerStats?.block_hash != null}
+      allowCopy={schedulerStats?.block_hash != null}
     />
   );
 }

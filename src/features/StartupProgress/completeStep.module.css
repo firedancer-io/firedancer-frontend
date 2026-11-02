@@ -1,9 +1,0 @@
-.text {
-  color: var(--startup-complete-step-color);
-  font-weight: 500;
-  line-height: normal;
-}
-
-.container {
-  padding: 0 20px;
-}

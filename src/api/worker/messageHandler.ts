@@ -90,10 +90,7 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
           serverTimeNanos: item.value,
         };
       }
-      if (
-        isEntry(item, "summary", "startup_progress") ||
-        isEntry(item, "summary", "boot_progress")
-      ) {
+      if (isEntry(item, "summary", "boot_progress")) {
         validatorState = {
           ...validatorState,
           isStartup: item.value.phase !== "running",

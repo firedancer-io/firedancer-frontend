@@ -20,7 +20,6 @@ import {
   clusterUnknownColor,
 } from "./colors";
 import memoize from "micro-memoize";
-import { isFiredancer } from "./client";
 
 export function getLeaderSlots(epoch: Epoch, pubkey: string) {
   return epoch.leader_slots.reduce<number[]>((leaderSlots, pubkeyIndex, i) => {
@@ -572,9 +571,9 @@ export function getDiscountedVoteLatency(
 }
 
 export const tileNames = {
-  resolv: isFiredancer ? "resolv" : "resolh",
-  bank: isFiredancer ? "execle" : "bank",
-  poh: isFiredancer ? "poh" : "pohh",
+  resolv: "resolv",
+  bank: "execle",
+  poh: "poh",
 } satisfies Record<string, TileType>;
 
 export function getPeerIconUrl(peerInfo: PeerUpdateInfo | null | undefined) {

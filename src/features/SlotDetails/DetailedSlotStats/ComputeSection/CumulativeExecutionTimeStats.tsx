@@ -8,7 +8,6 @@ import clsx from "clsx";
 import MonoText from "../../../../components/MonoText";
 import { gridGapX, gridGapY } from "../consts";
 import { TxnState } from "../../../Overview/SlotPerformance/TransactionBarsCard/consts";
-import { isFiredancer } from "../../../../client";
 import { SlotTransactionsContext } from "../../SlotTransactionsContext";
 
 export default function CumulativeExecutionTimeStats() {
@@ -38,41 +37,20 @@ export default function CumulativeExecutionTimeStats() {
           unlanded={unlanded.preLoading}
           max={max}
         />
-        {isFiredancer ? (
-          <>
-            <Row
-              label={TxnState.LOADING}
-              landedSuccess={landedSuccess.loading}
-              landedFailed={landedFailed.loading}
-              unlanded={unlanded.loading}
-              max={max}
-            />
-            <Row
-              label={TxnState.VALIDATE}
-              landedSuccess={landedSuccess.validating}
-              landedFailed={landedFailed.validating}
-              unlanded={unlanded.validating}
-              max={max}
-            />
-          </>
-        ) : (
-          <>
-            <Row
-              label={TxnState.VALIDATE}
-              landedSuccess={landedSuccess.validating}
-              landedFailed={landedFailed.validating}
-              unlanded={unlanded.validating}
-              max={max}
-            />
-            <Row
-              label={TxnState.LOADING}
-              landedSuccess={landedSuccess.loading}
-              landedFailed={landedFailed.loading}
-              unlanded={unlanded.loading}
-              max={max}
-            />
-          </>
-        )}
+        <Row
+          label={TxnState.LOADING}
+          landedSuccess={landedSuccess.loading}
+          landedFailed={landedFailed.loading}
+          unlanded={unlanded.loading}
+          max={max}
+        />
+        <Row
+          label={TxnState.VALIDATE}
+          landedSuccess={landedSuccess.validating}
+          landedFailed={landedFailed.validating}
+          unlanded={unlanded.validating}
+          max={max}
+        />
         <Row
           label="Execute"
           landedSuccess={landedSuccess.execute}

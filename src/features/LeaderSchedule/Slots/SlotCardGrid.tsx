@@ -30,7 +30,6 @@ import { identityKeyAtom, isAlpenglowAtom } from "../../../api/atoms";
 import { usePubKey } from "../../../hooks/usePubKey";
 import { StatusIcon } from "../../../components/StatusIcon";
 import LinkedSlotText from "./SlotText";
-import { isFiredancer } from "../../../client";
 
 interface SlotCardGridProps {
   slot: number;
@@ -56,23 +55,20 @@ export default function SlotCardGrid({ slot, currentSlot }: SlotCardGridProps) {
       <SlotColumn slot={slot} currentSlot={currentSlot} />
       <div
         className={clsx(styles.grid, {
-          [styles.firedancerGrid]: isFiredancer && !isAlpenglow,
-          [styles.alpenglowGrid]: isFiredancer && isAlpenglow,
+          [styles.alpenglowGrid]: isAlpenglow,
         })}
         ref={ref}
         onScroll={(e) => {
           scrollAll(slot, e.currentTarget.scrollLeft);
         }}
       >
-        {isFiredancer && (
-          <Text
-            className={clsx(styles.headerText, styles.voteLatencyHeader)}
-            align="right"
-          >
-            {isAlpenglow ? <>Rewarded</> : <>Vote&nbsp;Latency</>}
-          </Text>
-        )}
-        {isFiredancer && isAlpenglow && (
+        <Text
+          className={clsx(styles.headerText, styles.voteLatencyHeader)}
+          align="right"
+        >
+          {isAlpenglow ? <>Rewarded</> : <>Vote&nbsp;Latency</>}
+        </Text>
+        {isAlpenglow && (
           <Text
             className={clsx(styles.headerText, styles.votesHeader)}
             align="right"
@@ -361,16 +357,14 @@ function SlotCardRow({ slot, active }: SlotCardRowProps) {
 
   return (
     <>
-      {isFiredancer && (
-        <Text
-          className={valueClassName}
-          align="right"
-          style={{ color: values?.voteLatency?.color }}
-        >
-          {getText(values?.voteLatency.text)}
-        </Text>
-      )}
-      {isFiredancer && isAlpenglow && (
+      <Text
+        className={valueClassName}
+        align="right"
+        style={{ color: values?.voteLatency?.color }}
+      >
+        {getText(values?.voteLatency.text)}
+      </Text>
+      {isAlpenglow && (
         <Text className={valueClassName} align="right">
           {getText(values?.voteCount)}
         </Text>
