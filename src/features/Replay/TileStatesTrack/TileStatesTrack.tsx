@@ -1,9 +1,9 @@
 import { getDefaultStore, useAtomValue } from "jotai";
-import { useRef, useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
 import clsx from "clsx";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
-import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
+import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
@@ -23,10 +23,9 @@ import {
   getTileRows,
   setVisibleRange,
   render,
-  resizeCanvas,
+  handleResize,
   setUpRenderer,
   syncMeshes,
-  type RendererObj,
 } from "./utils.ts";
 import {
   DEFAULT_TILE_STATES_VIEW_OPTS,
@@ -58,16 +57,16 @@ function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
   );
   const [isAgg, setIsAgg] = useState(false);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<RendererObj | undefined>();
+  const { containerRef, rendererRef } = useWebGlRenderer({
+    remount,
+    create: ({ setUpContextListeners, getWasContextLost }) =>
+      setUpRenderer(kind, setUpContextListeners, getWasContextLost),
+    onResize: (rendererObj) => handleResize(rendererObj),
+  });
 
   const tiles = useAtomValue(tilesAtom);
   const rows = useMemo(() => getTileRows(tiles, kind), [tiles, kind]);
   const height = Math.max(rows.length, 1) * ROW_HEIGHT_PX;
-
-  const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
-    remount,
-  });
 
   const queryTxn = useTileCacheQuery(tileStatesCaches.txn);
   const queryBatch = useTileCacheQuery(tileStatesCaches.txn_batch);
@@ -126,76 +125,40 @@ function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
 
       if (viewChanged || granularityChanged) render(renderer);
     },
-    [throttledRangeQuery],
+    [rendererRef, throttledRangeQuery],
   );
 
-  // set up renderer and subscribe to range changes to trigger queries
+  // subscribe to range changes to trigger queries
   useLayoutEffect(() => {
-    if (rendererRef.current || !containerRef.current) return;
-
-    const rendererObj = setUpRenderer(
-      kind,
-      setUpContextListeners,
-      getWasContextLost,
-    );
-    if (!rendererObj) return;
-
-    rendererRef.current = rendererObj;
-    containerRef.current.replaceChildren(rendererObj.renderer.domElement);
-
     const unsubscribeVisible = store.sub(visibleRangeAtom, () =>
       onRangeChange(true),
     );
     const unsubscribeWorld = store.sub(worldRangeAtom, () =>
       onRangeChange(false),
     );
-    const cleanUpRenderer = rendererObj.cleanUp;
-
-    const hasDevicePixelBox =
-      "devicePixelContentBoxSize" in ResizeObserverEntry.prototype;
-    const resizeObserver = new ResizeObserver(([entry]) => {
-      if (hasDevicePixelBox) {
-        const [size] = entry.devicePixelContentBoxSize;
-        resizeCanvas(rendererObj, size.inlineSize, size.blockSize);
-      } else {
-        const { width, height } = entry.contentRect;
-        resizeCanvas(
-          rendererObj,
-          Math.round(width * devicePixelRatio),
-          Math.round(height * devicePixelRatio),
-        );
-      }
-    });
-    resizeObserver.observe(
-      rendererObj.renderer.domElement,
-      hasDevicePixelBox ? { box: "device-pixel-content-box" } : undefined,
-    );
 
     // trigger initial query, camera, and geometry build
     onRangeChange(true);
 
     return () => {
-      resizeObserver.disconnect();
       unsubscribeVisible();
       unsubscribeWorld();
-      cleanUpRenderer();
-      rendererRef.current = undefined;
     };
-  }, [kind, onRangeChange, setUpContextListeners, getWasContextLost]);
+  }, [onRangeChange]);
 
   useLayoutEffect(() => {
     const renderer = rendererRef.current;
     if (!renderer?.renderedGranularity) return;
     syncMeshes(renderer, true);
     render(renderer);
-  }, [rows]);
+  }, [rendererRef, rows]);
 
   useLayoutEffect(() => {
     const renderer = rendererRef.current;
     if (!renderer) return;
     renderer.errorStatesScene.visible = opts.showErrorStates;
     render(renderer);
-  }, [opts.showErrorStates]);
+  }, [opts.showErrorStates, rendererRef]);
 
   const handleDelta = useCallback(
     (granularity: TileStatesGranularity, delta: TileStatesCacheDelta) => {
@@ -215,7 +178,7 @@ function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
 
       render(renderer);
     },
-    [],
+    [rendererRef],
   );
 
   const onDeltaTxn = useCallback(

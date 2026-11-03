@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 
 import { useMeasure, useRafLoop } from "react-use";
 import { Box, Flex } from "@radix-ui/themes";
@@ -15,7 +15,7 @@ import { createLabelsState, type LabelsState } from "../utils";
 import withWebGlRemount, {
   type WebGlRemountProps,
 } from "../../../WebGl/withWebGlRemount";
-import { useWebGlEventHandlers } from "../../../WebGl/useWebGlEventHandlers";
+import { useWebGlRenderer } from "../../../WebGl/useWebGlRenderer";
 
 const REDRAW_INTERVAL_MS = 15;
 
@@ -27,17 +27,17 @@ interface ShredsChartProps
 
 function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
   const setMinDirtySlotByChart = useSetAtom(minDirtySlotByChartAtom);
-  const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
-    remount,
-  });
-
   const lastRedrawRef = useRef(-Infinity);
   const [measureRef, { width, height: fullHeight }] =
     useMeasure<HTMLDivElement>();
   const height = fullHeight - xAxisHeight;
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<RendererObj | undefined>();
+  const { containerRef, rendererRef, getWasContextLost } = useWebGlRenderer({
+    remount,
+    create: ({ setUpContextListeners, getWasContextLost }) =>
+      setUpLiveRenderer(setUpContextListeners, getWasContextLost),
+    onResize: (rendererObj) => drawForced(rendererObj),
+  });
   const labelsRef = useRef<{
     prevLabels: LabelsState;
     tempNewLabels: LabelsState;
@@ -47,6 +47,25 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
   });
 
   const scale = useShredsChartScale();
+
+  const drawForced = useCallback(
+    (rendererObj: RendererObj) => {
+      const { renderer } = rendererObj;
+      const { width: bufferWidth, height: bufferHeight } = renderer.domElement;
+      if (getWasContextLost() || !bufferWidth || !bufferHeight) return;
+      // Read from the canvas, which is already resized when the observer calls this
+      const cssWidth = bufferWidth / renderer.getPixelRatio();
+      drawLive(
+        chartId,
+        rendererObj,
+        labelsRef,
+        scale,
+        true /* force redraw */,
+        [0, cssWidth],
+      );
+    },
+    [chartId, scale, getWasContextLost],
+  );
 
   useLayoutEffect(() => {
     // setup dirty slot tracking
@@ -61,33 +80,12 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
         prev.delete(chartId);
         return prev;
       });
-
-      if (!rendererRef.current) return;
-
-      rendererRef.current.cleanUpRenderer();
-      rendererRef.current = undefined;
     };
   }, [chartId, setMinDirtySlotByChart]);
 
-  // handle chart resize
   useLayoutEffect(() => {
-    // skip while the context is lost. Remount on restore will handle resizing
-    if (!rendererRef.current || getWasContextLost()) return;
-
-    // skip until valid size is initialized
-    if (width <= 0 || height <= 0) return;
-    const { renderer } = rendererRef.current;
-    renderer.setSize(width, height);
-
-    drawLive(
-      chartId,
-      rendererRef.current,
-      labelsRef,
-      scale,
-      true /* force redraw */,
-      [0, width],
-    );
-  }, [scale, width, height, chartId, getWasContextLost]);
+    if (rendererRef.current) drawForced(rendererRef.current);
+  }, [drawForced, rendererRef]);
 
   useRafLoop(function drawShredsLoop(time: number) {
     // Don't draw while waiting for context restore.
@@ -95,32 +93,14 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
     if (getWasContextLost()) return;
 
     // skip until valid size is initialized
-    if (width <= 0 || height <= 0) return;
+    if (!rendererRef.current || width <= 0 || height <= 0) return;
 
     if (time - lastRedrawRef.current < REDRAW_INTERVAL_MS) {
       return;
     }
 
     lastRedrawRef.current = time;
-    if (rendererRef.current) {
-      drawLive(chartId, rendererRef.current, labelsRef, scale, false, [
-        0,
-        width,
-      ]);
-      return;
-    }
-
-    // set up renderer
-    const rendererObj = setUpLiveRenderer(
-      width,
-      height,
-      setUpContextListeners,
-      getWasContextLost,
-    );
-    if (!rendererObj) return;
-
-    rendererRef.current = rendererObj;
-    containerRef.current?.replaceChildren(rendererObj.renderer.domElement);
+    drawLive(chartId, rendererRef.current, labelsRef, scale, false, [0, width]);
   });
 
   return (
@@ -133,7 +113,12 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
           containerWidth={width}
           containerHeight={fullHeight + 1}
         />
-        <Box ref={containerRef} position="relative" style={{ zIndex: 1 }} />
+        <Box
+          ref={containerRef}
+          position="relative"
+          height={`${Math.max(height, 0)}px`}
+          style={{ zIndex: 1 }}
+        />
       </Box>
     </Flex>
   );
