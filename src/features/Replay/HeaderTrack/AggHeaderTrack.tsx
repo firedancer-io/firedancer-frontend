@@ -1,8 +1,8 @@
 import { getDefaultStore } from "jotai";
-import { useRef, useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
-import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
+import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import {
   drawAggSlots,
@@ -10,7 +10,7 @@ import {
   moveAggCamera,
   setUpRenderers,
 } from "./utils.ts";
-import { aggTrackHeight, type RendererObj } from "./const.ts";
+import { aggTrackHeight } from "./const.ts";
 import { useAggHeaderQuery, getAggGranularity } from "./useAggHeaderQuery.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
@@ -29,26 +29,19 @@ const chartId = "agg-header-track";
 const store = getDefaultStore();
 
 interface AggHeaderTrackProps extends WebGlRemountProps {
-  width: number;
   className: string;
   showAgg: () => void;
 }
 
-function AggHeaderTrack({
-  remount,
-  width,
-  className,
-  showAgg,
-}: AggHeaderTrackProps) {
-  const [isInitialized, setIsInitialized] = useState(false);
+function AggHeaderTrack({ remount, className, showAgg }: AggHeaderTrackProps) {
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
   );
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<RendererObj | undefined>();
-
-  const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
+  const { containerRef, rendererRef } = useWebGlRenderer({
     remount,
+    create: ({ setUpContextListeners, getWasContextLost }) =>
+      setUpRenderers(setUpContextListeners, getWasContextLost),
+    onResize: () => renderIfActive(),
   });
 
   const { query: aggQuery, pauseStaleRefreshes } = useAggHeaderQuery(chartId);
@@ -80,7 +73,7 @@ function AggHeaderTrack({
     const { renderer, aggResources } = rendererRef.current;
     const { camera, scene } = aggResources;
     renderer.render(scene, camera);
-  }, []);
+  }, [rendererRef]);
 
   /**
    * Update camera, toggle visibility, and query data for a new range.
@@ -104,7 +97,7 @@ function AggHeaderTrack({
     moveAggCamera(rendererRef.current.aggResources, visibleRange);
     throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
     renderIfActive();
-  }, [renderIfActive, throttledRelativeTsQuery]);
+  }, [renderIfActive, rendererRef, throttledRelativeTsQuery]);
 
   const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
@@ -123,35 +116,20 @@ function AggHeaderTrack({
       drawAggSlots(rendererRef.current, referenceNs, visibleRange, aggSlots);
       renderIfActive();
       showAgg();
-    }, [showAgg, renderIfActive]),
+    }, [rendererRef, renderIfActive, showAgg]),
     50,
     { leading: true, trailing: true },
   );
 
-  // set up renderer and subscribe to range change, to trigger queries
+  // subscribe to range change, to trigger queries
   useLayoutEffect(() => {
-    if (rendererRef.current || !containerRef.current) return;
-
-    const rendererObj = setUpRenderers(
-      0,
-      aggTrackHeight,
-      setUpContextListeners,
-      getWasContextLost,
-    );
-    if (!rendererObj) return;
-
-    rendererRef.current = rendererObj;
-    containerRef.current.replaceChildren(rendererObj.renderer.domElement);
-
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
-    const cleanUpRenderer = rendererRef.current.cleanUp;
 
     // listen for agg slots draw events
     const aggEmitter = store.get(aggHeaderEmitterAtom);
     aggEmitter.addListener(drawEventType, throttledDrawAgg);
 
     // trigger initial draw
-    setIsInitialized(true);
     onRangeChange();
 
     // cleanup
@@ -160,23 +138,8 @@ function AggHeaderTrack({
       throttledDrawAgg.cancel();
       throttledRelativeTsQuery.cancel();
       unsubscribeRange();
-      cleanUpRenderer();
-      rendererRef.current = undefined;
     };
-  }, [
-    onRangeChange,
-    setUpContextListeners,
-    getWasContextLost,
-    throttledDrawAgg,
-    throttledRelativeTsQuery,
-  ]);
-
-  // handle chart resize
-  useLayoutEffect(() => {
-    if (!isInitialized || !rendererRef.current) return;
-    rendererRef.current.renderer.setSize(width, aggTrackHeight);
-    renderIfActive();
-  }, [isInitialized, renderIfActive, width]);
+  }, [onRangeChange, throttledDrawAgg, throttledRelativeTsQuery]);
 
   return (
     <Box

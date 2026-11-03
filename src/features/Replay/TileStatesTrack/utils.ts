@@ -171,21 +171,12 @@ export function setUpRenderer(
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): RendererObj | undefined {
   const renderObj = createRenderer(
-    0,
-    0,
-    1,
     setUpContextListeners,
     getWasContextLost,
     false,
-    1, // canvas is sized in device px so no rescaling it
   );
   if (!renderObj) return;
   const { renderer, cleanUpRenderer } = renderObj;
-  const canvasStyle = renderer.domElement.style;
-  canvasStyle.display = "block";
-  canvasStyle.width = "100%";
-  canvasStyle.height = "100%";
-
   // Manual clearing because we render multiple scenes and clear between rendering each
   renderer.autoClear = false;
 
@@ -197,7 +188,7 @@ export function setUpRenderer(
   errorStatesScene.visible = false;
   const tileStatesMaterial = createTileStatesMaterial(TILE_STATE_PALETTE);
   const errorStatesMaterial = createErrorStatesMaterial(
-    devicePixelRatio,
+    renderer.getPixelRatio(),
     ERROR_STATE_PALETTE,
   );
 
@@ -268,16 +259,11 @@ export function setUpRenderer(
   return rendererObj;
 }
 
-/**
- * Size the drawing buffer to the canvas's exact device px
- */
-export function resizeCanvas(
-  rendererObj: RendererObj,
-  widthPx: number,
-  heightPx: number,
-) {
-  rendererObj.renderer.setSize(widthPx, heightPx, false);
-  setErrorStatesPixelRatio(rendererObj.errorStatesMaterial, devicePixelRatio);
+export function handleResize(rendererObj: RendererObj) {
+  setErrorStatesPixelRatio(
+    rendererObj.errorStatesMaterial,
+    rendererObj.renderer.getPixelRatio(),
+  );
   const visibleRangeMs = store.get(visibleRangeAtom);
   if (visibleRangeMs) setVisibleRange(rendererObj, visibleRangeMs);
   render(rendererObj);

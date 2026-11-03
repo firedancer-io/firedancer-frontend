@@ -36,11 +36,7 @@ export default function HeaderTrack({ width }: HeaderTrackProps) {
       width="100%"
       height={`${trackHeight}px`}
     >
-      <AggHeaderTrack
-        className={styles.aggContainer}
-        width={width}
-        showAgg={showAgg}
-      />
+      <AggHeaderTrack className={styles.aggContainer} showAgg={showAgg} />
       <NonAggHeaderTrack
         className={styles.nonAggContainer}
         width={width}

@@ -1,4 +1,3 @@
-import { MAX_WEBGL_PX_RATIO } from "../../../consts.ts";
 import * as THREE from "three";
 import {
   createRectResources,
@@ -54,7 +53,6 @@ import {
 } from "./txnMesh.ts";
 
 const MIN_BAR_WIDTH_PX = 1;
-const tmpViewport = new THREE.Vector4();
 
 export interface RendererObj {
   renderer: THREE.WebGLRenderer;
@@ -93,18 +91,10 @@ export const isAggregate = (rangeMs: TsRange) => {
 };
 
 export function setUpRenderers(
-  canvasWidth: number,
-  canvasHeight: number,
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): RendererObj | undefined {
-  const rendererObj = createRenderer(
-    canvasWidth,
-    canvasHeight,
-    MAX_WEBGL_PX_RATIO,
-    setUpContextListeners,
-    getWasContextLost,
-  );
+  const rendererObj = createRenderer(setUpContextListeners, getWasContextLost);
   if (!rendererObj) return;
 
   const { renderer, cleanUpRenderer } = rendererObj;
@@ -419,7 +409,7 @@ export function refreshNonAggView(
   const visibleStartMs = cameraReferenceMs + camera.left;
   const visibleEndMs = cameraReferenceMs + camera.right;
 
-  const viewWidthPx = renderer.getCurrentViewport(tmpViewport).z || 1;
+  const viewWidthPx = renderer.domElement.width || 1;
   const minBarPx = Math.max(
     1,
     Math.round(MIN_BAR_WIDTH_PX * renderer.getPixelRatio()),
@@ -548,7 +538,7 @@ export function moveNonAggCamera(
 ) {
   const { camera, tileMeshes } = rendererObj.nonAggResources;
 
-  const viewWidthPx = rendererObj.renderer.getCurrentViewport(tmpViewport).z;
+  const viewWidthPx = rendererObj.renderer.domElement.width;
   const msPerPx = (visibleRangeMs[1] - visibleRangeMs[0]) / viewWidthPx;
   // Pan in whole device px so bars keep their spacing
   const cameraReferenceMs = viewWidthPx

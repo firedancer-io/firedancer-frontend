@@ -1,4 +1,3 @@
-import { MAX_WEBGL_PX_RATIO } from "../../../consts.ts";
 import * as THREE from "three";
 import {
   createRectResources,
@@ -19,7 +18,6 @@ import type { AggGranularity, AggSlots } from "../../../api/types.ts";
 import { calcRelativeMs } from "../utils.ts";
 import { getBucketColor } from "../slotUtils.ts";
 
-export const trackHeight = 10;
 const opacity = 1;
 const minY = 0;
 const maxY = 1;
@@ -44,18 +42,10 @@ export type RendererObj = {
  * Draw mini map into a single mesh that grows with ensureRectCapacity as needed
  */
 export function setUpRenderer(
-  canvasWidth: number,
-  canvasHeight: number,
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): RendererObj | undefined {
-  const rendererObj = createRenderer(
-    canvasWidth,
-    canvasHeight,
-    MAX_WEBGL_PX_RATIO,
-    setUpContextListeners,
-    getWasContextLost,
-  );
+  const rendererObj = createRenderer(setUpContextListeners, getWasContextLost);
   if (!rendererObj) return;
 
   const { renderer, cleanUpRenderer } = rendererObj;

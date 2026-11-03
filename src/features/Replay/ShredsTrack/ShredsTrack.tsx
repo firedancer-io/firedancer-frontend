@@ -1,8 +1,8 @@
 import { getDefaultStore } from "jotai";
-import { useRef, useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
-import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
+import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import { isAggregate, setUpRenderers } from "./utils.ts";
 import { drawAggShreds, moveAggCamera } from "./aggUtils.ts";
@@ -17,7 +17,6 @@ import {
   AGG_SHREDS_CHART_ID,
   NON_AGG_SHREDS_CHART_ID,
   shredEventSeries,
-  type RendererObj,
 } from "./const.ts";
 import { useAggShredsQuery, getAggGranularity } from "./useAggShredsQuery.ts";
 import { useNonAggShredsQuery } from "./useNonAggShredsQuery.ts";
@@ -38,21 +37,16 @@ import TrackControls from "../TrackControls.tsx";
 const height = 300;
 const store = getDefaultStore();
 
-interface ShredsTrackProps extends WebGlRemountProps {
-  width: number;
-}
-
-function ShredsTrack({ remount, width }: ShredsTrackProps) {
-  const [isInitialized, setIsInitialized] = useState(false);
+function ShredsTrack({ remount }: WebGlRemountProps) {
   const [granularity, setGranularity] = useState<
     AggGranularity | ShredsGranularity | undefined
   >(undefined);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<RendererObj | undefined>();
-
-  const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
+  const { containerRef, rendererRef } = useWebGlRenderer({
     remount,
+    create: ({ setUpContextListeners, getWasContextLost }) =>
+      setUpRenderers(setUpContextListeners, getWasContextLost),
+    onResize: () => renderActive(),
   });
 
   const { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes } =
@@ -74,7 +68,7 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
         );
       }
     },
-    [],
+    [rendererRef],
   );
 
   const { query: nonAggQuery, pauseStaleRefreshes: pauseStaleNonAggRefreshes } =
@@ -112,7 +106,7 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
       ? aggResources
       : nonAggResources;
     renderer.render(scene, camera);
-  }, []);
+  }, [rendererRef]);
 
   const moveCameraAndDrawNonAgg = useCallback(
     (visibleRange: TsRange) => {
@@ -137,7 +131,7 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
 
       renderActive();
     },
-    [renderActive],
+    [renderActive, rendererRef],
   );
 
   /**
@@ -161,7 +155,12 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
       // trigger a redraw immediately to hide trailing incomplete slots and prevent extended shreds.
       moveCameraAndDrawNonAgg(visibleRange);
     }
-  }, [moveCameraAndDrawNonAgg, renderActive, throttledRelativeTsQuery]);
+  }, [
+    moveCameraAndDrawNonAgg,
+    renderActive,
+    rendererRef,
+    throttledRelativeTsQuery,
+  ]);
 
   const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
@@ -172,7 +171,7 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
 
       drawAggShreds(rendererRef.current, referenceNs, visibleRange, aggShreds);
       renderActive();
-    }, [renderActive]),
+    }, [renderActive, rendererRef]),
     50,
     { leading: false, trailing: true },
   );
@@ -190,28 +189,14 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
         return;
 
       moveCameraAndDrawNonAgg(visibleRange);
-    }, [moveCameraAndDrawNonAgg]),
+    }, [moveCameraAndDrawNonAgg, rendererRef]),
     50,
     { leading: false, trailing: true },
   );
 
-  // set up renderer and subscribe to range change, to trigger queries
+  // subscribe to range change, to trigger queries
   useLayoutEffect(() => {
-    if (rendererRef.current || !containerRef.current) return;
-
-    const rendererObj = setUpRenderers(
-      0,
-      height,
-      setUpContextListeners,
-      getWasContextLost,
-    );
-    if (!rendererObj) return;
-
-    rendererRef.current = rendererObj;
-    containerRef.current.replaceChildren(rendererObj.renderer.domElement);
-
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
-    const cleanUpRenderer = rendererRef.current.cleanUp;
     // listen for agg shreds draw events
     const aggEmitter = store.get(aggShredsEmitterAtom);
     aggEmitter.addListener(drawEventType, throttledDrawAgg);
@@ -224,7 +209,6 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
     fecEmitter.addListener(drawEventType, throttledDrawNonAgg);
 
     // trigger initial draw
-    setIsInitialized(true);
     onRangeChange();
 
     // cleanup
@@ -236,24 +220,13 @@ function ShredsTrack({ remount, width }: ShredsTrackProps) {
       throttledDrawAgg.cancel();
       throttledDrawNonAgg.cancel();
       unsubscribeRange();
-      cleanUpRenderer();
-      rendererRef.current = undefined;
     };
   }, [
     onRangeChange,
-    setUpContextListeners,
-    getWasContextLost,
     throttledDrawAgg,
     throttledDrawNonAgg,
     throttledRelativeTsQuery,
   ]);
-
-  // handle chart resize
-  useLayoutEffect(() => {
-    if (!isInitialized || !rendererRef.current) return;
-    rendererRef.current.renderer.setSize(width, height);
-    renderActive();
-  }, [renderActive, width, isInitialized]);
 
   return (
     <div className={styles.trackContainer} style={{ height: `${height}px` }}>

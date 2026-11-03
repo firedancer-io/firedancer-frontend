@@ -7,7 +7,7 @@ import {
 } from "./consts.ts";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
-import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
+import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import {
   drawAggRevenue,
@@ -54,20 +54,14 @@ const store = getDefaultStore();
 const getNumRows = (splitByRow: boolean, tileCount: number) =>
   splitByRow ? Math.max(tileCount, 1) : 1;
 
-interface RevenueTrackProps {
-  width: number;
-}
-
-interface RevenueTrackBodyProps extends RevenueTrackProps, WebGlRemountProps {
+interface RevenueTrackBodyProps extends WebGlRemountProps {
   aggQuery: AggRevenueQuery;
 }
 
 function RevenueTrackBody({
   remount,
-  width,
   aggQuery: { query: aggQuery, pauseStaleRefreshes },
 }: RevenueTrackBodyProps) {
-  const [isInitialized, setIsInitialized] = useState(false);
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
   );
@@ -80,18 +74,23 @@ function RevenueTrackBody({
   const isAggCurrentRef = useRef(isAgg);
   const isAggPreviousRef = useRef(isAgg);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<RendererObj | undefined>();
+  const { containerRef, rendererRef } = useWebGlRenderer({
+    remount,
+    create: ({ setUpContextListeners, getWasContextLost }) =>
+      setUpRenderers(setUpContextListeners, getWasContextLost),
+    onResize: (rendererObj) => {
+      const visibleRangeMs = store.get(visibleRangeAtom);
+      if (!isAggCurrentRef.current && visibleRangeMs)
+        moveNonAggCamera(rendererObj, visibleRangeMs);
+      renderActive();
+    },
+  });
 
   const referenceNs = useAtomValue(referenceNsAtom);
   const getRelativeMs = useCallback(
     (absoluteNs: bigint) => calcRelativeMs(referenceNs ?? 0n, absoluteNs),
     [referenceNs],
   );
-
-  const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
-    remount,
-  });
 
   const txnMetaQuery = useTileCacheQuery(txnMetaCache);
   const execrpCount = useAtomValue(tileCountAtom).execrp;
@@ -167,7 +166,7 @@ function RevenueTrackBody({
     const { aggResources, nonAggResources } = renderer;
     const { camera, scene } = agg ? aggResources : nonAggResources;
     renderer.renderer.render(scene, camera);
-  }, []);
+  }, [rendererRef]);
 
   /**
    * Query data for new range and optionally update camera.
@@ -195,7 +194,7 @@ function RevenueTrackBody({
 
       if (updateView) renderActive();
     },
-    [renderActive, throttledRangeQuery],
+    [renderActive, rendererRef, throttledRangeQuery],
   );
 
   const throttledDrawAgg = useThrottledCallbackIfVisible(
@@ -215,40 +214,25 @@ function RevenueTrackBody({
       );
       setAggAxisMax(maxValue);
       renderActive();
-    }, [renderActive, type, opts.scale]),
+    }, [rendererRef, type, opts.scale, renderActive]),
     50,
     { leading: false, trailing: true },
   );
 
-  // set up renderer and subscribe to range change, to trigger queries
+  // subscribe to range change, to trigger queries
   useLayoutEffect(() => {
-    if (rendererRef.current || !containerRef.current) return;
-
-    const rendererObj = setUpRenderers(
-      0,
-      revenueTrackHeight,
-      setUpContextListeners,
-      getWasContextLost,
-    );
-    if (!rendererObj) return;
-
-    rendererRef.current = rendererObj;
-    containerRef.current.replaceChildren(rendererObj.renderer.domElement);
-
     const unsubscribeVisible = store.sub(visibleRangeAtom, () =>
       onRangeChange(true),
     );
     const unsubscribeWorld = store.sub(worldRangeAtom, () =>
       onRangeChange(false),
     );
-    const cleanUpRenderer = rendererRef.current.cleanUp;
 
     // listen for agg revenue draw events
     const aggEmitter = store.get(aggRevenueEmitterAtom);
     aggEmitter.addListener(drawEventType, throttledDrawAgg);
 
     // trigger initial draw
-    setIsInitialized(true);
     onRangeChange(true);
 
     // cleanup
@@ -259,26 +243,8 @@ function RevenueTrackBody({
       throttledRangeQuery.cancel();
       unsubscribeVisible();
       unsubscribeWorld();
-      cleanUpRenderer();
-      rendererRef.current = undefined;
     };
-  }, [
-    onRangeChange,
-    setUpContextListeners,
-    getWasContextLost,
-    throttledDrawAgg,
-    throttledRangeQuery,
-  ]);
-
-  // handle chart resize
-  useLayoutEffect(() => {
-    if (!isInitialized || !rendererRef.current) return;
-    rendererRef.current.renderer.setSize(width, revenueTrackHeight);
-    const visibleRangeMs = store.get(visibleRangeAtom);
-    if (!isAggCurrentRef.current && visibleRangeMs)
-      moveNonAggCamera(rendererRef.current, visibleRangeMs);
-    renderActive();
-  }, [renderActive, width, isInitialized]);
+  }, [onRangeChange, throttledDrawAgg, throttledRangeQuery]);
 
   // Trigger refresh for agg mode entry or a scale/type change.
   useLayoutEffect(() => {
@@ -319,7 +285,7 @@ function RevenueTrackBody({
       // Only render on delta updates when non aggregate view is active
       if (!isAggCurrentRef.current) renderActive();
     },
-    [getRelativeMs, renderActive],
+    [getRelativeMs, renderActive, rendererRef],
   );
 
   useTileCacheSubscription(txnMetaCache, onCacheDelta);
@@ -347,9 +313,9 @@ function RevenueTrackBody({
 }
 
 const RevenueTrackBodyWithRemount = withWebGlRemount(RevenueTrackBody);
-export default function RevenueTrack(props: RevenueTrackProps) {
+export default function RevenueTrack() {
   const aggQuery = useAggRevenueQuery();
   useTxnMetaCache();
 
-  return <RevenueTrackBodyWithRemount aggQuery={aggQuery} {...props} />;
+  return <RevenueTrackBodyWithRemount aggQuery={aggQuery} />;
 }

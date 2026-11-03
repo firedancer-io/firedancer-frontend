@@ -1,5 +1,5 @@
 import type * as THREE from "three";
-import type { RectMesh, RectResources, TsRange } from "../WebGl/webglUtils";
+import type { RectMesh, RectResources } from "../WebGl/webglUtils";
 
 export type RendererObj<MeshKey extends string | number = number> = {
   renderer: THREE.WebGLRenderer;
@@ -7,10 +7,9 @@ export type RendererObj<MeshKey extends string | number = number> = {
   scene: THREE.Scene;
   meshes: Map<MeshKey, RectMesh>;
   availableMeshes: RectMesh[];
-  worldTsRange: TsRange;
   // resources shared by this renderer's slot meshes
   resources: RectResources;
-  cleanUpRenderer: () => void;
+  cleanUp: () => void;
 };
 
 export type ShredEventTsDeltaMs = number | undefined;
