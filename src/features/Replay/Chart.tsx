@@ -157,11 +157,11 @@ export default function Chart() {
             <ResetLiveButton />
 
             <Flex direction="column" gap="6px">
-              <ShredsTrack width={width} />
-              <RevenueTrack width={width} />
+              <ShredsTrack />
+              <RevenueTrack />
               <TileStatesTrack kind="execrp" />
               <TileStatesTrack kind="replay" />
-              <CpuTrack width={width} />
+              <CpuTrack />
             </Flex>
 
             <HoverOverlay />

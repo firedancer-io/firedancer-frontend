@@ -1,15 +1,8 @@
-import { useRef, useCallback, useLayoutEffect, useState } from "react";
+import { useRef, useCallback, useLayoutEffect } from "react";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
-import { useWebGlEventHandlers } from "../../WebGl/useWebGlEventHandlers.ts";
+import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
-import {
-  drawMiniMap,
-  trackHeight,
-  moveCamera,
-  render,
-  setUpRenderer,
-  type RendererObj,
-} from "./utils.ts";
+import { drawMiniMap, moveCamera, render, setUpRenderer } from "./utils.ts";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
 import useMiniMapQuery, { getMiniMapGranularity } from "./useMiniMapQuery.ts";
 import type { AggSlots } from "../../../api/types.ts";
@@ -39,28 +32,29 @@ interface MiniMapProps extends WebGlRemountProps {
 }
 
 function MiniMap({ remount, setUpMiniMap, width, panToTs }: MiniMapProps) {
-  const [isInitialized, setIsInitialized] = useState(false);
-
   const popoverContainerEl = useAtomValue(containerElAtom);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartContainerRef = useRef<HTMLDivElement>(null);
   const visibleRangeElRef = useRef<HTMLDivElement>(null);
   const leftHandleRef = useRef<HTMLDivElement>(null);
   const rightHandleRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<RendererObj | undefined>();
-
-  const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
+  const { containerRef: chartContainerRef, rendererRef } = useWebGlRenderer({
     remount,
+    create: ({ setUpContextListeners, getWasContextLost }) =>
+      setUpRenderer(setUpContextListeners, getWasContextLost),
+    onResize: (rendererObj) => render(rendererObj),
   });
 
-  const onMessage = useCallback((message: { id: number; value: AggSlots }) => {
-    const referenceNs = store.get(referenceNsAtom);
-    if (!rendererRef.current || referenceNs == null) return;
+  const onMessage = useCallback(
+    (message: { id: number; value: AggSlots }) => {
+      const referenceNs = store.get(referenceNsAtom);
+      if (!rendererRef.current || referenceNs == null) return;
 
-    drawMiniMap(rendererRef.current, message.value, referenceNs);
-    render(rendererRef.current);
-  }, []);
+      drawMiniMap(rendererRef.current, message.value, referenceNs);
+      render(rendererRef.current);
+    },
+    [rendererRef],
+  );
 
   const query = useMiniMapQuery(onMessage);
 
@@ -97,7 +91,7 @@ function MiniMap({ remount, setUpMiniMap, width, panToTs }: MiniMapProps) {
       moveCamera(rendererRef.current, worldRangeMs);
       render(rendererRef.current);
     },
-    [query],
+    [query, rendererRef],
   );
 
   /**
@@ -118,31 +112,18 @@ function MiniMap({ remount, setUpMiniMap, width, panToTs }: MiniMapProps) {
       }
       updateVisibleEl(visibleRange, worldRange);
     },
-    [updateVisibleEl, updateWorldEl],
+    [rendererRef, updateVisibleEl, updateWorldEl],
   );
 
-  // set up renderer and subscribe to range change, to trigger queries
+  // subscribe to range change, to trigger queries
   useLayoutEffect(() => {
     if (
-      rendererRef.current ||
       !containerRef.current ||
-      !chartContainerRef.current ||
       !visibleRangeElRef.current ||
       !leftHandleRef.current ||
       !rightHandleRef.current
     )
       return;
-
-    const rendererObj = setUpRenderer(
-      0,
-      trackHeight,
-      setUpContextListeners,
-      getWasContextLost,
-    );
-    if (!rendererObj) return;
-
-    rendererRef.current = rendererObj;
-    chartContainerRef.current.replaceChildren(rendererObj.renderer.domElement);
 
     const unsubscribes = [
       store.sub(visibleRangeAtom, () => onRangeChange(true)),
@@ -156,10 +137,7 @@ function MiniMap({ remount, setUpMiniMap, width, panToTs }: MiniMapProps) {
       rightHandleRef.current,
     );
 
-    const cleanUpRenderer = rendererRef.current.cleanUp;
-
     // trigger initial draw
-    setIsInitialized(true);
     onRangeChange(false);
 
     // cleanup
@@ -167,24 +145,9 @@ function MiniMap({ remount, setUpMiniMap, width, panToTs }: MiniMapProps) {
       // cancel pending trailing timers so they don't accumulate across remounts
       updateVisibleEl.cancel();
       unsubscribes.forEach((unsub) => unsub());
-      cleanUpRenderer();
-      rendererRef.current = undefined;
       cleanUpMiniMapListeners();
     };
-  }, [
-    onRangeChange,
-    setUpContextListeners,
-    getWasContextLost,
-    setUpMiniMap,
-    updateVisibleEl,
-  ]);
-
-  // handle chart resize
-  useLayoutEffect(() => {
-    if (!isInitialized || !rendererRef.current) return;
-    rendererRef.current.renderer.setSize(width, trackHeight);
-    render(rendererRef.current);
-  }, [isInitialized, width]);
+  }, [onRangeChange, setUpMiniMap, updateVisibleEl]);
 
   return (
     <Box ref={containerRef} className={styles.miniMapContainer}>

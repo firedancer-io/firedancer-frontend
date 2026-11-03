@@ -50,18 +50,12 @@ void main() {
 const store = getDefaultStore();
 
 export function createRenderer(
-  canvasWidth: number,
-  canvasHeight: number,
-  maxWebGlPixelRatio: number,
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
   antialias = true,
-  pixelRatio = Math.min(window.devicePixelRatio, maxWebGlPixelRatio),
 ) {
   try {
     const renderer = new THREE.WebGLRenderer({ antialias, alpha: true });
-    renderer.setPixelRatio(pixelRatio);
-    renderer.setSize(canvasWidth, canvasHeight);
     renderer.setClearColor(0x000000, 0);
 
     const clearContextListeners = setUpContextListeners(renderer.domElement);

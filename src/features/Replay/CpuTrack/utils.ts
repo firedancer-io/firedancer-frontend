@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { uniq } from "lodash";
-import { MAX_WEBGL_PX_RATIO } from "../../../consts.ts";
 import type { Tile } from "../../../api/types.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import {
@@ -21,6 +20,8 @@ import {
 } from "./sparklineMaterial.ts";
 import { getAggGranularity } from "./useAggCpuQuery.ts";
 
+const tmpSize = new THREE.Vector2();
+
 export interface RendererObj {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
@@ -38,13 +39,7 @@ export function setUpRenderer(
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): RendererObj | undefined {
-  const created = createRenderer(
-    0,
-    0,
-    MAX_WEBGL_PX_RATIO,
-    setUpContextListeners,
-    getWasContextLost,
-  );
+  const created = createRenderer(setUpContextListeners, getWasContextLost);
   if (!created) return;
 
   const { renderer, cleanUpRenderer } = created;
@@ -91,12 +86,8 @@ export function setUpRenderer(
   };
 }
 
-export function resizeRenderer(
-  rendererObj: RendererObj,
-  width: number,
-  height: number,
-) {
-  rendererObj.renderer.setSize(width, height);
+export function resizeRenderer(rendererObj: RendererObj) {
+  const { x: width, y: height } = rendererObj.renderer.getSize(tmpSize);
   (rendererObj.material.uniforms.uResolution.value as THREE.Vector2).set(
     width,
     height,

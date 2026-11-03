@@ -1,6 +1,5 @@
 import { msBucketSizes, nsBucketSizes } from "../const";
 import * as THREE from "three";
-import { MAX_WEBGL_PX_RATIO } from "../../../consts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers";
 import {
   createRectResources,
@@ -55,18 +54,10 @@ function getBucketColor(
 }
 
 export function setUpRenderers(
-  canvasWidth: number,
-  canvasHeight: number,
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): RendererObj | undefined {
-  const rendererObj = createRenderer(
-    canvasWidth,
-    canvasHeight,
-    MAX_WEBGL_PX_RATIO,
-    setUpContextListeners,
-    getWasContextLost,
-  );
+  const rendererObj = createRenderer(setUpContextListeners, getWasContextLost);
   if (!rendererObj) return;
 
   const { renderer, cleanUpRenderer } = rendererObj;

@@ -1,12 +1,5 @@
 import * as THREE from "three";
-import { getDefaultStore } from "jotai";
-import { smoothedNowNsAtom } from "../../../atoms";
-import { xRangeMs } from "../const";
-import { shredsAtoms } from "../../Overview/ShredsProgression/atoms";
-import { getDelayedNowNs } from "../../Overview/ShredsProgression/utils";
-import { calcRelativeMs } from "../../Replay/utils";
-import { MAX_WEBGL_PX_RATIO, msPerDay } from "../../../consts";
-import type { RectMesh, TsRange } from "../../WebGl/webglUtils";
+import type { RectMesh } from "../../WebGl/webglUtils";
 import {
   createRectResources,
   createRenderer,
@@ -15,8 +8,6 @@ import {
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers";
 import type { RendererObj } from "../types";
 import { SHREDS_OPACITY } from "./const";
-
-const store = getDefaultStore();
 
 export function setUpRendererResources<MeshKey extends string | number>(
   getWasContextLost: ContextHelpers["getWasContextLost"],
@@ -55,35 +46,11 @@ export function setUpRendererResources<MeshKey extends string | number>(
   };
 }
 
-/**
- * Set up renderer world, setup according to shred reference ts
- */
 export function setUpLiveRenderer(
-  canvasWidth: number,
-  canvasHeight: number,
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): RendererObj | undefined {
-  const smoothedNowNs = store.get(smoothedNowNsAtom);
-  if (smoothedNowNs == null) return;
-
-  const delayedNowNs = getDelayedNowNs(smoothedNowNs);
-
-  const referenceTs = store.get(shredsAtoms.slotsShreds)?.referenceTs;
-  if (referenceTs == null) return;
-
-  const worldStartTs = calcRelativeMs(referenceTs, delayedNowNs) - xRangeMs;
-  const worldEndTs = worldStartTs + 365 * msPerDay;
-  // store world range for future pause / pan
-  const worldTsRange: TsRange = [worldStartTs, worldEndTs];
-
-  const rendererObj = createRenderer(
-    canvasWidth,
-    canvasHeight,
-    MAX_WEBGL_PX_RATIO,
-    setUpContextListeners,
-    getWasContextLost,
-  );
+  const rendererObj = createRenderer(setUpContextListeners, getWasContextLost);
   if (!rendererObj) return;
 
   const { renderer, cleanUpRenderer: cleanUpRendererContext } = rendererObj;
@@ -98,7 +65,7 @@ export function setUpLiveRenderer(
 
   renderer.render(scene, camera);
 
-  const cleanUpRenderer = () => {
+  const cleanUp = () => {
     cleanUpResources();
     cleanUpRendererContext();
   };
@@ -109,8 +76,7 @@ export function setUpLiveRenderer(
     scene,
     meshes,
     availableMeshes,
-    worldTsRange,
     resources,
-    cleanUpRenderer,
+    cleanUp,
   };
 }
