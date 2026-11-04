@@ -11,7 +11,10 @@ import { createMessageHandler } from "./messageHandler";
 const reconnectDelayMs = 3_000;
 const flushDelayMs = 32; // ~30fps
 
-const transferableKeys: WsEntity["key"][] = ["query_tile_states"];
+const transferableKeys: WsEntity["key"][] = [
+  "query_tile_states",
+  "query_shreds",
+];
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 let ws: WebSocket | null = null;
