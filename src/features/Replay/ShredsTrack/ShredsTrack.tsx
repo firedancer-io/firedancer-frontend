@@ -8,10 +8,12 @@ import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import { isAggregate, setUpRenderers } from "./utils.ts";
 import { drawAggShreds, moveAggCamera } from "./aggUtils.ts";
 import {
+  drawHoveredShred,
   drawNonAggShreds,
   getNonAggGranularity,
   getSlotMeshKey,
   moveNonAggCamera,
+  getShredAtPosition,
 } from "./nonAggUtils.ts";
 import { releaseMesh } from "../../Shreds/WebGl/drawUtils.ts";
 import {
@@ -32,11 +34,17 @@ import {
   timelineShredsAtoms,
   timelineFecShredsAtoms,
 } from "./atoms.ts";
-import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
+import {
+  hoveredShredAtom,
+  referenceNsAtom,
+  visibleRangeAtom,
+  worldRangeAtom,
+} from "../atoms.ts";
 import styles from "../track.module.css";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import TrackControls from "../TrackControls.tsx";
 import { trackNames } from "../layout.ts";
+import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
 
 const store = getDefaultStore();
 
@@ -47,6 +55,29 @@ function isShredsGranularity(
     granularity === ShredsGranularityEnum.shred ||
     granularity === ShredsGranularityEnum.fec
   );
+}
+
+function clientXToTs(rect: HoveredRect, clientX: number, range: TsRange) {
+  const fraction = (clientX - rect.left) / rect.width;
+  return range[0] + fraction * (range[1] - range[0]);
+}
+
+/**
+ * Map a clientY to a camera-space world Y. The camera spans [`cameraTop` (top),
+ * `cameraBottom` (= -maxShreds, bottom)], matching the drawn rects' Y.
+ */
+function clientYToWorldY(
+  rect: HoveredRect,
+  clientY: number,
+  cameraTop: number,
+  cameraBottom: number,
+) {
+  const fraction = (clientY - rect.top) / rect.height;
+  return cameraTop + fraction * (cameraBottom - cameraTop);
+}
+
+function clearHoveredShred() {
+  store.set(hoveredShredAtom, undefined);
 }
 
 function ShredsTrack({ remount }: WebGlRemountProps) {
@@ -60,6 +91,43 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       setUpRenderers(setUpContextListeners, getWasContextLost),
     onResize: () => redrawActive(),
   });
+
+  /**
+   * throttle shred hit-test
+   */
+  const throttledResolveHoverShred = useThrottledCallback(
+    (clientX: number, clientY: number, rect: HoveredRect) => {
+      const renderer = rendererRef.current;
+      if (!renderer) return;
+
+      const visibleRange = store.get(visibleRangeAtom);
+      if (!visibleRange) {
+        clearHoveredShred();
+        return;
+      }
+
+      const ts = clientXToTs(rect, clientX, visibleRange);
+      const { camera } = renderer.nonAggResources;
+      const worldY = clientYToWorldY(rect, clientY, camera.top, camera.bottom);
+      const hitShred = isAggregate(visibleRange)
+        ? undefined
+        : getShredAtPosition(ts, worldY, renderer.nonAggResources);
+
+      store.set(hoveredShredAtom, hitShred);
+    },
+    30,
+  );
+
+  const onHoverLeave = useCallback(() => {
+    throttledResolveHoverShred.cancel();
+    clearHoveredShred();
+  }, [throttledResolveHoverShred]);
+
+  const { setContainer: setHoverContainer, notifyChange: notifyHover } =
+    useHoveredPosition({
+      onHoverChange: throttledResolveHoverShred,
+      onHoverLeave,
+    });
 
   const { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes } =
     useAggShredsQuery(AGG_SHREDS_CHART_ID);
@@ -75,11 +143,15 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
         availableMeshes,
         edgeMeshes,
         availableEdgeMeshes,
+        lastDrawInfo,
       } = rendererRef.current.nonAggResources;
       for (const slotNumber of slotNumbers) {
         const key = getSlotMeshKey(granularity, slotNumber);
         releaseMesh(scene, meshes, availableMeshes, key);
         releaseMesh(scene, edgeMeshes, availableEdgeMeshes, key);
+        // drop the recorded edge so the rebuilt mesh re-records against the
+        // current draw edge instead of reusing the stale one
+        lastDrawInfo?.incompleteRightEdges.delete(key);
       }
     },
     [rendererRef],
@@ -116,9 +188,16 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     const visibleRange = store.get(visibleRangeAtom);
     if (!visibleRange) return;
 
-    const { camera, scene } = isAggregate(visibleRange)
-      ? aggResources
-      : nonAggResources;
+    const isAgg = isAggregate(visibleRange);
+    if (isAgg) {
+      // renderer will replace scene, so clear last draw info
+      nonAggResources.lastDrawInfo = undefined;
+      // clear highlight so it won't reappear when we return to non-agg
+      drawHoveredShred(nonAggResources, undefined, visibleRange);
+      clearHoveredShred();
+    }
+
+    const { camera, scene } = isAgg ? aggResources : nonAggResources;
     renderer.render(scene, camera);
   }, [rendererRef]);
 
@@ -145,9 +224,16 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
         worldRange,
       );
 
+      drawHoveredShred(
+        rendererRef.current.nonAggResources,
+        store.get(hoveredShredAtom),
+        visibleRange,
+      );
+
       requestRender();
+      notifyHover();
     },
-    [requestRender, rendererRef],
+    [requestRender, notifyHover, rendererRef],
   );
 
   // Redraw the currently-active view without refetching
@@ -156,11 +242,11 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     if (!visibleRange) return;
     if (isAggregate(visibleRange)) {
       // agg has no size-dependent uniforms, so a plain render suffices
-      renderActive();
+      requestRender();
     } else {
       moveCameraAndDrawNonAgg(visibleRange);
     }
-  }, [moveCameraAndDrawNonAgg, renderActive]);
+  }, [moveCameraAndDrawNonAgg, requestRender]);
 
   /**
    * Update camera and query data for new range
@@ -225,6 +311,29 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
   // subscribe to range change, to trigger queries
   useLayoutEffect(() => {
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
+
+    const unsubscribeHover = store.sub(hoveredShredAtom, () => {
+      if (!rendererRef.current) return;
+      const visibleRange = store.get(visibleRangeAtom);
+      if (!visibleRange) return;
+
+      if (isAggregate(visibleRange)) {
+        drawHoveredShred(
+          rendererRef.current.nonAggResources,
+          undefined,
+          visibleRange,
+        );
+        return;
+      }
+
+      drawHoveredShred(
+        rendererRef.current.nonAggResources,
+        store.get(hoveredShredAtom),
+        visibleRange,
+      );
+      requestRender();
+    });
+
     // listen for agg shreds draw events
     const aggEmitter = store.get(aggShredsEmitterAtom);
     aggEmitter.addListener(drawEventType, throttledDrawAgg);
@@ -236,6 +345,8 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     shredEmitter.addListener(drawEventType, throttledDrawNonAgg);
     fecEmitter.addListener(drawEventType, throttledDrawNonAgg);
 
+    setHoverContainer(containerRef.current);
+
     // trigger initial draw
     onRangeChange();
 
@@ -244,16 +355,24 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       aggEmitter.removeListener(drawEventType, throttledDrawAgg);
       shredEmitter.removeListener(drawEventType, throttledDrawNonAgg);
       fecEmitter.removeListener(drawEventType, throttledDrawNonAgg);
+      setHoverContainer(null);
+      onHoverLeave();
       throttledRelativeTsQuery.cancel();
       throttledDrawAgg.cancel();
       throttledDrawNonAgg.cancel();
       unsubscribeRange();
+      unsubscribeHover();
     };
   }, [
     onRangeChange,
     throttledDrawAgg,
     throttledDrawNonAgg,
     throttledRelativeTsQuery,
+    setHoverContainer,
+    onHoverLeave,
+    rendererRef,
+    containerRef,
+    requestRender,
   ]);
 
   return (

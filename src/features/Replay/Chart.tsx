@@ -18,6 +18,8 @@ import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
 import Tracks from "./Tracks.tsx";
 import HoverOverlay from "./HoverOverlay.tsx";
 import HoveredTsLine from "./HoveredTsLine.tsx";
+import ReplayTooltip from "./ReplayTooltip.tsx";
+import { useHoveredPosition, type HoveredRect } from "./useHoveredPosition.ts";
 
 const store = getDefaultStore();
 
@@ -35,93 +37,44 @@ export default function Chart() {
 
   const { setUpExploreListeners, setUpMiniMap, panToTs } = useExplorableChart();
 
-  // Track the cursor over the whole tracks container and report its ms position
-  // as the hovered ts. Re-resolve when the visible range shifts (e.g. live mode)
-  // or the container resizes, even if the cursor doesn't move.
-  const tracksContainerRef = useRef<HTMLDivElement | null>(null);
-  const lastClientPosRef = useRef<{ x: number; y: number }>();
-  // cache rect because getBoundingClientRect() forces a synchronous layout
-  const containerRectRef = useRef<{ left: number; width: number }>();
-
-  const updateHoveredTs = useCallback(() => {
-    const rect = containerRectRef.current;
-    const visibleRange = store.get(visibleRangeAtom);
-    const clientPos = lastClientPosRef.current;
-
-    if (clientPos == null || !rect || rect.width === 0 || !visibleRange) {
-      store.set(clearHoverInfoAtom, hoverOwner);
-      return;
-    }
-
-    const fraction = (clientPos.x - rect.left) / rect.width;
-    const cursorMs =
-      visibleRange[0] + fraction * (visibleRange[1] - visibleRange[0]);
-
-    store.set(setHoverInfoAtom, {
-      owner: hoverOwner,
-      cursorMs,
-      clientPos,
-    });
-  }, []);
-
-  // Recompute the cached container rect, then re-resolve the hovered ts so a
-  // resize still shifts the spotlight under a stationary cursor.
-  const refreshContainerAndHover = useCallback(() => {
-    const container = tracksContainerRef.current;
-    if (!container) return;
-
-    const rect = container.getBoundingClientRect();
-    containerRectRef.current = { left: rect.left, width: rect.width };
-    updateHoveredTs();
-  }, [updateHoveredTs]);
-
-  const onMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      // Clear hover state if over a portaled element outside this container subtree
-      if (!e.currentTarget.contains(e.target as Node)) {
-        lastClientPosRef.current = undefined;
+  const onHoverChange = useCallback(
+    (clientX: number, clientY: number, rect: HoveredRect) => {
+      const visibleRange = store.get(visibleRangeAtom);
+      if (rect.width === 0 || !visibleRange) {
         store.set(clearHoverInfoAtom, hoverOwner);
         return;
       }
-      lastClientPosRef.current = { x: e.clientX, y: e.clientY };
-      updateHoveredTs();
+
+      const fraction = (clientX - rect.left) / rect.width;
+      const cursorMs =
+        visibleRange[0] + fraction * (visibleRange[1] - visibleRange[0]);
+
+      store.set(setHoverInfoAtom, {
+        owner: hoverOwner,
+        cursorMs,
+        clientPos: { x: clientX, y: clientY },
+      });
     },
-    [updateHoveredTs],
+    [],
   );
 
-  const onMouseLeave = useCallback(() => {
-    lastClientPosRef.current = undefined;
+  const onHoverLeave = useCallback(() => {
     store.set(clearHoverInfoAtom, hoverOwner);
   }, []);
 
-  const cleanUpListenersRef = useRef<(() => void) | null>(null);
+  const { setContainer: setHoverContainer } = useHoveredPosition({
+    onHoverChange,
+    onHoverLeave,
+  });
+
+  const cleanUpExploreRef = useRef<(() => void) | null>(null);
   const setTracksContainerRef = useCallback(
     (el: HTMLDivElement | null) => {
-      tracksContainerRef.current = el;
-      cleanUpListenersRef.current?.();
-
-      if (!el) {
-        cleanUpListenersRef.current = null;
-        return;
-      }
-
-      // update hovered ts if visible range shifts, even if cursor doesn't move
-      const unsubscribeRange = store.sub(visibleRangeAtom, updateHoveredTs);
-      const cleanUpExplore = setUpExploreListeners(el);
-
-      refreshContainerAndHover();
-      const rectObserver = new ResizeObserver(refreshContainerAndHover);
-      rectObserver.observe(el);
-      window.addEventListener("resize", refreshContainerAndHover);
-
-      cleanUpListenersRef.current = () => {
-        cleanUpExplore();
-        unsubscribeRange();
-        rectObserver.disconnect();
-        window.removeEventListener("resize", refreshContainerAndHover);
-      };
+      setHoverContainer(el);
+      cleanUpExploreRef.current?.();
+      cleanUpExploreRef.current = el ? setUpExploreListeners(el) : null;
     },
-    [setUpExploreListeners, updateHoveredTs, refreshContainerAndHover],
+    [setUpExploreListeners, setHoverContainer],
   );
 
   useLayoutEffect(() => {
@@ -151,8 +104,6 @@ export default function Chart() {
             position="relative"
             flexGrow="1"
             minHeight="0"
-            onMouseMove={onMouseMove}
-            onMouseLeave={onMouseLeave}
           >
             <HeaderTrack width={width} />
             <ResetLiveButton />
@@ -161,6 +112,7 @@ export default function Chart() {
 
             <HoverOverlay />
             <HoveredTsLine />
+            <ReplayTooltip />
           </Flex>
         </>
       )}

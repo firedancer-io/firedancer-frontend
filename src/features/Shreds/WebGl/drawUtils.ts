@@ -1,12 +1,12 @@
 import type * as THREE from "three";
 import { ShredEvent } from "../../../api/entities";
-import { delayMs } from "../const";
 import type { ShredEventTsDeltas, Slot } from "../types";
 import type { DrawableSlot } from "../chartUtils";
 import {
   shredEventDescPriorities,
   SKIPPED_SLOT_DOT_DURATION_MS,
   SHREDS_PER_FEC_SET,
+  delayMs as defaultDelayMs,
 } from "../const";
 import { colors } from "./const";
 import {
@@ -29,6 +29,13 @@ export const tempEventPositions = new Map<
   Exclude<ShredEvent, ShredEvent.slot_complete>,
   { x: number; w: number }
 >();
+
+export function getIncompleteSlotRightEdge(
+  drawRangeEndMs: number,
+  delayMs: number,
+): number {
+  return drawRangeEndMs + delayMs;
+}
 
 /**
  * Remove a mesh from the scene and return it to the pool for reuse.
@@ -64,6 +71,8 @@ export function drawSlotShreds(
   isSlotDirty?: (slotNumber: number) => boolean,
   // optionally add a left-edge mark on each row
   getEdgeMesh?: (drawSlot: DrawableSlot) => RectMesh,
+  // ms an incomplete slot extends past the draw range's right edge
+  delayMs = defaultDelayMs,
 ): boolean {
   const xChanged = updateCameraXRange(
     [
@@ -96,6 +105,7 @@ export function drawSlotShreds(
       isFec ? SHREDS_PER_FEC_SET : 1,
       cameraReferenceMs,
       getEdgeMesh?.(drawSlot),
+      delayMs,
     );
     anythingDrawn ||= drawn;
   }
@@ -115,6 +125,7 @@ export function drawSingleSlotShreds(
   cameraReferenceMs = 0,
   // optionally add a left-edge mark on each row
   edgeMesh?: RectMesh,
+  delayMs = defaultDelayMs,
 ): boolean {
   let anythingDrawn = false;
 
@@ -140,6 +151,7 @@ export function drawSingleSlotShreds(
       visibleTsRange: visibleTsRangeWithOverscan,
       cameraReferenceMs,
       edgeMeshCount,
+      delayMs,
     });
     rectangleIdx += rectanglesAdded;
     if (rectanglesAdded) {
@@ -202,6 +214,9 @@ export interface AddEventsForRowArgs {
   cameraReferenceMs?: number;
   // optionally add a left-edge mark on each row
   edgeMeshCount?: EdgeMeshCount;
+  /** ms an incomplete slot extends past the draw range's right edge */
+  delayMs?: number;
+  colorOverride?: RgbColor;
 }
 
 /**
@@ -221,11 +236,14 @@ export function addEventsForRow({
   visibleTsRange,
   cameraReferenceMs = 0,
   edgeMeshCount,
+  delayMs = defaultDelayMs,
+  colorOverride,
 }: AddEventsForRowArgs) {
   let endTs: number =
     slotCompletionTsDelta == null
       ? // event goes to max x
-        visibleTsRange[1] + delayMs - cameraReferenceMs
+        getIncompleteSlotRightEdge(visibleTsRange[1], delayMs) -
+        cameraReferenceMs
       : slotCompletionTsDelta - cameraReferenceMs;
 
   // draw events from highest to lowest priority
@@ -248,11 +266,9 @@ export function addEventsForRow({
   // left x of the earliest drawn event rectangle in this row, for the edge mark
   let firstEventX = Infinity;
   for (const [eventType, { x, w }] of tempEventPositions.entries()) {
-    const color = getShredEventColor(
-      isSlotSkipped,
-      eventType,
-      tempEventPositions,
-    );
+    const color =
+      colorOverride ??
+      getShredEventColor(isSlotSkipped, eventType, tempEventPositions);
 
     // unknown event type, skip it
     if (color == null) continue;
