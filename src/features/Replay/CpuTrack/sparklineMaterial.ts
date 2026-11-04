@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { tileBusyGreenColor, tileBusyRedColor } from "../../../colors";
 import { convertToWebGlColor, glslFloat } from "../../WebGl/webglUtils";
-import { MAX_UTILIZATION, rowPaddingPx } from "./const";
+import { MAX_UTILIZATION } from "./const";
 
 /**
  * Single channel float texture where texel (col, row) holds the value of point
@@ -32,20 +32,20 @@ uniform vec2 uResolution;
 uniform float uHalfWidth;
 uniform float uRowStride;
 uniform float uPlotHeight;
+uniform float uRowPad;
 
 in vec2 position;
 out float vUtil;
 
 const float EMPTY = ${glslFloat(EMPTY_UTILIZATION)};
 const float MAX_UTIL = ${glslFloat(MAX_UTILIZATION)};
-const float ROW_PAD = ${glslFloat(rowPaddingPx)};
 
 float readUtil(int row, int pointIdx) {
   return texelFetch(uData, ivec2(pointIdx + 1, row), 0).r;
 }
 
 float toWorldY(int row, float util) {
-  return -(float(row) * uRowStride + ROW_PAD + uPlotHeight * (1.0 - util / MAX_UTIL));
+  return -(float(row) * uRowStride + uRowPad + uPlotHeight * (1.0 - util / MAX_UTIL));
 }
 
 void main() {
@@ -128,6 +128,7 @@ export function createSparklineMaterial(
       uHalfWidth: { value: strokeWidthPx / 2 },
       uRowStride: { value: 0 },
       uPlotHeight: { value: 0 },
+      uRowPad: { value: 0 },
       uIdleColor: {
         value: new THREE.Vector3(...convertToWebGlColor(tileBusyGreenColor)),
       },

@@ -20,7 +20,7 @@ export const TRACK_GAP_PX = 6;
 export const TRACK_TITLE_PX = 20;
 const MIN_TRACK_PX = 40;
 const MAX_GAP_FRACTION = 1 / 4;
-const ROW_LABEL_PX = 13;
+export const ROW_LABEL_PX = 13;
 
 const baseSharePct: Record<TrackId | "votes", number> = {
   shreds: 22,

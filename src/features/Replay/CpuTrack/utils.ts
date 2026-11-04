@@ -110,7 +110,9 @@ export function resizeRenderer(rendererObj: RendererObj) {
   const { uniforms } = rendererObj.material;
   (uniforms.uResolution.value as THREE.Vector2).set(width, height);
   uniforms.uRowStride.value = rowPx + gapPx;
-  uniforms.uPlotHeight.value = Math.max(0, rowPx - 2 * rowPaddingPx);
+  const rowPadPx = Math.min(rowPaddingPx, rowPx / 4);
+  uniforms.uRowPad.value = rowPadPx;
+  uniforms.uPlotHeight.value = rowPx - 2 * rowPadPx;
   rendererObj.camera.top = topPx;
   rendererObj.camera.bottom = topPx - height;
   rendererObj.camera.updateProjectionMatrix();

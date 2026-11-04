@@ -4,7 +4,12 @@ import styles from "../chart.module.css";
 import { maxHeightRatio, minHeightRatio, type RevenueScale } from "./consts.ts";
 import { invertRevenueRatio } from "./scale.ts";
 import RowLabels from "../RowLabels.tsx";
-import { getRowsLayout, isUnderTitle, trackInsetPx } from "../layout.ts";
+import {
+  getRowsLayout,
+  isUnderTitle,
+  ROW_LABEL_PX,
+  trackInsetPx,
+} from "../layout.ts";
 
 interface RevenueAxisTick {
   topRatio: number;
@@ -47,7 +52,14 @@ export default function RevenueYAxis({
     ...tick,
     topPx: trackInsetPx.income + tick.topRatio * (height - trackInsetPx.income),
   }));
-  const labeledTicks = ticks.filter(({ topPx }) => !isUnderTitle(topPx));
+  let lastLabelTopPx = -Infinity;
+  const labeledTicks = ticks.filter(({ topPx }) => {
+    if (isUnderTitle(topPx) || topPx - lastLabelTopPx < ROW_LABEL_PX) {
+      return false;
+    }
+    lastLabelTopPx = topPx;
+    return true;
+  });
   const maxLabelWidth = Math.max(
     0,
     ...labeledTicks.map((tick) => tick.label.length),
