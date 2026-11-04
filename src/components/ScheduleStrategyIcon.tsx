@@ -4,7 +4,7 @@ import { ScheduleStrategyEnum } from "../api/entities";
 import type { ScheduleStrategy } from "../api/types";
 import Balanced from "../assets/balanced.svg?react";
 import Performance from "../assets/performance.svg?react";
-import Revenue from "../assets/revenue.svg?react";
+import Auction from "../assets/auction.svg?react";
 import { getClusterColor } from "../utils";
 import { useMemo } from "react";
 import { Tooltip } from "@radix-ui/themes";
@@ -33,8 +33,8 @@ export function ScheduleStrategyIcon({
       return <Balanced {...svgProps} />;
     } else if (strategy === ScheduleStrategyEnum.perf) {
       return <Performance {...svgProps} />;
-    } else if (strategy === ScheduleStrategyEnum.revenue) {
-      return <Revenue {...svgProps} />;
+    } else if (strategy === ScheduleStrategyEnum.auction) {
+      return <Auction {...svgProps} />;
     }
   }, [strategy, svgProps]);
 
