@@ -51,11 +51,14 @@ export default function Tracks() {
       style={{ gap: TRACK_GAP_PX }}
     >
       {height > 0 &&
-        tracks.map((id) => (
-          <TrackLayout key={id} trackId={id} height={heights[id] ?? 0}>
-            {renderTrack(id, heights[id] ?? 0)}
-          </TrackLayout>
-        ))}
+        tracks.map((id) => {
+          const trackHeight = heights[id] ?? 0;
+          return (
+            <TrackLayout key={id} trackId={id} height={trackHeight}>
+              {renderTrack(id, trackHeight)}
+            </TrackLayout>
+          );
+        })}
     </div>
   );
 }

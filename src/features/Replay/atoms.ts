@@ -1,7 +1,7 @@
 import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../atoms";
 import type { TsRange } from "../WebGl/webglUtils";
-import { atom } from "jotai";
+import { atom, type Getter, type Setter } from "jotai";
 import { CHART_NOW_DELAY_MS, RESUME_LIVE_THRESHOLD_FRAC } from "./const";
 import {
   calcRelativeMs,
@@ -247,6 +247,24 @@ export const hoveredRangeAtom = atom<
 
 export const isFullScreenAtom = (function () {
   const _isFullScreenAtom = atom(false);
+
+  async function enterFullScreen(get: Getter, set: Setter) {
+    const onFullscreenChange = () => {
+      if (document.fullscreenElement) return;
+      set(_isFullScreenAtom, false);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+
+    try {
+      await document.documentElement.requestFullscreen();
+      if (!get(_isFullScreenAtom)) await document.exitFullscreen();
+    } catch {
+      set(_isFullScreenAtom, false);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    }
+  }
+
   return atom(
     (get) => get(_isFullScreenAtom),
     (get, set, update: SetStateAction<boolean>) => {
@@ -254,24 +272,13 @@ export const isFullScreenAtom = (function () {
 
       const isFullScreen =
         typeof update === "function" ? update(get(_isFullScreenAtom)) : update;
+      set(_isFullScreenAtom, isFullScreen);
 
       if (isFullScreen && !document.fullscreenElement) {
-        const onFullscreenChange = () => {
-          if (document.fullscreenElement) return;
-          set(_isFullScreenAtom, false);
-          document.removeEventListener("fullscreenchange", onFullscreenChange);
-        };
-        document.addEventListener("fullscreenchange", onFullscreenChange);
-
-        document.documentElement.requestFullscreen().catch(() => {
-          set(_isFullScreenAtom, false);
-          document.removeEventListener("fullscreenchange", onFullscreenChange);
-        });
+        void enterFullScreen(get, set);
       } else if (!isFullScreen && document.fullscreenElement) {
         void document.exitFullscreen();
       }
-
-      set(_isFullScreenAtom, isFullScreen);
     },
   );
 })();

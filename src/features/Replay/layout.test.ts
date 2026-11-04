@@ -144,6 +144,35 @@ describe("getTrackHeights", () => {
     expect(sum(heights)).toBe(910);
   });
 
+  it("keeps every visible track at least 40px when banks and cpu are capped", () => {
+    const heights = getTrackHeights({
+      heightPx: 500,
+      tracks: allTracks,
+      hidden: new Set(),
+      banksRows: 16,
+      cpuRows: 18,
+    });
+    for (const id of allTracks) {
+      expect(heights[id]).toBeGreaterThanOrEqual(40);
+    }
+    expect(sum(heights)).toBe(500 - 4 * TRACK_GAP_PX);
+    expect(((heights.banks ?? 0) - trackInsetPx.banks) % 16).toBe(0);
+  });
+
+  it("never goes negative when tracks can't all fit 40px", () => {
+    const heights = getTrackHeights({
+      heightPx: 100,
+      tracks: allTracks,
+      hidden: new Set(),
+      banksRows: 10,
+      cpuRows: 2,
+    });
+    for (const id of allTracks) {
+      expect(heights[id]).toBeGreaterThanOrEqual(0);
+    }
+    expect(sum(heights)).toBe(100 - 4 * TRACK_GAP_PX);
+  });
+
   it("only includes present tracks", () => {
     const tracks: TrackId[] = ["shreds", "income", "banks", "replay"];
     const heights = getTrackHeights({
@@ -159,10 +188,21 @@ describe("getTrackHeights", () => {
 });
 
 describe("getRowsLayout", () => {
+  it("shrinks the row gap so dense rows stay inside the track", () => {
+    const { topPx, rowPx, gapPx } = getRowsLayout(240, 256, {
+      insetPx: 24,
+      fillWhenThin: true,
+      gapPx: 2,
+    });
+    expect(gapPx).toBeLessThan(2);
+    expect(topPx + 256 * rowPx + 255 * gapPx).toBeCloseTo(240);
+  });
+
   it("places rows under the title", () => {
     expect(getRowsLayout(124, 4, { insetPx: 24 })).toEqual({
       topPx: 24,
       rowPx: 25,
+      gapPx: 0,
       labelStep: 1,
     });
   });
@@ -171,6 +211,7 @@ describe("getRowsLayout", () => {
     expect(getRowsLayout(40, 2, { insetPx: 24, fillWhenThin: true })).toEqual({
       topPx: 0,
       rowPx: 20,
+      gapPx: 0,
       labelStep: 1,
     });
     expect(getRowsLayout(40, 2, { insetPx: 24 }).topPx).toBe(24);

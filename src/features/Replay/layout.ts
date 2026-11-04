@@ -18,6 +18,8 @@ export const trackInsetPx: Record<TrackId, number> = {
 
 export const TRACK_GAP_PX = 6;
 export const TRACK_TITLE_PX = 20;
+const MIN_TRACK_PX = 40;
+const MAX_GAP_FRACTION = 1 / 4;
 const ROW_LABEL_PX = 13;
 
 const baseSharePct: Record<TrackId | "votes", number> = {
@@ -87,12 +89,15 @@ export function getTrackHeights({
   }
   if (!visible.length) return heights;
 
-  const shares = getTrackSharesPct(banksRows, cpuRows);
-  const totalShare = visible.reduce((sum, id) => sum + shares[id], 0);
+  const rawHeights = splitWithMinimum(
+    freePx,
+    visible,
+    getTrackSharesPct(banksRows, cpuRows),
+  );
 
   let usedPx = 0;
   for (const id of visible) {
-    let px = Math.floor((freePx * shares[id]) / totalShare);
+    let px = Math.floor(rawHeights.get(id) ?? 0);
     if (id === "banks") px = floorToWholeRows(px, banksRows);
     heights[id] = px;
     usedPx += px;
@@ -101,6 +106,32 @@ export function getTrackHeights({
   const leftoverId = visible.includes("shreds") ? "shreds" : visible[0];
   heights[leftoverId] = (heights[leftoverId] ?? 0) + freePx - usedPx;
 
+  return heights;
+}
+
+function splitWithMinimum(
+  freePx: number,
+  visible: TrackId[],
+  shares: Record<TrackId, number>,
+) {
+  const heights = new Map<TrackId, number>();
+  const minPx = Math.min(MIN_TRACK_PX, freePx / visible.length);
+  let flexible = visible;
+  let flexiblePx = freePx;
+
+  const split = (id: TrackId) =>
+    (flexiblePx * shares[id]) /
+    flexible.reduce((sum, other) => sum + shares[other], 0);
+
+  let tooSmall = flexible.filter((id) => split(id) < minPx);
+  while (tooSmall.length) {
+    for (const id of tooSmall) heights.set(id, minPx);
+    flexiblePx -= minPx * tooSmall.length;
+    flexible = flexible.filter((id) => !tooSmall.includes(id));
+    tooSmall = flexible.filter((id) => split(id) < minPx);
+  }
+
+  for (const id of flexible) heights.set(id, split(id));
   return heights;
 }
 
@@ -114,6 +145,7 @@ function floorToWholeRows(heightPx: number, rows: number) {
 export interface RowsLayout {
   topPx: number;
   rowPx: number;
+  gapPx: number;
   labelStep: number;
 }
 
@@ -129,18 +161,20 @@ export function getRowsLayout(
   { insetPx, fillWhenThin = false, gapPx = 0 }: RowsLayoutOpts,
 ): RowsLayout {
   const count = Math.max(rows, 1);
-  const getRowPx = (topPx: number) =>
-    Math.max(0, (heightPx - topPx - gapPx * (count - 1)) / count);
+  const getRows = (topPx: number) => {
+    const availablePx = Math.max(0, heightPx - topPx);
+    const rowGapPx = Math.min(gapPx, (availablePx / count) * MAX_GAP_FRACTION);
+    const rowPx = (availablePx - rowGapPx * (count - 1)) / count;
+    return { topPx, rowPx, gapPx: rowGapPx };
+  };
 
-  let topPx = insetPx;
-  let rowPx = getRowPx(topPx);
-  if (fillWhenThin && rowPx < ROW_LABEL_PX) {
-    topPx = 0;
-    rowPx = getRowPx(topPx);
-  }
+  let layout = getRows(insetPx);
+  if (fillWhenThin && layout.rowPx < ROW_LABEL_PX) layout = getRows(0);
 
-  const labelStep = Math.ceil(ROW_LABEL_PX / Math.max(rowPx + gapPx, 1));
-  return { topPx, rowPx, labelStep };
+  const labelStep = Math.ceil(
+    ROW_LABEL_PX / Math.max(layout.rowPx + layout.gapPx, Number.EPSILON),
+  );
+  return { ...layout, labelStep };
 }
 
 export function isUnderTitle(centerPx: number) {

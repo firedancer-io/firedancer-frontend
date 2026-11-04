@@ -5,13 +5,11 @@ import { isUnderTitle, type RowsLayout } from "./layout.ts";
 interface RowLabelsProps {
   labels: string[];
   layout: RowsLayout;
-  gapPx?: number;
 }
 
 export default function RowLabels({
   labels,
-  layout: { topPx, rowPx, labelStep },
-  gapPx = 0,
+  layout: { topPx, rowPx, gapPx, labelStep },
 }: RowLabelsProps) {
   if (labels.length === 0) return null;
 

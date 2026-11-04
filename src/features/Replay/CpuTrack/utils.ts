@@ -103,10 +103,13 @@ export function getCpuRowsLayout(heightPx: number, rowCount: number) {
 
 export function resizeRenderer(rendererObj: RendererObj) {
   const { x: width, y: height } = rendererObj.renderer.getSize(tmpSize);
-  const { topPx, rowPx } = getCpuRowsLayout(height, rendererObj.rows.length);
+  const { topPx, rowPx, gapPx } = getCpuRowsLayout(
+    height,
+    rendererObj.rows.length,
+  );
   const { uniforms } = rendererObj.material;
   (uniforms.uResolution.value as THREE.Vector2).set(width, height);
-  uniforms.uRowStride.value = rowPx + rowGapPx;
+  uniforms.uRowStride.value = rowPx + gapPx;
   uniforms.uPlotHeight.value = Math.max(0, rowPx - 2 * rowPaddingPx);
   rendererObj.camera.top = topPx;
   rendererObj.camera.bottom = topPx - height;

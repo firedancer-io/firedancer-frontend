@@ -24,7 +24,7 @@ import {
   queryTilesKeyAtom,
   syncAggCpuTilesAtom,
 } from "./atoms.ts";
-import { AGG_CPU_CHART_ID, rowGapPx } from "./const.ts";
+import { AGG_CPU_CHART_ID } from "./const.ts";
 import {
   getAggGranularity,
   useAggCpuQuery,
@@ -182,11 +182,7 @@ function CpuTrackBody({
   return (
     <>
       <div ref={containerRef} className={trackStyles.trackCanvasContainer} />
-      <RowLabels
-        labels={rows.map(({ label }) => label)}
-        layout={rowsLayout}
-        gapPx={rowGapPx}
-      />
+      <RowLabels labels={rows.map(({ label }) => label)} layout={rowsLayout} />
       <TrackControls
         name={trackNames.cpu}
         bucketSize={granularity}
