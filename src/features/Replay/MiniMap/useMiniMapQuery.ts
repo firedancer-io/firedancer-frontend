@@ -79,7 +79,7 @@ export default function useMiniMapQuery(
 /**
  * At most, how many buckets should be visible
  */
-const BUCKET_COUNT_THRESHOLD = 1000;
+const BUCKET_COUNT_THRESHOLD = 2000;
 export function getMiniMapGranularity(worldSizeMs: number) {
   return getAggGranularityForQuery(
     AGG_SLOTS_QUERY_KEY,
