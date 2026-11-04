@@ -1050,6 +1050,7 @@ export const schedulerCountsSchema = z.object({
   votes: z.number(),
   conflicting: z.number(),
   bundles: z.number(),
+  next_auction: z.number().optional(),
 });
 
 const writeAcctCostSchema = z.object({

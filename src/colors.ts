@@ -211,6 +211,7 @@ export const chartGridColor = "#2C3235";
 export const computeUnitsColor = "#D19DFF";
 export const feesColor = "#4CCCE6";
 export const tipsColor = "#1FD8A4";
+export const nextAuctionColor = "#D19DFF";
 export const elapsedTimeColor = "#6A6A6E";
 
 // transaction bars
