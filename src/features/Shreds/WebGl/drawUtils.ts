@@ -18,6 +18,13 @@ import {
   type RgbColor,
 } from "../../WebGl/webglUtils";
 
+const EDGE_DOT_COLOR: RgbColor = [1, 1, 1];
+
+export interface DotMeshCount {
+  mesh: RectMesh;
+  count: number;
+}
+
 export const tempEventPositions = new Map<
   Exclude<ShredEvent, ShredEvent.slot_complete>,
   { x: number; w: number }
@@ -64,6 +71,8 @@ export function drawSlotShreds(
   isSlotDirty?: (slotNumber: number) => boolean,
   // ms an incomplete slot extends past the draw range's right edge
   delayMs = defaultDelayMs,
+  // optionally add a left dot on each row
+  getDotMesh?: (drawSlot: DrawableSlot) => RectMesh,
 ): boolean {
   const xChanged = updateCameraXRange(
     [
@@ -96,6 +105,7 @@ export function drawSlotShreds(
       isFec ? SHREDS_PER_FEC_SET : 1,
       cameraReferenceMs,
       delayMs,
+      getDotMesh?.(drawSlot),
     );
     anythingDrawn ||= drawn;
   }
@@ -114,8 +124,14 @@ export function drawSingleSlotShreds(
   rowHeight = 1,
   cameraReferenceMs = 0,
   delayMs = defaultDelayMs,
+  // optionally add a left dot on each row
+  dotMesh?: RectMesh,
 ): boolean {
   let anythingDrawn = false;
+
+  const dotMeshCount: DotMeshCount | undefined = dotMesh
+    ? { mesh: dotMesh, count: 0 }
+    : undefined;
 
   let rectangleIdx = 0;
   for (let shredIdx = 0; shredIdx < slot.shreds.length; shredIdx++) {
@@ -135,6 +151,7 @@ export function drawSingleSlotShreds(
       visibleTsRange: visibleTsRangeWithOverscan,
       cameraReferenceMs,
       delayMs,
+      dotMeshCount,
     });
     rectangleIdx += rectanglesAdded;
     if (rectanglesAdded) {
@@ -145,6 +162,13 @@ export function drawSingleSlotShreds(
   // store offset for easy updates as visible range moves
   slotMesh.referenceX = cameraReferenceMs;
   slotMesh.mesh.position.x = 0;
+
+  if (dotMeshCount) {
+    updateRectMeshCounts(dotMeshCount.mesh, dotMeshCount.count);
+    // pan dots with other meshes
+    dotMeshCount.mesh.referenceX = cameraReferenceMs;
+    dotMeshCount.mesh.mesh.position.x = 0;
+  }
   return anythingDrawn;
 }
 
@@ -192,6 +216,8 @@ export interface AddEventsForRowArgs {
   /** ms an incomplete slot extends past the draw range's right edge */
   delayMs?: number;
   colorOverride?: RgbColor;
+  // optionally add a left dot on each row
+  dotMeshCount?: DotMeshCount;
 }
 
 /**
@@ -212,6 +238,7 @@ export function addEventsForRow({
   cameraReferenceMs = 0,
   delayMs = defaultDelayMs,
   colorOverride,
+  dotMeshCount,
 }: AddEventsForRowArgs) {
   let endTs: number =
     slotCompletionTsDelta == null
@@ -237,6 +264,8 @@ export function addEventsForRow({
   }
 
   let rectanglesAdded = 0;
+  // left x of the earliest drawn event rectangle in this row, for the single dot
+  let firstEventX = Infinity;
   for (const [eventType, { x, w }] of tempEventPositions.entries()) {
     const color =
       colorOverride ??
@@ -249,6 +278,26 @@ export function addEventsForRow({
     ensureRectCapacity(slotMesh, rectangleIdx + 1);
     addRectangleToMesh(slotMesh, rectangleIdx, x, y, w, rowHeight, color);
     rectanglesAdded++;
+
+    if (x < firstEventX) {
+      firstEventX = x;
+    }
+  }
+
+  // add dot rectangle for non-skipped slots
+  if (dotMeshCount && !isSlotSkipped && rectanglesAdded > 0) {
+    ensureRectCapacity(dotMeshCount.mesh, dotMeshCount.count + 1);
+    // width is ignored by the dot shader; height matches the event row
+    addRectangleToMesh(
+      dotMeshCount.mesh,
+      dotMeshCount.count,
+      firstEventX,
+      y,
+      0,
+      rowHeight,
+      EDGE_DOT_COLOR,
+    );
+    dotMeshCount.count++;
   }
   return rectanglesAdded;
 }

@@ -9,6 +9,7 @@ import { SHREDS_AGG_THRESHOLD_MS, type RendererObj } from "./const";
 import { omit } from "lodash";
 import { setUpAggResources } from "./aggUtils";
 import { SHRED_EVENT_TYPES_COUNT } from "../../../api/entities";
+import { setUpDotResources, cleanUpDotResources } from "./nonAggUtils";
 
 export function setUpRenderers(
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
@@ -18,6 +19,7 @@ export function setUpRenderers(
   if (!rendererObj) return;
 
   const { renderer, cleanUpRenderer } = rendererObj;
+
   const baseNonAggResources = setUpRendererResources<string>(getWasContextLost);
 
   const highlightMesh = createRectMesh(
@@ -26,10 +28,20 @@ export function setUpRenderers(
   );
   baseNonAggResources.scene.add(highlightMesh.mesh);
 
+  // Dot resources are replay-only
+  const dotResourceBundle = setUpDotResources();
+
+  const cleanUpResources = () => {
+    baseNonAggResources.cleanUpResources();
+    cleanUpDotResources(dotResourceBundle, getWasContextLost());
+  };
+
   const nonAggResources = {
     ...baseNonAggResources,
     highlightMesh,
+    cleanUpResources,
     cameraReferenceMs: 0,
+    ...dotResourceBundle,
   };
   const aggResources = setUpAggResources(getWasContextLost);
 

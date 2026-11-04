@@ -237,11 +237,18 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
   const resetMeshes = useCallback(
     (granularity: ShredsGranularity, slotNumbers: number[]) => {
       if (!rendererRef.current || !slotNumbers.length) return;
-      const { scene, meshes, availableMeshes, lastDrawInfo } =
-        rendererRef.current.nonAggResources;
+      const {
+        scene,
+        meshes,
+        availableMeshes,
+        dotMeshes,
+        availableDotMeshes,
+        lastDrawInfo,
+      } = rendererRef.current.nonAggResources;
       for (const slotNumber of slotNumbers) {
         const key = getSlotMeshKey(granularity, slotNumber);
         releaseMesh(scene, meshes, availableMeshes, key);
+        releaseMesh(scene, dotMeshes, availableDotMeshes, key);
         // drop the recorded edge so the rebuilt mesh re-records against the
         // current draw edge instead of reusing the stale one
         lastDrawInfo?.incompleteRightEdges.delete(key);
