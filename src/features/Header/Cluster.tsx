@@ -80,8 +80,8 @@ function StrategyIcon() {
       return "Transaction scheduler strategy: balanced";
     } else if (scheduleStrategy === ScheduleStrategyEnum.perf) {
       return "Transaction scheduler strategy: performance";
-    } else if (scheduleStrategy === ScheduleStrategyEnum.revenue) {
-      return "Transaction scheduler strategy: revenue";
+    } else if (scheduleStrategy === ScheduleStrategyEnum.auction) {
+      return "Transaction scheduler strategy: auction";
     }
   }, [scheduleStrategy]);
 

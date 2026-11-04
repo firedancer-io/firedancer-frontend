@@ -54,7 +54,7 @@ export const voteKeySchema = z.string();
 
 export const startupTimeNanosSchema = z.coerce.bigint();
 
-export const scheduleStrategySchema = z.enum(["perf", "balanced", "revenue"]);
+export const scheduleStrategySchema = z.enum(["perf", "balanced", "auction"]);
 export const ScheduleStrategyEnum = scheduleStrategySchema.enum;
 
 export const tileTypeSchema = z.enum([
