@@ -111,7 +111,8 @@ function parseTileStates(res: TimelineTileStates): TileStateColumns {
     acc.txn_end_ms.push(
       (stateStartNs[lastStateIdx] + res.dur[lastStateIdx]) / nsPerMs,
     );
-    acc.txn_error_code.push(res.txn_error_code[segmentIdx]);
+    const errorCode = res.txn_error_code[segmentIdx];
+    acc.txn_error_code.push(Number.isNaN(errorCode) ? null : errorCode);
   }
   return acc;
 }
