@@ -61,6 +61,7 @@ export const tileTypeSchema = z.enum([
   "sock",
   "net",
   "mlx5",
+  "iavf",
   "quic",
   "bundle",
   "verify",
