@@ -19,12 +19,14 @@ import ShredsYAxis from "./ShredsYAxis.tsx";
 import {
   AGG_SHREDS_CHART_ID,
   MAX_HEIGHT_RATIO,
+  aggShredEvents,
   NON_AGG_SHREDS_CHART_ID,
-  shredEventSeries,
+  shredLegend,
 } from "./const.ts";
 import { useAggShredsQuery, getAggGranularity } from "./useAggShredsQuery.ts";
 import { useNonAggShredsQuery } from "./useNonAggShredsQuery.ts";
 import type { AggGranularity, ShredsGranularity } from "../../../api/types.ts";
+import { ShredsGranularityEnum } from "../../../api/entities.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import {
   aggShredsAtom,
@@ -80,6 +82,15 @@ function clearHoveredAggShreds() {
   store.set(hoveredAggShredsAtom, undefined);
 }
 
+function isShredsGranularity(
+  granularity: AggGranularity | ShredsGranularity | undefined,
+): granularity is ShredsGranularity {
+  return (
+    granularity === ShredsGranularityEnum.shred ||
+    granularity === ShredsGranularityEnum.fec
+  );
+}
+
 function ShredsTrack({ remount }: WebGlRemountProps) {
   const [granularity, setGranularity] = useState<
     AggGranularity | ShredsGranularity | undefined
@@ -128,7 +139,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
           .get(granularity)
           ?.get(bucketIdx);
         const bucketHeight = counts
-          ? shredEventSeries.reduce(
+          ? aggShredEvents.reduce(
               (sum, { type }) => sum + (counts[type] ?? 0),
               0,
             )
@@ -473,7 +484,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
         name={trackNames.shreds}
         bucketSize={granularity}
         trackId="shreds"
-        legend={shredEventSeries}
+        legend={isShredsGranularity(granularity) ? shredLegend : aggShredEvents}
       />
     </>
   );

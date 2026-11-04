@@ -27,7 +27,7 @@ import { atomWithImmer } from "jotai-immer";
 import type { ShredEventTsDeltas } from "../Shreds/types";
 import type { AggGranularity } from "../../api/types";
 import type { ShredEventCounts } from "./ShredsTrack/atoms";
-import { shredEventSeries } from "./ShredsTrack/const";
+import { aggShredEvents } from "./ShredsTrack/const";
 import type { RevenueSeries } from "./RevenueTrack/consts";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
@@ -368,7 +368,7 @@ function isSameHoveredAggShred(
   if (a.bucketIdx !== b.bucketIdx || a.granularity !== b.granularity) {
     return false;
   }
-  return shredEventSeries.every(
+  return aggShredEvents.every(
     ({ type }) => a.counts[type] === b.counts[type],
   );
 }

@@ -8,7 +8,7 @@ import { useAtomValue } from "jotai";
 import { formatTooltipTime } from "../Tooltip/utils";
 import { nsBucketSizes } from "../const";
 import { hoveredAggHeaderAtom, type HoveredAggHeader } from "../atoms";
-import { shredEventSeries } from "../ShredsTrack/const";
+import { aggShredEvents } from "../ShredsTrack/const";
 import { useAggShredsCount } from "../ShredsTrack/useAggShredsCount";
 import { useAggSlotsCount } from "./useAggSlotsCount";
 import styles from "./replaySlotTooltip.module.css";
@@ -44,7 +44,7 @@ function AggHeaderTooltipContent({ hovered }: AggHeaderTooltipContentProps) {
       : undefined;
 
   const shreds = shredCounts
-    ? shredEventSeries.reduce(
+    ? aggShredEvents.reduce(
         (sum, { type }) => sum + (shredCounts[type] ?? 0),
         0,
       )

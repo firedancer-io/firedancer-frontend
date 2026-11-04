@@ -10,7 +10,7 @@ import { formatTooltipTime } from "../Tooltip/utils";
 import { nsBucketSizes } from "../const";
 import { hoveredAggShredsAtom, type HoveredAggShreds } from "../atoms";
 import { useAggSlotsCount } from "../HeaderTrack/useAggSlotsCount";
-import { shredEventSeries } from "./const";
+import { aggShredEvents } from "./const";
 import styles from "./shredTooltip.module.css";
 
 const seriesColorClassName: Record<AggShredEventType, string | undefined> = {
@@ -61,7 +61,7 @@ function AggShredTooltipContent({ hovered }: AggShredTooltipContentProps) {
       </TooltipHeader>
 
       <RowSeparator />
-      {shredEventSeries.map(({ type, label }) => (
+      {aggShredEvents.map(({ type, label }) => (
         <TooltipRow
           key={type}
           label={label}
