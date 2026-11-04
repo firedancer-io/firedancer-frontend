@@ -1,6 +1,7 @@
 import { getDefaultStore } from "jotai";
-import type { TsRange } from "../../WebGl/webglUtils";
+import type { RectMesh, TsRange } from "../../WebGl/webglUtils";
 import { createRectMesh } from "../../WebGl/webglUtils";
+import { updateEdgeViewWidth } from "./edgeUtils";
 import {
   FEC_MESH_CAPACITY,
   SHRED_MESH_CAPACITY,
@@ -20,11 +21,28 @@ import {
 } from "../utils";
 import { getNonAggAtoms } from "./atoms";
 import { OVERSCAN_TILES_COUNT, tileSizeNs } from "./useNonAggShredsQuery";
-import { type NonAggRendererResources, type RendererObj } from "./const";
+import {
+  SHREDS_AGG_THRESHOLD_MS,
+  type NonAggRendererResources,
+  type RendererObj,
+} from "./const";
 
 const store = getDefaultStore();
 
 const NON_AGG_FEC_THRESHOLD_MS = 30_000;
+
+// alpha = 1 at the FEC<->shred boundary, alpha = 0 at the FEC<->agg boundary.
+// drop off exponentially, faster near shred boundary
+const SHRED_EDGE_OPACITY = 1;
+const FEC_EDGE_FALLOFF = 3;
+
+function getFecEdgeOpacity(windowSizeMs: number): number {
+  const t =
+    (windowSizeMs - NON_AGG_FEC_THRESHOLD_MS) /
+    (SHREDS_AGG_THRESHOLD_MS - NON_AGG_FEC_THRESHOLD_MS);
+  const clamped = Math.min(1, Math.max(0, t));
+  return Math.pow(1 - clamped, FEC_EDGE_FALLOFF);
+}
 
 /**
  * Hide slots that we know will be complete but we don't
@@ -63,6 +81,10 @@ export function moveNonAggCamera(
 
   // Move meshes to match camera reference change
   for (const mesh of resources.meshes.values()) {
+    mesh.mesh.position.x =
+      (mesh.referenceX ?? cameraReferenceMs) - cameraReferenceMs;
+  }
+  for (const mesh of resources.edgeMeshes.values()) {
     mesh.mesh.position.x =
       (mesh.referenceX ?? cameraReferenceMs) - cameraReferenceMs;
   }
@@ -133,6 +155,32 @@ export function drawNonAggShreds(
 
   const resources = rendererObj.nonAggResources;
 
+  const viewportWidthPx = rendererObj.renderer.domElement.width;
+  if (viewportWidthPx > 0) {
+    updateEdgeViewWidth(resources.edgeResources.rectMaterial, viewportWidthPx);
+  }
+
+  const edgeOpacity =
+    granularity === ShredsGranularityEnum.fec
+      ? getFecEdgeOpacity(visibleRange[1] - visibleRange[0])
+      : SHRED_EDGE_OPACITY;
+  resources.edgeResources.rectMaterial.uniforms.uOpacity.value = edgeOpacity;
+
+  const releaseSlot = (key: string) => {
+    releaseMesh(
+      resources.scene,
+      resources.meshes,
+      resources.availableMeshes,
+      key,
+    );
+    releaseMesh(
+      resources.scene,
+      resources.edgeMeshes,
+      resources.availableEdgeMeshes,
+      key,
+    );
+  };
+
   const shredsDrawRange: TsRange = [
     calcRelativeMs(referenceNs, BigInt(firstTile) * tileSizeNs),
     calcRelativeMs(referenceNs, BigInt(lastTile + 1) * tileSizeNs),
@@ -142,12 +190,7 @@ export function drawNonAggShreds(
   if (!slotRange) {
     // nothing to draw: drop the previous window's meshes
     for (const key of resources.meshes.keys()) {
-      releaseMesh(
-        resources.scene,
-        resources.meshes,
-        resources.availableMeshes,
-        key,
-      );
+      releaseSlot(key);
     }
     return;
   }
@@ -171,12 +214,7 @@ export function drawNonAggShreds(
 
   if (!primary) {
     for (const key of resources.meshes.keys()) {
-      releaseMesh(
-        resources.scene,
-        resources.meshes,
-        resources.availableMeshes,
-        key,
-      );
+      releaseSlot(key);
     }
     return;
   }
@@ -208,12 +246,7 @@ export function drawNonAggShreds(
   );
   for (const key of resources.meshes.keys()) {
     if (!orderedSet.has(key)) {
-      releaseMesh(
-        resources.scene,
-        resources.meshes,
-        resources.availableMeshes,
-        key,
-      );
+      releaseSlot(key);
     }
   }
 
@@ -230,6 +263,13 @@ export function drawNonAggShreds(
       ),
     resources.camera,
     resources.cameraReferenceMs,
+    undefined,
+    ({ slotNumber, isFec }) =>
+      getEdgeMesh(
+        resources,
+        slotNumber,
+        isFec ? ShredsGranularityEnum.fec : ShredsGranularityEnum.shred,
+      ),
   );
 }
 
@@ -261,4 +301,32 @@ function getSlotMesh(
     slotMesh.mesh.renderOrder = slotNumber;
   }
   return { isNewMesh, slotMesh };
+}
+
+// Marks appear above other events for that slot, but below bigger slot numbers' events
+const EDGE_RENDER_ORDER_OFFSET = 0.5;
+
+function getEdgeMesh(
+  resources: NonAggRendererResources,
+  slotNumber: number,
+  granularity: ShredsGranularity,
+): RectMesh {
+  const meshKey = getSlotMeshKey(granularity, slotNumber);
+  let edgeMesh = resources.edgeMeshes.get(meshKey);
+  if (!edgeMesh) {
+    const lastMesh = resources.availableEdgeMeshes.pop();
+
+    edgeMesh =
+      lastMesh ??
+      createRectMesh(
+        resources.edgeResources,
+        granularity === ShredsGranularityEnum.fec
+          ? FEC_MESH_CAPACITY
+          : SHRED_MESH_CAPACITY,
+      );
+    resources.edgeMeshes.set(meshKey, edgeMesh);
+    resources.scene.add(edgeMesh.mesh);
+    edgeMesh.mesh.renderOrder = slotNumber + EDGE_RENDER_ORDER_OFFSET;
+  }
+  return edgeMesh;
 }
