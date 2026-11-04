@@ -3,12 +3,17 @@ import { useAtomValue } from "jotai";
 import UplotTooltip from "../../../../../uplotReact/UplotTooltip";
 import type { SchedulerCounts } from "../../../../../api/types";
 import {
+  nextAuctionColor,
   nonVoteColor,
   slotStatusRed,
   tipsColor,
   votesColor,
 } from "../../../../../colors";
-import { isAlpenglowAtom } from "../../../../../api/atoms";
+import {
+  isAlpenglowAtom,
+  scheduleStrategyAtom,
+} from "../../../../../api/atoms";
+import { ScheduleStrategyEnum } from "../../../../../api/entities";
 import { ChartTooltipRow } from "../../ChartTooltipRow";
 
 interface PackBufferChartProps {
@@ -17,6 +22,8 @@ interface PackBufferChartProps {
 
 export default function PackBufferChartTooltip({ data }: PackBufferChartProps) {
   const isAlpenglow = useAtomValue(isAlpenglowAtom);
+  const isAuction =
+    useAtomValue(scheduleStrategyAtom) === ScheduleStrategyEnum.auction;
 
   return (
     <UplotTooltip elId="pack-buffer-chart-tooltip">
@@ -44,6 +51,13 @@ export default function PackBufferChartTooltip({ data }: PackBufferChartProps) {
             value={data.bundles.toLocaleString()}
             color={tipsColor}
           />
+          {isAuction && (
+            <ChartTooltipRow
+              label="Next Auction"
+              value={(data.next_auction ?? 0).toLocaleString()}
+              color={nextAuctionColor}
+            />
+          )}
         </Grid>
       )}
     </UplotTooltip>

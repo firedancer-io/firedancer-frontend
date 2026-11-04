@@ -7,6 +7,7 @@ import AutoSizer from "react-virtualized-auto-sizer";
 import UplotReact from "../../../../../uplotReact/UplotReact";
 import {
   chartAxisColor,
+  nextAuctionColor,
   nonVoteColor,
   slotStatusRed,
   tipsColor,
@@ -19,7 +20,11 @@ import { packBufferTooltipPlugin } from "./packBufferTooltipPlugin";
 import PackBufferChartTooltip from "./PackBufferChartTooltip";
 import { SlotDetailsSubSection } from "../../SlotDetailsSubSection";
 import { Box } from "@radix-ui/themes";
-import { isAlpenglowAtom } from "../../../../../api/atoms";
+import {
+  isAlpenglowAtom,
+  scheduleStrategyAtom,
+} from "../../../../../api/atoms";
+import { ScheduleStrategyEnum } from "../../../../../api/entities";
 
 const xScaleKey = "packX";
 const yScaleKey = "packTxnsY";
@@ -27,6 +32,8 @@ const yScaleKey = "packTxnsY";
 export default function PackBufferChart() {
   const slot = useAtomValue(selectedSlotAtom);
   const isAlpenglow = useAtomValue(isAlpenglowAtom);
+  const isAuction =
+    useAtomValue(scheduleStrategyAtom) === ScheduleStrategyEnum.auction;
   const response = useSlotQueryResponseDetailed(slot).response;
   const [tooltipDataIdx, setTooltipDataIdx] = useState<number>();
   const schedulerCounts = response?.scheduler_counts;
@@ -40,20 +47,25 @@ export default function PackBufferChart() {
     const votes: number[] = [];
     const conflicting: number[] = [];
     const bundles: number[] = [];
+    const nextAuction: number[] = [];
     for (let i = 0; i < Math.min(schedulerCounts.length); i++) {
       x.push(Number(schedulerCounts[i].timestamp_nanos - startTimeNanos));
       regular.push(schedulerCounts[i].regular);
       votes.push(schedulerCounts[i].votes);
       conflicting.push(schedulerCounts[i].conflicting);
       bundles.push(schedulerCounts[i].bundles);
+      nextAuction.push(schedulerCounts[i].next_auction ?? 0);
     }
-    return isAlpenglow
+    const data: uPlot.AlignedData = isAlpenglow
       ? [x, regular, conflicting, bundles]
       : [x, regular, votes, conflicting, bundles];
+    if (isAuction) data.push(nextAuction);
+    return data;
   }, [
     response?.transactions?.start_timestamp_nanos,
     schedulerCounts,
     isAlpenglow,
+    isAuction,
   ]);
 
   const options = useMemo<uPlot.Options>(() => {
@@ -167,6 +179,17 @@ export default function PackBufferChart() {
           width: 2 / devicePixelRatio,
           scale: yScaleKey,
         },
+        ...(isAuction
+          ? [
+              {
+                label: "Next Auction",
+                stroke: nextAuctionColor,
+                points: { show: false },
+                width: 2 / devicePixelRatio,
+                scale: yScaleKey,
+              },
+            ]
+          : []),
       ],
       legend: { show: false },
       plugins: [
@@ -176,7 +199,7 @@ export default function PackBufferChart() {
         touchPlugin(),
       ],
     };
-  }, [isAlpenglow]);
+  }, [isAlpenglow, isAuction]);
 
   if (!chartData) return;
 
@@ -200,6 +223,7 @@ export default function PackBufferChart() {
             return (
               <>
                 <UplotReact
+                  key={isAuction ? "auction" : "standard"}
                   id="packBufferChart"
                   options={options}
                   data={chartData}
