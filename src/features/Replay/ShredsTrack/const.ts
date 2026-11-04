@@ -3,9 +3,13 @@ import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
 import { AggShredEventType } from "../../../api/entities";
 import {
   shredPublishedColor,
+  shredReceivedRepairColor,
+  shredReceivedTurbineColor,
+  shredRepairRequestedColor,
   shredReplayedNothingColor,
   shredReplayedRepairColor,
   shredReplayedTurbineColor,
+  shredSkippedColor,
 } from "../../../colors";
 import { colors as shredWebGlColors } from "../../Shreds/WebGl/const";
 
@@ -51,7 +55,7 @@ export interface AggRendererResources {
 }
 
 /** Listed in stacking order */
-export const shredEventSeries = [
+export const aggShredEvents = [
   {
     type: AggShredEventType.Repair,
     label: "Repair",
@@ -76,4 +80,20 @@ export const shredEventSeries = [
     color: shredPublishedColor,
     webGlColor: shredWebGlColors.published,
   },
+];
+
+/**
+ * Full set of shred colors for the legend, matching the colors and order
+ * from ShredsChartLegend. The aggregated chart only renders the subset in
+ * aggShredEvents, but the non-aggregated chart draws all of these.
+ */
+export const shredLegend = [
+  { label: "Repair Requested", color: shredRepairRequestedColor },
+  { label: "Received Turbine", color: shredReceivedTurbineColor },
+  { label: "Received Repair", color: shredReceivedRepairColor },
+  { label: "Replayed Turbine", color: shredReplayedTurbineColor },
+  { label: "Replayed Repair", color: shredReplayedRepairColor },
+  { label: "Replayed Nothing", color: shredReplayedNothingColor },
+  { label: "Skipped", color: shredSkippedColor },
+  { label: "Published", color: shredPublishedColor },
 ];

@@ -12,7 +12,7 @@ import {
   type TsRange,
 } from "../../WebGl/webglUtils";
 import {
-  shredEventSeries,
+  aggShredEvents,
   type AggRendererResources,
   type RendererObj,
 } from "./const";
@@ -102,7 +102,7 @@ export function drawAggShreds(
     const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
 
     let shredsInBucket = 0;
-    for (const { type, webGlColor } of shredEventSeries) {
+    for (const { type, webGlColor } of aggShredEvents) {
       const count = eventCounts[type];
       if (!count) continue;
 

@@ -15,12 +15,14 @@ import {
 import { releaseMesh } from "../../Shreds/WebGl/drawUtils.ts";
 import {
   AGG_SHREDS_CHART_ID,
+  aggShredEvents,
   NON_AGG_SHREDS_CHART_ID,
-  shredEventSeries,
+  shredLegend,
 } from "./const.ts";
 import { useAggShredsQuery, getAggGranularity } from "./useAggShredsQuery.ts";
 import { useNonAggShredsQuery } from "./useNonAggShredsQuery.ts";
 import type { AggGranularity, ShredsGranularity } from "../../../api/types.ts";
+import { ShredsGranularityEnum } from "../../../api/entities.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import {
   aggShredsAtom,
@@ -36,6 +38,15 @@ import TrackControls from "../TrackControls.tsx";
 
 const height = 300;
 const store = getDefaultStore();
+
+function isShredsGranularity(
+  granularity: AggGranularity | ShredsGranularity | undefined,
+): granularity is ShredsGranularity {
+  return (
+    granularity === ShredsGranularityEnum.shred ||
+    granularity === ShredsGranularityEnum.fec
+  );
+}
 
 function ShredsTrack({ remount }: WebGlRemountProps) {
   const [granularity, setGranularity] = useState<
@@ -234,7 +245,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       <TrackControls
         name="Shreds"
         bucketSize={granularity}
-        legend={shredEventSeries}
+        legend={isShredsGranularity(granularity) ? shredLegend : aggShredEvents}
       />
     </div>
   );
