@@ -1,0 +1,27 @@
+.received-turbine-color {
+  color: var(--shred-received-turbine-color);
+}
+
+.received-repair-color {
+  color: var(--shred-received-repair-color);
+}
+
+.replayed-turbine-color {
+  color: var(--shred-replayed-turbine-color);
+}
+
+.replayed-repair-color {
+  color: var(--shred-replayed-repair-color);
+}
+
+.replayed-nothing-color {
+  color: var(--shred-replayed-nothing-color);
+}
+
+.published-color {
+  color: var(--shred-published-color);
+}
+
+.skipped-color {
+  color: var(--shred-skipped-color);
+}

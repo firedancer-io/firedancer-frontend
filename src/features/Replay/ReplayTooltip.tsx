@@ -1,0 +1,19 @@
+import { useAtomValue } from "jotai";
+import ShredTooltip from "./ShredsTrack/ShredTooltip";
+import ReplaySlotTooltip from "./HeaderTrack/ReplaySlotTooltip";
+import { tooltipTypeAtom, TooltipType } from "./atoms";
+
+/**
+ * Draw the correct tooltip for the current hovered data
+ */
+export default function ReplayTooltip() {
+  const tooltipType = useAtomValue(tooltipTypeAtom);
+  if (tooltipType == null) return null;
+
+  switch (tooltipType) {
+    case TooltipType.Shred:
+      return <ShredTooltip />;
+    case TooltipType.Slot:
+      return <ReplaySlotTooltip />;
+  }
+}
