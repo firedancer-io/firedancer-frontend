@@ -38,6 +38,10 @@ export interface NonAggRendererResources {
    * Mesh position x values must be updated when this changes
    */
   cameraReferenceMs: number;
+  // mesh for left edges of slots
+  edgeMeshes: Map<string, RectMesh>;
+  availableEdgeMeshes: RectMesh[];
+  edgeResources: RectResources;
 }
 
 export interface AggRendererResources {

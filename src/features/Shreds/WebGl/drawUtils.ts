@@ -15,7 +15,15 @@ import {
   addRectangleToMesh,
   type TsRange,
   type RectMesh,
+  type RgbColor,
 } from "../../WebGl/webglUtils";
+
+const EDGE_MARK_COLOR: RgbColor = [1, 1, 1];
+
+interface EdgeMeshCount {
+  mesh: RectMesh;
+  count: number;
+}
 
 export const tempEventPositions = new Map<
   Exclude<ShredEvent, ShredEvent.slot_complete>,
@@ -54,6 +62,8 @@ export function drawSlotShreds(
   cameraReferenceMs = 0,
   // redraw an existing mesh only when dirty; new meshes always draw
   isSlotDirty?: (slotNumber: number) => boolean,
+  // optionally add a left-edge mark on each row
+  getEdgeMesh?: (drawSlot: DrawableSlot) => RectMesh,
 ): boolean {
   const xChanged = updateCameraXRange(
     [
@@ -85,6 +95,7 @@ export function drawSlotShreds(
       drawTsRange,
       isFec ? SHREDS_PER_FEC_SET : 1,
       cameraReferenceMs,
+      getEdgeMesh?.(drawSlot),
     );
     anythingDrawn ||= drawn;
   }
@@ -102,8 +113,14 @@ export function drawSingleSlotShreds(
   visibleTsRangeWithOverscan: TsRange,
   rowHeight = 1,
   cameraReferenceMs = 0,
+  // optionally add a left-edge mark on each row
+  edgeMesh?: RectMesh,
 ): boolean {
   let anythingDrawn = false;
+
+  const edgeMeshCount: EdgeMeshCount | undefined = edgeMesh
+    ? { mesh: edgeMesh, count: 0 }
+    : undefined;
 
   let rectangleIdx = 0;
   for (let shredIdx = 0; shredIdx < slot.shreds.length; shredIdx++) {
@@ -122,6 +139,7 @@ export function drawSingleSlotShreds(
       rowHeight,
       visibleTsRange: visibleTsRangeWithOverscan,
       cameraReferenceMs,
+      edgeMeshCount,
     });
     rectangleIdx += rectanglesAdded;
     if (rectanglesAdded) {
@@ -132,6 +150,12 @@ export function drawSingleSlotShreds(
   // store offset for easy updates as visible range moves
   slotMesh.referenceX = cameraReferenceMs;
   slotMesh.mesh.position.x = 0;
+
+  if (edgeMeshCount) {
+    updateRectMeshCounts(edgeMeshCount.mesh, edgeMeshCount.count);
+    edgeMeshCount.mesh.referenceX = cameraReferenceMs;
+    edgeMeshCount.mesh.mesh.position.x = 0;
+  }
   return anythingDrawn;
 }
 
@@ -176,6 +200,8 @@ export interface AddEventsForRowArgs {
   rowHeight: number;
   visibleTsRange: TsRange;
   cameraReferenceMs?: number;
+  // optionally add a left-edge mark on each row
+  edgeMeshCount?: EdgeMeshCount;
 }
 
 /**
@@ -194,6 +220,7 @@ export function addEventsForRow({
   rowHeight,
   visibleTsRange,
   cameraReferenceMs = 0,
+  edgeMeshCount,
 }: AddEventsForRowArgs) {
   let endTs: number =
     slotCompletionTsDelta == null
@@ -218,6 +245,8 @@ export function addEventsForRow({
   }
 
   let rectanglesAdded = 0;
+  // left x of the earliest drawn event rectangle in this row, for the edge mark
+  let firstEventX = Infinity;
   for (const [eventType, { x, w }] of tempEventPositions.entries()) {
     const color = getShredEventColor(
       isSlotSkipped,
@@ -232,6 +261,26 @@ export function addEventsForRow({
     ensureRectCapacity(slotMesh, rectangleIdx + 1);
     addRectangleToMesh(slotMesh, rectangleIdx, x, y, w, rowHeight, color);
     rectanglesAdded++;
+
+    if (x < firstEventX) {
+      firstEventX = x;
+    }
+  }
+
+  // add edge mark for non-skipped slots
+  if (edgeMeshCount && !isSlotSkipped && rectanglesAdded > 0) {
+    ensureRectCapacity(edgeMeshCount.mesh, edgeMeshCount.count + 1);
+    // width is ignored by the edge shader; height matches the event row
+    addRectangleToMesh(
+      edgeMeshCount.mesh,
+      edgeMeshCount.count,
+      firstEventX,
+      y,
+      0,
+      rowHeight,
+      EDGE_MARK_COLOR,
+    );
+    edgeMeshCount.count++;
   }
   return rectanglesAdded;
 }

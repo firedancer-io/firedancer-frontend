@@ -58,7 +58,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     remount,
     create: ({ setUpContextListeners, getWasContextLost }) =>
       setUpRenderers(setUpContextListeners, getWasContextLost),
-    onResize: () => renderActive(),
+    onResize: () => redrawActive(),
   });
 
   const { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes } =
@@ -69,15 +69,17 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
   const resetMeshes = useCallback(
     (granularity: ShredsGranularity, slotNumbers: number[]) => {
       if (!rendererRef.current || !slotNumbers.length) return;
-      const { scene, meshes, availableMeshes } =
-        rendererRef.current.nonAggResources;
+      const {
+        scene,
+        meshes,
+        availableMeshes,
+        edgeMeshes,
+        availableEdgeMeshes,
+      } = rendererRef.current.nonAggResources;
       for (const slotNumber of slotNumbers) {
-        releaseMesh(
-          scene,
-          meshes,
-          availableMeshes,
-          getSlotMeshKey(granularity, slotNumber),
-        );
+        const key = getSlotMeshKey(granularity, slotNumber);
+        releaseMesh(scene, meshes, availableMeshes, key);
+        releaseMesh(scene, edgeMeshes, availableEdgeMeshes, key);
       }
     },
     [rendererRef],
@@ -147,6 +149,18 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     },
     [requestRender, rendererRef],
   );
+
+  // Redraw the currently-active view without refetching
+  const redrawActive = useCallback(() => {
+    const visibleRange = store.get(visibleRangeAtom);
+    if (!visibleRange) return;
+    if (isAggregate(visibleRange)) {
+      // agg has no size-dependent uniforms, so a plain render suffices
+      renderActive();
+    } else {
+      moveCameraAndDrawNonAgg(visibleRange);
+    }
+  }, [moveCameraAndDrawNonAgg, renderActive]);
 
   /**
    * Update camera and query data for new range

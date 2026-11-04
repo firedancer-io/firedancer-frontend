@@ -37,7 +37,7 @@ void main() {
 }
 `;
 
-const fragmentShader = /* glsl */ `
+export const fragmentShader = /* glsl */ `
 precision mediump float;
 uniform float uOpacity;
 varying vec3 vColor;

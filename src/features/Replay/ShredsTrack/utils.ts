@@ -4,6 +4,7 @@ import { createRenderer, type TsRange } from "../../WebGl/webglUtils";
 import { SHREDS_AGG_THRESHOLD_MS, type RendererObj } from "./const";
 import { omit } from "lodash";
 import { setUpAggResources } from "./aggUtils";
+import { setUpEdgeResources, cleanUpEdgeResources } from "./edgeUtils";
 
 export function setUpRenderers(
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
@@ -13,15 +14,23 @@ export function setUpRenderers(
   if (!rendererObj) return;
 
   const { renderer, cleanUpRenderer } = rendererObj;
+
+  const baseNonAggResources = setUpRendererResources<string>(getWasContextLost);
+
+  // Edge mark resources are replay-only
+  const edgeResourceBundle = setUpEdgeResources();
+
   const nonAggResources = {
-    ...setUpRendererResources<string>(getWasContextLost),
+    ...baseNonAggResources,
     cameraReferenceMs: 0,
+    ...edgeResourceBundle,
   };
   const aggResources = setUpAggResources(getWasContextLost);
 
   const cleanUp = () => {
     aggResources.cleanUpResources();
-    nonAggResources.cleanUpResources();
+    baseNonAggResources.cleanUpResources();
+    cleanUpEdgeResources(edgeResourceBundle, getWasContextLost());
     cleanUpRenderer();
   };
 
