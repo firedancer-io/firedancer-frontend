@@ -96,7 +96,15 @@ function SlotTooltipContent({
 
       <RowSeparator />
       <TooltipRow label="Leader" value={isLeader ? `You · ${name}` : name} />
-      <TooltipRow label="Status" value={startCase(level)} />
+      <TooltipRow
+        label="Status"
+        value={startCase(level)}
+        valueColorClassName={
+          level === "skipped" || level === "skip_notarized"
+            ? styles.skipped
+            : undefined
+        }
+      />
 
       <RowSeparator />
       <TooltipRow label="Started" value={startTime} />

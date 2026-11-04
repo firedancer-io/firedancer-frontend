@@ -1,10 +1,15 @@
 import { setUpRendererResources } from "../../Shreds/WebGl/setupUtils";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers";
-import { createRenderer, type TsRange } from "../../WebGl/webglUtils";
+import {
+  createRectMesh,
+  createRenderer,
+  type TsRange,
+} from "../../WebGl/webglUtils";
 import { SHREDS_AGG_THRESHOLD_MS, type RendererObj } from "./const";
 import { omit } from "lodash";
 import { setUpAggResources } from "./aggUtils";
 import { setUpEdgeResources, cleanUpEdgeResources } from "./edgeUtils";
+import { SHRED_EVENT_TYPES_COUNT } from "../../../api/entities";
 
 export function setUpRenderers(
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
@@ -17,11 +22,18 @@ export function setUpRenderers(
 
   const baseNonAggResources = setUpRendererResources<string>(getWasContextLost);
 
+  const highlightMesh = createRectMesh(
+    baseNonAggResources.resources,
+    SHRED_EVENT_TYPES_COUNT - 1,
+  );
+  baseNonAggResources.scene.add(highlightMesh.mesh);
+
   // Edge mark resources are replay-only
   const edgeResourceBundle = setUpEdgeResources();
 
   const nonAggResources = {
     ...baseNonAggResources,
+    highlightMesh,
     cameraReferenceMs: 0,
     ...edgeResourceBundle,
   };
@@ -29,7 +41,10 @@ export function setUpRenderers(
 
   const cleanUp = () => {
     aggResources.cleanUpResources();
-    baseNonAggResources.cleanUpResources();
+    if (!getWasContextLost()) {
+      highlightMesh.mesh.geometry.dispose();
+    }
+    nonAggResources.cleanUpResources();
     cleanUpEdgeResources(edgeResourceBundle, getWasContextLost());
     cleanUpRenderer();
   };
