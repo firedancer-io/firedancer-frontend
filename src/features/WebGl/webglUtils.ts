@@ -37,7 +37,7 @@ void main() {
 }
 `;
 
-const fragmentShader = /* glsl */ `
+export const fragmentShader = /* glsl */ `
 precision mediump float;
 uniform float uOpacity;
 varying vec3 vColor;
@@ -144,7 +144,7 @@ export const DEFAULT_RECT_CAPACITY = 2 ** 10;
 export function createRectMesh(
   resources: RectResources,
   initialCapacity = DEFAULT_RECT_CAPACITY,
-  material: THREE.RawShaderMaterial = resources.rectMaterial,
+  material = resources.rectMaterial,
 ): RectMesh {
   const rectArray = new Float32Array(initialCapacity * 4);
   const colorArray = new Float32Array(initialCapacity * 3);

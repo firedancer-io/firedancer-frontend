@@ -1,11 +1,18 @@
+import * as THREE from "three";
 import { getDefaultStore } from "jotai";
-import type { TsRange } from "../../WebGl/webglUtils";
+import type { RectMesh, TsRange } from "../../WebGl/webglUtils";
 import {
   convertToWebGlColor,
   createRectMesh,
   updateRectMeshCounts,
 } from "../../WebGl/webglUtils";
 import { shredHoverHighlightColor } from "../../../colors";
+import {
+  createDotMesh,
+  createDotResources,
+  disposeDotResources,
+  updateDotWorldPerPixel,
+} from "./dotUtils";
 import {
   FEC_MESH_CAPACITY,
   SHRED_MESH_CAPACITY,
@@ -38,6 +45,7 @@ import { getNonAggAtoms } from "./atoms";
 import { OVERSCAN_TILES_COUNT, tileSizeNs } from "./useNonAggShredsQuery";
 import {
   MAX_HEIGHT_RATIO,
+  SHREDS_AGG_THRESHOLD_MS,
   type NonAggRendererResources,
   type RendererObj,
 } from "./const";
@@ -47,7 +55,25 @@ const store = getDefaultStore();
 
 const HIGHLIGHT_COLOR = convertToWebGlColor(shredHoverHighlightColor);
 
+// to read the renderer's CSS-pixel size
+const tmpVec2 = new THREE.Vector2();
+
 const NON_AGG_FEC_THRESHOLD_MS = 30_000;
+
+// alpha = 1 at the FEC<->shred boundary, alpha = 0 at the FEC<->agg boundary.
+// drop off exponentially, faster near shred boundary
+const SHRED_DOT_OPACITY = 1;
+const FEC_DOT_FALLOFF = 3;
+
+function getFecDotOpacity(windowSizeMs: number): number {
+  const t =
+    (windowSizeMs - NON_AGG_FEC_THRESHOLD_MS) /
+    (SHREDS_AGG_THRESHOLD_MS - NON_AGG_FEC_THRESHOLD_MS);
+  // t: 0 at the shred boundary, 1 at the agg boundary.
+  const clamped = Math.min(1, Math.max(0, t));
+  // (1 - t)^k: steep initial dropoff, long gentle tail approaching 0.
+  return Math.pow(1 - clamped, FEC_DOT_FALLOFF);
+}
 
 /**
  * Hide slots that we know will be complete but we don't
@@ -203,6 +229,10 @@ export function moveNonAggCamera(
     mesh.mesh.position.x =
       (mesh.referenceX ?? cameraReferenceMs) - cameraReferenceMs;
   }
+  for (const mesh of resources.dotMeshes.values()) {
+    mesh.mesh.position.x =
+      (mesh.referenceX ?? cameraReferenceMs) - cameraReferenceMs;
+  }
 
   resources.highlightMesh.mesh.position.x =
     (resources.highlightMesh.referenceX ?? cameraReferenceMs) -
@@ -274,6 +304,35 @@ export function drawNonAggShreds(
 
   const resources = rendererObj.nonAggResources;
 
+  // Keep the 1px marks a constant pixel width at the current zoom.
+  const viewportWidthPx = rendererObj.renderer.getSize(tmpVec2).x;
+  if (viewportWidthPx > 0) {
+    const worldPerPixelX =
+      (visibleRange[1] - visibleRange[0]) / viewportWidthPx;
+    updateDotWorldPerPixel(resources.dotResources.rectMaterial, worldPerPixelX);
+  }
+
+  resources.dotResources.rectMaterial.uniforms.uOpacity.value =
+    granularity === ShredsGranularityEnum.fec
+      ? getFecDotOpacity(visibleRange[1] - visibleRange[0])
+      : SHRED_DOT_OPACITY;
+
+  // Release both the slot and dot meshes
+  const releaseSlot = (key: string) => {
+    releaseMesh(
+      resources.scene,
+      resources.meshes,
+      resources.availableMeshes,
+      key,
+    );
+    releaseMesh(
+      resources.scene,
+      resources.dotMeshes,
+      resources.availableDotMeshes,
+      key,
+    );
+  };
+
   const shredsDrawRange: TsRange = [
     calcRelativeMs(referenceNs, BigInt(firstTile) * tileSizeNs),
     calcRelativeMs(referenceNs, BigInt(lastTile + 1) * tileSizeNs),
@@ -283,12 +342,7 @@ export function drawNonAggShreds(
   if (!slotRange) {
     // nothing to draw: drop the previous window's meshes
     for (const key of resources.meshes.keys()) {
-      releaseMesh(
-        resources.scene,
-        resources.meshes,
-        resources.availableMeshes,
-        key,
-      );
+      releaseSlot(key);
     }
     resources.lastDrawInfo = undefined;
     return;
@@ -313,12 +367,7 @@ export function drawNonAggShreds(
 
   if (!primary) {
     for (const key of resources.meshes.keys()) {
-      releaseMesh(
-        resources.scene,
-        resources.meshes,
-        resources.availableMeshes,
-        key,
-      );
+      releaseSlot(key);
     }
     resources.lastDrawInfo = undefined;
     return;
@@ -344,12 +393,12 @@ export function drawNonAggShreds(
   // release meshes that are no longer drawn
   for (const key of resources.meshes.keys()) {
     if (!orderedSet.has(key)) {
-      releaseMesh(
-        resources.scene,
-        resources.meshes,
-        resources.availableMeshes,
-        key,
-      );
+      releaseSlot(key);
+    }
+  }
+  for (const key of resources.dotMeshes.keys()) {
+    if (!orderedSet.has(key)) {
+      releaseSlot(key);
     }
   }
 
@@ -402,6 +451,12 @@ export function drawNonAggShreds(
     resources.cameraReferenceMs,
     (slotNumber) => dirtySlots.has(slotNumber),
     CHART_NOW_DELAY_MS,
+    ({ slotNumber, isFec }) =>
+      getDotMesh(
+        resources,
+        slotNumber,
+        isFec ? ShredsGranularityEnum.fec : ShredsGranularityEnum.shred,
+      ),
   );
 }
 
@@ -440,4 +495,65 @@ function getSlotMesh(
     slotMesh.mesh.renderOrder = slotNumber;
   }
   return { isNewMesh, slotMesh };
+}
+
+// Dots appear above other events for that slot, but below bigger slot numbers' events
+const DOT_RENDER_ORDER_OFFSET = 0.5;
+
+function getDotMesh(
+  resources: NonAggRendererResources,
+  slotNumber: number,
+  granularity: ShredsGranularity,
+): RectMesh {
+  const meshKey = getSlotMeshKey(granularity, slotNumber);
+  let dotMesh = resources.dotMeshes.get(meshKey);
+  if (!dotMesh) {
+    const lastMesh = resources.availableDotMeshes.pop();
+
+    dotMesh =
+      lastMesh ??
+      createDotMesh(
+        resources.dotResources,
+        granularity === ShredsGranularityEnum.fec
+          ? FEC_MESH_CAPACITY
+          : SHRED_MESH_CAPACITY,
+      );
+    resources.dotMeshes.set(meshKey, dotMesh);
+    resources.scene.add(dotMesh.mesh);
+    dotMesh.mesh.renderOrder = slotNumber + DOT_RENDER_ORDER_OFFSET;
+  }
+  return dotMesh;
+}
+
+/**
+ * Dot resources are replay-only (the 1px white left-edge marks), so they live
+ * here with the rest of the non-agg dot logic rather than in the shared setup.
+ */
+export function setUpDotResources() {
+  return {
+    dotResources: createDotResources(),
+    dotMeshes: new Map<string, RectMesh>(),
+    availableDotMeshes: [],
+  };
+}
+
+export function cleanUpDotResources(
+  {
+    dotResources,
+    dotMeshes,
+    availableDotMeshes,
+  }: Pick<
+    NonAggRendererResources,
+    "dotResources" | "dotMeshes" | "availableDotMeshes"
+  >,
+  wasContextLost: boolean,
+) {
+  if (wasContextLost) return;
+  for (const dotMesh of dotMeshes.values()) {
+    dotMesh.mesh.geometry.dispose();
+  }
+  for (const dotMesh of availableDotMeshes) {
+    dotMesh.mesh.geometry.dispose();
+  }
+  disposeDotResources(dotResources);
 }

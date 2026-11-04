@@ -48,6 +48,13 @@ export interface NonAggRendererResources {
    */
   cameraReferenceMs: number;
   lastDrawInfo?: NonAggDrawInfo;
+  /**
+   * Per-slot meshes for the 1px white left-edge marks, keyed by the same
+   * slot mesh key as `meshes`. Kept in sync with slot meshes
+   */
+  dotMeshes: Map<string, RectMesh>;
+  availableDotMeshes: RectMesh[];
+  dotResources: RectResources;
 }
 
 export interface NonAggDrawInfo {
