@@ -1,6 +1,7 @@
 import { atom, getDefaultStore, useAtomValue } from "jotai";
 import {
   hoveredSlotAtom,
+  openOrUpdateOverlapAtom,
   referenceNsAtom,
   visibleRangeAtom,
   worldRangeAtom,
@@ -12,7 +13,12 @@ import {
   timelineSlotsAtom,
   timelineSlotsEmitterAtom,
 } from "./nonAggAtoms";
-import { calcAbsoluteNs, calcRelativeMs, getSlotDrawTileIdxs } from "../utils";
+import {
+  calcAbsoluteNs,
+  calcRelativeMs,
+  clientXToMs,
+  getSlotDrawTileIdxs,
+} from "../utils";
 import { tileSizeNs, useNonAggHeaderQuery } from "./useNonAggHeaderQuery";
 import { isAggregate } from "./utils";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible";
@@ -321,6 +327,22 @@ export function NonAggHeaderTrack({
     throttledUpdateGroups(referenceNs, visibleRange);
   }, [throttledUpdateGroups, width]);
 
+  // Live-hover the overlap tooltip: open/refresh the list to the cursor ts when
+  // slots overlap there. Closing + freezing are handled by OverlapTooltip's
+  // window hit-test, so the cursor can travel onto the tooltip without closing.
+  const onMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const visibleRange = store.get(visibleRangeAtom);
+    if (!visibleRange || isAggregate(visibleRange)) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ts = clientXToMs(e.clientX, rect, visibleRange);
+
+    store.set(openOrUpdateOverlapAtom, {
+      ts,
+      cursor: { x: e.clientX, y: e.clientY },
+    });
+  }, []);
+
   const containerStartMs = renderState?.containerStartMs ?? 0;
 
   // reposition container before paint on anchor changes
@@ -334,7 +356,7 @@ export function NonAggHeaderTrack({
   }, [containerStartMs, updateGroupPositionsOnly]);
 
   return (
-    <div className={className}>
+    <div className={className} data-nonagg-track onMouseMove={onMouseMove}>
       <div ref={containerRef} className={styles.container}>
         {renderState?.slotGroups.map((group) => (
           <SlotGroupContainer

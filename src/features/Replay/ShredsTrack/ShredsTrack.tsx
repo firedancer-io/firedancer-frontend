@@ -39,6 +39,7 @@ import {
   clearHoverInfoAtom,
   hoveredAggShredsAtom,
   hoveredShredAtom,
+  isPinnedAtom,
   referenceNsAtom,
   setHoverInfoAtom,
   visibleRangeAtom,
@@ -111,6 +112,9 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     (clientX: number, clientY: number, rect: HoveredRect) => {
       const renderer = rendererRef.current;
       if (!renderer) return;
+
+      // while the overlap tooltip is pinned, it owns the spotlight/tooltip
+      if (store.get(isPinnedAtom)) return;
 
       const visibleRange = store.get(visibleRangeAtom);
       const referenceNs = store.get(referenceNsAtom);
@@ -195,6 +199,9 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
 
   const onHoverChange = useCallback(
     (clientX: number, clientY: number, rect: HoveredRect) => {
+      // while the overlap tooltip is pinned, it owns the spotlight/tooltip
+      if (store.get(isPinnedAtom)) return;
+
       const visibleRange = store.get(visibleRangeAtom);
       if (!visibleRange) return;
 
@@ -481,6 +488,8 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     onHoverLeave,
     renderActive,
     syncYAxis,
+    containerRef,
+    rendererRef,
   ]);
 
   return (

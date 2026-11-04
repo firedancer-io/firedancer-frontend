@@ -253,7 +253,7 @@ function RevenueTrackBody({
           clientPos: { x: clientX, y: clientY },
         });
       },
-      [type, opts.scale, aggAxisMax],
+      [type, opts.scale, aggAxisMax, rendererRef],
     ),
     30,
   );
@@ -400,6 +400,7 @@ function RevenueTrackBody({
     resolveHoveredRevenue,
     setHoverContainer,
     onHoverLeave,
+    containerRef,
   ]);
 
   // Trigger refresh for agg mode entry or a scale/type change.
