@@ -1,7 +1,7 @@
 import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../atoms";
 import type { TsRange } from "../WebGl/webglUtils";
-import { atom } from "jotai";
+import { atom, type Getter, type Setter } from "jotai";
 import { CHART_NOW_DELAY_MS, RESUME_LIVE_THRESHOLD_FRAC } from "./const";
 import {
   calcRelativeMs,
@@ -13,6 +13,9 @@ import { timelineSlotsAtom } from "./HeaderTrack/nonAggAtoms";
 import { getSlotGroupLeader } from "../../utils";
 import { slotsPerLeader } from "../../consts";
 import { isAggregate } from "./HeaderTrack/utils";
+import type { TrackId } from "./layout";
+import type { SetStateAction } from "react";
+import { atomWithImmer } from "jotai-immer";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -241,3 +244,54 @@ export const hoveredRangeAtom = atom<
     slot: [slotInfo.startMs, slotInfo.endMs],
   };
 });
+
+export const isFullScreenAtom = (function () {
+  const _isFullScreenAtom = atom(false);
+
+  async function enterFullScreen(get: Getter, set: Setter) {
+    const onFullscreenChange = () => {
+      if (document.fullscreenElement) return;
+      set(_isFullScreenAtom, false);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+
+    try {
+      await document.documentElement.requestFullscreen();
+      if (!get(_isFullScreenAtom)) await document.exitFullscreen();
+    } catch {
+      set(_isFullScreenAtom, false);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    }
+  }
+
+  return atom(
+    (get) => get(_isFullScreenAtom),
+    (get, set, update: SetStateAction<boolean>) => {
+      if (!document.fullscreenEnabled) return;
+
+      const isFullScreen =
+        typeof update === "function" ? update(get(_isFullScreenAtom)) : update;
+      set(_isFullScreenAtom, isFullScreen);
+
+      if (isFullScreen && !document.fullscreenElement) {
+        void enterFullScreen(get, set);
+      } else if (!isFullScreen && document.fullscreenElement) {
+        void document.exitFullscreen();
+      }
+    },
+  );
+})();
+
+export const [hiddenTracksAtom, setTrackHiddenAtom] = (function () {
+  const _hiddenTracksAtom = atomWithImmer(new Set<TrackId>());
+  return [
+    atom((get) => get(_hiddenTracksAtom)),
+    atom(null, (_get, set, id: TrackId, hidden: boolean) => {
+      set(_hiddenTracksAtom, (draft) => {
+        if (hidden) draft.add(id);
+        else draft.delete(id);
+      });
+    }),
+  ] as const;
+})();

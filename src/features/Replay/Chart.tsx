@@ -2,7 +2,6 @@ import { Flex, Spinner } from "@radix-ui/themes";
 import { useRef, useCallback, useLayoutEffect } from "react";
 import { useMeasure } from "react-use";
 import styles from "./chart.module.css";
-import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
 import { useExplorableChart } from "./useExplorableChart.ts";
 import { getDefaultStore, useAtomValue } from "jotai";
 import {
@@ -14,11 +13,9 @@ import {
 } from "./atoms.ts";
 import MiniMap from "./MiniMap/MiniMap.tsx";
 import HeaderTrack from "./HeaderTrack/index.tsx";
-import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
-import TileStatesTrack from "./TileStatesTrack/TileStatesTrack.tsx";
 import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
-import CpuTrack from "./CpuTrack/CpuTrack.tsx";
+import Tracks from "./Tracks.tsx";
 import HoverOverlay from "./HoverOverlay.tsx";
 import HoveredTsLine from "./HoveredTsLine.tsx";
 
@@ -150,19 +147,15 @@ export default function Chart() {
             ref={setTracksContainerRef}
             direction="column"
             position="relative"
+            flexGrow="1"
+            minHeight="0"
             onMouseMove={onMouseMove}
             onMouseLeave={onMouseLeave}
           >
             <HeaderTrack width={width} />
             <ResetLiveButton />
 
-            <Flex direction="column" gap="6px">
-              <ShredsTrack />
-              <RevenueTrack />
-              <TileStatesTrack kind="execrp" />
-              <TileStatesTrack kind="replay" />
-              <CpuTrack />
-            </Flex>
+            <Tracks />
 
             <HoverOverlay />
             <HoveredTsLine />

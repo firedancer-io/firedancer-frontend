@@ -1,7 +1,6 @@
-import { getDefaultStore, useAtomValue } from "jotai";
+import { getDefaultStore, useAtom, useAtomValue } from "jotai";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
-import clsx from "clsx";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -26,32 +25,31 @@ import {
   handleResize,
   setUpRenderer,
   syncMeshes,
+  updateBarHeight,
 } from "./utils.ts";
 import {
-  DEFAULT_TILE_STATES_VIEW_OPTS,
   getTileStatesGranularity,
   isAggregate,
-  ROW_HEIGHT_PX,
-  type TileStatesViewOpts,
   type TileKind,
 } from "./consts.ts";
 import type { TileStatesGranularity } from "../../../api/types.ts";
 import { TileStatesGranularityEnum } from "../../../api/entities.ts";
-import TileStatesYAxis from "./TileStatesYAxis.tsx";
 import AggTileStates from "./AggTileStatesTrack.tsx";
 import TileStatesControls from "./TileStatesControls.tsx";
+import { tileStatesViewOptsAtoms } from "./atoms.ts";
+import RowLabels from "../RowLabels.tsx";
+import { getRowsLayout, trackInsetPx } from "../layout.ts";
 import styles from "../track.module.css";
 
 const store = getDefaultStore();
 
 interface TileStatesTrackProps extends WebGlRemountProps {
   kind: TileKind;
+  height: number;
 }
 
-function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
-  const [opts, setOpts] = useState<TileStatesViewOpts>(
-    DEFAULT_TILE_STATES_VIEW_OPTS,
-  );
+function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
+  const [opts, setOpts] = useAtom(tileStatesViewOptsAtoms[kind]);
   const [granularity, setGranularity] = useState<TileStatesGranularity>(
     TileStatesGranularityEnum.txn,
   );
@@ -66,7 +64,10 @@ function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
 
   const tiles = useAtomValue(tilesAtom);
   const rows = useMemo(() => getTileRows(tiles, kind), [tiles, kind]);
-  const height = Math.max(rows.length, 1) * ROW_HEIGHT_PX;
+  const rowsLayout = getRowsLayout(height, rows.length, {
+    insetPx: trackInsetPx[kind === "execrp" ? "banks" : "replay"],
+    fillWhenThin: kind === "replay",
+  });
 
   const queryTxn = useTileCacheQuery(tileStatesCaches.txn);
   const queryBatch = useTileCacheQuery(tileStatesCaches.txn_batch);
@@ -148,8 +149,9 @@ function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
 
   useLayoutEffect(() => {
     const renderer = rendererRef.current;
-    if (!renderer?.renderedGranularity) return;
-    syncMeshes(renderer, true);
+    if (!renderer) return;
+    updateBarHeight(renderer);
+    if (renderer.renderedGranularity) syncMeshes(renderer, true);
     render(renderer);
   }, [rendererRef, rows]);
 
@@ -195,16 +197,22 @@ function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
   useTileCacheSubscription(tileStatesCaches.txn_batch, onDeltaBatch);
 
   return (
-    <div className={clsx(styles.trackContainer, styles.topInset)}>
-      <div style={{ position: "relative", height: `${height}px` }}>
+    <>
+      <div
+        className={styles.rows}
+        style={{
+          top: rowsLayout.topPx,
+          height: rowsLayout.rowPx * Math.max(rows.length, 1),
+        }}
+      >
         <div
           ref={containerRef}
           className={styles.trackCanvasContainer}
           style={{ visibility: isAgg ? "hidden" : undefined }}
         />
         {isAgg && <AggTileStates />}
-        <TileStatesYAxis labels={rows.map(({ label }) => label)} />
       </div>
+      <RowLabels labels={rows.map(({ label }) => label)} layout={rowsLayout} />
       <TileStatesControls
         kind={kind}
         granularity={granularity}
@@ -212,7 +220,7 @@ function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
         opts={opts}
         setOpts={setOpts}
       />
-    </div>
+    </>
   );
 }
 

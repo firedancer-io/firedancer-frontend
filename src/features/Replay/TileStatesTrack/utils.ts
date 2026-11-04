@@ -22,13 +22,12 @@ import {
   createErrorStatesMaterial,
   createStatesMesh,
   ensureStatesCapacity,
-  setErrorStatesPixelRatio,
+  setErrorStatesSize,
   setStatesCount,
   type StatesMesh,
 } from "./tileStatesMesh.ts";
 import {
-  BAR_HEIGHT_PX,
-  ROW_HEIGHT_PX,
+  BAR_HEIGHT_RATIO,
   ErrorState,
   errorStateColors,
   tileStateColors,
@@ -187,10 +186,7 @@ export function setUpRenderer(
   const errorStatesScene = new THREE.Scene();
   errorStatesScene.visible = false;
   const tileStatesMaterial = createTileStatesMaterial(TILE_STATE_PALETTE);
-  const errorStatesMaterial = createErrorStatesMaterial(
-    renderer.getPixelRatio(),
-    ERROR_STATE_PALETTE,
-  );
+  const errorStatesMaterial = createErrorStatesMaterial(ERROR_STATE_PALETTE);
 
   const canBlendFloat32 =
     renderer.extensions.has("EXT_color_buffer_float") &&
@@ -260,13 +256,20 @@ export function setUpRenderer(
 }
 
 export function handleResize(rendererObj: RendererObj) {
-  setErrorStatesPixelRatio(
-    rendererObj.errorStatesMaterial,
-    rendererObj.renderer.getPixelRatio(),
-  );
+  updateBarHeight(rendererObj);
   const visibleRangeMs = store.get(visibleRangeAtom);
   if (visibleRangeMs) setVisibleRange(rendererObj, visibleRangeMs);
   render(rendererObj);
+}
+
+export function updateBarHeight(rendererObj: RendererObj) {
+  const rows = Math.max(getRowOfTile(rendererObj.kind).size, 1);
+  const rowPx = rendererObj.renderer.domElement.height / rows;
+  setErrorStatesSize(
+    rendererObj.errorStatesMaterial,
+    rendererObj.renderer.getPixelRatio(),
+    rowPx * BAR_HEIGHT_RATIO,
+  );
 }
 
 export function render(rendererObj: RendererObj) {
@@ -510,7 +513,7 @@ export function clearLiveMarkerIfAdded(
 /** Row height and bar height in [0, 1] view space. */
 function getRowLayout(rowOfTile: RowOfTile) {
   const rowH = 1 / rowOfTile.size;
-  return { rowH, barH: (rowH * BAR_HEIGHT_PX) / ROW_HEIGHT_PX };
+  return { rowH, barH: rowH * BAR_HEIGHT_RATIO };
 }
 
 function appendTileStates(

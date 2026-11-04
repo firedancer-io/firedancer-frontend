@@ -1,13 +1,15 @@
 import clsx from "clsx";
 import { lamportsPerSol } from "../../../consts.ts";
 import styles from "../chart.module.css";
-import {
-  maxHeightRatio,
-  minHeightRatio,
-  topInsetPx,
-  type RevenueScale,
-} from "./consts.ts";
+import { maxHeightRatio, minHeightRatio, type RevenueScale } from "./consts.ts";
 import { invertRevenueRatio } from "./scale.ts";
+import RowLabels from "../RowLabels.tsx";
+import {
+  getRowsLayout,
+  isUnderTitle,
+  ROW_LABEL_PX,
+  trackInsetPx,
+} from "../layout.ts";
 
 interface RevenueAxisTick {
   topRatio: number;
@@ -17,6 +19,7 @@ interface RevenueAxisTick {
 }
 
 interface RevenueYAxisProps {
+  height: number;
   maxValue: bigint;
   scale: RevenueScale;
   splitRows: boolean;
@@ -27,17 +30,36 @@ const AXIS_TICK_COUNT = 5;
 const LABEL_SIG_DIGITS = 3;
 
 export default function RevenueYAxis({
+  height,
   maxValue,
   scale,
   splitRows,
   numRows,
 }: RevenueYAxisProps) {
-  if (splitRows) return <RowLabels numRows={numRows} />;
+  if (splitRows) {
+    return (
+      <RowLabels
+        labels={Array.from({ length: numRows }, (_, row) => `${row}`)}
+        layout={getRowsLayout(height, numRows, {
+          insetPx: trackInsetPx.income,
+        })}
+      />
+    );
+  }
   if (maxValue <= 0n) return null;
 
-  const ticks = buildRevenueAxisTicks(maxValue, scale);
-  // top tick is left unlabeled to make room for track controls
-  const labeledTicks = ticks.slice(1);
+  const ticks = buildRevenueAxisTicks(maxValue, scale).map((tick) => ({
+    ...tick,
+    topPx: trackInsetPx.income + tick.topRatio * (height - trackInsetPx.income),
+  }));
+  let lastLabelTopPx = -Infinity;
+  const labeledTicks = ticks.filter(({ topPx }) => {
+    if (isUnderTitle(topPx) || topPx - lastLabelTopPx < ROW_LABEL_PX) {
+      return false;
+    }
+    lastLabelTopPx = topPx;
+    return true;
+  });
   const maxLabelWidth = Math.max(
     0,
     ...labeledTicks.map((tick) => tick.label.length),
@@ -49,14 +71,14 @@ export default function RevenueYAxis({
         <div
           key={i}
           className={styles.yAxisGridLine}
-          style={{ top: insetTop(tick.topRatio) }}
+          style={{ top: tick.topPx }}
         />
       ))}
       {labeledTicks.map((tick, i) => (
         <div
           key={i}
           className={clsx("mono-text", styles.yAxisTick)}
-          style={{ top: insetTop(tick.topRatio) }}
+          style={{ top: tick.topPx }}
         >
           <span className={styles.yAxisTickPrefix}>{tick.prefix}</span>
           <span
@@ -70,31 +92,6 @@ export default function RevenueYAxis({
       ))}
     </div>
   );
-}
-
-function RowLabels({ numRows }: { numRows: number }) {
-  if (numRows <= 0) return null;
-
-  return (
-    <div className={styles.yAxis}>
-      {Array.from({ length: numRows }, (_, row) => {
-        const centerRatio = (row + 0.5) / numRows;
-        return (
-          <div
-            key={row}
-            className={styles.yAxisTick}
-            style={{ top: insetTop(centerRatio) }}
-          >
-            <span className={styles.yAxisTickLabel}>{row}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function insetTop(ratio: number) {
-  return `calc(${topInsetPx}px + ${ratio} * (100% - ${topInsetPx}px))`;
 }
 
 function buildRevenueAxisTicks(

@@ -4,9 +4,18 @@ import type TypedEmitter from "typed-emitter";
 import type { AggGranularity, AggRevenue } from "../../../api/types";
 import type { RevenueType } from "../../../api/entities";
 import { getBucketIdx } from "../utils";
-import { revenueSeriesAddends, type RevenueSeries } from "./consts";
+import {
+  DEFAULT_REVENUE_VIEW_OPTS,
+  revenueSeriesAddends,
+  type RevenueSeries,
+  type RevenueViewOpts,
+} from "./consts";
 
 export const drawEventType = "draw";
+
+export const revenueViewOptsAtom = atom<RevenueViewOpts>(
+  DEFAULT_REVENUE_VIEW_OPTS,
+);
 
 type Revenues = Record<RevenueType, bigint | null>;
 

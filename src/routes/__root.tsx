@@ -1,6 +1,7 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { lazy, useEffect } from "react";
 import { Box, Flex } from "@radix-ui/themes";
+import clsx from "clsx";
 import StartupProgress from "../features/StartupProgress";
 import Toast from "../features/Toast";
 import Navigation from "../features/Navigation";
@@ -12,6 +13,7 @@ import { useSlotsNavigation } from "../hooks/useSlotsNavigation";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { isStartupProgressVisibleAtom } from "../features/StartupProgress/atoms";
 import { baseSelectedSlotAtoms } from "../features/Overview/SlotPerformance/atoms";
+import { isFullScreenAtom } from "../features/Replay/atoms";
 
 // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
@@ -38,6 +40,7 @@ export const Route = createRootRoute({
 function Root() {
   const isStartupProgressVisible = useAtomValue(isStartupProgressVisibleAtom);
   const isReplay = useCurrentRoute() === "Replay";
+  const isFullScreen = useAtomValue(isFullScreenAtom) && isReplay;
   return (
     <>
       <Toast />
@@ -57,12 +60,18 @@ function Root() {
             isolation: "isolate",
           }}
         >
-          <Header />
+          <div className={clsx({ "fill-viewport": isReplay })}>
+            {!isFullScreen && <Header />}
 
-          <Flex className="app-width-container" px="2" position="relative">
-            <Navigation />
-            <OutletContainer />
-          </Flex>
+            <Flex
+              className={isReplay ? "fill-viewport-row" : "app-width-container"}
+              px="2"
+              position="relative"
+            >
+              <Navigation />
+              <OutletContainer />
+            </Flex>
+          </div>
         </div>
       </StartupProgress>
     </>
@@ -70,7 +79,9 @@ function Root() {
 }
 
 function OutletContainer() {
-  const isSchedule = useCurrentRoute() === "Schedule";
+  const currentRoute = useCurrentRoute();
+  const isSchedule = currentRoute === "Schedule";
+  const isReplay = currentRoute === "Replay";
   const { setIsNavCollapsed, isNarrowScreen, occupyRowWidth } =
     useSlotsNavigation();
 
@@ -85,6 +96,7 @@ function OutletContainer() {
       flexGrow="1"
       minWidth="0"
       pb="2"
+      className={clsx({ "fill-viewport-outlet": isReplay })}
       pl={
         isSchedule || !occupyRowWidth
           ? "0px"
