@@ -11,7 +11,6 @@ import CuChartActions from "./CuChartActions";
 import type uPlot from "uplot";
 import { useCallback, useRef } from "react";
 import { defaultMaxComputeUnits } from "../../../../consts";
-import CuChartInfoIcon from "./CuChartStartLineIcon";
 import CuChartProjectionsToggle from "./CuChartRefAreaToggle";
 import { tileNames } from "../../../../utils";
 
@@ -56,7 +55,6 @@ export default function ComputeUnitsCard() {
               bankTileCount={bankTileCount}
               onCreate={handleCreate}
             />
-            <CuChartInfoIcon />
           </div>
         </Flex>
       </Card>

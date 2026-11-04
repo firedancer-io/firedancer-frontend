@@ -212,7 +212,6 @@ export const computeUnitsColor = "#D19DFF";
 export const feesColor = "#4CCCE6";
 export const tipsColor = "#1FD8A4";
 export const elapsedTimeColor = "#6A6A6E";
-export const startLineColor = secondaryTextColor;
 
 // transaction bars
 export const chartGridStrokeColor = "rgba(250, 250, 250, 0.05)";
