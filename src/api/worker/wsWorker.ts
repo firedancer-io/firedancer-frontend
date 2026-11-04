@@ -11,6 +11,8 @@ import { loadZstd, type ZstdDecoder } from "./zstd/zstd";
 const reconnectDelayMs = 3_000;
 const flushDelayMs = 32; // ~30fps
 
+const transferableKeys: WsEntity["key"][] = ["query_tile_states"];
+
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout>;
@@ -53,17 +55,28 @@ function enqueue(item: WsEntity) {
   }
 }
 
+function collectTransferables(item: WsEntity, transfer: Transferable[]) {
+  if (!transferableKeys.includes(item.key) || item.value == null) return;
+  for (const v of Object.values(item.value)) {
+    if (ArrayBuffer.isView(v)) transfer.push(v.buffer);
+  }
+}
+
 function flush() {
   scheduled = false;
   const items: WsEntity[] = [];
+  const transfer: Transferable[] = [];
   for (const batch of pendingBatches.values()) {
-    for (const item of batch) items.push(item);
+    for (const item of batch) {
+      items.push(item);
+      collectTransferables(item, transfer);
+    }
   }
   pendingBatches.clear();
 
   if (items.length) {
     // latest kv type not implemented as everything defaults to batched kvb
-    ctx.postMessage({ type: "kvb", items });
+    ctx.postMessage({ type: "kvb", items }, transfer);
   }
 }
 

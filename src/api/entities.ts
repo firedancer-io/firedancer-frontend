@@ -1484,6 +1484,21 @@ export enum TileState {
 export const tileStatesGranularitySchema = z.enum(["txn", "txn_batch"]);
 export const TileStatesGranularityEnum = tileStatesGranularitySchema.enum;
 
+const int32ArraySchema = z
+  .number()
+  .array()
+  .transform((a) => Int32Array.from(a));
+const float64ArraySchema = z
+  .number()
+  .array()
+  .transform((a) => Float64Array.from(a));
+// null -> NaN
+const nullableFloat64ArraySchema = z
+  .number()
+  .nullable()
+  .array()
+  .transform((a) => Float64Array.from(a, (v) => v ?? NaN));
+
 export const tileStatesResponseSchema = z.object({
   granularity: tileStatesGranularitySchema,
   available_start_ns: z.coerce.bigint().nullable(),
@@ -1491,17 +1506,17 @@ export const tileStatesResponseSchema = z.object({
   start_ts: z.coerce.bigint(),
   reference_slot: z.number().nullable(),
   tile: z.number().nullable().array(),
-  state_cnt: z.number().array(),
-  state: z.number().array(),
-  dur: z.number().array(),
-  slot_state_lo: z.number().array(),
-  slot_state_cnt: z.number().array(),
-  slot_delta: z.number().array(),
-  txn_state_lo: z.number().array(),
-  txn_state_cnt: z.number().array(),
-  txn_slot_delta: z.number().array(),
-  txn_idx: z.number().array(),
-  txn_error_code: z.number().nullable().array(),
+  state_cnt: int32ArraySchema,
+  state: int32ArraySchema,
+  dur: float64ArraySchema,
+  slot_state_lo: int32ArraySchema,
+  slot_state_cnt: int32ArraySchema,
+  slot_delta: int32ArraySchema,
+  txn_state_lo: int32ArraySchema,
+  txn_state_cnt: int32ArraySchema,
+  txn_slot_delta: int32ArraySchema,
+  txn_idx: int32ArraySchema,
+  txn_error_code: nullableFloat64ArraySchema,
 });
 
 export const aggTileStatesSchema = z.object({
