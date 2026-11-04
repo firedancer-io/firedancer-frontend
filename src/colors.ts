@@ -185,6 +185,7 @@ export const shredReplayedRepairColor = "#B2904D";
 export const shredReplayedNothingColor = "#2F3842";
 export const shredSkippedColor = "#B23232";
 export const shredPublishedColor = "#82738C";
+export const shredHoverHighlightColor = "#FFFFFF";
 
 // epoch bar
 export const epochTextColor = "#FAFAFA";
