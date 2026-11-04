@@ -4,7 +4,8 @@ import type TypedEmitter from "typed-emitter";
 import type { AggCpu, AggGranularity } from "../../../api/types";
 import { getBucketIdx } from "../utils";
 import { tilesAtom } from "../../../api/atoms";
-import { getTileKey, MAX_QUERY_TILES } from "./const";
+import { DEFAULT_SELECTED_KINDS, getTileKey, MAX_QUERY_TILES } from "./const";
+import { getCpuRows } from "./utils";
 
 export const drawEventType = "draw";
 
@@ -18,6 +19,17 @@ export type CpuUtilizationByGranularity = Map<
 
 export const queryTilesAtom = atom((get) =>
   (get(tilesAtom) ?? []).slice(0, MAX_QUERY_TILES),
+);
+
+export const cpuSelectedKindsAtom = atom(DEFAULT_SELECTED_KINDS);
+export const cpuSplitByTileAtom = atom(false);
+
+export const cpuRowsAtom = atom((get) =>
+  getCpuRows(
+    get(queryTilesAtom),
+    get(cpuSelectedKindsAtom),
+    get(cpuSplitByTileAtom),
+  ),
 );
 
 export const queryTileIdxsAtom = atom((get) =>

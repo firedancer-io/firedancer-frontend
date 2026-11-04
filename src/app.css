@@ -46,6 +46,22 @@
   margin: 0 auto;
 }
 
+.fill-viewport {
+  display: flex;
+  flex-direction: column;
+  min-height: max(100%, 700px);
+}
+
+.fill-viewport .fill-viewport-row {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.fill-viewport .fill-viewport-outlet {
+  display: flex;
+  flex-direction: column;
+}
+
 .blur {
   position: absolute;
   top: 0;

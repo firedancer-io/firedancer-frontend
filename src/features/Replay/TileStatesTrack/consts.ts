@@ -27,8 +27,7 @@ export function isAggregate(rangeMs: TsRange) {
   return rangeMs[1] - rangeMs[0] >= BATCH_MAX_MS;
 }
 
-export const ROW_HEIGHT_PX = 24;
-export const BAR_HEIGHT_PX = 22;
+export const BAR_HEIGHT_RATIO = 22 / 24;
 
 export const ERROR_STATES_ALPHA = 0.5;
 export const ERROR_STATES_BORDER_PX = 1.5;

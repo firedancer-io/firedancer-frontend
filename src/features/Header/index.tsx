@@ -15,6 +15,7 @@ import Logo from "./Logo";
 import { CluserIndicator, Cluster } from "./Cluster";
 import NavCollapseToggle from "../Navigation/NavCollapseToggle";
 import NavBlur from "../Navigation/NavBlur";
+import { useCurrentRoute } from "../../hooks/useCurrentRoute";
 import { useSlotsNavigation } from "../../hooks/useSlotsNavigation";
 import clsx from "clsx";
 import styles from "./header.module.css";
@@ -44,6 +45,7 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
 
   const { noNav, isNarrowScreen, showNav, showOnlyEpochBar } =
     useSlotsNavigation();
+  const isReplay = useCurrentRoute() === "Replay";
 
   const useExtraNarrowGap = !showNav && isXNarrow;
   const extraNarrowGap = "3px";
@@ -59,7 +61,7 @@ export default function Header({ isStartup }: { isStartup?: boolean }) {
     >
       <CluserIndicator />
 
-      <Box px="2" className="app-width-container">
+      <Box px="2" className={clsx({ "app-width-container": !isReplay })}>
         <Flex height={`${headerHeight}px`} align="center">
           <Flex
             className={clsx({
