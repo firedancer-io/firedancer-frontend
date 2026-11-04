@@ -4,14 +4,16 @@ import AggShredTooltip from "./ShredsTrack/AggShredTooltip";
 import AggRevenueTooltip from "./RevenueTrack/AggRevenueTooltip";
 import ReplaySlotTooltip from "./HeaderTrack/ReplaySlotTooltip";
 import AggHeaderTooltip from "./HeaderTrack/AggHeaderTooltip";
-import { tooltipTypeAtom, TooltipType } from "./atoms";
+import { isPinnedAtom, tooltipTypeAtom, TooltipType } from "./atoms";
 
 /**
  * Draw the correct tooltip for the current hovered data
  */
 export default function ReplayTooltip() {
   const tooltipType = useAtomValue(tooltipTypeAtom);
-  if (tooltipType == null) return null;
+  const isPinned = useAtomValue(isPinnedAtom);
+  // the pinned overlap tooltip takes over while open
+  if (isPinned || tooltipType == null) return null;
 
   switch (tooltipType) {
     case TooltipType.Shred:
