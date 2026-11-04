@@ -8,7 +8,6 @@ import styles from "./../TransactionBarsCard/barsChart.module.css";
 import { useSetAtom } from "jotai";
 import { timeScaleDragPlugin } from "../TransactionBarsCard/scaleDragPlugin";
 import { cuRefAreaPlugin } from "./cuRefAreaPlugin";
-import { startLinePlugin } from "./startLinePlugin";
 import {
   bankCountScaleKey,
   computeUnitsScaleKey,
@@ -358,7 +357,6 @@ export default function CuChart({
       ],
       legend: { show: false },
       plugins: [
-        startLinePlugin(),
         cuRefAreaPlugin({
           slotTransactionsRef,
           maxComputeUnitsRef,
