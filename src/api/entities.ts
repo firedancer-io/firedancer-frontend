@@ -1498,6 +1498,10 @@ const nullableFloat64ArraySchema = z
   .nullable()
   .array()
   .transform((a) => Float64Array.from(a, (v) => v ?? NaN));
+const bigInt64ArraySchema = z.coerce
+  .bigint()
+  .array()
+  .transform((a) => BigInt64Array.from(a));
 
 export const tileStatesResponseSchema = z.object({
   granularity: tileStatesGranularitySchema,
@@ -1568,11 +1572,11 @@ export const timelineShredsSchema = z.object({
   granularity: shredsGranularitySchema,
   reference_slot: z.number().nullable(),
   reference_ts: z.coerce.bigint().nullable(),
-  slot_delta: z.number().array(),
-  idx: z.number().nullable().array(),
-  event: z.number().array(),
-  event_ts_delta: z.coerce.bigint().array(),
-  skipped: z.number().array(),
+  slot_delta: int32ArraySchema,
+  idx: nullableFloat64ArraySchema,
+  event: int32ArraySchema,
+  event_ts_delta: bigInt64ArraySchema,
+  skipped: int32ArraySchema,
 });
 
 export enum TimelineEventType {

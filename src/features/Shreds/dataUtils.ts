@@ -11,10 +11,10 @@ import type {
 export interface ShredEventArrays {
   reference_slot: number | null;
   reference_ts: bigint | null;
-  slot_delta: (number | null)[];
-  idx: (number | null)[];
-  event: number[];
-  event_ts_delta: (bigint | null)[];
+  slot_delta: ArrayLike<number | null>;
+  idx: ArrayLike<number | null>;
+  event: ArrayLike<number>;
+  event_ts_delta: ArrayLike<bigint | null>;
 }
 
 /**
@@ -70,10 +70,11 @@ export function mergeShredEvents(
     const eventTsDelta =
       Number(eventAbsNs - slotsToMutate.referenceTs) / nsPerMs;
 
+    const shredIdx = idx[i];
     slotsToMutate.slots.set(
       slotNumber,
       addEventToSlot(
-        idx[i],
+        Number.isNaN(shredIdx) ? null : shredIdx,
         ev,
         eventTsDelta,
         slotsToMutate.slots.get(slotNumber),
