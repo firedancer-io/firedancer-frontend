@@ -33,8 +33,8 @@ import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import styles from "../track.module.css";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import TrackControls from "../TrackControls.tsx";
+import { trackNames } from "../layout.ts";
 
-const height = 300;
 const store = getDefaultStore();
 
 function ShredsTrack({ remount }: WebGlRemountProps) {
@@ -229,14 +229,15 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
   ]);
 
   return (
-    <div className={styles.trackContainer} style={{ height: `${height}px` }}>
+    <>
       <div ref={containerRef} className={styles.trackCanvasContainer} />
       <TrackControls
-        name="Shreds"
+        name={trackNames.shreds}
         bucketSize={granularity}
+        trackId="shreds"
         legend={shredEventSeries}
       />
-    </div>
+    </>
   );
 }
 

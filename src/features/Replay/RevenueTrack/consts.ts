@@ -1,6 +1,7 @@
 import { convertToWebGlColor, type RgbColor } from "../../WebGl/webglUtils.ts";
 import { feesColor, incomeColor, tipsColor } from "../../../colors.ts";
 import { RevenueType } from "../../../api/entities.ts";
+import { trackInsetPx } from "../layout.ts";
 
 /** Visible range wider than this switches from txn bars to aggregated buckets. */
 export const AGGREGATE_THRESHOLD_MS = 60_000;
@@ -9,10 +10,10 @@ export const AGGREGATE_THRESHOLD_MS = 60_000;
 export const minY = 0;
 export const maxY = 1;
 
-export const revenueTrackHeight = 180;
-/** Space reserved above the plot so track controls don't cover it. */
-export const topInsetPx = 24;
-export const cameraMaxY = maxY / (1 - topInsetPx / revenueTrackHeight);
+export function getCameraMaxY(heightPx: number) {
+  const insetPx = trackInsetPx.income;
+  return maxY / (1 - insetPx / Math.max(heightPx, insetPx + 1));
+}
 
 /** Height floor so any non-zero txn/bucket stays visible instead of collapsing to 0. */
 export const minHeightRatio = 0.05;

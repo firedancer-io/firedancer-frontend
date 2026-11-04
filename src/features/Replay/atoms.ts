@@ -13,6 +13,9 @@ import { timelineSlotsAtom } from "./HeaderTrack/nonAggAtoms";
 import { getSlotGroupLeader } from "../../utils";
 import { slotsPerLeader } from "../../consts";
 import { isAggregate } from "./HeaderTrack/utils";
+import type { TrackId } from "./layout";
+import type { SetStateAction } from "react";
+import { atomWithImmer } from "jotai-immer";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -241,3 +244,47 @@ export const hoveredRangeAtom = atom<
     slot: [slotInfo.startMs, slotInfo.endMs],
   };
 });
+
+export const isFullScreenAtom = (function () {
+  const _isFullScreenAtom = atom(false);
+  return atom(
+    (get) => get(_isFullScreenAtom),
+    (get, set, update: SetStateAction<boolean>) => {
+      if (!document.fullscreenEnabled) return;
+
+      const isFullScreen =
+        typeof update === "function" ? update(get(_isFullScreenAtom)) : update;
+
+      if (isFullScreen && !document.fullscreenElement) {
+        const onFullscreenChange = () => {
+          if (document.fullscreenElement) return;
+          set(_isFullScreenAtom, false);
+          document.removeEventListener("fullscreenchange", onFullscreenChange);
+        };
+        document.addEventListener("fullscreenchange", onFullscreenChange);
+
+        document.documentElement.requestFullscreen().catch(() => {
+          set(_isFullScreenAtom, false);
+          document.removeEventListener("fullscreenchange", onFullscreenChange);
+        });
+      } else if (!isFullScreen && document.fullscreenElement) {
+        void document.exitFullscreen();
+      }
+
+      set(_isFullScreenAtom, isFullScreen);
+    },
+  );
+})();
+
+export const [hiddenTracksAtom, setTrackHiddenAtom] = (function () {
+  const _hiddenTracksAtom = atomWithImmer(new Set<TrackId>());
+  return [
+    atom((get) => get(_hiddenTracksAtom)),
+    atom(null, (_get, set, id: TrackId, hidden: boolean) => {
+      set(_hiddenTracksAtom, (draft) => {
+        if (hidden) draft.add(id);
+        else draft.delete(id);
+      });
+    }),
+  ] as const;
+})();

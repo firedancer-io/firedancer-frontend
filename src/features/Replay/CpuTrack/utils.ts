@@ -10,7 +10,14 @@ import {
 import { msBucketSizes, nsBucketSizes } from "../const.ts";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils.ts";
 import type { CpuUtilizationByGranularity, TilesUtilization } from "./atoms.ts";
-import { getTileKey, strokeWidthPx, topInsetPx, type CpuRow } from "./const.ts";
+import {
+  getTileKey,
+  rowGapPx,
+  rowPaddingPx,
+  strokeWidthPx,
+  type CpuRow,
+} from "./const.ts";
+import { getRowsLayout, trackInsetPx } from "../layout.ts";
 import {
   createDataTexture,
   createSparklineMaterial,
@@ -45,7 +52,7 @@ export function setUpRenderer(
   const { renderer, cleanUpRenderer } = created;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(0, 1, topInsetPx, -1, 0.5, 10);
+  const camera = new THREE.OrthographicCamera(0, 1, 0, -1, 0.5, 10);
   camera.position.z = 1;
 
   const { data, texture } = createDataTexture();
@@ -86,13 +93,23 @@ export function setUpRenderer(
   };
 }
 
+export function getCpuRowsLayout(heightPx: number, rowCount: number) {
+  return getRowsLayout(heightPx, rowCount, {
+    insetPx: trackInsetPx.cpu,
+    fillWhenThin: true,
+    gapPx: rowGapPx,
+  });
+}
+
 export function resizeRenderer(rendererObj: RendererObj) {
   const { x: width, y: height } = rendererObj.renderer.getSize(tmpSize);
-  (rendererObj.material.uniforms.uResolution.value as THREE.Vector2).set(
-    width,
-    height,
-  );
-  rendererObj.camera.bottom = topInsetPx - height;
+  const { topPx, rowPx } = getCpuRowsLayout(height, rendererObj.rows.length);
+  const { uniforms } = rendererObj.material;
+  (uniforms.uResolution.value as THREE.Vector2).set(width, height);
+  uniforms.uRowStride.value = rowPx + rowGapPx;
+  uniforms.uPlotHeight.value = Math.max(0, rowPx - 2 * rowPaddingPx);
+  rendererObj.camera.top = topPx;
+  rendererObj.camera.bottom = topPx - height;
   rendererObj.camera.updateProjectionMatrix();
 }
 

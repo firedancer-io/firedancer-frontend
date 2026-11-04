@@ -10,6 +10,7 @@ import {
 import type { TileStatesGranularity } from "../../../api/types.ts";
 import type { TileState } from "../../../api/entities.ts";
 import { TileStatesGranularityEnum } from "../../../api/entities.ts";
+import { trackNames } from "../layout.ts";
 import TrackControls, {
   TrackControlsToggle,
   type LegendItem,
@@ -44,7 +45,8 @@ export default function TileStatesControls({
   if (kind === "replay") {
     return (
       <TrackControls
-        name="Replay"
+        name={trackNames.replay}
+        trackId="replay"
         bucketSize={isAgg ? undefined : "slot"}
         legend={isAgg ? undefined : replayLegend}
       />
@@ -53,7 +55,8 @@ export default function TileStatesControls({
 
   return (
     <TrackControls
-      name="Execrp"
+      name={trackNames.banks}
+      trackId="banks"
       bucketSize={
         isAgg
           ? undefined

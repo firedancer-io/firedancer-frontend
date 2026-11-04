@@ -11,6 +11,7 @@ interface PopoverDropdownProps {
   isOpen?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
   align?: Popover.PopoverContentProps["align"];
+  side?: Popover.PopoverContentProps["side"];
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export default function PopoverDropdown({
   isOpen,
   onOpenChange,
   align,
+  side,
   className,
 }: PropsWithChildren<PopoverDropdownProps>) {
   const containerEl = useAtomValue(containerElAtom);
@@ -39,6 +41,7 @@ export default function PopoverDropdown({
           }}
           sideOffset={5}
           align={align}
+          side={side}
           tabIndex={undefined}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >

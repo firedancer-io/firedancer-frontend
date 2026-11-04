@@ -1,10 +1,5 @@
-import { getDefaultStore, useAtomValue } from "jotai";
+import { getDefaultStore, useAtom, useAtomValue } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
-import {
-  DEFAULT_REVENUE_VIEW_OPTS,
-  revenueTrackHeight,
-  type RevenueViewOpts,
-} from "./consts.ts";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
@@ -17,6 +12,7 @@ import {
   syncNonAggMeshes,
   moveNonAggCamera,
   refreshNonAggView,
+  resizeRenderer,
   appendLiveTxns,
   clearLiveMarkerIfAdded,
   clearLiveMarker,
@@ -35,6 +31,7 @@ import {
   aggRevenueAtom,
   drawEventType,
   aggRevenueEmitterAtom,
+  revenueViewOptsAtom,
 } from "./atoms.ts";
 import { tileCountAtom } from "../../Overview/SlotPerformance/atoms.ts";
 import RevenueYAxis from "./RevenueYAxis.tsx";
@@ -54,12 +51,17 @@ const store = getDefaultStore();
 const getNumRows = (splitByRow: boolean, tileCount: number) =>
   splitByRow ? Math.max(tileCount, 1) : 1;
 
-interface RevenueTrackBodyProps extends WebGlRemountProps {
+interface RevenueTrackProps {
+  height: number;
+}
+
+interface RevenueTrackBodyProps extends RevenueTrackProps, WebGlRemountProps {
   aggQuery: AggRevenueQuery;
 }
 
 function RevenueTrackBody({
   remount,
+  height,
   aggQuery: { query: aggQuery, pauseStaleRefreshes },
 }: RevenueTrackBodyProps) {
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
@@ -67,7 +69,7 @@ function RevenueTrackBody({
   );
   const [aggAxisMax, setAggAxisMax] = useState(0n);
   const [nonAggAxisMax, setNonAggAxisMax] = useState(0n);
-  const [opts, setOpts] = useState<RevenueViewOpts>(DEFAULT_REVENUE_VIEW_OPTS);
+  const [opts, setOpts] = useAtom(revenueViewOptsAtom);
   const { type } = opts;
 
   const [isAgg, setIsAgg] = useState(true);
@@ -79,6 +81,7 @@ function RevenueTrackBody({
     create: ({ setUpContextListeners, getWasContextLost }) =>
       setUpRenderers(setUpContextListeners, getWasContextLost),
     onResize: (rendererObj) => {
+      resizeRenderer(rendererObj);
       const visibleRangeMs = store.get(visibleRangeAtom);
       if (!isAggCurrentRef.current && visibleRangeMs)
         moveNonAggCamera(rendererObj, visibleRangeMs);
@@ -291,12 +294,10 @@ function RevenueTrackBody({
   useTileCacheSubscription(txnMetaCache, onCacheDelta);
 
   return (
-    <div
-      className={styles.trackContainer}
-      style={{ height: `${revenueTrackHeight}px` }}
-    >
+    <>
       <div ref={containerRef} className={styles.trackCanvasContainer} />
       <RevenueYAxis
+        height={height}
         maxValue={isAgg ? aggAxisMax : nonAggAxisMax}
         scale={opts.scale}
         splitRows={!isAgg && opts.splitByRow}
@@ -308,14 +309,14 @@ function RevenueTrackBody({
         opts={opts}
         setOpts={setOpts}
       />
-    </div>
+    </>
   );
 }
 
 const RevenueTrackBodyWithRemount = withWebGlRemount(RevenueTrackBody);
-export default function RevenueTrack() {
+export default function RevenueTrack(props: RevenueTrackProps) {
   const aggQuery = useAggRevenueQuery();
   useTxnMetaCache();
 
-  return <RevenueTrackBodyWithRemount aggQuery={aggQuery} />;
+  return <RevenueTrackBodyWithRemount aggQuery={aggQuery} {...props} />;
 }
