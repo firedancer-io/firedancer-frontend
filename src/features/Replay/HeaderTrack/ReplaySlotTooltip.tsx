@@ -1,14 +1,12 @@
 import { useAtomValue } from "jotai";
-import { DateTime } from "luxon";
 import { startCase } from "lodash";
-import { nsPerMs } from "../../../consts";
 import RowSeparator from "../../../components/RowSeparator";
 import ReplayCursorTooltip, {
   TooltipHeader,
   TooltipRow,
   CursorTimestampRow,
 } from "../Tooltip";
-import { formatSol, sumLamports } from "../Tooltip/utils";
+import { formatSol, formatTooltipTime, sumLamports } from "../Tooltip/utils";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import { useSlotRevenue } from "../RevenueTrack/txnMeta/useSlotRevenue";
@@ -64,9 +62,7 @@ function SlotTooltipContent({
   const isMissingData = revenue == null || transactions == null;
   const { publish } = useSlotQueryPublish(isMissingData ? slot : undefined);
 
-  const startTime = DateTime.fromMillis(
-    Number(slotStartNs / BigInt(nsPerMs)),
-  ).toFormat("h:mm:ss.SSS");
+  const startTime = formatTooltipTime(slotStartNs);
 
   const durationMs = Math.round(endMs - startMs);
 
