@@ -3,8 +3,10 @@
   width: 100%;
 }
 
-.top-inset {
-  padding-top: 12px;
+.rows {
+  position: absolute;
+  left: 0;
+  right: 0;
 }
 
 .track-canvas-container {

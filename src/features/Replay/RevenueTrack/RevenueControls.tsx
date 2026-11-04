@@ -29,6 +29,7 @@ export default function RevenueControls({
     <TrackControls
       name={revenueSeriesLabels[opts.type]}
       bucketSize={isAgg ? granularity : "txn"}
+      trackId="income"
       legend={revenueSeries}
       legendSelection={{
         value: opts.type,

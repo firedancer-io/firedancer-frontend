@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import clsx from "clsx";
 import { Flex, Text } from "@radix-ui/themes";
 import { CaretDownIcon } from "@radix-ui/react-icons";
@@ -7,6 +8,8 @@ import { partition } from "lodash";
 import PopoverDropdown from "../../components/PopoverDropdown.tsx";
 import chartStyles from "./chart.module.css";
 import styles from "./trackControls.module.css";
+import { hiddenTracksAtom, setTrackHiddenAtom } from "./atoms.ts";
+import type { TrackId } from "./layout.ts";
 
 export interface LegendItem<T extends string = string> {
   label: string;
@@ -18,6 +21,7 @@ export interface LegendItem<T extends string = string> {
 interface TrackControlsProps<T extends string> {
   name: string;
   bucketSize: string | undefined;
+  trackId?: TrackId;
   legend?: LegendItem<T>[];
   legendSelection?: { value: T; onChange: (value: T) => void };
   legendMultiSelection?: { values: T[]; onChange: (values: T[]) => void };
@@ -27,11 +31,21 @@ interface TrackControlsProps<T extends string> {
 export default function TrackControls<T extends string>({
   name,
   bucketSize,
+  trackId,
   legend,
   legendSelection,
   legendMultiSelection,
   children,
 }: TrackControlsProps<T>) {
+  const [side, setSide] = useState<"top" | "bottom">("bottom");
+  const triggerRef = useTitleWidthVar();
+
+  const onOpenChange = (isOpen: boolean) => {
+    if (!isOpen || !triggerRef.current) return;
+    const { top } = triggerRef.current.getBoundingClientRect();
+    setSide(top > window.innerHeight / 2 ? "top" : "bottom");
+  };
+
   const className = clsx(chartStyles.noChartExplore, styles.controls);
   const content = (
     <>
@@ -40,13 +54,13 @@ export default function TrackControls<T extends string>({
     </>
   );
 
-  if (!legend && !children) {
-    return <div className={className}>{content}</div>;
-  }
+  if (!trackId) return <div className={className}>{content}</div>;
 
   return (
     <PopoverDropdown
       align="start"
+      side={side}
+      onOpenChange={onOpenChange}
       className={styles.dropdown}
       content={
         <Flex
@@ -61,16 +75,51 @@ export default function TrackControls<T extends string>({
               multiSelection={legendMultiSelection}
             />
           )}
-          {legend && children && <TrackControlsDivider />}
+          {legend && <TrackControlsDivider />}
           {children}
+          {children && <TrackControlsDivider />}
+          <TrackVisibilityToggle trackId={trackId} />
         </Flex>
       }
     >
-      <button type="button" className={clsx(className, styles.trigger)}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={clsx(className, styles.trigger)}
+      >
         {content}
         <CaretDownIcon className={styles.caret} />
       </button>
     </PopoverDropdown>
+  );
+}
+
+// for labels that move beside the title
+function useTitleWidthVar() {
+  const ref = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const track = el?.parentElement;
+    if (!el || !track) return;
+
+    const observer = new ResizeObserver(() =>
+      track.style.setProperty("--track-title-width", `${el.offsetWidth}px`),
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return ref;
+}
+
+function TrackVisibilityToggle({ trackId }: { trackId: TrackId }) {
+  const isHidden = useAtomValue(hiddenTracksAtom).has(trackId);
+  const setTrackHidden = useSetAtom(setTrackHiddenAtom);
+  return (
+    <TrackControlsToggle
+      label="Show track"
+      checked={!isHidden}
+      onChange={(checked) => setTrackHidden(trackId, !checked)}
+    />
   );
 }
 

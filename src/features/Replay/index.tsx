@@ -1,14 +1,39 @@
-import { Flex, Text } from "@radix-ui/themes";
+import { Flex, IconButton, Text } from "@radix-ui/themes";
+import { EnterFullScreenIcon, ExitFullScreenIcon } from "@radix-ui/react-icons";
 import Chart from "./Chart";
-import { useAtomValue } from "jotai";
+import { useEffect } from "react";
+import { useHotkey } from "../../hooks/useHotkey";
+import { useAtom, useAtomValue } from "jotai";
 import { isWebgl2SupportedAtom } from "../WebGl/atoms";
+import { isFullScreenAtom } from "./atoms";
 import styles from "./replay.module.css";
 
 export default function Replay() {
   const isWebGl2Supported = useAtomValue(isWebgl2SupportedAtom);
+  const [isFullScreen, setIsFullScreen] = useAtom(isFullScreenAtom);
+
+  useEffect(() => () => setIsFullScreen(false), [setIsFullScreen]);
+
+  const toggleFullScreen = () => setIsFullScreen((v) => !v);
+
+  useHotkey("f", toggleFullScreen);
+
   return (
-    <Flex direction="column" gap="3px" height="100%">
-      <Text className={styles.title}>Replay</Text>
+    <Flex direction="column" gap="3px" flexGrow="1" minHeight="0">
+      <Flex align="center" gap="2">
+        <Text className={styles.title}>Replay</Text>
+        {document.fullscreenEnabled && (
+          <IconButton
+            size="1"
+            variant="soft"
+            color="gray"
+            aria-label={isFullScreen ? "Exit full screen" : "Full screen"}
+            onClick={toggleFullScreen}
+          >
+            {isFullScreen ? <ExitFullScreenIcon /> : <EnterFullScreenIcon />}
+          </IconButton>
+        )}
+      </Flex>
       {isWebGl2Supported ? <Chart /> : <div>WebGL2 support required</div>}
     </Flex>
   );

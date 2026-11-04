@@ -19,7 +19,8 @@ import {
   AGGREGATE_THRESHOLD_MS,
   revenueSeriesColors,
   maxHeightRatio,
-  cameraMaxY,
+  getCameraMaxY,
+  maxY,
   minY,
   type RevenueScale,
   type RevenueSeries,
@@ -53,6 +54,7 @@ import {
 } from "./txnMesh.ts";
 
 const MIN_BAR_WIDTH_PX = 1;
+const tmpSize = new THREE.Vector2();
 
 export interface RendererObj {
   renderer: THREE.WebGLRenderer;
@@ -115,11 +117,23 @@ export function setUpRenderers(
   };
 }
 
+export function resizeRenderer(rendererObj: RendererObj) {
+  const { y: height } = rendererObj.renderer.getSize(tmpSize);
+  const cameraMaxY = getCameraMaxY(height);
+  for (const { camera } of [
+    rendererObj.aggResources,
+    rendererObj.nonAggResources,
+  ]) {
+    camera.top = cameraMaxY;
+    camera.updateProjectionMatrix();
+  }
+}
+
 export function setUpAggResources(
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): AggResources & { cleanUpResources: () => void } {
   const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(0, 1, cameraMaxY, minY, 0.5, 10);
+  const camera = new THREE.OrthographicCamera(0, 1, maxY, minY, 0.5, 10);
   camera.position.z = 1;
 
   const resources = createRectResources();
@@ -260,7 +274,7 @@ export function setUpNonAggResources(
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): NonAggResources & { cleanUpResources: () => void } {
   const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(0, 1, cameraMaxY, minY, 0.5, 10);
+  const camera = new THREE.OrthographicCamera(0, 1, maxY, minY, 0.5, 10);
   camera.position.z = 1;
 
   const resources = createTxnResources();

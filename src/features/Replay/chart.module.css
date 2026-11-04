@@ -1,5 +1,8 @@
 .container {
-  flex-shrink: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 
   .grabbing-cursor,
   .grabbing-cursor * {
@@ -13,6 +16,13 @@
 
 :where(.container .no-chart-explore) {
   cursor: auto;
+}
+
+.tracks {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .y-axis {
@@ -61,4 +71,8 @@
   margin-left: 1ch;
   text-align: right;
   color: var(--replay-secondary-text-color);
+}
+
+.y-axis-tick.beside-title {
+  left: calc(var(--track-title-width, 0px) + 8px);
 }

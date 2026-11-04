@@ -1,4 +1,4 @@
-import { getDefaultStore, useAtomValue } from "jotai";
+import { getDefaultStore, useAtom, useAtomValue } from "jotai";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
@@ -16,16 +16,15 @@ import { tileBusyGreenColor, tileBusyRedColor } from "../../../colors.ts";
 import {
   aggCpuAtom,
   aggCpuEmitterAtom,
+  cpuRowsAtom,
+  cpuSelectedKindsAtom,
+  cpuSplitByTileAtom,
   drawEventType,
   queryTilesAtom,
   queryTilesKeyAtom,
   syncAggCpuTilesAtom,
 } from "./atoms.ts";
-import {
-  AGG_CPU_CHART_ID,
-  DEFAULT_SELECTED_KINDS,
-  getCpuTrackHeight,
-} from "./const.ts";
+import { AGG_CPU_CHART_ID } from "./const.ts";
 import {
   getAggGranularity,
   useAggCpuQuery,
@@ -33,37 +32,44 @@ import {
 } from "./useAggCpuQuery.ts";
 import {
   drawCpuData,
-  getCpuRows,
+  getCpuRowsLayout,
   getTileKinds,
   moveCpuCamera,
   resizeRenderer,
   setUpRenderer,
 } from "./utils.ts";
-import CpuYAxis from "./CpuYAxis.tsx";
+import RowLabels from "../RowLabels.tsx";
+import { trackNames } from "../layout.ts";
 import trackStyles from "../track.module.css";
 
 const store = getDefaultStore();
 
 const legendSwatchColor = `linear-gradient(to top, ${tileBusyGreenColor}, ${tileBusyRedColor})`;
 
-interface CpuTrackBodyProps extends WebGlRemountProps {
+interface CpuTrackProps {
+  height: number;
+}
+
+interface CpuTrackBodyProps extends CpuTrackProps, WebGlRemountProps {
   query: AggCpuQuery;
   resetQueries: () => void;
 }
 
-function CpuTrackBody({ remount, query, resetQueries }: CpuTrackBodyProps) {
+function CpuTrackBody({
+  remount,
+  height,
+  query,
+  resetQueries,
+}: CpuTrackBodyProps) {
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
   );
-  const [splitByTile, setSplitByTile] = useState(false);
-  const [selectedKinds, setSelectedKinds] = useState(DEFAULT_SELECTED_KINDS);
+  const [splitByTile, setSplitByTile] = useAtom(cpuSplitByTileAtom);
+  const [selectedKinds, setSelectedKinds] = useAtom(cpuSelectedKindsAtom);
 
   const tiles = useAtomValue(queryTilesAtom);
   const tilesKey = useAtomValue(queryTilesKeyAtom);
-  const rows = useMemo(
-    () => getCpuRows(tiles, selectedKinds, splitByTile),
-    [tiles, selectedKinds, splitByTile],
-  );
+  const rows = useAtomValue(cpuRowsAtom);
   const legend = useMemo<LegendItem<string>[]>(
     () =>
       getTileKinds(tiles).map((kind) => ({
@@ -73,7 +79,10 @@ function CpuTrackBody({ remount, query, resetQueries }: CpuTrackBodyProps) {
       })),
     [tiles],
   );
-  const height = getCpuTrackHeight(rows.length);
+  const rowsLayout = useMemo(
+    () => getCpuRowsLayout(height, rows.length),
+    [height, rows.length],
+  );
 
   const { containerRef, rendererRef } = useWebGlRenderer({
     remount,
@@ -165,17 +174,19 @@ function CpuTrackBody({ remount, query, resetQueries }: CpuTrackBodyProps) {
   useLayoutEffect(() => {
     if (!rendererRef.current) return;
     rendererRef.current.rows = rows;
+    resizeRenderer(rendererRef.current);
     draw();
     render();
   }, [rendererRef, rows, draw, render]);
 
   return (
-    <div className={trackStyles.trackContainer} style={{ height }}>
+    <>
       <div ref={containerRef} className={trackStyles.trackCanvasContainer} />
-      <CpuYAxis rows={rows} />
+      <RowLabels labels={rows.map(({ label }) => label)} layout={rowsLayout} />
       <TrackControls
-        name="CPU"
+        name={trackNames.cpu}
         bucketSize={granularity}
+        trackId="cpu"
         legend={legend}
         legendMultiSelection={{
           values: selectedKinds,
@@ -188,15 +199,18 @@ function CpuTrackBody({ remount, query, resetQueries }: CpuTrackBodyProps) {
           onChange={setSplitByTile}
         />
       </TrackControls>
-    </div>
+    </>
   );
 }
 
 const CpuTrackBodyWithRemount = withWebGlRemount(CpuTrackBody);
-export default function CpuTrack() {
+export default function CpuTrack(props: CpuTrackProps) {
   const { query, resetQueries } = useAggCpuQuery(AGG_CPU_CHART_ID);
-  const hasTiles = useAtomValue(queryTilesAtom).length > 0;
-  if (!hasTiles) return null;
-
-  return <CpuTrackBodyWithRemount query={query} resetQueries={resetQueries} />;
+  return (
+    <CpuTrackBodyWithRemount
+      query={query}
+      resetQueries={resetQueries}
+      {...props}
+    />
+  );
 }
