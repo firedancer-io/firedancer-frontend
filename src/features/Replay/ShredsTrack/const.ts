@@ -1,5 +1,6 @@
 import type * as THREE from "three";
 import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
+import type { DrawableSlot } from "../../Shreds/chartUtils";
 import { AggShredEventType } from "../../../api/entities";
 import {
   shredPublishedColor,
@@ -26,6 +27,8 @@ export interface NonAggRendererResources {
   scene: THREE.Scene;
   meshes: Map<string, RectMesh>;
   availableMeshes: RectMesh[];
+  /** mesh for hovered shred highlight */
+  highlightMesh: RectMesh;
   resources: RectResources;
   /**
    * origin ms subtracted from both the camera bounds and
@@ -34,6 +37,16 @@ export interface NonAggRendererResources {
    * Mesh position x values must be updated when this changes
    */
   cameraReferenceMs: number;
+  lastDrawInfo?: NonAggDrawInfo;
+}
+
+export interface NonAggDrawInfo {
+  /** drawn slots, ascending by slotNumber */
+  slots: DrawableSlot[];
+  /**
+   * Right edge each incomplete unskipped slot's bars were drawn to, by mesh key
+   */
+  incompleteRightEdges: Map<string, number>;
 }
 
 export interface AggRendererResources {

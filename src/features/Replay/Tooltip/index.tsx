@@ -63,7 +63,8 @@ export default function ReplayCursorTooltip({ children }: PropsWithChildren) {
     void computePosition({ getBoundingClientRect: () => anchor }, root, {
       // strategy "fixed" so x/y are viewport-relative
       strategy: "fixed",
-      placement: "top-start",
+      // prefer below the cursor
+      placement: "bottom-start",
       middleware: [
         offset(POINTER_GAP_PX),
         flip(),

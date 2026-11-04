@@ -1,9 +1,14 @@
 import { setUpRendererResources } from "../../Shreds/WebGl/setupUtils";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers";
-import { createRenderer, type TsRange } from "../../WebGl/webglUtils";
+import {
+  createRectMesh,
+  createRenderer,
+  type TsRange,
+} from "../../WebGl/webglUtils";
 import { SHREDS_AGG_THRESHOLD_MS, type RendererObj } from "./const";
 import { omit } from "lodash";
 import { setUpAggResources } from "./aggUtils";
+import { SHRED_EVENT_TYPES_COUNT } from "../../../api/entities";
 
 export function setUpRenderers(
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
@@ -13,14 +18,26 @@ export function setUpRenderers(
   if (!rendererObj) return;
 
   const { renderer, cleanUpRenderer } = rendererObj;
+  const baseNonAggResources = setUpRendererResources<string>(getWasContextLost);
+
+  const highlightMesh = createRectMesh(
+    baseNonAggResources.resources,
+    SHRED_EVENT_TYPES_COUNT - 1,
+  );
+  baseNonAggResources.scene.add(highlightMesh.mesh);
+
   const nonAggResources = {
-    ...setUpRendererResources<string>(getWasContextLost),
+    ...baseNonAggResources,
+    highlightMesh,
     cameraReferenceMs: 0,
   };
   const aggResources = setUpAggResources(getWasContextLost);
 
   const cleanUp = () => {
     aggResources.cleanUpResources();
+    if (!getWasContextLost()) {
+      highlightMesh.mesh.geometry.dispose();
+    }
     nonAggResources.cleanUpResources();
     cleanUpRenderer();
   };

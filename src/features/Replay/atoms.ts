@@ -17,6 +17,7 @@ import { isAggregate } from "./HeaderTrack/utils";
 import type { TrackId } from "./layout";
 import type { SetStateAction } from "react";
 import { atomWithImmer } from "jotai-immer";
+import type { ShredEventTsDeltas } from "../Shreds/types";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -149,12 +150,14 @@ export interface HoverInfo {
   cursorMs: number;
   /** cursor position in px, in viewport coords */
   clientPos: ClientPos;
+  slot?: number;
 }
 
 export const [
   hoveredSlotAtom,
   hoveredMsAtom,
   hoveredClientPosAtom,
+  hoverInfoAtom,
   setHoverInfoAtom,
   clearHoverInfoAtom,
 ] = (function getHoveredSlotAtoms() {
@@ -171,6 +174,9 @@ export const [
    * slots, or undefined when nothing is hovered.
    */
   const hoveredSlotAtom = atom<number | undefined>((get) => {
+    const hoverInfo = get(_hoverInfoAtom);
+    if (hoverInfo?.slot != null) return hoverInfo.slot;
+
     const cursorMs = get(hoveredMsAtom);
     const referenceNs = get(referenceNsAtom);
     if (cursorMs == null || referenceNs == null) return;
@@ -215,6 +221,7 @@ export const [
     hoveredSlotAtom,
     hoveredMsAtom,
     hoveredClientPosAtom,
+    atom((get) => get(_hoverInfoAtom)),
     atom(null, (_get, set, value: HoverInfo) => {
       set(_hoverInfoAtom, value);
     }),
@@ -321,4 +328,28 @@ export const hoveredSlotInfoAtom = atom<SlotInfo | undefined>((get) => {
   const { slotGroups } = get(timelineSlotsAtom);
   const group = slotGroups.get(getSlotGroupLeader(hoveredSlot));
   return group?.slots.get(hoveredSlot);
+});
+
+export interface HoveredShred {
+  slot: number;
+  isFec: boolean;
+  idx: number;
+  maxIdx: number;
+  shred: ShredEventTsDeltas;
+  completeTs: number | undefined;
+  skipped: boolean;
+}
+
+export const hoveredShredAtom = atom<HoveredShred | undefined>(undefined);
+
+/** Which tooltip the Replay chart should show for the current hover. */
+export enum TooltipType {
+  Shred,
+  Slot,
+}
+
+export const tooltipTypeAtom = atom<TooltipType | null>((get) => {
+  if (get(hoveredShredAtom) != null) return TooltipType.Shred;
+  if (get(hoveredSlotInfoAtom) != null) return TooltipType.Slot;
+  return null;
 });
