@@ -4,7 +4,11 @@ import {
   ERROR_STATES_ALPHA,
   ERROR_STATES_BORDER_PX,
 } from "./consts.ts";
-import { slotHighlightGlsl, type SlotHighlight } from "../slotHighlight.ts";
+import {
+  NO_SLOT,
+  slotHighlightGlsl,
+  type SlotHighlight,
+} from "../slotHighlight.ts";
 
 const errorStatesUniformsGlsl = /* glsl */ `
   uniform float uViewHeightPx;
@@ -40,11 +44,15 @@ const createVertexShader = (
   uniform vec3 uColors[${colorCount}];
   ${isErrorStates ? errorStatesUniformsGlsl : createTileStatesUniformsGlsl(colorCount)}
 
+  ${slotHighlightGlsl}
+
   in vec2 position;      // unit quad in [-0.5, 0.5]
   in vec4 instanceEdges; // start and end ms as hi + lo
   in vec3 instanceBar;   // row top-down, uColors index, weight
+  in float instanceSlot; // relative slot, NO_SLOT if none
 
   out vec3 vColor;
+  flat out vec4 vSlotFractions; // applyHighlight fractions
   out float vWeight;      // fraction of its time span the state covers
   out float vLocalY;      // unit quad y in [-0.5, 0.5]
   out float vBarHeightPx;
@@ -52,6 +60,7 @@ const createVertexShader = (
 
   void main() {
     vColor = uColors[int(instanceBar.y + 0.5)];
+    vSlotFractions = getSlotFractions(instanceSlot);
     vWeight = instanceBar.z;
     vLocalY = position.y;
     // Subtract from the anchor hi and lo before converting to px, so edges in
@@ -85,18 +94,24 @@ float xCoverage() {
 }
 `;
 
-/** Adds each px's coverage to its texel */
+/**
+ * Adds each px's coverage to its texel, and its coverage in the highlighted
+ * slots and groups to the same texel of the highlight target
+ */
 const tileStatesFragmentShader = /* glsl */ `
 precision highp float;
 ${xCoverageGlsl}
 in float vWeight;
+flat in vec4 vSlotFractions;
 
-out vec4 outCoverage;
+layout(location = 0) out vec4 outCoverage;
+layout(location = 1) out vec4 outSlotCoverage;
 
 void main() {
   float coverage = xCoverage() * vWeight;
   if (coverage <= 0.0) discard;
   outCoverage = vec4(coverage, 0.0, 0.0, 0.0);
+  outSlotCoverage = vSlotFractions * coverage;
 }
 `;
 
@@ -110,6 +125,8 @@ in vec3 vColor;
 in float vLocalY;
 in float vBarHeightPx;
 
+flat in vec4 vSlotFractions;
+
 out vec4 fragColor;
 
 ${slotHighlightGlsl}
@@ -122,7 +139,7 @@ void main() {
     (1.0 - smoothstep(uBorderPx - 0.5, uBorderPx + 0.5, d)) * xCoverage();
   if (coverage <= 0.0) discard;
 
-  fragColor = vec4(highlightTime(vColor, gl_FragCoord.x), uOpacity * coverage);
+  fragColor = vec4(applyHighlight(vColor, vSlotFractions), uOpacity * coverage);
 }
 `;
 
@@ -164,12 +181,14 @@ export function createTileStatesMaterial(
   colors: THREE.Vector3[],
   stateIdxs: number[],
   stateCount: number,
+  highlight: SlotHighlight,
 ) {
   return createMaterial(
     tileStatesFragmentShader,
     colors,
     false,
     {
+      ...highlight.uniforms,
       uStateIdxs: { value: stateIdxs },
       uStateCount: { value: stateCount },
     },
@@ -205,6 +224,8 @@ export interface StatesMesh {
   edgesAttr: THREE.InstancedBufferAttribute;
   bar: Float32Array; // [row, colorIndex, weight] per rect
   barAttr: THREE.InstancedBufferAttribute;
+  slot: Float32Array; // relative slot per rect, NO_SLOT if none
+  slotAttr: THREE.InstancedBufferAttribute;
   capacity: number;
   count: number;
   referenceX: number; // The data tile's start in ms
@@ -215,19 +236,25 @@ const INITIAL_CAPACITY = 2 ** 10;
 function setInstanceAttrs(statesMesh: StatesMesh, capacity: number) {
   const edges = new Float32Array(capacity * 4);
   const bar = new Float32Array(capacity * 3);
+  const slot = new Float32Array(capacity).fill(NO_SLOT);
   edges.set(statesMesh.edges);
   bar.set(statesMesh.bar);
+  slot.set(statesMesh.slot);
   statesMesh.edges = edges;
   statesMesh.bar = bar;
+  statesMesh.slot = slot;
   statesMesh.edgesAttr = new THREE.InstancedBufferAttribute(edges, 4);
   statesMesh.barAttr = new THREE.InstancedBufferAttribute(bar, 3);
+  statesMesh.slotAttr = new THREE.InstancedBufferAttribute(slot, 1);
   statesMesh.edgesAttr.setUsage(THREE.DynamicDrawUsage);
   statesMesh.barAttr.setUsage(THREE.DynamicDrawUsage);
+  statesMesh.slotAttr.setUsage(THREE.DynamicDrawUsage);
   statesMesh.capacity = capacity;
 
   const { geometry } = statesMesh.mesh;
   geometry.setAttribute("instanceEdges", statesMesh.edgesAttr);
   geometry.setAttribute("instanceBar", statesMesh.barAttr);
+  geometry.setAttribute("instanceSlot", statesMesh.slotAttr);
   // @ts-expect-error private field
   geometry._maxInstanceCount = undefined;
 }
@@ -250,6 +277,8 @@ export function createStatesMesh(
     edgesAttr: new THREE.InstancedBufferAttribute(new Float32Array(0), 4),
     bar: new Float32Array(0),
     barAttr: new THREE.InstancedBufferAttribute(new Float32Array(0), 3),
+    slot: new Float32Array(0),
+    slotAttr: new THREE.InstancedBufferAttribute(new Float32Array(0), 1),
     capacity: 0,
     count: 0,
     referenceX: 0,
@@ -274,7 +303,11 @@ export function setStatesCount(
   statesMesh.mesh.geometry.instanceCount = count;
   const uploadCount = count - uploadFrom;
   if (uploadCount <= 0) return;
-  for (const attr of [statesMesh.edgesAttr, statesMesh.barAttr]) {
+  for (const attr of [
+    statesMesh.edgesAttr,
+    statesMesh.barAttr,
+    statesMesh.slotAttr,
+  ]) {
     attr.addUpdateRange(
       uploadFrom * attr.itemSize,
       uploadCount * attr.itemSize,

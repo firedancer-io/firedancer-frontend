@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { nsBucketSizes } from "../const";
 import type { AggVotesByGranularity } from "./aggAtoms";
 import { getAggLatencySeries, getSlotLatencySeries } from "./series";
+import type { GetDrawTiles } from "../useAggQuery";
+
+/** Draw every bucket from the target granularity */
+const drawTargetOnly: GetDrawTiles = (granularity, first, last) => [
+  { granularity, first, last },
+];
 
 describe("getSlotLatencySeries", () => {
   it("breaks lines across slots without a sample", () => {
@@ -38,12 +44,45 @@ describe("getAggLatencySeries", () => {
       ],
     ]);
     const referenceNs = 10n * bucketNs;
-    const series = getAggLatencySeries(aggVotes, "1s", referenceNs, [0, 2500]);
+    const series = getAggLatencySeries(
+      aggVotes,
+      "1s",
+      drawTargetOnly,
+      referenceNs,
+      [0, 2500],
+    );
 
     expect(series.notarized).toEqual([
       { ts: 500, latencyMs: 250, breakBefore: true },
       { ts: 2500, latencyMs: 260, breakBefore: true },
     ]);
     expect(series.skipped).toEqual([1500]);
+  });
+
+  it("resamples a coarser fallback granularity into target buckets", () => {
+    const aggVotes: AggVotesByGranularity = new Map([
+      [
+        "2s",
+        new Map([
+          [5, { notarized: 250, fast: null, slow: 290, skippedCnt: 2 }],
+        ]),
+      ],
+    ]);
+    const referenceNs = 10n * nsBucketSizes["1s"];
+    const series = getAggLatencySeries(
+      aggVotes,
+      "1s",
+      (_, first, last) => [{ granularity: "2s", first, last }],
+      referenceNs,
+      [0, 2000],
+    );
+
+    // the 2s bucket covers 1s buckets 10 and 11
+    expect(series.notarized).toEqual([
+      { ts: 500, latencyMs: 250, breakBefore: true },
+      { ts: 1500, latencyMs: 250, breakBefore: false },
+    ]);
+    expect(series.fast).toEqual([]);
+    expect(series.skipped).toEqual([500, 1500]);
   });
 });

@@ -47,6 +47,8 @@ import { tilesAtom } from "../../../api/atoms.ts";
 import { calcAbsoluteNs, calcRelativeMs } from "../utils.ts";
 import {
   createSlotHighlight,
+  getRelativeSlot,
+  NO_SLOT,
   slotHighlightGlsl,
   updateSlotHighlight,
   type SlotHighlight,
@@ -186,6 +188,8 @@ const createCompositeFragmentShader = (
   precision highp float;
 
   uniform sampler2D uCoverage;  // a texel row per row and state, rows bottom-up
+  uniform sampler2D uSlotCoverage; // uCoverage's texels, in the highlighted slots and groups
+  uniform float uHighlightByTime; // for states without slots, i.e. agg
   uniform vec2 uCanvasSize;     // px in canvas dimensions
   uniform float uRowCount;
   uniform float uBarRatio;      // bar height / row height
@@ -202,6 +206,8 @@ const createCompositeFragmentShader = (
     // bars sit at the bottom of their rows
     float barY = mod(uv.y, rowH) / (rowH * uBarRatio);
     vec3 color = uBackground;
+    // the drawn state, or -1 for a mix of the row's states
+    int drawnStateIdx = -1;
     if (barY < 1.0) {
       int firstTexelRow = int(uv.y / rowH) * ${stateCount};
       int x = int(gl_FragCoord.x);
@@ -212,8 +218,31 @@ const createCompositeFragmentShader = (
         busy += coverage[i];
       }
       ${shade}
-      // highlight drawn states by the slot time ranges, not the background
-      if (color != uBackground) color = highlightTime(color, gl_FragCoord.x);
+      // highlight drawn states, not the background
+      if (uHighlightActive > 0.5 && color != uBackground) {
+        if (uHighlightByTime > 0.5) {
+          color = highlightTime(color, gl_FragCoord.x);
+        } else {
+          // highlight by the share of the px's time in each highlighted slot
+          // and group
+          vec4 slotCoverage = vec4(0.0);
+          float drawnCoverage = busy;
+          if (drawnStateIdx >= 0) {
+            slotCoverage = texelFetch(
+              uSlotCoverage, ivec2(x, firstTexelRow + drawnStateIdx), 0);
+            drawnCoverage = coverage[drawnStateIdx];
+          } else {
+            for (int i = 0; i < ${stateCount}; i++) {
+              slotCoverage +=
+                texelFetch(uSlotCoverage, ivec2(x, firstTexelRow + i), 0);
+            }
+          }
+          if (drawnCoverage > 0.0) {
+            color = applyHighlight(
+              color, clamp(slotCoverage / drawnCoverage, 0.0, 1.0));
+          }
+        }
+      }
     }
     fragColor = vec4(color, 1.0);
   }
@@ -291,6 +320,7 @@ const createGanttFragmentShader = (stateCount: number) =>
       int stateIdx = uLaneStateIdxs[lane];
       if (laneY >= 0.0 && stateIdx >= 0 && coverage[stateIdx] > 0.0) {
         color = uStateColors[stateIdx];
+        drawnStateIdx = stateIdx;
       }
     `,
   );
@@ -310,6 +340,7 @@ const createStackedFragmentShader = (stateCount: number) =>
         top += coverage[stateIdx] / total;
         if (barY < top) {
           color = uStateColors[stateIdx];
+          drawnStateIdx = stateIdx;
           break;
         }
       }
@@ -335,6 +366,7 @@ const createStackedLanesFragmentShader = (stateCount: number) =>
           texelFetch(uLaneMax, ivec2(0, firstTexelRow + stateIdx), 0).r;
         if (laneMax > 0.0 && laneY < coverage[stateIdx] / busy / laneMax) {
           color = uStateColors[stateIdx];
+          drawnStateIdx = stateIdx;
         }
       }
     `,
@@ -372,7 +404,9 @@ function createCompositeUniforms(
 ): Record<string, THREE.IUniform> {
   return {
     ...highlight.uniforms,
-    uCoverage: { value: tileStatesTarget.texture },
+    uCoverage: { value: tileStatesTarget.textures[0] },
+    uSlotCoverage: { value: tileStatesTarget.textures[1] },
+    uHighlightByTime: { value: 0 },
     uLaneMax: { value: laneMaxTarget.texture },
     uCanvasSize: { value: new THREE.Vector2(1, 1) },
     uRowCount: { value: 1 },
@@ -522,20 +556,24 @@ export function setUpRenderer(
   const canBlendFloat32 =
     renderer.extensions.has("EXT_color_buffer_float") &&
     renderer.extensions.has("EXT_float_blend");
-  // Each px's time per row and coverage state. The composite pass shades every
-  // mode from it
+  // Each px's time per row and coverage state, and that time in the
+  // highlighted slots and groups. The composite pass shades every mode from it
   const states = coverageStates[kind];
   const tileStatesTarget = new THREE.WebGLRenderTarget(1, 1, {
+    count: 2,
     format: THREE.RedFormat,
     type: canBlendFloat32 ? THREE.FloatType : THREE.HalfFloatType,
     minFilter: THREE.NearestFilter,
     magFilter: THREE.NearestFilter,
     depthBuffer: false,
   });
+  // focus slot, focus group, hovered other slot, hovered other group
+  tileStatesTarget.textures[1].format = THREE.RGBAFormat;
   const tileStatesMaterial = createTileStatesMaterial(
     TILE_STATE_PALETTE,
     TILE_STATE_PALETTE.map((_, state) => states.indexOf(state)),
     states.length,
+    highlight,
   );
   const laneMaxReducer = createLaneMaxReducer(
     tileStatesTarget,
@@ -674,6 +712,7 @@ export function render(rendererObj: RendererObj) {
     : rendererObj.tileStatesScene;
   (compositeUniforms.uCanvasSize.value as THREE.Vector2).set(width, height);
   compositeUniforms.uRowCount.value = rowCount;
+  compositeUniforms.uHighlightByTime.value = rendererObj.isAgg ? 1 : 0;
   const laneStates =
     trackStates[rendererObj.kind][rendererObj.renderedGranularity ?? "agg"];
   const laneStateIdxs = compositeUniforms.uLaneStateIdxs.value as number[];
@@ -815,7 +854,13 @@ function buildDataTileMeshes(
   const tileStatesStart = appendData ? meshes.tileStates.count : 0;
   setStatesCount(
     meshes.tileStates,
-    appendTileStates(meshes.tileStates, data, tileStatesStart, rowOfTile),
+    appendTileStates(
+      meshes.tileStates,
+      data,
+      tileStatesStart,
+      rowOfTile,
+      rendererObj.highlight,
+    ),
     tileStatesStart,
   );
 
@@ -823,7 +868,13 @@ function buildDataTileMeshes(
     const errorStatesStart = appendData ? meshes.errorStates.count : 0;
     setStatesCount(
       meshes.errorStates,
-      appendErrorStates(meshes.errorStates, data, errorStatesStart, rowOfTile),
+      appendErrorStates(
+        meshes.errorStates,
+        data,
+        errorStatesStart,
+        rowOfTile,
+        rendererObj.highlight,
+      ),
       errorStatesStart,
     );
   }
@@ -983,6 +1034,7 @@ function clipColumns(
     state_tile: [],
     state_start_ms: [],
     state_end_ms: [],
+    state_slot: [],
     txn_slot: [],
     txn_idx: [],
     txn_tile: [],
@@ -997,6 +1049,7 @@ function clipColumns(
     clipped.state_tile.push(data.state_tile[i]);
     clipped.state_start_ms.push(Math.max(startMs, data.state_start_ms[i]));
     clipped.state_end_ms.push(Math.min(endMs, data.state_end_ms[i]));
+    clipped.state_slot.push(data.state_slot[i]);
   }
   for (let i = 0; i < data.txn_idx.length; i++) {
     if (data.txn_end_ms[i] <= startMs || data.txn_start_ms[i] >= endMs)
@@ -1067,6 +1120,7 @@ function appendTileStates(
   data: TileStateColumns,
   start: number,
   rowOfTile: RowOfTile,
+  highlight: SlotHighlight,
 ): number {
   if (rowOfTile.size === 0) return start;
 
@@ -1080,6 +1134,7 @@ function appendTileStates(
   for (let i = 0; i < data.state.length; i++) {
     const row = rowOfTile.get(data.state_tile[i]);
     if (row === undefined) continue;
+    const slot = data.state_slot[i];
     addRectToMesh(
       mesh,
       count++,
@@ -1087,6 +1142,8 @@ function appendTileStates(
       data.state_end_ms[i],
       row,
       data.state[i],
+      1,
+      Number.isNaN(slot) ? NO_SLOT : getRelativeSlot(highlight, slot),
     );
   }
   return count;
@@ -1097,6 +1154,7 @@ function appendErrorStates(
   data: TileStateColumns,
   start: number,
   rowOfTile: RowOfTile,
+  highlight: SlotHighlight,
 ): number {
   if (rowOfTile.size === 0) return start;
 
@@ -1119,6 +1177,8 @@ function appendErrorStates(
       data.txn_end_ms[i],
       row,
       errorCode ? ErrorState.Failed : ErrorState.Succeeded,
+      1,
+      getRelativeSlot(highlight, data.txn_slot[i]),
     );
   }
   return count;
@@ -1132,6 +1192,7 @@ export function addRectToMesh(
   row: number,
   colorIndex: number,
   weight = 1,
+  slot = NO_SLOT,
 ) {
   const localStart = startMs - mesh.referenceX;
   const localEnd = endMs - mesh.referenceX;
@@ -1146,4 +1207,5 @@ export function addRectToMesh(
   mesh.bar[b] = row;
   mesh.bar[b + 1] = colorIndex;
   mesh.bar[b + 2] = weight;
+  mesh.slot[idx] = slot;
 }

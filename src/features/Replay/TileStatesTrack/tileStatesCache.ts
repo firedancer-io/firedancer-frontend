@@ -44,6 +44,8 @@ export interface TileStateColumns {
   state_tile: number[];
   state_start_ms: number[];
   state_end_ms: number[];
+  // NaN for a state outside any slot or txn segment
+  state_slot: number[];
   // One entry per txn segment: a sigverify, or a txn's execution stages
   txn_slot: number[];
   txn_idx: number[];
@@ -59,6 +61,7 @@ function emptyColumns(): TileStateColumns {
     state_tile: [],
     state_start_ms: [],
     state_end_ms: [],
+    state_slot: [],
     txn_slot: [],
     txn_idx: [],
     txn_tile: [],
@@ -76,6 +79,8 @@ function parseTileStates(res: TimelineTileStates): TileStateColumns {
   if (referenceNs == null) return acc;
   const baseStartNs = Number(res.start_ts - referenceNs);
 
+  const refSlot = res.reference_slot ?? 0;
+  const stateSlot = getStateSlots(res, refSlot);
   const stateStartNs = new Float64Array(res.state.length);
   const stateTile = new Int32Array(res.state.length);
 
@@ -114,6 +119,7 @@ function parseTileStates(res: TimelineTileStates): TileStateColumns {
       acc.state_tile.push(tile);
       acc.state_start_ms.push(startNs / nsPerMs);
       acc.state_end_ms.push(endNs / nsPerMs);
+      acc.state_slot.push(stateSlot[stateIdx]);
     }
   }
 
@@ -123,7 +129,6 @@ function parseTileStates(res: TimelineTileStates): TileStateColumns {
   //   state:     ·  S  · | ·  L  V  E  P  ·
   //   segment 0:    ^    |                    lo 1, cnt 1
   //   segment 1:         |    ^--------^      lo 4, cnt 4
-  const refSlot = res.reference_slot ?? 0;
   for (let segmentIdx = 0; segmentIdx < res.txn_state_lo.length; segmentIdx++) {
     const firstStateIdx = res.txn_state_lo[segmentIdx];
     const lastStateIdx = firstStateIdx + res.txn_state_cnt[segmentIdx] - 1;
@@ -141,12 +146,33 @@ function parseTileStates(res: TimelineTileStates): TileStateColumns {
   return acc;
 }
 
+/** Each state's slot, from the replay tile's slot segments and the txn segments */
+function getStateSlots(res: TimelineTileStates, refSlot: number) {
+  const stateSlot = new Float64Array(res.state.length).fill(NaN);
+  const segments = [
+    [res.slot_state_lo, res.slot_state_cnt, res.slot_delta],
+    [res.txn_state_lo, res.txn_state_cnt, res.txn_slot_delta],
+  ];
+  for (const [stateLo, stateCnt, slotDelta] of segments) {
+    for (let segmentIdx = 0; segmentIdx < stateLo.length; segmentIdx++) {
+      const firstStateIdx = stateLo[segmentIdx];
+      stateSlot.fill(
+        refSlot + slotDelta[segmentIdx],
+        firstStateIdx,
+        firstStateIdx + stateCnt[segmentIdx],
+      );
+    }
+  }
+  return stateSlot;
+}
+
 function appendColumns(acc: TileStateColumns, src: TileStateColumns): void {
   for (let i = 0; i < src.state.length; i++) {
     acc.state.push(src.state[i]);
     acc.state_tile.push(src.state_tile[i]);
     acc.state_start_ms.push(src.state_start_ms[i]);
     acc.state_end_ms.push(src.state_end_ms[i]);
+    acc.state_slot.push(src.state_slot[i]);
   }
   for (let i = 0; i < src.txn_idx.length; i++) {
     acc.txn_slot.push(src.txn_slot[i]);

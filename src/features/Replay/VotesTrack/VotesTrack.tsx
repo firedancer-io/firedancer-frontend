@@ -10,10 +10,12 @@ import {
   votesSlowColor,
 } from "../../../colors.ts";
 import { epochAtom } from "../../../atoms.ts";
-import type { TsRange } from "../../WebGl/webglUtils.ts";
+import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
 import type { AggGranularity, VotesGranularity } from "../../../api/types.ts";
 import { VotesGranularityEnum } from "../../../api/entities.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
+import { getVisibleWorldRangeNs } from "../utils.ts";
+import { resolveHeldDraw } from "../useAggQuery.ts";
 import {
   drawEventType,
   timelineSlotsAtom,
@@ -57,7 +59,13 @@ import {
   getAggVotesGranularity,
   useAggVotesQuery,
 } from "./useAggVotesQuery.ts";
-import { votesCaches, type VotesCacheDelta } from "./votesCache.ts";
+import {
+  getFallbackVotesTiles,
+  isVotesRangeDrawable,
+  VOTES_REGION_NS,
+  votesCaches,
+  type VotesCacheDelta,
+} from "./votesCache.ts";
 import { buildSlotVotes, type SlotVotes, type VotesData } from "./votesData.ts";
 
 const store = getDefaultStore();
@@ -101,6 +109,17 @@ function getSlotInfos() {
   return slotInfos;
 }
 
+/**
+ * Visible range clamped to the world range, in absolute ns
+ */
+function getVisibleWorldNs(): NsTsRange | undefined {
+  const referenceNs = store.get(referenceNsAtom);
+  const visibleRangeMs = store.get(visibleRangeAtom);
+  const worldRangeMs = store.get(worldRangeAtom);
+  if (referenceNs == null || !visibleRangeMs || !worldRangeMs) return;
+  return getVisibleWorldRangeNs(referenceNs, visibleRangeMs, worldRangeMs);
+}
+
 function getTargetSlotMs() {
   const targetNs = store.get(epochAtom)?.target_slot_duration_nanos;
   return targetNs ? targetNs / nsPerMs : DEFAULT_TARGET_SLOT_MS;
@@ -117,7 +136,12 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
   const [latencyTicks, setLatencyTicks] = useState<number[]>([]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  /** target view, which is queried */
   const viewRef = useRef<VotesView>("curves");
+  /** drawn view, held on a view change until the target view is drawable */
+  const drawnViewRef = useRef<VotesView>();
+  /** fallback tiles in the current slot votes */
+  const fallbackKeyRef = useRef<string>();
   const slotVotesRef = useRef(new Map<number, SlotVotes>());
   const slotLatencySeriesRef = useRef(emptySeries);
   const slotInfosRef = useRef(new Map<number, SlotInfo>());
@@ -125,6 +149,40 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
   const liveTilesRef = useRef<
     Record<VotesGranularity, { startNs: bigint; data: VotesData } | null>
   >({ vote: null, vote_batch: null });
+
+  const {
+    query: aggQuery,
+    getDrawTiles,
+    isVisibleDrawable: isAggVisibleDrawable,
+    pauseStaleRefreshes: pauseStaleAggRefreshes,
+  } = useAggVotesQuery(AGG_CHART_ID);
+
+  /**
+   * View to draw. Keep the previous view on a view change until the target
+   * view can draw all of the visible range.
+   */
+  const resolveDrawnView = useCallback(
+    (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
+      const view = resolveHeldDraw(
+        drawnViewRef.current,
+        getVotesView(getSpanMs(visibleRangeMs)),
+        (view) =>
+          view === "aggLatency"
+            ? isAggVisibleDrawable(referenceNs, visibleRangeMs, worldRangeMs)
+            : isVotesRangeDrawable(
+                granularityRef.current,
+                getVisibleWorldRangeNs(
+                  referenceNs,
+                  visibleRangeMs,
+                  worldRangeMs,
+                ),
+              ),
+      );
+      drawnViewRef.current = view;
+      return view;
+    },
+    [isAggVisibleDrawable],
+  );
 
   const drawLatency = useCallback(
     (
@@ -150,15 +208,19 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
 
   const draw = useCallback(() => {
     const ctx = canvasRef.current?.getContext("2d");
+    const referenceNs = store.get(referenceNsAtom);
     const visibleRangeMs = store.get(visibleRangeAtom);
-    if (!ctx || !visibleRangeMs) return;
+    const worldRangeMs = store.get(worldRangeAtom);
+    if (!ctx || referenceNs == null || !visibleRangeMs || !worldRangeMs) return;
 
     const pxRatio = Math.min(devicePixelRatio, MAX_WEBGL_PX_RATIO);
     ctx.setTransform(pxRatio, 0, 0, pxRatio, 0, 0);
     ctx.clearRect(0, 0, width, height);
     const spanMs = getSpanMs(visibleRangeMs);
 
-    switch (getVotesView(spanMs)) {
+    const view = resolveDrawnView(referenceNs, visibleRangeMs, worldRangeMs);
+    setView(view);
+    switch (view) {
       case "curves":
         drawVotes(ctx, {
           widthPx: width,
@@ -189,11 +251,12 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
         break;
       }
       case "aggLatency": {
-        const referenceNs = store.get(referenceNsAtom);
-        if (referenceNs == null) return;
+        const granularity = getAggVotesGranularity(spanMs);
+        setAggGranularity(granularity);
         const series = getAggLatencySeries(
           store.get(aggVotesAtom),
-          getAggVotesGranularity(spanMs),
+          granularity,
+          getDrawTiles,
           referenceNs,
           visibleRangeMs,
         );
@@ -201,23 +264,44 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
         break;
       }
     }
-  }, [width, height, drawLatency]);
+  }, [width, height, drawLatency, getDrawTiles, resolveDrawnView]);
 
-  const rebuildSlotVotes = useCallback(() => {
+  /**
+   * Rebuild slot votes from the current granularity, with other granularity
+   * tiles in place of visible regions it hasn't loaded. Unless `force`, skip
+   * if the fallback tiles haven't changed. Returns whether it rebuilt.
+   */
+  const rebuildSlotVotes = useCallback((force = true) => {
     const granularity = granularityRef.current;
-    const tiles = votesCaches[granularity].getTiles().map(({ data }) => data);
+    const visibleWorldNs = getVisibleWorldNs();
+    const fallback = visibleWorldNs
+      ? getFallbackVotesTiles(granularity, visibleWorldNs)
+      : { regionStartsNs: new Set<bigint>(), tiles: [] };
+    const fallbackKey = fallback.tiles.map(({ startNs }) => startNs).join();
+    if (!force && fallbackKey === fallbackKeyRef.current) return false;
+    fallbackKeyRef.current = fallbackKey;
+
+    const isReplaced = (startNs: bigint) =>
+      fallback.regionStartsNs.has(
+        (startNs / VOTES_REGION_NS) * VOTES_REGION_NS,
+      );
+    const tiles = votesCaches[granularity]
+      .getTiles()
+      .filter(({ startNs }) => !isReplaced(startNs))
+      .map(({ data }) => data);
     const live = liveTilesRef.current[granularity];
-    if (live) tiles.push(live.data);
+    if (live && !isReplaced(live.startNs)) tiles.push(live.data);
+    for (const { data } of fallback.tiles) tiles.push(data);
+
     slotVotesRef.current = buildSlotVotes(tiles);
     slotLatencySeriesRef.current = getSlotLatencySeries(
       getSlotLatencies(slotVotesRef.current, getTargetSlotMs()),
     );
+    return true;
   }, []);
 
   const queryVote = useTileCacheQuery(votesCaches.vote);
   const queryBatch = useTileCacheQuery(votesCaches.vote_batch);
-  const { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes } =
-    useAggVotesQuery(AGG_CHART_ID);
 
   const throttledQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
@@ -251,20 +335,19 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
     if (nextView !== viewRef.current) {
       if (viewRef.current === "aggLatency") pauseStaleAggRefreshes();
       viewRef.current = nextView;
-      setView(nextView);
     }
 
-    if (nextView === "aggLatency") {
-      setAggGranularity(getAggVotesGranularity(spanMs));
-    } else {
-      const granularity = getVotesGranularity(spanMs);
-      if (granularity !== granularityRef.current) {
-        granularityRef.current = granularity;
-        rebuildSlotVotes();
-      }
+    const granularity =
+      nextView === "aggLatency" ? undefined : getVotesGranularity(spanMs);
+    if (granularity && granularity !== granularityRef.current) {
+      granularityRef.current = granularity;
+      rebuildSlotVotes();
+    } else if (rebuildSlotVotes(false)) {
+      // visible fallback tiles changed
+      draw();
     }
     throttledQuery(referenceNs, visibleRangeMs, worldRangeMs);
-  }, [pauseStaleAggRefreshes, rebuildSlotVotes, throttledQuery]);
+  }, [draw, pauseStaleAggRefreshes, rebuildSlotVotes, throttledQuery]);
 
   useLayoutEffect(() => {
     rebuildSlotVotes();
@@ -306,7 +389,11 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
         liveTiles[granularity] = null;
       }
 
-      if (granularity !== granularityRef.current) return;
+      if (granularity !== granularityRef.current) {
+        // other granularity tiles are only drawn as a fallback
+        if (rebuildSlotVotes(false)) draw();
+        return;
+      }
       rebuildSlotVotes();
       draw();
     },
