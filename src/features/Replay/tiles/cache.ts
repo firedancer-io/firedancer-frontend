@@ -32,6 +32,11 @@ export interface TileCacheConfig<TData, TMeta> {
   deriveMeta: (data: TData) => TMeta;
   filterOwned?: (data: TData, window: Interval) => TData;
   fetch: (window: Interval, requestId: number) => Promise<FetchResult<TData>>;
+  // for data whose consecutive windows don't sum, e.g. re-simplified recent data
+  fetchLive?: (
+    window: Interval,
+    requestId: number,
+  ) => Promise<FetchResult<TData>>;
   failPendingRequests: () => void;
 }
 
@@ -99,6 +104,7 @@ export function createTileCache<TData, TMeta>({
   deriveMeta,
   filterOwned,
   fetch,
+  fetchLive = fetch,
   failPendingRequests,
 }: TileCacheConfig<TData, TMeta>): TileCache<TData, TMeta> {
   const tileCache = new Map<number, CachedTile<TData, TMeta>>();
@@ -242,7 +248,10 @@ export function createTileCache<TData, TMeta>({
     publish({ kind: "add", tiles: [{ startNs, endNs, data, meta }] });
   }
 
-  function fetchDataForRange(range: Interval) {
+  function fetchDataForRange(
+    range: Interval,
+    fetchWindow: TileCacheConfig<TData, TMeta>["fetch"] = fetch,
+  ) {
     const { signal } = controller;
     return splitFetch<TData>(range, {
       minWindowInterval: minSubTileNs,
@@ -250,7 +259,7 @@ export function createTileCache<TData, TMeta>({
       merge,
       filterOwned,
       fetch: async (window) => {
-        const result = await fetch(window, Number(uniqueId()));
+        const result = await fetchWindow(window, Number(uniqueId()));
         const resultEndNs = "value" in result ? result.availableEndNs : null;
         if (resultEndNs != null && resultEndNs > (availableEndNs ?? -1n)) {
           availableEndNs = resultEndNs;
@@ -330,7 +339,10 @@ export function createTileCache<TData, TMeta>({
     if (endNs < startNs) return false;
 
     const { signal } = controller;
-    const { data, canRetry } = await fetchDataForRange([startNs, endNs]);
+    const { data, canRetry } = await fetchDataForRange(
+      [startNs, endNs],
+      fetchLive,
+    );
     if (signal.aborted) return false;
     if (canRetry) return true;
     if (live.acc === null || startNs !== live.acc.fetchedEndNs + 1n)

@@ -1550,6 +1550,15 @@ export const aggShredsSchema = timelineAggSchema.extend({
   [AggShredEventType.Published]: z.array(z.number().nullable()),
 });
 
+export const aggVotesSchema = z.object({
+  granularity: aggGranularitySchema,
+  reference_ts_ns: z.coerce.bigint(),
+  notarized_latency_ns: z.array(z.number().nullable()),
+  finalized_fast_latency_ns: z.array(z.number().nullable()),
+  finalized_slow_latency_ns: z.array(z.number().nullable()),
+  skipped_cnt: z.array(z.number()),
+});
+
 export const aggCpuSchema = timelineAggSchema.extend({
   utilization: z.array(z.array(z.number().nullable())),
 });
@@ -1581,6 +1590,23 @@ export const timelineShredsSchema = z.object({
   event: int32ArraySchema,
   event_ts_delta: bigInt64ArraySchema,
   skipped: int32ArraySchema,
+});
+
+export const votesGranularitySchema = z.enum(["vote", "vote_batch"]);
+export const VotesGranularityEnum = votesGranularitySchema.enum;
+export const timelineVotesSchema = z.object({
+  granularity: votesGranularitySchema,
+  available_start_ns: z.coerce.bigint().nullable(),
+  available_end_ns: z.coerce.bigint().nullable(),
+  reference_slot: z.number().nullable(),
+  reference_ts: z.coerce.bigint().nullable(),
+  slot_delta: z.number().array(),
+  event: z.number().array(),
+  event_ts_delta: z.coerce.bigint().array(),
+  stake: z.coerce.bigint().nullable().array(),
+  total_stake: z.coerce.bigint().nullable(),
+  next_epoch_start_slot: z.number().nullable(),
+  next_total_stake: z.coerce.bigint().nullable(),
 });
 
 export enum TimelineEventType {
@@ -1686,6 +1712,16 @@ export const timelineSchema = z.discriminatedUnion("key", [
     key: z.literal("query_agg_cpu"),
     value: aggCpuSchema,
   }),
+  timelineTopicSchema.extend({
+    id: z.number(),
+    key: z.literal("query_votes"),
+    value: timelineVotesSchema,
+  }),
+  timelineTopicSchema.extend({
+    id: z.number(),
+    key: z.literal("query_agg_votes"),
+    value: aggVotesSchema,
+  }),
 ]);
 
 export const timelineErrorSchema = z.discriminatedUnion("key", [
@@ -1696,6 +1732,11 @@ export const timelineErrorSchema = z.discriminatedUnion("key", [
   }),
   timelineTopicSchema.extend({
     key: z.literal("query_tile_states"),
+    error: errorBodySchema,
+    id: z.number(),
+  }),
+  timelineTopicSchema.extend({
+    key: z.literal("query_votes"),
     error: errorBodySchema,
     id: z.number(),
   }),

@@ -19,6 +19,7 @@ import MiniMap from "./MiniMap/MiniMap.tsx";
 import HeaderTrack from "./HeaderTrack/index.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
 import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
+import { useVotesCache } from "./VotesTrack/useVotesCache.ts";
 import Tracks from "./Tracks.tsx";
 import HoverOverlay from "./HoverOverlay.tsx";
 import HoveredTsLine from "./HoveredTsLine.tsx";
@@ -82,10 +83,12 @@ export default function Chart() {
     store.set(clearHoverInfoAtom, hoverOwner);
   }, []);
 
-  const { setContainer: setHoverContainer, replayHoverAt } = useHoveredPosition({
-    onHoverChange,
-    onHoverLeave,
-  });
+  const { setContainer: setHoverContainer, replayHoverAt } = useHoveredPosition(
+    {
+      onHoverChange,
+      onHoverLeave,
+    },
+  );
 
   // When the pinned overlap tooltip dismisses (click-away / Esc), the cursor is
   // still over the chart but no mousemove fired — replay the hover at the cursor
@@ -122,6 +125,7 @@ export default function Chart() {
 
   // Drive the tile states caches used by the tile states tracks
   useTileStatesCache();
+  useVotesCache();
 
   if (!isInitialized) return <Spinner />;
 

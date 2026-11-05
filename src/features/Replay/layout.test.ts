@@ -9,7 +9,15 @@ import {
   type TrackId,
 } from "./layout";
 
-const allTracks: TrackId[] = ["shreds", "income", "banks", "replay", "cpu"];
+const allTracks: TrackId[] = [
+  "shreds",
+  "votes",
+  "income",
+  "banks",
+  "replay",
+  "cpu",
+];
+const tracksWithoutVotes = allTracks.filter((id) => id !== "votes");
 const sum = (heights: Partial<Record<TrackId, number>>) =>
   Object.values(heights).reduce((a, b) => a + (b ?? 0), 0);
 
@@ -21,6 +29,7 @@ describe("getTrackSharesPct", () => {
   it("uses the base shares", () => {
     expect(getTrackSharesPct(10, 2)).toEqual({
       shreds: 22,
+      votes: 9,
       income: 19,
       banks: 35,
       replay: 7,
@@ -34,6 +43,7 @@ describe("getTrackSharesPct", () => {
     expect(shares.cpu).toBe(8);
     const scale = (100 - 41 - 8) / 57;
     expect(shares.shreds).toBeCloseTo(22 * scale);
+    expect(shares.votes).toBeCloseTo(9 * scale);
     expect(shares.income).toBeCloseTo(19 * scale);
     expect(shares.replay).toBeCloseTo(7 * scale);
   });
@@ -49,13 +59,19 @@ describe("getTrackSharesPct", () => {
 });
 
 describe("getTrackHeights", () => {
-  // with votes, the spec's 1181px window leaves 1000px for 6 tracks
-  const spec = { shreds: 220, income: 190, banks: 350, replay: 70, cpu: 80 };
-  const specFree = 1000 - 90;
+  // the spec's 1181px window leaves 1000px for 6 tracks
+  const spec = {
+    shreds: 220,
+    votes: 90,
+    income: 190,
+    banks: 350,
+    replay: 70,
+    cpu: 80,
+  };
 
-  it("matches the spec sizes without votes' share, banks in whole rows", () => {
+  it("matches the spec sizes, banks in whole rows", () => {
     const heights = getTrackHeights({
-      heightPx: areaFor(specFree),
+      heightPx: areaFor(1000),
       tracks: allTracks,
       hidden: new Set(),
       banksRows: 10,
@@ -63,6 +79,18 @@ describe("getTrackHeights", () => {
     });
     // 350px floors to 12 + 10 * 33; shreds takes the 8px
     expect(heights).toEqual({ ...spec, shreds: 228, banks: 342 });
+  });
+
+  it("gives votes' share to the other tracks when votes is absent", () => {
+    const heights = getTrackHeights({
+      heightPx: areaFor(910, tracksWithoutVotes.length),
+      tracks: tracksWithoutVotes,
+      hidden: new Set(),
+      banksRows: 10,
+      cpuRows: 2,
+    });
+    const { votes: _, ...specWithoutVotes } = spec;
+    expect(heights).toEqual({ ...specWithoutVotes, shreds: 228, banks: 342 });
   });
 
   it("rounds banks down to whole rows and gives shreds the leftover", () => {
@@ -75,7 +103,7 @@ describe("getTrackHeights", () => {
     });
     expect(((heights.banks ?? 0) - trackInsetPx.banks) % 7).toBe(0);
     expect(sum(heights)).toBe(917);
-    const shreds = Math.floor((917 * 22) / 91);
+    const shreds = Math.floor((917 * 22) / 100);
     expect(heights.shreds).toBeGreaterThan(shreds);
   });
 
@@ -127,21 +155,21 @@ describe("getTrackHeights", () => {
       cpuRows: 2,
     });
     expect((large.income ?? 0) - (small.income ?? 0)).toBeCloseTo(
-      (53 * 19) / 91,
+      (53 * 19) / 100,
       -0.5,
     );
   });
 
   it("treats zero banks rows as one", () => {
     const heights = getTrackHeights({
-      heightPx: areaFor(910),
+      heightPx: areaFor(1000),
       tracks: allTracks,
       hidden: new Set(),
       banksRows: 0,
       cpuRows: 2,
     });
     expect(heights.banks).toBe(350);
-    expect(sum(heights)).toBe(910);
+    expect(sum(heights)).toBe(1000);
   });
 
   it("keeps every visible track at least 40px when banks and cpu are capped", () => {
@@ -155,7 +183,7 @@ describe("getTrackHeights", () => {
     for (const id of allTracks) {
       expect(heights[id]).toBeGreaterThanOrEqual(40);
     }
-    expect(sum(heights)).toBe(500 - 4 * TRACK_GAP_PX);
+    expect(sum(heights)).toBe(500 - (allTracks.length - 1) * TRACK_GAP_PX);
     expect(((heights.banks ?? 0) - trackInsetPx.banks) % 16).toBe(0);
   });
 
@@ -170,7 +198,7 @@ describe("getTrackHeights", () => {
     for (const id of allTracks) {
       expect(heights[id]).toBeGreaterThanOrEqual(0);
     }
-    expect(sum(heights)).toBe(100 - 4 * TRACK_GAP_PX);
+    expect(sum(heights)).toBe(100 - (allTracks.length - 1) * TRACK_GAP_PX);
   });
 
   it("only includes present tracks", () => {

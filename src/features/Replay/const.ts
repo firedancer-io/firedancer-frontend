@@ -64,4 +64,5 @@ export const minAggGranularities: Record<TimelineAggQueryKey, AggGranularity> =
     query_agg_shreds: "250ms",
     query_agg_slots: "250ms",
     query_agg_tile_states: "2s",
+    query_agg_votes: "250ms",
   };

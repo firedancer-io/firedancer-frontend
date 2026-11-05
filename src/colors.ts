@@ -433,3 +433,16 @@ export const replayBlockedOnTilesColor = "#A19753";
 export const replayBlockedOnConflictsColor = "#9F5845";
 export const replayBlockedOnNetworkColor = "#486588";
 export const replaySlotFinishColor = "#477F6D";
+
+// replay votes
+export const votesNotarColor = "#3A8C5F";
+export const votesFastFinalizeColor = "#1FA595";
+export const votesSlowColor = "#B08A3E";
+export const votesImplicitColor = "#6E7686";
+export const votesSkippedColor = "#B54A50";
+export const votesStripFastColor = "#1F3B30";
+export const votesStripSlowColor = "#5A4626";
+export const votesStripSkippedColor = "#5A2328";
+export const votesStripImplicitColor = "#2C313C";
+export const votesIconBackgroundColor = "#070B14";
+export const votesThresholdLineColor = "rgba(255, 255, 255, 0.22)";

@@ -21,6 +21,7 @@ export interface LegendItem<T extends string = string> {
 interface TrackControlsProps<T extends string> {
   name: string;
   bucketSize: string | undefined;
+  description?: string;
   trackId?: TrackId;
   legend?: LegendItem<T>[];
   legendSelection?: { value: T; onChange: (value: T) => void };
@@ -31,6 +32,7 @@ interface TrackControlsProps<T extends string> {
 export default function TrackControls<T extends string>({
   name,
   bucketSize,
+  description,
   trackId,
   legend,
   legendSelection,
@@ -50,7 +52,11 @@ export default function TrackControls<T extends string>({
   const content = (
     <>
       <Text className={styles.name}>{name}</Text>
-      {bucketSize && <Text>per {bucketSize}</Text>}
+      {description ? (
+        <Text>{description}</Text>
+      ) : (
+        bucketSize && <Text>per {bucketSize}</Text>
+      )}
     </>
   );
 

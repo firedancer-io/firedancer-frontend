@@ -91,8 +91,11 @@ import type {
   aggTileStatesSchema,
   aggShredsSchema,
   aggCpuSchema,
+  aggVotesSchema,
   timelineSlotsSchema,
   timelineShredsSchema,
+  timelineVotesSchema,
+  votesGranularitySchema,
   shredsGranularitySchema,
   timelineEventsSchema,
 } from "./entities";
@@ -251,6 +254,9 @@ export type TimelineTileStates = z.infer<typeof tileStatesResponseSchema>;
 export type AggTileStates = z.infer<typeof aggTileStatesSchema>;
 export type AggShreds = z.infer<typeof aggShredsSchema>;
 export type AggCpu = z.infer<typeof aggCpuSchema>;
+export type AggVotes = z.infer<typeof aggVotesSchema>;
 export type ShredsGranularity = z.infer<typeof shredsGranularitySchema>;
 export type TimelineShreds = z.infer<typeof timelineShredsSchema>;
+export type TimelineVotes = z.infer<typeof timelineVotesSchema>;
+export type VotesGranularity = z.infer<typeof votesGranularitySchema>;
 export type TimelineEvents = z.infer<typeof timelineEventsSchema>;

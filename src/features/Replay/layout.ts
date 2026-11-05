@@ -1,7 +1,14 @@
-export type TrackId = "shreds" | "income" | "banks" | "replay" | "cpu";
+export type TrackId =
+  | "shreds"
+  | "votes"
+  | "income"
+  | "banks"
+  | "replay"
+  | "cpu";
 
 export const trackNames: Record<TrackId, string> = {
   shreds: "Shreds",
+  votes: "Votes",
   income: "Income",
   banks: "Execrp",
   replay: "Replay",
@@ -10,6 +17,7 @@ export const trackNames: Record<TrackId, string> = {
 
 export const trackInsetPx: Record<TrackId, number> = {
   shreds: 0,
+  votes: 15,
   income: 24,
   banks: 12,
   replay: 12,
@@ -22,7 +30,7 @@ const MIN_TRACK_PX = 40;
 const MAX_GAP_FRACTION = 1 / 4;
 export const ROW_LABEL_PX = 13;
 
-const baseSharePct: Record<TrackId | "votes", number> = {
+const baseSharePct: Record<TrackId, number> = {
   shreds: 22,
   votes: 9,
   income: 19,
@@ -54,6 +62,7 @@ export function getTrackSharesPct(banksRows: number, cpuRows: number) {
   const restScale = (100 - banks - cpu) / restBase;
   return {
     shreds: baseSharePct.shreds * restScale,
+    votes: baseSharePct.votes * restScale,
     income: baseSharePct.income * restScale,
     banks,
     replay: baseSharePct.replay * restScale,
