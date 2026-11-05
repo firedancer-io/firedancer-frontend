@@ -16,7 +16,8 @@ import HeaderTrack from "./HeaderTrack/index.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
 import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
 import Tracks from "./Tracks.tsx";
-import HoverOverlay from "./HoverOverlay.tsx";
+import SlotDividers from "./SlotDividers.tsx";
+import { useEscapeClearsSelection } from "./slotHighlight.ts";
 import HoveredTsLine from "./HoveredTsLine.tsx";
 import ReplayTooltip from "./ReplayTooltip.tsx";
 import { useHoveredPosition, type HoveredRect } from "./useHoveredPosition.ts";
@@ -87,6 +88,8 @@ export default function Chart() {
   // Drive the tile states caches used by the tile states tracks
   useTileStatesCache();
 
+  useEscapeClearsSelection();
+
   if (!isInitialized) return <Spinner />;
 
   return (
@@ -110,7 +113,7 @@ export default function Chart() {
 
             <Tracks />
 
-            <HoverOverlay />
+            <SlotDividers />
             <HoveredTsLine />
             <ReplayTooltip />
           </Flex>

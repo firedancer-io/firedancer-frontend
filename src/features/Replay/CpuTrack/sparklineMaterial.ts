@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { tileBusyGreenColor, tileBusyRedColor } from "../../../colors";
 import { convertToWebGlColor, glslFloat } from "../../WebGl/webglUtils";
 import { MAX_UTILIZATION } from "./const";
+import { slotHighlightGlsl, type SlotHighlight } from "../slotHighlight";
 
 /**
  * Single channel float texture where texel (col, row) holds the value of point
@@ -97,21 +98,24 @@ void main() {
 `;
 
 const fragmentShader = /* glsl */ `
-precision mediump float;
+precision highp float;
 
 uniform vec3 uIdleColor;
 uniform vec3 uBusyColor;
 in float vUtil;
 out vec4 fragColor;
-
+${slotHighlightGlsl}
 void main() {
-  fragColor = vec4(mix(uIdleColor, uBusyColor, clamp(vUtil, 0.0, 1.0)), 1.0);
+  vec3 color = mix(uIdleColor, uBusyColor, clamp(vUtil, 0.0, 1.0));
+  // utilization isn't attributed to slots
+  fragColor = vec4(highlightTime(color, gl_FragCoord.x), 1.0);
 }
 `;
 
 export function createSparklineMaterial(
   dataTexture: THREE.DataTexture,
   strokeWidthPx: number,
+  highlight: SlotHighlight,
 ) {
   return new THREE.RawShaderMaterial({
     glslVersion: THREE.GLSL3,
@@ -135,6 +139,7 @@ export function createSparklineMaterial(
       uBusyColor: {
         value: new THREE.Vector3(...convertToWebGlColor(tileBusyRedColor)),
       },
+      ...highlight.uniforms,
     },
   });
 }

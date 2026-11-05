@@ -220,6 +220,9 @@ export const headerHoveredGroupBorderColor = "rgba(255, 255, 255, 0.45)";
 export const headerHoveredSkippedGroupBorderColor = "#FF6B6B";
 export const headerHoveredMineGroupBorderColor = "rgba(81, 153, 239, 0.95)";
 export const headerHoveredSlotBorderColor = "rgba(255, 255, 255, 0.55)";
+export const headerSelectedSlotBorderColor = "#F7F8F8";
+export const headerSelectedHoveredSlotBorderColor = "#FFFFFF";
+export const headerSelectedHoveredSlotGlowColor = "rgba(255, 255, 255, 0.35)";
 export const hoveredTsLineColor = "rgba(0, 144, 255, 0.75)";
 
 // sankey

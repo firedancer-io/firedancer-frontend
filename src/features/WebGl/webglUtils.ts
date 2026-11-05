@@ -111,15 +111,21 @@ export function createUnitQuad() {
   return geometry;
 }
 
-function createRectMaterial(opacity: number) {
+// a custom fragment shader gets uOpacity and vColor
+export function createRectMaterial(
+  opacity: number,
+  customFragmentShader = fragmentShader,
+  uniforms: Record<string, THREE.IUniform> = {},
+) {
   return new THREE.RawShaderMaterial({
     vertexShader,
-    fragmentShader,
+    fragmentShader: customFragmentShader,
     side: THREE.FrontSide,
     transparent: true,
     depthWrite: false,
     uniforms: {
       uOpacity: { value: opacity },
+      ...uniforms,
     },
   });
 }
