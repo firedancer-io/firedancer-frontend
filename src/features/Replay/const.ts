@@ -10,6 +10,11 @@ export const CHART_NOW_DELAY_MS = 500;
 // fraction of the visible window width from world end
 export const RESUME_LIVE_THRESHOLD_FRAC = 0.02;
 
+/**
+ * At most, how many agg slot buckets should be visible
+ */
+export const AGG_SLOTS_BUCKET_COUNT_THRESHOLD = 1000;
+
 export const msBucketSizes: Record<AggGranularity, number> = {
   "25ms": 25,
   "50ms": 50,
