@@ -15,6 +15,7 @@ import MiniMap from "./MiniMap/MiniMap.tsx";
 import HeaderTrack from "./HeaderTrack/index.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
 import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
+import { useVotesCache } from "./VotesTrack/useVotesCache.ts";
 import Tracks from "./Tracks.tsx";
 import SlotDividers from "./SlotDividers.tsx";
 import { useEscapeClearsSelection } from "./slotHighlight.ts";
@@ -85,6 +86,7 @@ export default function Chart() {
     }
   }, [isInitialized]);
 
+  useVotesCache();
   // Drive the tile states caches used by the tile states tracks
   useTileStatesCache();
 

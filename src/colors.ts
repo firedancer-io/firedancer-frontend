@@ -440,3 +440,9 @@ export const replayBlockedOnNetworkColor = "#3F6789";
 export const replaySlotFinishColor = "#458B68";
 export const replayBlockedOnConflictsColor = "#D36854";
 export const replayBlockedOnTilesColor = "#AC9834";
+
+// replay votes
+export const votesNotarColor = "#3A8C5F";
+export const votesFastFinalizeColor = "#1FA595";
+export const votesSkippedColor = "#B54A50";
+export const votesThresholdLineColor = "rgba(255, 255, 255, 0.22)";
