@@ -1,81 +1,92 @@
 import * as THREE from "three";
-import { ERROR_STATES_ALPHA, ERROR_STATES_BORDER_PX } from "./consts.ts";
-import { slotHighlightGlsl, type SlotHighlight } from "../slotHighlight.ts";
+import {
+  BAR_HEIGHT_RATIO,
+  ERROR_STATES_ALPHA,
+  ERROR_STATES_BORDER_PX,
+} from "./consts.ts";
+import {
+  NO_SLOT,
+  slotHighlightGlsl,
+  type SlotHighlight,
+} from "../slotHighlight.ts";
 
-export const linearToSrgbGlsl = /* glsl */ `
-vec3 linearToSrgb(vec3 c) {
-  return mix(
-    c * 12.92,
-    1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055,
-    step(0.0031308, c)
-  );
-}
+const errorStatesUniformsGlsl = /* glsl */ `
+  uniform float uViewHeightPx;
+  uniform float uBarRatio; // bar height / row height
+`;
+const errorStatesYGlsl = /* glsl */ `
+  // bars sit at the bottom of their rows, y in [0, 1] view space
+  vBarHeightPx = uBarRatio / uRowCount * uViewHeightPx;
+  float y = (row + (position.y + 0.5) * uBarRatio) / uRowCount;
 `;
 
-const srgbToLinearGlsl = /* glsl */ `
-vec3 srgbToLinear(vec3 c) {
-  return mix(
-    c / 12.92,
-    pow((c + 0.055) / 1.055, vec3(2.4)),
-    step(0.04045, c)
-  );
-}
+const createTileStatesUniformsGlsl = (colorCount: number) => /* glsl */ `
+  uniform int uStateIdxs[${colorCount}]; // index in the drawn states, -1 if not drawn
+  uniform float uStateCount;
+`;
+const tileStatesYGlsl = /* glsl */ `
+  // A texel row per row (tile) and state.
+  // Rows of states that aren't written collapse off target.
+  int stateIdx = uStateIdxs[int(instanceBar.y + 0.5)];
+  float texelRow = row * uStateCount + float(stateIdx) + position.y + 0.5;
+  float y = stateIdx < 0 ? -1.0 : texelRow / (uRowCount * uStateCount);
 `;
 
 const createVertexShader = (
   colorCount: number,
-  isLinearColor: boolean,
+  isErrorStates: boolean,
 ) => /* glsl */ `
-uniform mat4 modelViewMatrix; // the anchor as hi + lo
-uniform float uMsPerPx;       // ms per device px of the view
-uniform float uViewWidthPx;
-uniform float uOffsetPx;      // anchor's offset from the view's left edge
-uniform vec3 uColors[${colorCount}];
+  uniform mat4 modelViewMatrix; // the anchor as hi + lo
+  uniform float uMsPerPx;       // ms per device px of the view
+  uniform float uViewWidthPx;
+  uniform float uOffsetPx;      // anchor's offset from the view's left edge
+  uniform float uRowCount;
+  uniform vec3 uColors[${colorCount}];
+  ${isErrorStates ? errorStatesUniformsGlsl : createTileStatesUniformsGlsl(colorCount)}
 
-attribute vec2 position;      // unit quad in [-0.5, 0.5]
-attribute vec4 instanceEdges; // start and end ms as hi + lo
-attribute vec3 instanceBar;   // bottom y and height in [0, 1], uColors index
-attribute float instanceSlot; // relative slot
+  ${slotHighlightGlsl}
 
-varying vec3 vColor;
-varying float vLocalY;  // unit quad y in [-0.5, 0.5]
-varying vec2 vEdgesPx;  // left and right edges from the view's left edge
+  in vec2 position;      // unit quad in [-0.5, 0.5]
+  in vec4 instanceEdges; // start and end ms as hi + lo
+  in vec3 instanceBar;   // row top-down, uColors index, weight
+  in float instanceSlot; // relative slot, NO_SLOT if none
 
-${slotHighlightGlsl}
-${linearToSrgbGlsl}
-${srgbToLinearGlsl}
+  out vec3 vColor;
+  flat out vec4 vSlotFractions; // applyHighlight fractions
+  out float vWeight;      // fraction of its time span the state covers
+  out float vLocalY;      // unit quad y in [-0.5, 0.5]
+  out float vBarHeightPx;
+  out vec2 vEdgesPx;      // left and right edges from the view's left edge
 
-void main() {
-  vec3 color = uColors[int(instanceBar.z + 0.5)];
-  vColor = ${
-    isLinearColor
-      ? "srgbToLinear(highlightSlot(linearToSrgb(color), instanceSlot))"
-      : "highlightSlot(color, instanceSlot)"
-  };
-  vLocalY = position.y;
-  // Subtract from the anchor hi and lo before converting to px, so edges in
-  // view stay exact and don't jitter while zooming
-  float anchorHi = modelViewMatrix[3][0];
-  float anchorLo = modelViewMatrix[3][1];
-  vEdgesPx =
-    vec2(
-      (instanceEdges.x - anchorHi) + (instanceEdges.y - anchorLo),
-      (instanceEdges.z - anchorHi) + (instanceEdges.w - anchorLo)
-    ) / uMsPerPx +
-    uOffsetPx;
-  // The fragment shader only runs for px whose centers fall inside the quad,
-  // so pad by 1px to include every partly covered px
-  float px = position.x < 0.0 ? vEdgesPx.x - 1.0 : vEdgesPx.y + 1.0;
+  void main() {
+    vColor = uColors[int(instanceBar.y + 0.5)];
+    vSlotFractions = getSlotFractions(instanceSlot);
+    vWeight = instanceBar.z;
+    vLocalY = position.y;
+    // Subtract from the anchor hi and lo before converting to px, so edges in
+    // view stay exact and don't jitter while zooming
+    float anchorHi = modelViewMatrix[3][0];
+    float anchorLo = modelViewMatrix[3][1];
+    vEdgesPx =
+      vec2(
+        (instanceEdges.x - anchorHi) + (instanceEdges.y - anchorLo),
+        (instanceEdges.z - anchorHi) + (instanceEdges.w - anchorLo)
+      ) / uMsPerPx +
+      uOffsetPx;
+    // The fragment shader only runs for px whose centers fall inside the quad,
+    // so pad by 1px to include every partly covered px
+    float px = position.x < 0.0 ? vEdgesPx.x - 1.0 : vEdgesPx.y + 1.0;
 
-  // y is in [0, 1] view space
-  float y = instanceBar.x + (position.y + 0.5) * instanceBar.y;
-  gl_Position = vec4(px / uViewWidthPx * 2.0 - 1.0, y * 2.0 - 1.0, 0.0, 1.0);
-}
+    // rows bottom-up
+    float row = uRowCount - 1.0 - instanceBar.x;
+    ${isErrorStates ? errorStatesYGlsl : tileStatesYGlsl}
+    gl_Position = vec4(px / uViewWidthPx * 2.0 - 1.0, y * 2.0 - 1.0, 0.0, 1.0);
+  }
 `;
 
 /** Exact fraction of this px's width the rect covers. */
 const xCoverageGlsl = /* glsl */ `
-varying vec2 vEdgesPx;
+in vec2 vEdgesPx;
 
 float xCoverage() {
   float px = gl_FragCoord.x;
@@ -84,52 +95,63 @@ float xCoverage() {
 `;
 
 /**
- * Adds each state's share of the px.
+ * Adds each px's coverage to its texel, and its coverage in the highlighted
+ * slots and groups to the same texel of the highlight target
  */
 const tileStatesFragmentShader = /* glsl */ `
 precision highp float;
 ${xCoverageGlsl}
-varying vec3 vColor;
+in float vWeight;
+flat in vec4 vSlotFractions;
+
+layout(location = 0) out vec4 outCoverage;
+layout(location = 1) out vec4 outSlotCoverage;
 
 void main() {
-  float coverage = xCoverage();
+  float coverage = xCoverage() * vWeight;
   if (coverage <= 0.0) discard;
-  gl_FragColor = vec4(vColor * coverage, coverage);
+  outCoverage = vec4(coverage, 0.0, 0.0, 0.0);
+  outSlotCoverage = vSlotFractions * coverage;
 }
 `;
 
 const errorStatesFragmentShader = /* glsl */ `
 precision highp float;
 ${xCoverageGlsl}
+${slotHighlightGlsl}
 uniform float uBorderPx;
-uniform float uBarHeightPx;
 uniform float uOpacity;
 
-varying vec3 vColor;
-varying float vLocalY;
+in vec3 vColor;
+in float vLocalY;
+in float vBarHeightPx;
+
+flat in vec4 vSlotFractions;
+
+out vec4 fragColor;
 
 void main() {
   // Distance to the nearest top/bottom edge in device px.
-  float d = (0.5 - abs(vLocalY)) * uBarHeightPx;
+  float d = (0.5 - abs(vLocalY)) * vBarHeightPx;
 
   float coverage =
     (1.0 - smoothstep(uBorderPx - 0.5, uBorderPx + 0.5, d)) * xCoverage();
   if (coverage <= 0.0) discard;
 
-  gl_FragColor = vec4(vColor, uOpacity * coverage);
+  fragColor = vec4(applyHighlight(vColor, vSlotFractions), uOpacity * coverage);
 }
 `;
 
 function createMaterial(
   fragmentShader: string,
   colors: THREE.Vector3[],
-  isLinearColor: boolean,
-  highlight: SlotHighlight,
+  isErrorStates: boolean,
   uniforms: Record<string, THREE.IUniform>,
   params: THREE.ShaderMaterialParameters = {},
 ) {
   return new THREE.RawShaderMaterial({
-    vertexShader: createVertexShader(colors.length, isLinearColor),
+    glslVersion: THREE.GLSL3,
+    vertexShader: createVertexShader(colors.length, isErrorStates),
     fragmentShader,
     transparent: true,
     depthTest: false,
@@ -137,33 +159,39 @@ function createMaterial(
       uMsPerPx: { value: 1 },
       uViewWidthPx: { value: 1 },
       uOffsetPx: { value: 0 },
+      uRowCount: { value: 1 },
       uColors: { value: colors },
-      ...highlight.uniforms,
       ...uniforms,
     },
     ...params,
   });
 }
 
-/** Sums each px's time-weighted state colors and busy fraction. */
+const additiveBlending: THREE.ShaderMaterialParameters = {
+  blending: THREE.CustomBlending,
+  blendEquation: THREE.AddEquation,
+  blendSrc: THREE.OneFactor,
+  blendDst: THREE.OneFactor,
+  blendSrcAlpha: THREE.OneFactor,
+  blendDstAlpha: THREE.OneFactor,
+};
+
 export function createTileStatesMaterial(
-  linearColors: THREE.Vector3[],
+  colors: THREE.Vector3[],
+  stateIdxs: number[],
+  stateCount: number,
   highlight: SlotHighlight,
 ) {
   return createMaterial(
     tileStatesFragmentShader,
-    linearColors,
-    true,
-    highlight,
-    {},
+    colors,
+    false,
     {
-      blending: THREE.CustomBlending,
-      blendEquation: THREE.AddEquation,
-      blendSrc: THREE.OneFactor,
-      blendDst: THREE.OneFactor,
-      blendSrcAlpha: THREE.OneFactor,
-      blendDstAlpha: THREE.OneFactor,
+      ...highlight.uniforms,
+      uStateIdxs: { value: stateIdxs },
+      uStateCount: { value: stateCount },
     },
+    additiveBlending,
   );
 }
 
@@ -171,9 +199,11 @@ export function createErrorStatesMaterial(
   colors: THREE.Vector3[],
   highlight: SlotHighlight,
 ) {
-  return createMaterial(errorStatesFragmentShader, colors, false, highlight, {
+  return createMaterial(errorStatesFragmentShader, colors, true, {
+    ...highlight.uniforms,
+    uViewHeightPx: { value: 1 },
+    uBarRatio: { value: BAR_HEIGHT_RATIO },
     uBorderPx: { value: 0 },
-    uBarHeightPx: { value: 0 },
     uOpacity: { value: ERROR_STATES_ALPHA },
   });
 }
@@ -181,19 +211,19 @@ export function createErrorStatesMaterial(
 export function setErrorStatesSize(
   material: THREE.RawShaderMaterial,
   pixelRatio: number,
-  barHeightPx: number,
+  viewHeightPx: number,
 ) {
   material.uniforms.uBorderPx.value = ERROR_STATES_BORDER_PX * pixelRatio;
-  material.uniforms.uBarHeightPx.value = barHeightPx;
+  material.uniforms.uViewHeightPx.value = viewHeightPx;
 }
 
 export interface StatesMesh {
   mesh: THREE.Mesh<THREE.InstancedBufferGeometry, THREE.RawShaderMaterial>;
   edges: Float32Array; // [startHi, startLo, endHi, endLo] per rect in ms from referenceX
   edgesAttr: THREE.InstancedBufferAttribute;
-  bar: Float32Array; // [bottomY, height, colorIndex] per rect
+  bar: Float32Array; // [row, colorIndex, weight] per rect
   barAttr: THREE.InstancedBufferAttribute;
-  slot: Float32Array; // relative slot per rect
+  slot: Float32Array; // relative slot per rect, NO_SLOT if none
   slotAttr: THREE.InstancedBufferAttribute;
   capacity: number;
   count: number;
@@ -205,7 +235,7 @@ const INITIAL_CAPACITY = 2 ** 10;
 function setInstanceAttrs(statesMesh: StatesMesh, capacity: number) {
   const edges = new Float32Array(capacity * 4);
   const bar = new Float32Array(capacity * 3);
-  const slot = new Float32Array(capacity);
+  const slot = new Float32Array(capacity).fill(NO_SLOT);
   edges.set(statesMesh.edges);
   bar.set(statesMesh.bar);
   slot.set(statesMesh.slot);

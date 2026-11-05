@@ -13,6 +13,7 @@ import { useFrameRender } from "../../WebGl/useFrameRender.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
+import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import {
   useTileCacheQuery,
@@ -30,25 +31,47 @@ import {
   setVisibleRange,
   render,
   handleResize,
+  setBarHeight,
   setUpRenderer,
   syncMeshes,
-  updateBarHeight,
+  type RendererObj,
 } from "./utils.ts";
 import {
+  getDisplayMode,
+  getAvailableModes,
   getTileStatesGranularity,
   isAggregate,
+  BAR_HEIGHT_RATIO,
+  LANE_GAP_PX,
+  TileStatesMode,
+  tileStatesModeOptions,
+  trackStates,
+  tileStateLabels,
   type TileKind,
 } from "./consts.ts";
-import type { TileStatesGranularity } from "../../../api/types.ts";
+import type {
+  AggGranularity,
+  TileStatesGranularity,
+} from "../../../api/types.ts";
 import { TileStatesGranularityEnum } from "../../../api/entities.ts";
-import AggTileStates from "./AggTileStatesTrack.tsx";
+import {
+  aggTileStatesAtom,
+  aggTileStatesEmitterAtom,
+  drawEventType,
+} from "./aggAtoms.ts";
+import { buildAggStatesMesh } from "./aggUtils.ts";
+import {
+  getAggGranularity,
+  type AggTileStatesQuery,
+} from "./useAggTileStatesQuery.ts";
+import LaneLabels from "./LaneLabels.tsx";
 import TileStatesControls from "./TileStatesControls.tsx";
 import { findTxnAtCursor } from "./hoverUtils.ts";
 import { hoveredExecrpTxnAtom } from "./hoverAtoms.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
 import { tileStatesViewOptsAtoms } from "./atoms.ts";
 import RowLabels from "../RowLabels.tsx";
-import { getRowsLayout, trackInsetPx } from "../layout.ts";
+import { getRowsLayout, ROW_LABEL_PX, trackInsetPx } from "../layout.ts";
 import styles from "../track.module.css";
 import { useSlotHighlightRender } from "../slotHighlight.ts";
 
@@ -57,19 +80,44 @@ const store = getDefaultStore();
 interface TileStatesTrackProps extends WebGlRemountProps {
   kind: TileKind;
   height: number;
+  aggQuery: AggTileStatesQuery;
+  showStateLabels?: boolean;
+  canShowErrorStates?: boolean;
 }
 
-function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
-  const [opts, setOpts] = useAtom(tileStatesViewOptsAtoms[kind]);
-  const [granularity, setGranularity] = useState<TileStatesGranularity>(
-    TileStatesGranularityEnum.txn,
+function TileStatesTrack({
+  kind,
+  height,
+  showStateLabels = false,
+  canShowErrorStates = false,
+  remount,
+  aggQuery: { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes },
+}: TileStatesTrackProps) {
+  const modes = tileStatesModeOptions[kind];
+  const canSplitLanes = modes.some(
+    ({ mode, separateLanes }) =>
+      mode === TileStatesMode.Stacked && separateLanes !== undefined,
   );
+  const [opts, setOpts] = useAtom(tileStatesViewOptsAtoms[kind]);
+  const [mode, setMode] = useState(opts.mode);
+  const [availableModes, setAvailableModes] = useState(() =>
+    modes.map(({ mode }) => mode),
+  );
+  const [nonAggGranularity, setNonAggGranularity] =
+    useState<TileStatesGranularity>(TileStatesGranularityEnum.txn);
   const [isAgg, setIsAgg] = useState(false);
+  const [aggGranularity, setAggGranularity] = useState<AggGranularity>();
 
   const { containerRef, rendererRef } = useWebGlRenderer({
     remount,
     create: ({ setUpContextListeners, getWasContextLost }) =>
-      setUpRenderer(kind, setUpContextListeners, getWasContextLost),
+      setUpRenderer(
+        kind,
+        opts.mode,
+        opts.separateLanes,
+        setUpContextListeners,
+        getWasContextLost,
+      ),
     onResize: (rendererObj) => handleResize(rendererObj),
   });
 
@@ -78,12 +126,38 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
   });
   useSlotHighlightRender(requestRender);
 
+  const updateMode = useCallback(
+    (renderer: RendererObj, visibleRangeMs: TsRange) => {
+      const available = getAvailableModes(
+        modes,
+        visibleRangeMs[1] - visibleRangeMs[0],
+      );
+      renderer.mode = getDisplayMode(modes, renderer.selectedMode, available);
+      setMode(renderer.mode);
+      setAvailableModes((prev) =>
+        prev.join() === available.join() ? prev : available,
+      );
+    },
+    [modes],
+  );
+
   const tiles = useAtomValue(tilesAtom);
   const rows = useMemo(() => getTileRows(tiles, kind), [tiles, kind]);
-  const rowsLayout = getRowsLayout(height, rows.length, {
-    insetPx: trackInsetPx[kind === "execrp" ? "banks" : "replay"],
-    fillWhenThin: kind === "replay",
-  });
+  const isLaneMode =
+    mode === TileStatesMode.Gantt ||
+    (mode === TileStatesMode.Stacked && opts.separateLanes);
+  const showLaneLabels = showStateLabels && isLaneMode;
+  const laneStates = trackStates[kind][isAgg ? "agg" : nonAggGranularity];
+  const rowsLayout = getTileRowsLayout(
+    height,
+    rows.length,
+    kind,
+    showLaneLabels ? laneStates.length : 0,
+  );
+  const barHeightPx = rowsLayout.rowPx * BAR_HEIGHT_RATIO;
+  const laneGapPx = showLaneLabels
+    ? Math.min(LANE_GAP_PX, barHeightPx / laneStates.length / 4)
+    : 0;
 
   const setHoveredExecrpTxn = useSetAtom(hoveredExecrpTxnAtom);
   const throttledResolveHover = useThrottledCallback(
@@ -127,6 +201,16 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
 
   const throttledRangeQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
+      if (isAggregate(visibleRangeMs)) {
+        const aggGranularity = getAggGranularity(
+          visibleRangeMs[1] - visibleRangeMs[0],
+        );
+        aggQuery(referenceNs, visibleRangeMs, worldRangeMs, aggGranularity);
+        setAggGranularity(aggGranularity);
+        return;
+      }
+
+      pauseStaleAggRefreshes();
       const granularity = getTileStatesGranularity(
         visibleRangeMs[1] - visibleRangeMs[0],
       );
@@ -151,8 +235,14 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
       const prevGranularity = renderer.renderedGranularity;
       const agg = isAggregate(visibleRangeMs);
       setIsAgg(agg);
+      renderer.isAgg = agg;
+      updateMode(renderer, visibleRangeMs);
       if (agg) {
         renderer.renderedGranularity = undefined;
+        const viewChanged =
+          updateView && setVisibleRange(renderer, visibleRangeMs);
+        throttledRangeQuery(refNs, visibleRangeMs, worldRangeMs);
+        if (viewChanged) requestRender();
         refreshHover();
         return;
       }
@@ -161,7 +251,7 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
         visibleRangeMs[1] - visibleRangeMs[0],
       );
       renderer.renderedGranularity = granularity;
-      setGranularity(granularity);
+      setNonAggGranularity(granularity);
 
       // Move camera before querying, because query may trigger immediate draw
       // if data is already available
@@ -181,8 +271,28 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
       if (viewChanged || granularityChanged) requestRender();
       refreshHover();
     },
-    [rendererRef, requestRender, throttledRangeQuery, refreshHover],
+    [rendererRef, requestRender, throttledRangeQuery, refreshHover, updateMode],
   );
+
+  const drawAgg = useCallback(() => {
+    const renderer = rendererRef.current;
+    const refNs = store.get(referenceNsAtom);
+    const visibleRangeMs = store.get(visibleRangeAtom);
+    if (!renderer?.isAgg || refNs == null || !visibleRangeMs) return;
+
+    buildAggStatesMesh(
+      renderer,
+      refNs,
+      visibleRangeMs,
+      store.get(aggTileStatesAtom),
+    );
+    requestRender();
+  }, [rendererRef, requestRender]);
+
+  const throttledDrawAgg = useThrottledCallbackIfVisible(drawAgg, 50, {
+    leading: false,
+    trailing: true,
+  });
 
   // subscribe to range changes to trigger queries
   useLayoutEffect(() => {
@@ -192,23 +302,31 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
     const unsubscribeWorld = store.sub(worldRangeAtom, () =>
       onRangeChange(false),
     );
+    const aggEmitter = store.get(aggTileStatesEmitterAtom);
+    aggEmitter.addListener(drawEventType, throttledDrawAgg);
 
     // trigger initial query, camera, and geometry build
     onRangeChange(true);
 
     return () => {
+      aggEmitter.removeListener(drawEventType, throttledDrawAgg);
+      throttledDrawAgg.cancel();
+      throttledRangeQuery.cancel();
       unsubscribeVisible();
       unsubscribeWorld();
     };
-  }, [onRangeChange]);
+  }, [onRangeChange, throttledDrawAgg, throttledRangeQuery]);
 
   useLayoutEffect(() => {
     const renderer = rendererRef.current;
-    if (!renderer) return;
-    updateBarHeight(renderer);
-    if (renderer.renderedGranularity) syncMeshes(renderer, true);
+    if (renderer?.isAgg) {
+      drawAgg();
+      return;
+    }
+    if (!renderer?.renderedGranularity) return;
+    syncMeshes(renderer, true);
     requestRender();
-  }, [rendererRef, requestRender, rows]);
+  }, [rendererRef, requestRender, rows, drawAgg]);
 
   useLayoutEffect(() => {
     const renderer = rendererRef.current;
@@ -216,6 +334,39 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
     renderer.errorStatesScene.visible = opts.showErrorStates;
     requestRender();
   }, [opts.showErrorStates, rendererRef, requestRender]);
+
+  useLayoutEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    renderer.compositeUniforms.uIdleWeight.value = opts.idleWeight;
+    requestRender();
+  }, [opts.idleWeight, rendererRef, requestRender]);
+
+  useLayoutEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    setBarHeight(renderer, barHeightPx, laneGapPx);
+    requestRender();
+  }, [barHeightPx, laneGapPx, rendererRef, requestRender]);
+
+  useLayoutEffect(() => {
+    const renderer = rendererRef.current;
+    const visibleRangeMs = store.get(visibleRangeAtom);
+    if (!renderer) return;
+    renderer.selectedMode = opts.mode;
+    renderer.selectedSeparateLanes = opts.separateLanes;
+    if (!visibleRangeMs) return;
+    updateMode(renderer, visibleRangeMs);
+    if (renderer.isAgg) drawAgg();
+    else requestRender();
+  }, [
+    opts.mode,
+    opts.separateLanes,
+    rendererRef,
+    updateMode,
+    drawAgg,
+    requestRender,
+  ]);
 
   const handleDelta = useCallback(
     (granularity: TileStatesGranularity, delta: TileStatesCacheDelta) => {
@@ -261,23 +412,61 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
           height: rowsLayout.rowPx * Math.max(rows.length, 1),
         }}
       >
-        <div
-          ref={setContainerRef}
-          className={styles.trackCanvasContainer}
-          style={{ visibility: isAgg ? "hidden" : undefined }}
-        />
-        {isAgg && <AggTileStates />}
+        <div ref={setContainerRef} className={styles.trackCanvasContainer} />
       </div>
-      <RowLabels labels={rows.map(({ label }) => label)} layout={rowsLayout} />
+      {showLaneLabels ? (
+        <LaneLabels
+          labels={rows.map(({ label }) => label)}
+          laneLabels={laneStates.map((state) => tileStateLabels[state])}
+          layout={rowsLayout}
+          laneGapPx={laneGapPx}
+        />
+      ) : (
+        <RowLabels
+          labels={rows.map(({ label }) => label)}
+          layout={rowsLayout}
+        />
+      )}
       <TileStatesControls
         kind={kind}
-        granularity={granularity}
+        nonAggGranularity={nonAggGranularity}
         isAgg={isAgg}
+        availableModes={availableModes}
+        mode={mode}
+        // lanes show each state on its own, so idle weight in is irrelevant
+        showIdleWeight={!isLaneMode}
+        showSplitLanes={canSplitLanes && mode === TileStatesMode.Stacked}
+        showErrorStates={
+          canShowErrorStates &&
+          !isAgg &&
+          nonAggGranularity === TileStatesGranularityEnum.txn &&
+          mode === TileStatesMode.Heatmap
+        }
+        aggGranularity={aggGranularity}
         opts={opts}
         setOpts={setOpts}
       />
     </>
   );
+}
+
+function getTileRowsLayout(
+  heightPx: number,
+  rowCount: number,
+  kind: TileKind,
+  labeledLanes: number,
+) {
+  const insetPx = trackInsetPx[kind === "execrp" ? "banks" : "replay"];
+  const isReplay = kind === "replay";
+  const layout = getRowsLayout(heightPx, rowCount, {
+    insetPx,
+    fillWhenThin: isReplay,
+  });
+  const lanePx = (layout.rowPx * BAR_HEIGHT_RATIO) / labeledLanes;
+  if (isReplay && labeledLanes && lanePx < ROW_LABEL_PX) {
+    return getRowsLayout(heightPx, rowCount, { insetPx: 0 });
+  }
+  return layout;
 }
 
 const TileStatesTrackWithRemount = withWebGlRemount(TileStatesTrack);

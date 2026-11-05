@@ -133,6 +133,10 @@
   align-self: stretch;
 }
 
+.slider {
+  padding: 0 6px 3px;
+}
+
 .toggle-value {
   color: var(--replay-dropdown-secondary-text-color);
 }

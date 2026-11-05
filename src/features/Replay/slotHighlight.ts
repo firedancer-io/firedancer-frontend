@@ -107,25 +107,29 @@ vec3 overlayWhite(vec3 color, float alpha) {
   return mix(dark, light, step(0.5, color));
 }
 
-vec3 applyHighlight(
-  vec3 color,
-  bool inFocusSlot,
-  bool inFocusGroup,
-  bool inHoveredOtherSlot,
-  bool inHoveredOtherGroup
-) {
+/**
+ * Fractions of a mark in the focus slot, the focus group, the hovered other
+ * slot, and the hovered other group. Marks mixing slots, e.g. a px of
+ * accumulated coverage, highlight by their fractions.
+ */
+vec3 applyHighlight(vec3 color, vec4 fractions) {
   // structured if: an early return or ternary here crashes Adreno D3D11 when inlined twice
   if (uHighlightActive > 0.5) {
-    float level = uLevels.y;
-    if (inFocusGroup) level = uLevels.x;
-    if (inFocusSlot) level = 1.0;
-    if (inHoveredOtherSlot) level = max(level, HOVERED_OTHER_LEVEL);
+    float inFocusSlot = fractions.x;
+    float inFocusGroup = fractions.y;
+    float inHoveredOtherSlot = fractions.z;
+    float inHoveredOtherGroup = fractions.w;
+    float level =
+      uLevels.y +
+      inFocusGroup * (uLevels.x - uLevels.y) +
+      inFocusSlot * (1.0 - uLevels.x);
+    level += inHoveredOtherSlot * max(HOVERED_OTHER_LEVEL - level, 0.0);
     color = mix(HIGHLIGHT_BACKGROUND, color, level);
 
-    if (inFocusGroup) color = overlayWhite(color, uLifts.x);
-    if (inFocusSlot) color = overlayWhite(color, uLifts.y);
-    if (inHoveredOtherGroup) color = overlayWhite(color, HOVERED_OTHER_LIFTS.x);
-    if (inHoveredOtherSlot) color = overlayWhite(color, HOVERED_OTHER_LIFTS.y);
+    color = overlayWhite(color, uLifts.x * inFocusGroup);
+    color = overlayWhite(color, uLifts.y * inFocusSlot);
+    color = overlayWhite(color, HOVERED_OTHER_LIFTS.x * inHoveredOtherGroup);
+    color = overlayWhite(color, HOVERED_OTHER_LIFTS.y * inHoveredOtherSlot);
   }
   return color;
 }
@@ -138,15 +142,22 @@ bool isSameGroup(float slot, float other) {
   return floor(slot / SLOTS_PER_LEADER) == floor(other / SLOTS_PER_LEADER);
 }
 
+/** applyHighlight fractions of a mark in a single relative slot */
+vec4 getSlotFractions(float slot) {
+  vec4 fractions = vec4(0.0);
+  if (slot > NO_SLOT) {
+    fractions = vec4(
+      isSameSlot(slot, uFocusSlot),
+      isSameGroup(slot, uFocusSlot),
+      isSameSlot(slot, uHoveredOtherSlot),
+      isSameGroup(slot, uHoveredOtherSlot)
+    );
+  }
+  return fractions;
+}
+
 vec3 highlightSlot(vec3 color, float slot) {
-  bool hasSlot = slot > NO_SLOT;
-  return applyHighlight(
-    color,
-    hasSlot && isSameSlot(slot, uFocusSlot),
-    hasSlot && isSameGroup(slot, uFocusSlot),
-    hasSlot && isSameSlot(slot, uHoveredOtherSlot),
-    hasSlot && isSameGroup(slot, uHoveredOtherSlot)
-  );
+  return applyHighlight(color, getSlotFractions(slot));
 }
 
 bool isInPx(vec2 rangePx, float px) {
@@ -156,10 +167,12 @@ bool isInPx(vec2 rangePx, float px) {
 vec3 highlightTime(vec3 color, float px) {
   return applyHighlight(
     color,
-    isInPx(uFocusRangePx.xy, px),
-    isInPx(uFocusRangePx.zw, px),
-    isInPx(uHoveredOtherRangePx.xy, px),
-    isInPx(uHoveredOtherRangePx.zw, px)
+    vec4(
+      isInPx(uFocusRangePx.xy, px),
+      isInPx(uFocusRangePx.zw, px),
+      isInPx(uHoveredOtherRangePx.xy, px),
+      isInPx(uHoveredOtherRangePx.zw, px)
+    )
   );
 }
 `;

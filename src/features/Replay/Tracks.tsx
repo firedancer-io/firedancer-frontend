@@ -8,6 +8,10 @@ import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
 import TileStatesTrack from "./TileStatesTrack/TileStatesTrack.tsx";
 import { getTileRows } from "./TileStatesTrack/utils.ts";
+import {
+  useAggTileStatesQuery,
+  type AggTileStatesQuery,
+} from "./TileStatesTrack/useAggTileStatesQuery.ts";
 import CpuTrack from "./CpuTrack/CpuTrack.tsx";
 import VotesTrack from "./VotesTrack/VotesTrack.tsx";
 import { isVotesTrackAvailableAtom } from "./VotesTrack/atoms.ts";
@@ -37,6 +41,8 @@ export default function Tracks() {
   const cpuRows = useAtomValue(cpuRowCountAtom);
   const hasCpu = useAtomValue(queryTilesAtom).length > 0;
   const hasVotes = useAtomValue(isVotesTrackAvailableAtom);
+
+  const aggTileStatesQuery = useAggTileStatesQuery();
 
   const tracks = useMemo(
     () =>
@@ -68,7 +74,7 @@ export default function Tracks() {
           const trackHeight = heights[id] ?? 0;
           return (
             <TrackLayout key={id} trackId={id} height={trackHeight}>
-              {renderTrack(id, width, trackHeight)}
+              {renderTrack(id, width, trackHeight, aggTileStatesQuery)}
             </TrackLayout>
           );
         })}
@@ -76,7 +82,12 @@ export default function Tracks() {
   );
 }
 
-function renderTrack(id: TrackId, width: number, height: number) {
+function renderTrack(
+  id: TrackId,
+  width: number,
+  height: number,
+  aggTileStatesQuery: AggTileStatesQuery,
+) {
   switch (id) {
     case "shreds":
       return <ShredsTrack height={height} />;
@@ -85,9 +96,23 @@ function renderTrack(id: TrackId, width: number, height: number) {
     case "income":
       return <RevenueTrack height={height} />;
     case "banks":
-      return <TileStatesTrack kind="execrp" height={height} />;
+      return (
+        <TileStatesTrack
+          kind="execrp"
+          height={height}
+          aggQuery={aggTileStatesQuery}
+          canShowErrorStates
+        />
+      );
     case "replay":
-      return <TileStatesTrack kind="replay" height={height} />;
+      return (
+        <TileStatesTrack
+          kind="replay"
+          height={height}
+          aggQuery={aggTileStatesQuery}
+          showStateLabels
+        />
+      );
     case "cpu":
       return <CpuTrack height={height} />;
   }
