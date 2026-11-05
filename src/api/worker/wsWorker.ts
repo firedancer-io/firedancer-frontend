@@ -15,6 +15,7 @@ const transferableKeys: WsEntity["key"][] = [
   "query_tile_states",
   "query_shreds",
   "query_txn_meta",
+  "query_votes",
 ];
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
@@ -61,9 +62,10 @@ function enqueue(item: WsEntity) {
 
 function collectTransferables(item: WsEntity, transfer: Transferable[]) {
   if (item.topic !== "timeline" || !transferableKeys.includes(item.key)) return;
-  if (!("chunks" in item.value)) return;
-  for (const chunk of item.value.chunks) {
-    for (const v of Object.values(chunk)) {
+  const columnGroups =
+    "chunks" in item.value ? item.value.chunks : [item.value];
+  for (const columns of columnGroups) {
+    for (const v of Object.values(columns)) {
       if (ArrayBuffer.isView(v)) transfer.push(v.buffer);
     }
   }

@@ -9,11 +9,20 @@ import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
 import TileStatesTrack from "./TileStatesTrack/TileStatesTrack.tsx";
 import { getTileRows } from "./TileStatesTrack/utils.ts";
 import CpuTrack from "./CpuTrack/CpuTrack.tsx";
+import VotesTrack from "./VotesTrack/VotesTrack.tsx";
+import { isVotesTrackAvailableAtom } from "./VotesTrack/atoms.ts";
 import TrackLayout from "./TrackLayout.tsx";
 import { cpuRowsAtom, queryTilesAtom } from "./CpuTrack/atoms.ts";
 import styles from "./chart.module.css";
 
-const allTracks: TrackId[] = ["shreds", "income", "banks", "replay", "cpu"];
+const allTracks: TrackId[] = [
+  "shreds",
+  "votes",
+  "income",
+  "banks",
+  "replay",
+  "cpu",
+];
 
 const banksRowsAtom = atom(
   (get) => getTileRows(get(tilesAtom), "execrp").length,
@@ -27,10 +36,14 @@ export default function Tracks() {
   const banksRows = useAtomValue(banksRowsAtom);
   const cpuRows = useAtomValue(cpuRowCountAtom);
   const hasCpu = useAtomValue(queryTilesAtom).length > 0;
+  const hasVotes = useAtomValue(isVotesTrackAvailableAtom);
 
   const tracks = useMemo(
-    () => (hasCpu ? allTracks : allTracks.filter((id) => id !== "cpu")),
-    [hasCpu],
+    () =>
+      allTracks.filter(
+        (id) => (id !== "cpu" || hasCpu) && (id !== "votes" || hasVotes),
+      ),
+    [hasCpu, hasVotes],
   );
   const heights = useMemo(
     () =>
@@ -67,6 +80,8 @@ function renderTrack(id: TrackId, height: number) {
   switch (id) {
     case "shreds":
       return <ShredsTrack />;
+    case "votes":
+      return <VotesTrack height={height} />;
     case "income":
       return <RevenueTrack height={height} />;
     case "banks":

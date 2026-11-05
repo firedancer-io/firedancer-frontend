@@ -3,13 +3,22 @@ import {
   getRowsLayout,
   getTrackHeights,
   getTrackSharesPct,
+  minTrackPx,
   TRACK_GAP_PX,
   TRACK_TITLE_PX,
   trackInsetPx,
   type TrackId,
 } from "./layout";
 
-const allTracks: TrackId[] = ["shreds", "income", "banks", "replay", "cpu"];
+const allTracks: TrackId[] = [
+  "shreds",
+  "votes",
+  "income",
+  "banks",
+  "replay",
+  "cpu",
+];
+const tracksWithoutVotes = allTracks.filter((id) => id !== "votes");
 const sum = (heights: Partial<Record<TrackId, number>>) =>
   Object.values(heights).reduce((a, b) => a + (b ?? 0), 0);
 
@@ -21,6 +30,7 @@ describe("getTrackSharesPct", () => {
   it("uses the base shares", () => {
     expect(getTrackSharesPct(10, 2)).toEqual({
       shreds: 22,
+      votes: 16,
       income: 14,
       banks: 30,
       replay: 10,
@@ -34,6 +44,7 @@ describe("getTrackSharesPct", () => {
     expect(shares.cpu).toBe(8);
     const scale = (100 - 36 - 8) / 62;
     expect(shares.shreds).toBeCloseTo(22 * scale);
+    expect(shares.votes).toBeCloseTo(16 * scale);
     expect(shares.income).toBeCloseTo(14 * scale);
     expect(shares.replay).toBeCloseTo(10 * scale);
   });
@@ -49,10 +60,32 @@ describe("getTrackSharesPct", () => {
 });
 
 describe("getTrackHeights", () => {
-  it("splits by share, banks in whole rows", () => {
+  // the spec's 1181px window leaves 1000px for 6 tracks
+  const spec = {
+    shreds: 220,
+    votes: 160,
+    income: 140,
+    banks: 300,
+    replay: 100,
+    cpu: 80,
+  };
+
+  it("matches the spec sizes, banks in whole rows", () => {
     const heights = getTrackHeights({
-      heightPx: areaFor(910),
+      heightPx: areaFor(1000),
       tracks: allTracks,
+      hidden: new Set(),
+      banksRows: 10,
+      cpuRows: 2,
+    });
+    // 300px floors to 12 + 10 * 28; shreds takes the 8px left over
+    expect(heights).toEqual({ ...spec, shreds: 228, banks: 292 });
+  });
+
+  it("gives votes' share to the other tracks when votes is absent", () => {
+    const heights = getTrackHeights({
+      heightPx: areaFor(910, tracksWithoutVotes.length),
+      tracks: tracksWithoutVotes,
       hidden: new Set(),
       banksRows: 10,
       cpuRows: 2,
@@ -77,7 +110,7 @@ describe("getTrackHeights", () => {
     });
     expect(((heights.banks ?? 0) - trackInsetPx.banks) % 7).toBe(0);
     expect(sum(heights)).toBe(917);
-    const shreds = Math.floor((917 * 22) / 84);
+    const shreds = Math.floor((917 * 22) / 100);
     expect(heights.shreds).toBeGreaterThan(shreds);
   });
 
@@ -129,24 +162,24 @@ describe("getTrackHeights", () => {
       cpuRows: 2,
     });
     expect((large.income ?? 0) - (small.income ?? 0)).toBeCloseTo(
-      (53 * 14) / 84,
+      (53 * 14) / 100,
       -0.5,
     );
   });
 
   it("treats zero banks rows as one", () => {
     const heights = getTrackHeights({
-      heightPx: areaFor(910),
+      heightPx: areaFor(1000),
       tracks: allTracks,
       hidden: new Set(),
       banksRows: 0,
       cpuRows: 2,
     });
-    expect(heights.banks).toBe(325);
-    expect(sum(heights)).toBe(910);
+    expect(heights.banks).toBe(300);
+    expect(sum(heights)).toBe(1000);
   });
 
-  it("keeps every visible track at least 40px when banks and cpu are capped", () => {
+  it("keeps every visible track at its minimum when banks and cpu are capped", () => {
     const heights = getTrackHeights({
       heightPx: 500,
       tracks: allTracks,
@@ -157,8 +190,32 @@ describe("getTrackHeights", () => {
     for (const id of allTracks) {
       expect(heights[id]).toBeGreaterThanOrEqual(40);
     }
-    expect(sum(heights)).toBe(500 - 4 * TRACK_GAP_PX);
+    expect(sum(heights)).toBe(500 - (allTracks.length - 1) * TRACK_GAP_PX);
     expect(((heights.banks ?? 0) - trackInsetPx.banks) % 16).toBe(0);
+  });
+
+  it("keeps votes at its minimum when its share is smaller", () => {
+    const heights = getTrackHeights({
+      heightPx: areaFor(500),
+      tracks: allTracks,
+      hidden: new Set(),
+      banksRows: 16,
+      cpuRows: 18,
+    });
+    expect(heights.votes).toBe(minTrackPx.votes);
+    expect(sum(heights)).toBe(500);
+  });
+
+  it("shrinks the votes floor evenly when the tracks can't all fit it", () => {
+    const heights = getTrackHeights({
+      heightPx: areaFor(300),
+      tracks: allTracks,
+      hidden: new Set(),
+      banksRows: 10,
+      cpuRows: 2,
+    });
+    expect(heights.votes).toBe(50);
+    expect(sum(heights)).toBe(300);
   });
 
   it("never goes negative when tracks can't all fit 40px", () => {
@@ -172,7 +229,7 @@ describe("getTrackHeights", () => {
     for (const id of allTracks) {
       expect(heights[id]).toBeGreaterThanOrEqual(0);
     }
-    expect(sum(heights)).toBe(100 - 4 * TRACK_GAP_PX);
+    expect(sum(heights)).toBe(100 - (allTracks.length - 1) * TRACK_GAP_PX);
   });
 
   it("only includes present tracks", () => {
