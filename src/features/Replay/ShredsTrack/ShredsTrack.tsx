@@ -1,5 +1,5 @@
 import { getDefaultStore } from "jotai";
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
@@ -57,6 +57,8 @@ import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible
 import TrackControls from "../TrackControls.tsx";
 import { trackNames } from "../layout.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
+import { OVERSCAN_BUCKETS, resolveHeldDraw } from "../useAggQuery.ts";
+import { msBucketSizes } from "../const.ts";
 
 const store = getDefaultStore();
 
@@ -111,6 +113,9 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     onResize: () => renderActive(),
   });
 
+  /** whether agg is drawn; may lag the visible range while data loads */
+  const drawnIsAggRef = useRef<boolean>();
+
   /**
    * throttle shred hit-test
    */
@@ -133,7 +138,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
 
       const ts = clientXToTs(rect, clientX, visibleRange);
 
-      if (isAggregate(visibleRange)) {
+      if (drawnIsAggRef.current ?? isAggregate(visibleRange)) {
         clearHoveredShred();
         const granularity = getAggGranularity(
           visibleRange[1] - visibleRange[0],
@@ -241,8 +246,12 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     onHoverLeave,
   });
 
-  const { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes } =
-    useAggShredsQuery(AGG_SHREDS_CHART_ID);
+  const {
+    query: aggQuery,
+    getDrawTiles,
+    isVisibleDrawable: isAggVisibleDrawable,
+    pauseStaleRefreshes: pauseStaleAggRefreshes,
+  } = useAggShredsQuery(AGG_SHREDS_CHART_ID);
 
   // Free meshes for slots whose data was just refetched, so the next draw
   // rebuilds them. Does not render; the stale frame stays until that draw.
@@ -269,8 +278,31 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     [rendererRef],
   );
 
-  const { query: nonAggQuery, pauseStaleRefreshes: pauseStaleNonAggRefreshes } =
-    useNonAggShredsQuery(NON_AGG_SHREDS_CHART_ID, resetMeshes);
+  const {
+    query: nonAggQuery,
+    isVisibleDrawable: isNonAggVisibleDrawable,
+    pauseStaleRefreshes: pauseStaleNonAggRefreshes,
+  } = useNonAggShredsQuery(NON_AGG_SHREDS_CHART_ID, resetMeshes);
+
+  /**
+   * Whether to draw agg or non agg. Keep the previous mode on a mode change
+   * until the new mode can draw all of the visible range.
+   */
+  const resolveIsAgg = useCallback(
+    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
+      const isAgg = resolveHeldDraw(
+        drawnIsAggRef.current,
+        isAggregate(visibleRange),
+        (agg) =>
+          agg
+            ? isAggVisibleDrawable(referenceNs, visibleRange, worldRange)
+            : isNonAggVisibleDrawable(referenceNs, visibleRange, worldRange),
+      );
+      drawnIsAggRef.current = isAgg;
+      return isAgg;
+    },
+    [isAggVisibleDrawable, isNonAggVisibleDrawable],
+  );
 
   const throttledRelativeTsQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
@@ -300,7 +332,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     const visibleRange = store.get(visibleRangeAtom);
     if (!visibleRange) return;
 
-    const isAgg = isAggregate(visibleRange);
+    const isAgg = drawnIsAggRef.current ?? isAggregate(visibleRange);
     if (isAgg) {
       // renderer will replace scene, so clear last draw info
       nonAggResources.lastDrawInfo = undefined;
@@ -325,9 +357,10 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       const visibleRange = store.get(visibleRangeAtom);
       if (!renderer || !visibleRange) return;
 
-      const { camera } = isAggregate(visibleRange)
-        ? renderer.aggResources
-        : renderer.nonAggResources;
+      const { camera } =
+        (drawnIsAggRef.current ?? isAggregate(visibleRange))
+          ? renderer.aggResources
+          : renderer.nonAggResources;
       const extent = -camera.bottom;
       // a real draw pads to >= 1 shred / MAX_HEIGHT_RATIO
       // less means uninitialized
@@ -371,6 +404,45 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     [requestRender, rendererRef, refreshHover, syncYAxis],
   );
 
+  /** granularity and ms range covered by the agg mesh, including overscan */
+  const drawnAggRef = useRef<{ granularity: AggGranularity; range: TsRange }>();
+
+  const drawAgg = useCallback(
+    (referenceNs: bigint, visibleRange: TsRange) => {
+      if (!rendererRef.current) return;
+      const granularity = getAggGranularity(visibleRange[1] - visibleRange[0]);
+      drawAggShreds(
+        rendererRef.current,
+        referenceNs,
+        visibleRange,
+        store.get(aggShredsAtom),
+        granularity,
+        getDrawTiles,
+      );
+      const overscanMs = OVERSCAN_BUCKETS * msBucketSizes[granularity];
+      drawnAggRef.current = {
+        granularity,
+        range: [visibleRange[0] - overscanMs, visibleRange[1] + overscanMs],
+      };
+    },
+    [rendererRef, getDrawTiles],
+  );
+
+  /**
+   * Whether the agg mesh was drawn at a different granularity or doesn't
+   * cover the visible range
+   */
+  const isAggMeshOutdated = useCallback((visibleRange: TsRange) => {
+    const drawn = drawnAggRef.current;
+    return (
+      !drawn ||
+      drawn.granularity !==
+        getAggGranularity(visibleRange[1] - visibleRange[0]) ||
+      visibleRange[0] < drawn.range[0] ||
+      visibleRange[1] > drawn.range[1]
+    );
+  }, []);
+
   /**
    * Update camera and query data for new range
    */
@@ -382,21 +454,29 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     const visibleRange = store.get(visibleRangeAtom);
     if (referenceNs == null || !visibleRange || !worldRange) return;
 
-    if (isAggregate(visibleRange)) {
-      // Move camera before querying, because query may trigger immediate draw if data is already available
-      moveAggCamera(rendererRef.current.aggResources, visibleRange);
-      throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
+    // Move camera before querying, because query may trigger immediate draw if data is already available.
+    // Always move the agg camera, since agg may stay drawn after zooming into non agg
+    moveAggCamera(rendererRef.current.aggResources, visibleRange);
+    throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
+
+    if (resolveIsAgg(referenceNs, visibleRange, worldRange)) {
+      // redraw from cache immediately if the mesh is from a previous
+      // granularity or range, since the draw event waits on a query round trip.
+      // Otherwise moving the camera is enough, e.g. on live frames
+      if (isAggMeshOutdated(visibleRange)) drawAgg(referenceNs, visibleRange);
       requestRender();
       syncYAxis();
     } else {
-      throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
       // trigger a redraw immediately to hide trailing incomplete slots and prevent extended shreds.
       moveCameraAndDrawNonAgg(visibleRange);
     }
   }, [
+    drawAgg,
+    isAggMeshOutdated,
     moveCameraAndDrawNonAgg,
     requestRender,
     rendererRef,
+    resolveIsAgg,
     syncYAxis,
     throttledRelativeTsQuery,
   ]);
@@ -405,14 +485,17 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
-      const aggShreds = store.get(aggShredsAtom);
-      if (!rendererRef.current || !visibleRange || referenceNs == null) return;
+      const worldRange = store.get(worldRangeAtom);
+      if (!visibleRange || !worldRange || referenceNs == null) return;
 
-      drawAggShreds(rendererRef.current, referenceNs, visibleRange, aggShreds);
+      drawAgg(referenceNs, visibleRange);
+
+      // update the agg mesh even if non agg is still drawn, so it's ready on switch
+      if (!resolveIsAgg(referenceNs, visibleRange, worldRange)) return;
       requestRender();
       refreshHover();
       syncYAxis();
-    }, [requestRender, rendererRef, refreshHover, syncYAxis]),
+    }, [requestRender, drawAgg, resolveIsAgg, refreshHover, syncYAxis]),
     50,
     { leading: false, trailing: true },
   );
@@ -421,16 +504,18 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
+      const worldRange = store.get(worldRangeAtom);
       if (
         !rendererRef.current ||
         !visibleRange ||
+        !worldRange ||
         referenceNs == null ||
-        isAggregate(visibleRange)
+        resolveIsAgg(referenceNs, visibleRange, worldRange)
       )
         return;
 
       moveCameraAndDrawNonAgg(visibleRange);
-    }, [moveCameraAndDrawNonAgg, rendererRef]),
+    }, [moveCameraAndDrawNonAgg, rendererRef, resolveIsAgg]),
     50,
     { leading: false, trailing: true },
   );
@@ -444,7 +529,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       const visibleRange = store.get(visibleRangeAtom);
       if (!visibleRange) return;
 
-      if (isAggregate(visibleRange)) {
+      if (drawnIsAggRef.current ?? isAggregate(visibleRange)) {
         drawHoveredShred(
           rendererRef.current.nonAggResources,
           undefined,

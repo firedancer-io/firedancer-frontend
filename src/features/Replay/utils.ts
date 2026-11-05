@@ -7,7 +7,7 @@ import {
   nsBucketSizes,
 } from "./const.ts";
 import { clamp } from "../../uplotReact/utils.ts";
-import type { TsRange } from "../WebGl/webglUtils.ts";
+import type { NsTsRange, TsRange } from "../WebGl/webglUtils.ts";
 import { convertToNsTimestamp } from "../../mathUtils.ts";
 import { useServerMessages } from "../../api/ws/utils.ts";
 import type { WsEntity, WsError } from "../../api/worker/types.ts";
@@ -61,9 +61,22 @@ export function msToClientX(
   rect: { left: number; width: number },
   visibleRange: TsRange,
 ) {
-  const fraction =
-    (ms - visibleRange[0]) / (visibleRange[1] - visibleRange[0]);
+  const fraction = (ms - visibleRange[0]) / (visibleRange[1] - visibleRange[0]);
   return rect.left + fraction * rect.width;
+}
+
+/**
+ * Absolute ns of the visible range clamped to the world range
+ */
+export function getVisibleWorldRangeNs(
+  referenceNs: bigint,
+  visibleRange: TsRange,
+  worldRange: TsRange,
+): NsTsRange {
+  return [
+    calcAbsoluteNs(referenceNs, Math.max(visibleRange[0], worldRange[0])),
+    calcAbsoluteNs(referenceNs, Math.min(visibleRange[1], worldRange[1])),
+  ];
 }
 
 type TimelineEntityForKey<TKey extends string> = Extract<

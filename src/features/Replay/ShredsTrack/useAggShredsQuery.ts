@@ -23,6 +23,7 @@ export function useAggShredsQuery(chartId: string) {
   return useAggQuery<AggShreds>({
     chartId,
     queryKey: QUERY_KEY,
+    getGranularity: getAggGranularity,
     addAtom: addAggShredsAtom,
     deleteBucketsAtom: deleteAggShredsBucketsAtom,
     emitterAtom: aggShredsEmitterAtom,

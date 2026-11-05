@@ -16,6 +16,8 @@ import {
   TileStatesGranularityEnum,
 } from "../../../api/entities.ts";
 import {
+  itemCount,
+  TILE_NS,
   tileStatesCaches,
   type TileStateColumns,
   type TileStatesDataTile,
@@ -40,9 +42,9 @@ import {
   type TileKind,
 } from "./consts.ts";
 import { replayTrackBackgroundColor } from "../../../colors.ts";
-import { referenceNsAtom, visibleRangeAtom } from "../atoms.ts";
+import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
-import { calcRelativeMs } from "../utils.ts";
+import { calcAbsoluteNs, calcRelativeMs } from "../utils.ts";
 import {
   createSlotHighlight,
   slotHighlightGlsl,
@@ -843,15 +845,19 @@ export function syncMeshes(rendererObj: RendererObj, rebuild = false) {
     renderedGranularity,
   } = rendererObj;
   const dataTiles = renderedGranularity
-    ? tileStatesCaches[renderedGranularity].getTiles()
+    ? [
+        ...tileStatesCaches[renderedGranularity]
+          .getTiles()
+          .map((dataTile) => ({ key: dataTileKey(dataTile), dataTile })),
+        ...getFallbackDataTiles(renderedGranularity),
+      ]
     : [];
   const rowOfTile = getRowOfTile(rendererObj.kind);
 
   const keys = new Set<string>();
 
   // Build meshes for new data tiles (skip already built ones)
-  for (const dataTile of dataTiles) {
-    const key = dataTileKey(dataTile);
+  for (const { key, dataTile } of dataTiles) {
     keys.add(key);
     if (!rebuild && dataTileMeshes.has(key)) continue;
 
@@ -870,6 +876,139 @@ export function syncMeshes(rendererObj: RendererObj, rebuild = false) {
     dataTileMeshes.delete(key);
     availableMeshes.push(meshes);
   }
+}
+
+/**
+ * Other granularity data tiles to draw in place of visible (+1 overscan)
+ * data tiles that haven't loaded. A txn data tile is replaced by its batch
+ * data tile clipped to it. A batch data tile is replaced by its in-world txn
+ * data tiles only if all of them have loaded, since txn data tiles past the
+ * world end are never fetched.
+ */
+function getFallbackDataTiles(
+  granularity: TileStatesGranularity,
+): { key: string; dataTile: TileStatesDataTile }[] {
+  const referenceNs = store.get(referenceNsAtom);
+  const visibleRange = store.get(visibleRangeAtom);
+  const worldRange = store.get(worldRangeAtom);
+  if (referenceNs == null || !visibleRange || !worldRange) return [];
+  const worldEndNs = calcAbsoluteNs(referenceNs, worldRange[1]);
+
+  const isTxn = granularity === TileStatesGranularityEnum.txn;
+  const fallbackGranularity = isTxn
+    ? TileStatesGranularityEnum.txn_batch
+    : TileStatesGranularityEnum.txn;
+  const cache = tileStatesCaches[granularity];
+  const fallbackCache = tileStatesCaches[fallbackGranularity];
+  const tileNs = TILE_NS[granularity];
+
+  const firstStartNs =
+    (calcAbsoluteNs(referenceNs, visibleRange[0]) / tileNs - 1n) * tileNs;
+  const lastStartNs =
+    (calcAbsoluteNs(referenceNs, visibleRange[1]) / tileNs + 1n) * tileNs;
+
+  const fallbacks: { key: string; dataTile: TileStatesDataTile }[] = [];
+  for (let startNs = firstStartNs; startNs <= lastStartNs; startNs += tileNs) {
+    if (cache.isTileFetched(startNs)) continue;
+    const endNs = startNs + tileNs - 1n;
+
+    if (isTxn) {
+      const batchDataTile = fallbackCache.getTile(startNs);
+      if (!batchDataTile) continue;
+      fallbacks.push({
+        key: fallbackDataTileKey(
+          `${fallbackGranularity}:${startNs}`,
+          batchDataTile,
+        ),
+        dataTile: {
+          startNs,
+          endNs,
+          data: clipColumns(
+            batchDataTile.data,
+            calcRelativeMs(referenceNs, startNs),
+            calcRelativeMs(referenceNs, endNs + 1n),
+          ),
+          meta: null,
+        },
+      });
+      continue;
+    }
+
+    const txnDataTiles: (TileStatesDataTile & { isLive: boolean })[] = [];
+    let hasAllTxnDataTiles = true;
+    for (
+      let txnStartNs = startNs;
+      txnStartNs < endNs && txnStartNs < worldEndNs;
+      txnStartNs += TILE_NS.txn
+    ) {
+      const txnDataTile = fallbackCache.getTile(txnStartNs);
+      if (!txnDataTile) {
+        hasAllTxnDataTiles = false;
+        break;
+      }
+      txnDataTiles.push(txnDataTile);
+    }
+    if (!hasAllTxnDataTiles) continue;
+    for (const dataTile of txnDataTiles) {
+      fallbacks.push({
+        key: fallbackDataTileKey(dataTileKey(dataTile), dataTile),
+        dataTile,
+      });
+    }
+  }
+  return fallbacks;
+}
+
+/**
+ * Fallback data tile mesh key. Live data tiles include their item count, so
+ * their meshes are rebuilt as their data grows.
+ */
+function fallbackDataTileKey(
+  key: string,
+  { data, isLive }: { data: TileStateColumns; isLive: boolean },
+) {
+  return isLive ? `${key}:live:${itemCount(data)}` : key;
+}
+
+/**
+ * Keep states and txn segments overlapping [startMs, endMs), clipped to it
+ */
+function clipColumns(
+  data: TileStateColumns,
+  startMs: number,
+  endMs: number,
+): TileStateColumns {
+  const clipped: TileStateColumns = {
+    state: [],
+    state_tile: [],
+    state_start_ms: [],
+    state_end_ms: [],
+    txn_slot: [],
+    txn_idx: [],
+    txn_tile: [],
+    txn_start_ms: [],
+    txn_end_ms: [],
+    txn_error_code: [],
+  };
+  for (let i = 0; i < data.state.length; i++) {
+    if (data.state_end_ms[i] <= startMs || data.state_start_ms[i] >= endMs)
+      continue;
+    clipped.state.push(data.state[i]);
+    clipped.state_tile.push(data.state_tile[i]);
+    clipped.state_start_ms.push(Math.max(startMs, data.state_start_ms[i]));
+    clipped.state_end_ms.push(Math.min(endMs, data.state_end_ms[i]));
+  }
+  for (let i = 0; i < data.txn_idx.length; i++) {
+    if (data.txn_end_ms[i] <= startMs || data.txn_start_ms[i] >= endMs)
+      continue;
+    clipped.txn_slot.push(data.txn_slot[i]);
+    clipped.txn_idx.push(data.txn_idx[i]);
+    clipped.txn_tile.push(data.txn_tile[i]);
+    clipped.txn_start_ms.push(Math.max(startMs, data.txn_start_ms[i]));
+    clipped.txn_end_ms.push(Math.min(endMs, data.txn_end_ms[i]));
+    clipped.txn_error_code.push(data.txn_error_code[i]);
+  }
+  return clipped;
 }
 
 export function appendLiveStates(

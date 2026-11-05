@@ -1,3 +1,4 @@
+import { RevenueType } from "../../../api/entities.ts";
 import * as THREE from "three";
 import {
   createRectResources,
@@ -28,14 +29,18 @@ import {
   type RevenueSeries,
 } from "./consts.ts";
 import { getRevenueRatio } from "./scale.ts";
+import { AGG_BUCKET_COUNT_THRESHOLD } from "./useAggRevenueQuery.ts";
+import type { AggGranularity } from "../../../api/types.ts";
 import {
-  AGG_BUCKET_COUNT_THRESHOLD,
-  getGranularity,
-} from "./useAggRevenueQuery.ts";
-import { OVERSCAN_BUCKETS } from "../useAggQuery.ts";
+  forEachDrawnBucket,
+  OVERSCAN_BUCKETS,
+  type BucketOverlap,
+  type GetDrawTiles,
+} from "../useAggQuery.ts";
 import {
   getAggRevenueValue,
   type RevenueBucketsByGranularity,
+  type Revenues,
 } from "./atoms.ts";
 import {
   getSeriesColumns,
@@ -195,22 +200,16 @@ export function drawAggRevenue(
   visibleRangeMs: TsRange,
   type: RevenueSeries,
   aggRevenue: RevenueBucketsByGranularity,
+  granularity: AggGranularity,
+  getDrawTiles: GetDrawTiles,
   scale: RevenueScale,
 ): bigint {
-  const granularity = getGranularity(visibleRangeMs[1] - visibleRangeMs[0]);
-  const revenueByBucketIdx = aggRevenue.get(granularity);
-
   const { cameraReferenceMs, mesh } = rendererObj.aggResources;
   const bucketSizeMs = msBucketSizes[granularity];
 
   /** store mesh positions relative to referenceX. This allows GPU to see small coordinates */
   mesh.referenceX = cameraReferenceMs;
   mesh.mesh.position.x = 0;
-
-  if (!revenueByBucketIdx) {
-    updateRectMeshCounts(mesh, 0);
-    return 0n;
-  }
 
   const startIdx = getBucketIdx(
     calcAbsoluteNs(referenceNs, visibleRangeMs[0]),
@@ -231,25 +230,30 @@ export function drawAggRevenue(
 
   let maxVisibleValue = 0n;
   const toDraw: [value: bigint, x: number][] = [];
-  for (
-    let bucketIdx = startIdx - OVERSCAN_BUCKETS;
-    bucketIdx <= endIdx + OVERSCAN_BUCKETS;
-    bucketIdx++
-  ) {
-    const isOverscan = bucketIdx < startIdx || bucketIdx > endIdx;
-    const revenues = revenueByBucketIdx.get(bucketIdx);
-    const value = revenues && getAggRevenueValue(revenues, type);
-    // don't draw missing or zero values
-    if (!value) continue;
+  forEachDrawnBucket(
+    getDrawTiles(
+      granularity,
+      startIdx - OVERSCAN_BUCKETS,
+      endIdx + OVERSCAN_BUCKETS,
+    ),
+    granularity,
+    aggRevenue,
+    resampleRevenues,
+    (bucketIdx, revenues) => {
+      const value = getAggRevenueValue(revenues, type);
+      // don't draw missing or zero values
+      if (!value) return;
 
-    const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
-    toDraw.push([value, x]);
+      const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
+      toDraw.push([value, x]);
 
-    // exclude overscan from max visible value
-    if (!isOverscan && value > maxVisibleValue) {
-      maxVisibleValue = value;
-    }
-  }
+      // exclude overscan from max visible value
+      const isOverscan = bucketIdx < startIdx || bucketIdx > endIdx;
+      if (!isOverscan && value > maxVisibleValue) {
+        maxVisibleValue = value;
+      }
+    },
+  );
 
   ensureRectCapacity(mesh, toDraw.length);
 
@@ -268,6 +272,27 @@ export function drawAggRevenue(
   updateRectMeshCounts(mesh, toDraw.length);
 
   return maxVisibleValue;
+}
+
+/**
+ * Sum each revenue type, weighted by the portion of each bucket overlapping
+ */
+function resampleRevenues(overlaps: BucketOverlap<Revenues>[]): Revenues {
+  const resampled: Revenues = {
+    [RevenueType.TxnFees]: null,
+    [RevenueType.PrioFees]: null,
+    [RevenueType.Tips]: null,
+  };
+  for (const { value, overlapMs, bucketMs } of overlaps) {
+    for (const type of Object.values(RevenueType)) {
+      const revenue = value[type];
+      if (revenue == null) continue;
+      resampled[type] =
+        (resampled[type] ?? 0n) +
+        (revenue * BigInt(overlapMs)) / BigInt(bucketMs);
+    }
+  }
+  return resampled;
 }
 
 /**

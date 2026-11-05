@@ -158,7 +158,7 @@ function appendColumns(acc: TileStateColumns, src: TileStateColumns): void {
   }
 }
 
-function itemCount(states: TileStateColumns): number {
+export function itemCount(states: TileStateColumns): number {
   return states.state.length + states.txn_idx.length;
 }
 
@@ -168,7 +168,7 @@ const TXN_TILE_NS = 8_000_000_000n; // 8s
 const BATCH_TILE_MULTIPLE = 8; // 64s
 const BATCH_TILE_NS = TXN_TILE_NS * BigInt(BATCH_TILE_MULTIPLE);
 
-const TILE_NS: Record<TileStatesGranularity, bigint> = {
+export const TILE_NS: Record<TileStatesGranularity, bigint> = {
   txn: TXN_TILE_NS,
   txn_batch: BATCH_TILE_NS,
 };

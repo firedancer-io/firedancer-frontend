@@ -36,6 +36,7 @@ export function useAggCpuQuery(chartId: string) {
   return useAggQuery<AggCpu, AggCpuParams>({
     chartId,
     queryKey: QUERY_KEY,
+    getGranularity: getAggGranularity,
     params,
     addAtom: addAggCpuAtom,
     deleteBucketsAtom: deleteAggCpuBucketsAtom,

@@ -20,7 +20,12 @@ import {
   clearLiveMarker,
   type RendererObj,
 } from "./utils.ts";
-import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils.ts";
+import {
+  calcAbsoluteNs,
+  calcRelativeMs,
+  getBucketIdx,
+  getVisibleWorldRangeNs,
+} from "../utils.ts";
 import useAggRevenueQuery, {
   getGranularity,
   type AggRevenueQuery,
@@ -57,6 +62,7 @@ import {
   type TxnMetaCacheDelta,
 } from "./txnMeta/txnMetaCache.ts";
 import styles from "../track.module.css";
+import { resolveHeldDraw } from "../useAggQuery.ts";
 import {
   updateSlotHighlight,
   useSlotHighlightRender,
@@ -105,7 +111,12 @@ interface RevenueTrackBodyProps extends RevenueTrackProps, WebGlRemountProps {
 function RevenueTrackBody({
   remount,
   height,
-  aggQuery: { query: aggQuery, pauseStaleRefreshes },
+  aggQuery: {
+    query: aggQuery,
+    getDrawTiles,
+    isVisibleDrawable,
+    pauseStaleRefreshes,
+  },
 }: RevenueTrackBodyProps) {
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
@@ -126,8 +137,7 @@ function RevenueTrackBody({
     onResize: (rendererObj) => {
       resizeRenderer(rendererObj);
       const visibleRangeMs = store.get(visibleRangeAtom);
-      if (!isAggCurrentRef.current && visibleRangeMs)
-        moveNonAggCamera(rendererObj, visibleRangeMs);
+      if (visibleRangeMs) moveNonAggCamera(rendererObj, visibleRangeMs);
       renderActive();
     },
   });
@@ -141,6 +151,30 @@ function RevenueTrackBody({
   const txnMetaQuery = useTileCacheQuery(txnMetaCache);
   const execrpCount = useAtomValue(tileCountAtom).execrp;
   const numRows = getNumRows(opts.splitByRow, execrpCount);
+
+  /**
+   * Whether to draw agg or non agg. Keep the previous mode on a mode change
+   * until the new mode can draw all of the visible range.
+   */
+  const resolveIsAgg = useCallback(() => {
+    const referenceNs = store.get(referenceNsAtom);
+    const worldRangeMs = store.get(worldRangeAtom);
+    const visibleRangeMs = store.get(visibleRangeAtom);
+    if (referenceNs == null || !visibleRangeMs || !worldRangeMs) return;
+
+    const agg = resolveHeldDraw(
+      isAggCurrentRef.current,
+      isAggregate(visibleRangeMs),
+      (agg) =>
+        agg
+          ? isVisibleDrawable(referenceNs, visibleRangeMs, worldRangeMs)
+          : txnMetaCache.isRangeFetched(
+              getVisibleWorldRangeNs(referenceNs, visibleRangeMs, worldRangeMs),
+            ),
+    );
+    isAggCurrentRef.current = agg;
+    setIsAgg(agg);
+  }, [isVisibleDrawable]);
 
   const throttledRangeQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
@@ -336,29 +370,33 @@ function RevenueTrackBody({
       const visibleRangeMs = store.get(visibleRangeAtom);
       if (referenceNs == null || !visibleRangeMs || !worldRangeMs) return;
 
-      // Move camera before querying, because query may trigger immediate draw if data is already available
+      // Move camera before querying, because query may trigger immediate draw if data is already available.
+      // Move both, since the previous mode may stay drawn after a mode change
       if (updateView) {
-        const agg = isAggregate(visibleRangeMs);
-        isAggCurrentRef.current = agg;
-        setIsAgg(agg);
-
-        if (agg) moveAggCamera(rendererRef.current, visibleRangeMs);
-        else moveNonAggCamera(rendererRef.current, visibleRangeMs);
+        moveAggCamera(rendererRef.current, visibleRangeMs);
+        moveNonAggCamera(rendererRef.current, visibleRangeMs);
+        resolveIsAgg();
       }
 
       throttledRangeQuery(referenceNs, visibleRangeMs, worldRangeMs);
 
       if (updateView) requestRender();
     },
-    [requestRender, rendererRef, throttledRangeQuery],
+    [requestRender, rendererRef, resolveIsAgg, throttledRangeQuery],
   );
 
   const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRangeMs = store.get(visibleRangeAtom);
+      const worldRangeMs = store.get(worldRangeAtom);
       const aggRevenue = store.get(aggRevenueAtom);
-      if (!rendererRef.current || !visibleRangeMs || referenceNs == null)
+      if (
+        !rendererRef.current ||
+        !visibleRangeMs ||
+        !worldRangeMs ||
+        referenceNs == null
+      )
         return;
       const maxValue = drawAggRevenue(
         rendererRef.current,
@@ -366,11 +404,21 @@ function RevenueTrackBody({
         visibleRangeMs,
         type,
         aggRevenue,
+        getGranularity(visibleRangeMs[1] - visibleRangeMs[0]),
+        getDrawTiles,
         opts.scale,
       );
       setAggAxisMax(maxValue);
+      resolveIsAgg();
       requestRender();
-    }, [rendererRef, type, opts.scale, requestRender]),
+    }, [
+      rendererRef,
+      type,
+      opts.scale,
+      requestRender,
+      getDrawTiles,
+      resolveIsAgg,
+    ]),
     50,
     { leading: false, trailing: true },
   );
@@ -458,10 +506,11 @@ function RevenueTrackBody({
         syncNonAggRef.current(renderer);
       }
 
+      resolveIsAgg();
       // Only render on delta updates when non aggregate view is active
       if (!isAggCurrentRef.current) requestRender();
     },
-    [getRelativeMs, requestRender, rendererRef],
+    [getRelativeMs, requestRender, rendererRef, resolveIsAgg],
   );
 
   useTileCacheSubscription(txnMetaCache, onCacheDelta);

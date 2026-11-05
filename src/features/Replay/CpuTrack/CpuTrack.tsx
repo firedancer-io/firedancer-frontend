@@ -31,6 +31,7 @@ import {
   useAggCpuQuery,
   type AggCpuQuery,
 } from "./useAggCpuQuery.ts";
+import type { GetDrawTiles } from "../useAggQuery.ts";
 import {
   drawCpuData,
   getCpuRowsLayout,
@@ -57,6 +58,7 @@ interface CpuTrackProps {
 
 interface CpuTrackBodyProps extends CpuTrackProps, WebGlRemountProps {
   query: AggCpuQuery;
+  getDrawTiles: GetDrawTiles;
   resetQueries: () => void;
 }
 
@@ -64,6 +66,7 @@ function CpuTrackBody({
   remount,
   height,
   query,
+  getDrawTiles,
   resetQueries,
 }: CpuTrackBodyProps) {
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
@@ -132,8 +135,10 @@ function CpuTrackBody({
       referenceNs,
       visibleRange,
       store.get(aggCpuAtom),
+      getAggGranularity(visibleRange[1] - visibleRange[0]),
+      getDrawTiles,
     );
-  }, [rendererRef]);
+  }, [rendererRef, getDrawTiles]);
 
   const throttledDrawAndRender = useThrottledCallbackIfVisible(
     useCallback(() => {
@@ -214,10 +219,12 @@ function CpuTrackBody({
 
 const CpuTrackBodyWithRemount = withWebGlRemount(CpuTrackBody);
 export default function CpuTrack(props: CpuTrackProps) {
-  const { query, resetQueries } = useAggCpuQuery(AGG_CPU_CHART_ID);
+  const { query, getDrawTiles, resetQueries } =
+    useAggCpuQuery(AGG_CPU_CHART_ID);
   return (
     <CpuTrackBodyWithRemount
       query={query}
+      getDrawTiles={getDrawTiles}
       resetQueries={resetQueries}
       {...props}
     />
