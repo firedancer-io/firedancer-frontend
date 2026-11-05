@@ -11,7 +11,7 @@ import {
 } from "./atoms";
 import { clamp as minMaxClamp } from "lodash";
 import styles from "./chart.module.css";
-import { clampToWorld } from "./utils";
+import { clampToWorld, clientXToMs } from "./utils";
 import { getDrawnSlotAt } from "./slotHighlight";
 import { isExcludedTarget, isTap, PAN_THRESHOLD_PX } from "./gestureUtils";
 
@@ -55,16 +55,7 @@ function getCursorZoomTs(
 ) {
   if (clientX <= trackRect.left + EDGE_ZOOM_ZONE_PX) return tsWindow[0];
   if (clientX >= trackRect.right - EDGE_ZOOM_ZONE_PX) return tsWindow[1];
-  return clientXToTsWithRect(trackRect, clientX, tsWindow);
-}
-
-function clientXToTsWithRect(
-  trackRect: DOMRect,
-  clientX: number,
-  tsWindow: TsRange,
-) {
-  const fraction = (clientX - trackRect.left) / trackRect.width;
-  return tsWindow[0] + fraction * (tsWindow[1] - tsWindow[0]);
+  return clientXToMs(clientX, trackRect, tsWindow);
 }
 
 // Returns the Touch with the given identifier from a TouchList
@@ -210,7 +201,7 @@ export function useExplorableChart() {
 
         const window = isWorldTrack ? worldRange : visibleRange;
         const trackRect = trackEl.getBoundingClientRect();
-        const ts = clientXToTsWithRect(trackRect, clientX, window);
+        const ts = clientXToMs(clientX, trackRect, window);
 
         dragStartRef.current = {
           clientX,
@@ -236,11 +227,7 @@ export function useExplorableChart() {
         if (!drag) return;
         const newRect = trackEl.getBoundingClientRect();
         if (newRect.width === 0) return;
-        drag.ts = clientXToTsWithRect(
-          newRect,
-          drag.clientX,
-          drag.draggableWindow,
-        );
+        drag.ts = clientXToMs(drag.clientX, newRect, drag.draggableWindow);
         drag.trackRect = newRect;
       };
 
@@ -259,9 +246,9 @@ export function useExplorableChart() {
         }
         isPanningRef.current = true;
         refreshCursor();
-        const xTs = clientXToTsWithRect(
-          dragStartRef.current.trackRect,
+        const xTs = clientXToMs(
           clientX,
+          dragStartRef.current.trackRect,
           dragStartRef.current.draggableWindow,
         );
         const diff = (isWorldTrack ? -1 : 1) * (xTs - dragStartRef.current.ts);
@@ -301,7 +288,8 @@ export function useExplorableChart() {
         const zoomPointTs = isWorldTrack
           ? // mini map zoom centers on middle of visible range
             (visibleRange[0] + visibleRange[1]) / 2
-          : getCursorZoomTs(
+          : // near an edge zoom around that edge, else center on the cursor
+            getCursorZoomTs(
               trackEl.getBoundingClientRect(),
               clientX,
               visibleRange,
@@ -510,7 +498,7 @@ export function useExplorableChart() {
         pinch = {
           touchIds: [touches[0].identifier, touches[1].identifier],
           distancePx,
-          midTs: clientXToTsWithRect(trackRect, midX, visibleRange),
+          midTs: clientXToMs(midX, trackRect, visibleRange),
           spanMs: visibleRange[1] - visibleRange[0],
           trackRect,
         };
@@ -762,7 +750,7 @@ export function useExplorableChart() {
         if (!edge || !rect || !worldRange || !visibleRange) return;
 
         const cursorTs = minMaxClamp(
-          clientXToTsWithRect(rect, clientX, worldRange),
+          clientXToMs(clientX, rect, worldRange),
           worldRange[0],
           worldRange[1],
         );
@@ -917,9 +905,9 @@ export function useExplorableChart() {
         const worldRange = store.get(worldRangeAtom);
         if (!worldRange) return;
 
-        const cursorTs = clientXToTsWithRect(
-          trackEl.getBoundingClientRect(),
+        const cursorTs = clientXToMs(
           clientX,
+          trackEl.getBoundingClientRect(),
           worldRange,
         );
         panToTs(cursorTs);

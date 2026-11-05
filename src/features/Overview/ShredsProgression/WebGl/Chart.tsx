@@ -32,7 +32,7 @@ import {
 } from "../atoms";
 import { useReplayTargetClick } from "../../../Replay/useReplayTargetClick";
 import { useFrameRender } from "../../../WebGl/useFrameRender";
-import { calcAbsoluteNs } from "../../../Replay/utils";
+import { calcAbsoluteNs, clientXToMs } from "../../../Replay/utils";
 import { useAtomsSubscription } from "../../../../atomUtils";
 import {
   getShredsState,
@@ -47,7 +47,7 @@ import {
   useHoveredPosition,
   type HoveredRect,
 } from "../../../Replay/useHoveredPosition";
-import { clientXToTs, clientYToWorldY } from "../../../Replay/hoverUtils";
+import { clientYToWorldY } from "../../../Replay/hoverUtils";
 import { useThrottledCallbackIfVisible } from "../../../../api/useDebounceIfVisible";
 import styles from "../shreds.module.css";
 
@@ -117,7 +117,7 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
       if (!renderer?.lastDrawInfo || !state) return;
 
       const visibleRange = getVisibleTsRange(state, scaleRef.current);
-      const ts = clientXToTs(rect, clientX, visibleRange);
+      const ts = clientXToMs(clientX, rect, visibleRange);
       const { top, bottom } = renderer.camera;
       const worldY = clientYToWorldY(rect, clientY, top, bottom);
       return getShredAtPosition(
@@ -141,7 +141,7 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
       if (!rect || !state || !canOpenInReplay(store.get, slot)) return;
 
       const visibleRange = getVisibleTsRange(state, scaleRef.current);
-      const ts = clientXToTs(rect, clientX, visibleRange);
+      const ts = clientXToMs(clientX, rect, visibleRange);
       return {
         slot,
         centerNs: calcAbsoluteNs(state.liveShreds.referenceTs, ts),

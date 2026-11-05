@@ -22,7 +22,7 @@ export function useHoveredPosition({
   followsVisibleRange = true,
 }: {
   onHoverChange: (clientX: number, clientY: number, rect: HoveredRect) => void;
-  onHoverLeave: () => void;
+  onHoverLeave?: () => void;
   // false for charts outside Replay
   followsVisibleRange?: boolean;
 }) {
@@ -79,7 +79,7 @@ export function useHoveredPosition({
 
       const leave = () => {
         lastClientPosRef.current = undefined;
-        onHoverLeaveRef.current();
+        onHoverLeaveRef.current?.();
       };
 
       // touch has no hover: a one-finger tap hovers the tapped point, any touch clears it

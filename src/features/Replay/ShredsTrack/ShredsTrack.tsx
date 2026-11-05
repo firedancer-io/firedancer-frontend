@@ -48,14 +48,14 @@ import {
   visibleRangeAtom,
   worldRangeAtom,
 } from "../atoms.ts";
-import { calcAbsoluteNs, getBucketIdx } from "../utils.ts";
+import { calcAbsoluteNs, clientXToMs, getBucketIdx } from "../utils.ts";
 import { drawEventType } from "../const.ts";
 import styles from "../track.module.css";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import TrackControls from "../TrackControls.tsx";
 import { trackNames } from "../layout.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
-import { clientXToTs, clientYToWorldY } from "../hoverUtils.ts";
+import { clientYToWorldY } from "../hoverUtils.ts";
 
 const store = getDefaultStore();
 
@@ -83,7 +83,7 @@ function getShredAtPoint(
   rect: HoveredRect,
   visibleRange: TsRange,
 ) {
-  const ts = clientXToTs(rect, clientX, visibleRange);
+  const ts = clientXToMs(clientX, rect, visibleRange);
   const { camera } = renderer.nonAggResources;
   const worldY = clientYToWorldY(rect, clientY, camera.top, camera.bottom);
   return getShredAtPosition(ts, worldY, renderer.nonAggResources);
@@ -126,7 +126,7 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
         return;
       }
 
-      const ts = clientXToTs(rect, clientX, visibleRange);
+      const ts = clientXToMs(clientX, rect, visibleRange);
 
       if (isAggregate(visibleRange)) {
         clearHoveredShred();

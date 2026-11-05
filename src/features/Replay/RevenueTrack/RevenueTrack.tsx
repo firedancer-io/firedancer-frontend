@@ -20,7 +20,12 @@ import {
   clearLiveMarker,
   type RendererObj,
 } from "./utils.ts";
-import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils.ts";
+import {
+  calcAbsoluteNs,
+  calcRelativeMs,
+  clientXToMs,
+  getBucketIdx,
+} from "../utils.ts";
 import useAggRevenueQuery, {
   getGranularity,
   type AggRevenueQuery,
@@ -45,7 +50,7 @@ import { drawEventType } from "../const.ts";
 import { getRevenueRatio } from "./scale.ts";
 import { findHighestTxnAtPoint } from "./hoverUtils.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
-import { clientXToTs, clientYToWorldY } from "../hoverUtils.ts";
+import { clientYToWorldY } from "../hoverUtils.ts";
 import { tileCountAtom } from "../../Overview/SlotPerformance/atoms.ts";
 import RevenueYAxis from "./RevenueYAxis.tsx";
 import RevenueControls from "./RevenueControls.tsx";
@@ -204,7 +209,7 @@ function RevenueTrackBody({
           return;
         }
 
-        const ts = clientXToTs(rect, clientX, visibleRange);
+        const ts = clientXToMs(clientX, rect, visibleRange);
         const granularity = getGranularity(visibleRange[1] - visibleRange[0]);
         const bucketIdx = getBucketIdx(
           calcAbsoluteNs(referenceNs, ts),

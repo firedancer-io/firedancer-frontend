@@ -14,8 +14,7 @@ import {
   visibleRangeAtom,
   worldRangeAtom,
 } from "../atoms.ts";
-import { clientXToTs } from "../hoverUtils.ts";
-import { calcAbsoluteNs, getBucketIdx } from "../utils.ts";
+import { calcAbsoluteNs, clientXToMs, getBucketIdx } from "../utils.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
 import TrackControls, {
   TrackControlsToggle,
@@ -117,7 +116,7 @@ function CpuTrackBody({
         return;
       }
 
-      const ts = clientXToTs(rect, clientX, visibleRange);
+      const ts = clientXToMs(clientX, rect, visibleRange);
       const granularity = getAggGranularity(visibleRange[1] - visibleRange[0]);
       const bucketIdx = getBucketIdx(
         calcAbsoluteNs(referenceNs, ts),
