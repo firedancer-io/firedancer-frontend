@@ -15,6 +15,9 @@ export const RESUME_LIVE_THRESHOLD_FRAC = 0.02;
  */
 export const AGG_SLOTS_BUCKET_COUNT_THRESHOLD = 1000;
 
+export const playbackRates = [0.25, 0.5, 1, 2, 4] as const;
+export type PlaybackRate = (typeof playbackRates)[number];
+
 export const msBucketSizes: Record<AggGranularity, number> = {
   "25ms": 25,
   "50ms": 50,

@@ -2,7 +2,12 @@ import { useCallback, useMemo, useRef } from "react";
 import type { TsRange } from "../WebGl/webglUtils";
 import { MIN_VISIBLE_MS } from "./const";
 import { getDefaultStore } from "jotai";
-import { resetToLiveAtom, visibleRangeAtom, worldRangeAtom } from "./atoms";
+import {
+  pauseAtom,
+  resetToLiveAtom,
+  visibleRangeAtom,
+  worldRangeAtom,
+} from "./atoms";
 import { clamp as minMaxClamp } from "lodash";
 import styles from "./chart.module.css";
 import { clampToWorld } from "./utils";
@@ -179,6 +184,7 @@ export function useExplorableChart() {
       const startDrag = (clientX: number) => {
         // one gesture at a time: ignore a new start if another gesture is in progress
         if (gestureOwnerRef.current) return;
+        store.set(pauseAtom);
         const worldRange = store.get(worldRangeAtom);
         const visibleRange = store.get(visibleRangeAtom);
         if (!worldRange || !visibleRange) return;
