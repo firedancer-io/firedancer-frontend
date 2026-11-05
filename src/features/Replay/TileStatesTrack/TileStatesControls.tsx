@@ -1,17 +1,23 @@
 import type { Dispatch, SetStateAction } from "react";
 import {
-  execrpStates,
-  replayStates,
+  trackStates,
   tileStateColors,
   tileStateLabels,
+  tileStatesModeLabels,
+  type TileStatesMode,
   type TileStatesViewOpts,
   type TileKind,
 } from "./consts.ts";
-import type { TileStatesGranularity } from "../../../api/types.ts";
+import type {
+  AggGranularity,
+  TileStatesGranularity,
+} from "../../../api/types.ts";
 import type { TileState } from "../../../api/entities.ts";
-import { TileStatesGranularityEnum } from "../../../api/entities.ts";
 import { trackNames } from "../layout.ts";
 import TrackControls, {
+  TrackControlsDivider,
+  TrackControlsOptions,
+  TrackControlsSlider,
   TrackControlsToggle,
   type LegendItem,
 } from "../TrackControls.tsx";
@@ -20,36 +26,103 @@ function toLegendItem(state: TileState): LegendItem {
   return { label: tileStateLabels[state], color: tileStateColors[state] };
 }
 
-const replayLegend = replayStates.map(toLegendItem);
-
-const execrpLegends: Record<TileStatesGranularity, LegendItem[]> = {
-  txn: execrpStates.txn.map(toLegendItem),
-  txn_batch: execrpStates.txn_batch.map(toLegendItem),
+const granularityLabels: Record<TileStatesGranularity, string> = {
+  txn: "txn",
+  txn_batch: "batch",
 };
 
 interface TileStatesControlsProps {
   kind: TileKind;
-  granularity: TileStatesGranularity;
+  nonAggGranularity: TileStatesGranularity;
   isAgg: boolean;
+  availableModes: TileStatesMode[];
+  mode: TileStatesMode;
+  showIdleWeight: boolean;
+  showSplitLanes: boolean;
+  showErrorStates: boolean;
+  aggGranularity: AggGranularity | undefined;
   opts: TileStatesViewOpts;
   setOpts: Dispatch<SetStateAction<TileStatesViewOpts>>;
 }
 
 export default function TileStatesControls({
   kind,
-  granularity,
+  nonAggGranularity,
   isAgg,
+  availableModes,
+  mode,
+  showIdleWeight,
+  showSplitLanes,
+  showErrorStates,
+  aggGranularity,
   opts,
   setOpts,
 }: TileStatesControlsProps) {
+  const legend =
+    trackStates[kind][isAgg ? "agg" : nonAggGranularity].map(toLegendItem);
+  const modeOptions = availableModes.map((value) => ({
+    value,
+    label: tileStatesModeLabels[value],
+  }));
+
+  const controls = (
+    <>
+      <TrackControlsOptions
+        label="Mode"
+        options={modeOptions}
+        value={mode}
+        onChange={(mode) => setOpts((o) => ({ ...o, mode }))}
+      />
+      {showSplitLanes && (
+        <>
+          <TrackControlsDivider />
+          <TrackControlsToggle
+            label="Split by lane"
+            checked={opts.separateLanes}
+            onChange={(separateLanes) =>
+              setOpts((o) => ({ ...o, separateLanes }))
+            }
+          />
+        </>
+      )}
+      {showIdleWeight && (
+        <>
+          <TrackControlsDivider />
+          <TrackControlsSlider
+            label="Idle weight"
+            value={opts.idleWeight}
+            min={0}
+            max={1}
+            step={0.05}
+            onChange={(idleWeight) => setOpts((o) => ({ ...o, idleWeight }))}
+          />
+        </>
+      )}
+      {showErrorStates && (
+        <>
+          <TrackControlsDivider />
+          <TrackControlsToggle
+            label="Error state"
+            checked={opts.showErrorStates}
+            onChange={(showErrorStates) =>
+              setOpts((o) => ({ ...o, showErrorStates }))
+            }
+          />
+        </>
+      )}
+    </>
+  );
+
   if (kind === "replay") {
     return (
       <TrackControls
         name={trackNames.replay}
         trackId="replay"
-        bucketSize={isAgg ? undefined : "slot"}
-        legend={isAgg ? undefined : replayLegend}
-      />
+        bucketSize={isAgg ? aggGranularity : "slot"}
+        legend={legend}
+      >
+        {controls}
+      </TrackControls>
     );
   }
 
@@ -57,24 +130,10 @@ export default function TileStatesControls({
     <TrackControls
       name={trackNames.banks}
       trackId="banks"
-      bucketSize={
-        isAgg
-          ? undefined
-          : granularity === TileStatesGranularityEnum.txn
-            ? "txn"
-            : "batch"
-      }
-      legend={isAgg ? undefined : execrpLegends[granularity]}
+      bucketSize={isAgg ? aggGranularity : granularityLabels[nonAggGranularity]}
+      legend={legend}
     >
-      {!isAgg && granularity === TileStatesGranularityEnum.txn && (
-        <TrackControlsToggle
-          label="Error state"
-          checked={opts.showErrorStates}
-          onChange={(showErrorStates) =>
-            setOpts((o) => ({ ...o, showErrorStates }))
-          }
-        />
-      )}
+      {controls}
     </TrackControls>
   );
 }
