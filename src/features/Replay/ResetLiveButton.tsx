@@ -1,6 +1,8 @@
 import { Button, Text } from "@radix-ui/themes";
-import { useAtom } from "jotai";
-import { isLiveAtom } from "./atoms";
+import clsx from "clsx";
+import { useAtomValue, useSetAtom } from "jotai";
+import { isLiveAtom, returnToLiveAtom } from "./atoms";
+import chartStyles from "./chart.module.css";
 import styles from "./resetLiveButton.module.css";
 
 /**
@@ -8,12 +10,16 @@ import styles from "./resetLiveButton.module.css";
  * header track. Hidden while already live.
  */
 export default function ResetLiveButton() {
-  const [isLive, setIsLive] = useAtom(isLiveAtom);
+  const isLive = useAtomValue(isLiveAtom);
+  const returnToLive = useSetAtom(returnToLiveAtom);
 
   if (isLive) return null;
 
   return (
-    <Button className={styles.button} onClick={() => setIsLive(true)}>
+    <Button
+      className={clsx(chartStyles.noChartExplore, styles.button)}
+      onClick={() => returnToLive()}
+    >
       <Text>Return to Live</Text>
     </Button>
   );

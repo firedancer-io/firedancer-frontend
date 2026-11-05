@@ -10,6 +10,9 @@ export const CHART_NOW_DELAY_MS = 500;
 // fraction of the visible window width from world end
 export const RESUME_LIVE_THRESHOLD_FRAC = 0.02;
 
+export const playbackRates = [0.25, 0.5, 1, 2, 4] as const;
+export type PlaybackRate = (typeof playbackRates)[number];
+
 export const msBucketSizes: Record<AggGranularity, number> = {
   "25ms": 25,
   "50ms": 50,
