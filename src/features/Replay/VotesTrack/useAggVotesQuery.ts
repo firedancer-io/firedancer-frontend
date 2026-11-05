@@ -28,5 +28,6 @@ export function useAggVotesQuery(chartId: string) {
     addAtom: addAggVotesAtom,
     deleteBucketsAtom: deleteAggVotesBucketsAtom,
     emitterAtom: aggVotesEmitterAtom,
+    getGranularity: getAggVotesGranularity,
   });
 }

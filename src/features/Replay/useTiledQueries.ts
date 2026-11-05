@@ -365,6 +365,41 @@ export function useTiledQueries<Granularity extends string>({
     [evictTilesIfNeeded, getTileStates, getTileSizeNs],
   );
 
+  /**
+   * Whether every tile overlapping [startNs, endNs) has data (fetched or stale)
+   */
+  const isRangeFetched = useCallback(
+    (granularity: Granularity, [startNs, endNs]: NsTsRange) => {
+      if (endNs <= startNs) return true;
+
+      const tileSizeNs = getTileSizeNs(granularity);
+      const firstTile = getTileIdx(startNs, tileSizeNs, false);
+      const lastTile = getTileIdx(endNs, tileSizeNs, true);
+
+      const { fetched, stale } = getTileStates(granularity);
+      if (lastTile - firstTile + 1 > fetched.size + stale.size) return false;
+
+      for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
+        if (!fetched.has(tileIdx) && !stale.has(tileIdx)) return false;
+      }
+      return true;
+    },
+    [getTileSizeNs, getTileStates],
+  );
+
+  /**
+   * Granularities with any fetched or stale tiles
+   */
+  const getGranularitiesWithData = useCallback(() => {
+    const granularities: Granularity[] = [];
+    for (const [granularity, { fetched, stale }] of getChartState()) {
+      if (fetched.size || stale.size) {
+        granularities.push(granularity as Granularity);
+      }
+    }
+    return granularities;
+  }, [getChartState]);
+
   const queryWorldEnd = useThrottledCallbackIfVisible(() => {
     // in live mode, the visible range will automatically query the last tile
     // so skip this query
@@ -422,6 +457,8 @@ export function useTiledQueries<Granularity extends string>({
   return {
     queryRange,
     markQueryComplete,
+    isRangeFetched,
+    getGranularitiesWithData,
     pauseStaleRefreshes,
     resetQueries,
   };

@@ -21,6 +21,7 @@ export function useAggHeaderQuery(chartId: string) {
   return useAggQuery<AggSlots>({
     chartId,
     queryKey: AGG_SLOTS_QUERY_KEY,
+    getGranularity: getAggGranularity,
     addAtom: addAggSlotsAtom,
     deleteBucketsAtom: deleteAggSlotsBucketsAtom,
     emitterAtom: aggHeaderEmitterAtom,

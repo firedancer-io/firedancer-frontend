@@ -72,6 +72,11 @@ export interface TileCache<TData, TMeta> {
    */
   reduceMeta: <T>(seed: T, reducer: (acc: T, meta: TMeta) => T) => T;
   requestRange: (visibleRangeNs: NsTsRange, worldEndNs: bigint) => void;
+  isRangeFetched: (rangeNs: NsTsRange) => boolean;
+  isTileFetched: (ns: bigint) => boolean;
+  getTile: (
+    ns: bigint,
+  ) => (Tile<TData, TMeta> & { isLive: boolean }) | undefined;
   init: () => Unsubscribe;
   reset: () => void;
 }
@@ -501,6 +506,60 @@ export function createTileCache<TData, TMeta>({
     }
   }
 
+  /**
+   * Live tile id, once its first fetch has landed
+   */
+  function getLiveTileIdWithData(): number | undefined {
+    if (live.acc === null) return;
+    const [tileStartNs] = getRange(live.acc.tileId);
+    if (live.acc.fetchedEndNs >= tileStartNs) return live.acc.tileId;
+  }
+
+  /**
+   * Whether the tile containing `ns` has data, counting the live tile once
+   * its first fetch has landed
+   */
+  function isTileFetched(ns: bigint): boolean {
+    const id = tileIdOf(ns);
+    return tileCache.has(id) || id === getLiveTileIdWithData();
+  }
+
+  /**
+   * Tile containing `ns`, counting the live tile once its first fetch has
+   * landed. Live tile data grows as more is fetched.
+   */
+  function getTile(
+    ns: bigint,
+  ): (Tile<TData, TMeta> & { isLive: boolean }) | undefined {
+    const id = tileIdOf(ns);
+    const [startNs, endNs] = getRange(id);
+    const cached = tileCache.get(id);
+    if (cached) {
+      return {
+        startNs,
+        endNs,
+        data: cached.data,
+        meta: cached.meta,
+        isLive: false,
+      };
+    }
+    if (live.acc !== null && id === getLiveTileIdWithData()) {
+      const { data } = live.acc;
+      return { startNs, endNs, data, meta: deriveMeta(data), isLive: true };
+    }
+  }
+
+  /**
+   * Whether every tile overlapping [startNs, endNs) has data, counting the
+   * live tile once its first fetch has landed
+   */
+  function isRangeFetched([startNs, endNs]: NsTsRange): boolean {
+    for (let ns = (startNs / tileNs) * tileNs; ns < endNs; ns += tileNs) {
+      if (!isTileFetched(ns)) return false;
+    }
+    return true;
+  }
+
   function init(): () => void {
     return store.sub(socketStateAtom, () => {
       if (store.get(socketStateAtom) === SocketState.Disconnected) {
@@ -536,6 +595,9 @@ export function createTileCache<TData, TMeta>({
     getDataInRange,
     reduceMeta,
     requestRange,
+    isRangeFetched,
+    isTileFetched,
+    getTile,
     init,
     reset,
   };

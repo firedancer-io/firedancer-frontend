@@ -7,6 +7,7 @@ import { ShredsGranularityEnum } from "../../../api/entities";
 import {
   calcAbsoluteNs,
   getChunksEndNs,
+  getVisibleWorldRangeNs,
   useTimelineServerMessage,
 } from "../utils";
 import { drawEventType, getNonAggAtoms } from "./atoms";
@@ -77,7 +78,7 @@ export function useNonAggShredsQuery(
     [store],
   );
 
-  const { queryRange, markQueryComplete, pauseStaleRefreshes } =
+  const { queryRange, markQueryComplete, isRangeFetched, pauseStaleRefreshes } =
     useTiledQueries<ShredsGranularity>({
       chartId,
       getTileSizeNs,
@@ -140,8 +141,38 @@ export function useNonAggShredsQuery(
     [onNothingToFetch, queryRange],
   );
 
+  /**
+   * Whether every visible tile has data in either granularity, since drawing
+   * falls back to the other granularity
+   */
+  const isVisibleDrawable = useCallback(
+    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
+      const [startNs, endNs] = getVisibleWorldRangeNs(
+        referenceNs,
+        visibleRange,
+        worldRange,
+      );
+      for (
+        let tileStartNs = (startNs / tileSizeNs) * tileSizeNs;
+        tileStartNs < endNs;
+        tileStartNs += tileSizeNs
+      ) {
+        const tileRangeNs: NsTsRange = [tileStartNs, tileStartNs + tileSizeNs];
+        if (
+          !isRangeFetched(ShredsGranularityEnum.fec, tileRangeNs) &&
+          !isRangeFetched(ShredsGranularityEnum.shred, tileRangeNs)
+        ) {
+          return false;
+        }
+      }
+      return true;
+    },
+    [isRangeFetched],
+  );
+
   return {
     query,
+    isVisibleDrawable,
     pauseStaleRefreshes,
   };
 }

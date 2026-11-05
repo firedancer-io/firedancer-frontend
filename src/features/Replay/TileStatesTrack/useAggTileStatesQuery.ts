@@ -30,6 +30,7 @@ export function useAggTileStatesQuery() {
   return useAggQuery<AggTileStates>({
     chartId: AGG_TILE_STATES_CHART_ID,
     queryKey: QUERY_KEY,
+    getGranularity: getAggGranularity,
     addAtom: addAggTileStatesAtom,
     deleteBucketsAtom: deleteAggTileStatesBucketsAtom,
     emitterAtom: aggTileStatesEmitterAtom,

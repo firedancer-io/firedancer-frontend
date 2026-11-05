@@ -150,13 +150,15 @@ function applyTierClasses(
 export interface NonAggHeaderTrackProps {
   className: string;
   width: number;
-  showNonAgg: () => void;
+  setNonAggDrawable: (isDrawable: boolean) => void;
+  getIsAggShown: () => boolean;
 }
 
 export function NonAggHeaderTrack({
   className,
   width,
-  showNonAgg,
+  setNonAggDrawable,
+  getIsAggShown,
 }: NonAggHeaderTrackProps) {
   const [renderState, setRenderState] = useState<{
     slotGroups: SlotGroup[];
@@ -167,7 +169,8 @@ export function NonAggHeaderTrack({
   const containerRef = useRef<HTMLDivElement>(null);
   const containerStartMsRef = useRef(0);
 
-  const nonAggQuery = useNonAggHeaderQuery(chartId);
+  const { query: nonAggQuery, isVisibleFetched } =
+    useNonAggHeaderQuery(chartId);
 
   const throttledRelativeTsQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
@@ -262,25 +265,37 @@ export function NonAggHeaderTrack({
 
     updateGroupPositionsOnly(referenceNs, visibleRange);
 
-    if (isAggregate(visibleRange)) return;
-
-    throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
-  }, [updateGroupPositionsOnly, throttledRelativeTsQuery]);
+    const isDrawable = isVisibleFetched(referenceNs, visibleRange, worldRange);
+    if (isAggregate(visibleRange)) {
+      // No queries in agg, but update groups in case non agg stays shown
+      if (isDrawable) throttledUpdateGroups(referenceNs, visibleRange);
+    } else {
+      throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
+    }
+    setNonAggDrawable(isDrawable);
+  }, [
+    updateGroupPositionsOnly,
+    isVisibleFetched,
+    throttledUpdateGroups,
+    throttledRelativeTsQuery,
+    setNonAggDrawable,
+  ]);
 
   /**
-   * Update groups that are rendered and switch to showing non-agg
+   * Update groups that are rendered and whether non agg can be shown
    */
   const throttledUpdateGroupsAndShow = useThrottledCallbackIfVisible(
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
-      if (!visibleRange || referenceNs == null || isAggregate(visibleRange)) {
-        return;
-      }
+      const worldRange = store.get(worldRangeAtom);
+      if (!visibleRange || !worldRange || referenceNs == null) return;
 
       throttledUpdateGroups(referenceNs, visibleRange);
-      showNonAgg();
-    }, [showNonAgg, throttledUpdateGroups]),
+      setNonAggDrawable(
+        isVisibleFetched(referenceNs, visibleRange, worldRange),
+      );
+    }, [isVisibleFetched, setNonAggDrawable, throttledUpdateGroups]),
     70,
     { leading: true, trailing: true },
   );
@@ -325,8 +340,7 @@ export function NonAggHeaderTrack({
 
     const aggEmitter = store.get(aggHeaderEmitterAtom);
     const clearIfAgg = () => {
-      const visibleRange = store.get(visibleRangeAtom);
-      if (!visibleRange || !isAggregate(visibleRange)) return;
+      if (!getIsAggShown()) return;
       setRenderState(null);
     };
     aggEmitter.addListener(aggDrawEventType, clearIfAgg);
@@ -349,6 +363,7 @@ export function NonAggHeaderTrack({
     throttledUpdateGroups,
     throttledRelativeTsQuery,
     notifyChange,
+    getIsAggShown,
   ]);
 
   // handle chart resize, which may trigger tier changes depending on new width

@@ -28,6 +28,7 @@ export default function useAggRevenueQuery() {
   return useAggQuery<AggRevenue>({
     chartId,
     queryKey: QUERY_KEY,
+    getGranularity: getGranularity,
     addAtom: addAggRevenueAtom,
     deleteBucketsAtom: deleteAggRevenueBucketsAtom,
     emitterAtom: aggRevenueEmitterAtom,

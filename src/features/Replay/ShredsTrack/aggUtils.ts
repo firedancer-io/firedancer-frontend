@@ -17,9 +17,14 @@ import {
   type AggRendererResources,
   type RendererObj,
 } from "./const";
-import { type ShredBucketsByGranularity } from "./atoms";
-import { getAggGranularity } from "./useAggShredsQuery";
-import { OVERSCAN_BUCKETS } from "../useAggQuery";
+import { type ShredBucketsByGranularity, type ShredEventCounts } from "./atoms";
+import type { AggGranularity } from "../../../api/types";
+import {
+  forEachDrawnBucket,
+  OVERSCAN_BUCKETS,
+  type BucketOverlap,
+  type GetDrawTiles,
+} from "../useAggQuery";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
 
 export function setUpAggResources(
@@ -64,12 +69,9 @@ export function drawAggShreds(
   referenceNs: bigint,
   visibleRange: TsRange,
   aggShreds: ShredBucketsByGranularity,
+  granularity: AggGranularity,
+  getDrawTiles: GetDrawTiles,
 ) {
-  const granularity = getAggGranularity(visibleRange[1] - visibleRange[0]);
-
-  const eventsByBucketIdx = aggShreds.get(granularity);
-  if (!eventsByBucketIdx) return;
-
   const { camera, cameraReferenceMs, mesh } = rendererObj.aggResources;
   const bucketSizeMs = msBucketSizes[granularity];
   const startIdx = getBucketIdx(
@@ -91,42 +93,45 @@ export function drawAggShreds(
 
   let maxVisibleShredsPerBucket = 0;
   let rectIdx = 0;
-  for (
-    let bucketIdx = startIdx - OVERSCAN_BUCKETS;
-    bucketIdx <= endIdx + OVERSCAN_BUCKETS;
-    bucketIdx++
-  ) {
-    const eventCounts = eventsByBucketIdx.get(bucketIdx);
-    if (!eventCounts) continue;
+  forEachDrawnBucket(
+    getDrawTiles(
+      granularity,
+      startIdx - OVERSCAN_BUCKETS,
+      endIdx + OVERSCAN_BUCKETS,
+    ),
+    granularity,
+    aggShreds,
+    resampleEventCounts,
+    (bucketIdx, eventCounts) => {
+      const isOverscan = bucketIdx < startIdx || bucketIdx > endIdx;
+      const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
 
-    const isOverscan = bucketIdx < startIdx || bucketIdx > endIdx;
-    const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
+      let shredsInBucket = 0;
+      for (const { type, webGlColor } of aggShredEvents) {
+        const count = eventCounts[type];
+        if (!count) continue;
 
-    let shredsInBucket = 0;
-    for (const { type, webGlColor } of aggShredEvents) {
-      const count = eventCounts[type];
-      if (!count) continue;
+        ensureRectCapacity(mesh, rectIdx + 1);
+        addRectangleToMesh(
+          mesh,
+          rectIdx,
+          x,
+          -shredsInBucket - count,
+          bucketSizeMs,
+          count,
+          webGlColor,
+        );
 
-      ensureRectCapacity(mesh, rectIdx + 1);
-      addRectangleToMesh(
-        mesh,
-        rectIdx,
-        x,
-        -shredsInBucket - count,
-        bucketSizeMs,
-        count,
-        webGlColor,
-      );
+        shredsInBucket += count;
+        rectIdx++;
+      }
 
-      shredsInBucket += count;
-      rectIdx++;
-    }
-
-    // exclude overscan from max visible value
-    if (!isOverscan && shredsInBucket > maxVisibleShredsPerBucket) {
-      maxVisibleShredsPerBucket = shredsInBucket;
-    }
-  }
+      // exclude overscan from max visible value
+      if (!isOverscan && shredsInBucket > maxVisibleShredsPerBucket) {
+        maxVisibleShredsPerBucket = shredsInBucket;
+      }
+    },
+  );
 
   // keep the previous Y scale when there's nothing visible instead of collapsing.
   // Pad so the tallest bucket lands at MAX_HEIGHT_RATIO, leaving room for the last grid line
@@ -161,4 +166,23 @@ export function moveAggCamera(
   if (mesh.referenceX != null) {
     mesh.mesh.position.x = mesh.referenceX - cameraReferenceMs;
   }
+}
+
+/**
+ * Sum each event type, weighted by the portion of each bucket overlapping
+ */
+function resampleEventCounts(
+  overlaps: BucketOverlap<ShredEventCounts>[],
+): ShredEventCounts {
+  const resampled = Object.fromEntries(
+    aggShredEvents.map(({ type }) => [type, null]),
+  ) as ShredEventCounts;
+  for (const { value, overlapMs, bucketMs } of overlaps) {
+    for (const { type } of aggShredEvents) {
+      const count = value[type];
+      if (count == null) continue;
+      resampled[type] = (resampled[type] ?? 0) + (count * overlapMs) / bucketMs;
+    }
+  }
+  return resampled;
 }

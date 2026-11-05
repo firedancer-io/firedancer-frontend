@@ -2,7 +2,11 @@ import { useCallback } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { TimelineSlots } from "../../../api/types";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
-import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
+import {
+  calcAbsoluteNs,
+  getVisibleWorldRangeNs,
+  useTimelineServerMessage,
+} from "../utils";
 import { useTiledQueries } from "../useTiledQueries";
 import { SLOTS_QUERY_KEY, useSlotsQuery } from "../useSlotsQuery";
 import { nsPerMs } from "../../../consts";
@@ -47,18 +51,18 @@ export function useNonAggHeaderQuery(chartId: string) {
     [deleteTimelineSlotTiles],
   );
 
-  const { queryRange, markQueryComplete } = useTiledQueries<typeof granularity>(
-    {
-      chartId,
-      getTileSizeNs,
-      overscanTilesCount: OVERSCAN_TILES_COUNT,
-      queryKey: SLOTS_QUERY_KEY,
-      sendQuery,
-      getTileEvictionHighWatermark,
-      getTileEvictionLowWatermark,
-      onEvictTiles,
-    },
-  );
+  const { queryRange, markQueryComplete, isRangeFetched } = useTiledQueries<
+    typeof granularity
+  >({
+    chartId,
+    getTileSizeNs,
+    overscanTilesCount: OVERSCAN_TILES_COUNT,
+    queryKey: SLOTS_QUERY_KEY,
+    sendQuery,
+    getTileEvictionHighWatermark,
+    getTileEvictionLowWatermark,
+    onEvictTiles,
+  });
 
   useTimelineServerMessage(
     SLOTS_QUERY_KEY,
@@ -75,7 +79,7 @@ export function useNonAggHeaderQuery(chartId: string) {
     emitter.emit(drawEventType);
   }, [emitter]);
 
-  return useCallback(
+  const query = useCallback(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
       const visibleRangeNs: NsTsRange = [
         calcAbsoluteNs(referenceNs, visibleRange[0]),
@@ -90,4 +94,18 @@ export function useNonAggHeaderQuery(chartId: string) {
     },
     [onNothingToFetch, queryRange],
   );
+
+  /**
+   * Whether every in-world visible tile has loaded
+   */
+  const isVisibleFetched = useCallback(
+    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) =>
+      isRangeFetched(
+        granularity,
+        getVisibleWorldRangeNs(referenceNs, visibleRange, worldRange),
+      ),
+    [isRangeFetched],
+  );
+
+  return { query, isVisibleFetched };
 }
