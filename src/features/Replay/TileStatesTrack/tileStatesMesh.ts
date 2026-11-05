@@ -4,6 +4,7 @@ import {
   ERROR_STATES_ALPHA,
   ERROR_STATES_BORDER_PX,
 } from "./consts.ts";
+import { slotHighlightGlsl, type SlotHighlight } from "../slotHighlight.ts";
 
 const errorStatesUniformsGlsl = /* glsl */ `
   uniform float uViewHeightPx;
@@ -111,6 +112,8 @@ in float vBarHeightPx;
 
 out vec4 fragColor;
 
+${slotHighlightGlsl}
+
 void main() {
   // Distance to the nearest top/bottom edge in device px.
   float d = (0.5 - abs(vLocalY)) * vBarHeightPx;
@@ -119,7 +122,7 @@ void main() {
     (1.0 - smoothstep(uBorderPx - 0.5, uBorderPx + 0.5, d)) * xCoverage();
   if (coverage <= 0.0) discard;
 
-  fragColor = vec4(vColor, uOpacity * coverage);
+  fragColor = vec4(highlightTime(vColor, gl_FragCoord.x), uOpacity * coverage);
 }
 `;
 
@@ -174,8 +177,12 @@ export function createTileStatesMaterial(
   );
 }
 
-export function createErrorStatesMaterial(colors: THREE.Vector3[]) {
+export function createErrorStatesMaterial(
+  colors: THREE.Vector3[],
+  highlight: SlotHighlight,
+) {
   return createMaterial(errorStatesFragmentShader, colors, true, {
+    ...highlight.uniforms,
     uViewHeightPx: { value: 1 },
     uBarRatio: { value: BAR_HEIGHT_RATIO },
     uBorderPx: { value: 0 },

@@ -9,7 +9,12 @@ import { SHREDS_AGG_THRESHOLD_MS, type RendererObj } from "./const";
 import { omit } from "lodash";
 import { setUpAggResources } from "./aggUtils";
 import { SHRED_EVENT_TYPES_COUNT } from "../../../api/entities";
-import { setUpDotResources, cleanUpDotResources } from "./nonAggUtils";
+import {
+  setUpDotResources,
+  cleanUpDotResources,
+  disposeSlotMaterials,
+} from "./nonAggUtils";
+import { createSlotHighlight } from "../slotHighlight";
 
 export function setUpRenderers(
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
@@ -42,6 +47,7 @@ export function setUpRenderers(
     cleanUpResources,
     cameraReferenceMs: 0,
     ...dotResourceBundle,
+    highlight: createSlotHighlight(),
   };
   const aggResources = setUpAggResources(getWasContextLost);
 
@@ -49,6 +55,7 @@ export function setUpRenderers(
     aggResources.cleanUpResources();
     if (!getWasContextLost()) {
       highlightMesh.mesh.geometry.dispose();
+      disposeSlotMaterials(nonAggResources);
     }
     nonAggResources.cleanUpResources();
     cleanUpRenderer();

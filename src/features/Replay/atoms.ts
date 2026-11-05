@@ -53,6 +53,8 @@ export const [nextQueryIdByKeyAtom, reserveNextQueryIdAtom] = (function () {
   ];
 })();
 
+const _selectedSlotAtom = atom<number | undefined>(undefined);
+
 type Playback =
   | { kind: "live"; windowSizeMs: number }
   | { kind: "paused"; range: TsRange }
@@ -100,6 +102,7 @@ export const {
   const setLiveAtom = atom(null, (_get, set, windowSizeMs: number) => {
     set(playbackAtom, { kind: "live", windowSizeMs });
     set(playbackRateAtom, 1);
+    set(_selectedSlotAtom, undefined);
   });
 
   const playbackNowAtom = atom(0);
@@ -386,6 +389,11 @@ export const [
   ] as const;
 })();
 
+export interface SlotRange {
+  group: TsRange;
+  slot: TsRange;
+}
+
 /**
  * Full SlotInfo for the hovered slot (startMs/endMs/isSkipped/isMine), resolved
  * from the timeline slots.
@@ -400,22 +408,15 @@ export const hoveredSlotInfoAtom = atom<SlotInfo | undefined>((get) => {
 });
 
 /**
- * ms ranges of the hovered slot and group, resolved from the
- * hovered slot against the timeline slot
+ * ms ranges of a slot and its group, resolved against the timeline slots
  */
-export const hoveredRangeAtom = atom<
-  | {
-      group: TsRange;
-      slot: TsRange;
-    }
-  | undefined
->((get) => {
-  const slotInfo = get(hoveredSlotInfoAtom);
-  if (!slotInfo) return;
+function getSlotRange(get: Getter, slot: number | undefined) {
+  if (slot === undefined) return;
 
   const { slotGroups } = get(timelineSlotsAtom);
-  const group = slotGroups.get(getSlotGroupLeader(slotInfo.slot));
-  if (!group || group.slots.size === 0) return;
+  const group = slotGroups.get(getSlotGroupLeader(slot));
+  const slotInfo = group?.slots.get(slot);
+  if (!group || group.slots.size === 0 || !slotInfo) return;
 
   let groupStartMs = Infinity;
   let groupEndMs = -Infinity;
@@ -427,8 +428,32 @@ export const hoveredRangeAtom = atom<
   return {
     group: [groupStartMs, groupEndMs],
     slot: [slotInfo.startMs, slotInfo.endMs],
-  };
+  } satisfies SlotRange;
+}
+
+export const hoveredRangeAtom = atom((get) =>
+  getSlotRange(get, get(hoveredSlotAtom)),
+);
+
+// cleared by going live, in setLiveAtom
+export const selectedSlotAtom = atom((get) => {
+  const visibleRange = get(visibleRangeAtom);
+  if (!visibleRange || isAggregate(visibleRange)) return;
+  return get(_selectedSlotAtom);
 });
+
+/** selects the slot at ms, or clears the selection where there is none */
+export const selectSlotAtMsAtom = atom(null, (get, set, ms: number) => {
+  set(_selectedSlotAtom, highestSlotAtMs(get, ms)?.slot);
+});
+
+export const clearSelectedSlotAtom = atom(null, (_get, set) => {
+  set(_selectedSlotAtom, undefined);
+});
+
+export const selectedRangeAtom = atom((get) =>
+  getSlotRange(get, get(selectedSlotAtom)),
+);
 
 export const isFullScreenAtom = (function () {
   const _isFullScreenAtom = atom(false);
@@ -508,9 +533,7 @@ function isSameHoveredAggShred(
   if (a.bucketIdx !== b.bucketIdx || a.granularity !== b.granularity) {
     return false;
   }
-  return aggShredEvents.every(
-    ({ type }) => a.counts[type] === b.counts[type],
-  );
+  return aggShredEvents.every(({ type }) => a.counts[type] === b.counts[type]);
 }
 
 export const hoveredAggShredsAtom = (function () {
@@ -757,11 +780,8 @@ export const pinnedHoverRowAtom = atom(
  */
 export const pinnedDismissCursorAtom = atom<ClientPos | undefined>(undefined);
 
-export const dismissPinnedAtom = atom(
-  null,
-  (_get, set, cursor?: ClientPos) => {
-    set(pinnedDismissCursorAtom, cursor);
-    set(pinnedTooltipAtom, undefined);
-    set(clearHoverInfoAtom, PINNED_HOVER_OWNER);
-  },
-);
+export const dismissPinnedAtom = atom(null, (_get, set, cursor?: ClientPos) => {
+  set(pinnedDismissCursorAtom, cursor);
+  set(pinnedTooltipAtom, undefined);
+  set(clearHoverInfoAtom, PINNED_HOVER_OWNER);
+});

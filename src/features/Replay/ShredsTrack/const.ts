@@ -1,6 +1,7 @@
 import type * as THREE from "three";
 import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
 import type { DrawableSlot } from "../../Shreds/chartUtils";
+import type { SlotHighlight } from "../slotHighlight";
 import { AggShredEventType } from "../../../api/entities";
 import {
   shredPublishedColor,
@@ -47,6 +48,7 @@ export interface NonAggRendererResources {
    * Mesh position x values must be updated when this changes
    */
   cameraReferenceMs: number;
+  highlight: SlotHighlight;
   lastDrawInfo?: NonAggDrawInfo;
   /**
    * Per-slot meshes for the 1px white left-edge marks, keyed by the same

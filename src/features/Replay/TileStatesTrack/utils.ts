@@ -43,6 +43,12 @@ import { replayTrackBackgroundColor } from "../../../colors.ts";
 import { referenceNsAtom, visibleRangeAtom } from "../atoms.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
 import { calcRelativeMs } from "../utils.ts";
+import {
+  createSlotHighlight,
+  slotHighlightGlsl,
+  updateSlotHighlight,
+  type SlotHighlight,
+} from "../slotHighlight.ts";
 
 const store = getDefaultStore();
 
@@ -82,6 +88,7 @@ export interface RendererObj {
   tileStatesMaterial: THREE.RawShaderMaterial;
   tileStatesTarget: THREE.WebGLRenderTarget;
   errorStatesMaterial: THREE.RawShaderMaterial;
+  highlight: SlotHighlight;
   errorStatesScene: THREE.Scene;
   laneMaxReducer: LaneMaxReducer;
   compositeScene: THREE.Scene;
@@ -183,6 +190,7 @@ const createCompositeFragmentShader = (
   uniform vec3 uBackground;     // srgb
   uniform vec3 uStateColors[${stateCount}]; // srgb
   ${declarations}
+  ${slotHighlightGlsl}
 
   out vec4 fragColor;
 
@@ -202,6 +210,8 @@ const createCompositeFragmentShader = (
         busy += coverage[i];
       }
       ${shade}
+      // highlight drawn states by the slot time ranges, not the background
+      if (color != uBackground) color = highlightTime(color, gl_FragCoord.x);
     }
     fragColor = vec4(color, 1.0);
   }
@@ -356,8 +366,10 @@ function createCompositeUniforms(
   tileStatesTarget: THREE.WebGLRenderTarget,
   laneMaxTarget: THREE.WebGLRenderTarget,
   states: TileState[],
+  highlight: SlotHighlight,
 ): Record<string, THREE.IUniform> {
   return {
+    ...highlight.uniforms,
     uCoverage: { value: tileStatesTarget.texture },
     uLaneMax: { value: laneMaxTarget.texture },
     uCanvasSize: { value: new THREE.Vector2(1, 1) },
@@ -499,7 +511,11 @@ export function setUpRenderer(
   const tileStatesScene = new THREE.Scene();
   const errorStatesScene = new THREE.Scene();
   errorStatesScene.visible = false;
-  const errorStatesMaterial = createErrorStatesMaterial(ERROR_STATE_PALETTE);
+  const highlight = createSlotHighlight();
+  const errorStatesMaterial = createErrorStatesMaterial(
+    ERROR_STATE_PALETTE,
+    highlight,
+  );
 
   const canBlendFloat32 =
     renderer.extensions.has("EXT_color_buffer_float") &&
@@ -528,6 +544,7 @@ export function setUpRenderer(
     tileStatesTarget,
     laneMaxReducer.target,
     states,
+    highlight,
   );
   const compositeMaterials = createCompositeMaterials(
     compositeUniforms,
@@ -581,6 +598,7 @@ export function setUpRenderer(
     rectResources,
     tileStatesMaterial,
     errorStatesMaterial,
+    highlight,
     tileStatesTarget,
     errorStatesScene,
     compositeScene,
@@ -635,6 +653,7 @@ export function render(rendererObj: RendererObj) {
   } = rendererObj;
   const { width, height } = renderer.domElement;
   if (!width || !height) return;
+  updateSlotHighlight(rendererObj.highlight, width);
   const rowCount = Math.max(getRowOfTile(rendererObj.kind).size, 1);
   const states = coverageStates[rendererObj.kind];
   const coverageHeight = rowCount * states.length;

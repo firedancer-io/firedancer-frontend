@@ -64,6 +64,7 @@ import { tileStatesViewOptsAtoms } from "./atoms.ts";
 import RowLabels from "../RowLabels.tsx";
 import { getRowsLayout, ROW_LABEL_PX, trackInsetPx } from "../layout.ts";
 import styles from "../track.module.css";
+import { useSlotHighlightRender } from "../slotHighlight.ts";
 
 const store = getDefaultStore();
 
@@ -114,6 +115,7 @@ function TileStatesTrack({
   const requestRender = useFrameRender(() => {
     if (rendererRef.current) render(rendererRef.current);
   });
+  useSlotHighlightRender(requestRender);
 
   const updateMode = useCallback(
     (renderer: RendererObj, visibleRangeMs: TsRange) => {

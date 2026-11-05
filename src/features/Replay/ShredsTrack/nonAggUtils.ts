@@ -3,6 +3,7 @@ import { getDefaultStore } from "jotai";
 import type { RectMesh, TsRange } from "../../WebGl/webglUtils";
 import {
   convertToWebGlColor,
+  createRectMaterial,
   createRectMesh,
   updateRectMeshCounts,
 } from "../../WebGl/webglUtils";
@@ -15,6 +16,7 @@ import {
 } from "./dotUtils";
 import {
   FEC_MESH_CAPACITY,
+  SHREDS_OPACITY,
   SHRED_MESH_CAPACITY,
 } from "../../Shreds/WebGl/const";
 import {
@@ -50,6 +52,8 @@ import {
   type RendererObj,
 } from "./const";
 import type { DrawableSlot } from "../../Shreds/chartUtils";
+import { hoveredShredAtom, hoveredSlotAtom, selectedSlotAtom } from "../atoms";
+import { getRelativeSlot, NO_SLOT, slotHighlightGlsl } from "../slotHighlight";
 
 const store = getDefaultStore();
 
@@ -246,6 +250,76 @@ export function getSlotMeshKey(
   slotNumber: number,
 ): string {
   return `${granularity}:${slotNumber}`;
+}
+
+function getMeshKeySlot(key: string) {
+  return Number(key.slice(key.indexOf(":") + 1));
+}
+
+const slotFragmentShader = /* glsl */ `
+precision highp float;
+uniform float uOpacity;
+uniform float uSlot;
+varying vec3 vColor;
+${slotHighlightGlsl}
+void main() {
+  gl_FragColor = vec4(highlightSlot(vColor, uSlot), uOpacity);
+}
+`;
+
+function getSlotMaterial(slotMesh: RectMesh) {
+  return slotMesh.mesh.material as THREE.RawShaderMaterial;
+}
+
+function createSlotMesh(
+  resources: NonAggRendererResources,
+  granularity: ShredsGranularity,
+) {
+  const material = createRectMaterial(SHREDS_OPACITY, slotFragmentShader, {
+    ...resources.highlight.uniforms,
+    uSlot: { value: NO_SLOT },
+  });
+  return createRectMesh(
+    resources.resources,
+    granularity === ShredsGranularityEnum.fec
+      ? FEC_MESH_CAPACITY
+      : SHRED_MESH_CAPACITY,
+    material,
+  );
+}
+
+export function disposeSlotMaterials(resources: NonAggRendererResources) {
+  for (const slotMesh of resources.meshes.values()) {
+    getSlotMaterial(slotMesh).dispose();
+  }
+  for (const slotMesh of resources.availableMeshes) {
+    getSlotMaterial(slotMesh).dispose();
+  }
+}
+
+const FRONT_RENDER_ORDER_STEP = 1e10;
+
+// the selected slot's shreds on top, then the hovered slot's. A slot's dots
+// and hovered shred stay right above its shreds
+export function orderSlotMeshes(resources: NonAggRendererResources) {
+  const hoveredSlot = store.get(hoveredSlotAtom);
+  const selectedSlot = store.get(selectedSlotAtom);
+  const getSlotOrder = (slot: number) => {
+    const front = slot === selectedSlot ? 2 : slot === hoveredSlot ? 1 : 0;
+    return slot + front * FRONT_RENDER_ORDER_STEP;
+  };
+  for (const [key, { mesh }] of resources.meshes) {
+    mesh.renderOrder = getSlotOrder(getMeshKeySlot(key));
+  }
+  for (const [key, { mesh }] of resources.dotMeshes) {
+    mesh.renderOrder =
+      getSlotOrder(getMeshKeySlot(key)) + DOT_RENDER_ORDER_OFFSET;
+  }
+  const hoveredShred = store.get(hoveredShredAtom);
+  if (hoveredShred) {
+    resources.highlightMesh.mesh.renderOrder =
+      getSlotOrder(hoveredShred.slot) + 0.5;
+  }
 }
 
 /**
@@ -479,20 +553,14 @@ function getSlotMesh(
   let slotMesh = resources.meshes.get(meshKey);
   const isNewMesh = !slotMesh;
   if (!slotMesh) {
-    const lastMesh = resources.availableMeshes.pop();
-
     slotMesh =
-      lastMesh ??
-      createRectMesh(
-        resources.resources,
-        granularity === ShredsGranularityEnum.fec
-          ? FEC_MESH_CAPACITY
-          : SHRED_MESH_CAPACITY,
-      );
+      resources.availableMeshes.pop() ?? createSlotMesh(resources, granularity);
     resources.meshes.set(meshKey, slotMesh);
     resources.scene.add(slotMesh.mesh);
-    // paint bigger slot numbers on top of smaller numbers
-    slotMesh.mesh.renderOrder = slotNumber;
+    getSlotMaterial(slotMesh).uniforms.uSlot.value = getRelativeSlot(
+      resources.highlight,
+      slotNumber,
+    );
   }
   return { isNewMesh, slotMesh };
 }

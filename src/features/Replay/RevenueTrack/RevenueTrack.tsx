@@ -57,6 +57,10 @@ import {
   type TxnMetaCacheDelta,
 } from "./txnMeta/txnMetaCache.ts";
 import styles from "../track.module.css";
+import {
+  updateSlotHighlight,
+  useSlotHighlightRender,
+} from "../slotHighlight.ts";
 
 const store = getDefaultStore();
 
@@ -310,10 +314,15 @@ function RevenueTrackBody({
 
     const { aggResources, nonAggResources } = renderer;
     const { camera, scene } = agg ? aggResources : nonAggResources;
+    updateSlotHighlight(
+      nonAggResources.resources.highlight,
+      renderer.renderer.domElement.width,
+    );
     renderer.renderer.render(scene, camera);
   }, [rendererRef]);
 
   const requestRender = useFrameRender(renderActive);
+  useSlotHighlightRender(requestRender);
 
   /**
    * Query data for new range and optionally update camera.

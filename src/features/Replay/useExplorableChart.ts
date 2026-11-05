@@ -5,6 +5,7 @@ import { getDefaultStore } from "jotai";
 import {
   pauseAtom,
   resetToLiveAtom,
+  selectSlotAtMsAtom,
   visibleRangeAtom,
   worldRangeAtom,
 } from "./atoms";
@@ -408,6 +409,9 @@ export function useExplorableChart() {
         if (!ownsGesture()) return;
         // ignore mouse events while a touch gesture is in progress
         if (activeTouchIdRef.current != null) return;
+        if (!isPanningRef.current && dragStartRef.current) {
+          store.set(selectSlotAtMsAtom, dragStartRef.current.ts);
+        }
         endMouseGesture();
       };
 
@@ -506,6 +510,7 @@ export function useExplorableChart() {
 
         // get pan state before endTouchGesture clears it
         const wasPanning = isPanningRef.current;
+        const pressTs = dragStartRef.current?.ts;
         endTouchGesture();
 
         // only evaluate a tap for a gesture that wasn't a pan
@@ -530,6 +535,7 @@ export function useExplorableChart() {
         }
 
         lastTapRef.current = { time: now, x: touch.clientX, y: touch.clientY };
+        if (pressTs !== undefined) store.set(selectSlotAtMsAtom, pressTs);
       };
 
       /**
