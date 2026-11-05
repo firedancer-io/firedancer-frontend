@@ -17,6 +17,7 @@ import {
 } from "./consts.ts";
 import type { RevenueType } from "../../../api/entities.ts";
 import { REVENUE_COLUMN, type TxnMetaColumns } from "./txnMeta/txnMetaCache.ts";
+import { slotHighlightGlsl, type SlotHighlight } from "../slotHighlight.ts";
 
 export interface TxnMesh {
   mesh: THREE.Mesh;
@@ -25,6 +26,8 @@ export interface TxnMesh {
   instanceAttr: THREE.InstancedBufferAttribute;
   revenueArray: Float32Array;
   revenueAttr: THREE.InstancedBufferAttribute;
+  slotArray: Float32Array;
+  slotAttr: THREE.InstancedBufferAttribute;
   capacity: number;
   count: number;
   referenceX: number | undefined;
@@ -74,8 +77,10 @@ uniform vec3 uIncludedAddends;
 attribute vec2 position;
 attribute vec3 instance;
 attribute vec3 revenue;
+attribute float slot;
 
 varying vec4 vColor;
+${slotHighlightGlsl}
 
 const float MAX_Y = ${glslFloat(maxY)};
 const float MIN_HEIGHT_RATIO = ${glslFloat(minHeightRatio)};
@@ -143,7 +148,7 @@ void main() {
   clip.x = (position.x < 0.0 ? leftPx : rightPx) / uViewWidthPx * 2.0 - 1.0;
   gl_Position = clip;
 
-  vColor = vec4(uColor, revenueAlpha(value, uMaxValue));
+  vColor = vec4(highlightSlot(uColor, slot), revenueAlpha(value, uMaxValue));
 }
 `;
 
@@ -156,7 +161,7 @@ void main() {
 }
 `;
 
-export function createTxnResources(): TxnResources {
+export function createTxnResources(highlight: SlotHighlight): TxnResources {
   const material = new THREE.RawShaderMaterial({
     vertexShader,
     fragmentShader,
@@ -172,6 +177,7 @@ export function createTxnResources(): TxnResources {
       uScale: { value: SCALE_UNIFORM.linear },
       uColor: { value: new THREE.Vector3() },
       uIncludedAddends: { value: new THREE.Vector3() },
+      ...highlight.uniforms,
     },
   });
   return { material, unitQuad: createUnitQuad() };
@@ -193,6 +199,8 @@ export function createTxnMesh(resources: TxnResources): TxnMesh {
   const instanceAttr = createInstanceAttr(instanceArray, INSTANCE_SIZE);
   const revenueArray = new Float32Array(INITIAL_CAPACITY * REVENUE_SIZE);
   const revenueAttr = createInstanceAttr(revenueArray, REVENUE_SIZE);
+  const slotArray = new Float32Array(INITIAL_CAPACITY);
+  const slotAttr = createInstanceAttr(slotArray, 1);
 
   const geometry = new THREE.InstancedBufferGeometry();
   geometry.index = resources.unitQuad.index;
@@ -202,6 +210,7 @@ export function createTxnMesh(resources: TxnResources): TxnMesh {
   );
   geometry.setAttribute("instance", instanceAttr);
   geometry.setAttribute("revenue", revenueAttr);
+  geometry.setAttribute("slot", slotAttr);
   geometry.instanceCount = 0;
   geometry.boundingSphere = new THREE.Sphere();
 
@@ -215,6 +224,8 @@ export function createTxnMesh(resources: TxnResources): TxnMesh {
     instanceAttr,
     revenueArray,
     revenueAttr,
+    slotArray,
+    slotAttr,
     capacity: INITIAL_CAPACITY,
     count: 0,
     referenceX: undefined,
@@ -251,15 +262,20 @@ export function ensureTxnCapacity(txnMesh: TxnMesh, needed: number) {
   instanceArray.set(txnMesh.instanceArray);
   const revenueArray = new Float32Array(newCapacity * REVENUE_SIZE);
   revenueArray.set(txnMesh.revenueArray);
+  const slotArray = new Float32Array(newCapacity);
+  slotArray.set(txnMesh.slotArray);
 
   txnMesh.instanceArray = instanceArray;
   txnMesh.instanceAttr = createInstanceAttr(instanceArray, INSTANCE_SIZE);
   txnMesh.revenueArray = revenueArray;
   txnMesh.revenueAttr = createInstanceAttr(revenueArray, REVENUE_SIZE);
+  txnMesh.slotArray = slotArray;
+  txnMesh.slotAttr = createInstanceAttr(slotArray, 1);
   txnMesh.capacity = newCapacity;
 
   txnMesh.geometry.setAttribute("instance", txnMesh.instanceAttr);
   txnMesh.geometry.setAttribute("revenue", txnMesh.revenueAttr);
+  txnMesh.geometry.setAttribute("slot", txnMesh.slotAttr);
   // @ts-expect-error
   txnMesh.geometry._maxInstanceCount = undefined;
 }
@@ -272,6 +288,7 @@ export function addTxnToMesh(
   rawWidthMs: number,
   txns: TxnMetaColumns,
   txnIdx: number,
+  relativeSlot: number,
 ) {
   const i = idx * INSTANCE_SIZE;
   txnMesh.instanceArray[i] = x;
@@ -283,6 +300,7 @@ export function addTxnToMesh(
     const column = REVENUE_COLUMN[REVENUE_ADDENDS[j]];
     txnMesh.revenueArray[r + j] = Number(txns[column][txnIdx]);
   }
+  txnMesh.slotArray[idx] = relativeSlot;
 }
 
 export function updateTxnMeshCount(txnMesh: TxnMesh, count: number) {
@@ -290,4 +308,5 @@ export function updateTxnMeshCount(txnMesh: TxnMesh, count: number) {
   txnMesh.geometry.instanceCount = count;
   txnMesh.instanceAttr.needsUpdate = true;
   txnMesh.revenueAttr.needsUpdate = true;
+  txnMesh.slotAttr.needsUpdate = true;
 }

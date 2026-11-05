@@ -1,5 +1,5 @@
 import { getDefaultStore } from "jotai";
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
@@ -14,13 +14,20 @@ import {
   getSlotMeshKey,
   moveNonAggCamera,
   getShredAtPosition,
+  updateSlotMeshes,
 } from "./nonAggUtils.ts";
+import {
+  updateSlotHighlight,
+  useSlotHighlightRender,
+  useSlotHitTest,
+} from "../slotHighlight.ts";
 import { releaseMesh } from "../../Shreds/WebGl/drawUtils.ts";
 import {
   AGG_SHREDS_CHART_ID,
   aggShredEvents,
   NON_AGG_SHREDS_CHART_ID,
   shredLegend,
+  type RendererObj,
 } from "./const.ts";
 import { useAggShredsQuery, getAggGranularity } from "./useAggShredsQuery.ts";
 import { useNonAggShredsQuery } from "./useNonAggShredsQuery.ts";
@@ -38,6 +45,7 @@ import {
   hoveredAggShredsAtom,
   hoveredShredAtom,
   referenceNsAtom,
+  selectedSlotAtom,
   visibleRangeAtom,
   worldRangeAtom,
 } from "../atoms.ts";
@@ -84,6 +92,19 @@ function clearHoveredShred() {
 
 function clearHoveredAggShreds() {
   store.set(hoveredAggShredsAtom, undefined);
+}
+
+function getShredAtPoint(
+  renderer: RendererObj,
+  clientX: number,
+  clientY: number,
+  rect: HoveredRect,
+  visibleRange: TsRange,
+) {
+  const ts = clientXToTs(rect, clientX, visibleRange);
+  const { camera } = renderer.nonAggResources;
+  const worldY = clientYToWorldY(rect, clientY, camera.top, camera.bottom);
+  return getShredAtPosition(ts, worldY, renderer.nonAggResources);
 }
 
 function ShredsTrack({ remount }: WebGlRemountProps) {
@@ -161,11 +182,10 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       }
 
       clearHoveredAggShreds();
-      const { camera } = renderer.nonAggResources;
-      const worldY = clientYToWorldY(rect, clientY, camera.top, camera.bottom);
-      const hitShred = getShredAtPosition(ts, worldY, renderer.nonAggResources);
-
-      store.set(hoveredShredAtom, hitShred);
+      store.set(
+        hoveredShredAtom,
+        getShredAtPoint(renderer, clientX, clientY, rect, visibleRange),
+      );
     },
     30,
   );
@@ -241,20 +261,44 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     const visibleRange = store.get(visibleRangeAtom);
     if (!visibleRange) return;
 
-    const isAgg = isAggregate(visibleRange);
-    if (isAgg) {
+    if (isAggregate(visibleRange)) {
       // renderer will replace scene, so clear last draw info
       nonAggResources.lastDrawInfo = undefined;
       // clear highlight so it won't reappear when we return to non-agg
       drawHoveredShred(nonAggResources, undefined, visibleRange);
       clearHoveredShred();
+      renderer.render(aggResources.scene, aggResources.camera);
+      return;
     }
 
-    const { camera, scene } = isAgg ? aggResources : nonAggResources;
-    renderer.render(scene, camera);
+    updateSlotHighlight(nonAggResources.highlight, renderer.domElement.width);
+    updateSlotMeshes(nonAggResources);
+    renderer.render(nonAggResources.scene, nonAggResources.camera);
   }, [rendererRef]);
 
   const requestRender = useFrameRender(renderActive);
+  useSlotHighlightRender(requestRender);
+
+  useSlotHitTest((clientX, clientY) => {
+    const renderer = rendererRef.current;
+    const container = containerRef.current;
+    const visibleRange = store.get(visibleRangeAtom);
+    if (!renderer || !container || !visibleRange || isAggregate(visibleRange))
+      return;
+
+    const rect = container.getBoundingClientRect();
+    const isInside =
+      rect.left <= clientX &&
+      clientX <= rect.right &&
+      rect.top <= clientY &&
+      clientY <= rect.bottom;
+    if (!isInside) return;
+    return getShredAtPoint(renderer, clientX, clientY, rect, visibleRange)
+      ?.slot;
+  });
+
+  // the selected slot draws on top, so the shred under a still cursor can change
+  useEffect(() => store.sub(selectedSlotAtom, notifyHover), [notifyHover]);
 
   const moveCameraAndDrawNonAgg = useCallback(
     (visibleRange: TsRange) => {

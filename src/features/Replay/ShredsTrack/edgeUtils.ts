@@ -45,37 +45,37 @@ void main() {
 }
 `;
 
-function createEdgeMaterial() {
+export interface EdgeUniforms {
+  uOpacity: THREE.IUniform<number>;
+  uViewWidthPx: THREE.IUniform<number>;
+}
+
+export function createEdgeMaterial(
+  edgeUniforms: EdgeUniforms,
+  edgeFragmentShader = fragmentShader,
+  uniforms: Record<string, THREE.IUniform> = {},
+) {
   return new THREE.RawShaderMaterial({
     vertexShader: edgeVertexShader,
-    fragmentShader,
+    fragmentShader: edgeFragmentShader,
     side: THREE.FrontSide,
     transparent: true,
     depthWrite: false,
-    uniforms: {
-      uOpacity: { value: 1 },
-      uViewWidthPx: { value: 1 },
-    },
+    uniforms: { ...edgeUniforms, ...uniforms },
   });
 }
 
-function createEdgeResources(): RectResources {
-  return {
-    unitQuad: createUnitQuad(),
-    rectMaterial: createEdgeMaterial(),
-  };
-}
-
-export function updateEdgeViewWidth(
-  material: THREE.RawShaderMaterial,
-  viewWidthPx: number,
-) {
-  material.uniforms.uViewWidthPx.value = viewWidthPx;
-}
-
 export function setUpEdgeResources() {
+  const edgeUniforms: EdgeUniforms = {
+    uOpacity: { value: 1 },
+    uViewWidthPx: { value: 1 },
+  };
   return {
-    edgeResources: createEdgeResources(),
+    edgeUniforms,
+    edgeResources: {
+      unitQuad: createUnitQuad(),
+      rectMaterial: createEdgeMaterial(edgeUniforms),
+    } satisfies RectResources,
     edgeMeshes: new Map<string, RectMesh>(),
     availableEdgeMeshes: [],
   };

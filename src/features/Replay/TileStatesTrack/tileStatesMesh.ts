@@ -1,7 +1,31 @@
 import * as THREE from "three";
 import { ERROR_STATES_ALPHA, ERROR_STATES_BORDER_PX } from "./consts.ts";
+import { slotHighlightGlsl, type SlotHighlight } from "../slotHighlight.ts";
 
-const createVertexShader = (colorCount: number) => /* glsl */ `
+export const linearToSrgbGlsl = /* glsl */ `
+vec3 linearToSrgb(vec3 c) {
+  return mix(
+    c * 12.92,
+    1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055,
+    step(0.0031308, c)
+  );
+}
+`;
+
+const srgbToLinearGlsl = /* glsl */ `
+vec3 srgbToLinear(vec3 c) {
+  return mix(
+    c / 12.92,
+    pow((c + 0.055) / 1.055, vec3(2.4)),
+    step(0.04045, c)
+  );
+}
+`;
+
+const createVertexShader = (
+  colorCount: number,
+  isLinearColor: boolean,
+) => /* glsl */ `
 uniform mat4 modelViewMatrix; // the anchor as hi + lo
 uniform float uMsPerPx;       // ms per device px of the view
 uniform float uViewWidthPx;
@@ -11,13 +35,23 @@ uniform vec3 uColors[${colorCount}];
 attribute vec2 position;      // unit quad in [-0.5, 0.5]
 attribute vec4 instanceEdges; // start and end ms as hi + lo
 attribute vec3 instanceBar;   // bottom y and height in [0, 1], uColors index
+attribute float instanceSlot; // relative slot
 
 varying vec3 vColor;
 varying float vLocalY;  // unit quad y in [-0.5, 0.5]
 varying vec2 vEdgesPx;  // left and right edges from the view's left edge
 
+${slotHighlightGlsl}
+${linearToSrgbGlsl}
+${srgbToLinearGlsl}
+
 void main() {
-  vColor = uColors[int(instanceBar.z + 0.5)];
+  vec3 color = uColors[int(instanceBar.z + 0.5)];
+  vColor = ${
+    isLinearColor
+      ? "srgbToLinear(highlightSlot(linearToSrgb(color), instanceSlot))"
+      : "highlightSlot(color, instanceSlot)"
+  };
   vLocalY = position.y;
   // Subtract from the anchor hi and lo before converting to px, so edges in
   // view stay exact and don't jitter while zooming
@@ -89,11 +123,13 @@ void main() {
 function createMaterial(
   fragmentShader: string,
   colors: THREE.Vector3[],
+  isLinearColor: boolean,
+  highlight: SlotHighlight,
   uniforms: Record<string, THREE.IUniform>,
   params: THREE.ShaderMaterialParameters = {},
 ) {
   return new THREE.RawShaderMaterial({
-    vertexShader: createVertexShader(colors.length),
+    vertexShader: createVertexShader(colors.length, isLinearColor),
     fragmentShader,
     transparent: true,
     depthTest: false,
@@ -102,6 +138,7 @@ function createMaterial(
       uViewWidthPx: { value: 1 },
       uOffsetPx: { value: 0 },
       uColors: { value: colors },
+      ...highlight.uniforms,
       ...uniforms,
     },
     ...params,
@@ -109,10 +146,15 @@ function createMaterial(
 }
 
 /** Sums each px's time-weighted state colors and busy fraction. */
-export function createTileStatesMaterial(colors: THREE.Vector3[]) {
+export function createTileStatesMaterial(
+  linearColors: THREE.Vector3[],
+  highlight: SlotHighlight,
+) {
   return createMaterial(
     tileStatesFragmentShader,
-    colors,
+    linearColors,
+    true,
+    highlight,
     {},
     {
       blending: THREE.CustomBlending,
@@ -125,8 +167,11 @@ export function createTileStatesMaterial(colors: THREE.Vector3[]) {
   );
 }
 
-export function createErrorStatesMaterial(colors: THREE.Vector3[]) {
-  return createMaterial(errorStatesFragmentShader, colors, {
+export function createErrorStatesMaterial(
+  colors: THREE.Vector3[],
+  highlight: SlotHighlight,
+) {
+  return createMaterial(errorStatesFragmentShader, colors, false, highlight, {
     uBorderPx: { value: 0 },
     uBarHeightPx: { value: 0 },
     uOpacity: { value: ERROR_STATES_ALPHA },
@@ -148,6 +193,8 @@ export interface StatesMesh {
   edgesAttr: THREE.InstancedBufferAttribute;
   bar: Float32Array; // [bottomY, height, colorIndex] per rect
   barAttr: THREE.InstancedBufferAttribute;
+  slot: Float32Array; // relative slot per rect
+  slotAttr: THREE.InstancedBufferAttribute;
   capacity: number;
   count: number;
   referenceX: number; // The data tile's start in ms
@@ -158,19 +205,25 @@ const INITIAL_CAPACITY = 2 ** 10;
 function setInstanceAttrs(statesMesh: StatesMesh, capacity: number) {
   const edges = new Float32Array(capacity * 4);
   const bar = new Float32Array(capacity * 3);
+  const slot = new Float32Array(capacity);
   edges.set(statesMesh.edges);
   bar.set(statesMesh.bar);
+  slot.set(statesMesh.slot);
   statesMesh.edges = edges;
   statesMesh.bar = bar;
+  statesMesh.slot = slot;
   statesMesh.edgesAttr = new THREE.InstancedBufferAttribute(edges, 4);
   statesMesh.barAttr = new THREE.InstancedBufferAttribute(bar, 3);
+  statesMesh.slotAttr = new THREE.InstancedBufferAttribute(slot, 1);
   statesMesh.edgesAttr.setUsage(THREE.DynamicDrawUsage);
   statesMesh.barAttr.setUsage(THREE.DynamicDrawUsage);
+  statesMesh.slotAttr.setUsage(THREE.DynamicDrawUsage);
   statesMesh.capacity = capacity;
 
   const { geometry } = statesMesh.mesh;
   geometry.setAttribute("instanceEdges", statesMesh.edgesAttr);
   geometry.setAttribute("instanceBar", statesMesh.barAttr);
+  geometry.setAttribute("instanceSlot", statesMesh.slotAttr);
   // @ts-expect-error private field
   geometry._maxInstanceCount = undefined;
 }
@@ -193,6 +246,8 @@ export function createStatesMesh(
     edgesAttr: new THREE.InstancedBufferAttribute(new Float32Array(0), 4),
     bar: new Float32Array(0),
     barAttr: new THREE.InstancedBufferAttribute(new Float32Array(0), 3),
+    slot: new Float32Array(0),
+    slotAttr: new THREE.InstancedBufferAttribute(new Float32Array(0), 1),
     capacity: 0,
     count: 0,
     referenceX: 0,
@@ -217,7 +272,11 @@ export function setStatesCount(
   statesMesh.mesh.geometry.instanceCount = count;
   const uploadCount = count - uploadFrom;
   if (uploadCount <= 0) return;
-  for (const attr of [statesMesh.edgesAttr, statesMesh.barAttr]) {
+  for (const attr of [
+    statesMesh.edgesAttr,
+    statesMesh.barAttr,
+    statesMesh.slotAttr,
+  ]) {
     attr.addUpdateRange(
       uploadFrom * attr.itemSize,
       uploadCount * attr.itemSize,
