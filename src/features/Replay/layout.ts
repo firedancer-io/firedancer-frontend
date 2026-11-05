@@ -1,7 +1,14 @@
-export type TrackId = "shreds" | "income" | "banks" | "replay" | "cpu";
+export type TrackId =
+  | "shreds"
+  | "votes"
+  | "income"
+  | "banks"
+  | "replay"
+  | "cpu";
 
 export const trackNames: Record<TrackId, string> = {
   shreds: "Shreds",
+  votes: "Votes",
   income: "Income",
   banks: "Execrp",
   replay: "Replay",
@@ -10,6 +17,7 @@ export const trackNames: Record<TrackId, string> = {
 
 export const trackInsetPx: Record<TrackId, number> = {
   shreds: 0,
+  votes: 15,
   income: 24,
   banks: 12,
   replay: 12,
@@ -18,11 +26,19 @@ export const trackInsetPx: Record<TrackId, number> = {
 
 export const TRACK_GAP_PX = 6;
 export const TRACK_TITLE_PX = 20;
-const MIN_TRACK_PX = 40;
 const MAX_GAP_FRACTION = 1 / 4;
 export const ROW_LABEL_PX = 13;
 
-const baseSharePct: Record<TrackId | "votes", number> = {
+export const minTrackPx: Record<TrackId, number> = {
+  shreds: 40,
+  votes: 80,
+  income: 40,
+  banks: 40,
+  replay: 40,
+  cpu: 40,
+};
+
+const baseSharePct: Record<TrackId, number> = {
   shreds: 22,
   votes: 16,
   income: 14,
@@ -54,6 +70,7 @@ export function getTrackSharesPct(banksRows: number, cpuRows: number) {
   const restScale = (100 - banks - cpu) / restBase;
   return {
     shreds: baseSharePct.shreds * restScale,
+    votes: baseSharePct.votes * restScale,
     income: baseSharePct.income * restScale,
     banks,
     replay: baseSharePct.replay * restScale,
@@ -115,7 +132,8 @@ function splitWithMinimum(
   shares: Record<TrackId, number>,
 ) {
   const heights = new Map<TrackId, number>();
-  const minPx = Math.min(MIN_TRACK_PX, freePx / visible.length);
+  const getMinPx = (id: TrackId) =>
+    Math.min(minTrackPx[id], freePx / visible.length);
   let flexible = visible;
   let flexiblePx = freePx;
 
@@ -123,12 +141,15 @@ function splitWithMinimum(
     (flexiblePx * shares[id]) /
     flexible.reduce((sum, other) => sum + shares[other], 0);
 
-  let tooSmall = flexible.filter((id) => split(id) < minPx);
+  let tooSmall = flexible.filter((id) => split(id) < getMinPx(id));
   while (tooSmall.length) {
-    for (const id of tooSmall) heights.set(id, minPx);
-    flexiblePx -= minPx * tooSmall.length;
+    for (const id of tooSmall) {
+      const minPx = getMinPx(id);
+      heights.set(id, minPx);
+      flexiblePx -= minPx;
+    }
     flexible = flexible.filter((id) => !tooSmall.includes(id));
-    tooSmall = flexible.filter((id) => split(id) < minPx);
+    tooSmall = flexible.filter((id) => split(id) < getMinPx(id));
   }
 
   for (const id of flexible) heights.set(id, split(id));
@@ -179,4 +200,23 @@ export function getRowsLayout(
 
 export function isUnderTitle(centerPx: number) {
   return centerPx - ROW_LABEL_PX / 2 < TRACK_TITLE_PX;
+}
+
+interface YLabel {
+  label: string;
+  top: number;
+}
+
+export function getVisibleYLabels(labels: YLabel[]) {
+  const visible: (YLabel & { besideTitle: boolean })[] = [];
+  let lastTopPx = Infinity;
+  for (const label of labels.toSorted((a, b) => b.top - a.top)) {
+    if (isUnderTitle(label.top)) {
+      visible.push({ ...label, besideTitle: true });
+    } else if (lastTopPx - label.top >= ROW_LABEL_PX) {
+      visible.push({ ...label, besideTitle: false });
+      lastTopPx = label.top;
+    }
+  }
+  return visible;
 }

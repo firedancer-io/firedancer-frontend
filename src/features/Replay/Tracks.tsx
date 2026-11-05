@@ -9,11 +9,20 @@ import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
 import TileStatesTrack from "./TileStatesTrack/TileStatesTrack.tsx";
 import { getTileRows } from "./TileStatesTrack/utils.ts";
 import CpuTrack from "./CpuTrack/CpuTrack.tsx";
+import VotesTrack from "./VotesTrack/VotesTrack.tsx";
+import { isVotesTrackAvailableAtom } from "./VotesTrack/atoms.ts";
 import TrackLayout from "./TrackLayout.tsx";
 import { cpuRowsAtom, queryTilesAtom } from "./CpuTrack/atoms.ts";
 import styles from "./chart.module.css";
 
-const allTracks: TrackId[] = ["shreds", "income", "banks", "replay", "cpu"];
+const allTracks: TrackId[] = [
+  "shreds",
+  "votes",
+  "income",
+  "banks",
+  "replay",
+  "cpu",
+];
 
 const banksRowsAtom = atom(
   (get) => getTileRows(get(tilesAtom), "execrp").length,
@@ -21,16 +30,20 @@ const banksRowsAtom = atom(
 const cpuRowCountAtom = atom((get) => get(cpuRowsAtom).length);
 
 export default function Tracks() {
-  const [measureRef, { height }] = useMeasure<HTMLDivElement>();
+  const [measureRef, { width, height }] = useMeasure<HTMLDivElement>();
 
   const hidden = useAtomValue(hiddenTracksAtom);
   const banksRows = useAtomValue(banksRowsAtom);
   const cpuRows = useAtomValue(cpuRowCountAtom);
   const hasCpu = useAtomValue(queryTilesAtom).length > 0;
+  const hasVotes = useAtomValue(isVotesTrackAvailableAtom);
 
   const tracks = useMemo(
-    () => (hasCpu ? allTracks : allTracks.filter((id) => id !== "cpu")),
-    [hasCpu],
+    () =>
+      allTracks.filter(
+        (id) => (id !== "cpu" || hasCpu) && (id !== "votes" || hasVotes),
+      ),
+    [hasCpu, hasVotes],
   );
   const heights = useMemo(
     () =>
@@ -55,7 +68,7 @@ export default function Tracks() {
           const trackHeight = heights[id] ?? 0;
           return (
             <TrackLayout key={id} trackId={id} height={trackHeight}>
-              {renderTrack(id, trackHeight)}
+              {renderTrack(id, width, trackHeight)}
             </TrackLayout>
           );
         })}
@@ -63,10 +76,12 @@ export default function Tracks() {
   );
 }
 
-function renderTrack(id: TrackId, height: number) {
+function renderTrack(id: TrackId, width: number, height: number) {
   switch (id) {
     case "shreds":
       return <ShredsTrack height={height} />;
+    case "votes":
+      return <VotesTrack width={width} height={height} />;
     case "income":
       return <RevenueTrack height={height} />;
     case "banks":

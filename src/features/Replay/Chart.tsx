@@ -18,6 +18,7 @@ import MiniMap from "./MiniMap/MiniMap.tsx";
 import HeaderTrack from "./HeaderTrack/index.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
 import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
+import { useVotesCache } from "./VotesTrack/useVotesCache.ts";
 import Tracks from "./Tracks.tsx";
 import HoverOverlay from "./HoverOverlay.tsx";
 import HoveredTsLine from "./HoveredTsLine.tsx";
@@ -108,6 +109,7 @@ export default function Chart() {
 
   // Drive the tile states caches used by the tile states tracks
   useTileStatesCache();
+  useVotesCache();
 
   if (!isInitialized) return <Spinner />;
 

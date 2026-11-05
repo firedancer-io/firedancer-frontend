@@ -64,4 +64,6 @@ export const minAggGranularities: Record<TimelineAggQueryKey, AggGranularity> =
     query_agg_shreds: "250ms",
     query_agg_slots: "250ms",
     query_agg_tile_states: "2s",
+    // 250ms buckets are sometimes empty at 200ms slots, breaking the lines
+    query_agg_votes: "500ms",
   };
