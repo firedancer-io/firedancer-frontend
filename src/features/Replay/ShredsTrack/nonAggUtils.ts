@@ -36,7 +36,11 @@ import type { HoveredShred } from "../atoms";
 import { CHART_NOW_DELAY_MS } from "../const";
 import { getNonAggAtoms } from "./atoms";
 import { OVERSCAN_TILES_COUNT, tileSizeNs } from "./useNonAggShredsQuery";
-import { type NonAggRendererResources, type RendererObj } from "./const";
+import {
+  MAX_HEIGHT_RATIO,
+  type NonAggRendererResources,
+  type RendererObj,
+} from "./const";
 import type { DrawableSlot } from "../../Shreds/chartUtils";
 
 const store = getDefaultStore();
@@ -385,7 +389,8 @@ export function drawNonAggShreds(
   drawSlotShreds(
     visibleRange,
     shredsDrawRange,
-    maxShreds,
+    // pad bottom so the tallest column lands at MAX_HEIGHT_RATIO
+    maxShreds > 0 ? maxShreds / MAX_HEIGHT_RATIO : maxShreds,
     drawSlots,
     ({ slotNumber, isFec }) =>
       getSlotMesh(

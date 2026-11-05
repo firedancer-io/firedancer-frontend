@@ -12,6 +12,7 @@ import {
   type TsRange,
 } from "../../WebGl/webglUtils";
 import {
+  MAX_HEIGHT_RATIO,
   shredEventSeries,
   type AggRendererResources,
   type RendererObj,
@@ -127,9 +128,10 @@ export function drawAggShreds(
     }
   }
 
-  // keep the previous Y scale when there's nothing visible instead of collapsing
+  // keep the previous Y scale when there's nothing visible instead of collapsing.
+  // Pad so the tallest bucket lands at MAX_HEIGHT_RATIO, leaving room for the last grid line
   if (maxVisibleShredsPerBucket > 0) {
-    updateCameraYRange(camera, maxVisibleShredsPerBucket);
+    updateCameraYRange(camera, maxVisibleShredsPerBucket / MAX_HEIGHT_RATIO);
   }
   updateRectMeshCounts(mesh, rectIdx);
 

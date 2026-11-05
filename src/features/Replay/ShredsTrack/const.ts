@@ -15,6 +15,12 @@ export const SHREDS_AGG_THRESHOLD_MS = 180_000;
 export const AGG_SHREDS_CHART_ID = "agg-shreds-track";
 export const NON_AGG_SHREDS_CHART_ID = "non-agg-shreds-track";
 
+/**
+ * Height ceiling for the max value so the axis ends ~105% past the data, leaving
+ * headroom above the tallest column.
+ */
+export const MAX_HEIGHT_RATIO = 0.95;
+
 export type RendererObj = {
   renderer: THREE.WebGLRenderer;
   aggResources: AggRendererResources;
