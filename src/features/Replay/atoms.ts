@@ -28,6 +28,7 @@ import type { ShredEventTsDeltas } from "../Shreds/types";
 import type { AggGranularity } from "../../api/types";
 import type { ShredEventCounts } from "./ShredsTrack/atoms";
 import { shredEventSeries } from "./ShredsTrack/const";
+import type { RevenueSeries } from "./RevenueTrack/consts";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -385,6 +386,40 @@ export const hoveredAggShredsAtom = (function () {
   );
 })();
 
+export interface HoveredAggRevenue {
+  bucketIdx: number;
+  granularity: AggGranularity;
+  type: RevenueSeries;
+  lamportValue: bigint;
+}
+
+function isSameHoveredAggRevenue(
+  a: HoveredAggRevenue | undefined,
+  b: HoveredAggRevenue | undefined,
+) {
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  return (
+    a.bucketIdx === b.bucketIdx &&
+    a.granularity === b.granularity &&
+    a.type === b.type &&
+    a.lamportValue === b.lamportValue
+  );
+}
+
+export const hoveredAggRevenueAtom = (function () {
+  const _atom = atom<HoveredAggRevenue | undefined>(undefined);
+  return atom(
+    (get) => get(_atom),
+    (get, set, value: HoveredAggRevenue | undefined) => {
+      const prev = get(_atom);
+      // no reference change if values are unchanged
+      if (isSameHoveredAggRevenue(prev, value)) return;
+      set(_atom, value);
+    },
+  );
+})();
+
 export interface HoveredAggHeader {
   bucketIdx: number;
   granularity: AggGranularity;
@@ -394,6 +429,7 @@ export interface HoveredAggHeader {
 export enum TooltipType {
   Shred,
   AggShred,
+  AggRevenue,
   Slot,
   AggHeader,
 }
@@ -403,6 +439,7 @@ export const tooltipTypeAtom = atom<TooltipType | null>((get) => {
 
   if (get(hoveredShredAtom) != null) return TooltipType.Shred;
   if (get(hoveredAggShredsAtom) != null) return TooltipType.AggShred;
+  if (get(hoveredAggRevenueAtom) != null) return TooltipType.AggRevenue;
   if (get(hoveredSlotInfoAtom) != null) return TooltipType.Slot;
 
   const visibleRange = get(visibleRangeAtom);
