@@ -2,10 +2,8 @@
   grid-template-columns: minmax(300px, 1fr);
 }
 
-/* Firedancer */
-
 @media (990px <= width < 1506px) {
-  .cards:not(.frankendancer) {
+  .cards {
     grid-template-columns: repeat(2, 1fr);
 
     .accounts-card,
@@ -16,7 +14,7 @@
 }
 
 @media (1506px <= width < 1760px) {
-  .cards:not(.frankendancer) {
+  .cards {
     grid-template-columns: repeat(3, 1fr);
 
     .slots-card,
@@ -32,7 +30,7 @@
 }
 
 @media (1760px <= width) {
-  .cards:not(.frankendancer) {
+  .cards {
     grid-template-columns: repeat(6, 1fr);
 
     .status-card,
@@ -48,25 +46,6 @@
     .accounts-card,
     .txns-card {
       grid-column: span 3;
-    }
-  }
-}
-
-/* Frankendancer */
-
-@media (990px <= width < 1850px) {
-  .frankendancer {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (1506px <= width) {
-  .frankendancer {
-    grid-template-columns: repeat(3, 1fr);
-
-    .slots-card,
-    .txns-card {
-      grid-column: span 2;
     }
   }
 }

@@ -1,7 +1,0 @@
-.container {
-  transition: filter 0.5s;
-
-  &.blur {
-    filter: blur(10px);
-  }
-}

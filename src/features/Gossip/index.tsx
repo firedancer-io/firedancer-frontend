@@ -10,7 +10,6 @@ import GossipHealth from "./GossipHealth/index.tsx";
 import { TrafficTreeMap } from "./TrafficTreeMap.tsx";
 import { useDebounce } from "use-debounce";
 import { rowGap, tableMinWidth } from "./consts.ts";
-import { isFrankendancer } from "../../client.ts";
 
 export default function Gossip() {
   const networkStats = useAtomValue(gossipNetworkStatsAtom);
@@ -21,7 +20,6 @@ export default function Gossip() {
 
   const storage = networkStats?.storage;
 
-  if (isFrankendancer) return;
   if (!storage || !dbNetworkStats) return;
 
   return (

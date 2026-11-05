@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-export const clientSchema = z.enum(["Frankendancer", "Firedancer"]);
-export const ClientEnum = clientSchema.enum;
-
 const summaryTopicSchema = z.object({
   topic: z.literal("summary"),
 });
@@ -66,13 +63,10 @@ export const tileTypeSchema = z.enum([
   "bundle",
   "verify",
   "dedup",
-  "resolv", // Firedancer
-  "resolh", // Frankendancer
+  "resolv",
   "pack",
-  "execle", // Firedancer
-  "bank", // Frankendancer
-  "poh", // Firedancer
-  "pohh", // Frankendancer
+  "execle",
+  "poh",
   "shred",
   "store",
 
@@ -328,52 +322,6 @@ export const tileTimerSchema = z.object({
   tile: z.string(),
   kind_id: z.number(),
   idle: z.number(),
-});
-
-export const startupPhaseSchema = z.enum([
-  "initializing",
-  "searching_for_full_snapshot",
-  "downloading_full_snapshot",
-  "searching_for_incremental_snapshot",
-  "downloading_incremental_snapshot",
-  "cleaning_blockstore",
-  "cleaning_accounts",
-  "loading_ledger",
-  "processing_ledger",
-  "starting_services",
-  "halted",
-  "waiting_for_supermajority",
-  "running",
-]);
-
-export const startupProgressSchema = z.object({
-  phase: startupPhaseSchema,
-
-  // downloading_full_snapshot
-  downloading_full_snapshot_slot: z.number().nullable(),
-  downloading_full_snapshot_peer: z.string().nullable(),
-  downloading_full_snapshot_elapsed_secs: z.number().nullable(),
-  downloading_full_snapshot_remaining_secs: z.number().nullable(),
-  downloading_full_snapshot_throughput: z.number().nullable(),
-  downloading_full_snapshot_total_bytes: z.coerce.number().nullable(),
-  downloading_full_snapshot_current_bytes: z.coerce.number().nullable(),
-
-  // downloading incremental snapshot
-  downloading_incremental_snapshot_slot: z.number().nullable(),
-  downloading_incremental_snapshot_peer: z.string().nullable(),
-  downloading_incremental_snapshot_elapsed_secs: z.number().nullable(),
-  downloading_incremental_snapshot_remaining_secs: z.number().nullable(),
-  downloading_incremental_snapshot_throughput: z.number().nullable(),
-  downloading_incremental_snapshot_total_bytes: z.coerce.number().nullable(),
-  downloading_incremental_snapshot_current_bytes: z.coerce.number().nullable(),
-
-  // processing ledger
-  ledger_slot: z.number().nullable(),
-  ledger_max_slot: z.number().nullable(),
-
-  // waiting for supermajority
-  waiting_for_supermajority_slot: z.number().nullable(),
-  waiting_for_supermajority_stake_percent: z.number().nullable(),
 });
 
 export const bootPhaseSchema = z.enum([
@@ -823,10 +771,6 @@ export const summarySchema = z.discriminatedUnion("key", [
     value: z.number().array(),
   }),
   summaryTopicSchema.extend({
-    key: z.literal("startup_progress"),
-    value: startupProgressSchema,
-  }),
-  summaryTopicSchema.extend({
     key: z.literal("boot_progress"),
     value: bootProgressSchema,
   }),
@@ -994,8 +938,8 @@ const peerUpdateGossipSchema = z.object({
   version: z.string().nullable(),
   feature_set: z.number().nullable(),
   sockets: z.record(z.string(), z.string()),
-  country_code: z.string().nullable().optional(), // undefined for Frankendancer client
-  city_name: z.string().nullable().optional(), // undefined for Frankendancer client
+  country_code: z.string().nullable(),
+  city_name: z.string().nullable(),
 });
 
 const peerUpdateVoteAccountSchema = z.object({
@@ -1073,8 +1017,8 @@ const slotLimitsSchema = z.object({
 });
 
 const slotScheduleStatsSchema = z.object({
-  block_hash: z.string().optional(), // undefined for Frankendancer client
-  end_slot_reason: z.string().optional(), // undefined for Frankendancer client
+  block_hash: z.string(),
+  end_slot_reason: z.string(),
   slot_schedule_counts: z.number().array(),
   end_slot_schedule_counts: z.number().array(),
   pending_smallest_cost: z.number().nullable(),
@@ -1181,16 +1125,10 @@ export const slotSchema = z.discriminatedUnion("key", [
   }),
   slotTopicSchema.extend({
     key: z.literal("late_votes_history"),
-    value: z.union([
-      z.object({
-        slot: z.number().array(),
-        latency: z.number().nullable().array(),
-      }),
-      z.object({
-        slot: z.number().array(),
-        latency_exact: z.number().nullable().array(),
-      }),
-    ]),
+    value: z.object({
+      slot: z.number().array(),
+      latency_exact: z.number().nullable().array(),
+    }),
   }),
   slotTopicSchema.extend({
     key: z.literal("missed_vote_history"),

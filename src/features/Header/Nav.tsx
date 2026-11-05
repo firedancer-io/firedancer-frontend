@@ -21,7 +21,6 @@ import { maxZIndex, slotsNavSpacing } from "../../consts";
 import { clusterAtom } from "../../api/atoms";
 import { getClusterColor } from "../../utils";
 import { navButtonInactiveTextColor } from "../../colors";
-import { isFrankendancer } from "../../client";
 
 interface NavLinkProps {
   label: RouteLabel;
@@ -40,10 +39,7 @@ function isRouteHidden(
   routeLabel: RouteLabel,
   isBlockProductionEnabled: boolean,
 ) {
-  if (!isBlockProductionEnabled && routeLabel === "Slot Details") return true;
-  if (isFrankendancer)
-    return routeLabel === "Gossip" || routeLabel === "Accounts";
-  return false;
+  return !isBlockProductionEnabled && routeLabel === "Slot Details";
 }
 
 interface NavLinkProps extends ButtonProps {

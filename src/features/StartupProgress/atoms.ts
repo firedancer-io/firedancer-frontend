@@ -2,8 +2,6 @@ import { atom } from "jotai";
 import { bootProgressAtom, clusterAtom, tilesAtom } from "../../api/atoms";
 import { BootPhaseEnum } from "../../api/entities";
 import type { BootPhase } from "../../api/types";
-import { isFrankendancer } from "../../client";
-import { peersCountAtom } from "../../atoms";
 
 export const bootProgressPhaseAtom = atom(
   (get) => get(bootProgressAtom)?.phase,
@@ -97,14 +95,7 @@ export const isStartupProgressExpandedAtom = atom(true);
 export const expandStartupProgressElAtom = atom<HTMLButtonElement | null>(null);
 
 export const isStartupProgressVisibleAtom = atom((get) => {
-  const showStartupProgress = get(showStartupProgressAtom);
-  if (!showStartupProgress) return false;
-
-  if (isFrankendancer) {
-    return showStartupProgress;
-  } else {
-    return showStartupProgress && get(isStartupProgressExpandedAtom);
-  }
+  return get(showStartupProgressAtom) && get(isStartupProgressExpandedAtom);
 });
 
 export const snapshotSlotAtom = atom<number | null | undefined>((get) => {
@@ -116,12 +107,4 @@ export const snapshotSlotAtom = atom<number | null | undefined>((get) => {
 
 export const hasFiredancerAppDataAtom = atom((get) => {
   return get(clusterAtom) != null && get(tilesAtom) != null;
-});
-
-export const hasFrankendancerAppDataAtom = atom((get) => {
-  return (
-    get(clusterAtom) != null &&
-    get(peersCountAtom) > 0 &&
-    get(tilesAtom) != null
-  );
 });

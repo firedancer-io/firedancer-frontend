@@ -16,7 +16,6 @@ import { useMemo, useRef, type CSSProperties } from "react";
 import styles from "./liveNetworkMetrics.module.css";
 import { sum } from "lodash";
 import { tileChartDarkBackground } from "../../../colors";
-import { isFrankendancer } from "../../../client";
 import type { HistoryEntry } from "../../../api/worker/types";
 import clsx from "clsx";
 
@@ -105,14 +104,6 @@ function NetworkMetricsCard({
           <Table.Body>
             {emaValues.map((emaValue, i) => {
               const protocol = networkProtocols[i];
-              if (
-                isFrankendancer &&
-                (protocol === "gossip" ||
-                  protocol === "repair" ||
-                  protocol === "rserve")
-              ) {
-                return;
-              }
               return (
                 <TableRow
                   key={i}

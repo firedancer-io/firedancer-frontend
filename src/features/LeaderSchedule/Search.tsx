@@ -32,7 +32,6 @@ import {
 import { searchIconColor } from "../../colors";
 import clsx from "clsx";
 import { getSlotGroupLeader } from "../../utils";
-import { isFiredancer } from "../../client";
 
 export default function Search() {
   const setSearch = useSetAtom(setSearchLeaderSlotsAtom);
@@ -102,7 +101,7 @@ export default function Search() {
       </Box>
 
       <MySlots resetSearchText={reset} />
-      {isFiredancer && <LateVoteSlots resetSearchText={reset} />}
+      <LateVoteSlots resetSearchText={reset} />
       <SkippedSlots resetSearchText={reset} />
       <SkipRate />
       <Box flexGrow="1" />

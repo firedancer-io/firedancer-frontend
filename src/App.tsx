@@ -10,10 +10,8 @@ import { useCallback, useLayoutEffect } from "react";
 import * as colors from "./colors";
 import { kebabCase } from "lodash";
 import FiredancerLogo from "./assets/firedancer_logo.svg";
-import FrankendancerLogo from "./assets/frankendancer_logo.svg";
 import { enableMapSet } from "immer";
 import { useMount } from "react-use";
-import { isFiredancer } from "./client";
 
 const router = createRouter({ routeTree });
 
@@ -26,12 +24,8 @@ declare module "@tanstack/react-router" {
   }
 }
 
-// set up favicon and title based on client
-if (isFiredancer) {
-  document.getElementById("favicon")?.setAttribute("href", FiredancerLogo);
-} else {
-  document.getElementById("favicon")?.setAttribute("href", FrankendancerLogo);
-}
+// set up favicon
+document.getElementById("favicon")?.setAttribute("href", FiredancerLogo);
 
 const store = getDefaultStore();
 

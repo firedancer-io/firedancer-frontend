@@ -10,7 +10,6 @@ import { useSlotQueryResponseDetailed } from "../../../../hooks/useSlotQuery";
 import { SlotDetailsSubSection } from "../SlotDetailsSubSection";
 import styles from "../detailedSlotStats.module.css";
 import { gridGapX, gridGapY } from "../consts";
-import { isFiredancer } from "../../../../client";
 
 export function TimeSinceLastLeaderStats() {
   const slotDuration = useAtomValue(slotDurationAtom);
@@ -45,14 +44,12 @@ export function TimeSinceLastLeaderStats() {
           <Text className={styles.label}>Time Since Last Leader Group</Text>
           <Text className={styles.value}>{getDurationText(timeTill)}</Text>
         </Flex>
-        {isFiredancer && (
-          <Flex gap={gridGapX}>
-            <Text className={styles.label}>End slot reason</Text>
-            <Text className={styles.value}>
-              {schedulerStats?.end_slot_reason}
-            </Text>
-          </Flex>
-        )}
+        <Flex gap={gridGapX}>
+          <Text className={styles.label}>End slot reason</Text>
+          <Text className={styles.value}>
+            {schedulerStats?.end_slot_reason}
+          </Text>
+        </Flex>
       </Flex>
     </SlotDetailsSubSection>
   );

@@ -1,6 +1,5 @@
 import type { z } from "zod";
 import type {
-  clientSchema,
   identityBalanceSchema,
   blockEngineStatusSchema,
   blockEngineUpdateSchema,
@@ -24,8 +23,6 @@ import type {
   slotPublishSchema,
   slotResponseSchema,
   slotSkippedHistorySchema,
-  startupPhaseSchema,
-  startupProgressSchema,
   tilePrimaryMetricSchema,
   tileSchema,
   tileTimerSchema,
@@ -83,8 +80,6 @@ import type {
   isAlpenglowSchema,
   finalizedSlotSchema,
 } from "./entities";
-
-export type Client = z.infer<typeof clientSchema>;
 
 export type Version = z.infer<typeof versionSchema>;
 
@@ -155,10 +150,6 @@ export type TileType = z.infer<typeof tileTypeSchema>;
 export type TileTimer = z.infer<typeof tileTimerSchema>;
 
 export type BootProgress = z.infer<typeof bootProgressSchema>;
-
-export type StartupProgress = z.infer<typeof startupProgressSchema>;
-
-export type StartupPhase = z.infer<typeof startupPhaseSchema>;
 
 export type BootPhase = z.infer<typeof bootPhaseSchema>;
 
