@@ -9,7 +9,11 @@ export function useHotkey(key: string, handler: (e: KeyboardEvent) => void) {
       const isTyping = (e.target as HTMLElement | null)?.closest(
         "input, textarea, [contenteditable]",
       );
-      if (isTyping || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (isTyping || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.repeat) {
+        e.preventDefault();
+        return;
+      }
 
       handlerRef.current(e);
     },

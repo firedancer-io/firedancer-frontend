@@ -6,12 +6,14 @@ import { msToNs } from "../../numUtils";
 import { useAtomValue } from "jotai";
 import {
   isLiveAtom,
+  isPlayingAtom,
+  playbackRateAtom,
   referenceNsAtom,
   visibleRangeAtom,
   worldRangeAtom,
 } from "./atoms";
 import { calcAbsoluteNs } from "./utils";
-import { replayLiveTextColor } from "../../colors";
+import { replayLiveTextColor, replayPauseIconColor } from "../../colors";
 import styles from "./replay.module.css";
 
 /** Below this minimap width, drop the years from the date range to save space. */
@@ -113,6 +115,20 @@ const PauseIcon = memo(function PauseIcon() {
   );
 });
 
+const PlayIcon = memo(function PlayIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="8"
+      height="9"
+      viewBox="0 0 8 9"
+      fill="none"
+    >
+      <path d="M0 0L8 4.5L0 9Z" fill={replayPauseIconColor} />
+    </svg>
+  );
+});
+
 const LiveIcon = memo(function LiveIcon() {
   return (
     <svg
@@ -133,6 +149,8 @@ export default memo(function VisibleRangeInfo({ width }: { width: number }) {
   const referenceNs = useAtomValue(referenceNsAtom);
   const worldRange = useAtomValue(worldRangeAtom);
   const isLive = useAtomValue(isLiveAtom);
+  const isPlaying = useAtomValue(isPlayingAtom);
+  const playbackRate = useAtomValue(playbackRateAtom);
 
   const start = visibleRange?.[0];
   const end = visibleRange?.[1];
@@ -179,6 +197,13 @@ export default memo(function VisibleRangeInfo({ width }: { width: number }) {
         <>
           <LiveIcon />
           <span className={styles.liveText}>Live</span>
+        </>
+      ) : isPlaying ? (
+        <>
+          <PlayIcon />
+          <span className={styles.behindText}>
+            {playbackRate}× · {behindText}
+          </span>
         </>
       ) : (
         <>

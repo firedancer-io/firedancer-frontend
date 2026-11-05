@@ -2,7 +2,11 @@ import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../atoms";
 import type { TsRange } from "../WebGl/webglUtils";
 import { atom, type Getter, type Setter } from "jotai";
-import { CHART_NOW_DELAY_MS, RESUME_LIVE_THRESHOLD_FRAC } from "./const";
+import {
+  CHART_NOW_DELAY_MS,
+  RESUME_LIVE_THRESHOLD_FRAC,
+  type PlaybackRate,
+} from "./const";
 import {
   calcRelativeMs,
   getInitVisibleRange,
@@ -38,18 +42,29 @@ export const [nextQueryIdByKeyAtom, reserveNextQueryIdAtom] = (function () {
   ];
 })();
 
+type Playback =
+  | { kind: "live"; windowSizeMs: number }
+  | { kind: "paused"; range: TsRange }
+  | { kind: "playing"; clockStartMs: number; startRange: TsRange };
+
 export const {
   isLiveAtom,
+  isPlayingAtom,
   isInitializedAtom,
   referenceNsAtom,
   initializeVisibleRangeAtom,
   resetToLiveAtom,
+  returnToLiveAtom,
+  pauseAtom,
+  togglePlaybackAtom,
+  playbackRateAtom,
+  setPlaybackRateAtom,
   visibleRangeAtom,
   worldRangeAtom,
 } = (function getReplayChartAtoms() {
-  const isLiveAtom = atom(true);
   const referenceNsAtom = atom((get) => get(startupTimeAtom)?.startupTimeNanos);
-  const staticVisibleRangeAtom = atom<TsRange | undefined>(undefined);
+  const playbackAtom = atom<Playback | undefined>(undefined);
+  const playbackRateAtom = atom<PlaybackRate>(1);
 
   /**
    * Auto-increments as server time progresses
@@ -67,33 +82,117 @@ export const {
     return [0, worldEnd] satisfies TsRange;
   });
 
-  /**
-   * live mode: show same visible window size but at world end
-   */
-  const liveVisibleRangeAtom = atom((get) => {
-    const staticVisibleRange = get(staticVisibleRangeAtom);
-    const worldRange = get(worldRangeAtom);
-    if (!staticVisibleRange || !worldRange) return;
-
-    const visibleWindowSize = staticVisibleRange[1] - staticVisibleRange[0];
-
-    return [worldRange[1] - visibleWindowSize, worldRange[1]] satisfies TsRange;
-  });
-
   const isInitializedAtom = atom((get) => {
     return !!get(worldRangeAtom);
   });
+
+  const setLiveAtom = atom(null, (_get, set, windowSizeMs: number) => {
+    set(playbackAtom, { kind: "live", windowSizeMs });
+    set(playbackRateAtom, 1);
+  });
+
+  const playbackNowAtom = atom(0);
+  let clockRafId = 0;
+  const startPlayingAtom = atom(null, (get, set, range: TsRange) => {
+    const nowMs = performance.now();
+    set(playbackNowAtom, nowMs);
+    set(playbackAtom, {
+      kind: "playing",
+      clockStartMs: nowMs,
+      startRange: range,
+    });
+
+    cancelAnimationFrame(clockRafId);
+    const tick = () => {
+      const playback = get(playbackAtom);
+      if (playback?.kind !== "playing") return;
+
+      const tickMs = performance.now();
+      const rate = get(playbackRateAtom);
+      const currentRange = getPlayingRange(playback, tickMs, rate);
+      const worldEnd = get(worldRangeAtom)?.[1] ?? Infinity;
+
+      // only faster than live playback can catch up to the world end
+      if (rate > 1 && currentRange[1] >= worldEnd) {
+        set(setLiveAtom, currentRange[1] - currentRange[0]);
+        return;
+      }
+
+      // slower playback waits at the world end until it moves
+      const clockAtWorldEndMs =
+        playback.clockStartMs + (worldEnd - playback.startRange[1]) / rate;
+      set(playbackNowAtom, Math.min(tickMs, clockAtWorldEndMs));
+      clockRafId = requestAnimationFrame(tick);
+    };
+    clockRafId = requestAnimationFrame(tick);
+  });
+
+  const visibleRangeAtom = atom(
+    (get): TsRange | undefined => {
+      const playback = get(playbackAtom);
+      if (!playback) return;
+
+      switch (playback.kind) {
+        case "live": {
+          const worldRange = get(worldRangeAtom);
+          if (!worldRange) return;
+          return [worldRange[1] - playback.windowSizeMs, worldRange[1]];
+        }
+        case "paused":
+          return playback.range;
+        case "playing":
+          return getPlayingRange(
+            playback,
+            get(playbackNowAtom),
+            get(playbackRateAtom),
+          );
+      }
+    },
+    (get, set, value: TsRange) => {
+      const worldRange = get(worldRangeAtom);
+      // A pan/zoom whose right edge reaches world end resumes live mode;
+      // any other manual range change pauses.
+
+      // Resume live if new window is within this distance from world end
+      const liveThreshold = (value[1] - value[0]) * RESUME_LIVE_THRESHOLD_FRAC;
+      const resumeLive =
+        worldRange != null && value[1] >= worldRange[1] - liveThreshold;
+
+      if (resumeLive) {
+        set(setLiveAtom, value[1] - value[0]);
+        return;
+      }
+
+      const prev = get(playbackAtom);
+      if (
+        prev?.kind === "paused" &&
+        prev.range[0] === value[0] &&
+        prev.range[1] === value[1]
+      ) {
+        return;
+      }
+      set(playbackAtom, { kind: "paused", range: value });
+    },
+  );
 
   const resetToLiveAtom = atom(null, (get, set) => {
     const worldRange = get(worldRangeAtom);
     if (!worldRange) return;
 
-    set(staticVisibleRangeAtom, getInitVisibleRange(worldRange));
-    set(isLiveAtom, true);
+    const [start, end] = getInitVisibleRange(worldRange);
+    set(setLiveAtom, end - start);
+  });
+
+  const pauseAtom = atom(null, (get, set) => {
+    const range = get(visibleRangeAtom);
+    if (!range || get(playbackAtom)?.kind === "paused") return;
+
+    set(playbackAtom, { kind: "paused", range });
   });
 
   return {
-    isLiveAtom,
+    isLiveAtom: atom((get) => get(playbackAtom)?.kind === "live"),
+    isPlayingAtom: atom((get) => get(playbackAtom)?.kind === "playing"),
     isInitializedAtom,
     referenceNsAtom,
     worldRangeAtom,
@@ -101,41 +200,50 @@ export const {
      * Set to default live range if world range is initialized but visible range is not initialized
      */
     initializeVisibleRangeAtom: atom(null, (get, set) => {
-      if (get(staticVisibleRangeAtom)) return;
+      if (get(playbackAtom)) return;
 
       set(resetToLiveAtom);
     }),
     resetToLiveAtom,
-    /**
-     * get static visible range or live visible range
-     */
-    visibleRangeAtom: atom(
-      (get) => {
-        const isLive = get(isLiveAtom);
-        return get(isLive ? liveVisibleRangeAtom : staticVisibleRangeAtom);
-      },
-      (get, set, value: TsRange) => {
-        const worldRange = get(worldRangeAtom);
-        // A pan/zoom whose right edge reaches world end resumes live mode;
-        // any other manual range change exits live mode.
+    // keeps the current window size
+    returnToLiveAtom: atom(null, (get, set) => {
+      const range = get(visibleRangeAtom);
+      if (!range) return;
 
-        // Resume live if new window is within this distance from world end
-        const liveThreshold =
-          (value[1] - value[0]) * RESUME_LIVE_THRESHOLD_FRAC;
-        const resumeLive =
-          worldRange != null && value[1] >= worldRange[1] - liveThreshold;
+      set(setLiveAtom, range[1] - range[0]);
+    }),
+    pauseAtom,
+    togglePlaybackAtom: atom(null, (get, set) => {
+      const playback = get(playbackAtom);
+      if (playback?.kind === "paused") {
+        set(startPlayingAtom, playback.range);
+      } else {
+        set(pauseAtom);
+      }
+    }),
+    playbackRateAtom: atom((get) => get(playbackRateAtom)),
+    setPlaybackRateAtom: atom(null, (get, set, rate: PlaybackRate) => {
+      const playback = get(playbackAtom);
+      const range = get(visibleRangeAtom);
+      if (playback?.kind === "live" && rate >= 1) return;
 
-        set(staticVisibleRangeAtom, (prev) => {
-          if (prev && prev[0] === value[0] && prev[1] === value[1]) {
-            return prev;
-          }
-          return value;
-        });
-        set(isLiveAtom, resumeLive);
-      },
-    ),
+      set(playbackRateAtom, rate);
+      if (range && playback && playback.kind !== "paused") {
+        set(startPlayingAtom, range);
+      }
+    }),
+    visibleRangeAtom,
   };
 })();
+
+function getPlayingRange(
+  playback: Extract<Playback, { kind: "playing" }>,
+  nowMs: number,
+  rate: number,
+): TsRange {
+  const elapsed = Math.max(0, nowMs - playback.clockStartMs) * rate;
+  return [playback.startRange[0] + elapsed, playback.startRange[1] + elapsed];
+}
 
 export interface HoverInfo {
   owner: string;

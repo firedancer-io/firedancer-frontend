@@ -6,6 +6,7 @@ import { useHotkey } from "../../hooks/useHotkey";
 import { useAtom, useAtomValue } from "jotai";
 import { isWebgl2SupportedAtom } from "../WebGl/atoms";
 import { isFullScreenAtom } from "./atoms";
+import PlaybackControls from "./PlaybackControls";
 import styles from "./replay.module.css";
 
 export default function Replay() {
@@ -33,6 +34,7 @@ export default function Replay() {
             {isFullScreen ? <ExitFullScreenIcon /> : <EnterFullScreenIcon />}
           </IconButton>
         )}
+        {isWebGl2Supported && <PlaybackControls />}
       </Flex>
       {isWebGl2Supported ? <Chart /> : <div>WebGL2 support required</div>}
     </Flex>
