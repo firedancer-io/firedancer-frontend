@@ -11,6 +11,7 @@ import {
   setHoverInfoAtom,
   visibleRangeAtom,
 } from "./atoms.ts";
+import { clientXToMs } from "./utils.ts";
 import MiniMap from "./MiniMap/MiniMap.tsx";
 import HeaderTrack from "./HeaderTrack/index.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
@@ -28,6 +29,7 @@ import {
   trackMarginTop as headerMarginTop,
 } from "./HeaderTrack/const.ts";
 import ReplayTooltip from "./ReplayTooltip.tsx";
+import OverlapTooltip from "./HeaderTrack/OverlapTooltip.tsx";
 import { useHoveredPosition, type HoveredRect } from "./useHoveredPosition.ts";
 
 const store = getDefaultStore();
@@ -59,9 +61,7 @@ export default function Chart() {
         return;
       }
 
-      const fraction = (clientX - rect.left) / rect.width;
-      const cursorMs =
-        visibleRange[0] + fraction * (visibleRange[1] - visibleRange[0]);
+      const cursorMs = clientXToMs(clientX, rect, visibleRange);
 
       store.set(setHoverInfoAtom, {
         owner: hoverOwner,
@@ -146,6 +146,7 @@ export default function Chart() {
               renderMarker={renderEpochLine}
             />
             <ReplayTooltip />
+            <OverlapTooltip />
           </Flex>
         </>
       )}

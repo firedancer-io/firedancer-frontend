@@ -1,0 +1,141 @@
+.pinned-tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 110;
+  visibility: hidden;
+  pointer-events: auto;
+
+  width: max-content;
+  min-width: 230px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--replay-slot-tooltip-background-color);
+  box-shadow: 0 8px 24px var(--replay-slot-tooltip-shadow-color);
+  font-size: 12px;
+  color: var(--replay-slot-tooltip-label-color);
+}
+
+.list-header {
+  margin-bottom: 4px;
+}
+
+.list-title {
+  font-weight: 700;
+  color: var(--replay-slot-tooltip-value-color);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.row:hover {
+  background: var(--header-group-label-background-color);
+}
+
+.row-selected {
+  background: var(--header-group-label-background-color);
+}
+
+.row-status {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.row-slot {
+  color: var(--replay-slot-tooltip-value-color);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.row-name {
+  color: var(--replay-slot-tooltip-label-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.row-in-front {
+  margin-left: auto;
+  padding-left: 4px;
+  color: var(--app-teal);
+  flex-shrink: 0;
+  visibility: hidden;
+}
+
+.row:hover .row-in-front,
+.row-selected:hover .row-in-front {
+  visibility: visible;
+}
+
+/* detail view */
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  height: 20px;
+  margin-bottom: 2px;
+}
+
+.nav-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--replay-slot-tooltip-label-color);
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+}
+
+.nav-back:hover {
+  color: var(--replay-slot-tooltip-value-color);
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-position {
+  color: var(--replay-slot-tooltip-label-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--replay-slot-tooltip-value-color);
+  background: none;
+  border: none;
+  padding: 2px;
+  font: inherit;
+  line-height: 1;
+}
+
+.nav-step:disabled {
+  color: var(--replay-slot-tooltip-label-color);
+  opacity: 0.4;
+  cursor: default;
+}

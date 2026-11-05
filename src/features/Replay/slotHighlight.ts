@@ -4,8 +4,10 @@ import { useEffect, type RefObject } from "react";
 import { useClickAway, useKey, useLatest } from "react-use";
 import {
   clearSelectedSlotAtom,
+  dismissPinnedAtom,
   hoveredRangeAtom,
   hoveredSlotAtom,
+  isReplayTooltipPinnedAtom,
   selectedRangeAtom,
   selectedSlotAtom,
   visibleRangeAtom,
@@ -337,18 +339,27 @@ export function useSlotHighlightRender(render: () => void) {
   }, [render]);
 }
 
+// On Escape close the pinned overlap tooltip if it's open, otherwise clear the
+// selected slot. Leaves Escape to open menus and dialogs, which close on it.
+// Also clears on a press outside Replay, except in popups like the overlap tooltip.
 export function useDismissSelection(replayRef: RefObject<HTMLElement>) {
-  // leaves Escape to open menus and dialogs, which close on it
   useKey("Escape", (e) => {
     const isInLayer =
       e.target instanceof Element &&
       e.target.closest('[role="listbox"], [role="menu"], [role="dialog"]');
-    if (!isInLayer) store.set(clearSelectedSlotAtom);
+    if (isInLayer) return;
+    if (store.get(isReplayTooltipPinnedAtom)) {
+      store.set(dismissPinnedAtom);
+      return;
+    }
+    store.set(clearSelectedSlotAtom);
   });
   useClickAway(replayRef, (e) => {
     const isInPopup =
       e.target instanceof Element &&
-      e.target.closest('[data-radix-popper-content-wrapper], [role="listbox"]');
+      e.target.closest(
+        '[data-radix-popper-content-wrapper], [role="listbox"], [data-replay-popup]',
+      );
     if (!isInPopup) store.set(clearSelectedSlotAtom);
   });
 }

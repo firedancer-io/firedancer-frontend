@@ -562,6 +562,7 @@ describe("useDismissSelection", () => {
     for (const [attribute, value] of [
       ["data-radix-popper-content-wrapper", ""],
       ["role", "listbox"],
+      ["data-replay-popup", ""],
     ]) {
       const item = addToBody(attribute, value);
       mouseDown(item);

@@ -43,7 +43,7 @@ interface SlotTooltipContentProps {
   referenceNs: bigint;
 }
 
-function SlotTooltipContent({
+export function SlotTooltipContent({
   slotInfo,
   referenceNs,
 }: SlotTooltipContentProps) {
