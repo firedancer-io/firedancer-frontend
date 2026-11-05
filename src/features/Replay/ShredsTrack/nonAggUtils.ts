@@ -39,6 +39,7 @@ import { getNonAggAtoms } from "./atoms";
 import { OVERSCAN_TILES_COUNT, tileSizeNs } from "./useNonAggShredsQuery";
 import {
   SHREDS_AGG_THRESHOLD_MS,
+  MAX_HEIGHT_RATIO,
   type NonAggRendererResources,
   type RendererObj,
 } from "./const";
@@ -418,7 +419,8 @@ export function drawNonAggShreds(
   drawSlotShreds(
     visibleRange,
     shredsDrawRange,
-    maxShreds,
+    // pad bottom so the tallest column lands at MAX_HEIGHT_RATIO
+    maxShreds > 0 ? maxShreds / MAX_HEIGHT_RATIO : maxShreds,
     drawSlots,
     ({ slotNumber, isFec }) =>
       getSlotMesh(
