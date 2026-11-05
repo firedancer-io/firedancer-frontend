@@ -16,9 +16,11 @@ import {
   getShredAtPosition,
 } from "./nonAggUtils.ts";
 import { releaseMesh } from "../../Shreds/WebGl/drawUtils.ts";
+import ShredsYAxis from "./ShredsYAxis.tsx";
 import {
   AGG_SHREDS_CHART_ID,
   aggShredEvents,
+  MAX_HEIGHT_RATIO,
   NON_AGG_SHREDS_CHART_ID,
   shredLegend,
 } from "./const.ts";
@@ -80,10 +82,17 @@ function clearHoveredShred() {
   store.set(hoveredShredAtom, undefined);
 }
 
-function ShredsTrack({ remount }: WebGlRemountProps) {
+interface ShredsTrackProps {
+  height: number;
+}
+
+interface ShredsTrackBodyProps extends ShredsTrackProps, WebGlRemountProps {}
+
+function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
   const [granularity, setGranularity] = useState<
     AggGranularity | ShredsGranularity | undefined
   >(undefined);
+  const [maxShreds, setMaxShreds] = useState(0);
 
   const { containerRef, rendererRef } = useWebGlRenderer({
     remount,
@@ -203,6 +212,24 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
 
   const requestRender = useFrameRender(renderActive);
 
+  const syncYAxis = useThrottledCallback(
+    () => {
+      const renderer = rendererRef.current;
+      const visibleRange = store.get(visibleRangeAtom);
+      if (!renderer || !visibleRange) return;
+
+      const { camera } = isAggregate(visibleRange)
+        ? renderer.aggResources
+        : renderer.nonAggResources;
+      const extent = -camera.bottom;
+      // a real draw pads to >= 1 shred / MAX_HEIGHT_RATIO
+      // less means uninitialized
+      setMaxShreds(extent < 1 / MAX_HEIGHT_RATIO ? 0 : extent);
+    },
+    80,
+    { leading: true, trailing: true },
+  );
+
   const moveCameraAndDrawNonAgg = useCallback(
     (visibleRange: TsRange) => {
       if (!rendererRef.current) return;
@@ -232,8 +259,9 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
 
       requestRender();
       notifyHover();
+      syncYAxis();
     },
-    [requestRender, notifyHover, rendererRef],
+    [requestRender, notifyHover, syncYAxis, rendererRef],
   );
 
   // Redraw the currently-active view without refetching
@@ -264,6 +292,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       moveAggCamera(rendererRef.current.aggResources, visibleRange);
       throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
       requestRender();
+      syncYAxis();
     } else {
       throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
       // trigger a redraw immediately to hide trailing incomplete slots and prevent extended shreds.
@@ -273,6 +302,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     moveCameraAndDrawNonAgg,
     requestRender,
     rendererRef,
+    syncYAxis,
     throttledRelativeTsQuery,
   ]);
 
@@ -285,7 +315,8 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
 
       drawAggShreds(rendererRef.current, referenceNs, visibleRange, aggShreds);
       requestRender();
-    }, [requestRender, rendererRef]),
+      syncYAxis();
+    }, [requestRender, syncYAxis, rendererRef]),
     50,
     { leading: false, trailing: true },
   );
@@ -360,6 +391,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       throttledRelativeTsQuery.cancel();
       throttledDrawAgg.cancel();
       throttledDrawNonAgg.cancel();
+      syncYAxis.cancel();
       unsubscribeRange();
       unsubscribeHover();
     };
@@ -373,11 +405,13 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     renderActive,
     rendererRef,
     containerRef,
+    syncYAxis,
   ]);
 
   return (
     <>
       <div ref={containerRef} className={styles.trackCanvasContainer} />
+      <ShredsYAxis maxShreds={maxShreds} height={height} />
       <TrackControls
         name={trackNames.shreds}
         bucketSize={granularity}
@@ -388,5 +422,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
   );
 }
 
-const ShredsTrackWithRemount = withWebGlRemount(ShredsTrack);
-export default ShredsTrackWithRemount;
+const ShredsTrackWithRemount = withWebGlRemount(ShredsTrackBody);
+export default function ShredsTrack(props: ShredsTrackProps) {
+  return <ShredsTrackWithRemount {...props} />;
+}
