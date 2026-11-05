@@ -1,10 +1,8 @@
 import { atom } from "jotai";
 import EventEmitter from "events";
-import type TypedEmitter from "typed-emitter";
 import type { AggGranularity, AggSlots } from "../../../api/types";
 import { getBucketIdx } from "../utils";
-
-export const drawEventType = "draw";
+import { drawEventType, type DrawEmitter } from "../const";
 
 export interface SlotCounts {
   start_slot: number | null;
@@ -30,11 +28,7 @@ export const [
   const _aggSlotsAtom = atom<SlotBucketsByGranularity>(new Map());
 
   return [
-    atom(
-      new EventEmitter() as TypedEmitter<{
-        [drawEventType]: () => void;
-      }>,
-    ),
+    atom(new EventEmitter() as DrawEmitter),
     atom((get) => get(_aggSlotsAtom)),
     atom(
       null,

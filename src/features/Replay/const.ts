@@ -1,6 +1,11 @@
+import type TypedEmitter from "typed-emitter";
 import type { AggGranularity } from "../../api/types";
 import type { TimelineAggQueryKey } from "./atoms";
 import { nsPerMs } from "../../consts";
+
+export const drawEventType = "draw";
+
+export type DrawEmitter = TypedEmitter<{ [drawEventType]: () => void }>;
 
 export const DEFAULT_WINDOW_MS = 12_000;
 export const MIN_VISIBLE_MS = 0.001;

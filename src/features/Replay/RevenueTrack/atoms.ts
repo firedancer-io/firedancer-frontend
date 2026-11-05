@@ -1,12 +1,10 @@
 import { atom } from "jotai";
 import EventEmitter from "events";
-import type TypedEmitter from "typed-emitter";
 import type { AggGranularity, AggRevenue } from "../../../api/types";
 import type { RevenueType } from "../../../api/entities";
 import { getBucketIdx } from "../utils";
 import { revenueSeriesAddends, type RevenueSeries } from "./consts";
-
-export const drawEventType = "draw";
+import { drawEventType, type DrawEmitter } from "../const";
 
 type Revenues = Record<RevenueType, bigint | null>;
 
@@ -40,11 +38,7 @@ export const [
   const _aggRevenueAtom = atom<RevenueBucketsByGranularity>(new Map());
 
   return [
-    atom(
-      new EventEmitter() as TypedEmitter<{
-        [drawEventType]: () => void;
-      }>,
-    ),
+    atom(new EventEmitter() as DrawEmitter),
     atom((get) => get(_aggRevenueAtom)),
     atom(
       null,
