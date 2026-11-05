@@ -19,6 +19,7 @@ import type { SlotInfo } from "./HeaderTrack/nonAggAtoms";
 import { getSlotGroupLeader } from "../../utils";
 import { slotsPerLeader } from "../../consts";
 import { isAggHeaderVisibleAtom } from "./HeaderTrack/aggAtoms";
+import { isAggregate } from "./HeaderTrack/utils";
 import type { TrackId } from "./layout";
 import type { SetStateAction } from "react";
 import { atomWithImmer } from "jotai-immer";
@@ -290,6 +291,55 @@ export interface HoverInfo {
   clientPos: ClientPos;
 }
 
+/**
+ * Leader slots whose tiles overlap the visible range, or undefined when not in
+ * non-aggregate slot mode / timeline not ready.
+ */
+function getVisibleLeaderSlots(get: Getter) {
+  const referenceNs = get(referenceNsAtom);
+  if (referenceNs == null) return;
+
+  const visibleRange = get(visibleRangeAtom);
+  if (!visibleRange || isAggregate(visibleRange)) return;
+
+  const { slotGroups, tileSlotGroups } = get(timelineSlotsAtom);
+  const { startIdx, endIdx } = getSlotDrawTileIdxs(referenceNs, visibleRange);
+
+  const leaderSlots = new Set<number>();
+  for (let tileIdx = startIdx; tileIdx <= endIdx; tileIdx++) {
+    const tileGroups = tileSlotGroups.get(tileIdx);
+    if (!tileGroups) continue;
+    for (const leaderSlot of tileGroups) leaderSlots.add(leaderSlot);
+  }
+  if (leaderSlots.size === 0) return;
+
+  return { slotGroups, leaderSlots };
+}
+
+/** All slots whose range contains ms, sorted ascending by start ts. */
+function overlappingSlotsAtMs(get: Getter, ms: number): SlotInfo[] {
+  const resolved = getVisibleLeaderSlots(get);
+  if (!resolved) return [];
+  const { slotGroups, leaderSlots } = resolved;
+
+  const overlapping: SlotInfo[] = [];
+  for (const leaderSlot of leaderSlots) {
+    const group = slotGroups.get(leaderSlot);
+    if (!group) continue;
+    for (const slot of group.slots.values()) {
+      if (slot.startMs <= ms && ms <= slot.endMs) overlapping.push(slot);
+    }
+  }
+  overlapping.sort((a, b) => a.startMs - b.startMs);
+  return overlapping;
+}
+
+/**
+ * Explicit slot to spotlight while the overlap tooltip is pinned, overriding the
+ * cursor-derived slot. undefined when no pin-driven spotlight is active.
+ */
+const pinnedSpotlightSlotAtom = atom<number | undefined>(undefined);
+
 export const [
   hoveredSlotAtom,
   hoveredMsAtom,
@@ -310,6 +360,10 @@ export const [
    * slots, or undefined when nothing is hovered.
    */
   const hoveredSlotAtom = atom<number | undefined>((get) => {
+    // a pinned overlap tooltip spotlights an explicit slot
+    const pinnedSlot = get(pinnedSpotlightSlotAtom);
+    if (pinnedSlot != null) return pinnedSlot;
+
     const hoveredShredSlot = get(hoveredShredAtom)?.slot;
     if (hoveredShredSlot != null) return hoveredShredSlot;
     if (get(hoveredAggShredsAtom) != null) return undefined;
@@ -318,6 +372,8 @@ export const [
 
     const cursorMs = get(hoveredMsAtom);
     if (cursorMs == null) return;
+    // keep hover highlight consistent with the drawn-on-top slot and with what a
+    // click would select (selectSlotAtMsAtom also uses getSlotAtMs)
     return getSlotAtMs(get, cursorMs);
   });
 
@@ -652,3 +708,176 @@ export const hoveredAggHeaderAtom = selectAtom(
       a.bucketIdx === b.bucketIdx &&
       a.granularity === b.granularity),
 );
+
+/** Owner used when the pinned overlap tooltip drives the spotlight. */
+const PINNED_HOVER_OWNER = "replay-pinned";
+
+export interface PinnedTooltip {
+  ts: number;
+  /** highest slot number at ts */
+  anchorSlot: number;
+  mode: "list" | "detail";
+  selectedSlot?: number;
+  clientPos: ClientPos;
+  /** true once the cursor enters the tooltip — the list stops following the cursor */
+  isFrozen: boolean;
+}
+
+export const pinnedTooltipAtom = atom<PinnedTooltip | undefined>(undefined);
+
+export const isReplayTooltipPinnedAtom = atom(
+  (get) => get(pinnedTooltipAtom) != null,
+);
+
+/**
+ * All slots overlapping the pinned ts, sorted ascending by start ts.
+ * Empty when nothing is pinned.
+ */
+export const overlappingSlotsAtom = atom<SlotInfo[]>((get) => {
+  const pinned = get(pinnedTooltipAtom);
+  if (!pinned) return [];
+  return overlappingSlotsAtMs(get, pinned.ts);
+});
+
+export const pinnedSelectedSlotInfoAtom = atom<SlotInfo | undefined>((get) => {
+  const pinned = get(pinnedTooltipAtom);
+  if (pinned?.mode !== "detail" || pinned.selectedSlot == null) return;
+  return get(overlappingSlotsAtom).find((s) => s.slot === pinned.selectedSlot);
+});
+
+/** Index of the selected slot in the overlap list, or -1. */
+export const pinnedSelectedIdxAtom = atom((get) => {
+  const pinned = get(pinnedTooltipAtom);
+  if (pinned?.mode !== "detail" || pinned.selectedSlot == null) return -1;
+  return get(overlappingSlotsAtom).findIndex(
+    (s) => s.slot === pinned.selectedSlot,
+  );
+});
+
+function pushPinnedSpotlight(get: Getter, set: Setter, slot: number) {
+  const pinned = get(pinnedTooltipAtom);
+  if (!pinned) return;
+  set(pinnedSpotlightSlotAtom, slot);
+  set(setHoverInfoAtom, {
+    owner: PINNED_HOVER_OWNER,
+    cursorMs: pinned.ts,
+    clientPos: pinned.clientPos,
+  });
+}
+
+/**
+ * Open or refresh the overlap list at the cursor ts when 2+ slots overlap there;
+ * close it when they don't. A frozen or detail-mode tooltip is left untouched.
+ */
+export const openOrUpdateOverlapAtom = atom(
+  null,
+  (get, set, { ts, clientPos }: { ts: number; clientPos: ClientPos }) => {
+    const current = get(pinnedTooltipAtom);
+
+    if (current && (current.isFrozen || current.mode === "detail")) return;
+
+    const overlapping = overlappingSlotsAtMs(get, ts);
+    if (overlapping.length <= 1) {
+      // No overlap under the cursor: close the list if one is showing.
+      if (current) set(dismissPinnedAtom);
+      return;
+    }
+
+    // anchor on the highest slot number in the overlap
+    const anchorSlot = overlapping.reduce(
+      (max, s) => Math.max(max, s.slot),
+      -1,
+    );
+
+    set(pinnedTooltipAtom, {
+      ts,
+      anchorSlot,
+      clientPos,
+      mode: "list",
+      isFrozen: false,
+    });
+
+    pushPinnedSpotlight(get, set, anchorSlot);
+  },
+);
+
+/** Freeze the list (cursor entered the tooltip) so it stops following the cursor. */
+export const freezeOverlapAtom = atom(null, (get, set) => {
+  const current = get(pinnedTooltipAtom);
+  if (!current || current.mode !== "list" || current.isFrozen) return;
+  set(pinnedTooltipAtom, { ...current, isFrozen: true });
+});
+
+/** Switch to the detail view for a slot and spotlight it. */
+export const selectPinnedSlotAtom = atom(null, (get, set, slot: number) => {
+  const pinned = get(pinnedTooltipAtom);
+  if (!pinned) return;
+  set(pinnedTooltipAtom, { ...pinned, mode: "detail", selectedSlot: slot });
+  pushPinnedSpotlight(get, set, slot);
+});
+
+/** Return to the list view and clear the spotlight. */
+export const pinnedBackToListAtom = atom(null, (get, set) => {
+  const pinned = get(pinnedTooltipAtom);
+  if (!pinned) return;
+  set(pinnedTooltipAtom, { ...pinned, mode: "list", selectedSlot: undefined });
+  set(pinnedSpotlightSlotAtom, undefined);
+  set(clearHoverInfoAtom, PINNED_HOVER_OWNER);
+});
+
+/** Step through the overlap list (clamped at ends). */
+export const pinnedStepAtom = atom(null, (get, set, delta: number) => {
+  const list = get(overlappingSlotsAtom);
+  if (list.length === 0) return;
+  const curIdx = get(pinnedSelectedIdxAtom);
+  const nextIdx = Math.min(Math.max(curIdx + delta, 0), list.length - 1);
+  if (nextIdx === curIdx) return;
+  set(selectPinnedSlotAtom, list[nextIdx].slot);
+});
+
+/** List-mode row hover: spotlight the slot, or clear when slot is undefined. */
+export const pinnedHoverRowAtom = atom(
+  null,
+  (get, set, slot: number | undefined) => {
+    if (slot == null) {
+      set(pinnedSpotlightSlotAtom, undefined);
+      set(clearHoverInfoAtom, PINNED_HOVER_OWNER);
+      return;
+    }
+    pushPinnedSpotlight(get, set, slot);
+  },
+);
+
+/**
+ * Cursor position (viewport px) captured at dismiss time, so the regular hover
+ * tooltip can be replayed at the real cursor location the instant the pin closes.
+ */
+export const lastDismissPosAtom = atom<ClientPos | undefined>(undefined);
+
+/** Close the pinned tooltip and clear its spotlight. */
+export const dismissPinnedAtom = atom(
+  null,
+  (_get, set, clientPos?: ClientPos) => {
+    set(lastDismissPosAtom, clientPos);
+    set(pinnedTooltipAtom, undefined);
+    set(pinnedSpotlightSlotAtom, undefined);
+    set(clearHoverInfoAtom, PINNED_HOVER_OWNER);
+  },
+);
+
+/**
+ * Close the pinned tooltip once its ts scrolls out of the visible range or in agg mode
+ */
+export const dismissPinnedIfOffscreenAtom = atom(null, (get, set) => {
+  const pinned = get(pinnedTooltipAtom);
+  if (!pinned) return;
+  const visibleRange = get(visibleRangeAtom);
+  if (!visibleRange) return;
+  if (
+    isAggregate(visibleRange) ||
+    pinned.ts < visibleRange[0] ||
+    pinned.ts > visibleRange[1]
+  ) {
+    set(dismissPinnedAtom);
+  }
+});

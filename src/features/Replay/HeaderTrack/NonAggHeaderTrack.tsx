@@ -1,6 +1,7 @@
 import { type Atom, atom, getDefaultStore, useAtomValue } from "jotai";
 import {
   hoveredSlotAtom,
+  openOrUpdateOverlapAtom,
   referenceNsAtom,
   selectedSlotAtom,
   visibleRangeAtom,
@@ -13,9 +14,15 @@ import {
   timelineSlotsAtom,
   timelineSlotsEmitterAtom,
 } from "./nonAggAtoms";
-import { calcAbsoluteNs, calcRelativeMs, getSlotDrawTileIdxs } from "../utils";
+import {
+  calcAbsoluteNs,
+  calcRelativeMs,
+  clientXToMs,
+  getSlotDrawTileIdxs,
+} from "../utils";
 import { tileSizeNs, useNonAggHeaderQuery } from "./useNonAggHeaderQuery";
 import { isAggregate } from "./utils";
+import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible";
 import type { TsRange } from "../../WebGl/webglUtils";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
@@ -38,7 +45,7 @@ import {
 import { aggHeaderEmitterAtom } from "./aggAtoms";
 import { drawEventType } from "../const";
 import MonoText from "../../../components/MonoText";
-import { trackHeight } from "./const";
+import { trackHeight, NON_AGG_TRACK_ID } from "./const";
 
 const store = getDefaultStore();
 const logoSize = 8;
@@ -275,13 +282,42 @@ export function NonAggHeaderTrack({
     { leading: true, trailing: true },
   );
 
+  // open/refresh the overlap list tooltip
+  const onHoverChange = useCallback(
+    (clientX: number, clientY: number, rect: HoveredRect) => {
+      const visibleRange = store.get(visibleRangeAtom);
+      if (rect.width === 0 || !visibleRange || isAggregate(visibleRange))
+        return;
+
+      const ts = clientXToMs(clientX, rect, visibleRange);
+
+      store.set(openOrUpdateOverlapAtom, {
+        ts,
+        clientPos: { x: clientX, y: clientY },
+      });
+    },
+    [],
+  );
+
+  // overlap tooltip handles closing
+  const onHoverLeave = useCallback(() => {}, []);
+
+  const { setContainer, notifyChange } = useHoveredPosition({
+    onHoverChange,
+    onHoverLeave,
+  });
+
   // set up renderer and subscribe to range change, to trigger queries
   useLayoutEffect(() => {
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
 
     // listen for non-agg slots draw events
     const emitter = store.get(timelineSlotsEmitterAtom);
-    emitter.addListener(drawEventType, throttledUpdateGroupsAndShow);
+    const onDraw = () => {
+      throttledUpdateGroupsAndShow();
+      notifyChange();
+    };
+    emitter.addListener(drawEventType, onDraw);
 
     const aggEmitter = store.get(aggHeaderEmitterAtom);
     const clearIfAgg = () => {
@@ -296,7 +332,7 @@ export function NonAggHeaderTrack({
 
     // cleanup
     return () => {
-      emitter.removeListener(drawEventType, throttledUpdateGroupsAndShow);
+      emitter.removeListener(drawEventType, onDraw);
       aggEmitter.removeListener(drawEventType, clearIfAgg);
       throttledUpdateGroupsAndShow.cancel();
       throttledUpdateGroups.cancel();
@@ -308,6 +344,7 @@ export function NonAggHeaderTrack({
     throttledUpdateGroupsAndShow,
     throttledUpdateGroups,
     throttledRelativeTsQuery,
+    notifyChange,
   ]);
 
   // handle chart resize, which may trigger tier changes depending on new width
@@ -333,7 +370,7 @@ export function NonAggHeaderTrack({
   }, [containerStartMs, updateGroupPositionsOnly]);
 
   return (
-    <div className={className}>
+    <div className={className} id={NON_AGG_TRACK_ID} ref={setContainer}>
       <div ref={containerRef} className={styles.container}>
         {renderState?.slotGroups.map((group) => (
           <SlotGroupContainer

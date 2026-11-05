@@ -5,14 +5,19 @@ import AggRevenueTooltip from "./RevenueTrack/AggRevenueTooltip";
 import RevenueTxnTooltip from "./RevenueTrack/RevenueTxnTooltip";
 import ReplaySlotTooltip from "./HeaderTrack/ReplaySlotTooltip";
 import AggHeaderTooltip from "./HeaderTrack/AggHeaderTooltip";
-import { tooltipTypeAtom, TooltipType } from "./atoms";
+import {
+  isReplayTooltipPinnedAtom,
+  tooltipTypeAtom,
+  TooltipType,
+} from "./atoms";
 
 /**
  * Draw the correct tooltip for the current hovered data
  */
 export default function ReplayTooltip() {
   const tooltipType = useAtomValue(tooltipTypeAtom);
-  if (tooltipType == null) return null;
+  const isPinned = useAtomValue(isReplayTooltipPinnedAtom);
+  if (isPinned || tooltipType == null) return null;
 
   switch (tooltipType) {
     case TooltipType.Shred:
