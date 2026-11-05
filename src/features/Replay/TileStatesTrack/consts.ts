@@ -2,10 +2,16 @@ import { TileState, TileStatesGranularityEnum } from "../../../api/entities.ts";
 import type { TileStatesGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import {
+  replayBlockedOnConflictsColor,
+  replayBlockedOnNetworkColor,
+  replayBlockedOnTilesColor,
+  replaySlotFinishColor,
+  replayTrackBackgroundColor,
   transactionErrorOutlineColor,
-  transactionExecuteSolidColor,
-  transactionLoadingSolidColor,
-  transactionPostExecuteSolidColor,
+  transactionExecuteColor,
+  transactionLoadingColor,
+  transactionPostExecuteColor,
+  transactionSigverifyColor,
   transactionSuccessOutlineColor,
   transactionValidateColor,
 } from "../../../colors.ts";
@@ -29,6 +35,9 @@ export function isAggregate(rangeMs: TsRange) {
 
 export const BAR_HEIGHT_RATIO = 22 / 24;
 
+/** Max gap between state lanes when the state labels are shown */
+export const LANE_GAP_PX = 2;
+
 export const ERROR_STATES_ALPHA = 0.5;
 export const ERROR_STATES_BORDER_PX = 1.5;
 
@@ -43,18 +52,18 @@ export const errorStateColors: Record<ErrorState, string> = {
 };
 
 export const tileStateColors: Record<TileState, string> = {
-  [TileState.Idle]: "#000000",
-  [TileState.Sigverify]: "#B026FF",
-  [TileState.Loading]: transactionLoadingSolidColor,
+  [TileState.Idle]: replayTrackBackgroundColor,
+  [TileState.Sigverify]: transactionSigverifyColor,
+  [TileState.Loading]: transactionLoadingColor,
   [TileState.Validate]: transactionValidateColor,
-  [TileState.Execute]: transactionExecuteSolidColor,
-  [TileState.PostExecute]: transactionPostExecuteSolidColor,
-  [TileState.BlockedOnTiles]: "#B2A65A",
-  [TileState.BlockedOnConflicts]: "#B0604A",
-  [TileState.BlockedOnNetwork]: "#4F6F95",
-  [TileState.SlotFinish]: "#4E8C77",
-  [TileState.ExecBatch]: "#5F544D",
-  [TileState.SigverifyBatch]: "#B026FF",
+  [TileState.Execute]: transactionExecuteColor,
+  [TileState.PostExecute]: transactionPostExecuteColor,
+  [TileState.BlockedOnTiles]: replayBlockedOnTilesColor,
+  [TileState.BlockedOnConflicts]: replayBlockedOnConflictsColor,
+  [TileState.BlockedOnNetwork]: replayBlockedOnNetworkColor,
+  [TileState.SlotFinish]: replaySlotFinishColor,
+  [TileState.ExecBatch]: transactionExecuteColor,
+  [TileState.SigverifyBatch]: transactionSigverifyColor,
 };
 
 export const tileStateLabels: Record<TileState, string> = {
@@ -64,36 +73,154 @@ export const tileStateLabels: Record<TileState, string> = {
   [TileState.Validate]: "Validate",
   [TileState.Execute]: "Execute",
   [TileState.PostExecute]: "Post-Execute",
-  [TileState.BlockedOnTiles]: "Blocked on tiles",
-  [TileState.BlockedOnConflicts]: "Blocked on conflicts",
-  [TileState.BlockedOnNetwork]: "Blocked on network",
-  [TileState.SlotFinish]: "Slot finish",
+  [TileState.BlockedOnTiles]: "Tiles",
+  [TileState.BlockedOnConflicts]: "Conflicts",
+  [TileState.BlockedOnNetwork]: "Network",
+  [TileState.SlotFinish]: "Finish",
   [TileState.ExecBatch]: "Exec batch",
   [TileState.SigverifyBatch]: "Sigverify batch",
 };
 
-export const replayStates: TileState[] = [
+const replayStates: TileState[] = [
   TileState.BlockedOnTiles,
   TileState.BlockedOnConflicts,
   TileState.BlockedOnNetwork,
   TileState.SlotFinish,
 ];
 
-export const execrpStates: Record<TileStatesGranularity, TileState[]> = {
-  txn: [
-    TileState.Sigverify,
+const execrpTxnStates: TileState[] = [
+  TileState.Loading,
+  TileState.Validate,
+  TileState.Execute,
+  TileState.PostExecute,
+  TileState.Sigverify,
+];
+
+export const trackStates: Record<
+  TileKind,
+  Record<TileStatesGranularity | "agg", TileState[]>
+> = {
+  execrp: {
+    txn: execrpTxnStates,
+    txn_batch: [TileState.ExecBatch, TileState.SigverifyBatch],
+    agg: execrpTxnStates,
+  },
+  replay: { txn: replayStates, txn_batch: replayStates, agg: replayStates },
+};
+
+export const coverageStates: Record<TileKind, TileState[]> = {
+  execrp: [
     TileState.Loading,
     TileState.Validate,
     TileState.Execute,
     TileState.PostExecute,
+    TileState.Sigverify,
+    TileState.ExecBatch,
+    TileState.SigverifyBatch,
   ],
-  txn_batch: [TileState.SigverifyBatch, TileState.ExecBatch],
+  replay: replayStates,
 };
 
-export interface TileStatesViewOpts {
-  showErrorStates: boolean;
+/**
+ * Heatmap mixes each px's states into one color.
+ * Stacked stacks the states bottom up by time.
+ * Gantt separates states into individual lanes.
+ */
+export enum TileStatesMode {
+  Heatmap = "heatmap",
+  Stacked = "stacked",
+  Gantt = "gantt",
 }
 
-export const DEFAULT_TILE_STATES_VIEW_OPTS: TileStatesViewOpts = {
-  showErrorStates: false,
+export const tileStatesModeLabels: Record<TileStatesMode, string> = {
+  [TileStatesMode.Heatmap]: "Heatmap",
+  [TileStatesMode.Stacked]: "Stacked",
+  [TileStatesMode.Gantt]: "Gantt",
+};
+
+export interface TileStatesModeOption {
+  mode: TileStatesMode;
+  maxMs?: number;
+  minMs?: number;
+  // shown when this mode isn't available at the visible range
+  fallback?: TileStatesMode;
+  separateLanes?: boolean;
+}
+
+export function getAvailableModes(
+  options: TileStatesModeOption[],
+  spanMs: number,
+): TileStatesMode[] {
+  return options
+    .filter(
+      ({ maxMs, minMs }) =>
+        (maxMs === undefined || spanMs <= maxMs) &&
+        (minMs === undefined || spanMs > minMs),
+    )
+    .map(({ mode }) => mode);
+}
+
+export function getDisplayMode(
+  options: TileStatesModeOption[],
+  selected: TileStatesMode,
+  available: TileStatesMode[],
+): TileStatesMode {
+  if (available.includes(selected)) return selected;
+  const fallback = options.find(({ mode }) => mode === selected)?.fallback;
+  if (fallback && available.includes(fallback)) return fallback;
+  return available[0] ?? selected;
+}
+
+export interface TileStatesViewOpts {
+  mode: TileStatesMode;
+  showErrorStates: boolean;
+  separateLanes: boolean;
+  idleWeight: number;
+}
+
+export const tileStatesModeOptions: Record<TileKind, TileStatesModeOption[]> = {
+  execrp: [
+    { mode: TileStatesMode.Heatmap },
+    {
+      mode: TileStatesMode.Stacked,
+      minMs: 250,
+      fallback: TileStatesMode.Gantt,
+    },
+    {
+      mode: TileStatesMode.Gantt,
+      maxMs: 250,
+      fallback: TileStatesMode.Stacked,
+    },
+  ],
+  replay: [
+    {
+      mode: TileStatesMode.Gantt,
+      maxMs: 10_000,
+      fallback: TileStatesMode.Stacked,
+    },
+    {
+      mode: TileStatesMode.Stacked,
+      minMs: 10_000,
+      fallback: TileStatesMode.Gantt,
+      separateLanes: true,
+    },
+  ],
+};
+
+export const DEFAULT_TILE_STATES_VIEW_OPTS: Record<
+  TileKind,
+  TileStatesViewOpts
+> = {
+  execrp: {
+    mode: TileStatesMode.Heatmap,
+    showErrorStates: false,
+    separateLanes: false,
+    idleWeight: 0.05,
+  },
+  replay: {
+    mode: TileStatesMode.Gantt,
+    showErrorStates: false,
+    separateLanes: true,
+    idleWeight: 1,
+  },
 };

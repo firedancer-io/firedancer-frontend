@@ -6,6 +6,6 @@ import {
 } from "./consts";
 
 export const tileStatesViewOptsAtoms = {
-  execrp: atom<TileStatesViewOpts>(DEFAULT_TILE_STATES_VIEW_OPTS),
-  replay: atom<TileStatesViewOpts>(DEFAULT_TILE_STATES_VIEW_OPTS),
+  execrp: atom<TileStatesViewOpts>(DEFAULT_TILE_STATES_VIEW_OPTS.execrp),
+  replay: atom<TileStatesViewOpts>(DEFAULT_TILE_STATES_VIEW_OPTS.replay),
 } satisfies Record<TileKind, unknown>;
