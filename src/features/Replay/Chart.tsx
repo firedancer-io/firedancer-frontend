@@ -6,6 +6,7 @@ import { useExplorableChart } from "./useExplorableChart.ts";
 import { getDefaultStore, useAtomValue } from "jotai";
 import {
   clearHoverInfoAtom,
+  clearSelectedSlotAtom,
   initializeVisibleRangeAtom,
   isInitializedAtom,
   isReplayTooltipPinnedAtom,
@@ -20,7 +21,8 @@ import ResetLiveButton from "./ResetLiveButton.tsx";
 import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
 import { useVotesCache } from "./VotesTrack/useVotesCache.ts";
 import Tracks from "./Tracks.tsx";
-import HoverOverlay from "./HoverOverlay.tsx";
+import SlotDividers from "./SlotDividers.tsx";
+import { useHotkey } from "../../hooks/useHotkey";
 import HoveredTsLine from "./HoveredTsLine.tsx";
 import ReplayTooltip from "./ReplayTooltip.tsx";
 import OverlapTooltip from "./HeaderTrack/OverlapTooltip.tsx";
@@ -111,6 +113,8 @@ export default function Chart() {
   useTileStatesCache();
   useVotesCache();
 
+  useHotkey("escape", () => store.set(clearSelectedSlotAtom));
+
   if (!isInitialized) return <Spinner />;
 
   return (
@@ -134,7 +138,7 @@ export default function Chart() {
 
             <Tracks />
 
-            <HoverOverlay />
+            <SlotDividers />
             <HoveredTsLine />
             <ReplayTooltip />
             <OverlapTooltip />

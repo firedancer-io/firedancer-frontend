@@ -2,6 +2,7 @@ import type * as THREE from "three";
 import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
 import type { DrawableSlot } from "../../Shreds/chartUtils";
 import type { EdgeResourceBundle } from "../../Shreds/WebGl/edgeUtils";
+import type { SlotHighlight } from "../slotHighlight";
 import { AggShredEventType } from "../../../api/entities";
 import {
   shredPublishedColor,
@@ -48,6 +49,7 @@ export interface NonAggRendererResources extends EdgeResourceBundle<string> {
    * Mesh position x values must be updated when this changes
    */
   cameraReferenceMs: number;
+  highlight: SlotHighlight;
   lastDrawInfo?: NonAggDrawInfo;
 }
 

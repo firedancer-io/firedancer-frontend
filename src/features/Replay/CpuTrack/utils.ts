@@ -26,6 +26,7 @@ import {
   writeSparklineData,
 } from "./sparklineMaterial.ts";
 import { getAggGranularity } from "./useAggCpuQuery.ts";
+import { createSlotHighlight, type SlotHighlight } from "../slotHighlight.ts";
 
 const tmpSize = new THREE.Vector2();
 
@@ -35,6 +36,7 @@ export interface RendererObj {
   camera: THREE.OrthographicCamera;
   geometry: THREE.InstancedBufferGeometry;
   material: THREE.RawShaderMaterial;
+  highlight: SlotHighlight;
   texture: THREE.DataTexture;
   data: Float32Array;
   rows: CpuRow[];
@@ -56,7 +58,8 @@ export function setUpRenderer(
   camera.position.z = 1;
 
   const { data, texture } = createDataTexture();
-  const material = createSparklineMaterial(texture, strokeWidthPx);
+  const highlight = createSlotHighlight();
+  const material = createSparklineMaterial(texture, strokeWidthPx, highlight);
 
   const unitQuad = createUnitQuad();
   const geometry = new THREE.InstancedBufferGeometry();
@@ -85,6 +88,7 @@ export function setUpRenderer(
     camera,
     geometry,
     material,
+    highlight,
     texture,
     data,
     rows: [],

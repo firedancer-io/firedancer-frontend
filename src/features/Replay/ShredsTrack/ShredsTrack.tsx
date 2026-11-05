@@ -14,7 +14,12 @@ import {
   getSlotMeshKey,
   moveNonAggCamera,
   getShredAtPosition,
+  orderSlotMeshes,
 } from "./nonAggUtils.ts";
+import {
+  updateSlotHighlight,
+  useSlotHighlightRender,
+} from "../slotHighlight.ts";
 import { releaseMesh } from "../../Shreds/WebGl/drawUtils.ts";
 import ShredsYAxis from "./ShredsYAxis.tsx";
 import {
@@ -241,20 +246,22 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
     const visibleRange = store.get(visibleRangeAtom);
     if (!visibleRange) return;
 
-    const isAgg = isAggregate(visibleRange);
-    if (isAgg) {
+    if (isAggregate(visibleRange)) {
       // renderer will replace scene, so clear last draw info
       nonAggResources.lastDrawInfo = undefined;
       // clear highlight so it won't reappear when we return to non-agg
       drawHoveredShred(nonAggResources, undefined, visibleRange);
       clearHoveredShred();
+      renderer.render(aggResources.scene, aggResources.camera);
+      return;
     }
-
-    const { camera, scene } = isAgg ? aggResources : nonAggResources;
-    renderer.render(scene, camera);
+    updateSlotHighlight(nonAggResources.highlight, renderer.domElement.width);
+    orderSlotMeshes(nonAggResources);
+    renderer.render(nonAggResources.scene, nonAggResources.camera);
   }, [rendererRef]);
 
   const requestRender = useFrameRender(renderActive);
+  useSlotHighlightRender(requestRender);
 
   const syncYAxis = useThrottledCallback(
     () => {

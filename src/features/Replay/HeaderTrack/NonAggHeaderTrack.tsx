@@ -1,11 +1,13 @@
-import { atom, getDefaultStore, useAtomValue } from "jotai";
+import { type Atom, atom, getDefaultStore, useAtomValue } from "jotai";
 import {
   hoveredSlotAtom,
   openOrUpdateOverlapAtom,
   referenceNsAtom,
+  selectedSlotAtom,
   visibleRangeAtom,
   worldRangeAtom,
 } from "../atoms";
+import { getGroupLevel, getSlotFocus } from "../slotHighlight";
 import {
   drawEventType,
   type SlotGroup,
@@ -389,6 +391,18 @@ export function NonAggHeaderTrack({
   );
 }
 
+function getSlotInGroupAtom(
+  slotAtom: Atom<number | undefined>,
+  leaderSlot: number,
+) {
+  return atom((get) => {
+    const slot = get(slotAtom);
+    return slot !== undefined && getSlotGroupLeader(slot) === leaderSlot
+      ? slot
+      : undefined;
+  });
+}
+
 interface SlotGroupContainerProps {
   containerStartMs: number;
   leaderSlot: number;
@@ -415,28 +429,51 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
 
   const hoveredSlot = useAtomValue(
     useMemo(
+      () => getSlotInGroupAtom(hoveredSlotAtom, leaderSlot),
+      [leaderSlot],
+    ),
+  );
+  const selectedSlot = useAtomValue(
+    useMemo(
+      () => getSlotInGroupAtom(selectedSlotAtom, leaderSlot),
+      [leaderSlot],
+    ),
+  );
+  // the outline follows the selection while there is one, else the hover
+  const isOutlined = useAtomValue(
+    useMemo(
       () =>
         atom((get) => {
-          const hoveredSlot = get(hoveredSlotAtom);
-          return hoveredSlot == null ||
-            getSlotGroupLeader(hoveredSlot) !== leaderSlot
-            ? undefined
-            : hoveredSlot;
+          const slot = get(selectedSlotAtom) ?? get(hoveredSlotAtom);
+          return slot !== undefined && getSlotGroupLeader(slot) === leaderSlot;
         }),
       [leaderSlot],
     ),
   );
-
-  const isHovered = !!hoveredSlot;
+  const groupLevel = useAtomValue(
+    useMemo(
+      () =>
+        atom((get) =>
+          getGroupLevel(
+            leaderSlot,
+            getSlotFocus(get(hoveredSlotAtom), get(selectedSlotAtom)),
+          ),
+        ),
+      [leaderSlot],
+    ),
+  );
 
   return (
     <div
       className={clsx(styles.slotGroupContainer, {
         [styles.skipped]: hasSkipped,
         [styles.mine]: isMine,
-        [styles.hovered]: isHovered,
+        [styles.hovered]: isOutlined,
+        [styles.hoveredGroup]: hoveredSlot !== undefined,
+        [styles.selectedGroup]: selectedSlot !== undefined,
       })}
       style={{
+        opacity: groupLevel,
         height: `${trackHeight}px`,
         left: `${((groupStartMs - containerStartMs) / containerWindowMs) * 100}%`,
         width: `${(groupDurationMs / containerWindowMs) * 100}%`,
@@ -459,6 +496,7 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
               {...slotInfo}
               slotTier={slotTier}
               isHovered={hoveredSlot === slotInfo.slot}
+              isSelected={selectedSlot === slotInfo.slot}
             />
           );
         })}
@@ -520,6 +558,7 @@ interface SlotProps {
   isSkipped: boolean;
   slotTier: SlotTier;
   isHovered: boolean;
+  isSelected: boolean;
 }
 const Slot = memo(function Slot({
   isEarliestStart,
@@ -532,6 +571,7 @@ const Slot = memo(function Slot({
   isSkipped,
   slotTier,
   isHovered,
+  isSelected,
 }: SlotProps) {
   // prevent status render from blocking smooth zoom, etc
   const deferredSlotTier = useDeferredValue(slotTier);
@@ -552,7 +592,9 @@ const Slot = memo(function Slot({
         [styles.earliestStart]: isEarliestStart,
         [styles.latestEnd]: isLatestEnd,
         [styles.leftBorder]: !isEarliestStart && !showBlock,
-        [styles.hoverSlot]: isHovered,
+        [styles.hoverSlot]: isHovered && !isSelected,
+        [styles.selectedSlot]: isSelected && !isHovered,
+        [styles.selectedHoveredSlot]: isSelected && isHovered,
       })}
       style={{
         left: `${((startMs - groupStartMs) / groupDurationMs) * 100}%`,

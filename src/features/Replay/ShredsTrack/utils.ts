@@ -13,6 +13,8 @@ import {
   cleanUpEdgeResources,
 } from "../../Shreds/WebGl/edgeUtils";
 import { SHRED_EVENT_TYPES_COUNT } from "../../../api/entities";
+import { disposeSlotMaterials } from "./nonAggUtils";
+import { createSlotHighlight } from "../slotHighlight";
 
 export function setUpRenderers(
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
@@ -38,6 +40,7 @@ export function setUpRenderers(
     highlightMesh,
     cameraReferenceMs: 0,
     ...edgeResourceBundle,
+    highlight: createSlotHighlight(),
   };
   const aggResources = setUpAggResources(getWasContextLost);
 
@@ -45,6 +48,7 @@ export function setUpRenderers(
     aggResources.cleanUpResources();
     if (!getWasContextLost()) {
       highlightMesh.mesh.geometry.dispose();
+      disposeSlotMaterials(nonAggResources);
     }
     nonAggResources.cleanUpResources();
     cleanUpEdgeResources(edgeResourceBundle, getWasContextLost());

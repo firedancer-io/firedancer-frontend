@@ -18,6 +18,7 @@ import {
   type TileStatesDataTile,
 } from "./tileStatesCache.ts";
 import {
+  linearToSrgbGlsl,
   createTileStatesMaterial,
   createErrorStatesMaterial,
   createStatesMesh,
@@ -37,6 +38,13 @@ import { replayTrackBackgroundColor } from "../../../colors.ts";
 import { referenceNsAtom, visibleRangeAtom } from "../atoms.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
 import { calcRelativeMs } from "../utils.ts";
+import {
+  createSlotHighlight,
+  getRelativeSlot,
+  NO_SLOT,
+  updateSlotHighlight,
+  type SlotHighlight,
+} from "../slotHighlight.ts";
 
 const store = getDefaultStore();
 
@@ -76,6 +84,7 @@ export interface RendererObj {
   tileStatesMaterial: THREE.RawShaderMaterial;
   tileStatesTarget: THREE.WebGLRenderTarget;
   errorStatesMaterial: THREE.RawShaderMaterial;
+  highlight: SlotHighlight;
   errorStatesScene: THREE.Scene;
   compositeScene: THREE.Scene;
   compositeMaterial: THREE.RawShaderMaterial;
@@ -132,15 +141,7 @@ precision highp float;
 uniform sampler2D uStateColors; // linear rgb = sum of color * coverage, a = busy
 uniform vec2 uCanvasSize;       // px in canvas dimensions
 uniform vec3 uBackground;       // linear color
-
-vec3 linearToSrgb(vec3 c) {
-  return mix(
-    c * 12.92,
-    1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055,
-    step(0.0031308, c)
-  );
-}
-
+${linearToSrgbGlsl}
 void main() {
   vec4 s = texture2D(uStateColors, gl_FragCoord.xy / uCanvasSize);
   vec3 color = s.rgb + uBackground * (1.0 - min(s.a, 1.0));
@@ -185,8 +186,15 @@ export function setUpRenderer(
   const tileStatesScene = new THREE.Scene();
   const errorStatesScene = new THREE.Scene();
   errorStatesScene.visible = false;
-  const tileStatesMaterial = createTileStatesMaterial(TILE_STATE_PALETTE);
-  const errorStatesMaterial = createErrorStatesMaterial(ERROR_STATE_PALETTE);
+  const highlight = createSlotHighlight();
+  const tileStatesMaterial = createTileStatesMaterial(
+    TILE_STATE_PALETTE,
+    highlight,
+  );
+  const errorStatesMaterial = createErrorStatesMaterial(
+    ERROR_STATE_PALETTE,
+    highlight,
+  );
 
   const canBlendFloat32 =
     renderer.extensions.has("EXT_color_buffer_float") &&
@@ -237,6 +245,7 @@ export function setUpRenderer(
     rectResources,
     tileStatesMaterial,
     errorStatesMaterial,
+    highlight,
     tileStatesTarget,
     errorStatesScene,
     compositeScene,
@@ -283,6 +292,7 @@ export function render(rendererObj: RendererObj) {
   } = rendererObj;
   const { width, height } = renderer.domElement;
   if (!width || !height) return;
+  updateSlotHighlight(rendererObj.highlight, width);
   if (tileStatesTarget.width !== width || tileStatesTarget.height !== height) {
     tileStatesTarget.setSize(width, height);
     (
@@ -411,7 +421,13 @@ function buildDataTileMeshes(
   const tileStatesStart = appendData ? meshes.tileStates.count : 0;
   setStatesCount(
     meshes.tileStates,
-    appendTileStates(meshes.tileStates, data, tileStatesStart, rowOfTile),
+    appendTileStates(
+      rendererObj.highlight,
+      meshes.tileStates,
+      data,
+      tileStatesStart,
+      rowOfTile,
+    ),
     tileStatesStart,
   );
 
@@ -419,7 +435,13 @@ function buildDataTileMeshes(
     const errorStatesStart = appendData ? meshes.errorStates.count : 0;
     setStatesCount(
       meshes.errorStates,
-      appendErrorStates(meshes.errorStates, data, errorStatesStart, rowOfTile),
+      appendErrorStates(
+        rendererObj.highlight,
+        meshes.errorStates,
+        data,
+        errorStatesStart,
+        rowOfTile,
+      ),
       errorStatesStart,
     );
   }
@@ -517,6 +539,7 @@ function getRowLayout(rowOfTile: RowOfTile) {
 }
 
 function appendTileStates(
+  highlight: SlotHighlight,
   mesh: StatesMesh,
   data: TileStateColumns,
   start: number,
@@ -543,12 +566,14 @@ function appendTileStates(
       tileYPosition(row, rowH),
       barH,
       data.state[i],
+      toRelativeSlot(highlight, data.state_slot[i]),
     );
   }
   return count;
 }
 
 function appendErrorStates(
+  highlight: SlotHighlight,
   mesh: StatesMesh,
   data: TileStateColumns,
   start: number,
@@ -577,6 +602,7 @@ function appendErrorStates(
       tileYPosition(row, rowH),
       barH,
       errorCode ? ErrorState.Failed : ErrorState.Succeeded,
+      toRelativeSlot(highlight, data.txn_slot[i]),
     );
   }
   return count;
@@ -590,6 +616,7 @@ function addRectToMesh(
   y: number,
   height: number,
   colorIndex: number,
+  slot: number,
 ) {
   const localStart = startMs - mesh.referenceX;
   const localEnd = endMs - mesh.referenceX;
@@ -604,6 +631,11 @@ function addRectToMesh(
   mesh.bar[b] = y;
   mesh.bar[b + 1] = height;
   mesh.bar[b + 2] = colorIndex;
+  mesh.slot[idx] = slot;
+}
+
+function toRelativeSlot(highlight: SlotHighlight, slot: number) {
+  return Number.isNaN(slot) ? NO_SLOT : getRelativeSlot(highlight, slot);
 }
 
 /** Bottom y of a row, rows stacked top-down. */

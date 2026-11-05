@@ -10,7 +10,9 @@ import {
   updateRectMeshCounts,
   type TsRange,
   createRenderer,
+  createRectMaterial,
 } from "../../WebGl/webglUtils.ts";
+import { slotHighlightGlsl, type SlotHighlight } from "../slotHighlight.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils.ts";
 import { msBucketSizes, nsBucketSizes } from "../const.ts";
@@ -100,8 +102,11 @@ export function setUpRenderers(
   if (!rendererObj) return;
 
   const { renderer, cleanUpRenderer } = rendererObj;
-  const aggResources = setUpAggResources(getWasContextLost);
   const nonAggResources = setUpNonAggResources(getWasContextLost);
+  const aggResources = setUpAggResources(
+    getWasContextLost,
+    nonAggResources.resources.highlight,
+  );
 
   const cleanUp = () => {
     aggResources.cleanUpResources();
@@ -129,15 +134,32 @@ export function resizeRenderer(rendererObj: RendererObj) {
   }
 }
 
+const timeHighlightFragmentShader = /* glsl */ `
+precision highp float;
+uniform float uOpacity;
+varying vec3 vColor;
+${slotHighlightGlsl}
+void main() {
+  gl_FragColor = vec4(highlightTime(vColor, gl_FragCoord.x), uOpacity);
+}
+`;
+
 export function setUpAggResources(
   getWasContextLost: ContextHelpers["getWasContextLost"],
+  highlight: SlotHighlight,
 ): AggResources & { cleanUpResources: () => void } {
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(0, 1, maxY, minY, 0.5, 10);
   camera.position.z = 1;
 
   const resources = createRectResources();
-  const mesh = createRectMesh(resources, AGG_BUCKET_COUNT_THRESHOLD);
+  // no slots in agg buckets
+  const material = createRectMaterial(
+    1,
+    timeHighlightFragmentShader,
+    highlight.uniforms,
+  );
+  const mesh = createRectMesh(resources, AGG_BUCKET_COUNT_THRESHOLD, material);
   scene.add(mesh.mesh);
 
   const cleanUpResources = () => {
@@ -147,6 +169,7 @@ export function setUpAggResources(
     // Remount on restore to reset the context listeners state
     if (!getWasContextLost()) {
       mesh.mesh.geometry.dispose();
+      material.dispose();
       // dispose this chart's own unitQuad / rectMaterial
       disposeRectResources(resources);
     }
@@ -304,6 +327,7 @@ export function setUpNonAggResources(
 
 function buildTxnMeshFromTile(
   mesh: TxnMesh,
+  highlight: SlotHighlight,
   tile: TxnMetaTile,
   getRelativeMs: (absoluteNs: bigint) => number,
   cameraReferenceMs: number,
@@ -314,13 +338,20 @@ function buildTxnMeshFromTile(
     mesh.referenceX = referenceX;
     mesh.mesh.position.x = referenceX - cameraReferenceMs;
   }
-  const endIdx = appendTxnsToMesh(mesh, tile, startIdx, getRelativeMs);
+  const endIdx = appendTxnsToMesh(
+    mesh,
+    highlight,
+    tile,
+    startIdx,
+    getRelativeMs,
+  );
   updateTxnMeshCount(mesh, endIdx);
   return endIdx;
 }
 
 function appendTxnsToMesh(
   mesh: TxnMesh,
+  highlight: SlotHighlight,
   tile: TxnMetaTile,
   startIdx: number,
   getRelativeMs: (absoluteNs: bigint) => number,
@@ -348,6 +379,7 @@ function appendTxnsToMesh(
 
     addTxnToMesh(
       mesh,
+      highlight,
       idx,
       startMs - referenceX,
       txns.txn_exec_idx[i],
@@ -394,7 +426,13 @@ export function syncNonAggMeshes(
     if (tileMeshes.has(tile.startNs)) continue;
 
     const mesh = addTileMesh(rendererObj.nonAggResources, tile.startNs);
-    buildTxnMeshFromTile(mesh, tile, getRelativeMs, cameraReferenceMs);
+    buildTxnMeshFromTile(
+      mesh,
+      rendererObj.nonAggResources.resources.highlight,
+      tile,
+      getRelativeMs,
+      cameraReferenceMs,
+    );
   }
 
   // Evicts meshes for tiles no longer cached and return them to the pool to
@@ -522,6 +560,7 @@ export function appendLiveTxns(
   };
   buildTxnMeshFromTile(
     mesh,
+    resources.resources.highlight,
     dataTile,
     getRelativeMs,
     resources.cameraReferenceMs,

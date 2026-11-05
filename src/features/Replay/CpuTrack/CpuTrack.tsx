@@ -48,6 +48,10 @@ import {
 import RowLabels from "../RowLabels.tsx";
 import { trackNames } from "../layout.ts";
 import trackStyles from "../track.module.css";
+import {
+  updateSlotHighlight,
+  useSlotHighlightRender,
+} from "../slotHighlight.ts";
 
 const store = getDefaultStore();
 
@@ -141,11 +145,13 @@ function CpuTrackBody({
 
   const render = useCallback(() => {
     if (!rendererRef.current) return;
-    const { renderer, scene, camera } = rendererRef.current;
+    const { renderer, scene, camera, highlight } = rendererRef.current;
+    updateSlotHighlight(highlight, renderer.domElement.width);
     renderer.render(scene, camera);
   }, [rendererRef]);
 
   const requestRender = useFrameRender(render);
+  useSlotHighlightRender(requestRender);
 
   const draw = useCallback(() => {
     const referenceNs = store.get(referenceNsAtom);

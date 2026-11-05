@@ -50,6 +50,7 @@ import { tileStatesViewOptsAtoms } from "./atoms.ts";
 import RowLabels from "../RowLabels.tsx";
 import { getRowsLayout, trackInsetPx } from "../layout.ts";
 import styles from "../track.module.css";
+import { useSlotHighlightRender } from "../slotHighlight.ts";
 
 const store = getDefaultStore();
 
@@ -75,6 +76,7 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
   const requestRender = useFrameRender(() => {
     if (rendererRef.current) render(rendererRef.current);
   });
+  useSlotHighlightRender(requestRender);
 
   const tiles = useAtomValue(tilesAtom);
   const rows = useMemo(() => getTileRows(tiles, kind), [tiles, kind]);
