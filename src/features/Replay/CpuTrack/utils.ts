@@ -112,6 +112,7 @@ export function resizeRenderer(rendererObj: RendererObj) {
   uniforms.uRowStride.value = rowPx + gapPx;
   const rowPadPx = Math.min(rowPaddingPx, rowPx / 4);
   uniforms.uRowPad.value = rowPadPx;
+  uniforms.uHalfWidth.value = Math.min(strokeWidthPx / 2, rowPadPx);
   uniforms.uPlotHeight.value = rowPx - 2 * rowPadPx;
   rendererObj.camera.top = topPx;
   rendererObj.camera.bottom = topPx - height;
