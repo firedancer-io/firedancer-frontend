@@ -33,6 +33,17 @@ export interface TileStateColumns {
   txn_start_ms: number[];
   txn_end_ms: number[];
   txn_error_code: (number | null)[];
+  // The segment's drawn states, as a slice of the `state` columns
+  txn_state_lo: number[];
+  txn_state_cnt: number[];
+  // One entry per slot segment: a slot's replay on one tile
+  slot_slot: number[];
+  slot_tile: number[];
+  slot_start_ms: number[];
+  slot_end_ms: number[];
+  // The segment's drawn states, as a slice of the `state` columns
+  slot_state_lo: number[];
+  slot_state_cnt: number[];
 }
 
 function emptyColumns(): TileStateColumns {
@@ -47,6 +58,14 @@ function emptyColumns(): TileStateColumns {
     txn_start_ms: [],
     txn_end_ms: [],
     txn_error_code: [],
+    txn_state_lo: [],
+    txn_state_cnt: [],
+    slot_slot: [],
+    slot_tile: [],
+    slot_start_ms: [],
+    slot_end_ms: [],
+    slot_state_lo: [],
+    slot_state_cnt: [],
   };
 }
 
@@ -60,6 +79,9 @@ function parseTileStates(res: TimelineTileStates): TileStateColumns {
 
   const stateStartNs = new Float64Array(res.state.length);
   const stateTile = new Int32Array(res.state.length);
+  // Index in acc's state columns where each response state would go, so
+  // segments can map their response states to the drawn ones
+  const drawnStateIdx = new Int32Array(res.state.length + 1);
 
   // `state` and `dur` hold every tile's states back to back, e.g.
   //
@@ -83,6 +105,7 @@ function parseTileStates(res: TimelineTileStates): TileStateColumns {
 
       stateStartNs[stateIdx] = startNs;
       stateTile[stateIdx] = tile;
+      drawnStateIdx[stateIdx] = acc.state.length;
 
       // Skips idle state because it isn't drawn
       if (tile < 0 || state === TileState.Idle || endNs === startNs) continue;
@@ -92,6 +115,7 @@ function parseTileStates(res: TimelineTileStates): TileStateColumns {
       acc.state_end_ms.push(endNs / nsPerMs);
     }
   }
+  drawnStateIdx[res.state.length] = acc.state.length;
 
   // Each txn segment is a slice of one tile's states (a sigverify or an execution), e.g.
   //
@@ -112,11 +136,35 @@ function parseTileStates(res: TimelineTileStates): TileStateColumns {
       (stateStartNs[lastStateIdx] + res.dur[lastStateIdx]) / nsPerMs,
     );
     acc.txn_error_code.push(res.txn_error_code[segmentIdx]);
+    const drawnLo = drawnStateIdx[firstStateIdx];
+    acc.txn_state_lo.push(drawnLo);
+    acc.txn_state_cnt.push(drawnStateIdx[lastStateIdx + 1] - drawnLo);
+  }
+
+  // Each slot segment is a slice of one tile's states too, a slot's replay
+  for (
+    let segmentIdx = 0;
+    segmentIdx < res.slot_state_lo.length;
+    segmentIdx++
+  ) {
+    const firstStateIdx = res.slot_state_lo[segmentIdx];
+    const lastStateIdx = firstStateIdx + res.slot_state_cnt[segmentIdx] - 1;
+    if (lastStateIdx < firstStateIdx || stateTile[firstStateIdx] < 0) continue;
+    acc.slot_slot.push(refSlot + res.slot_delta[segmentIdx]);
+    acc.slot_tile.push(stateTile[firstStateIdx]);
+    acc.slot_start_ms.push(stateStartNs[firstStateIdx] / nsPerMs);
+    acc.slot_end_ms.push(
+      (stateStartNs[lastStateIdx] + res.dur[lastStateIdx]) / nsPerMs,
+    );
+    const drawnLo = drawnStateIdx[firstStateIdx];
+    acc.slot_state_lo.push(drawnLo);
+    acc.slot_state_cnt.push(drawnStateIdx[lastStateIdx + 1] - drawnLo);
   }
   return acc;
 }
 
 function appendColumns(acc: TileStateColumns, src: TileStateColumns): void {
+  const stateOffset = acc.state.length;
   for (let i = 0; i < src.state.length; i++) {
     acc.state.push(src.state[i]);
     acc.state_tile.push(src.state_tile[i]);
@@ -130,11 +178,21 @@ function appendColumns(acc: TileStateColumns, src: TileStateColumns): void {
     acc.txn_start_ms.push(src.txn_start_ms[i]);
     acc.txn_end_ms.push(src.txn_end_ms[i]);
     acc.txn_error_code.push(src.txn_error_code[i]);
+    acc.txn_state_lo.push(src.txn_state_lo[i] + stateOffset);
+    acc.txn_state_cnt.push(src.txn_state_cnt[i]);
+  }
+  for (let i = 0; i < src.slot_slot.length; i++) {
+    acc.slot_slot.push(src.slot_slot[i]);
+    acc.slot_tile.push(src.slot_tile[i]);
+    acc.slot_start_ms.push(src.slot_start_ms[i]);
+    acc.slot_end_ms.push(src.slot_end_ms[i]);
+    acc.slot_state_lo.push(src.slot_state_lo[i] + stateOffset);
+    acc.slot_state_cnt.push(src.slot_state_cnt[i]);
   }
 }
 
 function itemCount(states: TileStateColumns): number {
-  return states.state.length + states.txn_idx.length;
+  return states.state.length + states.txn_idx.length + states.slot_slot.length;
 }
 
 const CACHE_MAX_TILES = 128;

@@ -1,4 +1,4 @@
-import { getDefaultStore, useAtomValue } from "jotai";
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
 import {
   DEFAULT_REVENUE_VIEW_OPTS,
@@ -22,6 +22,9 @@ import {
   clearLiveMarker,
   type RendererObj,
 } from "./utils.ts";
+import { findTxnAtPoint } from "./hoverUtils.ts";
+import { hoveredRevenueTxnAtom } from "./hoverAtoms.ts";
+import { useTrackHover } from "../Tooltip/useTrackHover.ts";
 import { calcRelativeMs } from "../utils.ts";
 import useAggRevenueQuery, {
   getGranularity,
@@ -88,6 +91,18 @@ function RevenueTrackBody({
     (absoluteNs: bigint) => calcRelativeMs(referenceNs ?? 0n, absoluteNs),
     [referenceNs],
   );
+
+  const setHoveredTxn = useSetAtom(hoveredRevenueTxnAtom);
+  const refreshHover = useTrackHover(containerRef, (point) => {
+    const renderer = rendererRef.current;
+    // txns are only drawn in the nonAgg view
+    const txn =
+      point &&
+      renderer &&
+      !isAggCurrentRef.current &&
+      findTxnAtPoint(renderer, type, opts.scale, point);
+    setHoveredTxn(txn ? { ...txn, series: type } : undefined);
+  });
 
   const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
     remount,
@@ -168,7 +183,8 @@ function RevenueTrackBody({
     const { aggResources, nonAggResources } = renderer;
     const { camera, scene } = agg ? aggResources : nonAggResources;
     renderer.renderer.render(scene, camera);
-  }, []);
+    refreshHover();
+  }, [refreshHover]);
 
   /**
    * Query data for new range and optionally update camera.

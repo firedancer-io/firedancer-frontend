@@ -1,4 +1,4 @@
-import { getDefaultStore, useAtomValue } from "jotai";
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
 import clsx from "clsx";
@@ -41,6 +41,9 @@ import { TileStatesGranularityEnum } from "../../../api/entities.ts";
 import TileStatesYAxis from "./TileStatesYAxis.tsx";
 import AggTileStates from "./AggTileStatesTrack.tsx";
 import TileStatesControls from "./TileStatesControls.tsx";
+import { findExecrpTxnAtPoint, findReplaySlotAtPoint } from "./hoverUtils.ts";
+import { hoveredExecrpTxnAtom, hoveredReplaySlotAtom } from "./hoverAtoms.ts";
+import { useTrackHover } from "../Tooltip/useTrackHover.ts";
 import styles from "../track.module.css";
 
 const store = getDefaultStore();
@@ -64,6 +67,28 @@ function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
   const tiles = useAtomValue(tilesAtom);
   const rows = useMemo(() => getTileRows(tiles, kind), [tiles, kind]);
   const height = Math.max(rows.length, 1) * ROW_HEIGHT_PX;
+
+  // execrp tiles run txns, replay tiles replay slots
+  const setHoveredExecrpTxn = useSetAtom(hoveredExecrpTxnAtom);
+  const setHoveredReplaySlot = useSetAtom(hoveredReplaySlotAtom);
+  const refreshHover = useTrackHover(containerRef, (point) => {
+    const renderer = rendererRef.current;
+    const visibleRangeMs = store.get(visibleRangeAtom);
+    const canFind = point && renderer && visibleRangeMs;
+    if (kind === "replay") {
+      setHoveredReplaySlot(
+        canFind
+          ? findReplaySlotAtPoint(renderer, visibleRangeMs, point)
+          : undefined,
+      );
+    } else {
+      setHoveredExecrpTxn(
+        canFind
+          ? findExecrpTxnAtPoint(renderer, visibleRangeMs, point)
+          : undefined,
+      );
+    }
+  });
 
   const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
     remount,
@@ -100,6 +125,7 @@ function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
       setIsAgg(agg);
       if (agg) {
         renderer.renderedGranularity = undefined;
+        refreshHover();
         return;
       }
 
@@ -125,8 +151,9 @@ function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
       throttledRangeQuery(refNs, visibleRangeMs, worldRangeMs);
 
       if (viewChanged || granularityChanged) render(renderer);
+      refreshHover();
     },
-    [throttledRangeQuery],
+    [throttledRangeQuery, refreshHover],
   );
 
   // set up renderer and subscribe to range changes to trigger queries
@@ -214,8 +241,9 @@ function TileStatesTrack({ kind, remount }: TileStatesTrackProps) {
       }
 
       render(renderer);
+      refreshHover();
     },
-    [],
+    [refreshHover],
   );
 
   const onDeltaTxn = useCallback(

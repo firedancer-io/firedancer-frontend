@@ -1,4 +1,4 @@
-import { useAtomValue } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { DateTime } from "luxon";
 import { startCase } from "lodash";
 import { nsPerMs } from "../../../consts";
@@ -15,6 +15,12 @@ import { useSlotRevenue } from "../RevenueTrack/txnMeta/useSlotRevenue";
 import { useSlotTransactions } from "../TileStatesTrack/useSlotTransactions";
 import { hoveredSlotInfoAtom, referenceNsAtom } from "../atoms";
 import { calcAbsoluteNs } from "../utils";
+import { hoveredRevenueTxnInfoAtom } from "../RevenueTrack/hoverAtoms";
+import {
+  hoveredExecrpTxnInfoAtom,
+  hoveredReplaySlotInfoAtom,
+} from "../TileStatesTrack/hoverAtoms";
+import { hoveredCpuRowsAtom } from "../CpuTrack/hoverAtoms";
 import type { SlotInfo } from "./nonAggAtoms";
 import { useSlotLevel } from "./useSlotLevel";
 import styles from "./replaySlotTooltip.module.css";
@@ -25,14 +31,25 @@ function sumNullableCounts(...counts: (number | null | undefined)[]) {
   return counts.reduce<number>((sum, c) => sum + (c ?? 0), 0);
 }
 
+/** A track's own tooltip takes the cursor while it has a hovered item */
+const isTrackTooltipShownAtom = atom(
+  (get) =>
+    !!get(hoveredRevenueTxnInfoAtom) ||
+    !!get(hoveredExecrpTxnInfoAtom) ||
+    !!get(hoveredReplaySlotInfoAtom) ||
+    !!get(hoveredCpuRowsAtom),
+);
+
 /**
  * General slot info tooltip
  */
 export default function ReplaySlotTooltip() {
   const slotInfo = useAtomValue(hoveredSlotInfoAtom);
   const referenceNs = useAtomValue(referenceNsAtom);
+  const isTrackTooltipShown = useAtomValue(isTrackTooltipShownAtom);
   // without a reference ts the slot's timeline can't be anchored
-  if (slotInfo == null || referenceNs === undefined) return null;
+  if (slotInfo == null || referenceNs === undefined || isTrackTooltipShown)
+    return null;
 
   return (
     <ReplayCursorTooltip>

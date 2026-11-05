@@ -21,6 +21,10 @@ import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
 import CpuTrack from "./CpuTrack/CpuTrack.tsx";
 import HoverOverlay from "./HoverOverlay.tsx";
 import HoveredTsLine from "./HoveredTsLine.tsx";
+import RevenueTxnTooltip from "./RevenueTrack/RevenueTxnTooltip.tsx";
+import ExecrpTxnTooltip from "./TileStatesTrack/ExecrpTxnTooltip.tsx";
+import ReplayTrackSlotTooltip from "./TileStatesTrack/ReplayTrackSlotTooltip.tsx";
+import CpuTooltip from "./CpuTrack/CpuTooltip.tsx";
 
 const store = getDefaultStore();
 
@@ -169,6 +173,10 @@ export default function Chart() {
             <HoverOverlay />
             <HoveredTsLine />
           </Flex>
+          <RevenueTxnTooltip />
+          <ExecrpTxnTooltip />
+          <ReplayTrackSlotTooltip />
+          <CpuTooltip />
         </>
       )}
     </div>

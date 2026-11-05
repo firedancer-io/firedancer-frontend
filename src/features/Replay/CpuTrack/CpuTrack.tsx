@@ -1,5 +1,12 @@
-import { getDefaultStore, useAtomValue } from "jotai";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useThrottledCallback } from "use-debounce";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { AggGranularity } from "../../../api/types.ts";
@@ -41,6 +48,8 @@ import {
   type RendererObj,
 } from "./utils.ts";
 import CpuYAxis from "./CpuYAxis.tsx";
+import { hoveredCpuRowsAtom } from "./hoverAtoms.ts";
+import { useTrackHover } from "../Tooltip/useTrackHover.ts";
 import trackStyles from "../track.module.css";
 
 const store = getDefaultStore();
@@ -88,6 +97,14 @@ function CpuTrackBody({
     [tiles],
   );
   const height = getCpuTrackHeight(rows.length);
+
+  // the tooltip shows every row while the cursor is over the track
+  const setHoveredRows = useSetAtom(hoveredCpuRowsAtom);
+  const refreshHover = useTrackHover(containerRef, (point) =>
+    setHoveredRows(point && rows),
+  );
+  // re-send the rows if they change under the cursor
+  useEffect(refreshHover, [rows, refreshHover]);
 
   const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
     remount,

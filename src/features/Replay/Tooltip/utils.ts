@@ -1,4 +1,5 @@
-import { solDecimals } from "../../../consts";
+import { nsPerMs, solDecimals } from "../../../consts";
+import { getDurationWithUnits } from "../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
 import { formatNumberLamports } from "../../Overview/ValidatorsCard/formatAmt";
 
 /** add two nullable lamport amounts; undefined if both are missing */
@@ -14,4 +15,13 @@ export function formatSol(lamports?: bigint) {
     decimals: solDecimals,
     trailingZeroes: true,
   });
+}
+
+/** value and unit props for a TooltipRow showing a duration in ms */
+export function getMsDurationProps(durationMs: number | undefined): {
+  value: number | undefined;
+  unit?: string;
+} {
+  if (durationMs === undefined) return { value: undefined };
+  return getDurationWithUnits(durationMs * nsPerMs);
 }
