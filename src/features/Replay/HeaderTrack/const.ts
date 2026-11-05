@@ -3,6 +3,8 @@ import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
 
 export const HEADER_AGG_THRESHOLD_MS = 180_000;
 
+export const NON_AGG_TRACK_ID = "non-agg-header-track";
+
 export const trackHeight = 36;
 export const aggTrackHeight = 30;
 

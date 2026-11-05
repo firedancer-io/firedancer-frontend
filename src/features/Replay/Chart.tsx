@@ -8,9 +8,12 @@ import {
   clearHoverInfoAtom,
   initializeVisibleRangeAtom,
   isInitializedAtom,
+  isReplayTooltipPinnedAtom,
+  lastDismissPosAtom,
   setHoverInfoAtom,
   visibleRangeAtom,
 } from "./atoms.ts";
+import { clientXToMs } from "./utils.ts";
 import MiniMap from "./MiniMap/MiniMap.tsx";
 import HeaderTrack from "./HeaderTrack/index.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
@@ -19,6 +22,7 @@ import Tracks from "./Tracks.tsx";
 import HoverOverlay from "./HoverOverlay.tsx";
 import HoveredTsLine from "./HoveredTsLine.tsx";
 import ReplayTooltip from "./ReplayTooltip.tsx";
+import OverlapTooltip from "./HeaderTrack/OverlapTooltip.tsx";
 import { useHoveredPosition, type HoveredRect } from "./useHoveredPosition.ts";
 
 const store = getDefaultStore();
@@ -39,15 +43,16 @@ export default function Chart() {
 
   const onHoverChange = useCallback(
     (clientX: number, clientY: number, rect: HoveredRect) => {
+      // while pinned, the overlap tooltip owns the hover/spotlight
+      if (store.get(isReplayTooltipPinnedAtom)) return;
+
       const visibleRange = store.get(visibleRangeAtom);
       if (rect.width === 0 || !visibleRange) {
         store.set(clearHoverInfoAtom, hoverOwner);
         return;
       }
 
-      const fraction = (clientX - rect.left) / rect.width;
-      const cursorMs =
-        visibleRange[0] + fraction * (visibleRange[1] - visibleRange[0]);
+      const cursorMs = clientXToMs(clientX, rect, visibleRange);
 
       store.set(setHoverInfoAtom, {
         owner: hoverOwner,
@@ -62,10 +67,26 @@ export default function Chart() {
     store.set(clearHoverInfoAtom, hoverOwner);
   }, []);
 
-  const { setContainer: setHoverContainer } = useHoveredPosition({
-    onHoverChange,
-    onHoverLeave,
-  });
+  const { setContainer: setHoverContainer, replayHoverAt } = useHoveredPosition(
+    {
+      onHoverChange,
+      onHoverLeave,
+    },
+  );
+
+  // on pin dismiss, replay the hover at the dismiss cursor location
+  useLayoutEffect(() => {
+    let wasPinned = store.get(isReplayTooltipPinnedAtom);
+    return store.sub(isReplayTooltipPinnedAtom, () => {
+      const isPinned = store.get(isReplayTooltipPinnedAtom);
+      if (wasPinned && !isPinned) {
+        const clientPos = store.get(lastDismissPosAtom);
+        store.set(lastDismissPosAtom, undefined);
+        if (clientPos) replayHoverAt(clientPos.x, clientPos.y);
+      }
+      wasPinned = isPinned;
+    });
+  }, [replayHoverAt]);
 
   const cleanUpExploreRef = useRef<(() => void) | null>(null);
   const setTracksContainerRef = useCallback(
@@ -113,6 +134,7 @@ export default function Chart() {
             <HoverOverlay />
             <HoveredTsLine />
             <ReplayTooltip />
+            <OverlapTooltip />
           </Flex>
         </>
       )}

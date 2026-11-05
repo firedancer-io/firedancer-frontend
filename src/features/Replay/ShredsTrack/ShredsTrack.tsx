@@ -39,11 +39,12 @@ import {
 import {
   hoveredAggShredsAtom,
   hoveredShredAtom,
+  isReplayTooltipPinnedAtom,
   referenceNsAtom,
   visibleRangeAtom,
   worldRangeAtom,
 } from "../atoms.ts";
-import { calcAbsoluteNs, getBucketIdx } from "../utils.ts";
+import { calcAbsoluteNs, clientXToMs, getBucketIdx } from "../utils.ts";
 import styles from "../track.module.css";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import TrackControls from "../TrackControls.tsx";
@@ -59,11 +60,6 @@ function isShredsGranularity(
     granularity === ShredsGranularityEnum.shred ||
     granularity === ShredsGranularityEnum.fec
   );
-}
-
-function clientXToTs(rect: HoveredRect, clientX: number, range: TsRange) {
-  const fraction = (clientX - rect.left) / rect.width;
-  return range[0] + fraction * (range[1] - range[0]);
 }
 
 /**
@@ -115,6 +111,9 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
       const renderer = rendererRef.current;
       if (!renderer) return;
 
+      // while the overlap tooltip is pinned, it owns the spotlight/tooltip
+      if (store.get(isReplayTooltipPinnedAtom)) return;
+
       const visibleRange = store.get(visibleRangeAtom);
       const referenceNs = store.get(referenceNsAtom);
       if (!visibleRange || referenceNs == null) {
@@ -123,7 +122,7 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
         return;
       }
 
-      const ts = clientXToTs(rect, clientX, visibleRange);
+      const ts = clientXToMs(clientX, rect, visibleRange);
 
       if (isAggregate(visibleRange)) {
         clearHoveredShred();
