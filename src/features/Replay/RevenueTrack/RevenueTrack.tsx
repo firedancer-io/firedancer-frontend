@@ -56,6 +56,10 @@ import {
   type TxnMetaCacheDelta,
 } from "./txnMeta/txnMetaCache.ts";
 import styles from "../track.module.css";
+import {
+  updateSlotHighlight,
+  useSlotHighlightRender,
+} from "../slotHighlight.ts";
 
 const store = getDefaultStore();
 
@@ -93,6 +97,7 @@ function RevenueTrackBody({
   const [isAgg, setIsAgg] = useState(true);
   const isAggCurrentRef = useRef(isAgg);
   const isAggPreviousRef = useRef(isAgg);
+  const needsRefreshRef = useRef(true);
 
   const { containerRef, rendererRef } = useWebGlRenderer({
     remount,
@@ -103,6 +108,7 @@ function RevenueTrackBody({
       const visibleRangeMs = store.get(visibleRangeAtom);
       if (!isAggCurrentRef.current && visibleRangeMs)
         moveNonAggCamera(rendererObj, visibleRangeMs);
+      needsRefreshRef.current = true;
       renderActive();
     },
   });
@@ -245,19 +251,27 @@ function RevenueTrackBody({
     if (!renderer) return;
 
     const agg = isAggCurrentRef.current;
-    if (!agg) {
+    if (!agg && (needsRefreshRef.current || isAggPreviousRef.current)) {
       // mode entry (agg to nonAgg)
       if (isAggPreviousRef.current) syncNonAggRef.current(renderer);
       refreshNonAggRef.current(renderer);
+      needsRefreshRef.current = false;
     }
     isAggPreviousRef.current = agg;
 
     const { aggResources, nonAggResources } = renderer;
     const { camera, scene } = agg ? aggResources : nonAggResources;
+    updateSlotHighlight(renderer.highlight, renderer.renderer.domElement.width);
     renderer.renderer.render(scene, camera);
   }, [rendererRef]);
 
-  const requestRender = useFrameRender(renderActive);
+  // highlight changes only redraw; data, range and view changes also refresh the axis max
+  const requestHighlightRender = useFrameRender(renderActive);
+  const requestRender = useCallback(() => {
+    needsRefreshRef.current = true;
+    requestHighlightRender();
+  }, [requestHighlightRender]);
+  useSlotHighlightRender(requestHighlightRender);
 
   /**
    * Query data for new range and optionally update camera.

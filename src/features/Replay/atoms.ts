@@ -50,6 +50,8 @@ export const [nextQueryIdByKeyAtom, reserveNextQueryIdAtom] = (function () {
   ];
 })();
 
+const _selectedSlotAtom = atom<number | undefined>(undefined);
+
 type Playback =
   | { kind: "live"; windowSizeMs: number }
   | { kind: "paused"; range: TsRange }
@@ -97,6 +99,7 @@ export const {
   const setLiveAtom = atom(null, (_get, set, windowSizeMs: number) => {
     set(playbackAtom, { kind: "live", windowSizeMs });
     set(playbackRateAtom, 1);
+    set(_selectedSlotAtom, undefined);
   });
 
   const playbackNowAtom = atom(0);
@@ -285,43 +288,8 @@ export const [
     if (get(hoveredAggShredsAtom) != null) return undefined;
 
     const cursorMs = get(hoveredMsAtom);
-    const referenceNs = get(referenceNsAtom);
-    if (cursorMs == null || referenceNs == null) return;
-
-    // only spotlight slot if in non-aggregate slot mode
-    const visibleRange = get(visibleRangeAtom);
-    if (!visibleRange || get(isAggHeaderVisibleAtom)) return;
-
-    const { slotGroups, tileSlotGroups } = get(timelineSlotsAtom);
-
-    const { startIdx, endIdx } = getSlotDrawTileIdxs(referenceNs, visibleRange);
-
-    const leaderSlots = new Set<number>();
-    for (let tileIdx = startIdx; tileIdx <= endIdx; tileIdx++) {
-      const tileGroups = tileSlotGroups.get(tileIdx);
-      if (!tileGroups) continue;
-      for (const leaderSlot of tileGroups) leaderSlots.add(leaderSlot);
-    }
-    if (leaderSlots.size === 0) return;
-
-    const descLeaders = [...leaderSlots].sort((a, b) => b - a);
-
-    // find highest slot number under the cursor.
-    for (const leaderSlot of descLeaders) {
-      const group = slotGroups.get(leaderSlot);
-      if (!group) continue;
-
-      for (
-        let slotNumber = leaderSlot + slotsPerLeader - 1;
-        slotNumber >= leaderSlot;
-        slotNumber--
-      ) {
-        const slot = group.slots.get(slotNumber);
-        if (slot && slot.startMs <= cursorMs && cursorMs <= slot.endMs) {
-          return slot.slot;
-        }
-      }
-    }
+    if (cursorMs == null) return;
+    return getSlotAtMs(get, cursorMs);
   });
 
   return [
@@ -340,6 +308,64 @@ export const [
   ] as const;
 })();
 
+// the slot drawn on top at ms: the selected slot's group is raised, else the highest slot; only in non-aggregate slot mode
+function getSlotAtMs(get: Getter, ms: number) {
+  const referenceNs = get(referenceNsAtom);
+  const visibleRange = get(visibleRangeAtom);
+  if (referenceNs == null || !visibleRange || get(isAggHeaderVisibleAtom))
+    return;
+
+  const { slotGroups, tileSlotGroups } = get(timelineSlotsAtom);
+
+  const selectedSlot = get(_selectedSlotAtom);
+  const selectedGroup =
+    selectedSlot === undefined
+      ? undefined
+      : slotGroups.get(getSlotGroupLeader(selectedSlot));
+  if (selectedGroup) {
+    let topSlot: number | undefined;
+    for (const { slot, startMs, endMs } of selectedGroup.slots.values()) {
+      if (ms < startMs || endMs < ms) continue;
+      if (slot === selectedSlot) return slot;
+      if (topSlot === undefined || slot > topSlot) topSlot = slot;
+    }
+    if (topSlot !== undefined) return topSlot;
+  }
+
+  const { startIdx, endIdx } = getSlotDrawTileIdxs(referenceNs, visibleRange);
+
+  const leaderSlots = new Set<number>();
+  for (let tileIdx = startIdx; tileIdx <= endIdx; tileIdx++) {
+    const tileGroups = tileSlotGroups.get(tileIdx);
+    if (!tileGroups) continue;
+    for (const leaderSlot of tileGroups) leaderSlots.add(leaderSlot);
+  }
+  if (leaderSlots.size === 0) return;
+
+  const descLeaders = [...leaderSlots].sort((a, b) => b - a);
+
+  for (const leaderSlot of descLeaders) {
+    const group = slotGroups.get(leaderSlot);
+    if (!group) continue;
+
+    for (
+      let slotNumber = leaderSlot + slotsPerLeader - 1;
+      slotNumber >= leaderSlot;
+      slotNumber--
+    ) {
+      const slot = group.slots.get(slotNumber);
+      if (slot && slot.startMs <= ms && ms <= slot.endMs) {
+        return slot.slot;
+      }
+    }
+  }
+}
+
+export interface SlotRange {
+  group: TsRange;
+  slot: TsRange;
+}
+
 /**
  * Full SlotInfo for the hovered slot (startMs/endMs/isSkipped/isMine), resolved
  * from the timeline slots.
@@ -353,23 +379,13 @@ export const hoveredSlotInfoAtom = atom<SlotInfo | undefined>((get) => {
   return group?.slots.get(hoveredSlot);
 });
 
-/**
- * ms ranges of the hovered slot and group, resolved from the
- * hovered slot against the timeline slot
- */
-export const hoveredRangeAtom = atom<
-  | {
-      group: TsRange;
-      slot: TsRange;
-    }
-  | undefined
->((get) => {
-  const slotInfo = get(hoveredSlotInfoAtom);
-  if (!slotInfo) return;
+function getSlotRange(get: Getter, slot: number | undefined) {
+  if (slot === undefined) return;
 
   const { slotGroups } = get(timelineSlotsAtom);
-  const group = slotGroups.get(getSlotGroupLeader(slotInfo.slot));
-  if (!group || group.slots.size === 0) return;
+  const group = slotGroups.get(getSlotGroupLeader(slot));
+  const slotInfo = group?.slots.get(slot);
+  if (!group || group.slots.size === 0 || !slotInfo) return;
 
   let groupStartMs = Infinity;
   let groupEndMs = -Infinity;
@@ -381,8 +397,34 @@ export const hoveredRangeAtom = atom<
   return {
     group: [groupStartMs, groupEndMs],
     slot: [slotInfo.startMs, slotInfo.endMs],
-  };
+  } satisfies SlotRange;
+}
+
+export const hoveredRangeAtom = atom((get) =>
+  getSlotRange(get, get(hoveredSlotAtom)),
+);
+
+export const selectedSlotAtom = atom((get) => {
+  const visibleRange = get(visibleRangeAtom);
+  if (!visibleRange || get(isAggHeaderVisibleAtom)) return;
+  return get(_selectedSlotAtom);
 });
+
+// a slot drawn at the point (overlapping shreds) wins over the slot at ms
+export const selectSlotAtMsAtom = atom(
+  null,
+  (get, set, ms: number, drawnSlot?: number) => {
+    set(_selectedSlotAtom, drawnSlot ?? getSlotAtMs(get, ms));
+  },
+);
+
+export const clearSelectedSlotAtom = atom(null, (_get, set) => {
+  set(_selectedSlotAtom, undefined);
+});
+
+export const selectedRangeAtom = atom((get) =>
+  getSlotRange(get, get(selectedSlotAtom)),
+);
 
 export const isFullScreenAtom = (function () {
   const _isFullScreenAtom = atom(false);

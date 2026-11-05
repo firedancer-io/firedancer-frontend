@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import {
-  createRectResources,
+  createUnitQuad,
   createRectMesh,
   disposeRectResources,
   type RectMesh,
@@ -10,7 +10,14 @@ import {
   updateRectMeshCounts,
   type TsRange,
   createRenderer,
+  createRectMaterial,
 } from "../../WebGl/webglUtils.ts";
+import {
+  createSlotHighlight,
+  getRelativeSlot,
+  slotHighlightGlsl,
+  type SlotHighlight,
+} from "../slotHighlight.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils.ts";
 import { msBucketSizes, nsBucketSizes } from "../const.ts";
@@ -58,6 +65,7 @@ const tmpSize = new THREE.Vector2();
 
 export interface RendererObj {
   renderer: THREE.WebGLRenderer;
+  highlight: SlotHighlight;
   aggResources: AggResources;
   nonAggResources: NonAggResources;
   cleanUp: () => void;
@@ -100,8 +108,9 @@ export function setUpRenderers(
   if (!rendererObj) return;
 
   const { renderer, cleanUpRenderer } = rendererObj;
-  const aggResources = setUpAggResources(getWasContextLost);
-  const nonAggResources = setUpNonAggResources(getWasContextLost);
+  const highlight = createSlotHighlight();
+  const nonAggResources = setUpNonAggResources(getWasContextLost, highlight);
+  const aggResources = setUpAggResources(getWasContextLost, highlight);
 
   const cleanUp = () => {
     aggResources.cleanUpResources();
@@ -111,6 +120,7 @@ export function setUpRenderers(
 
   return {
     renderer,
+    highlight,
     aggResources: omit(aggResources, "cleanUpResources"),
     nonAggResources: omit(nonAggResources, "cleanUpResources"),
     cleanUp,
@@ -129,14 +139,33 @@ export function resizeRenderer(rendererObj: RendererObj) {
   }
 }
 
+const timeHighlightFragmentShader = /* glsl */ `
+precision highp float;
+uniform float uOpacity;
+varying vec3 vColor;
+${slotHighlightGlsl}
+void main() {
+  gl_FragColor = vec4(highlightTime(vColor, gl_FragCoord.x), uOpacity);
+}
+`;
+
 export function setUpAggResources(
   getWasContextLost: ContextHelpers["getWasContextLost"],
+  highlight: SlotHighlight,
 ): AggResources & { cleanUpResources: () => void } {
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(0, 1, maxY, minY, 0.5, 10);
   camera.position.z = 1;
 
-  const resources = createRectResources();
+  const resources: RectResources = {
+    unitQuad: createUnitQuad(),
+    // no slots in agg buckets
+    rectMaterial: createRectMaterial(
+      1,
+      timeHighlightFragmentShader,
+      highlight.uniforms,
+    ),
+  };
   const mesh = createRectMesh(resources, AGG_REVENUE_BUCKET_COUNT_THRESHOLD);
   scene.add(mesh.mesh);
 
@@ -272,12 +301,13 @@ export function moveAggCamera(
 
 export function setUpNonAggResources(
   getWasContextLost: ContextHelpers["getWasContextLost"],
+  highlight: SlotHighlight,
 ): NonAggResources & { cleanUpResources: () => void } {
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(0, 1, maxY, minY, 0.5, 10);
   camera.position.z = 1;
 
-  const resources = createTxnResources();
+  const resources = createTxnResources(highlight);
   const tileMeshes = new Map<bigint, TxnMesh>();
   const availableMeshes: TxnMesh[] = [];
 
@@ -304,6 +334,7 @@ export function setUpNonAggResources(
 
 function buildTxnMeshFromTile(
   mesh: TxnMesh,
+  highlight: SlotHighlight,
   tile: TxnMetaTile,
   getRelativeMs: (absoluteNs: bigint) => number,
   cameraReferenceMs: number,
@@ -314,13 +345,20 @@ function buildTxnMeshFromTile(
     mesh.referenceX = referenceX;
     mesh.mesh.position.x = referenceX - cameraReferenceMs;
   }
-  const endIdx = appendTxnsToMesh(mesh, tile, startIdx, getRelativeMs);
+  const endIdx = appendTxnsToMesh(
+    mesh,
+    highlight,
+    tile,
+    startIdx,
+    getRelativeMs,
+  );
   updateTxnMeshCount(mesh, endIdx);
   return endIdx;
 }
 
 function appendTxnsToMesh(
   mesh: TxnMesh,
+  highlight: SlotHighlight,
   tile: TxnMetaTile,
   startIdx: number,
   getRelativeMs: (absoluteNs: bigint) => number,
@@ -354,6 +392,7 @@ function appendTxnsToMesh(
       endMs - startMs,
       txns,
       i,
+      getRelativeSlot(highlight, txns.slots[i]),
     );
     idx++;
   }
@@ -394,7 +433,13 @@ export function syncNonAggMeshes(
     if (tileMeshes.has(tile.startNs)) continue;
 
     const mesh = addTileMesh(rendererObj.nonAggResources, tile.startNs);
-    buildTxnMeshFromTile(mesh, tile, getRelativeMs, cameraReferenceMs);
+    buildTxnMeshFromTile(
+      mesh,
+      rendererObj.highlight,
+      tile,
+      getRelativeMs,
+      cameraReferenceMs,
+    );
   }
 
   // Evicts meshes for tiles no longer cached and return them to the pool to
@@ -522,6 +567,7 @@ export function appendLiveTxns(
   };
   buildTxnMeshFromTile(
     mesh,
+    rendererObj.highlight,
     dataTile,
     getRelativeMs,
     resources.cameraReferenceMs,
