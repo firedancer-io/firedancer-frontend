@@ -1480,8 +1480,13 @@ export enum TileState {
   BlockedOnConflicts = 7,
   BlockedOnNetwork = 8,
   SlotFinish = 9,
-  ExecBatch = 10,
+  Lthash = 10,
   SigverifyBatch = 11,
+  LoadBatch = 12,
+  ValidBatch = 13,
+  ExecBatch = 14,
+  PostExecBatch = 15,
+  LthashBatch = 16,
 }
 
 export const tileStatesGranularitySchema = z.enum(["txn", "txn_batch"]);

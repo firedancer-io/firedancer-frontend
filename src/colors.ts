@@ -270,6 +270,7 @@ export const transactionExecuteTextColor = "#B5B2BC";
 export const transactionPostExecuteSolidColor = "#113264";
 export const transactionPostExecuteColor = `${transactionPostExecuteSolidColor}80`;
 export const transactionPostExecuteTextColor = "#0090FF";
+export const transactionLthashColor = "#128A7F";
 export const transactionErrorOutlineColor = "#A20508";
 export const transactionSuccessOutlineColor = "#13AD4F";
 

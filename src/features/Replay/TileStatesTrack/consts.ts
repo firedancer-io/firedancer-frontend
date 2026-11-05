@@ -10,6 +10,7 @@ import {
   transactionErrorOutlineColor,
   transactionExecuteColor,
   transactionLoadingColor,
+  transactionLthashColor,
   transactionPostExecuteColor,
   transactionSigverifyColor,
   transactionSuccessOutlineColor,
@@ -62,8 +63,13 @@ export const tileStateColors: Record<TileState, string> = {
   [TileState.BlockedOnConflicts]: replayBlockedOnConflictsColor,
   [TileState.BlockedOnNetwork]: replayBlockedOnNetworkColor,
   [TileState.SlotFinish]: replaySlotFinishColor,
-  [TileState.ExecBatch]: transactionExecuteColor,
+  [TileState.Lthash]: transactionLthashColor,
   [TileState.SigverifyBatch]: transactionSigverifyColor,
+  [TileState.LoadBatch]: transactionLoadingColor,
+  [TileState.ValidBatch]: transactionValidateColor,
+  [TileState.ExecBatch]: transactionExecuteColor,
+  [TileState.PostExecBatch]: transactionPostExecuteColor,
+  [TileState.LthashBatch]: transactionLthashColor,
 };
 
 export const tileStateLabels: Record<TileState, string> = {
@@ -77,8 +83,13 @@ export const tileStateLabels: Record<TileState, string> = {
   [TileState.BlockedOnConflicts]: "Conflicts",
   [TileState.BlockedOnNetwork]: "Network",
   [TileState.SlotFinish]: "Finish",
-  [TileState.ExecBatch]: "Exec batch",
+  [TileState.Lthash]: "LtHash",
   [TileState.SigverifyBatch]: "Sigverify batch",
+  [TileState.LoadBatch]: "Load batch",
+  [TileState.ValidBatch]: "Validate batch",
+  [TileState.ExecBatch]: "Exec batch",
+  [TileState.PostExecBatch]: "Post-Exec batch",
+  [TileState.LthashBatch]: "LtHash batch",
 };
 
 const replayStates: TileState[] = [
@@ -94,6 +105,7 @@ const execrpTxnStates: TileState[] = [
   TileState.Execute,
   TileState.PostExecute,
   TileState.Sigverify,
+  TileState.Lthash,
 ];
 
 export const trackStates: Record<
@@ -102,7 +114,14 @@ export const trackStates: Record<
 > = {
   execrp: {
     txn: execrpTxnStates,
-    txn_batch: [TileState.ExecBatch, TileState.SigverifyBatch],
+    txn_batch: [
+      TileState.LoadBatch,
+      TileState.ValidBatch,
+      TileState.ExecBatch,
+      TileState.PostExecBatch,
+      TileState.SigverifyBatch,
+      TileState.LthashBatch,
+    ],
     agg: execrpTxnStates,
   },
   replay: { txn: replayStates, txn_batch: replayStates, agg: replayStates },
@@ -115,8 +134,13 @@ export const coverageStates: Record<TileKind, TileState[]> = {
     TileState.Execute,
     TileState.PostExecute,
     TileState.Sigverify,
+    TileState.Lthash,
+    TileState.LoadBatch,
+    TileState.ValidBatch,
     TileState.ExecBatch,
+    TileState.PostExecBatch,
     TileState.SigverifyBatch,
+    TileState.LthashBatch,
   ],
   replay: replayStates,
 };
