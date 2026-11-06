@@ -6,6 +6,7 @@ import RevenueTxnTooltip from "./RevenueTrack/RevenueTxnTooltip";
 import CpuTooltip from "./CpuTrack/CpuTooltip";
 import ReplaySlotTooltip from "./HeaderTrack/ReplaySlotTooltip";
 import AggHeaderTooltip from "./HeaderTrack/AggHeaderTooltip";
+import { hoveredExecrpTxnAtom } from "./TileStatesTrack/hoverAtoms";
 import {
   isReplayTooltipPinnedAtom,
   tooltipTypeAtom,
@@ -18,7 +19,8 @@ import {
 export default function ReplayTooltip() {
   const tooltipType = useAtomValue(tooltipTypeAtom);
   const isPinned = useAtomValue(isReplayTooltipPinnedAtom);
-  if (isPinned || tooltipType == null) return null;
+  const execrpTxn = useAtomValue(hoveredExecrpTxnAtom);
+  if (isPinned || tooltipType == null || execrpTxn != null) return null;
 
   switch (tooltipType) {
     case TooltipType.Shred:

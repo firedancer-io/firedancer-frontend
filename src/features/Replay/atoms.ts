@@ -33,6 +33,7 @@ import type { ShredEventCounts } from "./ShredsTrack/atoms";
 import { aggShredEvents } from "./ShredsTrack/const";
 import type { RevenueSeries, TxnMetaDetails } from "./RevenueTrack/consts";
 import type { CpuRow } from "./CpuTrack/const";
+import { hoveredExecrpTxnAtom } from "./TileStatesTrack/hoverAtoms";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -372,6 +373,10 @@ export const [
 
     const hoveredShredSlot = get(hoveredShredAtom)?.slot;
     if (hoveredShredSlot != null) return hoveredShredSlot;
+
+    const hoveredExecrpSlot = get(hoveredExecrpTxnAtom)?.slot;
+    if (hoveredExecrpSlot != null) return hoveredExecrpSlot;
+
     if (get(hoveredAggShredsAtom) != null) return undefined;
     const hoveredRevenueTxnSlot = get(hoveredRevenueTxnAtom)?.slot;
     if (hoveredRevenueTxnSlot != null) return hoveredRevenueTxnSlot;

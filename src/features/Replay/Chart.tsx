@@ -23,6 +23,7 @@ import HoverOverlay from "./HoverOverlay.tsx";
 import HoveredTsLine from "./HoveredTsLine.tsx";
 import ReplayTooltip from "./ReplayTooltip.tsx";
 import OverlapTooltip from "./HeaderTrack/OverlapTooltip.tsx";
+import ExecrpTxnTooltip from "./TileStatesTrack/ExecrpTxnTooltip.tsx";
 import { useHoveredPosition, type HoveredRect } from "./useHoveredPosition.ts";
 
 const store = getDefaultStore();
@@ -135,6 +136,7 @@ export default function Chart() {
             <HoveredTsLine />
             <ReplayTooltip />
             <OverlapTooltip />
+            <ExecrpTxnTooltip />
           </Flex>
         </>
       )}
