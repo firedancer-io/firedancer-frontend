@@ -1449,6 +1449,25 @@ export const aggRevenueSchema = z.object({
   [RevenueType.Tips]: z.array(z.coerce.bigint().nullable()),
 });
 
+const int32ArraySchema = z
+  .number()
+  .array()
+  .transform((a) => Int32Array.from(a));
+const float64ArraySchema = z
+  .number()
+  .array()
+  .transform((a) => Float64Array.from(a));
+// null -> NaN
+const nullableFloat64ArraySchema = z
+  .number()
+  .nullable()
+  .array()
+  .transform((a) => Float64Array.from(a, (v) => v ?? NaN));
+const bigInt64ArraySchema = z.coerce
+  .bigint()
+  .array()
+  .transform((a) => BigInt64Array.from(a));
+
 const chunkWindowSchema = z.object({
   chunk_ts: z.coerce.bigint(),
   chunk_dur: z.coerce.bigint(),
@@ -1468,16 +1487,16 @@ function chunkedSchema<T extends z.ZodRawShape>(chunk: z.ZodObject<T>) {
 const txnMetaChunkSchema = z.object({
   reference_slot: z.number().nullable(),
   reference_ts: z.coerce.bigint().nullable(),
-  slot_delta: z.number().array(),
-  txn_idx: z.number().array(),
-  txn_exec_idx: z.number().array(),
-  txn_sigverify_exec_idx: z.number().nullable().array(),
-  txn_transaction_fee: z.coerce.bigint().array(),
-  txn_priority_fee: z.coerce.bigint().array(),
-  txn_tips: z.coerce.bigint().array(),
-  txn_load_start_ts_delta: z.coerce.bigint().array(),
-  txn_commit_end_ts_delta: z.coerce.bigint().array(),
-  txn_error_code: z.number().array(),
+  slot_delta: int32ArraySchema,
+  txn_idx: int32ArraySchema,
+  txn_exec_idx: int32ArraySchema,
+  txn_sigverify_exec_idx: nullableFloat64ArraySchema,
+  txn_transaction_fee: bigInt64ArraySchema,
+  txn_priority_fee: bigInt64ArraySchema,
+  txn_tips: bigInt64ArraySchema,
+  txn_load_start_ts_delta: bigInt64ArraySchema,
+  txn_commit_end_ts_delta: bigInt64ArraySchema,
+  txn_error_code: int32ArraySchema,
 });
 
 export const txnMetaResponseSchema = chunkedSchema(txnMetaChunkSchema);
@@ -1504,25 +1523,6 @@ export enum TileState {
 
 export const tileStatesGranularitySchema = z.enum(["txn", "txn_batch"]);
 export const TileStatesGranularityEnum = tileStatesGranularitySchema.enum;
-
-const int32ArraySchema = z
-  .number()
-  .array()
-  .transform((a) => Int32Array.from(a));
-const float64ArraySchema = z
-  .number()
-  .array()
-  .transform((a) => Float64Array.from(a));
-// null -> NaN
-const nullableFloat64ArraySchema = z
-  .number()
-  .nullable()
-  .array()
-  .transform((a) => Float64Array.from(a, (v) => v ?? NaN));
-const bigInt64ArraySchema = z.coerce
-  .bigint()
-  .array()
-  .transform((a) => BigInt64Array.from(a));
 
 const tileStatesChunkSchema = z.object({
   start_ts: z.coerce.bigint(),

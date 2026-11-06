@@ -65,10 +65,18 @@ function parseTxnMeta(meta: TimelineTxnMetaChunk | undefined): TxnMetaColumns {
 
   const numTxns = meta.slot_delta.length;
   const slots = new Array<number>(numTxns);
+  const txn_exec_idx = new Array<number>(numTxns);
+  const txn_transaction_fee = new Array<bigint>(numTxns);
+  const txn_priority_fee = new Array<bigint>(numTxns);
+  const txn_tips = new Array<bigint>(numTxns);
   const txn_load_start_ms = new Array<number>(numTxns);
   const txn_commit_end_ms = new Array<number>(numTxns);
   for (let i = 0; i < numTxns; i++) {
     slots[i] = refSlot + meta.slot_delta[i];
+    txn_exec_idx[i] = meta.txn_exec_idx[i];
+    txn_transaction_fee[i] = meta.txn_transaction_fee[i];
+    txn_priority_fee[i] = meta.txn_priority_fee[i];
+    txn_tips[i] = meta.txn_tips[i];
     txn_load_start_ms[i] = calcRelativeMs(
       referenceNs,
       refTs + meta.txn_load_start_ts_delta[i],
@@ -81,10 +89,10 @@ function parseTxnMeta(meta: TimelineTxnMetaChunk | undefined): TxnMetaColumns {
 
   return {
     slots,
-    txn_exec_idx: meta.txn_exec_idx,
-    txn_transaction_fee: meta.txn_transaction_fee,
-    txn_priority_fee: meta.txn_priority_fee,
-    txn_tips: meta.txn_tips,
+    txn_exec_idx,
+    txn_transaction_fee,
+    txn_priority_fee,
+    txn_tips,
     txn_load_start_ms,
     txn_commit_end_ms,
   };
