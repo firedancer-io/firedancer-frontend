@@ -20,7 +20,10 @@ const store = getDefaultStore();
 
 export const txnMetaRequests = createPendingRequests<TimelineTxnMeta>();
 
-type TxnMetaMaxima = Record<RevenueSeries, bigint>;
+type TxnMetaMaxima = Record<RevenueSeries, bigint> & {
+  /** Longest drawn bar (commit end − load start) in the tile */
+  maxBarMs: number;
+};
 
 export interface TxnMetaColumns {
   slots: number[];
@@ -169,6 +172,7 @@ function computeMaxima(txns: TxnMetaColumns): TxnMetaMaxima {
   let maxFees = 0n;
   let maxTips = 0n;
   let maxIncome = 0n;
+  let maxBarMs = 0;
   const count = itemCount(txns);
   for (let i = 0; i < count; i++) {
     const fees = txns.txn_transaction_fee[i] + txns.txn_priority_fee[i];
@@ -177,11 +181,14 @@ function computeMaxima(txns: TxnMetaColumns): TxnMetaMaxima {
     if (fees > maxFees) maxFees = fees;
     if (tips > maxTips) maxTips = tips;
     if (income > maxIncome) maxIncome = income;
+    const barMs = txns.txn_commit_end_ms[i] - txns.txn_load_start_ms[i];
+    if (barMs > maxBarMs) maxBarMs = barMs;
   }
   return {
     [RevenueSeries.Fees]: maxFees,
     [RevenueSeries.Tips]: maxTips,
     [RevenueSeries.Income]: maxIncome,
+    maxBarMs,
   };
 }
 
