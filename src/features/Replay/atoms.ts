@@ -20,6 +20,9 @@ import { atomWithImmer } from "jotai-immer";
 import { onFrameUpdate } from "../../frameLoop";
 import type { ShredEventTsDeltas } from "../Shreds/types";
 import { atomWithIsSameCheck } from "../../atomUtils";
+import type { AggGranularity } from "../../api/types";
+import type { ShredEventCounts } from "./ShredsTrack/atoms";
+import { aggShredEvents } from "./ShredsTrack/const";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -274,6 +277,7 @@ export const [
   const hoveredSlotAtom = atom<number | undefined>((get) => {
     const hoveredShredSlot = get(hoveredShredAtom)?.slot;
     if (hoveredShredSlot != null) return hoveredShredSlot;
+    if (get(hoveredAggShredsAtom) != null) return undefined;
 
     const cursorMs = get(hoveredMsAtom);
     const referenceNs = get(referenceNsAtom);
@@ -452,14 +456,34 @@ function isSameHoveredShred(a: HoveredShred, b: HoveredShred): boolean {
 export const hoveredShredAtom =
   atomWithIsSameCheck<HoveredShred>(isSameHoveredShred);
 
+export interface HoveredAggShreds {
+  bucketIdx: number;
+  granularity: AggGranularity;
+  counts: ShredEventCounts;
+}
+
+function isSameHoveredAggShred(a: HoveredAggShreds, b: HoveredAggShreds) {
+  return (
+    a.bucketIdx === b.bucketIdx &&
+    a.granularity === b.granularity &&
+    aggShredEvents.every(({ type }) => a.counts[type] === b.counts[type])
+  );
+}
+
+export const hoveredAggShredsAtom = atomWithIsSameCheck<HoveredAggShreds>(
+  isSameHoveredAggShred,
+);
+
 /** Which tooltip the Replay chart should show for the current hover. */
 export enum TooltipType {
   Shred,
+  AggShred,
   Slot,
 }
 
 export const tooltipTypeAtom = atom<TooltipType | null>((get) => {
   if (get(hoveredShredAtom) != null) return TooltipType.Shred;
+  if (get(hoveredAggShredsAtom) != null) return TooltipType.AggShred;
   if (get(hoveredSlotInfoAtom) != null) return TooltipType.Slot;
   return null;
 });

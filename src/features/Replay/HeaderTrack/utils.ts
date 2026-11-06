@@ -19,7 +19,7 @@ import {
   type RendererObj,
 } from "./const";
 import { omit } from "lodash";
-import type { SlotBucketsByGranularity } from "./aggAtoms";
+import { getSlotCount, type SlotBucketsByGranularity } from "./aggAtoms";
 import { getAggGranularity } from "./useAggHeaderQuery";
 import { OVERSCAN_BUCKETS } from "../useAggQuery";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
@@ -160,14 +160,11 @@ export function drawAggSlots(
     const slotCounts = slotsByBucketIdx.get(bucketIdx);
     if (!slotCounts) continue;
 
-    const { start_slot, end_slot, skipped } = slotCounts;
-    const slotCount =
-      start_slot != null && end_slot != null && end_slot >= start_slot
-        ? end_slot - start_slot + 1
-        : 0;
+    const { skipped } = slotCounts;
+    const slotCount = getSlotCount(slotCounts);
 
     // don't draw empty buckets
-    if (slotCount === 0) continue;
+    if (!slotCount) continue;
 
     const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
 

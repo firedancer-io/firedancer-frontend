@@ -14,6 +14,15 @@ export interface SlotCounts {
   mine_skipped: number | null;
 }
 
+export function getSlotCount(
+  slotCounts: Pick<SlotCounts, "start_slot" | "end_slot"> | undefined,
+): number | undefined {
+  const start = slotCounts?.start_slot;
+  const end = slotCounts?.end_slot;
+  if (start == null || end == null || end < start) return undefined;
+  return end - start + 1;
+}
+
 /**
  * Buckets start at idx 0 for 0n absolute ns ts
  */
