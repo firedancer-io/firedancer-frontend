@@ -1,0 +1,15 @@
+.positioner {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: none;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.border {
+  box-sizing: border-box;
+  border: 1px solid #fff;
+  border-radius: 4px;
+}

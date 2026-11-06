@@ -15,12 +15,12 @@ const chartId = "revenue-track";
 /**
  * At most, how many buckets should be visible
  */
-export const AGG_BUCKET_COUNT_THRESHOLD = 600;
+export const AGG_REVENUE_BUCKET_COUNT_THRESHOLD = 600;
 export function getGranularity(windowSizeMs: number) {
   return getAggGranularityForQuery(
     QUERY_KEY,
     windowSizeMs,
-    AGG_BUCKET_COUNT_THRESHOLD,
+    AGG_REVENUE_BUCKET_COUNT_THRESHOLD,
   );
 }
 

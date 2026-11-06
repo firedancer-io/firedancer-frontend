@@ -2,9 +2,13 @@ import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../nowAtoms";
 import type { TsRange } from "../WebGl/webglUtils";
 import { atom, type Getter, type Setter } from "jotai";
+import { selectAtom } from "jotai/utils";
 import { CHART_NOW_DELAY_MS, type PlaybackRate } from "./const";
 import {
+  calcAbsoluteNs,
   calcRelativeMs,
+  getAggSlotsGranularity,
+  getBucketIdx,
   getInitVisibleRange,
   getSlotDrawTileIdxs,
 } from "./utils";
@@ -13,7 +17,7 @@ import { timelineSlotsAtom } from "./HeaderTrack/nonAggAtoms";
 import type { SlotInfo } from "./HeaderTrack/nonAggAtoms";
 import { getSlotGroupLeader } from "../../utils";
 import { slotsPerLeader } from "../../consts";
-import { isAggregate } from "./HeaderTrack/utils";
+import { isAggHeaderVisibleAtom } from "./HeaderTrack/aggAtoms";
 import type { TrackId } from "./layout";
 import type { SetStateAction } from "react";
 import { atomWithImmer } from "jotai-immer";
@@ -285,7 +289,7 @@ export const [
 
     // only spotlight slot if in non-aggregate slot mode
     const visibleRange = get(visibleRangeAtom);
-    if (!visibleRange || isAggregate(visibleRange)) return;
+    if (!visibleRange || get(isAggHeaderVisibleAtom)) return;
 
     const { slotGroups, tileSlotGroups } = get(timelineSlotsAtom);
 
@@ -474,16 +478,61 @@ export const hoveredAggShredsAtom = atomWithIsSameCheck<HoveredAggShreds>(
   isSameHoveredAggShred,
 );
 
+export interface HoveredAggHeader {
+  bucketIdx: number;
+  granularity: AggGranularity;
+}
+
 /** Which tooltip the Replay chart should show for the current hover. */
 export enum TooltipType {
   Shred,
   AggShred,
   Slot,
+  AggHeader,
 }
 
 export const tooltipTypeAtom = atom<TooltipType | null>((get) => {
+  if (get(hoveredMsAtom) == null) return null;
+
   if (get(hoveredShredAtom) != null) return TooltipType.Shred;
   if (get(hoveredAggShredsAtom) != null) return TooltipType.AggShred;
+
+  // fallback non-agg tooltip
   if (get(hoveredSlotInfoAtom) != null) return TooltipType.Slot;
+
+  // fallback agg tooltip
+  if (get(hoveredAggHeaderAtom) != null) return TooltipType.AggHeader;
   return null;
 });
+
+export const hoveredAggHeaderAtom = selectAtom(
+  atom<HoveredAggHeader | undefined>((get) => {
+    const cursorMs = get(hoveredMsAtom);
+    const referenceNs = get(referenceNsAtom);
+    const visibleRange = get(visibleRangeAtom);
+    if (
+      cursorMs == null ||
+      referenceNs == null ||
+      !visibleRange ||
+      !get(isAggHeaderVisibleAtom)
+    )
+      return;
+
+    const granularity = getAggSlotsGranularity(
+      visibleRange[1] - visibleRange[0],
+    );
+    const bucketIdx = getBucketIdx(
+      calcAbsoluteNs(referenceNs, cursorMs),
+      granularity,
+      false,
+    );
+    return { bucketIdx, granularity };
+  }),
+  (hovered) => hovered,
+  (a, b) =>
+    a === b ||
+    (a != null &&
+      b != null &&
+      a.bucketIdx === b.bucketIdx &&
+      a.granularity === b.granularity),
+);

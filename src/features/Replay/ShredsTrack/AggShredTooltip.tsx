@@ -2,15 +2,18 @@ import { useAtomValue } from "jotai";
 import { AggShredEventType } from "../../../api/entities";
 import RowSeparator from "../../../components/RowSeparator";
 import ReplayCursorTooltip, {
-  TooltipHeader,
+  AggTooltipHeader,
   TooltipRow,
   CursorTimestampRow,
 } from "../Tooltip";
-import { formatTooltipTime } from "../Tooltip/utils";
 import { nsBucketSizes } from "../const";
 import { hoveredAggShredsAtom, type HoveredAggShreds } from "../atoms";
-import { useAggSlotsCount } from "../HeaderTrack/useAggSlotsCount";
-import { getSlotCount } from "../HeaderTrack/aggAtoms";
+import { useAggBucket } from "../useAggBucket";
+import {
+  aggHeaderEmitterAtom,
+  aggSlotsAtom,
+  getSlotCount,
+} from "../HeaderTrack/aggAtoms";
 import { aggShredEvents } from "./const";
 import styles from "./shredTooltip.module.css";
 
@@ -39,7 +42,12 @@ interface AggShredTooltipContentProps {
 function AggShredTooltipContent({ hovered }: AggShredTooltipContentProps) {
   const { bucketIdx, granularity, counts } = hovered;
 
-  const slotCounts = useAggSlotsCount(granularity, bucketIdx);
+  const slotCounts = useAggBucket(
+    aggSlotsAtom,
+    aggHeaderEmitterAtom,
+    granularity,
+    bucketIdx,
+  );
 
   const bucketSizeNs = nsBucketSizes[granularity];
   const startNs = BigInt(bucketIdx) * bucketSizeNs;
@@ -49,14 +57,11 @@ function AggShredTooltipContent({ hovered }: AggShredTooltipContentProps) {
 
   return (
     <>
-      <TooltipHeader>
-        <span className={styles.aggHeader}>
-          <span>
-            {formatTooltipTime(startNs)} – {formatTooltipTime(endNs)}
-          </span>
-          <span className={styles.aggHeaderGranularity}>{granularity}</span>
-        </span>
-      </TooltipHeader>
+      <AggTooltipHeader
+        startNs={startNs}
+        endNs={endNs}
+        granularity={granularity}
+      />
 
       <RowSeparator />
       {aggShredEvents.map(({ type, label }) => (

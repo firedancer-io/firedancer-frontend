@@ -6,6 +6,11 @@ import { getBucketIdx } from "../utils";
 
 export const drawEventType = "draw";
 
+/**
+ * Whether the aggregate header is currently shown
+ */
+export const isAggHeaderVisibleAtom = atom(false);
+
 export interface SlotCounts {
   start_slot: number | null;
   end_slot: number | null;

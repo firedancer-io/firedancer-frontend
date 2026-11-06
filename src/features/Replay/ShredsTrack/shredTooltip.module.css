@@ -25,16 +25,3 @@
 .skipped-color {
   color: var(--shred-skipped-color);
 }
-
-.agg-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 14px;
-  white-space: nowrap;
-}
-
-.agg-header-granularity {
-  font-weight: 400;
-  color: var(--replay-slot-tooltip-label-color);
-}

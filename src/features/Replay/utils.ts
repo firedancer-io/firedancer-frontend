@@ -1,11 +1,13 @@
 import { nsPerMs } from "../../consts.ts";
 import {
+  AGG_BUCKET_COUNT_THRESHOLD,
   ascBucketGranularities,
   DEFAULT_WINDOW_MS,
   minAggGranularities,
   msBucketSizes,
   nsBucketSizes,
 } from "./const.ts";
+import { AGG_SLOTS_QUERY_KEY } from "./useSlotsQuery.ts";
 import { clamp } from "../../uplotReact/utils.ts";
 import type { TsRange } from "../WebGl/webglUtils.ts";
 import { convertToNsTimestamp } from "../../mathUtils.ts";
@@ -226,5 +228,13 @@ export function getAggGranularityForQuery(
         windowSizeMs < bucketCountThreshold * msBucketSizes[g]
       );
     }) ?? ascBucketGranularities[ascBucketGranularities.length - 1]
+  );
+}
+
+export function getAggSlotsGranularity(windowSizeMs: number) {
+  return getAggGranularityForQuery(
+    AGG_SLOTS_QUERY_KEY,
+    windowSizeMs,
+    AGG_BUCKET_COUNT_THRESHOLD,
   );
 }
