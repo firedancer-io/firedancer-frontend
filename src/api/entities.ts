@@ -1449,9 +1449,23 @@ export const aggRevenueSchema = z.object({
   [RevenueType.Tips]: z.array(z.coerce.bigint().nullable()),
 });
 
-export const txnMetaResponseSchema = z.object({
+const chunkWindowSchema = z.object({
+  chunk_ts: z.coerce.bigint(),
+  chunk_dur: z.coerce.bigint(),
+});
+
+const availableRangeSchema = z.object({
   available_start_ns: z.coerce.bigint().nullable(),
   available_end_ns: z.coerce.bigint().nullable(),
+});
+
+function chunkedSchema<T extends z.ZodRawShape>(chunk: z.ZodObject<T>) {
+  return availableRangeSchema.extend({
+    chunks: chunk.extend(chunkWindowSchema.shape).array(),
+  });
+}
+
+const txnMetaChunkSchema = z.object({
   reference_slot: z.number().nullable(),
   reference_ts: z.coerce.bigint().nullable(),
   slot_delta: z.number().array(),
@@ -1465,6 +1479,8 @@ export const txnMetaResponseSchema = z.object({
   txn_commit_end_ts_delta: z.coerce.bigint().array(),
   txn_error_code: z.number().array(),
 });
+
+export const txnMetaResponseSchema = chunkedSchema(txnMetaChunkSchema);
 
 export enum TileState {
   Idle = 0,
@@ -1503,10 +1519,7 @@ const bigInt64ArraySchema = z.coerce
   .array()
   .transform((a) => BigInt64Array.from(a));
 
-export const tileStatesResponseSchema = z.object({
-  granularity: tileStatesGranularitySchema,
-  available_start_ns: z.coerce.bigint().nullable(),
-  available_end_ns: z.coerce.bigint().nullable(),
+const tileStatesChunkSchema = z.object({
   start_ts: z.coerce.bigint(),
   reference_slot: z.number().nullable(),
   tile: z.number().nullable().array(),
@@ -1522,6 +1535,10 @@ export const tileStatesResponseSchema = z.object({
   txn_idx: int32ArraySchema,
   txn_error_code: nullableFloat64ArraySchema,
 });
+
+export const tileStatesResponseSchema = chunkedSchema(
+  tileStatesChunkSchema,
+).extend({ granularity: tileStatesGranularitySchema });
 
 export const aggTileStatesSchema = z.object({
   granularity: aggGranularitySchema,
@@ -1572,8 +1589,7 @@ export const timelineSlotsSchema = z.object({
 
 export const shredsGranularitySchema = z.enum(["shred", "fec"]);
 export const ShredsGranularityEnum = shredsGranularitySchema.enum;
-export const timelineShredsSchema = z.object({
-  granularity: shredsGranularitySchema,
+const timelineShredsChunkSchema = z.object({
   reference_slot: z.number().nullable(),
   reference_ts: z.coerce.bigint().nullable(),
   slot_delta: int32ArraySchema,
@@ -1582,6 +1598,10 @@ export const timelineShredsSchema = z.object({
   event_ts_delta: bigInt64ArraySchema,
   skipped: int32ArraySchema,
 });
+
+export const timelineShredsSchema = chunkedSchema(
+  timelineShredsChunkSchema,
+).extend({ granularity: shredsGranularitySchema });
 
 export enum TimelineEventType {
   LeaderSkip = 0,

@@ -113,7 +113,6 @@ export function createTileCache<TData, TMeta>({
   let lastStartNs: bigint | null = null;
   let lastEndNs: bigint | null = null;
   let lastWorldEndNs: bigint | null = null;
-  let availableEndNs: bigint | null = null;
   let inFlightTileId: number | null = null;
 
   const live: LiveState<TData> = {
@@ -175,6 +174,9 @@ export function createTileCache<TData, TMeta>({
 
       if (id === liveTileId && live.acc) {
         data.push(live.acc.data);
+        if (bigIntMin(endNs, getRange(id)[1]) > live.acc.fetchedEndNs) {
+          hasAllTilesCached = false;
+        }
         continue;
       }
 
@@ -249,14 +251,7 @@ export function createTileCache<TData, TMeta>({
       empty,
       merge,
       filterOwned,
-      fetch: async (window) => {
-        const result = await fetch(window, Number(uniqueId()));
-        const resultEndNs = "value" in result ? result.availableEndNs : null;
-        if (resultEndNs != null && resultEndNs > (availableEndNs ?? -1n)) {
-          availableEndNs = resultEndNs;
-        }
-        return result;
-      },
+      fetch: (window) => fetch(window, Number(uniqueId())),
       signal,
     });
   }
@@ -300,10 +295,19 @@ export function createTileCache<TData, TMeta>({
     const { signal } = controller;
     requestedTilesForView.add(tileId);
     inFlightTileId = tileId;
-    const { data, canRetry } = await fetchDataForRange(getRange(tileId));
-    if (signal.aborted) return;
+    const [tileStartNs, tileEndNs] = getRange(tileId);
+    const data = empty();
+    let fetchedEndNs = tileStartNs - 1n;
+    // responses can stop short of the window, so request the rest
+    while (fetchedEndNs < tileEndNs) {
+      const result = await fetchDataForRange([fetchedEndNs + 1n, tileEndNs]);
+      if (signal.aborted) return;
+      if (result.canRetry || result.fetchedEndNs <= fetchedEndNs) break;
+      merge(data, result.data);
+      fetchedEndNs = result.fetchedEndNs;
+    }
 
-    if (!canRetry) cacheTile(tileId, data);
+    if (fetchedEndNs === tileEndNs) cacheTile(tileId, data);
     inFlightTileId = null;
     void fetchNextTile();
   }
@@ -330,14 +334,17 @@ export function createTileCache<TData, TMeta>({
     if (endNs < startNs) return false;
 
     const { signal } = controller;
-    const { data, canRetry } = await fetchDataForRange([startNs, endNs]);
+    const { data, canRetry, fetchedEndNs } = await fetchDataForRange([
+      startNs,
+      endNs,
+    ]);
     if (signal.aborted) return false;
-    if (canRetry) return true;
+    if (canRetry || fetchedEndNs < startNs) return true;
     if (live.acc === null || startNs !== live.acc.fetchedEndNs + 1n)
       return true;
 
     merge(live.acc.data, data);
-    live.acc.fetchedEndNs = endNs;
+    live.acc.fetchedEndNs = fetchedEndNs;
     const [tileStartNs, tileEndNs] = getRange(live.acc.tileId);
     publish({
       kind: "live",
@@ -350,7 +357,7 @@ export function createTileCache<TData, TMeta>({
       newData: data,
       isNewTile: startNs === tileStartNs,
     });
-    return false;
+    return fetchedEndNs < endNs;
   }
 
   async function advanceLive(worldEndNs: bigint): Promise<void> {
@@ -370,7 +377,13 @@ export function createTileCache<TData, TMeta>({
 
     if (!store.get(isConnectedAtom)) return;
 
-    if (live.acc === null) startLive(worldEndTileId);
+    if (live.acc === null) {
+      // the tile before can still be missing its newest chunks until they're final
+      const prevTileId = worldEndTileId - 1;
+      const isPrevPending =
+        isTileInView(prevTileId) && !tileCache.has(prevTileId);
+      startLive(isPrevPending ? prevTileId : worldEndTileId);
+    }
 
     if (live.inFlight) {
       live.targetEndNs = worldEndNs;
@@ -383,14 +396,13 @@ export function createTileCache<TData, TMeta>({
     live.lastQueryTime = performance.now();
     live.inFlight = true;
 
-    let fetchEndNs = worldEndNs;
-    const serverNowNs = store.get(smoothedNowNsAtom);
-    if (availableEndNs !== null && serverNowNs != null) {
-      const recordedEndNs = availableEndNs - 1n;
-      fetchEndNs = bigIntMax(bigIntMin(serverNowNs, recordedEndNs), worldEndNs);
-    }
+    // request ahead of the world end; the server only returns final chunks
+    const serverNowNs = store.get(smoothedNowNsAtom) ?? worldEndNs;
     const [, worldEndTileEndNs] = getRange(worldEndTileId);
-    fetchEndNs = bigIntMin(fetchEndNs, worldEndTileEndNs);
+    const fetchEndNs = bigIntMin(
+      bigIntMax(serverNowNs, worldEndNs),
+      worldEndTileEndNs,
+    );
     const fetchEndTileId = tileIdOf(fetchEndNs);
 
     const { signal } = controller;
@@ -439,12 +451,13 @@ export function createTileCache<TData, TMeta>({
     lastEndNs = endNs;
     lastWorldEndNs = worldEndNs;
 
+    // start live first so the historical fetch skips the tile live claims
+    if (worldChanged) void advanceLive(worldEndNs);
+
     if (viewChanged) {
       requestedTilesForView.clear();
       void fetchNextTile();
     }
-
-    if (worldChanged) void advanceLive(worldEndNs);
   }
 
   function init(): () => void {
@@ -467,7 +480,6 @@ export function createTileCache<TData, TMeta>({
     lastStartNs = null;
     lastEndNs = null;
     lastWorldEndNs = null;
-    availableEndNs = null;
     live.inFlight = false;
     resetLive();
     publish({ kind: "reset" });

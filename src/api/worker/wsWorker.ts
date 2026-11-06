@@ -59,9 +59,12 @@ function enqueue(item: WsEntity) {
 }
 
 function collectTransferables(item: WsEntity, transfer: Transferable[]) {
-  if (!transferableKeys.includes(item.key) || item.value == null) return;
-  for (const v of Object.values(item.value)) {
-    if (ArrayBuffer.isView(v)) transfer.push(v.buffer);
+  if (item.topic !== "timeline" || !transferableKeys.includes(item.key)) return;
+  if (!("chunks" in item.value)) return;
+  for (const chunk of item.value.chunks) {
+    for (const v of Object.values(chunk)) {
+      if (ArrayBuffer.isView(v)) transfer.push(v.buffer);
+    }
   }
 }
 

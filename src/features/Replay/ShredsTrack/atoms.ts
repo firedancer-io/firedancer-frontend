@@ -131,21 +131,6 @@ export function createShredAtoms() {
         const referenceNs = get(referenceNsAtom);
         if (referenceNs == null) return [];
 
-        const {
-          reference_slot,
-          reference_ts,
-          slot_delta,
-          idx,
-          event,
-          event_ts_delta,
-          skipped,
-        } = data;
-
-        // a null reference means the tile carries no data
-        if (reference_slot == null || reference_ts == null) {
-          return [];
-        }
-
         let touchedSlots: number[] = [];
 
         set(_slotsShredAtom, (prev) => {
@@ -154,25 +139,44 @@ export function createShredAtoms() {
             slots: new Map(),
           };
 
-          const { touchedSlotNumbers } = mergeShredEvents(
-            {
+          const touchedSlotNumbers = new Set<number>();
+          for (const chunk of data.chunks) {
+            const {
               reference_slot,
               reference_ts,
               slot_delta,
               idx,
               event,
               event_ts_delta,
-            },
-            updated,
-          );
+              skipped,
+            } = chunk;
 
-          // mark skipped slots, creating any that have no events yet
-          for (const slotDelta of skipped) {
-            const slotNumber = slotDelta + reference_slot;
-            const slot = updated.slots.get(slotNumber) ?? { shreds: [] };
-            slot.skipped = true;
-            updated.slots.set(slotNumber, slot);
-            touchedSlotNumbers.add(slotNumber);
+            // a null reference means the chunk carries no data
+            if (reference_slot == null || reference_ts == null) continue;
+
+            const merged = mergeShredEvents(
+              {
+                reference_slot,
+                reference_ts,
+                slot_delta,
+                idx,
+                event,
+                event_ts_delta,
+              },
+              updated,
+            );
+            for (const slotNumber of merged.touchedSlotNumbers) {
+              touchedSlotNumbers.add(slotNumber);
+            }
+
+            // mark skipped slots, creating any that have no events yet
+            for (const slotDelta of skipped) {
+              const slotNumber = slotDelta + reference_slot;
+              const slot = updated.slots.get(slotNumber) ?? { shreds: [] };
+              slot.skipped = true;
+              updated.slots.set(slotNumber, slot);
+              touchedSlotNumbers.add(slotNumber);
+            }
           }
 
           // update tile's slots and slots' tiles

@@ -335,7 +335,7 @@ export function useTiledQueries<Granularity extends string>({
    * Mark tile associated with query ID as fetched, and return query info
    */
   const markQueryComplete = useCallback(
-    (queryId: number) => {
+    (queryId: number, chunksEndNs?: bigint) => {
       const queryInfo = pendingQueriesRef.current.get(queryId);
       // query id was not found
       if (queryInfo == null) return;
@@ -346,7 +346,9 @@ export function useTiledQueries<Granularity extends string>({
       pendingQueriesRef.current.delete(queryId);
       tilesState.pending.delete(tileIdx);
 
-      if (isStale) {
+      // a response ending before the tile end leaves it stale
+      const tileEndNs = BigInt(tileIdx + 1) * getTileSizeNs(granularity);
+      if (isStale || (chunksEndNs !== undefined && chunksEndNs < tileEndNs)) {
         tilesState.stale.add(tileIdx);
       } else {
         tilesState.stale.delete(tileIdx);
@@ -360,7 +362,7 @@ export function useTiledQueries<Granularity extends string>({
 
       return queryInfo;
     },
-    [evictTilesIfNeeded, getTileStates],
+    [evictTilesIfNeeded, getTileStates, getTileSizeNs],
   );
 
   const queryWorldEnd = useThrottledCallbackIfVisible(() => {

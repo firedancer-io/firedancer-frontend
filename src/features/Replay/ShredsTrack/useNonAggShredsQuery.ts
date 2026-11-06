@@ -4,7 +4,11 @@ import { useWebSocketSend } from "../../../api/ws/utils";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
 import type { TimelineShreds, ShredsGranularity } from "../../../api/types";
 import { ShredsGranularityEnum } from "../../../api/entities";
-import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
+import {
+  calcAbsoluteNs,
+  getChunksEndNs,
+  useTimelineServerMessage,
+} from "../utils";
 import { drawEventType, getNonAggAtoms } from "./atoms";
 import { nsPerMs } from "../../../consts";
 import { useTiledQueries } from "../useTiledQueries";
@@ -89,9 +93,12 @@ export function useNonAggShredsQuery(
     QUERY_KEY,
     useCallback(
       (message: { id: number; value: TimelineShreds }) => {
-        const queryInfo = markQueryComplete(message.id);
+        const { granularity, chunks } = message.value;
+        const queryInfo = markQueryComplete(
+          message.id,
+          getChunksEndNs(chunks) ?? 0n,
+        );
         if (queryInfo == null) return;
-        const { granularity } = message.value;
         const touchedSlots = store.set(
           getNonAggAtoms(granularity).addShredEvents,
           queryInfo.tileIdx,
