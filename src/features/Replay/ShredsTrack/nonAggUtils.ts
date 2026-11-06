@@ -7,7 +7,11 @@ import {
   createRectMesh,
   updateRectMeshCounts,
 } from "../../WebGl/webglUtils";
-import { createEdgeMaterial } from "./edgeUtils";
+import {
+  createEdgeMaterial,
+  updateEdgeViewWidth,
+  EDGE_RENDER_ORDER_OFFSET,
+} from "../../Shreds/WebGl/edgeUtils";
 import { shredHoverHighlightColor } from "../../../colors";
 import {
   FEC_MESH_CAPACITY,
@@ -374,14 +378,14 @@ export function drawNonAggShreds(
 
   const viewportWidthPx = rendererObj.renderer.domElement.width;
   if (viewportWidthPx > 0) {
-    resources.edgeUniforms.uViewWidthPx.value = viewportWidthPx;
+    updateEdgeViewWidth(resources.edgeResources.rectMaterial, viewportWidthPx);
   }
 
   const edgeOpacity =
     granularity === ShredsGranularityEnum.fec
       ? getFecEdgeOpacity(visibleRange[1] - visibleRange[0])
       : SHRED_EDGE_OPACITY;
-  resources.edgeUniforms.uOpacity.value = edgeOpacity;
+  resources.edgeResources.rectMaterial.uniforms.uOpacity.value = edgeOpacity;
 
   const releaseSlot = (key: string) => {
     releaseMesh(
@@ -557,9 +561,6 @@ function getSlotMesh(
   return { isNewMesh, slotMesh };
 }
 
-// Marks appear above other events for that slot, but below bigger slot numbers' events
-const EDGE_RENDER_ORDER_OFFSET = 0.5;
-
 function getEdgeMesh(
   resources: NonAggRendererResources,
   slotNumber: number,
@@ -575,11 +576,12 @@ function getEdgeMesh(
         granularity === ShredsGranularityEnum.fec
           ? FEC_MESH_CAPACITY
           : SHRED_MESH_CAPACITY,
-        createEdgeMaterial(
-          resources.edgeUniforms,
-          slotFragmentShader,
-          getSlotUniforms(resources.highlight),
-        ),
+        createEdgeMaterial(slotFragmentShader, {
+          ...getSlotUniforms(resources.highlight),
+          uViewWidthPx:
+            resources.edgeResources.rectMaterial.uniforms.uViewWidthPx,
+          uOpacity: resources.edgeResources.rectMaterial.uniforms.uOpacity,
+        }),
       );
     resources.edgeMeshes.set(meshKey, edgeMesh);
     resources.scene.add(edgeMesh.mesh);

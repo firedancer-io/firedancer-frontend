@@ -8,7 +8,10 @@ import {
 import { SHREDS_AGG_THRESHOLD_MS, type RendererObj } from "./const";
 import { omit } from "lodash";
 import { setUpAggResources } from "./aggUtils";
-import { setUpEdgeResources, cleanUpEdgeResources } from "./edgeUtils";
+import {
+  setUpEdgeResources,
+  cleanUpEdgeResources,
+} from "../../Shreds/WebGl/edgeUtils";
 import { SHRED_EVENT_TYPES_COUNT } from "../../../api/entities";
 import { disposeSlotMaterials } from "./nonAggUtils";
 import { createSlotHighlight } from "../slotHighlight";
@@ -31,7 +34,7 @@ export function setUpRenderers(
   baseNonAggResources.scene.add(highlightMesh.mesh);
 
   // Edge mark resources are replay-only
-  const edgeResourceBundle = setUpEdgeResources();
+  const edgeResourceBundle = setUpEdgeResources<string>();
 
   const nonAggResources = {
     ...baseNonAggResources,
