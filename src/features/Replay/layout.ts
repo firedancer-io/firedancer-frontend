@@ -24,10 +24,10 @@ export const ROW_LABEL_PX = 13;
 
 const baseSharePct: Record<TrackId | "votes", number> = {
   shreds: 22,
-  votes: 9,
-  income: 19,
-  banks: 35,
-  replay: 7,
+  votes: 16,
+  income: 14,
+  banks: 30,
+  replay: 10,
   cpu: 8,
 };
 

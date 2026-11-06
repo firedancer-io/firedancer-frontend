@@ -21,21 +21,21 @@ describe("getTrackSharesPct", () => {
   it("uses the base shares", () => {
     expect(getTrackSharesPct(10, 2)).toEqual({
       shreds: 22,
-      income: 19,
-      banks: 35,
-      replay: 7,
+      income: 14,
+      banks: 30,
+      replay: 10,
       cpu: 8,
     });
   });
 
   it("grows banks by 3% per execrp tile over 10 and scales the rest down", () => {
     const shares = getTrackSharesPct(12, 2);
-    expect(shares.banks).toBe(41);
+    expect(shares.banks).toBe(36);
     expect(shares.cpu).toBe(8);
-    const scale = (100 - 41 - 8) / 57;
+    const scale = (100 - 36 - 8) / 62;
     expect(shares.shreds).toBeCloseTo(22 * scale);
-    expect(shares.income).toBeCloseTo(19 * scale);
-    expect(shares.replay).toBeCloseTo(7 * scale);
+    expect(shares.income).toBeCloseTo(14 * scale);
+    expect(shares.replay).toBeCloseTo(10 * scale);
   });
 
   it("caps banks and cpu at 45%", () => {
@@ -49,20 +49,22 @@ describe("getTrackSharesPct", () => {
 });
 
 describe("getTrackHeights", () => {
-  // with votes, the spec's 1181px window leaves 1000px for 6 tracks
-  const spec = { shreds: 220, income: 190, banks: 350, replay: 70, cpu: 80 };
-  const specFree = 1000 - 90;
-
-  it("matches the spec sizes without votes' share, banks in whole rows", () => {
+  it("splits by share, banks in whole rows", () => {
     const heights = getTrackHeights({
-      heightPx: areaFor(specFree),
+      heightPx: areaFor(910),
       tracks: allTracks,
       hidden: new Set(),
       banksRows: 10,
       cpuRows: 2,
     });
-    // 350px floors to 12 + 10 * 33; shreds takes the 8px
-    expect(heights).toEqual({ ...spec, shreds: 228, banks: 342 });
+    // 325px floors to 12 + 10 * 31; shreds takes the 5px left over
+    expect(heights).toEqual({
+      shreds: 243,
+      income: 151,
+      banks: 322,
+      replay: 108,
+      cpu: 86,
+    });
   });
 
   it("rounds banks down to whole rows and gives shreds the leftover", () => {
@@ -75,7 +77,7 @@ describe("getTrackHeights", () => {
     });
     expect(((heights.banks ?? 0) - trackInsetPx.banks) % 7).toBe(0);
     expect(sum(heights)).toBe(917);
-    const shreds = Math.floor((917 * 22) / 91);
+    const shreds = Math.floor((917 * 22) / 84);
     expect(heights.shreds).toBeGreaterThan(shreds);
   });
 
@@ -97,7 +99,7 @@ describe("getTrackHeights", () => {
     expect(hidden.income).toBe(TRACK_TITLE_PX);
     expect(sum(hidden)).toBe(910);
     expect(hidden.cpu).toBeGreaterThan(shown.cpu ?? 0);
-    expect((hidden.replay ?? 0) / (hidden.cpu ?? 1)).toBeCloseTo(7 / 8, 1);
+    expect((hidden.replay ?? 0) / (hidden.cpu ?? 1)).toBeCloseTo(10 / 8, 1);
   });
 
   it("gives leftover pixels to the first visible track when shreds is hidden", () => {
@@ -127,7 +129,7 @@ describe("getTrackHeights", () => {
       cpuRows: 2,
     });
     expect((large.income ?? 0) - (small.income ?? 0)).toBeCloseTo(
-      (53 * 19) / 91,
+      (53 * 14) / 84,
       -0.5,
     );
   });
@@ -140,7 +142,7 @@ describe("getTrackHeights", () => {
       banksRows: 0,
       cpuRows: 2,
     });
-    expect(heights.banks).toBe(350);
+    expect(heights.banks).toBe(325);
     expect(sum(heights)).toBe(910);
   });
 
