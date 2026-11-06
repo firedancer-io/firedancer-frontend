@@ -262,7 +262,6 @@ export const fadedText = "#84858a";
 export const transactionDefaultColor = "rgba(0, 0, 0, .5)";
 export const transactionPreloadingColor = "rgba(125, 94, 84, .5)";
 export const transactionPreloadingTextColor = "#A18072";
-export const transactionSigverifyColor = "#8B5CF6";
 export const transactionValidateColor = "#6C4E62";
 export const transactionLoadingSolidColor = "#9E6C00";
 export const transactionLoadingColor = `${transactionLoadingSolidColor}80`;
@@ -273,7 +272,6 @@ export const transactionExecuteTextColor = "#B5B2BC";
 export const transactionPostExecuteSolidColor = "#113264";
 export const transactionPostExecuteColor = `${transactionPostExecuteSolidColor}80`;
 export const transactionPostExecuteTextColor = "#0090FF";
-export const transactionLthashColor = "#128A7F";
 export const transactionErrorOutlineColor = "#A20508";
 export const transactionSuccessOutlineColor = "#13AD4F";
 
@@ -432,10 +430,17 @@ export const replayDropdownHoverBackgroundColor = "rgba(255, 255, 255, 0.06)";
 export const replayDropdownDividerColor = "#333333";
 
 // Replay states
-export const replayBlockedOnTilesColor = "#A19753";
-export const replayBlockedOnConflictsColor = "#9F5845";
-export const replayBlockedOnNetworkColor = "#486588";
-export const replaySlotFinishColor = "#477F6D";
+export const replayExecrpExecuteColor = "#3B3D41";
+export const replayExecrpValidateColor = "#55585D";
+export const replayExecrpPostExecuteColor = "#6C6F73";
+export const replayExecrpLoadingColor = "#C48225";
+export const replayExecrpSigverifyColor = "#8F6CE0";
+export const replayExecrpLthashColor = "#239382";
+export const replayExecrpLthashBatchColor = "#1A463E";
+export const replayBlockedOnNetworkColor = "#3F6789";
+export const replaySlotFinishColor = "#458B68";
+export const replayBlockedOnConflictsColor = "#D36854";
+export const replayBlockedOnTilesColor = "#AC9834";
 
 // replay votes
 export const votesNotarColor = "#3A8C5F";
