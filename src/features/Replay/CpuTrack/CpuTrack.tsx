@@ -8,7 +8,13 @@ import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import { useFrameRender } from "../../WebGl/useFrameRender.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
-import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
+import {
+  hoveredCpuRowsAtom,
+  referenceNsAtom,
+  visibleRangeAtom,
+  worldRangeAtom,
+} from "../atoms.ts";
+import { useHoveredPosition } from "../useHoveredPosition.ts";
 import TrackControls, {
   TrackControlsToggle,
   type LegendItem,
@@ -96,6 +102,31 @@ function CpuTrackBody({
     },
   });
 
+  const throttledResolveHover = useThrottledCallback(() => {
+    const visibleRange = store.get(visibleRangeAtom);
+    if (!visibleRange) {
+      store.set(hoveredCpuRowsAtom, undefined);
+      return;
+    }
+
+    store.set(hoveredCpuRowsAtom, rows);
+  }, 30);
+
+  const onHoverLeave = useCallback(() => {
+    throttledResolveHover.cancel();
+    store.set(hoveredCpuRowsAtom, undefined);
+  }, [throttledResolveHover]);
+
+  const { setContainer: setHoverContainer, notifyChange: notifyHover } =
+    useHoveredPosition({
+      onHoverChange: throttledResolveHover,
+      onHoverLeave,
+    });
+
+  useLayoutEffect(() => {
+    notifyHover();
+  }, [rows, notifyHover]);
+
   const throttledRangeQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
       const queryGranularity = getAggGranularity(
@@ -164,6 +195,8 @@ function CpuTrackBody({
     const emitter = store.get(aggCpuEmitterAtom);
     emitter.addListener(drawEventType, throttledDrawAndRender);
 
+    setHoverContainer(containerRef.current);
+
     onRangeChange();
 
     return () => {
@@ -171,8 +204,17 @@ function CpuTrackBody({
       throttledRangeQuery.cancel();
       throttledDrawAndRender.cancel();
       unsubscribeRange();
+      setHoverContainer(null);
+      onHoverLeave();
     };
-  }, [onRangeChange, throttledDrawAndRender, throttledRangeQuery]);
+  }, [
+    onRangeChange,
+    throttledDrawAndRender,
+    throttledRangeQuery,
+    setHoverContainer,
+    onHoverLeave,
+    containerRef,
+  ]);
 
   useLayoutEffect(() => {
     if (!rendererRef.current) return;
