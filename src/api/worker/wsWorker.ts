@@ -14,6 +14,7 @@ const flushDelayMs = 32; // ~30fps
 const transferableKeys: WsEntity["key"][] = [
   "query_tile_states",
   "query_shreds",
+  "query_txn_meta",
 ];
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
