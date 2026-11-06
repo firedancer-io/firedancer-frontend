@@ -31,6 +31,7 @@ import { atomWithIsSameCheck } from "../../atomUtils";
 import type { AggGranularity } from "../../api/types";
 import type { ShredEventCounts } from "./ShredsTrack/atoms";
 import { aggShredEvents } from "./ShredsTrack/const";
+import type { RevenueSeries } from "./RevenueTrack/consts";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -491,6 +492,26 @@ export const hoveredAggShredsAtom = atomWithIsSameCheck<HoveredAggShreds>(
   isSameHoveredAggShred,
 );
 
+export interface HoveredAggRevenue {
+  bucketIdx: number;
+  granularity: AggGranularity;
+  type: RevenueSeries;
+  lamportValue: bigint;
+}
+
+function isSameHoveredAggRevenue(a: HoveredAggRevenue, b: HoveredAggRevenue) {
+  return (
+    a.bucketIdx === b.bucketIdx &&
+    a.granularity === b.granularity &&
+    a.type === b.type &&
+    a.lamportValue === b.lamportValue
+  );
+}
+
+export const hoveredAggRevenueAtom = atomWithIsSameCheck<HoveredAggRevenue>(
+  isSameHoveredAggRevenue,
+);
+
 export interface HoveredAggHeader {
   bucketIdx: number;
   granularity: AggGranularity;
@@ -500,6 +521,7 @@ export interface HoveredAggHeader {
 export enum TooltipType {
   Shred,
   AggShred,
+  AggRevenue,
   Slot,
   AggHeader,
 }
@@ -509,6 +531,7 @@ export const tooltipTypeAtom = atom<TooltipType | null>((get) => {
 
   if (get(hoveredShredAtom) != null) return TooltipType.Shred;
   if (get(hoveredAggShredsAtom) != null) return TooltipType.AggShred;
+  if (get(hoveredAggRevenueAtom) != null) return TooltipType.AggRevenue;
   if (get(hoveredSlotInfoAtom) != null) return TooltipType.Slot;
 
   const visibleRange = get(visibleRangeAtom);
