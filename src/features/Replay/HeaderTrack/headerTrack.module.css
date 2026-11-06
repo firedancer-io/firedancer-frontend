@@ -1,4 +1,6 @@
 .header-track {
+  overflow: hidden;
+
   .agg-container {
     display: none;
     position: absolute;

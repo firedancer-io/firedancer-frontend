@@ -3,12 +3,16 @@ import { smoothedNowNsAtom } from "../../nowAtoms";
 import type { TsRange } from "../WebGl/webglUtils";
 import { atom, type Getter, type Setter } from "jotai";
 import {
+  AGG_SLOTS_BUCKET_COUNT_THRESHOLD,
   CHART_NOW_DELAY_MS,
   RESUME_LIVE_THRESHOLD_FRAC,
   type PlaybackRate,
 } from "./const";
 import {
+  calcAbsoluteNs,
   calcRelativeMs,
+  getAggGranularityForQuery,
+  getBucketIdx,
   getInitVisibleRange,
   getSlotDrawTileIdxs,
 } from "./utils";
@@ -485,16 +489,52 @@ export const hoveredAggShredsAtom = atomWithIsSameCheck<HoveredAggShreds>(
   isSameHoveredAggShred,
 );
 
+export interface HoveredAggHeader {
+  bucketIdx: number;
+  granularity: AggGranularity;
+}
+
 /** Which tooltip the Replay chart should show for the current hover. */
 export enum TooltipType {
   Shred,
   AggShred,
   Slot,
+  AggHeader,
 }
 
 export const tooltipTypeAtom = atom<TooltipType | null>((get) => {
+  if (get(hoveredMsAtom) == null) return null;
+
   if (get(hoveredShredAtom) != null) return TooltipType.Shred;
   if (get(hoveredAggShredsAtom) != null) return TooltipType.AggShred;
   if (get(hoveredSlotInfoAtom) != null) return TooltipType.Slot;
+
+  const visibleRange = get(visibleRangeAtom);
+  if (visibleRange != null && isAggregate(visibleRange)) {
+    return TooltipType.AggHeader;
+  }
   return null;
 });
+
+export const hoveredAggHeaderAtom = atom<HoveredAggHeader | undefined>(
+  (get) => {
+    if (get(tooltipTypeAtom) !== TooltipType.AggHeader) return;
+
+    const cursorMs = get(hoveredMsAtom);
+    const referenceNs = get(referenceNsAtom);
+    const visibleRange = get(visibleRangeAtom);
+    if (cursorMs == null || referenceNs == null || !visibleRange) return;
+
+    const granularity = getAggGranularityForQuery(
+      "query_agg_slots",
+      visibleRange[1] - visibleRange[0],
+      AGG_SLOTS_BUCKET_COUNT_THRESHOLD,
+    );
+    const bucketIdx = getBucketIdx(
+      calcAbsoluteNs(referenceNs, cursorMs),
+      granularity,
+      false,
+    );
+    return { bucketIdx, granularity };
+  },
+);
