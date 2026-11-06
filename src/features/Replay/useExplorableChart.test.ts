@@ -71,6 +71,48 @@ describe("replay wheel zoom", () => {
     expect(end - start).toBeLessThan(DEFAULT_WINDOW_MS);
   });
 
+  it("zooming in near the right edge keeps the right edge and stays live", () => {
+    const trackEl = setUpTrack();
+    wheel(trackEl, 970, -100);
+
+    expect(store.get(isLiveAtom)).toBe(true);
+    const [start, end] = store.get(visibleRangeAtom)!;
+    expect(end).toBe(WORLD_END_MS);
+    expect(end - start).toBeLessThan(DEFAULT_WINDOW_MS);
+  });
+
+  it("zooming in near the right edge while paused just short of world end stays paused", () => {
+    const trackEl = setUpTrack();
+    store.set(visibleRangeAtom, [88_000, 99_900]);
+
+    wheel(trackEl, 990, -100);
+    expect(store.get(isLiveAtom)).toBe(false);
+    expect(store.get(visibleRangeAtom)![1]).toBe(99_900);
+  });
+
+  it("zooming near the left edge keeps the left edge", () => {
+    const trackEl = setUpTrack();
+    store.set(visibleRangeAtom, [50_000, 60_000]);
+
+    wheel(trackEl, 30, -100);
+    expect(store.get(visibleRangeAtom)![0]).toBe(50_000);
+    expect(store.get(visibleRangeAtom)![1]).toBeLessThan(60_000);
+
+    wheel(trackEl, 30, 100);
+    expect(store.get(visibleRangeAtom)![0]).toBe(50_000);
+  });
+
+  it("zooming just outside the edge zone anchors on the cursor", () => {
+    const trackEl = setUpTrack();
+    store.set(visibleRangeAtom, [50_000, 60_000]);
+    const cursorX = 60;
+    const cursorTs = tsAtClientX(cursorX);
+
+    wheel(trackEl, cursorX, -100);
+    expect(store.get(visibleRangeAtom)![0]).toBeGreaterThan(50_000);
+    expect(tsAtClientX(cursorX)).toBeCloseTo(cursorTs, 6);
+  });
+
   it("zooming out from live stays live", () => {
     const trackEl = setUpTrack();
     wheel(trackEl, 500, 100);

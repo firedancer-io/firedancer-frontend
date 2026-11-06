@@ -265,7 +265,7 @@ describe("replay playback", () => {
 
   it("zooming out to world end resumes live", () => {
     store.set(visibleRangeAtom, [90_000, 99_000]);
-    store.set(visibleRangeAtom, [85_000, 99_900]);
+    store.set(visibleRangeAtom, [85_000, 100_000]);
     expect(store.get(isLiveAtom)).toBe(true);
   });
 

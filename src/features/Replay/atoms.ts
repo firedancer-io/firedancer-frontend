@@ -5,7 +5,6 @@ import { atom, type Getter, type Setter } from "jotai";
 import {
   AGG_SLOTS_BUCKET_COUNT_THRESHOLD,
   CHART_NOW_DELAY_MS,
-  RESUME_LIVE_THRESHOLD_FRAC,
   type PlaybackRate,
 } from "./const";
 import {
@@ -168,16 +167,8 @@ export const {
     },
     (get, set, value: TsRange) => {
       const worldRange = get(worldRangeAtom);
-      const prevRange = get(visibleRangeAtom);
-
-      // only resume live when moving the right edge forward, so zooming in from live pauses
-      const liveThreshold = (value[1] - value[0]) * RESUME_LIVE_THRESHOLD_FRAC;
-      const resumeLive =
-        worldRange != null &&
-        value[1] >= worldRange[1] - liveThreshold &&
-        (prevRange == null || value[1] >= prevRange[1]);
-
-      if (resumeLive) {
+      // a pan/zoom that reaches world end resumes live; anything else pauses
+      if (worldRange != null && value[1] >= worldRange[1]) {
         set(setLiveAtom, value[1] - value[0]);
         return;
       }
