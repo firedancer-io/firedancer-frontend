@@ -17,10 +17,14 @@ const store = getDefaultStore();
 
 export const txnMetaRequests = createPendingRequests<TimelineTxnMeta>();
 
-type TxnMetaMaxima = Record<RevenueSeries, bigint>;
+type TxnMetaMaxima = Record<RevenueSeries, bigint> & {
+  /** Longest drawn bar (commit end − load start) in the tile */
+  maxBarMs: number;
+};
 
 export interface TxnMetaColumns {
   slots: number[];
+  txn_idx: number[];
   txn_exec_idx: number[];
   txn_transaction_fee: bigint[];
   txn_priority_fee: bigint[];
@@ -40,6 +44,7 @@ const ALL_REVENUE_COLUMNS = Object.values(REVENUE_COLUMN);
 function emptyTxnColumns(): TxnMetaColumns {
   return {
     slots: [],
+    txn_idx: [],
     txn_exec_idx: [],
     txn_transaction_fee: [],
     txn_priority_fee: [],
@@ -78,6 +83,7 @@ function parseTxnMeta(meta: TimelineTxnMeta | undefined): TxnMetaColumns {
 
   return {
     slots,
+    txn_idx: meta.txn_idx,
     txn_exec_idx: meta.txn_exec_idx,
     txn_transaction_fee: meta.txn_transaction_fee,
     txn_priority_fee: meta.txn_priority_fee,
@@ -90,6 +96,7 @@ function parseTxnMeta(meta: TimelineTxnMeta | undefined): TxnMetaColumns {
 function appendColumns(acc: TxnMetaColumns, src: TxnMetaColumns): void {
   for (let i = 0; i < src.txn_exec_idx.length; i++) {
     acc.slots.push(src.slots[i]);
+    acc.txn_idx.push(src.txn_idx[i]);
     acc.txn_exec_idx.push(src.txn_exec_idx[i]);
     acc.txn_transaction_fee.push(src.txn_transaction_fee[i]);
     acc.txn_priority_fee.push(src.txn_priority_fee[i]);
@@ -122,6 +129,7 @@ function filterOwned(
     const txnEnd = txnEnds[i];
     if (startMs > txnEnd || txnEnd > endMs) continue;
     owned.slots.push(txns.slots[i]);
+    owned.txn_idx.push(txns.txn_idx[i]);
     owned.txn_exec_idx.push(txns.txn_exec_idx[i]);
     owned.txn_transaction_fee.push(txns.txn_transaction_fee[i]);
     owned.txn_priority_fee.push(txns.txn_priority_fee[i]);
@@ -152,6 +160,7 @@ function computeMaxima(txns: TxnMetaColumns): TxnMetaMaxima {
   let maxFees = 0n;
   let maxTips = 0n;
   let maxIncome = 0n;
+  let maxBarMs = 0;
   const count = itemCount(txns);
   for (let i = 0; i < count; i++) {
     const fees = txns.txn_transaction_fee[i] + txns.txn_priority_fee[i];
@@ -160,11 +169,14 @@ function computeMaxima(txns: TxnMetaColumns): TxnMetaMaxima {
     if (fees > maxFees) maxFees = fees;
     if (tips > maxTips) maxTips = tips;
     if (income > maxIncome) maxIncome = income;
+    const barMs = txns.txn_commit_end_ms[i] - txns.txn_load_start_ms[i];
+    if (barMs > maxBarMs) maxBarMs = barMs;
   }
   return {
     [RevenueSeries.Fees]: maxFees,
     [RevenueSeries.Tips]: maxTips,
     [RevenueSeries.Income]: maxIncome,
+    maxBarMs,
   };
 }
 

@@ -31,6 +31,7 @@ import type { TsRange } from "../../WebGl/webglUtils.ts";
 import {
   clearHoverInfoAtom,
   hoveredAggRevenueAtom,
+  hoveredRevenueTxnAtom,
   referenceNsAtom,
   setHoverInfoAtom,
   visibleRangeAtom,
@@ -44,6 +45,7 @@ import {
   getAggRevenueValue,
 } from "./atoms.ts";
 import { getRevenueRatio } from "./scale.ts";
+import { findHighestTxnAtPoint } from "./hoverUtils.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
 import { clientXToTs, clientYToWorldY } from "../hoverUtils.ts";
 import { tileCountAtom } from "../../Overview/SlotPerformance/atoms.ts";
@@ -65,6 +67,7 @@ const REVENUE_HOVER_OWNER = "replay-revenue";
 
 function clearRevenueHover() {
   store.set(hoveredAggRevenueAtom, undefined);
+  store.set(hoveredRevenueTxnAtom, undefined);
   store.set(clearHoverInfoAtom, REVENUE_HOVER_OWNER);
 }
 
@@ -177,7 +180,7 @@ function RevenueTrackBody({
   const refreshNonAggRef = useRef(refreshNonAgg);
   refreshNonAggRef.current = refreshNonAgg;
 
-  const throttledResolveHover = useThrottledCallbackIfVisible(
+  const throttledResolveAggRevenue = useThrottledCallbackIfVisible(
     useCallback(
       (clientX: number, clientY: number, rect: HoveredRect) => {
         const renderer = rendererRef.current;
@@ -239,14 +242,70 @@ function RevenueTrackBody({
     30,
   );
 
+  const throttledResolveHoveredRevenueTxn = useThrottledCallbackIfVisible(
+    useCallback(
+      (clientX: number, clientY: number, rect: HoveredRect) => {
+        const renderer = rendererRef.current;
+        const visibleRange = store.get(visibleRangeAtom);
+
+        if (!renderer || !visibleRange || isAggregate(visibleRange)) {
+          store.set(hoveredRevenueTxnAtom, undefined);
+          return;
+        }
+
+        const txn = findHighestTxnAtPoint(
+          renderer,
+          type,
+          opts.scale,
+          clientX,
+          clientY,
+          rect,
+        );
+        store.set(
+          hoveredRevenueTxnAtom,
+          txn
+            ? {
+                slot: txn.slot,
+                txnIdx: txn.txnIdx,
+                series: type,
+                meta: txn.meta,
+              }
+            : undefined,
+        );
+      },
+      [rendererRef, type, opts.scale],
+    ),
+    30,
+  );
+
+  const onHoverChange = useCallback(
+    (clientX: number, clientY: number, rect: HoveredRect) => {
+      const visibleRange = store.get(visibleRangeAtom);
+      if (!visibleRange) return;
+
+      if (!isAggregate(visibleRange)) {
+        throttledResolveAggRevenue.cancel();
+        store.set(hoveredAggRevenueAtom, undefined);
+        throttledResolveHoveredRevenueTxn(clientX, clientY, rect);
+        return;
+      }
+
+      throttledResolveHoveredRevenueTxn.cancel();
+      store.set(hoveredRevenueTxnAtom, undefined);
+      throttledResolveAggRevenue(clientX, clientY, rect);
+    },
+    [throttledResolveAggRevenue, throttledResolveHoveredRevenueTxn],
+  );
+
   const onHoverLeave = useCallback(() => {
-    throttledResolveHover.cancel();
+    throttledResolveAggRevenue.cancel();
+    throttledResolveHoveredRevenueTxn.cancel();
     clearRevenueHover();
-  }, [throttledResolveHover]);
+  }, [throttledResolveAggRevenue, throttledResolveHoveredRevenueTxn]);
 
   const { setContainer: setHoverContainer, notifyChange: refreshHover } =
     useHoveredPosition({
-      onHoverChange: throttledResolveHover,
+      onHoverChange,
       onHoverLeave,
     });
 
@@ -265,7 +324,9 @@ function RevenueTrackBody({
     const { aggResources, nonAggResources } = renderer;
     const { camera, scene } = agg ? aggResources : nonAggResources;
     renderer.renderer.render(scene, camera);
-  }, [rendererRef]);
+
+    if (!agg) refreshHover();
+  }, [rendererRef, refreshHover]);
 
   const requestRender = useFrameRender(renderActive);
 
@@ -346,7 +407,8 @@ function RevenueTrackBody({
       // cancel pending trailing timers so they don't accumulate across remounts
       throttledDrawAgg.cancel();
       throttledRangeQuery.cancel();
-      throttledResolveHover.cancel();
+      throttledResolveAggRevenue.cancel();
+      throttledResolveHoveredRevenueTxn.cancel();
       setHoverContainer(null);
       onHoverLeave();
       unsubscribeVisible();
@@ -356,7 +418,8 @@ function RevenueTrackBody({
     onRangeChange,
     throttledDrawAgg,
     throttledRangeQuery,
-    throttledResolveHover,
+    throttledResolveAggRevenue,
+    throttledResolveHoveredRevenueTxn,
     setHoverContainer,
     onHoverLeave,
     containerRef,
@@ -398,7 +461,7 @@ function RevenueTrackBody({
         syncNonAggRef.current(renderer);
       }
 
-      // Only render on delta updates when non aggregate view is active
+      // Only render on delta updates when non aggregate view is active.
       if (!isAggCurrentRef.current) requestRender();
     },
     [getRelativeMs, requestRender, rendererRef],
