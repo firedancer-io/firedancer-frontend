@@ -31,7 +31,7 @@ import { atomWithIsSameCheck } from "../../atomUtils";
 import type { AggGranularity } from "../../api/types";
 import type { ShredEventCounts } from "./ShredsTrack/atoms";
 import { aggShredEvents } from "./ShredsTrack/const";
-import type { RevenueSeries } from "./RevenueTrack/consts";
+import type { RevenueSeries, TxnMetaDetails } from "./RevenueTrack/consts";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -372,6 +372,8 @@ export const [
     const hoveredShredSlot = get(hoveredShredAtom)?.slot;
     if (hoveredShredSlot != null) return hoveredShredSlot;
     if (get(hoveredAggShredsAtom) != null) return undefined;
+    const hoveredRevenueTxnSlot = get(hoveredRevenueTxnAtom)?.slot;
+    if (hoveredRevenueTxnSlot != null) return hoveredRevenueTxnSlot;
 
     const cursorMs = get(hoveredMsAtom);
     if (cursorMs == null) return;
@@ -555,6 +557,30 @@ export const hoveredAggRevenueAtom = atomWithIsSameCheck<HoveredAggRevenue>(
   isSameHoveredAggRevenue,
 );
 
+export interface HoveredRevenueTxn {
+  slot: number;
+  txnIdx: number;
+  series: RevenueSeries;
+  meta: TxnMetaDetails;
+}
+
+function isSameHoveredRevenueTxn(a: HoveredRevenueTxn, b: HoveredRevenueTxn) {
+  return (
+    a.slot === b.slot &&
+    a.txnIdx === b.txnIdx &&
+    a.series === b.series &&
+    a.meta.execIdx === b.meta.execIdx &&
+    a.meta.transactionFee === b.meta.transactionFee &&
+    a.meta.priorityFee === b.meta.priorityFee &&
+    a.meta.tips === b.meta.tips &&
+    a.meta.loadStartMs === b.meta.loadStartMs
+  );
+}
+
+export const hoveredRevenueTxnAtom = atomWithIsSameCheck<HoveredRevenueTxn>(
+  isSameHoveredRevenueTxn,
+);
+
 export interface HoveredAggHeader {
   bucketIdx: number;
   granularity: AggGranularity;
@@ -565,6 +591,7 @@ export enum TooltipType {
   Shred,
   AggShred,
   AggRevenue,
+  RevenueTxn,
   Slot,
   AggHeader,
 }
@@ -575,6 +602,7 @@ export const tooltipTypeAtom = atom<TooltipType | null>((get) => {
   if (get(hoveredShredAtom) != null) return TooltipType.Shred;
   if (get(hoveredAggShredsAtom) != null) return TooltipType.AggShred;
   if (get(hoveredAggRevenueAtom) != null) return TooltipType.AggRevenue;
+  if (get(hoveredRevenueTxnAtom) != null) return TooltipType.RevenueTxn;
   if (get(hoveredSlotInfoAtom) != null) return TooltipType.Slot;
 
   const visibleRange = get(visibleRangeAtom);

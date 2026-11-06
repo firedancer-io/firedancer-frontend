@@ -37,6 +37,15 @@ export enum RevenueSeries {
   Income = "income",
 }
 
+/** A hovered txn's resolved details, carried through the hover state. */
+export interface TxnMetaDetails {
+  execIdx: number;
+  transactionFee: bigint;
+  priorityFee: bigint;
+  tips: bigint;
+  loadStartMs: number;
+}
+
 /** Revenue types summed to get each series */
 export const revenueSeriesAddends: Record<
   RevenueSeries,
