@@ -468,6 +468,8 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
         [styles.skipped]: hasSkipped,
         [styles.mine]: isMine,
         [styles.hovered]: isOutlined,
+        [styles.hoveredGroup]: hoveredSlot !== undefined,
+        [styles.selectedGroup]: selectedSlot !== undefined,
       })}
       style={{
         opacity: groupLevel,

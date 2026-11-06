@@ -23,6 +23,7 @@ import {
   getRelativeSlot,
   getSlotFocus,
   NO_SLOT,
+  slotHighlightGlsl,
   updateSlotHighlight,
   useSlotHighlightRender,
 } from "./slotHighlight";
@@ -266,5 +267,16 @@ describe("useSlotHighlightRender", () => {
     unmount();
     hover(101_500);
     expect(render).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("slotHighlightGlsl", () => {
+  // shaders inline these helpers; early returns and ternaries crash Adreno D3D11
+  it("only returns at the end of each function", () => {
+    const code = slotHighlightGlsl.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, "");
+    const returns = code.match(/\breturn\b/g) ?? [];
+    const finalReturns = code.match(/\breturn\b[^;]*;\n\}/g) ?? [];
+    expect(finalReturns).toHaveLength(returns.length);
+    expect(code).not.toContain("?");
   });
 });

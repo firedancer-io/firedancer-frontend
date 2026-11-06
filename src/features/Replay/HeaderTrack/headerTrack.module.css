@@ -45,6 +45,14 @@
   border: 1px solid var(--header-group-border-color);
   background: var(--replay-agg-header-background-color);
 
+  &.selected-group {
+    z-index: 1;
+  }
+
+  &.hovered-group {
+    z-index: 2;
+  }
+
   .slot-group-header {
     box-sizing: border-box;
     display: flex;
@@ -135,6 +143,12 @@
 
     &.left-border {
       border-left-color: var(--replay-dropdown-hover-background-color);
+    }
+
+    &.hover-slot,
+    &.selected-slot,
+    &.selected-hovered-slot {
+      z-index: 1;
     }
 
     &.hover-slot {

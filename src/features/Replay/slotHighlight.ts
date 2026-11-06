@@ -113,23 +113,24 @@ vec3 overlayWhite(vec3 color, float alpha) {
  * accumulated coverage, highlight by their fractions.
  */
 vec3 applyHighlight(vec3 color, vec4 fractions) {
-  if (uHighlightActive < 0.5) return color;
+  // structured if: an early return or ternary here crashes Adreno D3D11 when inlined twice
+  if (uHighlightActive > 0.5) {
+    float inFocusSlot = fractions.x;
+    float inFocusGroup = fractions.y;
+    float inHoveredOtherSlot = fractions.z;
+    float inHoveredOtherGroup = fractions.w;
+    float level =
+      uLevels.y +
+      inFocusGroup * (uLevels.x - uLevels.y) +
+      inFocusSlot * (1.0 - uLevels.x);
+    level += inHoveredOtherSlot * max(HOVERED_OTHER_LEVEL - level, 0.0);
+    color = mix(HIGHLIGHT_BACKGROUND, color, level);
 
-  float inFocusSlot = fractions.x;
-  float inFocusGroup = fractions.y;
-  float inHoveredOtherSlot = fractions.z;
-  float inHoveredOtherGroup = fractions.w;
-  float level =
-    uLevels.y +
-    inFocusGroup * (uLevels.x - uLevels.y) +
-    inFocusSlot * (1.0 - uLevels.x);
-  level += inHoveredOtherSlot * max(HOVERED_OTHER_LEVEL - level, 0.0);
-  color = mix(HIGHLIGHT_BACKGROUND, color, level);
-
-  color = overlayWhite(color, uLifts.x * inFocusGroup);
-  color = overlayWhite(color, uLifts.y * inFocusSlot);
-  color = overlayWhite(color, HOVERED_OTHER_LIFTS.x * inHoveredOtherGroup);
-  color = overlayWhite(color, HOVERED_OTHER_LIFTS.y * inHoveredOtherSlot);
+    color = overlayWhite(color, uLifts.x * inFocusGroup);
+    color = overlayWhite(color, uLifts.y * inFocusSlot);
+    color = overlayWhite(color, HOVERED_OTHER_LIFTS.x * inHoveredOtherGroup);
+    color = overlayWhite(color, HOVERED_OTHER_LIFTS.y * inHoveredOtherSlot);
+  }
   return color;
 }
 
@@ -143,13 +144,16 @@ bool isSameGroup(float slot, float other) {
 
 /** applyHighlight fractions of a mark in a single relative slot */
 vec4 getSlotFractions(float slot) {
-  if (slot <= NO_SLOT) return vec4(0.0);
-  return vec4(
-    isSameSlot(slot, uFocusSlot),
-    isSameGroup(slot, uFocusSlot),
-    isSameSlot(slot, uHoveredOtherSlot),
-    isSameGroup(slot, uHoveredOtherSlot)
-  );
+  vec4 fractions = vec4(0.0);
+  if (slot > NO_SLOT) {
+    fractions = vec4(
+      isSameSlot(slot, uFocusSlot),
+      isSameGroup(slot, uFocusSlot),
+      isSameSlot(slot, uHoveredOtherSlot),
+      isSameGroup(slot, uHoveredOtherSlot)
+    );
+  }
+  return fractions;
 }
 
 vec3 highlightSlot(vec3 color, float slot) {
