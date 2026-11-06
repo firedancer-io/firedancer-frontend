@@ -14,6 +14,7 @@ import { clampToWorld } from "./utils";
 
 const PAN_THRESHOLD_PX = 8;
 const ZOOM_INTENSITY = 0.002;
+const EDGE_ZOOM_ZONE_PX = 40;
 
 // Thresholds for double tap reset to live
 const DOUBLE_TAP_MS = 300;
@@ -50,6 +51,17 @@ function normalizeWheelPanDelta(e: WheelEvent) {
   const dominant =
     Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
   return dominant * deltaModeScale(e);
+}
+
+// near an edge, zoom around that edge so it keeps its timestamp
+function getCursorZoomTs(
+  trackRect: DOMRect,
+  clientX: number,
+  tsWindow: TsRange,
+) {
+  if (clientX <= trackRect.left + EDGE_ZOOM_ZONE_PX) return tsWindow[0];
+  if (clientX >= trackRect.right - EDGE_ZOOM_ZONE_PX) return tsWindow[1];
+  return clientXToTsWithRect(trackRect, clientX, tsWindow);
 }
 
 function clientXToTsWithRect(
@@ -281,8 +293,7 @@ export function useExplorableChart() {
         const zoomPointTs = isWorldTrack
           ? // mini map zoom centers on middle of visible range
             (visibleRange[0] + visibleRange[1]) / 2
-          : // other track zoom centers on cursor
-            clientXToTsWithRect(
+          : getCursorZoomTs(
               trackEl.getBoundingClientRect(),
               clientX,
               visibleRange,

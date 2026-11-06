@@ -2,11 +2,7 @@ import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../nowAtoms";
 import type { TsRange } from "../WebGl/webglUtils";
 import { atom, type Getter, type Setter } from "jotai";
-import {
-  CHART_NOW_DELAY_MS,
-  RESUME_LIVE_THRESHOLD_FRAC,
-  type PlaybackRate,
-} from "./const";
+import { CHART_NOW_DELAY_MS, type PlaybackRate } from "./const";
 import {
   calcRelativeMs,
   getInitVisibleRange,
@@ -153,15 +149,8 @@ export const {
     },
     (get, set, value: TsRange) => {
       const worldRange = get(worldRangeAtom);
-      // A pan/zoom whose right edge reaches world end resumes live mode;
-      // any other manual range change pauses.
-
-      // Resume live if new window is within this distance from world end
-      const liveThreshold = (value[1] - value[0]) * RESUME_LIVE_THRESHOLD_FRAC;
-      const resumeLive =
-        worldRange != null && value[1] >= worldRange[1] - liveThreshold;
-
-      if (resumeLive) {
+      // a pan/zoom that reaches world end resumes live; anything else pauses
+      if (worldRange != null && value[1] >= worldRange[1]) {
         set(setLiveAtom, value[1] - value[0]);
         return;
       }

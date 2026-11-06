@@ -6,10 +6,6 @@ export const DEFAULT_WINDOW_MS = 12_000;
 export const MIN_VISIBLE_MS = 0.001;
 export const CHART_NOW_DELAY_MS = 500;
 
-// Resume live if pan / zoom places the visible range's right edge within this
-// fraction of the visible window width from world end
-export const RESUME_LIVE_THRESHOLD_FRAC = 0.02;
-
 export const playbackRates = [0.25, 0.5, 1, 2, 4, 8, 16, 32] as const;
 export type PlaybackRate = (typeof playbackRates)[number];
 
