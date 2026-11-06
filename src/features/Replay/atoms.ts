@@ -165,13 +165,14 @@ export const {
     },
     (get, set, value: TsRange) => {
       const worldRange = get(worldRangeAtom);
-      // A pan/zoom whose right edge reaches world end resumes live mode;
-      // any other manual range change pauses.
+      const prevRange = get(visibleRangeAtom);
 
-      // Resume live if new window is within this distance from world end
+      // only resume live when moving the right edge forward, so zooming in from live pauses
       const liveThreshold = (value[1] - value[0]) * RESUME_LIVE_THRESHOLD_FRAC;
       const resumeLive =
-        worldRange != null && value[1] >= worldRange[1] - liveThreshold;
+        worldRange != null &&
+        value[1] >= worldRange[1] - liveThreshold &&
+        (prevRange == null || value[1] >= prevRange[1]);
 
       if (resumeLive) {
         set(setLiveAtom, value[1] - value[0]);
