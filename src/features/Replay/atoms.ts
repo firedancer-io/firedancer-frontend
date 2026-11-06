@@ -571,6 +571,15 @@ export const hoveredAggRevenueAtom = atomWithIsSameCheck<HoveredAggRevenue>(
   isSameHoveredAggRevenue,
 );
 
+export interface HoveredAggCpu {
+  bucketIdx: number;
+  granularity: AggGranularity;
+}
+
+export const hoveredAggCpuAtom = atomWithIsSameCheck<HoveredAggCpu>(
+  (a, b) => a.bucketIdx === b.bucketIdx && a.granularity === b.granularity,
+);
+
 export interface HoveredRevenueTxn {
   slot: number;
   series: RevenueSeries;
@@ -600,6 +609,7 @@ export enum TooltipType {
   Shred,
   AggShred,
   AggRevenue,
+  AggCpu,
   RevenueTxn,
   Slot,
   AggHeader,
@@ -611,6 +621,7 @@ export const tooltipTypeAtom = atom<TooltipType | null>((get) => {
   if (get(hoveredShredAtom) != null) return TooltipType.Shred;
   if (get(hoveredAggShredsAtom) != null) return TooltipType.AggShred;
   if (get(hoveredAggRevenueAtom) != null) return TooltipType.AggRevenue;
+  if (get(hoveredAggCpuAtom) != null) return TooltipType.AggCpu;
 
   // fallback non-agg tooltip
   if (get(hoveredRevenueTxnAtom) != null) return TooltipType.RevenueTxn;

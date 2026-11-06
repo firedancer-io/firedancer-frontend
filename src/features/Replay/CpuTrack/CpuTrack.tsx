@@ -8,7 +8,15 @@ import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import { useFrameRender } from "../../WebGl/useFrameRender.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
-import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
+import {
+  hoveredAggCpuAtom,
+  referenceNsAtom,
+  visibleRangeAtom,
+  worldRangeAtom,
+} from "../atoms.ts";
+import { clientXToTs } from "../hoverUtils.ts";
+import { calcAbsoluteNs, getBucketIdx } from "../utils.ts";
+import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
 import TrackControls, {
   TrackControlsToggle,
   type LegendItem,
@@ -100,6 +108,37 @@ function CpuTrackBody({
     },
   });
 
+  const throttledResolveHover = useThrottledCallbackIfVisible(
+    useCallback((clientX: number, _clientY: number, rect: HoveredRect) => {
+      const referenceNs = store.get(referenceNsAtom);
+      const visibleRange = store.get(visibleRangeAtom);
+      if (referenceNs == null || !visibleRange) {
+        store.set(hoveredAggCpuAtom, undefined);
+        return;
+      }
+
+      const ts = clientXToTs(rect, clientX, visibleRange);
+      const granularity = getAggGranularity(visibleRange[1] - visibleRange[0]);
+      const bucketIdx = getBucketIdx(
+        calcAbsoluteNs(referenceNs, ts),
+        granularity,
+        false,
+      );
+      store.set(hoveredAggCpuAtom, { bucketIdx, granularity });
+    }, []),
+    30,
+  );
+
+  const onHoverLeave = useCallback(() => {
+    throttledResolveHover.cancel();
+    store.set(hoveredAggCpuAtom, undefined);
+  }, [throttledResolveHover]);
+
+  const { setContainer: setHoverContainer } = useHoveredPosition({
+    onHoverChange: throttledResolveHover,
+    onHoverLeave,
+  });
+
   const throttledRangeQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
       const queryGranularity = getAggGranularity(
@@ -170,6 +209,8 @@ function CpuTrackBody({
     const emitter = store.get(aggCpuEmitterAtom);
     emitter.addListener(drawEventType, throttledDrawAndRender);
 
+    setHoverContainer(containerRef.current);
+
     onRangeChange();
 
     return () => {
@@ -177,8 +218,17 @@ function CpuTrackBody({
       throttledRangeQuery.cancel();
       throttledDrawAndRender.cancel();
       unsubscribeRange();
+      setHoverContainer(null);
+      onHoverLeave();
     };
-  }, [onRangeChange, throttledDrawAndRender, throttledRangeQuery]);
+  }, [
+    onRangeChange,
+    throttledDrawAndRender,
+    throttledRangeQuery,
+    setHoverContainer,
+    onHoverLeave,
+    containerRef,
+  ]);
 
   useLayoutEffect(() => {
     if (!rendererRef.current) return;
