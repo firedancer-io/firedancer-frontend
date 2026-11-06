@@ -28,7 +28,6 @@ import {
   setBarHeight,
   setUpRenderer,
   syncMeshes,
-  type RendererObj,
 } from "./utils.ts";
 import {
   getDisplayMode,
@@ -52,6 +51,7 @@ import {
   aggTileStatesAtom,
   aggTileStatesEmitterAtom,
   drawEventType,
+  syncAggTileStatesTilesAtom,
 } from "./aggAtoms.ts";
 import { buildAggStatesMesh } from "./aggUtils.ts";
 import {
@@ -62,6 +62,7 @@ import LaneLabels from "./LaneLabels.tsx";
 import TileStatesControls from "./TileStatesControls.tsx";
 import { tileStatesViewOptsAtoms } from "./atoms.ts";
 import RowLabels from "../RowLabels.tsx";
+import { getTileKey } from "../CpuTrack/const.ts";
 import { getRowsLayout, ROW_LABEL_PX, trackInsetPx } from "../layout.ts";
 import styles from "../track.module.css";
 
@@ -81,7 +82,11 @@ function TileStatesTrack({
   showStateLabels = false,
   canShowErrorStates = false,
   remount,
-  aggQuery: { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes },
+  aggQuery: {
+    query: aggQuery,
+    pauseStaleRefreshes: pauseStaleAggRefreshes,
+    resetQueries: resetAggQueries,
+  },
 }: TileStatesTrackProps) {
   const modes = tileStatesModeOptions[kind];
   const canSplitLanes = modes.some(
@@ -89,10 +94,10 @@ function TileStatesTrack({
       mode === TileStatesMode.Stacked && separateLanes !== undefined,
   );
   const [opts, setOpts] = useAtom(tileStatesViewOptsAtoms[kind]);
-  const [mode, setMode] = useState(opts.mode);
   const [availableModes, setAvailableModes] = useState(() =>
     modes.map(({ mode }) => mode),
   );
+  const mode = getDisplayMode(modes, opts.mode, availableModes);
   const [nonAggGranularity, setNonAggGranularity] =
     useState<TileStatesGranularity>(TileStatesGranularityEnum.txn);
   const [isAgg, setIsAgg] = useState(false);
@@ -101,13 +106,7 @@ function TileStatesTrack({
   const { containerRef, rendererRef } = useWebGlRenderer({
     remount,
     create: ({ setUpContextListeners, getWasContextLost }) =>
-      setUpRenderer(
-        kind,
-        opts.mode,
-        opts.separateLanes,
-        setUpContextListeners,
-        getWasContextLost,
-      ),
+      setUpRenderer(kind, setUpContextListeners, getWasContextLost),
     onResize: (rendererObj) => handleResize(rendererObj),
   });
 
@@ -115,14 +114,12 @@ function TileStatesTrack({
     if (rendererRef.current) render(rendererRef.current);
   });
 
-  const updateMode = useCallback(
-    (renderer: RendererObj, visibleRangeMs: TsRange) => {
+  const updateAvailableModes = useCallback(
+    (visibleRangeMs: TsRange) => {
       const available = getAvailableModes(
         modes,
         visibleRangeMs[1] - visibleRangeMs[0],
       );
-      renderer.mode = getDisplayMode(modes, renderer.selectedMode, available);
-      setMode(renderer.mode);
       setAvailableModes((prev) =>
         prev.join() === available.join() ? prev : available,
       );
@@ -132,6 +129,10 @@ function TileStatesTrack({
 
   const tiles = useAtomValue(tilesAtom);
   const rows = useMemo(() => getTileRows(tiles, kind), [tiles, kind]);
+  const tilesKey = useMemo(
+    () => (tiles ?? []).map(getTileKey).join(","),
+    [tiles],
+  );
   const isLaneMode =
     mode === TileStatesMode.Gantt ||
     (mode === TileStatesMode.Stacked && opts.separateLanes);
@@ -188,7 +189,7 @@ function TileStatesTrack({
       const agg = isAggregate(visibleRangeMs);
       setIsAgg(agg);
       renderer.isAgg = agg;
-      updateMode(renderer, visibleRangeMs);
+      updateAvailableModes(visibleRangeMs);
       if (agg) {
         renderer.renderedGranularity = undefined;
         const viewChanged =
@@ -221,7 +222,7 @@ function TileStatesTrack({
 
       if (viewChanged || granularityChanged) requestRender();
     },
-    [rendererRef, requestRender, throttledRangeQuery, updateMode],
+    [rendererRef, requestRender, throttledRangeQuery, updateAvailableModes],
   );
 
   const drawAgg = useCallback(() => {
@@ -267,6 +268,13 @@ function TileStatesTrack({
     };
   }, [onRangeChange, throttledDrawAgg, throttledRangeQuery]);
 
+  // Refresh agg states if list of tiles change
+  useLayoutEffect(() => {
+    if (!store.set(syncAggTileStatesTilesAtom, tilesKey)) return;
+    resetAggQueries();
+    onRangeChange(false);
+  }, [tilesKey, resetAggQueries, onRangeChange]);
+
   useLayoutEffect(() => {
     const renderer = rendererRef.current;
     if (renderer?.isAgg) {
@@ -300,23 +308,8 @@ function TileStatesTrack({
   }, [barHeightPx, laneGapPx, rendererRef, requestRender]);
 
   useLayoutEffect(() => {
-    const renderer = rendererRef.current;
-    const visibleRangeMs = store.get(visibleRangeAtom);
-    if (!renderer) return;
-    renderer.selectedMode = opts.mode;
-    renderer.selectedSeparateLanes = opts.separateLanes;
-    if (!visibleRangeMs) return;
-    updateMode(renderer, visibleRangeMs);
-    if (renderer.isAgg) drawAgg();
-    else requestRender();
-  }, [
-    opts.mode,
-    opts.separateLanes,
-    rendererRef,
-    requestRender,
-    updateMode,
-    drawAgg,
-  ]);
+    requestRender();
+  }, [opts.mode, opts.separateLanes, requestRender]);
 
   const handleDelta = useCallback(
     (granularity: TileStatesGranularity, delta: TileStatesCacheDelta) => {

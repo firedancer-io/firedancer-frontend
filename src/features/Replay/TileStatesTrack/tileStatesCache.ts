@@ -30,7 +30,7 @@ const tileStatesSet = new Set<number>(
 // only log unknown states once each
 const loggedUnknownTileStates = new Set<number>();
 
-export function isKnownTileState(state: number): state is TileState {
+function isKnownTileState(state: number): state is TileState {
   const isKnown = tileStatesSet.has(state);
   if (!isKnown && !loggedUnknownTileStates.has(state)) {
     loggedUnknownTileStates.add(state);
@@ -172,9 +172,8 @@ function itemCount(states: TileStateColumns): number {
 
 const CACHE_MAX_TILES = 128;
 const MIN_SUB_TILE_NS = 1_000_000n; // 1ms
-const TXN_TILE_NS = 8_000_000_000n; // 8s
-const BATCH_TILE_MULTIPLE = 8; // 64s
-const BATCH_TILE_NS = TXN_TILE_NS * BigInt(BATCH_TILE_MULTIPLE);
+const TXN_TILE_NS = 2_000_000_000n; // 2s
+const BATCH_TILE_NS = 64_000_000_000n; // 64s
 
 const TILE_NS: Record<TileStatesGranularity, bigint> = {
   txn: TXN_TILE_NS,

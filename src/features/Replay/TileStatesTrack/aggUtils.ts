@@ -1,10 +1,9 @@
 import type { TsRange } from "../../WebGl/webglUtils";
 import { usPerMs } from "../../../consts";
 import { msBucketSizes, nsBucketSizes } from "../const";
-import { OVERSCAN_BUCKETS } from "../useAggQuery";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
 import type { TileStatesBucketsByGranularity } from "./aggAtoms";
-import { getAggGranularity } from "./useAggTileStatesQuery";
+import { getAggGranularity, OVERSCAN_BUCKETS } from "./useAggTileStatesQuery";
 import { trackStates } from "./consts";
 import { ensureStatesCapacity, setStatesCount } from "./tileStatesMesh";
 import {

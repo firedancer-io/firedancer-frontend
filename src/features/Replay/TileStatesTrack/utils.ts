@@ -34,11 +34,12 @@ import {
   ErrorState,
   errorStateColors,
   tileStateColors,
-  coverageStates,
   trackStates,
+  getTileStatesDisplayMode,
   TileStatesMode,
   type TileKind,
 } from "./consts.ts";
+import { tileStatesViewOptsAtoms } from "./atoms.ts";
 import { replayTrackBackgroundColor } from "../../../colors.ts";
 import { referenceNsAtom, visibleRangeAtom } from "../atoms.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
@@ -46,7 +47,7 @@ import { calcRelativeMs } from "../utils.ts";
 
 const store = getDefaultStore();
 
-export interface TileRow {
+interface TileRow {
   tileIdx: number;
   label: string;
 }
@@ -62,16 +63,18 @@ export function getTileRows(
   return rows;
 }
 
-export type RowOfTile = Map<number, number>;
+type RowOfTile = Map<number, number>;
 
 export function getRowOfTile(kind: TileKind): RowOfTile {
   const rows = getTileRows(store.get(tilesAtom), kind);
   return new Map(rows.map(({ tileIdx }, row) => [tileIdx, row]));
 }
 
-export interface DataTileMeshes {
+interface DataTileMeshes {
   tileStates: StatesMesh;
   errorStates?: StatesMesh;
+  startMs: number;
+  endMs: number;
 }
 
 export interface RendererObj {
@@ -88,10 +91,8 @@ export interface RendererObj {
   compositeMesh: THREE.Mesh<THREE.BufferGeometry, THREE.RawShaderMaterial>;
   compositeMaterials: Record<CompositeMode, THREE.RawShaderMaterial>;
   compositeUniforms: Record<string, THREE.IUniform>;
-  selectedMode: TileStatesMode;
-  selectedSeparateLanes: boolean;
-  mode: TileStatesMode;
   kind: TileKind;
+  coverageStates: TileState[];
   dataTileMeshes: Map<string, DataTileMeshes>;
   availableMeshes: DataTileMeshes[];
   liveDataTileKey: string | undefined;
@@ -340,14 +341,17 @@ const compositeFragmentShaders: Record<
   stackedLanes: createStackedLanesFragmentShader,
 };
 
-function getCompositeMode(rendererObj: RendererObj): CompositeMode {
-  switch (rendererObj.mode) {
+function getCompositeMode(
+  mode: TileStatesMode,
+  separateLanes: boolean,
+): CompositeMode {
+  switch (mode) {
     case TileStatesMode.Heatmap:
       return "heatmap";
     case TileStatesMode.Gantt:
       return "gantt";
     case TileStatesMode.Stacked:
-      return rendererObj.selectedSeparateLanes ? "stackedLanes" : "stacked";
+      return separateLanes ? "stackedLanes" : "stacked";
   }
 }
 
@@ -478,8 +482,6 @@ function createLaneMaxReducer(
 
 export function setUpRenderer(
   kind: TileKind,
-  mode: TileStatesMode,
-  separateLanes: boolean,
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): RendererObj | undefined {
@@ -506,7 +508,7 @@ export function setUpRenderer(
     renderer.extensions.has("EXT_float_blend");
   // Each px's time per row and coverage state. The composite pass shades every
   // mode from it
-  const states = coverageStates[kind];
+  const states = getCoverageStates(kind, undefined);
   const tileStatesTarget = new THREE.WebGLRenderTarget(1, 1, {
     format: THREE.RedFormat,
     type: canBlendFloat32 ? THREE.FloatType : THREE.HalfFloatType,
@@ -516,7 +518,7 @@ export function setUpRenderer(
   });
   const tileStatesMaterial = createTileStatesMaterial(
     TILE_STATE_PALETTE,
-    TILE_STATE_PALETTE.map((_, state) => states.indexOf(state)),
+    getStateIdxs(states),
     states.length,
   );
   const laneMaxReducer = createLaneMaxReducer(
@@ -551,6 +553,8 @@ export function setUpRenderer(
 
   const aggMeshes: DataTileMeshes = {
     tileStates: createStatesMesh(rectResources.unitQuad, tileStatesMaterial),
+    startMs: -Infinity,
+    endMs: Infinity,
   };
   const aggStatesScene = new THREE.Scene();
   aggStatesScene.add(aggMeshes.tileStates.mesh);
@@ -588,10 +592,8 @@ export function setUpRenderer(
     compositeMaterials,
     compositeUniforms,
     laneMaxReducer,
-    selectedMode: mode,
-    selectedSeparateLanes: separateLanes,
-    mode,
     kind,
+    coverageStates: states,
     dataTileMeshes,
     availableMeshes,
     liveDataTileKey: undefined,
@@ -606,6 +608,37 @@ export function setUpRenderer(
   };
 
   return rendererObj;
+}
+
+function getCoverageStates(
+  kind: TileKind,
+  granularity: TileStatesGranularity | undefined,
+) {
+  return trackStates[kind][granularity ?? "agg"];
+}
+
+/** Each TileState's texel row among the coverage states, -1 if not drawn */
+function getStateIdxs(states: TileState[]) {
+  return TILE_STATE_PALETTE.map((_, state) => states.indexOf(state));
+}
+
+function syncCoverageStates(rendererObj: RendererObj) {
+  const states = getCoverageStates(
+    rendererObj.kind,
+    rendererObj.renderedGranularity,
+  );
+  if (states === rendererObj.coverageStates) return states;
+  rendererObj.coverageStates = states;
+  rendererObj.tileStatesMaterial.uniforms.uStateIdxs.value =
+    getStateIdxs(states);
+  const { compositeUniforms } = rendererObj;
+  compositeUniforms.uStateColors.value = states.map(
+    (state) => SRGB_PALETTE[state],
+  );
+  compositeUniforms.uStateLinearColors.value = states.map(
+    (state) => TILE_STATE_PALETTE[state],
+  );
+  return states;
 }
 
 export function handleResize(rendererObj: RendererObj) {
@@ -636,7 +669,7 @@ export function render(rendererObj: RendererObj) {
   const { width, height } = renderer.domElement;
   if (!width || !height) return;
   const rowCount = Math.max(getRowOfTile(rendererObj.kind).size, 1);
-  const states = coverageStates[rendererObj.kind];
+  const states = syncCoverageStates(rendererObj);
   const coverageHeight = rowCount * states.length;
   if (
     tileStatesTarget.width !== width ||
@@ -661,7 +694,14 @@ export function render(rendererObj: RendererObj) {
       i < laneStates.length ? states.indexOf(laneStates[i]) : -1;
   }
   compositeUniforms.uLaneCount.value = laneStates.length;
-  const compositeMode = getCompositeMode(rendererObj);
+  const opts = store.get(tileStatesViewOptsAtoms[rendererObj.kind]);
+  const visibleRangeMs = store.get(visibleRangeAtom);
+  const mode = getTileStatesDisplayMode(
+    rendererObj.kind,
+    opts.mode,
+    visibleRangeMs ? visibleRangeMs[1] - visibleRangeMs[0] : 0,
+  );
+  const compositeMode = getCompositeMode(mode, opts.separateLanes);
   compositeMesh.material = compositeMaterials[compositeMode];
 
   renderer.setRenderTarget(tileStatesTarget);
@@ -675,7 +715,7 @@ export function render(rendererObj: RendererObj) {
   if (
     !rendererObj.isAgg &&
     rendererObj.renderedGranularity === TileStatesGranularityEnum.txn &&
-    rendererObj.mode === TileStatesMode.Heatmap
+    mode === TileStatesMode.Heatmap
   ) {
     renderer.render(errorStatesScene, camera);
   }
@@ -717,6 +757,10 @@ export function setVisibleRange(
       updateDataTileMeshPositions(rendererObj, meshes);
     updateDataTileMeshPositions(rendererObj, rendererObj.aggMeshes);
   }
+  if (scaleChanged || viewMoved) {
+    for (const meshes of dataTileMeshes.values())
+      updateDataTileMeshVisibility(rendererObj, meshes);
+  }
 
   // Callers can skip rendering if no px value has changed
   return scaleChanged || viewMoved;
@@ -736,6 +780,19 @@ export function updateDataTileMeshPositions(
   }
 }
 
+/** Hides a data tile's meshes out of view, so the GPU skips their rects */
+function updateDataTileMeshVisibility(
+  rendererObj: RendererObj,
+  meshes: DataTileMeshes,
+) {
+  const { msPerPx, viewStartPx, renderer } = rendererObj;
+  const viewStartMs = viewStartPx * msPerPx;
+  const viewEndMs = viewStartMs + renderer.domElement.width * msPerPx;
+  const visible = meshes.endMs >= viewStartMs && meshes.startMs <= viewEndMs;
+  meshes.tileStates.mesh.visible = visible;
+  if (meshes.errorStates) meshes.errorStates.mesh.visible = visible;
+}
+
 function createDataTileMeshes(rendererObj: RendererObj): DataTileMeshes {
   const { rectResources, tileStatesMaterial, errorStatesMaterial, kind } =
     rendererObj;
@@ -748,7 +805,12 @@ function createDataTileMeshes(rendererObj: RendererObj): DataTileMeshes {
     kind === "execrp"
       ? createStatesMesh(rectResources.unitQuad, errorStatesMaterial)
       : undefined;
-  return { tileStates, errorStates };
+  return {
+    tileStates,
+    errorStates,
+    startMs: 0,
+    endMs: 0,
+  };
 }
 
 /** Acquires pooled or new meshes for a data tile and adds them to scenes. */
@@ -780,13 +842,14 @@ function buildDataTileMeshes(
 ) {
   if (!appendData) {
     // referenceX is the data tile's start, so rects are stored in small ms from it
-    const referenceX = calcRelativeMs(
-      store.get(referenceNsAtom) ?? 0n,
-      dataTile.startNs,
-    );
+    const referenceNs = store.get(referenceNsAtom) ?? 0n;
+    const referenceX = calcRelativeMs(referenceNs, dataTile.startNs);
     meshes.tileStates.referenceX = referenceX;
     if (meshes.errorStates) meshes.errorStates.referenceX = referenceX;
+    meshes.startMs = referenceX;
+    meshes.endMs = calcRelativeMs(referenceNs, dataTile.endNs);
     updateDataTileMeshPositions(rendererObj, meshes);
+    updateDataTileMeshVisibility(rendererObj, meshes);
   }
 
   const data = appendData ?? dataTile.data;

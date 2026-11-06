@@ -40,6 +40,7 @@ interface UseAggQueryOpts<TValue, TParams extends object> {
   deleteBucketsAtom: DeleteBucketsAtom;
   emitterAtom: Atom<DrawEmitter>;
   params?: TParams;
+  overscanTilesCount?: number;
 }
 
 export function useAggQuery<TValue, TParams extends object = object>({
@@ -49,6 +50,7 @@ export function useAggQuery<TValue, TParams extends object = object>({
   deleteBucketsAtom,
   emitterAtom,
   params,
+  overscanTilesCount = OVERSCAN_TILES_COUNT,
 }: UseAggQueryOpts<TValue, TParams>) {
   const addValue = useSetAtom(addAtom);
   const deleteBuckets = useSetAtom(deleteBucketsAtom);
@@ -96,7 +98,7 @@ export function useAggQuery<TValue, TParams extends object = object>({
     useTiledQueries<AggGranularity>({
       chartId,
       getTileSizeNs,
-      overscanTilesCount: OVERSCAN_TILES_COUNT,
+      overscanTilesCount,
       queryKey,
       sendQuery,
       getTileEvictionHighWatermark,

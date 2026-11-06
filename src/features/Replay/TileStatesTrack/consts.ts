@@ -20,8 +20,8 @@ import {
 
 export type TileKind = "execrp" | "replay";
 
-export const TXN_MAX_MS = 30_000; // 30s
-export const BATCH_MAX_MS = 30 * 60_000; // 30min
+const TXN_MAX_MS = 4_000; // 4s
+const BATCH_MAX_MS = 4 * 60_000; // 4min
 
 export function getTileStatesGranularity(
   spanMs: number,
@@ -130,11 +130,6 @@ export const trackStates: Record<
   replay: { txn: replayStates, txn_batch: replayStates, agg: replayStates },
 };
 
-export const coverageStates: Record<TileKind, TileState[]> = {
-  execrp: [...execrpTxnStates, ...execrpBatchStates],
-  replay: replayStates,
-};
-
 /**
  * Heatmap mixes each px's states into one color.
  * Stacked stacks the states bottom up by time.
@@ -152,7 +147,7 @@ export const tileStatesModeLabels: Record<TileStatesMode, string> = {
   [TileStatesMode.Gantt]: "Gantt",
 };
 
-export interface TileStatesModeOption {
+interface TileStatesModeOption {
   mode: TileStatesMode;
   maxMs?: number;
   minMs?: number;
@@ -183,6 +178,15 @@ export function getDisplayMode(
   const fallback = options.find(({ mode }) => mode === selected)?.fallback;
   if (fallback && available.includes(fallback)) return fallback;
   return available[0] ?? selected;
+}
+
+export function getTileStatesDisplayMode(
+  kind: TileKind,
+  selected: TileStatesMode,
+  spanMs: number,
+): TileStatesMode {
+  const options = tileStatesModeOptions[kind];
+  return getDisplayMode(options, selected, getAvailableModes(options, spanMs));
 }
 
 export interface TileStatesViewOpts {

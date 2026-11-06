@@ -6,7 +6,7 @@ import { getBucketIdx } from "../utils";
 
 export const drawEventType = "draw";
 
-export type StateDurationsByTile = Map<number, (number | null)[]>;
+type StateDurationsByTile = Map<number, (number | null)[]>;
 
 type StatesByBucketIdx = Map<number, StateDurationsByTile>;
 export type TileStatesBucketsByGranularity = Map<
@@ -19,8 +19,10 @@ export const [
   aggTileStatesAtom,
   addAggTileStatesAtom,
   deleteAggTileStatesBucketsAtom,
+  syncAggTileStatesTilesAtom,
 ] = (function getAggTileStatesAtom() {
   const _aggTileStatesAtom = atom<TileStatesBucketsByGranularity>(new Map());
+  const _tilesKeyAtom = atom<string | undefined>(undefined);
 
   return [
     atom(
@@ -87,5 +89,16 @@ export const [
         });
       },
     ),
+    /**
+     * States are indexed by tile so clear cached states if the tiles change
+     */
+    atom(null, (get, set, tilesKey: string) => {
+      const prevTilesKey = get(_tilesKeyAtom);
+      set(_tilesKeyAtom, tilesKey);
+      if (prevTilesKey === undefined || prevTilesKey === tilesKey) return false;
+
+      set(_aggTileStatesAtom, new Map());
+      return true;
+    }),
   ];
 })();
