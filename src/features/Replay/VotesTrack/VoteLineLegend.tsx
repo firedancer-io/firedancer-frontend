@@ -1,7 +1,14 @@
 import clsx from "clsx";
 import { Flex, Text } from "@radix-ui/themes";
 import styles from "../trackControls.module.css";
-import { LINE_WIDTH_PX, voteLineDashes, type VoteLine } from "./consts";
+import {
+  LINE_WIDTH_PX,
+  OWN_VOTE_LINE_ALPHA,
+  OWN_VOTE_TRIANGLE_PX,
+  voteLineColors,
+  voteLineDashes,
+  type VoteLine,
+} from "./consts";
 
 const items: { line: VoteLine; label: string }[] = [
   { line: "notar", label: "Notar" },
@@ -10,9 +17,19 @@ const items: { line: VoteLine; label: string }[] = [
   { line: "finalize", label: "Finalize" },
 ];
 
-const SAMPLE_WIDTH_PX = 22;
+const ownVoteItems: { line: VoteLine; label: string }[] = [
+  { line: "notar", label: "Our notar vote" },
+  { line: "finalize", label: "Our finalize vote" },
+];
 
-export default function VoteLineLegend() {
+const SAMPLE_WIDTH_PX = 22;
+const MARKER_SAMPLE_HEIGHT_PX = 14;
+
+interface VoteLineLegendProps {
+  showOwnVotes: boolean;
+}
+
+export default function VoteLineLegend({ showOwnVotes }: VoteLineLegendProps) {
   return (
     <Flex direction="column">
       <Text className={styles.sectionHeader}>Lines</Text>
@@ -27,7 +44,7 @@ export default function VoteLineLegend() {
               x2={SAMPLE_WIDTH_PX}
               y1={3}
               y2={3}
-              stroke="currentColor"
+              stroke={voteLineColors[line]}
               strokeWidth={LINE_WIDTH_PX}
               strokeDasharray={voteLineDashes[line].join(" ")}
             />
@@ -35,6 +52,33 @@ export default function VoteLineLegend() {
           {label}
         </div>
       ))}
+      {showOwnVotes &&
+        ownVoteItems.map(({ line, label }) => {
+          const centerPx = SAMPLE_WIDTH_PX / 2;
+          const halfPx = OWN_VOTE_TRIANGLE_PX / 2;
+          return (
+            <div
+              key={label}
+              className={clsx(styles.option, styles.legendItem, styles.static)}
+            >
+              <svg width={SAMPLE_WIDTH_PX} height={MARKER_SAMPLE_HEIGHT_PX}>
+                <polygon
+                  points={`${centerPx - halfPx},0 ${centerPx + halfPx},0 ${centerPx},${OWN_VOTE_TRIANGLE_PX}`}
+                  fill={voteLineColors[line]}
+                />
+                <line
+                  x1={centerPx}
+                  x2={centerPx}
+                  y1={OWN_VOTE_TRIANGLE_PX}
+                  y2={MARKER_SAMPLE_HEIGHT_PX}
+                  stroke={voteLineColors[line]}
+                  strokeOpacity={OWN_VOTE_LINE_ALPHA}
+                />
+              </svg>
+              {label}
+            </div>
+          );
+        })}
     </Flex>
   );
 }

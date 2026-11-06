@@ -4,13 +4,11 @@ import { calcRelativeMs } from "../utils";
 import {
   CertKind,
   MIN_STEP_FRAC,
+  OWN_VOTE_EVENT_OFFSET,
   PARENT_READY_EVENT,
   VOTE_BATCH_EVENT_OFFSET,
   VOTE_KIND_COUNT,
   VoteKind,
-  lineCertKinds,
-  type SlotOutcome,
-  type VoteLine,
 } from "./consts";
 
 export interface StepCurve {
@@ -21,6 +19,7 @@ export interface StepCurve {
 interface SlotPartial {
   curves: StepCurve[];
   certs: Map<CertKind, number>;
+  ownVotes: Map<VoteKind, number>;
   // set on a leader window's first slot
   parentReadyTs: number | undefined;
 }
@@ -34,6 +33,7 @@ export interface SlotVotes {
   finalize: StepCurve;
   skipAll: StepCurve;
   certs: Map<CertKind, number>;
+  ownVotes: Map<VoteKind, number>;
   parentReadyTs: number | undefined;
 }
 
@@ -45,6 +45,7 @@ function emptyPartial(): SlotPartial {
   return {
     curves: Array.from({ length: VOTE_KIND_COUNT }, emptyCurve),
     certs: new Map(),
+    ownVotes: new Map(),
     parentReadyTs: undefined,
   };
 }
@@ -91,7 +92,15 @@ export function parseVotes(res: TimelineVotes, referenceNs: bigint): VotesData {
     const event = toVoteKind(res.event[i]);
     const isVote = event < VOTE_KIND_COUNT;
     const isParentReady = event === PARENT_READY_EVENT;
-    if (!isVote && !isParentReady && !isCertKind(event)) continue;
+    const ownVoteKind = getOwnVoteKind(event);
+    if (
+      !isVote &&
+      !isParentReady &&
+      ownVoteKind === undefined &&
+      !isCertKind(event)
+    ) {
+      continue;
+    }
 
     const slot = res.reference_slot + res.slot_delta[i];
     const ts = calcRelativeMs(
@@ -116,9 +125,12 @@ export function parseVotes(res: TimelineVotes, referenceNs: bigint): VotesData {
       acc.partial.parentReadyTs = minTs(acc.partial.parentReadyTs, ts);
       continue;
     }
+    if (ownVoteKind !== undefined) {
+      setEarliest(acc.partial.ownVotes, ownVoteKind, ts);
+      continue;
+    }
     if (!isVote) {
-      const prev = acc.partial.certs.get(event);
-      if (prev === undefined || ts < prev) acc.partial.certs.set(event, ts);
+      setEarliest(acc.partial.certs, event, ts);
       continue;
     }
     if (acc.total <= 0) continue;
@@ -184,8 +196,10 @@ export function mergeVotesData(acc: VotesData, add: VotesData): void {
       partial.parentReadyTs,
     );
     for (const [cert, ts] of partial.certs) {
-      const prev = existing.certs.get(cert);
-      if (prev === undefined || ts < prev) existing.certs.set(cert, ts);
+      setEarliest(existing.certs, cert, ts);
+    }
+    for (const [kind, ts] of partial.ownVotes) {
+      setEarliest(existing.ownVotes, kind, ts);
     }
   }
 }
@@ -208,7 +222,7 @@ export function buildSlotVotes(tiles: VotesData[]): Map<number, SlotVotes> {
   }
 
   const slotVotes = new Map<number, SlotVotes>();
-  for (const [slot, { curves, certs, parentReadyTs }] of merged) {
+  for (const [slot, { curves, certs, ownVotes, parentReadyTs }] of merged) {
     slotVotes.set(slot, {
       notar: curves[VoteKind.Notar],
       notarFallback: curves[VoteKind.NotarFallback].ts.length
@@ -217,6 +231,7 @@ export function buildSlotVotes(tiles: VotesData[]): Map<number, SlotVotes> {
       finalize: curves[VoteKind.Finalize],
       skipAll: sumCurves(curves[VoteKind.Skip], curves[VoteKind.SkipFallback]),
       certs,
+      ownVotes,
       parentReadyTs,
     });
   }
@@ -226,9 +241,25 @@ export function buildSlotVotes(tiles: VotesData[]): Map<number, SlotVotes> {
 function copyPartial({
   curves,
   certs,
+  ownVotes,
   parentReadyTs,
 }: SlotPartial): SlotPartial {
-  return { curves: [...curves], certs: new Map(certs), parentReadyTs };
+  return {
+    curves: [...curves],
+    certs: new Map(certs),
+    ownVotes: new Map(ownVotes),
+    parentReadyTs,
+  };
+}
+
+function setEarliest<K>(map: Map<K, number>, key: K, ts: number) {
+  const prev = map.get(key);
+  if (prev === undefined || ts < prev) map.set(key, ts);
+}
+
+function getOwnVoteKind(event: number): VoteKind | undefined {
+  const kind = event - OWN_VOTE_EVENT_OFFSET;
+  return kind >= 0 && kind < VOTE_KIND_COUNT ? kind : undefined;
 }
 
 function minTs(a: number | undefined, b: number | undefined) {
@@ -237,27 +268,6 @@ function minTs(a: number | undefined, b: number | undefined) {
   return Math.min(a, b);
 }
 
-export function getLineFadeTs(
-  line: VoteLine,
-  certs: ReadonlyMap<CertKind, number>,
-) {
-  let fadeTs: number | undefined;
-  for (const cert of lineCertKinds[line]) {
-    const ts = certs.get(cert);
-    if (ts !== undefined) fadeTs = Math.max(fadeTs ?? ts, ts);
-  }
-  return fadeTs;
-}
-
-export function getSlotOutcome(
-  certs: ReadonlyMap<CertKind, number> | undefined,
-  isSkipped: boolean,
-): SlotOutcome {
-  if (isSkipped) return "skipped";
-  if (certs?.has(CertKind.FastFinalize)) return "fast";
-  if (certs?.has(CertKind.Finalize)) return "slow";
-  const isNotarized =
-    certs?.has(CertKind.Notar) || certs?.has(CertKind.NotarFallback);
-  if (certs?.has(CertKind.Skip) && !isNotarized) return "skipped";
-  return "implicit";
+export function getFadeTs(certs: ReadonlyMap<CertKind, number>) {
+  return certs.size ? Math.min(...certs.values()) : undefined;
 }

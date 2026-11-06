@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { TimelineVotes } from "../../../api/types";
 import { nsPerMs } from "../../../consts";
-import { CertKind, PARENT_READY_EVENT, VoteKind } from "./consts";
+import {
+  CertKind,
+  OWN_VOTE_EVENT_OFFSET,
+  PARENT_READY_EVENT,
+  VoteKind,
+} from "./consts";
 import {
   buildSlotVotes,
   countPoints,
-  getLineFadeTs,
-  getSlotOutcome,
+  getFadeTs,
   hasVotesWithoutTotalStake,
   mergeVotesData,
   parseVotes,
@@ -196,6 +200,31 @@ describe("parseVotes parent ready", () => {
   });
 });
 
+describe("parseVotes own votes", () => {
+  it("keeps when this validator cast each vote kind, across tiles", () => {
+    const tileA = parseVotes(
+      response([
+        { slot: 10, event: OWN_VOTE_EVENT_OFFSET + VoteKind.Notar, ms: 5 },
+        { slot: 10, event: OWN_VOTE_EVENT_OFFSET + VoteKind.Finalize, ms: 9 },
+      ]),
+      referenceNs,
+    );
+    const tileB = parseVotes(
+      response([
+        { slot: 10, event: OWN_VOTE_EVENT_OFFSET + VoteKind.Notar, ms: 4 },
+      ]),
+      referenceNs,
+    );
+
+    expect(buildSlotVotes([tileA, tileB]).get(10)?.ownVotes).toEqual(
+      new Map([
+        [VoteKind.Notar, 4],
+        [VoteKind.Finalize, 9],
+      ]),
+    );
+  });
+});
+
 describe("sumCurves", () => {
   it("sums step functions at every point of either curve", () => {
     expectCurve(
@@ -294,25 +323,6 @@ describe("buildSlotVotes notar fallback", () => {
   });
 });
 
-describe("getSlotOutcome", () => {
-  const certs = (...kinds: CertKind[]) =>
-    new Map(kinds.map((kind) => [kind, 0]));
-
-  it.each([
-    [certs(CertKind.FastFinalize), true, "skipped"],
-    [certs(CertKind.Skip), false, "skipped"],
-    [certs(CertKind.Notar, CertKind.FastFinalize), false, "fast"],
-    [certs(CertKind.FastFinalize, CertKind.Finalize), false, "fast"],
-    [certs(CertKind.Notar, CertKind.Finalize), false, "slow"],
-    [certs(CertKind.Notar), false, "implicit"],
-    [certs(CertKind.NotarFallback, CertKind.Skip), false, "implicit"],
-    [certs(), false, "implicit"],
-    [undefined, false, "implicit"],
-  ] as const)("%o skipped=%s -> %s", (certMap, isSkipped, expected) => {
-    expect(getSlotOutcome(certMap, isSkipped)).toBe(expected);
-  });
-});
-
 describe("hasVotesWithoutTotalStake", () => {
   it("only flags responses with vote rows", () => {
     const certsOnly = {
@@ -335,23 +345,17 @@ describe("hasVotesWithoutTotalStake", () => {
   });
 });
 
-describe("getLineFadeTs", () => {
-  const certs = new Map([
-    [CertKind.Notar, 50],
-    [CertKind.FastFinalize, 70],
-    [CertKind.Finalize, 110],
-  ]);
-
-  it("fades each line after its own last certificate", () => {
-    expect(getLineFadeTs("notar", certs)).toBe(70);
-    expect(getLineFadeTs("finalize", certs)).toBe(110);
+describe("getFadeTs", () => {
+  it("fades after the slot's first certificate", () => {
+    const certs = new Map([
+      [CertKind.Notar, 50],
+      [CertKind.Finalize, 40],
+      [CertKind.FastFinalize, 70],
+    ]);
+    expect(getFadeTs(certs)).toBe(40);
   });
 
-  it("uses the notar certificate when the slot never fast finalized", () => {
-    expect(getLineFadeTs("notar", new Map([[CertKind.Notar, 50]]))).toBe(50);
-  });
-
-  it("doesn't fade a line without a certificate", () => {
-    expect(getLineFadeTs("skip", certs)).toBeUndefined();
+  it("doesn't fade a slot without certificates", () => {
+    expect(getFadeTs(new Map())).toBeUndefined();
   });
 });

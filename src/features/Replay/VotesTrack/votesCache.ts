@@ -52,6 +52,8 @@ function fetchVotes(granularity: VotesGranularity) {
         referenceNs == null
           ? emptyVotes()
           : parseVotes(result.value, referenceNs),
+      // not chunked, so the server's newest retained vote bounds what was fetched
+      chunksEndNs: result.value.available_end_ns ?? end + 1n,
     };
   };
 }

@@ -9,25 +9,13 @@ import {
 } from "react";
 import { useThrottledCallback } from "use-debounce";
 import { MAX_WEBGL_PX_RATIO, nsPerMs } from "../../../consts.ts";
-import {
-  votesFastFinalizeColor,
-  votesImplicitColor,
-  votesNotarColor,
-  votesSkippedColor,
-  votesSlowColor,
-} from "../../../colors.ts";
+import { votesFastFinalizeColor, votesNotarColor } from "../../../colors.ts";
 import { epochAtom } from "../../../atoms.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { useFrameRender } from "../../WebGl/useFrameRender.ts";
 import type { AggGranularity, VotesGranularity } from "../../../api/types.ts";
 import { VotesGranularityEnum } from "../../../api/entities.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
-import {
-  drawEventType,
-  timelineSlotsAtom,
-  timelineSlotsEmitterAtom,
-  type SlotInfo,
-} from "../HeaderTrack/nonAggAtoms.ts";
 import { getVisibleYLabels, trackNames } from "../layout.ts";
 import TrackControls, { type LegendItem } from "../TrackControls.tsx";
 import {
@@ -43,10 +31,10 @@ import {
   getMarkerStyle,
   getVotesGranularity,
   getVotesView,
+  type MarkerStyle,
   type VotesView,
 } from "./consts.ts";
 import {
-  drawStrip,
   drawVotes,
   getFracY,
   getVotesPlotLayout,
@@ -79,15 +67,6 @@ const store = getDefaultStore();
 
 const AGG_CHART_ID = "votes-agg";
 const DEFAULT_TARGET_SLOT_MS = 400;
-const AGG_BOTTOM_PAD_PX = 4;
-
-const curvesLegend: LegendItem[] = [
-  { label: "Fast finalized", color: votesNotarColor },
-  { label: "Slow finalized", color: votesSlowColor },
-  { label: "Implicit / not final", color: votesImplicitColor },
-  { label: "Skipped", color: votesSkippedColor },
-];
-
 const latencyLegend: LegendItem[] = [
   { label: "Notarized", color: votesNotarColor },
   { label: "Fast finalized", color: votesFastFinalizeColor },
@@ -106,14 +85,6 @@ function getSpanMs([start, end]: TsRange) {
   return end - start;
 }
 
-function getSlotInfos() {
-  const slotInfos = new Map<number, SlotInfo>();
-  for (const group of store.get(timelineSlotsAtom).slotGroups.values()) {
-    for (const [slot, info] of group.slots) slotInfos.set(slot, info);
-  }
-  return slotInfos;
-}
-
 function getTargetSlotMs() {
   const targetNs = store.get(epochAtom)?.target_slot_duration_nanos;
   return targetNs ? targetNs / nsPerMs : DEFAULT_TARGET_SLOT_MS;
@@ -126,6 +97,7 @@ interface VotesTrackProps {
 
 export default function VotesTrack({ width, height }: VotesTrackProps) {
   const [view, setView] = useState<VotesView>("curves");
+  const [markerStyle, setMarkerStyle] = useState<MarkerStyle>("icon");
   const [aggGranularity, setAggGranularity] = useState<AggGranularity>();
   const [latencyTicks, setLatencyTicks] = useState<number[]>([]);
 
@@ -134,7 +106,6 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
   const viewRef = useRef<VotesView>("curves");
   const slotVotesRef = useRef(new Map<number, SlotVotes>());
   const slotLatencySeriesRef = useRef(emptySeries);
-  const slotInfosRef = useRef(new Map<number, SlotInfo>());
   const granularityRef = useRef<VotesGranularity>(VotesGranularityEnum.vote);
   const liveTilesRef = useRef<
     Record<VotesGranularity, { startNs: bigint; data: VotesData } | null>
@@ -179,30 +150,18 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
           heightPx: height,
           visibleRangeMs,
           slotVotes: slotVotesRef.current,
-          slotInfos: slotInfosRef.current,
           markerStyle: getMarkerStyle(spanMs),
           certIcons: certIconsRef.current,
         });
         break;
-      case "slotLatency": {
-        const layout = getVotesPlotLayout(height);
-        const pxPerMs = width / spanMs;
-        drawStrip(
-          ctx,
-          layout,
-          width,
-          (ms) => (ms - visibleRangeMs[0]) * pxPerMs,
-          slotVotesRef.current,
-          slotInfosRef.current,
-        );
+      case "slotLatency":
         drawLatency(
           ctx,
           visibleRangeMs,
           slotLatencySeriesRef.current,
-          layout.bottomPx,
+          getVotesPlotLayout(height).bottomPx,
         );
         break;
-      }
       case "aggLatency": {
         const referenceNs = store.get(referenceNsAtom);
         if (referenceNs == null) return;
@@ -212,7 +171,12 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
           referenceNs,
           visibleRangeMs,
         );
-        drawLatency(ctx, visibleRangeMs, series, height - AGG_BOTTOM_PAD_PX);
+        drawLatency(
+          ctx,
+          visibleRangeMs,
+          series,
+          getVotesPlotLayout(height).bottomPx,
+        );
         break;
       }
     }
@@ -269,6 +233,7 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
       viewRef.current = nextView;
       setView(nextView);
     }
+    setMarkerStyle(getMarkerStyle(spanMs));
 
     if (nextView === "aggLatency") {
       setAggGranularity(getAggVotesGranularity(spanMs));
@@ -284,13 +249,6 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
 
   useLayoutEffect(() => {
     rebuildSlotVotes();
-    slotInfosRef.current = getSlotInfos();
-    const onSlots = () => {
-      slotInfosRef.current = getSlotInfos();
-      requestRender();
-    };
-    const slotsEmitter = store.get(timelineSlotsEmitterAtom);
-    slotsEmitter.addListener(drawEventType, onSlots);
     const aggEmitter = store.get(aggVotesEmitterAtom);
     aggEmitter.addListener(aggDrawEventType, requestRender);
 
@@ -302,7 +260,6 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
     requestRange();
 
     return () => {
-      slotsEmitter.removeListener(drawEventType, onSlots);
       aggEmitter.removeListener(aggDrawEventType, requestRender);
       unsubVisible();
       unsubWorld();
@@ -366,7 +323,7 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
 
   const curvesLayout = getVotesPlotLayout(height);
   const latencyLayout = getLatencyPlotLayout(
-    view === "aggLatency" ? height - AGG_BOTTOM_PAD_PX : curvesLayout.bottomPx,
+    curvesLayout.bottomPx,
     latencyTicks.length ? latencyTicks : getLatencyTicks(0),
   );
   const yLabels = getVisibleYLabels(
@@ -409,9 +366,11 @@ export default function VotesTrack({ width, height }: VotesTrackProps) {
         bucketSize={undefined}
         description={description}
         trackId="votes"
-        legend={view === "curves" ? curvesLegend : latencyLegend}
+        legend={view === "curves" ? undefined : latencyLegend}
       >
-        {view === "curves" && <VoteLineLegend />}
+        {view === "curves" && (
+          <VoteLineLegend showOwnVotes={markerStyle === "icon"} />
+        )}
       </TrackControls>
     </>
   );

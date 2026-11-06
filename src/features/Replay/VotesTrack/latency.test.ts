@@ -12,6 +12,7 @@ function slot(certs: [CertKind, number][], parentReadyTs?: number): SlotVotes {
     finalize: empty,
     skipAll: empty,
     certs: new Map(certs),
+    ownVotes: new Map(),
     parentReadyTs,
   };
 }

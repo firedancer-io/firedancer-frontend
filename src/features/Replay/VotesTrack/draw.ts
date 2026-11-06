@@ -1,46 +1,35 @@
 import {
-  votesImplicitColor,
   votesFastFinalizeColor,
   votesNotarColor,
   votesSkippedColor,
-  votesSlowColor,
-  votesStripFastColor,
-  votesStripImplicitColor,
-  votesStripSlowColor,
-  votesStripSkippedColor,
   votesThresholdLineColor,
 } from "../../../colors";
 import notarizedIconSrc from "../../../assets/notarized.svg";
 import notarizedSkippedIconSrc from "../../../assets/notarized_skipped.svg";
 import finalizedIconSrc from "../../../assets/finalized.svg";
 import type { TsRange } from "../../WebGl/webglUtils";
-import type { SlotInfo } from "../HeaderTrack/nonAggAtoms";
 import { trackInsetPx } from "../layout";
 import {
   CertKind,
-  FADED_LINE_ALPHA,
+  FADED_ALPHA,
   ICON_SIZE_PX,
   TICK_HALF_HEIGHT_PX,
   TICK_WIDTH_PX,
   FAST_FINALIZE_THRESHOLD,
   LINE_WIDTH_PX,
   NOTAR_THRESHOLD,
-  STRIP_CELL_GAP_PX,
-  STRIP_GAP_PX,
-  STRIP_PX,
+  OWN_VOTE_LINE_ALPHA,
+  OWN_VOTE_TRIANGLE_PX,
+  PLOT_BOTTOM_PAD_PX,
+  VoteKind,
   lineCertKinds,
+  voteLineColors,
   voteLineDashes,
   voteLineDrawOrder,
   type MarkerStyle,
-  type SlotOutcome,
   type VoteLine,
 } from "./consts";
-import {
-  getLineFadeTs,
-  getSlotOutcome,
-  type SlotVotes,
-  type StepCurve,
-} from "./votesData";
+import { getFadeTs, type SlotVotes, type StepCurve } from "./votesData";
 
 const GUIDE_DASH = [4, 4];
 const GUIDE_DASH_PERIOD_PX = GUIDE_DASH[0] + GUIDE_DASH[1];
@@ -64,32 +53,15 @@ export function clearDash(ctx: CanvasRenderingContext2D) {
   ctx.lineDashOffset = 0;
 }
 
-const lineColors: Record<SlotOutcome, string> = {
-  fast: votesNotarColor,
-  slow: votesSlowColor,
-  implicit: votesImplicitColor,
-  skipped: votesSkippedColor,
-};
-
-const stripColors: Record<SlotOutcome, string> = {
-  fast: votesStripFastColor,
-  slow: votesStripSlowColor,
-  implicit: votesStripImplicitColor,
-  skipped: votesStripSkippedColor,
-};
-
 interface VotesPlotLayout {
   topPx: number;
   bottomPx: number;
-  stripTopPx: number;
 }
 
 export function getVotesPlotLayout(heightPx: number): VotesPlotLayout {
-  const stripTopPx = heightPx - STRIP_PX;
   return {
     topPx: trackInsetPx.votes,
-    bottomPx: stripTopPx - STRIP_GAP_PX,
-    stripTopPx,
+    bottomPx: heightPx - PLOT_BOTTOM_PAD_PX,
   };
 }
 
@@ -136,6 +108,7 @@ interface Marker {
   x: number;
   y: number;
   icon: CertIcon;
+  isFaded: boolean;
 }
 
 interface DrawVotesArgs {
@@ -143,7 +116,6 @@ interface DrawVotesArgs {
   heightPx: number;
   visibleRangeMs: TsRange;
   slotVotes: ReadonlyMap<number, SlotVotes>;
-  slotInfos: ReadonlyMap<number, SlotInfo>;
   markerStyle: MarkerStyle;
   certIcons: CertIcons | undefined;
 }
@@ -155,7 +127,6 @@ export function drawVotes(
     heightPx,
     visibleRangeMs,
     slotVotes,
-    slotInfos,
     markerStyle,
     certIcons,
   }: DrawVotesArgs,
@@ -175,7 +146,9 @@ export function drawVotes(
   drawThresholdLine(ctx, widthPx, fastFinalizeY);
   clearDash(ctx);
 
-  drawStrip(ctx, layout, widthPx, toX, slotVotes, slotInfos);
+  if (markerStyle === "icon") {
+    drawOwnVotes(ctx, layout, widthPx, toX, slotVotes);
+  }
 
   const lines = new Map<VoteLine, Map<string, Path2D>>(
     voteLineDrawOrder.map((line) => [line, new Map()]),
@@ -185,13 +158,9 @@ export function drawVotes(
   );
   const markers: Marker[] = [];
 
-  for (const [slot, votes] of slotVotes) {
+  for (const votes of slotVotes.values()) {
     const { certs } = votes;
-    const outcome = getSlotOutcome(
-      certs,
-      slotInfos.get(slot)?.isSkipped ?? false,
-    );
-    const lineColor = lineColors[outcome];
+    const fadeTs = getFadeTs(certs);
 
     const curves: Record<VoteLine, StepCurve | null> = {
       notar: votes.notar,
@@ -209,14 +178,19 @@ export function drawVotes(
         const x = toX(ts);
         if (x < -ICON_SIZE_PX || x > widthPx + ICON_SIZE_PX) continue;
         const y = cert === CertKind.FastFinalize ? fastFinalizeY : notarY;
-        markers.push({ x, y, icon: certIconByKind[cert] });
+        markers.push({
+          x,
+          y,
+          icon: certIconByKind[cert],
+          isFaded: fadeTs !== undefined && ts > fadeTs,
+        });
       }
 
       traceCurve(
-        getPath(lines.get(line)!, lineColor),
-        getPath(fadedLines.get(line)!, lineColor),
+        getPath(lines.get(line)!, voteLineColors[line]),
+        getPath(fadedLines.get(line)!, voteLineColors[line]),
         curve,
-        getLineFadeTs(line, certs),
+        fadeTs,
         toX,
         toY,
         widthPx,
@@ -226,7 +200,7 @@ export function drawVotes(
 
   ctx.lineWidth = LINE_WIDTH_PX;
   ctx.lineJoin = "round";
-  ctx.globalAlpha = FADED_LINE_ALPHA;
+  ctx.globalAlpha = FADED_ALPHA;
   for (const [line, paths] of fadedLines) {
     strokePaths(ctx, paths, voteLineDashes[line]);
   }
@@ -244,7 +218,8 @@ function drawIcons(
   markers: Marker[],
   certIcons: CertIcons,
 ) {
-  for (const { x, y, icon } of markers) {
+  for (const { x, y, icon, isFaded } of markers) {
+    ctx.globalAlpha = isFaded ? FADED_ALPHA : 1;
     const image = certIcons[icon];
     const scale =
       ICON_SIZE_PX / Math.max(image.naturalWidth, image.naturalHeight);
@@ -252,52 +227,57 @@ function drawIcons(
     const height = image.naturalHeight * scale;
     ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
   }
+  ctx.globalAlpha = 1;
 }
 
 function drawTicks(ctx: CanvasRenderingContext2D, markers: Marker[]) {
   ctx.lineWidth = TICK_WIDTH_PX;
-  for (const { x, y, icon } of markers) {
+  for (const { x, y, icon, isFaded } of markers) {
+    ctx.globalAlpha = isFaded ? FADED_ALPHA : 1;
     ctx.beginPath();
     ctx.moveTo(x, y - TICK_HALF_HEIGHT_PX);
     ctx.lineTo(x, y + TICK_HALF_HEIGHT_PX);
     ctx.strokeStyle = certTickColors[icon];
     ctx.stroke();
   }
+  ctx.globalAlpha = 1;
 }
 
-// slot intervals overlap, so each cell cuts a gap at its start
-export function drawStrip(
+const ownVoteColors: [VoteKind, string][] = [
+  [VoteKind.Notar, voteLineColors.notar],
+  [VoteKind.Finalize, voteLineColors.finalize],
+];
+
+function drawOwnVotes(
   ctx: CanvasRenderingContext2D,
-  { stripTopPx }: VotesPlotLayout,
+  { topPx, bottomPx }: VotesPlotLayout,
   widthPx: number,
   toX: (ms: number) => number,
   slotVotes: ReadonlyMap<number, SlotVotes>,
-  slotInfos: ReadonlyMap<number, SlotInfo>,
 ) {
-  const visible = [...slotInfos.values()]
-    .filter(({ startMs, endMs }) => toX(endMs) >= 0 && toX(startMs) <= widthPx)
-    .sort((a, b) => a.startMs - b.startMs);
-
-  for (const info of visible) {
-    const x0 = Math.round(toX(info.startMs));
-    const x1 = Math.round(toX(info.endMs));
-    const outcome = getSlotOutcome(
-      slotVotes.get(info.slot)?.certs,
-      info.isSkipped,
-    );
-    ctx.clearRect(
-      x0 - STRIP_CELL_GAP_PX,
-      stripTopPx,
-      STRIP_CELL_GAP_PX,
-      STRIP_PX,
-    );
-    ctx.fillStyle = stripColors[outcome];
-    ctx.fillRect(
-      x0,
-      stripTopPx,
-      Math.max(1, x1 - x0 - STRIP_CELL_GAP_PX),
-      STRIP_PX,
-    );
+  const halfPx = OWN_VOTE_TRIANGLE_PX / 2;
+  ctx.lineWidth = 1;
+  for (const [kind, color] of ownVoteColors) {
+    const lines = new Path2D();
+    const triangles = new Path2D();
+    for (const { ownVotes } of slotVotes.values()) {
+      const ts = ownVotes.get(kind);
+      if (ts === undefined) continue;
+      const x = Math.round(toX(ts)) + 0.5;
+      if (x < -halfPx || x > widthPx + halfPx) continue;
+      lines.moveTo(x, topPx);
+      lines.lineTo(x, bottomPx);
+      triangles.moveTo(x - halfPx, topPx - OWN_VOTE_TRIANGLE_PX);
+      triangles.lineTo(x + halfPx, topPx - OWN_VOTE_TRIANGLE_PX);
+      triangles.lineTo(x, topPx);
+      triangles.closePath();
+    }
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = OWN_VOTE_LINE_ALPHA;
+    ctx.stroke(lines);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = color;
+    ctx.fill(triangles);
   }
 }
 
