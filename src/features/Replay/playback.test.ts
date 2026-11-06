@@ -256,6 +256,25 @@ describe("replay playback", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("zooming in from live pauses at the zoomed range", () => {
+    store.set(visibleRangeAtom, [92_000, 99_900]);
+    setWorldEnd(101_000);
+    expect(store.get(isLiveAtom)).toBe(false);
+    expect(range()).toEqual([92_000, 99_900]);
+  });
+
+  it("zooming out to world end resumes live", () => {
+    store.set(visibleRangeAtom, [90_000, 99_000]);
+    store.set(visibleRangeAtom, [85_000, 100_000]);
+    expect(store.get(isLiveAtom)).toBe(true);
+  });
+
+  it("moving the left edge while live stays live", () => {
+    store.set(visibleRangeAtom, [95_000, 100_000]);
+    expect(store.get(isLiveAtom)).toBe(true);
+    expect(range()).toEqual([95_000, 100_000]);
+  });
+
   it("slowing down while live drops behind, speeding up is ignored", () => {
     store.set(setPlaybackRateAtom, 2);
     expect(store.get(isLiveAtom)).toBe(true);
