@@ -1,7 +1,9 @@
+import { bigIntMin } from "../../../mathUtils";
+
 export type Interval = [startNs: bigint, endNs: bigint];
 
 export type FetchResult<TData> =
-  | { value: TData; availableEndNs?: bigint | null }
+  | { value: TData; chunksEndNs?: bigint }
   | { errorCode: string };
 
 const RESULT_LIMIT_EXCEEDED = "result_limit_exceeded"; // server error code
@@ -21,6 +23,7 @@ export interface SplitFetchOpts<TData> {
 export interface SplitFetchResult<TData> {
   data: TData;
   canRetry: boolean;
+  fetchedEndNs: bigint;
 }
 
 function splitInterval(
@@ -55,7 +58,9 @@ export async function splitFetch<TData>(
   opts: SplitFetchOpts<TData>,
   nodeIdx = 1,
 ): Promise<SplitFetchResult<TData>> {
-  if (opts.signal?.aborted) return { data: opts.empty(), canRetry: true };
+  if (opts.signal?.aborted) {
+    return { data: opts.empty(), canRetry: true, fetchedEndNs: window[0] - 1n };
+  }
 
   const result = await opts.fetch(window, nodeIdx);
 
@@ -64,7 +69,11 @@ export async function splitFetch<TData>(
     const data = opts.filterOwned
       ? opts.filterOwned(result.value, window)
       : result.value;
-    return { data, canRetry: false };
+    const fetchedEndNs =
+      result.chunksEndNs === undefined
+        ? window[0] - 1n
+        : bigIntMin(result.chunksEndNs - 1n, window[1]);
+    return { data, canRetry: false, fetchedEndNs };
   }
 
   if (result.errorCode === RESULT_LIMIT_EXCEEDED) {
@@ -74,17 +83,22 @@ export async function splitFetch<TData>(
         `Query result limit exceeded. Splitting windows and requerying [${window[0]}, ${window[1]}].`,
       );
       const left = await splitFetch(halves[0], opts, nodeIdx * 2);
+      if (left.canRetry || left.fetchedEndNs < halves[0][1]) return left;
       const right = await splitFetch(halves[1], opts, nodeIdx * 2 + 1);
       opts.merge(left.data, right.data);
-      return { data: left.data, canRetry: left.canRetry || right.canRetry };
+      return {
+        data: left.data,
+        canRetry: right.canRetry,
+        fetchedEndNs: right.fetchedEndNs,
+      };
     }
 
     console.warn(
       `Query result limit exceeded. Windows [${window[0]}, ${window[1]}] cannot be split further and some results may be missing.`,
     );
     // Cannot retry if querying the minimum window size exceeded result limit
-    return { data: opts.empty(), canRetry: false };
+    return { data: opts.empty(), canRetry: false, fetchedEndNs: window[1] };
   }
 
-  return { data: opts.empty(), canRetry: true };
+  return { data: opts.empty(), canRetry: true, fetchedEndNs: window[0] - 1n };
 }

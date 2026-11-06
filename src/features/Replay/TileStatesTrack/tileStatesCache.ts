@@ -3,6 +3,7 @@ import { TileState, TileStatesGranularityEnum } from "../../../api/entities";
 import type {
   TileStatesGranularity,
   TimelineTileStates,
+  TimelineTileStatesChunk,
 } from "../../../api/types";
 import { sendMessage } from "../../../api/worker/useWsWorker";
 import { nsPerMs } from "../../../consts";
@@ -13,6 +14,7 @@ import {
   type TileCacheDelta,
 } from "../tiles/cache";
 import { createPendingRequests } from "../tiles/requests";
+import { getChunksEndNs } from "../utils";
 import { referenceNsAtom } from "../atoms";
 
 const store = getDefaultStore();
@@ -50,7 +52,7 @@ function emptyColumns(): TileStateColumns {
   };
 }
 
-function parseTileStates(res: TimelineTileStates): TileStateColumns {
+function parseTileStates(res: TimelineTileStatesChunk): TileStateColumns {
   const acc = emptyColumns();
   if (res.state.length === 0) return acc;
 
@@ -114,6 +116,12 @@ function parseTileStates(res: TimelineTileStates): TileStateColumns {
     const errorCode = res.txn_error_code[segmentIdx];
     acc.txn_error_code.push(Number.isNaN(errorCode) ? null : errorCode);
   }
+  return acc;
+}
+
+function parseChunks(res: TimelineTileStates): TileStateColumns {
+  const acc = emptyColumns();
+  for (const chunk of res.chunks) appendColumns(acc, parseTileStates(chunk));
   return acc;
 }
 
@@ -185,8 +193,8 @@ function createCache(
 
       return "value" in result
         ? {
-            value: parseTileStates(result.value),
-            availableEndNs: result.value.available_end_ns,
+            value: parseChunks(result.value),
+            chunksEndNs: getChunksEndNs(result.value.chunks),
           }
         : result;
     },

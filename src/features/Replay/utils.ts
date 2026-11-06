@@ -104,6 +104,14 @@ export function getBucketIdx(
   return Number(idx);
 }
 
+/** Exclusive end of the window a chunked response covers */
+export function getChunksEndNs(
+  chunks: { chunk_ts: bigint; chunk_dur: bigint }[],
+): bigint | undefined {
+  const lastChunk = chunks.at(-1);
+  return lastChunk && lastChunk.chunk_ts + lastChunk.chunk_dur;
+}
+
 /**
  * Assumes ts > 0
  */

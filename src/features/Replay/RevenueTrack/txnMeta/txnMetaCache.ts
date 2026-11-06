@@ -1,5 +1,8 @@
 import { getDefaultStore } from "jotai";
-import type { TimelineTxnMeta } from "../../../../api/types";
+import type {
+  TimelineTxnMeta,
+  TimelineTxnMetaChunk,
+} from "../../../../api/types";
 import { RevenueType } from "../../../../api/entities";
 import { sendMessage } from "../../../../api/worker/useWsWorker";
 import {
@@ -10,7 +13,7 @@ import {
 import { createPendingRequests } from "../../tiles/requests";
 import type { Interval } from "../../tiles/splitFetch";
 import { referenceNsAtom } from "../../atoms";
-import { calcRelativeMs } from "../../utils";
+import { calcRelativeMs, getChunksEndNs } from "../../utils";
 import { RevenueSeries, revenueSeriesAddends } from "../consts";
 
 const store = getDefaultStore();
@@ -49,7 +52,7 @@ function emptyTxnColumns(): TxnMetaColumns {
   };
 }
 
-function parseTxnMeta(meta: TimelineTxnMeta | undefined): TxnMetaColumns {
+function parseTxnMeta(meta: TimelineTxnMetaChunk | undefined): TxnMetaColumns {
   if (!meta || meta.slot_delta.length === 0) return emptyTxnColumns();
   if (meta.reference_ts == null || meta.reference_slot == null)
     return emptyTxnColumns();
@@ -85,6 +88,12 @@ function parseTxnMeta(meta: TimelineTxnMeta | undefined): TxnMetaColumns {
     txn_load_start_ms,
     txn_commit_end_ms,
   };
+}
+
+function parseChunks(res: TimelineTxnMeta): TxnMetaColumns {
+  const acc = emptyTxnColumns();
+  for (const chunk of res.chunks) appendColumns(acc, parseTxnMeta(chunk));
+  return acc;
 }
 
 function appendColumns(acc: TxnMetaColumns, src: TxnMetaColumns): void {
@@ -198,8 +207,8 @@ export const txnMetaCache = createTileCache<TxnMetaColumns, TxnMetaMaxima>({
     const result = await txnMetaRequests.awaitResponse(requestId);
     return "value" in result
       ? {
-          value: parseTxnMeta(result.value),
-          availableEndNs: result.value.available_end_ns,
+          value: parseChunks(result.value),
+          chunksEndNs: getChunksEndNs(result.value.chunks),
         }
       : result;
   },
