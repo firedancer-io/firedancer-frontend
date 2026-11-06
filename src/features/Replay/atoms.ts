@@ -23,6 +23,7 @@ import type { SetStateAction } from "react";
 import { atomWithImmer } from "jotai-immer";
 import { onFrameUpdate } from "../../frameLoop";
 import type { ShredEventTsDeltas } from "../Shreds/types";
+import { atomWithIsSameCheck } from "../../atomUtils";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -260,7 +261,6 @@ export interface HoverInfo {
   cursorMs: number;
   /** cursor position in px, in viewport coords */
   clientPos: ClientPos;
-  slot?: number;
 }
 
 export const [
@@ -284,8 +284,8 @@ export const [
    * slots, or undefined when nothing is hovered.
    */
   const hoveredSlotAtom = atom<number | undefined>((get) => {
-    const hoverInfo = get(_hoverInfoAtom);
-    if (hoverInfo?.slot != null) return hoverInfo.slot;
+    const hoveredShredSlot = get(hoveredShredAtom)?.slot;
+    if (hoveredShredSlot != null) return hoveredShredSlot;
 
     const cursorMs = get(hoveredMsAtom);
     const referenceNs = get(referenceNsAtom);
@@ -449,7 +449,21 @@ export interface HoveredShred {
   skipped: boolean;
 }
 
-export const hoveredShredAtom = atom<HoveredShred | undefined>(undefined);
+function isSameHoveredShred(a: HoveredShred, b: HoveredShred): boolean {
+  return (
+    a.slot === b.slot &&
+    a.isFec === b.isFec &&
+    a.idx === b.idx &&
+    a.maxIdx === b.maxIdx &&
+    a.completeTs === b.completeTs &&
+    a.skipped === b.skipped &&
+    a.shred.length === b.shred.length &&
+    a.shred.every((d, i) => d === b.shred[i])
+  );
+}
+
+export const hoveredShredAtom =
+  atomWithIsSameCheck<HoveredShred>(isSameHoveredShred);
 
 /** Which tooltip the Replay chart should show for the current hover. */
 export enum TooltipType {

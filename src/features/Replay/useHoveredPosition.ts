@@ -105,5 +105,5 @@ export function useHoveredPosition({
     [notifyChange, refreshContainerAndNotify],
   );
 
-  return { setContainer, refreshContainerAndNotify };
+  return { setContainer, notifyChange };
 }

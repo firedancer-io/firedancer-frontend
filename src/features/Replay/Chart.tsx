@@ -6,7 +6,6 @@ import { useExplorableChart } from "./useExplorableChart.ts";
 import { getDefaultStore, useAtomValue } from "jotai";
 import {
   clearHoverInfoAtom,
-  hoverInfoAtom,
   initializeVisibleRangeAtom,
   isInitializedAtom,
   setHoverInfoAtom,
@@ -43,19 +42,6 @@ export default function Chart() {
       const visibleRange = store.get(visibleRangeAtom);
       if (rect.width === 0 || !visibleRange) {
         store.set(clearHoverInfoAtom, hoverOwner);
-        return;
-      }
-
-      // Another track (e.g. shreds) already owns this hover for this exact
-      // cursor position — its inner native listener fired first during bubbling
-      // and set richer hover info. Don't overwrite it.
-      const hoverInfo = store.get(hoverInfoAtom);
-      if (
-        hoverInfo != null &&
-        hoverInfo.owner !== hoverOwner &&
-        hoverInfo.clientPos.x === clientX &&
-        hoverInfo.clientPos.y === clientY
-      ) {
         return;
       }
 
