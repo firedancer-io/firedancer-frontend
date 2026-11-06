@@ -50,6 +50,7 @@ import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible
 import TrackControls from "../TrackControls.tsx";
 import { trackNames } from "../layout.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
+import { clientYToWorldY } from "../hoverUtils.ts";
 
 const store = getDefaultStore();
 
@@ -60,20 +61,6 @@ function isShredsGranularity(
     granularity === ShredsGranularityEnum.shred ||
     granularity === ShredsGranularityEnum.fec
   );
-}
-
-/**
- * Map a clientY to a camera-space world Y. The camera spans [`cameraTop` (top),
- * `cameraBottom` (= -maxShreds, bottom)], matching the drawn rects' Y.
- */
-function clientYToWorldY(
-  rect: HoveredRect,
-  clientY: number,
-  cameraTop: number,
-  cameraBottom: number,
-) {
-  const fraction = (clientY - rect.top) / rect.height;
-  return cameraTop + fraction * (cameraBottom - cameraTop);
 }
 
 function clearHoveredShred() {
