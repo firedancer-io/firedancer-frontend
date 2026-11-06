@@ -1,5 +1,6 @@
 import type * as THREE from "three";
 import type { RectMesh, RectResources } from "../WebGl/webglUtils";
+import type { EdgeResourceBundle } from "./WebGl/edgeUtils";
 
 export type RendererObj<MeshKey extends string | number = number> = {
   renderer: THREE.WebGLRenderer;
@@ -10,7 +11,7 @@ export type RendererObj<MeshKey extends string | number = number> = {
   // resources shared by this renderer's slot meshes
   resources: RectResources;
   cleanUp: () => void;
-};
+} & EdgeResourceBundle<MeshKey>;
 
 export type ShredEventTsDeltaMs = number | undefined;
 /**
