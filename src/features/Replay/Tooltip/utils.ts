@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 import { nsPerMs, solDecimals } from "../../../consts";
+import { getDurationWithUnits } from "../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
 import { formatNumberLamports } from "../../Overview/ValidatorsCard/formatAmt";
 
 /** format an absolute ns timestamp as a tooltip time (h:mm:ss.SSS) */
@@ -22,4 +23,13 @@ export function formatSol(lamports?: bigint) {
     decimals: solDecimals,
     trailingZeroes: true,
   });
+}
+
+/** Convert a ms duration to ns and format it with units */
+export function msToDurationUnits(durationMs: number | undefined): {
+  value: number | undefined;
+  unit?: string;
+} {
+  if (durationMs === undefined) return { value: undefined };
+  return getDurationWithUnits(durationMs * nsPerMs);
 }

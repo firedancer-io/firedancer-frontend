@@ -32,6 +32,7 @@ import type { AggGranularity } from "../../api/types";
 import type { ShredEventCounts } from "./ShredsTrack/atoms";
 import { aggShredEvents } from "./ShredsTrack/const";
 import type { RevenueSeries } from "./RevenueTrack/consts";
+import { hoveredExecrpTxnAtom } from "./TileStatesTrack/hoverAtoms";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -294,6 +295,10 @@ export const [
   const hoveredSlotAtom = atom<number | undefined>((get) => {
     const hoveredShredSlot = get(hoveredShredAtom)?.slot;
     if (hoveredShredSlot != null) return hoveredShredSlot;
+
+    const hoveredExecrpSlot = get(hoveredExecrpTxnAtom)?.slot;
+    if (hoveredExecrpSlot != null) return hoveredExecrpSlot;
+
     if (get(hoveredAggShredsAtom) != null) return undefined;
 
     const cursorMs = get(hoveredMsAtom);
