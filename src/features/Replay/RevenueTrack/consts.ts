@@ -37,6 +37,14 @@ export enum RevenueSeries {
   Income = "income",
 }
 
+export interface TxnMetaDetails {
+  execIdx: number;
+  transactionFee: bigint;
+  priorityFee: bigint;
+  tips: bigint;
+  loadStartMs: number;
+}
+
 /** Revenue types summed to get each series */
 export const revenueSeriesAddends: Record<
   RevenueSeries,
