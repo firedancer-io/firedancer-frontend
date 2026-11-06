@@ -4,6 +4,7 @@ import AggShredTooltip from "./ShredsTrack/AggShredTooltip";
 import AggRevenueTooltip from "./RevenueTrack/AggRevenueTooltip";
 import ReplaySlotTooltip from "./HeaderTrack/ReplaySlotTooltip";
 import AggHeaderTooltip from "./HeaderTrack/AggHeaderTooltip";
+import { hoveredExecrpTxnInfoAtom } from "./TileStatesTrack/hoverAtoms";
 import { tooltipTypeAtom, TooltipType } from "./atoms";
 
 /**
@@ -11,7 +12,8 @@ import { tooltipTypeAtom, TooltipType } from "./atoms";
  */
 export default function ReplayTooltip() {
   const tooltipType = useAtomValue(tooltipTypeAtom);
-  if (tooltipType == null) return null;
+  const execrpTxn = useAtomValue(hoveredExecrpTxnInfoAtom);
+  if (tooltipType == null || execrpTxn != null) return null;
 
   switch (tooltipType) {
     case TooltipType.Shred:

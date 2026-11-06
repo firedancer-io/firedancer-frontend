@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { computePosition, offset, flip, shift } from "@floating-ui/dom";
 import MonoText from "../../../components/MonoText";
+import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import { containerElAtom } from "../../../atoms";
 import { useAtomsSubscription } from "../../../atomUtils";
 import { hoveredClientPosAtom, hoveredMsAtom, referenceNsAtom } from "../atoms";
@@ -100,11 +101,13 @@ export default function ReplayCursorTooltip({ children }: PropsWithChildren) {
 
 interface TooltipHeaderProps {
   colorClassName?: string;
+  color?: string;
 }
 
 export const TooltipHeader = memo(function TooltipHeader({
   children,
   colorClassName,
+  color,
 }: PropsWithChildren<TooltipHeaderProps>) {
   return (
     <div
@@ -112,6 +115,7 @@ export const TooltipHeader = memo(function TooltipHeader({
         styles.header,
         colorClassName ?? styles.defaultHeaderColor,
       )}
+      style={{ color }}
     >
       {children}
     </div>
@@ -124,6 +128,8 @@ interface TooltipRowProps {
   /** trailing unit (e.g. "ms", "SOL"), shown after a space */
   unit?: string;
   valueColorClassName?: string;
+  /** overrides the value color class */
+  valueColor?: string;
 }
 
 export const TooltipRow = memo(function TooltipRow({
@@ -131,12 +137,16 @@ export const TooltipRow = memo(function TooltipRow({
   value,
   unit,
   valueColorClassName,
+  valueColor,
 }: TooltipRowProps) {
   const isMissing = value == null;
   return (
     <div className={styles.row}>
       <span className={styles.label}>{label}</span>
-      <span className={valueColorClassName ?? styles.defaultValueColor}>
+      <span
+        className={valueColorClassName ?? styles.defaultValueColor}
+        style={{ color: valueColor }}
+      >
         {isMissing ? "—" : value}
         {!isMissing && unit != null && (
           <>
@@ -158,5 +168,21 @@ export function CursorTimestampRow() {
       ? undefined
       : formatTooltipTime(calcAbsoluteNs(referenceNs, cursorMs));
 
+  return <TooltipRow label="Time" value={time} />;
+}
+
+export function SlotLeaderRow({ slot }: { slot: number }) {
+  const { name, isLeader } = useSlotInfo(slot);
+  return (
+    <TooltipRow label="Slot Leader" value={isLeader ? `You · ${name}` : name} />
+  );
+}
+
+export function TimeRow({ startMs }: { startMs: number | undefined }) {
+  const referenceNs = useAtomValue(referenceNsAtom);
+  const time =
+    startMs === undefined || referenceNs == null
+      ? undefined
+      : formatTooltipTime(calcAbsoluteNs(referenceNs, startMs));
   return <TooltipRow label="Time" value={time} />;
 }

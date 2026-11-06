@@ -1,5 +1,11 @@
-import { getDefaultStore, useAtom, useAtomValue } from "jotai";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type MutableRefObject,
+} from "react";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
@@ -36,6 +42,9 @@ import type { TileStatesGranularity } from "../../../api/types.ts";
 import { TileStatesGranularityEnum } from "../../../api/entities.ts";
 import AggTileStates from "./AggTileStatesTrack.tsx";
 import TileStatesControls from "./TileStatesControls.tsx";
+import { findTxnAtCursor } from "./hoverUtils.ts";
+import { hoveredExecrpTxnAtom } from "./hoverAtoms.ts";
+import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
 import { tileStatesViewOptsAtoms } from "./atoms.ts";
 import RowLabels from "../RowLabels.tsx";
 import { getRowsLayout, trackInsetPx } from "../layout.ts";
@@ -69,6 +78,40 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
     fillWhenThin: kind === "replay",
   });
 
+  const setHoveredExecrpTxn = useSetAtom(hoveredExecrpTxnAtom);
+  const onHoverChange = useCallback(
+    (clientX: number, clientY: number, rect: HoveredRect) => {
+      const renderer = rendererRef.current;
+      const visibleRangeMs = store.get(visibleRangeAtom);
+      if (kind !== "execrp" || !renderer || !visibleRangeMs || !rect.width) {
+        setHoveredExecrpTxn(undefined);
+        return;
+      }
+      setHoveredExecrpTxn(
+        findTxnAtCursor(renderer, visibleRangeMs, {
+          fracX: (clientX - rect.left) / rect.width,
+          fracY: (clientY - rect.top) / rect.height,
+          widthPx: rect.width,
+        }),
+      );
+    },
+    [kind, rendererRef, setHoveredExecrpTxn],
+  );
+  const onHoverLeave = useCallback(
+    () => setHoveredExecrpTxn(undefined),
+    [setHoveredExecrpTxn],
+  );
+  const { setContainer, refreshContainerAndNotify: refreshHover } =
+    useHoveredPosition({ onHoverChange, onHoverLeave });
+
+  const setContainerRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      (containerRef as MutableRefObject<HTMLDivElement | null>).current = el;
+      setContainer(el);
+    },
+    [containerRef, setContainer],
+  );
+
   const queryTxn = useTileCacheQuery(tileStatesCaches.txn);
   const queryBatch = useTileCacheQuery(tileStatesCaches.txn_batch);
 
@@ -100,6 +143,7 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
       setIsAgg(agg);
       if (agg) {
         renderer.renderedGranularity = undefined;
+        refreshHover();
         return;
       }
 
@@ -125,8 +169,9 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
       throttledRangeQuery(refNs, visibleRangeMs, worldRangeMs);
 
       if (viewChanged || granularityChanged) render(renderer);
+      refreshHover();
     },
-    [rendererRef, throttledRangeQuery],
+    [rendererRef, throttledRangeQuery, refreshHover],
   );
 
   // subscribe to range changes to trigger queries
@@ -179,8 +224,9 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
       }
 
       render(renderer);
+      refreshHover();
     },
-    [rendererRef],
+    [rendererRef, refreshHover],
   );
 
   const onDeltaTxn = useCallback(
@@ -206,7 +252,7 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
         }}
       >
         <div
-          ref={containerRef}
+          ref={setContainerRef}
           className={styles.trackCanvasContainer}
           style={{ visibility: isAgg ? "hidden" : undefined }}
         />
