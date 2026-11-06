@@ -35,10 +35,8 @@ import {
   timelineFecShredsAtoms,
 } from "./atoms.ts";
 import {
-  clearHoverInfoAtom,
   hoveredShredAtom,
   referenceNsAtom,
-  setHoverInfoAtom,
   visibleRangeAtom,
   worldRangeAtom,
 } from "../atoms.ts";
@@ -58,8 +56,6 @@ function isShredsGranularity(
     granularity === ShredsGranularityEnum.fec
   );
 }
-
-const SHREDS_HOVER_OWNER = "replay-shreds";
 
 function clientXToTs(rect: HoveredRect, clientX: number, range: TsRange) {
   const fraction = (clientX - rect.left) / rect.width;
@@ -93,16 +89,13 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     remount,
     create: ({ setUpContextListeners, getWasContextLost }) =>
       setUpRenderers(setUpContextListeners, getWasContextLost),
-    onResize: () => {
-      redrawActive();
-      refreshHover();
-    },
+    onResize: () => redrawActive(),
   });
 
   /**
    * throttle shred hit-test
    */
-  const resolveHoveredShred = useThrottledCallback(
+  const throttledResolveHoverShred = useThrottledCallback(
     (clientX: number, clientY: number, rect: HoveredRect) => {
       const renderer = rendererRef.current;
       if (!renderer) return;
@@ -110,7 +103,6 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       const visibleRange = store.get(visibleRangeAtom);
       if (!visibleRange) {
         clearHoveredShred();
-        store.set(clearHoverInfoAtom, SHREDS_HOVER_OWNER);
         return;
       }
 
@@ -122,49 +114,20 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
         : getShredAtPosition(ts, worldY, renderer.nonAggResources);
 
       store.set(hoveredShredAtom, hitShred);
-      store.set(setHoverInfoAtom, {
-        owner: SHREDS_HOVER_OWNER,
-        cursorMs: ts,
-        clientPos: { x: clientX, y: clientY },
-        slot: hitShred?.slot,
-      });
     },
     30,
   );
 
-  const onHoverChange = useCallback(
-    (clientX: number, clientY: number, rect: HoveredRect) => {
-      const visibleRange = store.get(visibleRangeAtom);
-      if (!visibleRange) return;
-
-      const cursorMs = clientXToTs(rect, clientX, visibleRange);
-      // use previous value until the next throttled setter fires
-      const slot = store.get(hoveredShredAtom)?.slot;
-      store.set(setHoverInfoAtom, {
-        owner: SHREDS_HOVER_OWNER,
-        cursorMs,
-        clientPos: { x: clientX, y: clientY },
-        slot,
-      });
-
-      resolveHoveredShred(clientX, clientY, rect);
-    },
-    [resolveHoveredShred],
-  );
-
   const onHoverLeave = useCallback(() => {
-    resolveHoveredShred.cancel();
+    throttledResolveHoverShred.cancel();
     clearHoveredShred();
-    store.set(clearHoverInfoAtom, SHREDS_HOVER_OWNER);
-  }, [resolveHoveredShred]);
+  }, [throttledResolveHoverShred]);
 
-  const {
-    setContainer: setHoverContainer,
-    refreshContainerAndNotify: refreshHover,
-  } = useHoveredPosition({
-    onHoverChange,
-    onHoverLeave,
-  });
+  const { setContainer: setHoverContainer, notifyChange: notifyHover } =
+    useHoveredPosition({
+      onHoverChange: throttledResolveHoverShred,
+      onHoverLeave,
+    });
 
   const { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes } =
     useAggShredsQuery(AGG_SHREDS_CHART_ID);
@@ -268,9 +231,9 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       );
 
       requestRender();
-      refreshHover();
+      notifyHover();
     },
-    [requestRender, refreshHover, rendererRef],
+    [requestRender, notifyHover, rendererRef],
   );
 
   // Redraw the currently-active view without refetching

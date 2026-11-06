@@ -14,10 +14,6 @@
   color: var(--shred-replayed-repair-color);
 }
 
-.replayed-nothing-color {
-  color: var(--shred-replayed-nothing-color);
-}
-
 .published-color {
   color: var(--shred-published-color);
 }
