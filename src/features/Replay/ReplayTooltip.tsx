@@ -3,6 +3,7 @@ import ShredTooltip from "./ShredsTrack/ShredTooltip";
 import AggShredTooltip from "./ShredsTrack/AggShredTooltip";
 import AggRevenueTooltip from "./RevenueTrack/AggRevenueTooltip";
 import RevenueTxnTooltip from "./RevenueTrack/RevenueTxnTooltip";
+import CpuTooltip from "./CpuTrack/CpuTooltip";
 import ReplaySlotTooltip from "./HeaderTrack/ReplaySlotTooltip";
 import AggHeaderTooltip from "./HeaderTrack/AggHeaderTooltip";
 import {
@@ -28,6 +29,8 @@ export default function ReplayTooltip() {
       return <AggRevenueTooltip />;
     case TooltipType.RevenueTxn:
       return <RevenueTxnTooltip />;
+    case TooltipType.Cpu:
+      return <CpuTooltip />;
     case TooltipType.Slot:
       return <ReplaySlotTooltip />;
     case TooltipType.AggHeader:
