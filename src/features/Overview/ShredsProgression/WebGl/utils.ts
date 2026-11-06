@@ -14,6 +14,10 @@ import { updateLabels } from "../shredsProgressionPlugin";
 import { drawSlotShreds, releaseMesh } from "../../../Shreds/WebGl/drawUtils";
 import { minDirtySlotByChartAtom } from "../../../Shreds/atoms";
 import { getDefaultStore } from "jotai";
+import {
+  updateEdgeViewWidth,
+  EDGE_RENDER_ORDER_OFFSET,
+} from "../../../Shreds/WebGl/edgeUtils";
 
 const store = getDefaultStore();
 
@@ -71,6 +75,15 @@ export function drawLive(
     (_slot, slotNumber) => skippedSlotsCluster.has(slotNumber),
   );
 
+  // keep the edge mark 1px wide as the canvas resizes
+  const viewportWidthPx = rendererObj.renderer.domElement.width;
+  if (viewportWidthPx > 0) {
+    updateEdgeViewWidth(
+      rendererObj.edgeResources.rectMaterial,
+      viewportWidthPx,
+    );
+  }
+
   // release unused meshes
   const orderedSet = new Set(drawSlots.map((d) => d.slotNumber));
   for (const slotNumber of rendererObj.meshes.keys()) {
@@ -79,6 +92,12 @@ export function drawLive(
         rendererObj.scene,
         rendererObj.meshes,
         rendererObj.availableMeshes,
+        slotNumber,
+      );
+      releaseMesh(
+        rendererObj.scene,
+        rendererObj.edgeMeshes,
+        rendererObj.availableEdgeMeshes,
         slotNumber,
       );
     }
@@ -95,6 +114,7 @@ export function drawLive(
     rendererObj.camera,
     undefined,
     (slotNumber) => minDirtySlot == null || slotNumber >= minDirtySlot,
+    ({ slotNumber }) => getEdgeMesh(rendererObj, slotNumber),
   );
   if (needsRender || forceDraw) {
     rendererObj.renderer.render(rendererObj.scene, rendererObj.camera);
@@ -139,4 +159,19 @@ function getLiveSlotMesh(rendererObj: RendererObj, slotNumber: number) {
   }
 
   return { isNewMesh, slotMesh };
+}
+
+function getEdgeMesh(rendererObj: RendererObj, slotNumber: number) {
+  const { edgeResources, edgeMeshes, availableEdgeMeshes } = rendererObj;
+
+  let edgeMesh = edgeMeshes.get(slotNumber);
+  if (!edgeMesh) {
+    const lastMesh = availableEdgeMeshes.pop();
+    edgeMesh = lastMesh ?? createRectMesh(edgeResources, SHRED_MESH_CAPACITY);
+    edgeMeshes.set(slotNumber, edgeMesh);
+    rendererObj.scene.add(edgeMesh.mesh);
+    edgeMesh.mesh.renderOrder = slotNumber + EDGE_RENDER_ORDER_OFFSET;
+  }
+
+  return edgeMesh;
 }

@@ -1,6 +1,7 @@
 import type * as THREE from "three";
 import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
 import type { DrawableSlot } from "../../Shreds/chartUtils";
+import type { EdgeResourceBundle } from "../../Shreds/WebGl/edgeUtils";
 import { AggShredEventType } from "../../../api/entities";
 import {
   shredPublishedColor,
@@ -26,7 +27,7 @@ export type RendererObj = {
   cleanUp: () => void;
 };
 
-export interface NonAggRendererResources {
+export interface NonAggRendererResources extends EdgeResourceBundle<string> {
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
   meshes: Map<string, RectMesh>;
@@ -41,10 +42,6 @@ export interface NonAggRendererResources {
    * Mesh position x values must be updated when this changes
    */
   cameraReferenceMs: number;
-  // mesh for left edges of slots
-  edgeMeshes: Map<string, RectMesh>;
-  availableEdgeMeshes: RectMesh[];
-  edgeResources: RectResources;
   lastDrawInfo?: NonAggDrawInfo;
 }
 

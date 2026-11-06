@@ -7,10 +7,12 @@ import {
   type RectMesh,
   type RectResources,
 } from "../../WebGl/webglUtils";
-import type { NonAggRendererResources } from "./const";
 
 // Device-pixel width of the mark
 const EDGE_PX = 1;
+
+// Marks appear above their own slot's events, but below bigger slot numbers' events
+export const EDGE_RENDER_ORDER_OFFSET = 0.5;
 
 // Snaps the left edge to a whole device pixel so the mark keeps a constant
 // width and brightness as the camera pans. instanceRect.z (world width) is
@@ -73,23 +75,28 @@ export function updateEdgeViewWidth(
   material.uniforms.uViewWidthPx.value = viewWidthPx;
 }
 
-export function setUpEdgeResources() {
+export interface EdgeResourceBundle<MeshKey extends string | number> {
+  edgeResources: RectResources;
+  edgeMeshes: Map<MeshKey, RectMesh>;
+  availableEdgeMeshes: RectMesh[];
+}
+
+export function setUpEdgeResources<
+  MeshKey extends string | number,
+>(): EdgeResourceBundle<MeshKey> {
   return {
     edgeResources: createEdgeResources(),
-    edgeMeshes: new Map<string, RectMesh>(),
+    edgeMeshes: new Map<MeshKey, RectMesh>(),
     availableEdgeMeshes: [],
   };
 }
 
-export function cleanUpEdgeResources(
+export function cleanUpEdgeResources<MeshKey extends string | number>(
   {
     edgeResources,
     edgeMeshes,
     availableEdgeMeshes,
-  }: Pick<
-    NonAggRendererResources,
-    "edgeResources" | "edgeMeshes" | "availableEdgeMeshes"
-  >,
+  }: EdgeResourceBundle<MeshKey>,
   wasContextLost: boolean,
 ) {
   if (wasContextLost) return;
