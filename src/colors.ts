@@ -424,3 +424,15 @@ export const replayDropdownSelectedTextColor = "#FFF";
 export const replayDropdownSelectedBackgroundColor = "rgba(0, 144, 255, 0.16)";
 export const replayDropdownHoverBackgroundColor = "rgba(255, 255, 255, 0.06)";
 export const replayDropdownDividerColor = "#333333";
+
+export const replayExecrpExecuteColor = "#3B3D41";
+export const replayExecrpValidateColor = "#55585D";
+export const replayExecrpPostExecuteColor = "#6C6F73";
+export const replayExecrpLoadingColor = "#C48225";
+export const replayExecrpSigverifyColor = "#8F6CE0";
+export const replayExecrpLthashColor = "#239382";
+export const replayExecrpLthashBatchColor = "#1A463E";
+export const replayBlockedOnNetworkColor = "#3F6789";
+export const replaySlotFinishColor = "#458B68";
+export const replayBlockedOnConflictsColor = "#D36854";
+export const replayBlockedOnTilesColor = "#AC9834";
