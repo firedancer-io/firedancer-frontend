@@ -11,7 +11,8 @@ import {
   setUpRenderers,
 } from "./utils.ts";
 import { aggTrackHeight } from "./const.ts";
-import { useAggHeaderQuery, getAggGranularity } from "./useAggHeaderQuery.ts";
+import { useAggHeaderQuery } from "./useAggHeaderQuery.ts";
+import { getAggSlotsGranularity } from "../utils.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
@@ -49,7 +50,7 @@ function AggHeaderTrack({ remount, className, showAgg }: AggHeaderTrackProps) {
   const throttledRelativeTsQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
       if (isAggregate(visibleRange)) {
-        const queryGranularity = getAggGranularity(
+        const queryGranularity = getAggSlotsGranularity(
           visibleRange[1] - visibleRange[0],
         );
         aggQuery(referenceNs, visibleRange, worldRange, queryGranularity);

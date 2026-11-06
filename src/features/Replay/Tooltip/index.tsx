@@ -118,6 +118,29 @@ export const TooltipHeader = memo(function TooltipHeader({
   );
 });
 
+interface AggTooltipHeaderProps {
+  startNs: bigint;
+  endNs: bigint;
+  granularity: string;
+}
+
+export const AggTooltipHeader = memo(function AggTooltipHeader({
+  startNs,
+  endNs,
+  granularity,
+}: AggTooltipHeaderProps) {
+  return (
+    <TooltipHeader>
+      <span className={styles.aggHeader}>
+        <span>
+          {formatTooltipTime(startNs)} – {formatTooltipTime(endNs)}
+        </span>
+        <span className={styles.aggHeaderGranularity}>{granularity}</span>
+      </span>
+    </TooltipHeader>
+  );
+});
+
 interface TooltipRowProps {
   label: string;
   value: ReactNode;

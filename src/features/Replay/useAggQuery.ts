@@ -9,7 +9,7 @@ import { useTiledQueries } from "./useTiledQueries";
 import { nsBucketSizes } from "./const";
 import type { TimelineQueryKey } from "./atoms";
 
-const drawEventType = "draw";
+export const drawEventType = "draw";
 
 /**
  * Number of current granularity buckets per fetch tile.
@@ -27,7 +27,7 @@ export function getTileSizeNs(granularity: AggGranularity) {
   return BigInt(BUCKETS_PER_TILE) * nsBucketSizes[granularity];
 }
 
-type DrawEmitter = TypedEmitter<{ [drawEventType]: () => void }>;
+export type DrawEmitter = TypedEmitter<{ [drawEventType]: () => void }>;
 
 type AddAtom<TValue> = WritableAtom<null, [TValue], void>;
 

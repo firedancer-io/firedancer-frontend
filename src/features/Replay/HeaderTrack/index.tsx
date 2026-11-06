@@ -1,9 +1,14 @@
 import { useCallback, useRef } from "react";
+import { getDefaultStore } from "jotai";
 import AggHeaderTrack from "./AggHeaderTrack.tsx";
 import { NonAggHeaderTrack } from "./NonAggHeaderTrack.tsx";
+import AggHeaderBucketHighlight from "./AggHeaderBucketHighlight.tsx";
 import styles from "./headerTrack.module.css";
 import { Box } from "@radix-ui/themes";
 import { trackHeight } from "./const.ts";
+import { isAggHeaderVisibleAtom } from "./aggAtoms.ts";
+
+const store = getDefaultStore();
 
 interface HeaderTrackProps {
   width: number;
@@ -18,6 +23,7 @@ export default function HeaderTrack({ width }: HeaderTrackProps) {
    */
   const setIsAggVisible = useCallback((isAggVisible: boolean) => {
     containerRef.current?.classList.toggle(styles.showAgg, isAggVisible);
+    store.set(isAggHeaderVisibleAtom, isAggVisible);
   }, []);
 
   const showAgg = useCallback(() => setIsAggVisible(true), [setIsAggVisible]);
@@ -42,6 +48,7 @@ export default function HeaderTrack({ width }: HeaderTrackProps) {
         width={width}
         showNonAgg={showNonAgg}
       />
+      <AggHeaderBucketHighlight />
     </Box>
   );
 }

@@ -27,7 +27,7 @@ import {
 } from "./consts.ts";
 import { getRevenueRatio } from "./scale.ts";
 import {
-  AGG_BUCKET_COUNT_THRESHOLD,
+  AGG_REVENUE_BUCKET_COUNT_THRESHOLD,
   getGranularity,
 } from "./useAggRevenueQuery.ts";
 import { OVERSCAN_BUCKETS } from "../useAggQuery.ts";
@@ -137,7 +137,7 @@ export function setUpAggResources(
   camera.position.z = 1;
 
   const resources = createRectResources();
-  const mesh = createRectMesh(resources, AGG_BUCKET_COUNT_THRESHOLD);
+  const mesh = createRectMesh(resources, AGG_REVENUE_BUCKET_COUNT_THRESHOLD);
   scene.add(mesh.mesh);
 
   const cleanUpResources = () => {

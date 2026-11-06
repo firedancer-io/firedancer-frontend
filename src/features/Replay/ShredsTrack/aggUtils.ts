@@ -16,7 +16,7 @@ import {
   type AggRendererResources,
   type RendererObj,
 } from "./const";
-import { type ShredBucketsByGranularity } from "./atoms";
+import { type ShredBucketsByGranularity, type ShredEventCounts } from "./atoms";
 import { getAggGranularity } from "./useAggShredsQuery";
 import { OVERSCAN_BUCKETS } from "../useAggQuery";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
@@ -159,4 +159,9 @@ export function moveAggCamera(
   if (mesh.referenceX != null) {
     mesh.mesh.position.x = mesh.referenceX - cameraReferenceMs;
   }
+}
+
+export function getAggShredCount(counts: ShredEventCounts | undefined): number {
+  if (!counts) return 0;
+  return aggShredEvents.reduce((sum, { type }) => sum + (counts[type] ?? 0), 0);
 }

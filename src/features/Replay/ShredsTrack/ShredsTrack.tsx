@@ -6,7 +6,7 @@ import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import { useFrameRender } from "../../WebGl/useFrameRender.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import { isAggregate, setUpRenderers } from "./utils.ts";
-import { drawAggShreds, moveAggCamera } from "./aggUtils.ts";
+import { drawAggShreds, getAggShredCount, moveAggCamera } from "./aggUtils.ts";
 import {
   drawHoveredShred,
   drawNonAggShreds,
@@ -131,12 +131,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
           .get(aggShredsAtom)
           .get(granularity)
           ?.get(bucketIdx);
-        const bucketHeight = counts
-          ? aggShredEvents.reduce(
-              (sum, { type }) => sum + (counts[type] ?? 0),
-              0,
-            )
-          : 0;
+        const bucketHeight = getAggShredCount(counts);
 
         // bars span world Y [-bucketHeight, 0]; only show the tooltip when the
         // cursor is actually within the drawn bar

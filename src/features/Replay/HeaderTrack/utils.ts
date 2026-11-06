@@ -20,9 +20,13 @@ import {
 } from "./const";
 import { omit } from "lodash";
 import { getSlotCount, type SlotBucketsByGranularity } from "./aggAtoms";
-import { getAggGranularity } from "./useAggHeaderQuery";
 import { OVERSCAN_BUCKETS } from "../useAggQuery";
-import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
+import {
+  calcAbsoluteNs,
+  calcRelativeMs,
+  getAggSlotsGranularity,
+  getBucketIdx,
+} from "../utils";
 import {
   replayAggHeaderBackgroundColor,
   replayMiniMapSkippedColor,
@@ -120,7 +124,7 @@ export function drawAggSlots(
   visibleRange: TsRange,
   aggSlots: SlotBucketsByGranularity,
 ) {
-  const granularity = getAggGranularity(visibleRange[1] - visibleRange[0]);
+  const granularity = getAggSlotsGranularity(visibleRange[1] - visibleRange[0]);
   const slotsByBucketIdx = aggSlots.get(granularity);
   if (!slotsByBucketIdx) return;
 
