@@ -35,11 +35,13 @@ import {
   timelineFecShredsAtoms,
 } from "./atoms.ts";
 import {
+  hoveredAggShredsAtom,
   hoveredShredAtom,
   referenceNsAtom,
   visibleRangeAtom,
   worldRangeAtom,
 } from "../atoms.ts";
+import { calcAbsoluteNs, getBucketIdx } from "../utils.ts";
 import styles from "../track.module.css";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import TrackControls from "../TrackControls.tsx";
@@ -80,6 +82,10 @@ function clearHoveredShred() {
   store.set(hoveredShredAtom, undefined);
 }
 
+function clearHoveredAggShreds() {
+  store.set(hoveredAggShredsAtom, undefined);
+}
+
 function ShredsTrack({ remount }: WebGlRemountProps) {
   const [granularity, setGranularity] = useState<
     AggGranularity | ShredsGranularity | undefined
@@ -101,17 +107,68 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       if (!renderer) return;
 
       const visibleRange = store.get(visibleRangeAtom);
-      if (!visibleRange) {
+      const referenceNs = store.get(referenceNsAtom);
+      if (!visibleRange || referenceNs == null) {
         clearHoveredShred();
+        clearHoveredAggShreds();
         return;
       }
 
       const ts = clientXToTs(rect, clientX, visibleRange);
+
+      if (isAggregate(visibleRange)) {
+        clearHoveredShred();
+        const granularity = getAggGranularity(
+          visibleRange[1] - visibleRange[0],
+        );
+        const bucketIdx = getBucketIdx(
+          calcAbsoluteNs(referenceNs, ts),
+          granularity,
+          false,
+        );
+        // total stacked height of the bucket's bar, in shred count
+        const counts = store
+          .get(aggShredsAtom)
+          .get(granularity)
+          ?.get(bucketIdx);
+        const bucketHeight = counts
+          ? aggShredEvents.reduce(
+              (sum, { type }) => sum + (counts[type] ?? 0),
+              0,
+            )
+          : 0;
+
+        // bars span world Y [-bucketHeight, 0]; only show the tooltip when the
+        // cursor is actually within the drawn bar
+        const { camera } = renderer.aggResources;
+        const worldY = clientYToWorldY(
+          rect,
+          clientY,
+          camera.top,
+          camera.bottom,
+        );
+        const onBar =
+          counts != null &&
+          bucketHeight > 0 &&
+          worldY <= 0 &&
+          -worldY <= bucketHeight;
+
+        if (onBar) {
+          store.set(hoveredAggShredsAtom, {
+            bucketIdx,
+            granularity,
+            counts,
+          });
+        } else {
+          clearHoveredAggShreds();
+        }
+        return;
+      }
+
+      clearHoveredAggShreds();
       const { camera } = renderer.nonAggResources;
       const worldY = clientYToWorldY(rect, clientY, camera.top, camera.bottom);
-      const hitShred = isAggregate(visibleRange)
-        ? undefined
-        : getShredAtPosition(ts, worldY, renderer.nonAggResources);
+      const hitShred = getShredAtPosition(ts, worldY, renderer.nonAggResources);
 
       store.set(hoveredShredAtom, hitShred);
     },
@@ -121,6 +178,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
   const onHoverLeave = useCallback(() => {
     throttledResolveHoverShred.cancel();
     clearHoveredShred();
+    clearHoveredAggShreds();
   }, [throttledResolveHoverShred]);
 
   const { setContainer: setHoverContainer, notifyChange: notifyHover } =
@@ -285,7 +343,8 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
 
       drawAggShreds(rendererRef.current, referenceNs, visibleRange, aggShreds);
       requestRender();
-    }, [requestRender, rendererRef]),
+      notifyHover();
+    }, [requestRender, notifyHover, rendererRef]),
     50,
     { leading: false, trailing: true },
   );
