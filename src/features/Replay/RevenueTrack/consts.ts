@@ -72,7 +72,7 @@ export const revenueSeriesLabels: Record<RevenueSeries, string> = {
   [RevenueSeries.Income]: "Income",
 };
 
-const revenueSeriesHexColors: Record<RevenueSeries, string> = {
+export const revenueSeriesHexColors: Record<RevenueSeries, string> = {
   [RevenueSeries.Fees]: feesColor,
   [RevenueSeries.Tips]: tipsColor,
   [RevenueSeries.Income]: incomeColor,

@@ -1,5 +1,6 @@
 import { getDefaultStore, useAtom, useAtomValue } from "jotai";
 import { useRef, useCallback, useLayoutEffect, useState } from "react";
+import { minY, maxHeightRatio } from "./consts.ts";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
@@ -18,7 +19,7 @@ import {
   clearLiveMarker,
   type RendererObj,
 } from "./utils.ts";
-import { calcRelativeMs } from "../utils.ts";
+import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils.ts";
 import useAggRevenueQuery, {
   getGranularity,
   type AggRevenueQuery,
@@ -26,13 +27,24 @@ import useAggRevenueQuery, {
 import { useTxnMetaCache } from "./txnMeta/useTxnMetaCache.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
-import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
+import {
+  clearHoverInfoAtom,
+  hoveredAggRevenueAtom,
+  referenceNsAtom,
+  setHoverInfoAtom,
+  visibleRangeAtom,
+  worldRangeAtom,
+} from "../atoms.ts";
 import {
   aggRevenueAtom,
   drawEventType,
   aggRevenueEmitterAtom,
   revenueViewOptsAtom,
+  getAggRevenueValue,
 } from "./atoms.ts";
+import { getRevenueRatio } from "./scale.ts";
+import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
+import { clientXToTs, clientYToWorldY } from "../hoverUtils.ts";
 import { tileCountAtom } from "../../Overview/SlotPerformance/atoms.ts";
 import RevenueYAxis from "./RevenueYAxis.tsx";
 import RevenueControls from "./RevenueControls.tsx";
@@ -47,6 +59,13 @@ import {
 import styles from "../track.module.css";
 
 const store = getDefaultStore();
+
+const REVENUE_HOVER_OWNER = "replay-revenue";
+
+function clearRevenueHover() {
+  store.set(hoveredAggRevenueAtom, undefined);
+  store.set(clearHoverInfoAtom, REVENUE_HOVER_OWNER);
+}
 
 const getNumRows = (splitByRow: boolean, tileCount: number) =>
   splitByRow ? Math.max(tileCount, 1) : 1;
@@ -69,6 +88,9 @@ function RevenueTrackBody({
   );
   const [aggAxisMax, setAggAxisMax] = useState(0n);
   const [nonAggAxisMax, setNonAggAxisMax] = useState(0n);
+
+  const aggAxisMaxRef = useRef(aggAxisMax);
+  aggAxisMaxRef.current = aggAxisMax;
   const [opts, setOpts] = useAtom(revenueViewOptsAtom);
   const { type } = opts;
 
@@ -154,6 +176,105 @@ function RevenueTrackBody({
   const refreshNonAggRef = useRef(refreshNonAgg);
   refreshNonAggRef.current = refreshNonAgg;
 
+  const resolveHoveredAggRevenue = useThrottledCallbackIfVisible(
+    useCallback(
+      (clientX: number, clientY: number, rect: HoveredRect) => {
+        const renderer = rendererRef.current;
+        const visibleRange = store.get(visibleRangeAtom);
+        const referenceNs = store.get(referenceNsAtom);
+
+        if (
+          !renderer ||
+          !visibleRange ||
+          referenceNs == null ||
+          !isAggregate(visibleRange)
+        ) {
+          clearRevenueHover();
+          return;
+        }
+
+        const ts = clientXToTs(rect, clientX, visibleRange);
+        const granularity = getGranularity(visibleRange[1] - visibleRange[0]);
+        const bucketIdx = getBucketIdx(
+          calcAbsoluteNs(referenceNs, ts),
+          granularity,
+          false,
+        );
+        const revenues = store
+          .get(aggRevenueAtom)
+          .get(granularity)
+          ?.get(bucketIdx);
+        const lamportValue = revenues && getAggRevenueValue(revenues, type);
+
+        // bar spans world Y [minY, barHeight].
+        // only show the tooltip when the cursor is on it
+        const { camera } = renderer.aggResources;
+        const worldY = clientYToWorldY(
+          rect,
+          clientY,
+          camera.top,
+          camera.bottom,
+        );
+        const onBar =
+          lamportValue != null &&
+          lamportValue > 0n &&
+          worldY >= minY &&
+          worldY <=
+            getRevenueRatio(opts.scale, aggAxisMaxRef.current, lamportValue) *
+              maxHeightRatio;
+
+        store.set(
+          hoveredAggRevenueAtom,
+          onBar ? { bucketIdx, granularity, type, lamportValue } : undefined,
+        );
+        store.set(setHoverInfoAtom, {
+          owner: REVENUE_HOVER_OWNER,
+          cursorMs: ts,
+          clientPos: { x: clientX, y: clientY },
+        });
+      },
+      [rendererRef, aggAxisMaxRef, type, opts.scale],
+    ),
+    30,
+  );
+
+  const onHoverChange = useCallback(
+    (clientX: number, clientY: number, rect: HoveredRect) => {
+      const visibleRange = store.get(visibleRangeAtom);
+      if (!visibleRange) return;
+
+      if (!isAggregate(visibleRange)) {
+        resolveHoveredAggRevenue.cancel();
+        clearRevenueHover();
+        return;
+      }
+
+      const cursorMs = clientXToTs(rect, clientX, visibleRange);
+      // keep the cursor following the pointer until the next throttled setter
+      store.set(setHoverInfoAtom, {
+        owner: REVENUE_HOVER_OWNER,
+        cursorMs,
+        clientPos: { x: clientX, y: clientY },
+      });
+
+      resolveHoveredAggRevenue(clientX, clientY, rect);
+    },
+    [resolveHoveredAggRevenue],
+  );
+
+  const onHoverLeave = useCallback(() => {
+    resolveHoveredAggRevenue.cancel();
+    clearRevenueHover();
+  }, [resolveHoveredAggRevenue]);
+
+  const {
+    setContainer: setHoverContainer,
+    refreshContainerAndNotify: refreshHover,
+  } = useHoveredPosition({
+    onHoverChange,
+    onHoverLeave,
+  });
+
   const renderActive = useCallback(() => {
     const renderer = rendererRef.current;
     if (!renderer) return;
@@ -215,9 +336,11 @@ function RevenueTrackBody({
         aggRevenue,
         opts.scale,
       );
+      aggAxisMaxRef.current = maxValue;
       setAggAxisMax(maxValue);
       renderActive();
-    }, [rendererRef, type, opts.scale, renderActive]),
+      refreshHover();
+    }, [rendererRef, type, opts.scale, renderActive, refreshHover]),
     50,
     { leading: false, trailing: true },
   );
@@ -235,6 +358,8 @@ function RevenueTrackBody({
     const aggEmitter = store.get(aggRevenueEmitterAtom);
     aggEmitter.addListener(drawEventType, throttledDrawAgg);
 
+    setHoverContainer(containerRef.current);
+
     // trigger initial draw
     onRangeChange(true);
 
@@ -244,10 +369,21 @@ function RevenueTrackBody({
       // cancel pending trailing timers so they don't accumulate across remounts
       throttledDrawAgg.cancel();
       throttledRangeQuery.cancel();
+      resolveHoveredAggRevenue.cancel();
+      setHoverContainer(null);
+      onHoverLeave();
       unsubscribeVisible();
       unsubscribeWorld();
     };
-  }, [onRangeChange, throttledDrawAgg, throttledRangeQuery]);
+  }, [
+    onRangeChange,
+    throttledDrawAgg,
+    throttledRangeQuery,
+    resolveHoveredAggRevenue,
+    setHoverContainer,
+    onHoverLeave,
+    containerRef,
+  ]);
 
   // Trigger refresh for agg mode entry or a scale/type change.
   useLayoutEffect(() => {
