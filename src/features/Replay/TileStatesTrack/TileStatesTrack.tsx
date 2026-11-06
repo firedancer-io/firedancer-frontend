@@ -3,6 +3,7 @@ import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
+import { useFrameRender } from "../../WebGl/useFrameRender.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
@@ -60,6 +61,10 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
     create: ({ setUpContextListeners, getWasContextLost }) =>
       setUpRenderer(kind, setUpContextListeners, getWasContextLost),
     onResize: (rendererObj) => handleResize(rendererObj),
+  });
+
+  const requestRender = useFrameRender(() => {
+    if (rendererRef.current) render(rendererRef.current);
   });
 
   const tiles = useAtomValue(tilesAtom);
@@ -124,9 +129,9 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
 
       throttledRangeQuery(refNs, visibleRangeMs, worldRangeMs);
 
-      if (viewChanged || granularityChanged) render(renderer);
+      if (viewChanged || granularityChanged) requestRender();
     },
-    [rendererRef, throttledRangeQuery],
+    [rendererRef, requestRender, throttledRangeQuery],
   );
 
   // subscribe to range changes to trigger queries
@@ -152,15 +157,15 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
     if (!renderer) return;
     updateBarHeight(renderer);
     if (renderer.renderedGranularity) syncMeshes(renderer, true);
-    render(renderer);
-  }, [rendererRef, rows]);
+    requestRender();
+  }, [rendererRef, requestRender, rows]);
 
   useLayoutEffect(() => {
     const renderer = rendererRef.current;
     if (!renderer) return;
     renderer.errorStatesScene.visible = opts.showErrorStates;
-    render(renderer);
-  }, [opts.showErrorStates, rendererRef]);
+    requestRender();
+  }, [opts.showErrorStates, rendererRef, requestRender]);
 
   const handleDelta = useCallback(
     (granularity: TileStatesGranularity, delta: TileStatesCacheDelta) => {
@@ -178,9 +183,9 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
         syncMeshes(renderer);
       }
 
-      render(renderer);
+      requestRender();
     },
-    [rendererRef],
+    [rendererRef, requestRender],
   );
 
   const onDeltaTxn = useCallback(

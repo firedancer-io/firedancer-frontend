@@ -3,6 +3,7 @@ import { useCallback, useLayoutEffect, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
+import { useFrameRender } from "../../WebGl/useFrameRender.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import { isAggregate, setUpRenderers } from "./utils.ts";
 import { drawAggShreds, moveAggCamera } from "./aggUtils.ts";
@@ -119,6 +120,8 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     renderer.render(scene, camera);
   }, [rendererRef]);
 
+  const requestRender = useFrameRender(renderActive);
+
   const moveCameraAndDrawNonAgg = useCallback(
     (visibleRange: TsRange) => {
       if (!rendererRef.current) return;
@@ -140,9 +143,9 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
         worldRange,
       );
 
-      renderActive();
+      requestRender();
     },
-    [renderActive, rendererRef],
+    [requestRender, rendererRef],
   );
 
   /**
@@ -160,7 +163,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       // Move camera before querying, because query may trigger immediate draw if data is already available
       moveAggCamera(rendererRef.current.aggResources, visibleRange);
       throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
-      renderActive();
+      requestRender();
     } else {
       throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
       // trigger a redraw immediately to hide trailing incomplete slots and prevent extended shreds.
@@ -168,7 +171,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     }
   }, [
     moveCameraAndDrawNonAgg,
-    renderActive,
+    requestRender,
     rendererRef,
     throttledRelativeTsQuery,
   ]);
@@ -181,8 +184,8 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       if (!rendererRef.current || !visibleRange || referenceNs == null) return;
 
       drawAggShreds(rendererRef.current, referenceNs, visibleRange, aggShreds);
-      renderActive();
-    }, [renderActive, rendererRef]),
+      requestRender();
+    }, [requestRender, rendererRef]),
     50,
     { leading: false, trailing: true },
   );

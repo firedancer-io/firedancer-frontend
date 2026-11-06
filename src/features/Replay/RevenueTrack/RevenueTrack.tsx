@@ -3,6 +3,7 @@ import { useRef, useCallback, useLayoutEffect, useState } from "react";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
+import { useFrameRender } from "../../WebGl/useFrameRender.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import {
   drawAggRevenue,
@@ -171,6 +172,8 @@ function RevenueTrackBody({
     renderer.renderer.render(scene, camera);
   }, [rendererRef]);
 
+  const requestRender = useFrameRender(renderActive);
+
   /**
    * Query data for new range and optionally update camera.
    */
@@ -195,9 +198,9 @@ function RevenueTrackBody({
 
       throttledRangeQuery(referenceNs, visibleRangeMs, worldRangeMs);
 
-      if (updateView) renderActive();
+      if (updateView) requestRender();
     },
-    [renderActive, rendererRef, throttledRangeQuery],
+    [requestRender, rendererRef, throttledRangeQuery],
   );
 
   const throttledDrawAgg = useThrottledCallbackIfVisible(
@@ -216,8 +219,8 @@ function RevenueTrackBody({
         opts.scale,
       );
       setAggAxisMax(maxValue);
-      renderActive();
-    }, [rendererRef, type, opts.scale, renderActive]),
+      requestRender();
+    }, [rendererRef, type, opts.scale, requestRender]),
     50,
     { leading: false, trailing: true },
   );
@@ -258,8 +261,8 @@ function RevenueTrackBody({
   // Trigger refresh for nonAgg mode entry or a rows/scale/type/timeline-reference change
   useLayoutEffect(() => {
     if (isAgg) return;
-    renderActive();
-  }, [isAgg, numRows, opts.scale, type, getRelativeMs, renderActive]);
+    requestRender();
+  }, [isAgg, numRows, opts.scale, type, getRelativeMs, requestRender]);
 
   /**
    * Trigger updates for nonAgg data changes.
@@ -286,9 +289,9 @@ function RevenueTrackBody({
       }
 
       // Only render on delta updates when non aggregate view is active
-      if (!isAggCurrentRef.current) renderActive();
+      if (!isAggCurrentRef.current) requestRender();
     },
-    [getRelativeMs, renderActive, rendererRef],
+    [getRelativeMs, requestRender, rendererRef],
   );
 
   useTileCacheSubscription(txnMetaCache, onCacheDelta);

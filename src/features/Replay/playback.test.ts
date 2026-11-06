@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi, type Mock } from "vitest";
 import { atom, createStore, type PrimitiveAtom } from "jotai";
 import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../nowAtoms";
+import { onFrameUpdate } from "../../frameLoop";
+import type * as FrameLoop from "../../frameLoop";
 import {
   initializeVisibleRangeAtom,
   isLiveAtom,
@@ -15,22 +17,35 @@ import {
 } from "./atoms";
 import { CHART_NOW_DELAY_MS, DEFAULT_WINDOW_MS } from "./const";
 
-vi.mock("../../nowAtoms", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
+vi.mock("../../nowAtoms", () => ({
   smoothedNowNsAtom: atom<bigint | undefined>(undefined),
 }));
+
+vi.mock("../../frameLoop", async (importOriginal) => {
+  const frameLoop = await importOriginal<typeof FrameLoop>();
+  return {
+    ...frameLoop,
+    onFrameUpdate: vi.fn(
+      (update: Parameters<typeof frameLoop.onFrameUpdate>[0]) =>
+        vi.fn(frameLoop.onFrameUpdate(update)),
+    ),
+  };
+});
 
 type Store = ReturnType<typeof createStore>;
 
 let store: Store;
 let perfNow = 0;
-let frames = new Map<number, FrameRequestCallback>();
+// kept across tests: the frame loop's pending frame request outlives a test
+const frames = new Map<number, FrameRequestCallback>();
 let nextFrameId = 1;
+
+const startedClocks = () => vi.mocked(onFrameUpdate).mock.results;
 
 function runFrame(ms: number) {
   perfNow += ms;
-  const pending = frames;
-  frames = new Map();
+  const pending = [...frames.values()];
+  frames.clear();
   pending.forEach((cb) => cb(perfNow));
 }
 
@@ -47,14 +62,10 @@ function range() {
 
 beforeEach(() => {
   perfNow = 0;
-  frames = new Map();
   vi.spyOn(performance, "now").mockImplementation(() => perfNow);
   vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
     frames.set(nextFrameId, cb);
     return nextFrameId++;
-  });
-  vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
-    frames.delete(id);
   });
   store = createStore();
   store.set(startupTimeAtom, { startupTimeNanos: 0n });
@@ -138,8 +149,33 @@ describe("replay playback", () => {
   it("restarting playback doesn't leave a second clock running", () => {
     store.set(visibleRangeAtom, [10_000, 20_000]);
     store.set(togglePlaybackAtom);
+    const firstClock = startedClocks().at(-1)?.value as Mock;
     store.set(setPlaybackRateAtom, 2);
-    expect(frames.size).toBe(1);
+    const secondClock = startedClocks().at(-1)?.value as Mock;
+
+    expect(firstClock).toHaveBeenCalled();
+    expect(secondClock).not.toHaveBeenCalled();
+  });
+
+  it("keeps playing after a range subscriber throws", () => {
+    const rethrow = vi
+      .spyOn(window, "setTimeout")
+      .mockImplementation(() => 0 as unknown as ReturnType<typeof setTimeout>);
+    store.set(visibleRangeAtom, [10_000, 20_000]);
+    store.set(togglePlaybackAtom);
+    let isFirstCall = true;
+    const unsubscribe = store.sub(visibleRangeAtom, () => {
+      if (isFirstCall) {
+        isFirstCall = false;
+        throw new Error("track failed");
+      }
+    });
+
+    runFrame(500);
+    runFrame(500);
+    expect(range()).toEqual([11_000, 21_000]);
+    unsubscribe();
+    rethrow.mockRestore();
   });
 
   it("returning to live keeps the window size and resets rate", () => {

@@ -21,6 +21,7 @@ import { isAggregate } from "./HeaderTrack/utils";
 import type { TrackId } from "./layout";
 import type { SetStateAction } from "react";
 import { atomWithImmer } from "jotai-immer";
+import { onFrameUpdate } from "../../frameLoop";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -93,7 +94,7 @@ export const {
   });
 
   const playbackNowAtom = atom(0);
-  let clockRafId = 0;
+  let stopPlaybackClock: (() => void) | undefined;
   const startPlayingAtom = atom(null, (get, set, range: TsRange) => {
     const nowMs = performance.now();
     set(playbackNowAtom, nowMs);
@@ -103,10 +104,13 @@ export const {
       startRange: range,
     });
 
-    cancelAnimationFrame(clockRafId);
-    const tick = () => {
+    stopPlaybackClock?.();
+    stopPlaybackClock = onFrameUpdate(() => {
       const playback = get(playbackAtom);
-      if (playback?.kind !== "playing") return;
+      if (playback?.kind !== "playing") {
+        stopPlaybackClock?.();
+        return;
+      }
 
       const tickMs = performance.now();
       const rate = get(playbackRateAtom);
@@ -123,9 +127,7 @@ export const {
       const clockAtWorldEndMs =
         playback.clockStartMs + (worldEnd - playback.startRange[1]) / rate;
       set(playbackNowAtom, Math.min(tickMs, clockAtWorldEndMs));
-      clockRafId = requestAnimationFrame(tick);
-    };
-    clockRafId = requestAnimationFrame(tick);
+    });
   });
 
   const visibleRangeAtom = atom(
