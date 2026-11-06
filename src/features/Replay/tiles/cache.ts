@@ -62,6 +62,10 @@ export interface TileCache<TData, TMeta> {
     startNs: bigint,
     endNs: bigint,
   ) => { data: TData[]; hasAllTilesCached: boolean };
+  /**
+   * Reduce over the meta of every cached tile and the live tile
+   */
+  reduceMeta: <T>(seed: T, reducer: (acc: T, meta: TMeta) => T) => T;
   requestRange: (visibleRangeNs: NsTsRange, worldEndNs: bigint) => void;
   init: () => Unsubscribe;
   reset: () => void;
@@ -183,6 +187,34 @@ export function createTileCache<TData, TMeta>({
     }
 
     return { data, hasAllTilesCached };
+  }
+
+  // Memoize the live tile's derived meta
+  let liveMetaCache: { tileId: number; count: number; meta: TMeta } | null =
+    null;
+  function liveMeta(): TMeta {
+    const { tileId, data } = live.acc!;
+    const count = itemCount(data);
+    if (
+      !liveMetaCache ||
+      liveMetaCache.tileId !== tileId ||
+      liveMetaCache.count !== count
+    ) {
+      liveMetaCache = { tileId, count, meta: deriveMeta(data) };
+    }
+    return liveMetaCache.meta;
+  }
+
+  function reduceMeta<T>(seed: T, reducer: (acc: T, meta: TMeta) => T): T {
+    let acc = seed;
+    for (const id of sortedTileIds) {
+      const cached = tileCache.get(id);
+      if (cached) acc = reducer(acc, cached.meta);
+    }
+    if (live.acc && !tileCache.has(live.acc.tileId)) {
+      acc = reducer(acc, liveMeta());
+    }
+    return acc;
   }
 
   function isTileInView(tileId: number): boolean {
@@ -470,6 +502,7 @@ export function createTileCache<TData, TMeta>({
     availableEndNs = null;
     live.inFlight = false;
     resetLive();
+    liveMetaCache = null;
     publish({ kind: "reset" });
   }
 
@@ -480,6 +513,7 @@ export function createTileCache<TData, TMeta>({
     },
     getTiles,
     getDataInRange,
+    reduceMeta,
     requestRange,
     init,
     reset,
