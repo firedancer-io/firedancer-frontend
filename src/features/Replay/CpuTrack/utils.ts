@@ -133,13 +133,13 @@ export function moveCpuCamera(
 }
 
 /**
- * Mean of the row's tiles with samples
+ * Mean of the row's tiles with samples, or undefined if none have one
  */
-function getRowUtilization(
+function meanRowUtilization(
   tilesUtilization: TilesUtilization | undefined,
   tileIdxs: number[],
 ) {
-  if (!tilesUtilization) return EMPTY_UTILIZATION;
+  if (!tilesUtilization) return;
 
   let sum = 0;
   let count = 0;
@@ -149,7 +149,33 @@ function getRowUtilization(
     sum += value;
     count++;
   }
-  return count ? sum / count : EMPTY_UTILIZATION;
+  return count ? sum / count : undefined;
+}
+
+function getRowUtilization(
+  tilesUtilization: TilesUtilization | undefined,
+  tileIdxs: number[],
+) {
+  return meanRowUtilization(tilesUtilization, tileIdxs) ?? EMPTY_UTILIZATION;
+}
+
+export function getRowsUtilizationAt(
+  rows: CpuRow[],
+  referenceNs: bigint,
+  visibleRange: TsRange,
+  aggCpu: CpuUtilizationByGranularity,
+  ms: number,
+): (number | undefined)[] {
+  const granularity = getAggGranularity(visibleRange[1] - visibleRange[0]);
+  const bucketIdx = getBucketIdx(
+    calcAbsoluteNs(referenceNs, ms),
+    granularity,
+    false,
+  );
+  const tilesUtilization = aggCpu.get(granularity)?.get(bucketIdx);
+  return rows.map(({ tileIdxs }) =>
+    meanRowUtilization(tilesUtilization, tileIdxs),
+  );
 }
 
 export function drawCpuData(
