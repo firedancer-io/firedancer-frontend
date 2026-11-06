@@ -7,10 +7,9 @@ import { computePosition, offset, flip, shift } from "@floating-ui/dom";
 import MonoText from "../../../components/MonoText";
 import { containerElAtom } from "../../../atoms";
 import { useAtomsSubscription } from "../../../atomUtils";
-import { DateTime } from "luxon";
-import { nsPerMs } from "../../../consts";
 import { hoveredClientPosAtom, hoveredMsAtom, referenceNsAtom } from "../atoms";
 import { calcAbsoluteNs } from "../utils";
+import { formatTooltipTime } from "./utils";
 import styles from "./replayCursorTooltip.module.css";
 
 const store = getDefaultStore();
@@ -157,9 +156,7 @@ export function CursorTimestampRow() {
   const time =
     cursorMs == null || referenceNs == null
       ? undefined
-      : DateTime.fromMillis(
-          Number(calcAbsoluteNs(referenceNs, cursorMs) / BigInt(nsPerMs)),
-        ).toFormat("h:mm:ss.SSS");
+      : formatTooltipTime(calcAbsoluteNs(referenceNs, cursorMs));
 
   return <TooltipRow label="Time" value={time} />;
 }

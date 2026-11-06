@@ -1,5 +1,13 @@
-import { solDecimals } from "../../../consts";
+import { DateTime } from "luxon";
+import { nsPerMs, solDecimals } from "../../../consts";
 import { formatNumberLamports } from "../../Overview/ValidatorsCard/formatAmt";
+
+/** format an absolute ns timestamp as a tooltip time (h:mm:ss.SSS) */
+export function formatTooltipTime(absNs: bigint) {
+  return DateTime.fromMillis(Number(absNs / BigInt(nsPerMs))).toFormat(
+    "h:mm:ss.SSS",
+  );
+}
 
 /** add two nullable lamport amounts; undefined if both are missing */
 export function sumLamports(a?: bigint | null, b?: bigint | null) {
