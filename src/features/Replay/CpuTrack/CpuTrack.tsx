@@ -6,6 +6,7 @@ import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
+import { useFrameRender } from "../../WebGl/useFrameRender.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import TrackControls, {
@@ -113,6 +114,8 @@ function CpuTrackBody({
     renderer.render(scene, camera);
   }, [rendererRef]);
 
+  const requestRender = useFrameRender(render);
+
   const draw = useCallback(() => {
     const referenceNs = store.get(referenceNsAtom);
     const visibleRange = store.get(visibleRangeAtom);
@@ -129,8 +132,8 @@ function CpuTrackBody({
   const throttledDrawAndRender = useThrottledCallbackIfVisible(
     useCallback(() => {
       draw();
-      render();
-    }, [draw, render]),
+      requestRender();
+    }, [draw, requestRender]),
     50,
     { leading: true, trailing: true },
   );
@@ -146,8 +149,8 @@ function CpuTrackBody({
     moveCpuCamera(rendererRef.current, visibleRange);
     draw();
     throttledRangeQuery(referenceNs, visibleRange, worldRange);
-    render();
-  }, [rendererRef, draw, throttledRangeQuery, render]);
+    requestRender();
+  }, [rendererRef, draw, throttledRangeQuery, requestRender]);
 
   // refetch if the tiles change
   useLayoutEffect(() => {
@@ -176,8 +179,8 @@ function CpuTrackBody({
     rendererRef.current.rows = rows;
     resizeRenderer(rendererRef.current);
     draw();
-    render();
-  }, [rendererRef, rows, draw, render]);
+    requestRender();
+  }, [rendererRef, rows, draw, requestRender]);
 
   return (
     <>

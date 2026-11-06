@@ -4,6 +4,7 @@ import { createRingBuffer } from "./ringBuffer";
 import { msToNs } from "./numUtils";
 import { epochNow } from "./clockUtils";
 import { serverTimeNanosAtom } from "./api/atoms";
+import { onFrameUpdate } from "./frameLoop";
 
 /**
  * Get timestamp for "now", which is adjusted using an avg diff of server time and real now ts to smooth out server msg delays.
@@ -15,7 +16,7 @@ export const smoothedNowNsAtom = (function () {
 
   const _smoothedNowNsAtom = atom<bigint | undefined>();
 
-  let lastRafTime = -Infinity;
+  let lastFrameTimeMs = -Infinity;
   let prevTotal = 0;
 
   const refreshNowAtom = atom(null, (get, set) => {
@@ -37,17 +38,12 @@ export const smoothedNowNsAtom = (function () {
   });
   const store = getDefaultStore();
 
-  function loop() {
-    requestAnimationFrame(function updateSmoothedNow(rafTime: number) {
-      if (rafTime - lastRafTime >= updateIntervalMs) {
-        store.set(refreshNowAtom);
-        lastRafTime = rafTime;
-      }
-      loop();
-    });
-  }
-
-  loop();
+  onFrameUpdate(function updateSmoothedNow(frameTimeMs) {
+    if (frameTimeMs - lastFrameTimeMs >= updateIntervalMs) {
+      lastFrameTimeMs = frameTimeMs;
+      store.set(refreshNowAtom);
+    }
+  });
 
   return atom((get) => get(_smoothedNowNsAtom));
 })();
