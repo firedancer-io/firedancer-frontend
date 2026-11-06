@@ -258,6 +258,7 @@ export const fadedText = "#84858a";
 export const transactionDefaultColor = "rgba(0, 0, 0, .5)";
 export const transactionPreloadingColor = "rgba(125, 94, 84, .5)";
 export const transactionPreloadingTextColor = "#A18072";
+export const transactionSigverifyColor = "#8B5CF6";
 export const transactionValidateColor = "#6C4E62";
 export const transactionLoadingSolidColor = "#9E6C00";
 export const transactionLoadingColor = `${transactionLoadingSolidColor}80`;

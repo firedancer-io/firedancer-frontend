@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import clsx from "clsx";
-import { Flex, Text } from "@radix-ui/themes";
+import { Flex, Slider, Text } from "@radix-ui/themes";
 import { CaretDownIcon } from "@radix-ui/react-icons";
 import { Checkbox, RadioGroup } from "radix-ui";
 import { partition } from "lodash";
@@ -291,6 +291,42 @@ export function TrackControlsOptions<T extends string>({
         ))}
       </Flex>
     </RadioGroup.Root>
+  );
+}
+
+interface TrackControlsSliderProps {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+}
+
+export function TrackControlsSlider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: TrackControlsSliderProps) {
+  return (
+    <Flex direction="column" width="100%">
+      <Text className={styles.sectionHeader}>{label}</Text>
+      <Flex align="center" gap="2" className={styles.slider}>
+        <Slider
+          size="1"
+          value={[value]}
+          min={min}
+          max={max}
+          step={step}
+          onValueChange={([value]) => onChange(value)}
+          aria-label={label}
+        />
+        <span className={styles.toggleValue}>{value.toFixed(2)}</span>
+      </Flex>
+    </Flex>
   );
 }
 

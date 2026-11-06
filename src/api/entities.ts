@@ -1423,9 +1423,14 @@ export const aggGranularitySchema = z.enum([
   "1d",
 ]);
 
-export const aggSlotsSchema = z.object({
+export const timelineAggSchema = z.object({
   granularity: aggGranularitySchema,
   reference_ts_ns: z.coerce.bigint(),
+  available_start_ns: z.coerce.bigint().nullable(),
+  available_end_ns: z.coerce.bigint().nullable(),
+});
+
+export const aggSlotsSchema = timelineAggSchema.extend({
   start_slot: z.array(z.number().nullable()),
   end_slot: z.array(z.number().nullable()),
   skipped: z.array(z.number().nullable()),
@@ -1441,9 +1446,7 @@ export enum RevenueType {
 
 export const revenueTypeSchema = z.enum(["txn_fees", "prio_fees", "tips"]);
 
-export const aggRevenueSchema = z.object({
-  granularity: aggGranularitySchema,
-  reference_ts_ns: z.coerce.bigint(),
+export const aggRevenueSchema = timelineAggSchema.extend({
   [RevenueType.TxnFees]: z.array(z.coerce.bigint().nullable()),
   [RevenueType.PrioFees]: z.array(z.coerce.bigint().nullable()),
   [RevenueType.Tips]: z.array(z.coerce.bigint().nullable()),
@@ -1545,11 +1548,7 @@ export const tileStatesResponseSchema = chunkedSchema(
   tileStatesChunkSchema,
 ).extend({ granularity: tileStatesGranularitySchema });
 
-export const aggTileStatesSchema = z.object({
-  granularity: aggGranularitySchema,
-  reference_ts_ns: z.coerce.bigint(),
-  available_start_ns: z.coerce.bigint().nullable(),
-  available_end_ns: z.coerce.bigint().nullable(),
+export const aggTileStatesSchema = timelineAggSchema.extend({
   tiles: z.number().nullable().array(),
   tile_states: z.array(z.array(z.array(z.number().nullable()).nullable())),
 });
@@ -1561,18 +1560,14 @@ export enum AggShredEventType {
   Published = "published",
 }
 
-export const aggShredsSchema = z.object({
-  granularity: aggGranularitySchema,
-  reference_ts_ns: z.coerce.bigint(),
+export const aggShredsSchema = timelineAggSchema.extend({
   [AggShredEventType.Turbine]: z.array(z.number().nullable()),
   [AggShredEventType.Repair]: z.array(z.number().nullable()),
   [AggShredEventType.Reconstructed]: z.array(z.number().nullable()),
   [AggShredEventType.Published]: z.array(z.number().nullable()),
 });
 
-export const aggCpuSchema = z.object({
-  granularity: aggGranularitySchema,
-  reference_ts_ns: z.coerce.bigint(),
+export const aggCpuSchema = timelineAggSchema.extend({
   utilization: z.array(z.array(z.number().nullable())),
 });
 

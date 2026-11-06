@@ -1,47 +1,82 @@
 import * as THREE from "three";
-import { ERROR_STATES_ALPHA, ERROR_STATES_BORDER_PX } from "./consts.ts";
+import {
+  BAR_HEIGHT_RATIO,
+  ERROR_STATES_ALPHA,
+  ERROR_STATES_BORDER_PX,
+} from "./consts.ts";
 
-const createVertexShader = (colorCount: number) => /* glsl */ `
-uniform mat4 modelViewMatrix; // the anchor as hi + lo
-uniform float uMsPerPx;       // ms per device px of the view
-uniform float uViewWidthPx;
-uniform float uOffsetPx;      // anchor's offset from the view's left edge
-uniform vec3 uColors[${colorCount}];
+const errorStatesUniformsGlsl = /* glsl */ `
+  uniform float uViewHeightPx;
+  uniform float uBarRatio; // bar height / row height
+`;
+const errorStatesYGlsl = /* glsl */ `
+  // bars sit at the bottom of their rows, y in [0, 1] view space
+  vBarHeightPx = uBarRatio / uRowCount * uViewHeightPx;
+  float y = (row + (position.y + 0.5) * uBarRatio) / uRowCount;
+`;
 
-attribute vec2 position;      // unit quad in [-0.5, 0.5]
-attribute vec4 instanceEdges; // start and end ms as hi + lo
-attribute vec3 instanceBar;   // bottom y and height in [0, 1], uColors index
+const createTileStatesUniformsGlsl = (colorCount: number) => /* glsl */ `
+  uniform int uStateIdxs[${colorCount}]; // index in the drawn states, -1 if not drawn
+  uniform float uStateCount;
+`;
+const tileStatesYGlsl = /* glsl */ `
+  // A texel row per row (tile) and state.
+  // Rows of states that aren't written collapse off target.
+  int stateIdx = uStateIdxs[int(instanceBar.y + 0.5)];
+  float texelRow = row * uStateCount + float(stateIdx) + position.y + 0.5;
+  float y = stateIdx < 0 ? -1.0 : texelRow / (uRowCount * uStateCount);
+`;
 
-varying vec3 vColor;
-varying float vLocalY;  // unit quad y in [-0.5, 0.5]
-varying vec2 vEdgesPx;  // left and right edges from the view's left edge
+const createVertexShader = (
+  colorCount: number,
+  isErrorStates: boolean,
+) => /* glsl */ `
+  uniform mat4 modelViewMatrix; // the anchor as hi + lo
+  uniform float uMsPerPx;       // ms per device px of the view
+  uniform float uViewWidthPx;
+  uniform float uOffsetPx;      // anchor's offset from the view's left edge
+  uniform float uRowCount;
+  uniform vec3 uColors[${colorCount}];
+  ${isErrorStates ? errorStatesUniformsGlsl : createTileStatesUniformsGlsl(colorCount)}
 
-void main() {
-  vColor = uColors[int(instanceBar.z + 0.5)];
-  vLocalY = position.y;
-  // Subtract from the anchor hi and lo before converting to px, so edges in
-  // view stay exact and don't jitter while zooming
-  float anchorHi = modelViewMatrix[3][0];
-  float anchorLo = modelViewMatrix[3][1];
-  vEdgesPx =
-    vec2(
-      (instanceEdges.x - anchorHi) + (instanceEdges.y - anchorLo),
-      (instanceEdges.z - anchorHi) + (instanceEdges.w - anchorLo)
-    ) / uMsPerPx +
-    uOffsetPx;
-  // The fragment shader only runs for px whose centers fall inside the quad,
-  // so pad by 1px to include every partly covered px
-  float px = position.x < 0.0 ? vEdgesPx.x - 1.0 : vEdgesPx.y + 1.0;
+  in vec2 position;      // unit quad in [-0.5, 0.5]
+  in vec4 instanceEdges; // start and end ms as hi + lo
+  in vec3 instanceBar;   // row top-down, uColors index, weight
 
-  // y is in [0, 1] view space
-  float y = instanceBar.x + (position.y + 0.5) * instanceBar.y;
-  gl_Position = vec4(px / uViewWidthPx * 2.0 - 1.0, y * 2.0 - 1.0, 0.0, 1.0);
-}
+  out vec3 vColor;
+  out float vWeight;      // fraction of its time span the state covers
+  out float vLocalY;      // unit quad y in [-0.5, 0.5]
+  out float vBarHeightPx;
+  out vec2 vEdgesPx;      // left and right edges from the view's left edge
+
+  void main() {
+    vColor = uColors[int(instanceBar.y + 0.5)];
+    vWeight = instanceBar.z;
+    vLocalY = position.y;
+    // Subtract from the anchor hi and lo before converting to px, so edges in
+    // view stay exact and don't jitter while zooming
+    float anchorHi = modelViewMatrix[3][0];
+    float anchorLo = modelViewMatrix[3][1];
+    vEdgesPx =
+      vec2(
+        (instanceEdges.x - anchorHi) + (instanceEdges.y - anchorLo),
+        (instanceEdges.z - anchorHi) + (instanceEdges.w - anchorLo)
+      ) / uMsPerPx +
+      uOffsetPx;
+    // The fragment shader only runs for px whose centers fall inside the quad,
+    // so pad by 1px to include every partly covered px
+    float px = position.x < 0.0 ? vEdgesPx.x - 1.0 : vEdgesPx.y + 1.0;
+
+    // rows bottom-up
+    float row = uRowCount - 1.0 - instanceBar.x;
+    ${isErrorStates ? errorStatesYGlsl : tileStatesYGlsl}
+    gl_Position = vec4(px / uViewWidthPx * 2.0 - 1.0, y * 2.0 - 1.0, 0.0, 1.0);
+  }
 `;
 
 /** Exact fraction of this px's width the rect covers. */
 const xCoverageGlsl = /* glsl */ `
-varying vec2 vEdgesPx;
+in vec2 vEdgesPx;
 
 float xCoverage() {
   float px = gl_FragCoord.x;
@@ -49,18 +84,18 @@ float xCoverage() {
 }
 `;
 
-/**
- * Adds each state's share of the px.
- */
+/** Adds each px's coverage to its texel */
 const tileStatesFragmentShader = /* glsl */ `
 precision highp float;
 ${xCoverageGlsl}
-varying vec3 vColor;
+in float vWeight;
+
+out vec4 outCoverage;
 
 void main() {
-  float coverage = xCoverage();
+  float coverage = xCoverage() * vWeight;
   if (coverage <= 0.0) discard;
-  gl_FragColor = vec4(vColor * coverage, coverage);
+  outCoverage = vec4(coverage, 0.0, 0.0, 0.0);
 }
 `;
 
@@ -68,32 +103,36 @@ const errorStatesFragmentShader = /* glsl */ `
 precision highp float;
 ${xCoverageGlsl}
 uniform float uBorderPx;
-uniform float uBarHeightPx;
 uniform float uOpacity;
 
-varying vec3 vColor;
-varying float vLocalY;
+in vec3 vColor;
+in float vLocalY;
+in float vBarHeightPx;
+
+out vec4 fragColor;
 
 void main() {
   // Distance to the nearest top/bottom edge in device px.
-  float d = (0.5 - abs(vLocalY)) * uBarHeightPx;
+  float d = (0.5 - abs(vLocalY)) * vBarHeightPx;
 
   float coverage =
     (1.0 - smoothstep(uBorderPx - 0.5, uBorderPx + 0.5, d)) * xCoverage();
   if (coverage <= 0.0) discard;
 
-  gl_FragColor = vec4(vColor, uOpacity * coverage);
+  fragColor = vec4(vColor, uOpacity * coverage);
 }
 `;
 
 function createMaterial(
   fragmentShader: string,
   colors: THREE.Vector3[],
+  isErrorStates: boolean,
   uniforms: Record<string, THREE.IUniform>,
   params: THREE.ShaderMaterialParameters = {},
 ) {
   return new THREE.RawShaderMaterial({
-    vertexShader: createVertexShader(colors.length),
+    glslVersion: THREE.GLSL3,
+    vertexShader: createVertexShader(colors.length, isErrorStates),
     fragmentShader,
     transparent: true,
     depthTest: false,
@@ -101,6 +140,7 @@ function createMaterial(
       uMsPerPx: { value: 1 },
       uViewWidthPx: { value: 1 },
       uOffsetPx: { value: 0 },
+      uRowCount: { value: 1 },
       uColors: { value: colors },
       ...uniforms,
     },
@@ -108,27 +148,37 @@ function createMaterial(
   });
 }
 
-/** Sums each px's time-weighted state colors and busy fraction. */
-export function createTileStatesMaterial(colors: THREE.Vector3[]) {
+const additiveBlending: THREE.ShaderMaterialParameters = {
+  blending: THREE.CustomBlending,
+  blendEquation: THREE.AddEquation,
+  blendSrc: THREE.OneFactor,
+  blendDst: THREE.OneFactor,
+  blendSrcAlpha: THREE.OneFactor,
+  blendDstAlpha: THREE.OneFactor,
+};
+
+export function createTileStatesMaterial(
+  colors: THREE.Vector3[],
+  stateIdxs: number[],
+  stateCount: number,
+) {
   return createMaterial(
     tileStatesFragmentShader,
     colors,
-    {},
+    false,
     {
-      blending: THREE.CustomBlending,
-      blendEquation: THREE.AddEquation,
-      blendSrc: THREE.OneFactor,
-      blendDst: THREE.OneFactor,
-      blendSrcAlpha: THREE.OneFactor,
-      blendDstAlpha: THREE.OneFactor,
+      uStateIdxs: { value: stateIdxs },
+      uStateCount: { value: stateCount },
     },
+    additiveBlending,
   );
 }
 
 export function createErrorStatesMaterial(colors: THREE.Vector3[]) {
-  return createMaterial(errorStatesFragmentShader, colors, {
+  return createMaterial(errorStatesFragmentShader, colors, true, {
+    uViewHeightPx: { value: 1 },
+    uBarRatio: { value: BAR_HEIGHT_RATIO },
     uBorderPx: { value: 0 },
-    uBarHeightPx: { value: 0 },
     uOpacity: { value: ERROR_STATES_ALPHA },
   });
 }
@@ -136,17 +186,17 @@ export function createErrorStatesMaterial(colors: THREE.Vector3[]) {
 export function setErrorStatesSize(
   material: THREE.RawShaderMaterial,
   pixelRatio: number,
-  barHeightPx: number,
+  viewHeightPx: number,
 ) {
   material.uniforms.uBorderPx.value = ERROR_STATES_BORDER_PX * pixelRatio;
-  material.uniforms.uBarHeightPx.value = barHeightPx;
+  material.uniforms.uViewHeightPx.value = viewHeightPx;
 }
 
 export interface StatesMesh {
   mesh: THREE.Mesh<THREE.InstancedBufferGeometry, THREE.RawShaderMaterial>;
   edges: Float32Array; // [startHi, startLo, endHi, endLo] per rect in ms from referenceX
   edgesAttr: THREE.InstancedBufferAttribute;
-  bar: Float32Array; // [bottomY, height, colorIndex] per rect
+  bar: Float32Array; // [row, colorIndex, weight] per rect
   barAttr: THREE.InstancedBufferAttribute;
   capacity: number;
   count: number;
