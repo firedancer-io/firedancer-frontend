@@ -6,6 +6,7 @@ import checker from "vite-plugin-checker";
 import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
 import license from "rollup-plugin-license";
 import svgr from "vite-plugin-svgr";
+import { configDefaults } from "vitest/config";
 
 // The vendored zstd decoder (src/api/worker/zstd/zstd-dec.wasm) is not an
 // npm package, so add its BSD notice to the license report by hand
@@ -81,6 +82,7 @@ export default defineConfig({
   ],
   test: {
     environment: "jsdom",
+    exclude: [...configDefaults.exclude, ".claude/**"],
     env: {
       TZ: "America/Chicago",
     },

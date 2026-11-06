@@ -26,7 +26,10 @@ interface RevenueYAxisProps {
   numRows: number;
 }
 
-const AXIS_TICK_COUNT = 5;
+// the top tick's label is always under the title
+const MIN_AXIS_TICKS = 3;
+const MAX_AXIS_TICKS = 5;
+const MIN_TICK_GAP_PX = 20;
 const LABEL_SIG_DIGITS = 3;
 
 export default function RevenueYAxis({
@@ -48,10 +51,13 @@ export default function RevenueYAxis({
   }
   if (maxValue <= 0n) return null;
 
-  const ticks = buildRevenueAxisTicks(maxValue, scale).map((tick) => ({
-    ...tick,
-    topPx: trackInsetPx.income + tick.topRatio * (height - trackInsetPx.income),
-  }));
+  const plotHeightPx = height - trackInsetPx.income;
+  const ticks = buildRevenueAxisTicks(maxValue, scale, plotHeightPx).map(
+    (tick) => ({
+      ...tick,
+      topPx: trackInsetPx.income + tick.topRatio * plotHeightPx,
+    }),
+  );
   let lastLabelTopPx = -Infinity;
   const labeledTicks = ticks.filter(({ topPx }) => {
     if (isUnderTitle(topPx) || topPx - lastLabelTopPx < ROW_LABEL_PX) {
@@ -97,15 +103,23 @@ export default function RevenueYAxis({
 function buildRevenueAxisTicks(
   maxValue: bigint,
   scale: RevenueScale,
+  plotHeightPx: number,
 ): RevenueAxisTick[] {
   if (maxValue <= 0n) return [];
 
   const maxNum = Number(maxValue);
-  const step = (1 - minHeightRatio) / (AXIS_TICK_COUNT - 1);
+  const spanRatio = 1 - minHeightRatio;
+  const tickCount = Math.min(
+    MAX_AXIS_TICKS,
+    Math.max(
+      MIN_AXIS_TICKS,
+      Math.floor((spanRatio * plotHeightPx) / MIN_TICK_GAP_PX) + 1,
+    ),
+  );
+  const step = spanRatio / (tickCount - 1);
 
-  return Array.from({ length: AXIS_TICK_COUNT }, (_, i) => {
-    const heightRatio =
-      i === AXIS_TICK_COUNT - 1 ? minHeightRatio : 1 - i * step;
+  return Array.from({ length: tickCount }, (_, i) => {
+    const heightRatio = i === tickCount - 1 ? minHeightRatio : 1 - i * step;
 
     const value = invertRevenueRatio(
       scale,
