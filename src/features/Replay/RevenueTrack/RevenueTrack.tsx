@@ -61,7 +61,7 @@ import styles from "../track.module.css";
 import {
   updateSlotHighlight,
   useSlotHighlightRender,
-  useSlotHitTest,
+  useContainerSlotHitTest,
 } from "../slotHighlight.ts";
 
 const store = getDefaultStore();
@@ -339,20 +339,11 @@ function RevenueTrackBody({
   }, [requestHighlightRender]);
   useSlotHighlightRender(requestHighlightRender);
 
-  useSlotHitTest((clientX, clientY) => {
+  useContainerSlotHitTest(containerRef, (clientX, clientY, rect) => {
     const renderer = rendererRef.current;
-    const container = containerRef.current;
     const visibleRange = store.get(visibleRangeAtom);
-    if (!renderer || !container || !visibleRange || isAggregate(visibleRange))
-      return;
+    if (!renderer || !visibleRange || isAggregate(visibleRange)) return;
 
-    const rect = container.getBoundingClientRect();
-    const isInside =
-      rect.left <= clientX &&
-      clientX <= rect.right &&
-      rect.top <= clientY &&
-      clientY <= rect.bottom;
-    if (!isInside) return;
     return findHighestTxnAtPoint(
       renderer,
       type,

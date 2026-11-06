@@ -306,6 +306,34 @@ export function useSlotHitTest(hitTest: SlotHitTest) {
   }, [hitTestRef]);
 }
 
+export type ContainerSlotHitTest = (
+  clientX: number,
+  clientY: number,
+  rect: DOMRect,
+) => number | undefined;
+
+// register a hit-test scoped to a container, only called while the cursor is inside it
+export function useContainerSlotHitTest(
+  containerRef: RefObject<HTMLElement | null>,
+  resolve: ContainerSlotHitTest,
+) {
+  const resolveRef = useLatest(resolve);
+  useSlotHitTest((clientX, clientY) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const isInside =
+      rect.left <= clientX &&
+      clientX <= rect.right &&
+      rect.top <= clientY &&
+      clientY <= rect.bottom;
+    if (!isInside) return;
+
+    return resolveRef.current(clientX, clientY, rect);
+  });
+}
+
 export function getDrawnSlotAt(clientX: number, clientY: number) {
   for (const hitTest of slotHitTests) {
     const slot = hitTest(clientX, clientY);
