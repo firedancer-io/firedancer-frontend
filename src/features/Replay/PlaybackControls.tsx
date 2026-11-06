@@ -25,14 +25,7 @@ export default function PlaybackControls() {
     if (isPlaying) pause();
   });
 
-  useHotkey(" ", (e) => {
-    // don't trigger on focused controls like buttons
-    if ((e.target as HTMLElement | null)?.closest('button, [role="listbox"]')) {
-      return;
-    }
-    e.preventDefault();
-    togglePlayback();
-  });
+  useHotkey(" ", () => togglePlayback());
 
   const isRunning = isLive || isPlaying;
 
