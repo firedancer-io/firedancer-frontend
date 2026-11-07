@@ -24,33 +24,58 @@ import { getAggGranularity } from "./useAggHeaderQuery";
 import { OVERSCAN_BUCKETS } from "../useAggQuery";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
 import {
+  headerMineGroupBorderColor,
   replayAggHeaderBackgroundColor,
   replayMiniMapSkippedColor,
 } from "../../../colors";
+import { blendColors } from "../slotUtils";
 
 const minY = 0;
 const maxY = 1;
 
 const backgroundColor = convertToWebGlColor(replayAggHeaderBackgroundColor);
 const skippedColor = convertToWebGlColor(replayMiniMapSkippedColor);
+const mineColor = convertToWebGlColor(headerMineGroupBorderColor);
+const mineSkippedColor =
+  blendColors([
+    [skippedColor, 1],
+    [mineColor, 1],
+  ]) ?? mineColor;
 
-const minSkippedRatio = 0.3;
+const minRatio = 0.3;
 
 function getBucketColor(
   slotCount: number,
   skippedCount: number | null,
+  mineCount: number | null,
+  mineSkippedCount: number | null,
 ): RgbColor {
   const skipped = skippedCount ?? 0;
-  const skippedRatio = skipped
-    ? Math.max(minSkippedRatio, skipped / slotCount)
-    : 0;
+  const mine = mineCount ?? 0;
+  const mineSkipped = mineSkippedCount ?? 0;
+  const mineNotSkipped = mine - mineSkipped;
+  const otherSkipped = skipped - mineSkipped;
+  const otherNotSkipped = slotCount - skipped - mineNotSkipped;
 
-  const notSkippedRatio = 1 - skippedRatio;
-  return [
-    backgroundColor[0] * notSkippedRatio + skippedColor[0] * skippedRatio,
-    backgroundColor[1] * notSkippedRatio + skippedColor[1] * skippedRatio,
-    backgroundColor[2] * notSkippedRatio + skippedColor[2] * skippedRatio,
-  ];
+  const mineSkippedWeight = mineSkipped
+    ? Math.max(mineSkipped, slotCount * minRatio)
+    : 0;
+  const mineWeight = mineNotSkipped
+    ? Math.max(mineNotSkipped, slotCount * minRatio)
+    : 0;
+  const skippedWeight = otherSkipped
+    ? Math.max(otherSkipped, slotCount * minRatio)
+    : 0;
+  const backgroundWeight = Math.max(0, otherNotSkipped);
+
+  return (
+    blendColors([
+      [mineSkippedColor, mineSkippedWeight],
+      [skippedColor, skippedWeight],
+      [mineColor, mineWeight],
+      [backgroundColor, backgroundWeight],
+    ]) ?? backgroundColor
+  );
 }
 
 export function setUpRenderers(
@@ -160,7 +185,7 @@ export function drawAggSlots(
     const slotCounts = slotsByBucketIdx.get(bucketIdx);
     if (!slotCounts) continue;
 
-    const { skipped } = slotCounts;
+    const { skipped, mine, mine_skipped } = slotCounts;
     const slotCount = getSlotCount(slotCounts);
 
     // don't draw empty buckets
@@ -168,7 +193,7 @@ export function drawAggSlots(
 
     const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
 
-    const color = getBucketColor(slotCount, skipped);
+    const color = getBucketColor(slotCount, skipped, mine, mine_skipped);
 
     addRectangleToMesh(mesh, rectIdx, x, minY, bucketSizeMs, height, color);
 
