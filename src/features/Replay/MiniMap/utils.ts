@@ -11,12 +11,44 @@ import {
   createRenderer,
   type TsRange,
   updateMeshRange,
+  type RgbColor,
+  convertToWebGlColor,
 } from "../../WebGl/webglUtils.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import { msBucketSizes, nsBucketSizes } from "../const.ts";
 import type { AggGranularity, AggSlots } from "../../../api/types.ts";
 import { calcRelativeMs } from "../utils.ts";
-import { getBucketColor } from "../slotUtils.ts";
+import {
+  getBucketColor,
+  BucketColorState,
+  type ColorInfo,
+} from "../slotUtils.ts";
+import {
+  epochSkippedSlotColor,
+  epochSliderProgressColor,
+  epochSliderTrackColor,
+  mySlotsColor,
+  replayMiniMapSkippedColor,
+} from "../../../colors.ts";
+
+const bucketColors: Record<BucketColorState, ColorInfo> = {
+  [BucketColorState.MyNotSkipped]: {
+    color: convertToWebGlColor(mySlotsColor),
+  },
+  [BucketColorState.MySkipped]: {
+    color: convertToWebGlColor(epochSkippedSlotColor),
+    minWeight: 0.3,
+  },
+  [BucketColorState.OtherSkipped]: {
+    color: convertToWebGlColor(replayMiniMapSkippedColor),
+    minWeight: 0.3,
+  },
+  [BucketColorState.OtherNotSkipped]: {
+    color: convertToWebGlColor(epochSliderProgressColor),
+  },
+};
+
+const emptyBucketColor: RgbColor = convertToWebGlColor(epochSliderTrackColor);
 
 const opacity = 1;
 const minY = 0;
@@ -157,10 +189,12 @@ export function drawMiniMap(
         : 0;
 
     const color = getBucketColor({
-      slotCount,
+      totalCount: slotCount,
       skippedCount: skipped[i],
-      mySlotCount: mine[i],
-      mySkippedSlotCount: mine_skipped[i],
+      mineCount: mine[i],
+      mySkippedCount: mine_skipped[i],
+      colors: bucketColors,
+      emptyColor: emptyBucketColor,
     });
 
     const x = startX + i * bucketSizeMs;
