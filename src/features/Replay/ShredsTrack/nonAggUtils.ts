@@ -5,7 +5,10 @@ import {
   createRectMesh,
   updateRectMeshCounts,
 } from "../../WebGl/webglUtils";
-import { updateEdgeViewWidth } from "./edgeUtils";
+import {
+  updateEdgeViewWidth,
+  EDGE_RENDER_ORDER_OFFSET,
+} from "../../Shreds/WebGl/edgeUtils";
 import { shredHoverHighlightColor } from "../../../colors";
 import {
   FEC_MESH_CAPACITY,
@@ -476,9 +479,6 @@ function getSlotMesh(
   }
   return { isNewMesh, slotMesh };
 }
-
-// Marks appear above other events for that slot, but below bigger slot numbers' events
-const EDGE_RENDER_ORDER_OFFSET = 0.5;
 
 function getEdgeMesh(
   resources: NonAggRendererResources,

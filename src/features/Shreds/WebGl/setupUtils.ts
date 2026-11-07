@@ -8,6 +8,7 @@ import {
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers";
 import type { RendererObj } from "../types";
 import { SHREDS_OPACITY } from "./const";
+import { setUpEdgeResources, cleanUpEdgeResources } from "./edgeUtils";
 
 export function setUpRendererResources<MeshKey extends string | number>(
   getWasContextLost: ContextHelpers["getWasContextLost"],
@@ -63,10 +64,17 @@ export function setUpLiveRenderer(
     cleanUpResources,
   } = setUpRendererResources<number>(getWasContextLost);
 
+  const { edgeResources, edgeMeshes, availableEdgeMeshes } =
+    setUpEdgeResources<number>();
+
   renderer.render(scene, camera);
 
   const cleanUp = () => {
     cleanUpResources();
+    cleanUpEdgeResources(
+      { edgeResources, edgeMeshes, availableEdgeMeshes },
+      getWasContextLost(),
+    );
     cleanUpRendererContext();
   };
 
@@ -77,6 +85,9 @@ export function setUpLiveRenderer(
     meshes,
     availableMeshes,
     resources,
+    edgeResources,
+    edgeMeshes,
+    availableEdgeMeshes,
     cleanUp,
   };
 }
