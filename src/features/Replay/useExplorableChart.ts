@@ -5,12 +5,14 @@ import { getDefaultStore } from "jotai";
 import {
   pauseAtom,
   resetToLiveAtom,
+  selectSlotAtMsAtom,
   visibleRangeAtom,
   worldRangeAtom,
 } from "./atoms";
 import { clamp as minMaxClamp } from "lodash";
 import styles from "./chart.module.css";
 import { clampToWorld } from "./utils";
+import { getDrawnSlotAt } from "./slotHighlight";
 
 const PAN_THRESHOLD_PX = 8;
 const ZOOM_INTENSITY = 0.002;
@@ -125,9 +127,31 @@ type GestureOwner = "explore" | "miniMap";
 
 const store = getDefaultStore();
 
+type ClientPoint = { clientX: number; clientY: number };
+
+function isTap(press: ClientPoint, release: ClientPoint) {
+  return (
+    Math.abs(release.clientX - press.clientX) < PAN_THRESHOLD_PX &&
+    Math.abs(release.clientY - press.clientY) < PAN_THRESHOLD_PX
+  );
+}
+
+function selectSlotAtPress(press: {
+  clientX: number;
+  clientY: number;
+  ts: number;
+}) {
+  store.set(
+    selectSlotAtMsAtom,
+    press.ts,
+    getDrawnSlotAt(press.clientX, press.clientY),
+  );
+}
+
 export function useExplorableChart() {
   const dragStartRef = useRef<{
     clientX: number;
+    clientY: number;
     ts: number;
     draggableWindow: TsRange;
     startVisibleRange: TsRange;
@@ -193,7 +217,7 @@ export function useExplorableChart() {
         }
       };
 
-      const startDrag = (clientX: number) => {
+      const startDrag = (clientX: number, clientY: number) => {
         // one gesture at a time: ignore a new start if another gesture is in progress
         if (gestureOwnerRef.current) return;
         store.set(pauseAtom);
@@ -207,6 +231,7 @@ export function useExplorableChart() {
 
         dragStartRef.current = {
           clientX,
+          clientY,
           ts,
           draggableWindow: [...window],
           startVisibleRange: [...visibleRange],
@@ -332,7 +357,7 @@ export function useExplorableChart() {
           if (e.button !== 0) return;
           // keep native behavior for excluded elements
           if (isExcludedTarget(e.target)) return;
-          startDrag(e.clientX);
+          startDrag(e.clientX, e.clientY);
           e.preventDefault();
         },
         onMouseMove: (e: MouseEvent) => {
@@ -355,7 +380,7 @@ export function useExplorableChart() {
           // don't adopt this finger into a gesture already in progress
           // (e.g. a mouse pan), which startDrag() will reject
           const hadActiveGesture = gestureOwnerRef.current != null;
-          startDrag(e.touches[0].clientX);
+          startDrag(e.touches[0].clientX, e.touches[0].clientY);
           if (!hadActiveGesture && ownsGesture()) {
             activeTouchIdRef.current = e.touches[0].identifier;
           }
@@ -415,10 +440,14 @@ export function useExplorableChart() {
         windowMouseListeners.detach();
       };
 
-      const onMouseUp = () => {
+      const onMouseUp = (e: MouseEvent) => {
         if (!ownsGesture()) return;
         // ignore mouse events while a touch gesture is in progress
         if (activeTouchIdRef.current != null) return;
+        const press = dragStartRef.current;
+        if (!isPanningRef.current && press && isTap(press, e)) {
+          selectSlotAtPress(press);
+        }
         endMouseGesture();
       };
 
@@ -517,10 +546,16 @@ export function useExplorableChart() {
 
         // get pan state before endTouchGesture clears it
         const wasPanning = isPanningRef.current;
+        const press = dragStartRef.current;
         endTouchGesture();
 
         // only evaluate a tap for a gesture that wasn't a pan
-        if (wasPanning || isExcludedTarget(e.target)) {
+        if (
+          wasPanning ||
+          !press ||
+          !isTap(press, endedTouch) ||
+          isExcludedTarget(e.target)
+        ) {
           lastTapRef.current = undefined;
           return;
         }
@@ -541,6 +576,7 @@ export function useExplorableChart() {
         }
 
         lastTapRef.current = { time: now, x: touch.clientX, y: touch.clientY };
+        selectSlotAtPress(press);
       };
 
       /**

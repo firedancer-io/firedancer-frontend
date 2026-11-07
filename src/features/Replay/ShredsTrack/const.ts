@@ -1,6 +1,8 @@
 import type * as THREE from "three";
 import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
 import type { DrawableSlot } from "../../Shreds/chartUtils";
+import type { SlotHighlight } from "../slotHighlight";
+import type { EdgeUniforms } from "./edgeUtils";
 import { AggShredEventType } from "../../../api/entities";
 import {
   shredPublishedColor,
@@ -45,6 +47,8 @@ export interface NonAggRendererResources {
   edgeMeshes: Map<string, RectMesh>;
   availableEdgeMeshes: RectMesh[];
   edgeResources: RectResources;
+  edgeUniforms: EdgeUniforms;
+  highlight: SlotHighlight;
   lastDrawInfo?: NonAggDrawInfo;
 }
 
