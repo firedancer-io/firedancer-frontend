@@ -18,9 +18,11 @@ export interface HoveredRect {
 export function useHoveredPosition({
   onHoverChange,
   onHoverLeave,
+  shouldReplayOnRangeChange = true,
 }: {
   onHoverChange: (clientX: number, clientY: number, rect: HoveredRect) => void;
   onHoverLeave: () => void;
+  shouldReplayOnRangeChange?: boolean;
 }) {
   const containerRef = useRef<HTMLElement | null>(null);
   const lastClientPosRef = useRef<{ x: number; y: number }>();
@@ -34,6 +36,8 @@ export function useHoveredPosition({
   onHoverChangeRef.current = onHoverChange;
   const onHoverLeaveRef = useRef(onHoverLeave);
   onHoverLeaveRef.current = onHoverLeave;
+  const shouldReplayOnRangeChangeRef = useRef(shouldReplayOnRangeChange);
+  shouldReplayOnRangeChangeRef.current = shouldReplayOnRangeChange;
 
   // notify owner the cursor position or ts may have changed
   const notifyChange = useCallback(() => {
@@ -55,6 +59,31 @@ export function useHoveredPosition({
     };
     notifyChange();
   }, [notifyChange]);
+
+  // Replay the hover at an explicit cursor position
+  const replayHoverAt = useCallback((clientX: number, clientY: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    rectRef.current = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    if (
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    ) {
+      lastClientPosRef.current = undefined;
+      onHoverLeaveRef.current();
+      return;
+    }
+    lastClientPosRef.current = { x: clientX, y: clientY };
+    onHoverChangeRef.current(clientX, clientY, rectRef.current);
+  }, []);
 
   const setContainer = useCallback(
     (el: HTMLElement | null) => {
@@ -83,7 +112,9 @@ export function useHoveredPosition({
       el.addEventListener("mouseleave", onLeave);
 
       // replay the hover if the visible range shifts, even if the cursor doesn't move
-      const unsubscribeRange = store.sub(visibleRangeAtom, notifyChange);
+      const unsubscribeRange = shouldReplayOnRangeChangeRef.current
+        ? store.sub(visibleRangeAtom, notifyChange)
+        : undefined;
       const rectObserver = new ResizeObserver(refreshContainerAndNotify);
       rectObserver.observe(el);
       window.addEventListener("resize", refreshContainerAndNotify);
@@ -96,7 +127,7 @@ export function useHoveredPosition({
       cleanUpRef.current = () => {
         el.removeEventListener("mousemove", onMove);
         el.removeEventListener("mouseleave", onLeave);
-        unsubscribeRange();
+        unsubscribeRange?.();
         rectObserver.disconnect();
         window.removeEventListener("resize", refreshContainerAndNotify);
         window.removeEventListener("scroll", refreshContainerAndNotify, true);
@@ -105,5 +136,5 @@ export function useHoveredPosition({
     [notifyChange, refreshContainerAndNotify],
   );
 
-  return { setContainer, notifyChange };
+  return { setContainer, notifyChange, replayHoverAt };
 }

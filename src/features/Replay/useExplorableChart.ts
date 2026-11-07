@@ -10,7 +10,7 @@ import {
 } from "./atoms";
 import { clamp as minMaxClamp } from "lodash";
 import styles from "./chart.module.css";
-import { clampToWorld } from "./utils";
+import { clampToWorld, clientXToMs } from "./utils";
 
 const PAN_THRESHOLD_PX = 8;
 const ZOOM_INTENSITY = 0.002;
@@ -50,15 +50,6 @@ function normalizeWheelPanDelta(e: WheelEvent) {
   const dominant =
     Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
   return dominant * deltaModeScale(e);
-}
-
-function clientXToTsWithRect(
-  trackRect: DOMRect,
-  clientX: number,
-  tsWindow: TsRange,
-) {
-  const fraction = (clientX - trackRect.left) / trackRect.width;
-  return tsWindow[0] + fraction * (tsWindow[1] - tsWindow[0]);
 }
 
 // Returns the Touch with the given identifier from a TouchList
@@ -191,7 +182,7 @@ export function useExplorableChart() {
 
         const window = isWorldTrack ? worldRange : visibleRange;
         const trackRect = trackEl.getBoundingClientRect();
-        const ts = clientXToTsWithRect(trackRect, clientX, window);
+        const ts = clientXToMs(clientX, trackRect, window);
 
         dragStartRef.current = {
           clientX,
@@ -216,11 +207,7 @@ export function useExplorableChart() {
         if (!drag) return;
         const newRect = trackEl.getBoundingClientRect();
         if (newRect.width === 0) return;
-        drag.ts = clientXToTsWithRect(
-          newRect,
-          drag.clientX,
-          drag.draggableWindow,
-        );
+        drag.ts = clientXToMs(drag.clientX, newRect, drag.draggableWindow);
         drag.trackRect = newRect;
       };
 
@@ -239,9 +226,9 @@ export function useExplorableChart() {
         }
         isPanningRef.current = true;
         refreshCursor();
-        const xTs = clientXToTsWithRect(
-          dragStartRef.current.trackRect,
+        const xTs = clientXToMs(
           clientX,
+          dragStartRef.current.trackRect,
           dragStartRef.current.draggableWindow,
         );
         const diff = (isWorldTrack ? -1 : 1) * (xTs - dragStartRef.current.ts);
@@ -282,11 +269,7 @@ export function useExplorableChart() {
           ? // mini map zoom centers on middle of visible range
             (visibleRange[0] + visibleRange[1]) / 2
           : // other track zoom centers on cursor
-            clientXToTsWithRect(
-              trackEl.getBoundingClientRect(),
-              clientX,
-              visibleRange,
-            );
+            clientXToMs(clientX, trackEl.getBoundingClientRect(), visibleRange);
         // larger deltaY = faster zoom
         let scale = Math.exp(deltaY * ZOOM_INTENSITY);
         // don't zoom in past the minimum span (clamp to it instead of overshooting)
@@ -632,7 +615,7 @@ export function useExplorableChart() {
         if (!edge || !rect || !worldRange || !visibleRange) return;
 
         const cursorTs = minMaxClamp(
-          clientXToTsWithRect(rect, clientX, worldRange),
+          clientXToMs(clientX, rect, worldRange),
           worldRange[0],
           worldRange[1],
         );
@@ -787,9 +770,9 @@ export function useExplorableChart() {
         const worldRange = store.get(worldRangeAtom);
         if (!worldRange) return;
 
-        const cursorTs = clientXToTsWithRect(
-          trackEl.getBoundingClientRect(),
+        const cursorTs = clientXToMs(
           clientX,
+          trackEl.getBoundingClientRect(),
           worldRange,
         );
         panToTs(cursorTs);

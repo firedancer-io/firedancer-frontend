@@ -45,6 +45,26 @@ export function calcAbsoluteNs(referenceNs: bigint, relativeMs: number) {
   return referenceNs + convertToNsTimestamp(relativeMs);
 }
 
+/** Map a viewport clientX to a cursor ms within the visible range. */
+export function clientXToMs(
+  clientX: number,
+  rect: { left: number; width: number },
+  visibleRange: TsRange,
+) {
+  const fraction = (clientX - rect.left) / rect.width;
+  return visibleRange[0] + fraction * (visibleRange[1] - visibleRange[0]);
+}
+
+/** Inverse of clientXToMs: map a cursor ms to its viewport clientX. */
+export function msToClientX(
+  ms: number,
+  rect: { left: number; width: number },
+  visibleRange: TsRange,
+) {
+  const fraction = (ms - visibleRange[0]) / (visibleRange[1] - visibleRange[0]);
+  return rect.left + fraction * rect.width;
+}
+
 type TimelineEntityForKey<TKey extends string> = Extract<
   WsEntity,
   { topic: "timeline"; key: TKey }
