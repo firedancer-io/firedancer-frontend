@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useStore } from "jotai";
 import { useWebSocketSend } from "../../../api/ws/utils";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
@@ -77,7 +77,7 @@ export function useNonAggShredsQuery(
     [store],
   );
 
-  const { queryRange, markQueryComplete, pauseStaleRefreshes } =
+  const { queryRange, markQueryComplete, getLevel, pauseStaleRefreshes } =
     useTiledQueries<ShredsGranularity>({
       chartId,
       getTileSizeNs,
@@ -140,8 +140,18 @@ export function useNonAggShredsQuery(
     [onNothingToFetch, queryRange],
   );
 
+  /** coarsest to finest */
+  const granularityLevels = useMemo(
+    () =>
+      [ShredsGranularityEnum.fec, ShredsGranularityEnum.shred].map(
+        (granularity) => getLevel(granularity, false),
+      ),
+    [getLevel],
+  );
+
   return {
     query,
+    granularityLevels,
     pauseStaleRefreshes,
   };
 }

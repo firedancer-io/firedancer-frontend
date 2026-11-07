@@ -30,10 +30,14 @@ const store = getDefaultStore();
 
 interface AggHeaderTrackProps extends WebGlRemountProps {
   className: string;
-  showAgg: () => void;
+  setAggDrawable: (isDrawable: boolean) => void;
 }
 
-function AggHeaderTrack({ remount, className, showAgg }: AggHeaderTrackProps) {
+function AggHeaderTrack({
+  remount,
+  className,
+  setAggDrawable,
+}: AggHeaderTrackProps) {
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
   );
@@ -41,10 +45,29 @@ function AggHeaderTrack({ remount, className, showAgg }: AggHeaderTrackProps) {
     remount,
     create: ({ setUpContextListeners, getWasContextLost }) =>
       setUpRenderers(setUpContextListeners, getWasContextLost),
-    onResize: () => renderIfActive(),
+    onResize: () => render(),
   });
 
-  const { query: aggQuery, pauseStaleRefreshes } = useAggHeaderQuery(chartId);
+  const {
+    query: aggQuery,
+    getDrawTiles,
+    isVisibleDrawable,
+    pauseStaleRefreshes,
+  } = useAggHeaderQuery(chartId);
+
+  const updateDrawable = useCallback(
+    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
+      setAggDrawable(
+        isVisibleDrawable(
+          getAggGranularity(visibleRange[1] - visibleRange[0]),
+          referenceNs,
+          visibleRange,
+          worldRange,
+        ),
+      );
+    },
+    [isVisibleDrawable, setAggDrawable],
+  );
 
   const throttledRelativeTsQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
@@ -64,11 +87,11 @@ function AggHeaderTrack({ remount, className, showAgg }: AggHeaderTrackProps) {
     { leading: true, trailing: true },
   );
 
-  const renderIfActive = useCallback(() => {
+  /**
+   * Render even if non agg is shown, since agg may be shown before the next draw
+   */
+  const render = useCallback(() => {
     if (!rendererRef.current) return;
-
-    const visibleRange = store.get(visibleRangeAtom);
-    if (!visibleRange || !isAggregate(visibleRange)) return;
 
     const { renderer, aggResources } = rendererRef.current;
     const { camera, scene } = aggResources;
@@ -84,39 +107,41 @@ function AggHeaderTrack({ remount, className, showAgg }: AggHeaderTrackProps) {
     const referenceNs = store.get(referenceNsAtom);
     const worldRange = store.get(worldRangeAtom);
     const visibleRange = store.get(visibleRangeAtom);
-    if (
-      referenceNs == null ||
-      !visibleRange ||
-      !worldRange ||
-      !isAggregate(visibleRange)
-    ) {
-      return;
-    }
+    if (referenceNs == null || !visibleRange || !worldRange) return;
 
-    // Move camera before querying, because query may trigger immediate draw if data is already available
+    // Move camera before querying, because query may trigger immediate draw if data is already available.
+    // Always move the camera, since agg may stay shown after zooming into non agg
     moveAggCamera(rendererRef.current.aggResources, visibleRange);
     throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
-    renderIfActive();
-  }, [renderIfActive, rendererRef, throttledRelativeTsQuery]);
+    render();
+    updateDrawable(referenceNs, visibleRange, worldRange);
+  }, [render, rendererRef, throttledRelativeTsQuery, updateDrawable]);
 
   const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
+      const worldRange = store.get(worldRangeAtom);
       const aggSlots = store.get(aggSlotsAtom);
       if (
         !rendererRef.current ||
         !visibleRange ||
-        referenceNs == null ||
-        !isAggregate(visibleRange)
+        !worldRange ||
+        referenceNs == null
       ) {
         return;
       }
 
-      drawAggSlots(rendererRef.current, referenceNs, visibleRange, aggSlots);
-      renderIfActive();
-      showAgg();
-    }, [rendererRef, renderIfActive, showAgg]),
+      drawAggSlots(
+        rendererRef.current,
+        referenceNs,
+        visibleRange,
+        aggSlots,
+        getDrawTiles,
+      );
+      render();
+      updateDrawable(referenceNs, visibleRange, worldRange);
+    }, [rendererRef, render, updateDrawable, getDrawTiles]),
     50,
     { leading: true, trailing: true },
   );

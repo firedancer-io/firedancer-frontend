@@ -1,5 +1,5 @@
 import { getDefaultStore, useAtom, useAtomValue } from "jotai";
-import { useRef, useCallback, useLayoutEffect, useState } from "react";
+import { useRef, useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
@@ -43,9 +43,12 @@ import {
 } from "../tiles/useTileCache.ts";
 import {
   txnMetaCache,
+  txnMetaLevel,
   type TxnMetaCacheDelta,
 } from "./txnMeta/txnMetaCache.ts";
 import styles from "../track.module.css";
+import type { DataLevel } from "../coverage.ts";
+import { useModeCoverage } from "../useModeCoverage.ts";
 
 const store = getDefaultStore();
 
@@ -60,10 +63,23 @@ interface RevenueTrackBodyProps extends RevenueTrackProps, WebGlRemountProps {
   aggQuery: AggRevenueQuery;
 }
 
+/**
+ * Granularity the visible range should be drawn at
+ */
+function getTargetGranularity(visibleRangeMs: TsRange): AggGranularity | "txn" {
+  return isAggregate(visibleRangeMs)
+    ? getGranularity(visibleRangeMs[1] - visibleRangeMs[0])
+    : txnMetaLevel.id;
+}
+
 function RevenueTrackBody({
   remount,
   height,
-  aggQuery: { query: aggQuery, pauseStaleRefreshes },
+  aggQuery: {
+    query: aggQuery,
+    granularityLevels: aggLevels,
+    pauseStaleRefreshes,
+  },
 }: RevenueTrackBodyProps) {
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
@@ -73,9 +89,10 @@ function RevenueTrackBody({
   const [opts, setOpts] = useAtom(revenueViewOptsAtom);
   const { type } = opts;
 
+  /** whether the target granularity is agg */
   const [isAgg, setIsAgg] = useState(true);
-  const isAggCurrentRef = useRef(isAgg);
-  const isAggPreviousRef = useRef(isAgg);
+  /** whether the last render drew non agg in any of the visible range */
+  const isNonAggDrawnRef = useRef(false);
 
   const { containerRef, rendererRef } = useWebGlRenderer({
     remount,
@@ -84,8 +101,7 @@ function RevenueTrackBody({
     onResize: (rendererObj) => {
       resizeRenderer(rendererObj);
       const visibleRangeMs = store.get(visibleRangeAtom);
-      if (!isAggCurrentRef.current && visibleRangeMs)
-        moveNonAggCamera(rendererObj, visibleRangeMs);
+      if (visibleRangeMs) moveNonAggCamera(rendererObj, visibleRangeMs);
       renderActive();
     },
   });
@@ -99,6 +115,25 @@ function RevenueTrackBody({
   const txnMetaQuery = useTileCacheQuery(txnMetaCache);
   const execrpCount = useAtomValue(tileCountAtom).execrp;
   const numRows = getNumRows(opts.splitByRow, execrpCount);
+
+  /** agg granularities then txn meta, from coarsest to finest */
+  const granularityLevels = useMemo<DataLevel<AggGranularity | "txn">[]>(
+    () => [...aggLevels, txnMetaLevel],
+    [aggLevels],
+  );
+
+  const {
+    modeRangesRef,
+    resolveModeRanges,
+    startAggDraw,
+    shouldDrawAgg,
+    shouldDrawAggAfterNonAgg,
+    renderModes,
+  } = useModeCoverage({
+    granularityLevels,
+    getTargetGranularity,
+    getAggGranularity: getGranularity,
+  });
 
   const throttledRangeQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
@@ -159,20 +194,43 @@ function RevenueTrackBody({
     const renderer = rendererRef.current;
     if (!renderer) return;
 
-    const agg = isAggCurrentRef.current;
-    if (!agg) {
-      // mode entry (agg to nonAgg)
-      if (isAggPreviousRef.current) syncNonAggRef.current(renderer);
+    const isNonAggDrawn = modeRangesRef.current.nonAgg.length > 0;
+    if (isNonAggDrawn) {
+      // non agg draw entry
+      if (!isNonAggDrawnRef.current) syncNonAggRef.current(renderer);
       refreshNonAggRef.current(renderer);
     }
-    isAggPreviousRef.current = agg;
+    isNonAggDrawnRef.current = isNonAggDrawn;
 
-    const { aggResources, nonAggResources } = renderer;
-    const { camera, scene } = agg ? aggResources : nonAggResources;
-    renderer.renderer.render(scene, camera);
-  }, [rendererRef]);
+    renderModes(
+      renderer.renderer,
+      renderer.aggResources,
+      renderer.nonAggResources,
+    );
+  }, [modeRangesRef, rendererRef, renderModes]);
 
   const requestRender = useFrameRender(renderActive);
+
+  /**
+   * Draw the agg mesh for the agg spans
+   */
+  const drawAgg = useCallback(() => {
+    if (!rendererRef.current) return;
+    const aggDraw = startAggDraw();
+    if (!aggDraw) return;
+
+    const maxValue = drawAggRevenue(
+      rendererRef.current,
+      aggDraw.referenceNs,
+      aggDraw.visibleRange,
+      type,
+      store.get(aggRevenueAtom),
+      aggDraw.granularity,
+      aggDraw.getDrawTiles,
+      opts.scale,
+    );
+    setAggAxisMax(maxValue);
+  }, [rendererRef, startAggDraw, type, opts.scale]);
 
   /**
    * Query data for new range and optionally update camera.
@@ -186,41 +244,41 @@ function RevenueTrackBody({
       const visibleRangeMs = store.get(visibleRangeAtom);
       if (referenceNs == null || !visibleRangeMs || !worldRangeMs) return;
 
-      // Move camera before querying, because query may trigger immediate draw if data is already available
+      // Move camera before querying, because query may trigger immediate draw if data is already available.
+      // Move both, since both modes may be drawn
       if (updateView) {
-        const agg = isAggregate(visibleRangeMs);
-        isAggCurrentRef.current = agg;
-        setIsAgg(agg);
+        moveAggCamera(rendererRef.current, visibleRangeMs);
+        moveNonAggCamera(rendererRef.current, visibleRangeMs);
+        setIsAgg(isAggregate(visibleRangeMs));
 
-        if (agg) moveAggCamera(rendererRef.current, visibleRangeMs);
-        else moveNonAggCamera(rendererRef.current, visibleRangeMs);
+        resolveModeRanges();
+        // Redraw agg from cache immediately if the mesh is outdated, since
+        // the draw event waits on a query round trip
+        if (shouldDrawAgg()) drawAgg();
       }
 
       throttledRangeQuery(referenceNs, visibleRangeMs, worldRangeMs);
 
       if (updateView) requestRender();
     },
-    [requestRender, rendererRef, throttledRangeQuery],
+    [
+      drawAgg,
+      requestRender,
+      rendererRef,
+      resolveModeRanges,
+      shouldDrawAgg,
+      throttledRangeQuery,
+    ],
   );
 
   const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
-      const referenceNs = store.get(referenceNsAtom);
-      const visibleRangeMs = store.get(visibleRangeAtom);
-      const aggRevenue = store.get(aggRevenueAtom);
-      if (!rendererRef.current || !visibleRangeMs || referenceNs == null)
-        return;
-      const maxValue = drawAggRevenue(
-        rendererRef.current,
-        referenceNs,
-        visibleRangeMs,
-        type,
-        aggRevenue,
-        opts.scale,
-      );
-      setAggAxisMax(maxValue);
+      resolveModeRanges();
+      // update the whole agg mesh, so it's ready for when agg draws more of
+      // the range
+      drawAgg();
       requestRender();
-    }, [rendererRef, type, opts.scale, requestRender]),
+    }, [drawAgg, requestRender, resolveModeRanges]),
     50,
     { leading: false, trailing: true },
   );
@@ -252,17 +310,16 @@ function RevenueTrackBody({
     };
   }, [onRangeChange, throttledDrawAgg, throttledRangeQuery]);
 
-  // Trigger refresh for agg mode entry or a scale/type change.
+  // Trigger agg refresh for a scale/type change. Agg may be drawn in either
+  // target mode.
   useLayoutEffect(() => {
-    if (!isAgg) return;
     throttledDrawAgg();
-  }, [isAgg, opts.scale, type, throttledDrawAgg]);
+  }, [opts.scale, type, throttledDrawAgg]);
 
-  // Trigger refresh for nonAgg mode entry or a rows/scale/type/timeline-reference change
+  // Trigger nonAgg refresh for a rows/scale/type/timeline-reference change
   useLayoutEffect(() => {
-    if (isAgg) return;
     requestRender();
-  }, [isAgg, numRows, opts.scale, type, getRelativeMs, requestRender]);
+  }, [numRows, opts.scale, type, getRelativeMs, requestRender]);
 
   /**
    * Trigger updates for nonAgg data changes.
@@ -288,10 +345,19 @@ function RevenueTrackBody({
         syncNonAggRef.current(renderer);
       }
 
-      // Only render on delta updates when non aggregate view is active
-      if (!isAggCurrentRef.current) requestRender();
+      const { nonAgg } = resolveModeRanges();
+      if (shouldDrawAggAfterNonAgg()) drawAgg();
+      // Only render on delta updates when non agg is or was drawn
+      if (nonAgg.length || isNonAggDrawnRef.current) requestRender();
     },
-    [getRelativeMs, requestRender, rendererRef],
+    [
+      drawAgg,
+      getRelativeMs,
+      requestRender,
+      rendererRef,
+      resolveModeRanges,
+      shouldDrawAggAfterNonAgg,
+    ],
   );
 
   useTileCacheSubscription(txnMetaCache, onCacheDelta);

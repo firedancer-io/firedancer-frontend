@@ -1,5 +1,5 @@
 import { getDefaultStore } from "jotai";
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
@@ -37,6 +37,8 @@ import styles from "../track.module.css";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import TrackControls from "../TrackControls.tsx";
 import { trackNames } from "../layout.ts";
+import type { DataLevel } from "../coverage.ts";
+import { useModeCoverage } from "../useModeCoverage.ts";
 
 const store = getDefaultStore();
 
@@ -49,6 +51,18 @@ function isShredsGranularity(
   );
 }
 
+/**
+ * Granularity the visible range should be drawn at
+ */
+function getTargetGranularity(
+  visibleRange: TsRange,
+): AggGranularity | ShredsGranularity {
+  const windowMs = visibleRange[1] - visibleRange[0];
+  return isAggregate(visibleRange)
+    ? getAggGranularity(windowMs)
+    : getNonAggGranularity(windowMs);
+}
+
 function ShredsTrack({ remount }: WebGlRemountProps) {
   const [granularity, setGranularity] = useState<
     AggGranularity | ShredsGranularity | undefined
@@ -58,11 +72,14 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     remount,
     create: ({ setUpContextListeners, getWasContextLost }) =>
       setUpRenderers(setUpContextListeners, getWasContextLost),
-    onResize: () => redrawActive(),
+    onResize: () => redraw(),
   });
 
-  const { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes } =
-    useAggShredsQuery(AGG_SHREDS_CHART_ID);
+  const {
+    query: aggQuery,
+    granularityLevels: aggLevels,
+    pauseStaleRefreshes: pauseStaleAggRefreshes,
+  } = useAggShredsQuery(AGG_SHREDS_CHART_ID);
 
   // Free meshes for slots whose data was just refetched, so the next draw
   // rebuilds them. Does not render; the stale frame stays until that draw.
@@ -85,8 +102,29 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     [rendererRef],
   );
 
-  const { query: nonAggQuery, pauseStaleRefreshes: pauseStaleNonAggRefreshes } =
-    useNonAggShredsQuery(NON_AGG_SHREDS_CHART_ID, resetMeshes);
+  const {
+    query: nonAggQuery,
+    granularityLevels: nonAggLevels,
+    pauseStaleRefreshes: pauseStaleNonAggRefreshes,
+  } = useNonAggShredsQuery(NON_AGG_SHREDS_CHART_ID, resetMeshes);
+
+  /** agg then non agg granularities, from coarsest to finest */
+  const granularityLevels = useMemo<
+    DataLevel<AggGranularity | ShredsGranularity>[]
+  >(() => [...aggLevels, ...nonAggLevels], [aggLevels, nonAggLevels]);
+
+  const {
+    modeRangesRef,
+    resolveModeRanges,
+    startAggDraw,
+    shouldDrawAgg,
+    shouldDrawAggAfterNonAgg,
+    renderModes,
+  } = useModeCoverage({
+    granularityLevels,
+    getTargetGranularity,
+    getAggGranularity,
+  });
 
   const throttledRelativeTsQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
@@ -113,14 +151,8 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
   const renderActive = useCallback(() => {
     if (!rendererRef.current) return;
     const { renderer, aggResources, nonAggResources } = rendererRef.current;
-    const visibleRange = store.get(visibleRangeAtom);
-    if (!visibleRange) return;
-
-    const { camera, scene } = isAggregate(visibleRange)
-      ? aggResources
-      : nonAggResources;
-    renderer.render(scene, camera);
-  }, [rendererRef]);
+    renderModes(renderer, aggResources, nonAggResources);
+  }, [rendererRef, renderModes]);
 
   const requestRender = useFrameRender(renderActive);
 
@@ -150,17 +182,34 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     [requestRender, rendererRef],
   );
 
-  // Redraw the currently-active view without refetching
-  const redrawActive = useCallback(() => {
+  // Redraw without refetching
+  const redraw = useCallback(() => {
     const visibleRange = store.get(visibleRangeAtom);
     if (!visibleRange) return;
-    if (isAggregate(visibleRange)) {
-      // agg has no size-dependent uniforms, so a plain render suffices
-      renderActive();
-    } else {
+    // agg has no size-dependent uniforms, so only non agg needs a redraw
+    if (modeRangesRef.current.nonAgg.length) {
       moveCameraAndDrawNonAgg(visibleRange);
     }
-  }, [moveCameraAndDrawNonAgg, renderActive]);
+    renderActive();
+  }, [modeRangesRef, moveCameraAndDrawNonAgg, renderActive]);
+
+  /**
+   * Draw the agg mesh for the agg spans
+   */
+  const drawAgg = useCallback(() => {
+    if (!rendererRef.current) return;
+    const aggDraw = startAggDraw();
+    if (!aggDraw) return;
+
+    drawAggShreds(
+      rendererRef.current,
+      aggDraw.referenceNs,
+      aggDraw.visibleRange,
+      store.get(aggShredsAtom),
+      aggDraw.granularity,
+      aggDraw.getDrawTiles,
+    );
+  }, [rendererRef, startAggDraw]);
 
   /**
    * Update camera and query data for new range
@@ -173,51 +222,55 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     const visibleRange = store.get(visibleRangeAtom);
     if (referenceNs == null || !visibleRange || !worldRange) return;
 
-    if (isAggregate(visibleRange)) {
-      // Move camera before querying, because query may trigger immediate draw if data is already available
-      moveAggCamera(rendererRef.current.aggResources, visibleRange);
-      throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
-      requestRender();
-    } else {
-      throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
-      // trigger a redraw immediately to hide trailing incomplete slots and prevent extended shreds.
-      moveCameraAndDrawNonAgg(visibleRange);
-    }
+    // Move camera before querying, because query may trigger immediate draw if data is already available.
+    moveAggCamera(rendererRef.current.aggResources, visibleRange);
+    throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
+
+    const { nonAgg } = resolveModeRanges();
+    // Redraw agg from cache immediately if the mesh is outdated, since the
+    // draw event waits on a query round trip. Otherwise moving the camera is
+    // enough, e.g. on live frames
+    if (shouldDrawAgg()) drawAgg();
+    // trigger a redraw immediately to hide trailing incomplete slots and prevent extended shreds.
+    if (nonAgg.length) moveCameraAndDrawNonAgg(visibleRange);
+    requestRender();
   }, [
+    drawAgg,
     moveCameraAndDrawNonAgg,
     requestRender,
     rendererRef,
+    resolveModeRanges,
+    shouldDrawAgg,
     throttledRelativeTsQuery,
   ]);
 
   const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
-      const referenceNs = store.get(referenceNsAtom);
-      const visibleRange = store.get(visibleRangeAtom);
-      const aggShreds = store.get(aggShredsAtom);
-      if (!rendererRef.current || !visibleRange || referenceNs == null) return;
-
-      drawAggShreds(rendererRef.current, referenceNs, visibleRange, aggShreds);
+      // new agg data may take over spans from non agg
+      resolveModeRanges();
+      drawAgg();
       requestRender();
-    }, [requestRender, rendererRef]),
+    }, [drawAgg, requestRender, resolveModeRanges]),
     50,
     { leading: false, trailing: true },
   );
 
   const throttledDrawNonAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
-      const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
-      if (
-        !rendererRef.current ||
-        !visibleRange ||
-        referenceNs == null ||
-        isAggregate(visibleRange)
-      )
-        return;
+      if (!visibleRange) return;
 
-      moveCameraAndDrawNonAgg(visibleRange);
-    }, [moveCameraAndDrawNonAgg, rendererRef]),
+      const { nonAgg } = resolveModeRanges();
+      if (nonAgg.length) moveCameraAndDrawNonAgg(visibleRange);
+      if (shouldDrawAggAfterNonAgg()) drawAgg();
+      requestRender();
+    }, [
+      drawAgg,
+      moveCameraAndDrawNonAgg,
+      requestRender,
+      resolveModeRanges,
+      shouldDrawAggAfterNonAgg,
+    ]),
     50,
     { leading: false, trailing: true },
   );

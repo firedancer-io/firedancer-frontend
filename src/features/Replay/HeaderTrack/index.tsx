@@ -1,10 +1,16 @@
 import { useCallback, useRef } from "react";
+import { getDefaultStore } from "jotai";
 import AggHeaderTrack from "./AggHeaderTrack.tsx";
 import { NonAggHeaderTrack } from "./NonAggHeaderTrack.tsx";
 import ReplaySlotTooltip from "./ReplaySlotTooltip.tsx";
 import styles from "./headerTrack.module.css";
 import { Box } from "@radix-ui/themes";
 import { trackHeight } from "./const.ts";
+import { isAggregate } from "./utils.ts";
+import { visibleRangeAtom } from "../atoms.ts";
+import { resolveHeldDraw } from "../coverage.ts";
+
+const store = getDefaultStore();
 
 interface HeaderTrackProps {
   width: number;
@@ -12,20 +18,43 @@ interface HeaderTrackProps {
 
 export default function HeaderTrack({ width }: HeaderTrackProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const isAggShownRef = useRef<boolean>();
+  /** whether each mode can draw all of the visible range */
+  const isDrawableRef = useRef({ agg: false, nonAgg: false });
 
   /**
-   * trigger agg visiblity toggle on draw instead of on range change, so some data is
-   * available on toggle
+   * Keep showing the previous mode on a mode change until the new mode can
+   * draw all of the visible range. Toggled on draw instead of on range change,
+   * so data is available on toggle.
    */
-  const setIsAggVisible = useCallback((isAggVisible: boolean) => {
-    containerRef.current?.classList.toggle(styles.showAgg, isAggVisible);
+  const updateShownMode = useCallback(() => {
+    const visibleRange = store.get(visibleRangeAtom);
+    if (!visibleRange) return;
+
+    const isAggShown = resolveHeldDraw(
+      isAggShownRef.current,
+      isAggregate(visibleRange),
+      (agg) => isDrawableRef.current[agg ? "agg" : "nonAgg"],
+    );
+    isAggShownRef.current = isAggShown;
+    containerRef.current?.classList.toggle(styles.showAgg, isAggShown);
   }, []);
 
-  const showAgg = useCallback(() => setIsAggVisible(true), [setIsAggVisible]);
-  const showNonAgg = useCallback(
-    () => setIsAggVisible(false),
-    [setIsAggVisible],
+  const setAggDrawable = useCallback(
+    (isDrawable: boolean) => {
+      isDrawableRef.current.agg = isDrawable;
+      updateShownMode();
+    },
+    [updateShownMode],
   );
+  const setNonAggDrawable = useCallback(
+    (isDrawable: boolean) => {
+      isDrawableRef.current.nonAgg = isDrawable;
+      updateShownMode();
+    },
+    [updateShownMode],
+  );
+  const getIsAggShown = useCallback(() => !!isAggShownRef.current, []);
 
   return (
     <Box
@@ -37,11 +66,15 @@ export default function HeaderTrack({ width }: HeaderTrackProps) {
       width="100%"
       height={`${trackHeight}px`}
     >
-      <AggHeaderTrack className={styles.aggContainer} showAgg={showAgg} />
+      <AggHeaderTrack
+        className={styles.aggContainer}
+        setAggDrawable={setAggDrawable}
+      />
       <NonAggHeaderTrack
         className={styles.nonAggContainer}
         width={width}
-        showNonAgg={showNonAgg}
+        setNonAggDrawable={setNonAggDrawable}
+        getIsAggShown={getIsAggShown}
       />
       <ReplaySlotTooltip />
     </Box>

@@ -1,13 +1,31 @@
-import { useCallback } from "react";
-import { useAtomValue, useSetAtom, type Atom, type WritableAtom } from "jotai";
+import { useCallback, useMemo } from "react";
+import {
+  getDefaultStore,
+  useAtomValue,
+  useSetAtom,
+  type Atom,
+  type WritableAtom,
+} from "jotai";
 import type TypedEmitter from "typed-emitter";
 import { useWebSocketSend } from "../../api/ws/utils";
 import type { AggGranularity } from "../../api/types";
 import type { NsTsRange, TsRange } from "../WebGl/webglUtils";
-import { calcAbsoluteNs, useTimelineServerMessage } from "./utils";
+import {
+  calcAbsoluteNs,
+  calcAbsoluteNsRange,
+  getVisibleWorldRangeNs,
+  useTimelineServerMessage,
+} from "./utils";
 import { useTiledQueries } from "./useTiledQueries";
-import { nsBucketSizes } from "./const";
-import type { TimelineQueryKey } from "./atoms";
+import { isRangeCovered, resolveCoverage, type DataLevel } from "./coverage";
+import { ascBucketGranularities, msBucketSizes, nsBucketSizes } from "./const";
+import {
+  referenceNsAtom,
+  worldRangeAtom,
+  type TimelineQueryKey,
+} from "./atoms";
+
+const store = getDefaultStore();
 
 const drawEventType = "draw";
 
@@ -92,17 +110,22 @@ export function useAggQuery<TValue, TParams extends object = object>({
     [deleteBuckets],
   );
 
-  const { queryRange, markQueryComplete, pauseStaleRefreshes, resetQueries } =
-    useTiledQueries<AggGranularity>({
-      chartId,
-      getTileSizeNs,
-      overscanTilesCount: OVERSCAN_TILES_COUNT,
-      queryKey,
-      sendQuery,
-      getTileEvictionHighWatermark,
-      getTileEvictionLowWatermark,
-      onEvictTiles,
-    });
+  const {
+    queryRange,
+    markQueryComplete,
+    getLevel,
+    pauseStaleRefreshes,
+    resetQueries,
+  } = useTiledQueries<AggGranularity>({
+    chartId,
+    getTileSizeNs,
+    overscanTilesCount: OVERSCAN_TILES_COUNT,
+    queryKey,
+    sendQuery,
+    getTileEvictionHighWatermark,
+    getTileEvictionLowWatermark,
+    onEvictTiles,
+  });
 
   useTimelineServerMessage(queryKey, (message) => {
     if (!markQueryComplete(message.id)) return;
@@ -136,5 +159,170 @@ export function useAggQuery<TValue, TParams extends object = object>({
     [onNothingToFetch, queryRange],
   );
 
-  return { query, pauseStaleRefreshes, resetQueries };
+  /** agg granularities from coarsest to finest */
+  const granularityLevels = useMemo(
+    () =>
+      [...ascBucketGranularities]
+        .reverse()
+        .map((granularity) => getLevel(granularity, true)),
+    [getLevel],
+  );
+
+  /**
+   * Draw tiles resolved from agg granularities only
+   */
+  const getDrawTiles: GetDrawTiles = useCallback(
+    (drawGranularity, firstBucketIdx, lastBucketIdx) => {
+      const referenceNs = store.get(referenceNsAtom);
+      const worldRange = store.get(worldRangeAtom);
+      return getCoverageDrawTiles(
+        granularityLevels,
+        drawGranularity,
+        referenceNs != null && worldRange
+          ? calcAbsoluteNsRange(referenceNs, worldRange)
+          : undefined,
+        drawGranularity,
+        firstBucketIdx,
+        lastBucketIdx,
+      );
+    },
+    [granularityLevels],
+  );
+
+  /**
+   * Whether every in-world visible tile can be drawn from some granularity
+   */
+  const isVisibleDrawable = useCallback(
+    (
+      targetGranularity: AggGranularity,
+      referenceNs: bigint,
+      visibleRange: TsRange,
+      worldRange: TsRange,
+    ) =>
+      isRangeCovered(
+        granularityLevels,
+        targetGranularity,
+        getVisibleWorldRangeNs(referenceNs, visibleRange, worldRange),
+        calcAbsoluteNsRange(referenceNs, worldRange),
+      ),
+    [granularityLevels],
+  );
+
+  return {
+    query,
+    granularityLevels,
+    getDrawTiles,
+    isVisibleDrawable,
+    pauseStaleRefreshes,
+    resetQueries,
+  };
+}
+
+/**
+ * A tile's inclusive target granularity buckets, drawn from `granularity` data
+ */
+interface AggDrawTile {
+  granularity: AggGranularity;
+  first: number;
+  last: number;
+}
+
+export type GetDrawTiles = (
+  drawGranularity: AggGranularity,
+  firstBucketIdx: number,
+  lastBucketIdx: number,
+) => AggDrawTile[];
+
+/**
+ * One entry per agg span of draw granularity buckets
+ * [firstBucketIdx, lastBucketIdx], with the agg granularity the span is drawn
+ * from. Spans are resolved for the target level, which may be non agg. Spans
+ * without agg data are skipped.
+ */
+export function getCoverageDrawTiles<Id extends string>(
+  granularityLevels: DataLevel<Id>[],
+  targetId: Id,
+  worldRangeNs: NsTsRange | undefined,
+  drawGranularity: AggGranularity,
+  firstBucketIdx: number,
+  lastBucketIdx: number,
+): AggDrawTile[] {
+  const bucketNs = nsBucketSizes[drawGranularity];
+  const ceilBucketIdx = (ns: bigint) => Number((ns + bucketNs - 1n) / bucketNs);
+
+  const drawTiles: AggDrawTile[] = [];
+  for (const { rangeNs, level } of resolveCoverage(
+    granularityLevels,
+    targetId,
+    [BigInt(firstBucketIdx) * bucketNs, BigInt(lastBucketIdx + 1) * bucketNs],
+    worldRangeNs,
+  )) {
+    if (!level?.isAgg) continue;
+    // A bucket belongs to the span containing its start, so spans that aren't
+    // bucket aligned don't share buckets
+    const first = ceilBucketIdx(rangeNs[0]);
+    const last = ceilBucketIdx(rangeNs[1]) - 1;
+    if (last < first) continue;
+    drawTiles.push({
+      // agg levels are agg granularities
+      granularity: level.id as AggGranularity,
+      first,
+      last,
+    });
+  }
+  return drawTiles;
+}
+
+/**
+ * A bucket overlapping a target bucket, with the overlap duration
+ */
+export interface BucketOverlap<V> {
+  value: V;
+  overlapMs: number;
+  bucketMs: number;
+}
+
+/**
+ * Call `fn` with each draw tile bucket that has data. Buckets from a fallback
+ * granularity are resampled to the target granularity by `resample`, from
+ * the fallback buckets overlapping it.
+ */
+export function forEachDrawnBucket<V>(
+  drawTiles: AggDrawTile[],
+  targetGranularity: AggGranularity,
+  bucketsByGranularity: Map<AggGranularity, Map<number, V>>,
+  resample: (overlaps: BucketOverlap<V>[]) => V,
+  fn: (bucketIdx: number, value: V) => void,
+) {
+  const targetMs = msBucketSizes[targetGranularity];
+  for (const { granularity, first, last } of drawTiles) {
+    const buckets = bucketsByGranularity.get(granularity);
+    if (!buckets) continue;
+    const bucketMs = msBucketSizes[granularity];
+
+    for (let bucketIdx = first; bucketIdx <= last; bucketIdx++) {
+      if (granularity === targetGranularity) {
+        const value = buckets.get(bucketIdx);
+        if (value !== undefined) fn(bucketIdx, value);
+        continue;
+      }
+
+      const startMs = bucketIdx * targetMs;
+      const endMs = startMs + targetMs;
+      const overlaps: BucketOverlap<V>[] = [];
+      for (
+        let idx = Math.floor(startMs / bucketMs);
+        idx * bucketMs < endMs;
+        idx++
+      ) {
+        const value = buckets.get(idx);
+        if (value === undefined) continue;
+        const overlapMs =
+          Math.min(endMs, (idx + 1) * bucketMs) -
+          Math.max(startMs, idx * bucketMs);
+        overlaps.push({ value, overlapMs, bucketMs });
+      }
+      if (overlaps.length) fn(bucketIdx, resample(overlaps));
+    }
+  }
 }

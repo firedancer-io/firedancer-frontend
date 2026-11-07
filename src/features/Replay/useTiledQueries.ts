@@ -11,6 +11,7 @@ import {
 import { calcAbsoluteNs } from "./utils";
 import { useThrottledCallbackIfVisible } from "../../api/useDebounceIfVisible";
 import { getTileIdx, getTileIdxRangeWithOverscan } from "./utils";
+import type { DataLevel } from "./coverage";
 
 interface TileStates {
   fetched: Set<number>;
@@ -365,6 +366,37 @@ export function useTiledQueries<Granularity extends string>({
     [evictTilesIfNeeded, getTileStates, getTileSizeNs],
   );
 
+  /**
+   * Granularity as a data level. A tile has data if it's fetched or stale.
+   */
+  const getLevel = useCallback(
+    (granularity: Granularity, isAgg: boolean): DataLevel<Granularity> => {
+      const tileSizeNs = getTileSizeNs(granularity);
+      return {
+        id: granularity,
+        isAgg,
+        tileSizeNs,
+        isRangeFetched: ([startNs, endNs]) => {
+          if (endNs <= startNs) return true;
+
+          const firstTile = getTileIdx(startNs, tileSizeNs, false);
+          const lastTile = getTileIdx(endNs, tileSizeNs, true);
+
+          const { fetched, stale } = getTileStates(granularity);
+          if (lastTile - firstTile + 1 > fetched.size + stale.size) {
+            return false;
+          }
+
+          for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
+            if (!fetched.has(tileIdx) && !stale.has(tileIdx)) return false;
+          }
+          return true;
+        },
+      };
+    },
+    [getTileSizeNs, getTileStates],
+  );
+
   const queryWorldEnd = useThrottledCallbackIfVisible(() => {
     // in live mode, the visible range will automatically query the last tile
     // so skip this query
@@ -422,6 +454,7 @@ export function useTiledQueries<Granularity extends string>({
   return {
     queryRange,
     markQueryComplete,
+    getLevel,
     pauseStaleRefreshes,
     resetQueries,
   };

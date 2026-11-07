@@ -19,9 +19,14 @@ import {
   type RendererObj,
 } from "./const";
 import { omit } from "lodash";
-import type { SlotBucketsByGranularity } from "./aggAtoms";
+import type { SlotBucketsByGranularity, SlotCounts } from "./aggAtoms";
 import { getAggGranularity } from "./useAggHeaderQuery";
-import { OVERSCAN_BUCKETS } from "../useAggQuery";
+import {
+  forEachDrawnBucket,
+  OVERSCAN_BUCKETS,
+  type BucketOverlap,
+  type GetDrawTiles,
+} from "../useAggQuery";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
 import {
   replayAggHeaderBackgroundColor,
@@ -119,11 +124,9 @@ export function drawAggSlots(
   referenceNs: bigint,
   visibleRange: TsRange,
   aggSlots: SlotBucketsByGranularity,
+  getDrawTiles: GetDrawTiles,
 ) {
   const granularity = getAggGranularity(visibleRange[1] - visibleRange[0]);
-  const slotsByBucketIdx = aggSlots.get(granularity);
-  if (!slotsByBucketIdx) return;
-
   const { cameraReferenceMs, mesh } = rendererObj.aggResources;
   const bucketSizeMs = msBucketSizes[granularity];
 
@@ -152,36 +155,67 @@ export function drawAggSlots(
   ensureRectCapacity(mesh, lastBucketIdx - firstBucketIdx + 1);
 
   let rectIdx = 0;
-  for (
-    let bucketIdx = firstBucketIdx;
-    bucketIdx <= lastBucketIdx;
-    bucketIdx++
-  ) {
-    const slotCounts = slotsByBucketIdx.get(bucketIdx);
-    if (!slotCounts) continue;
+  forEachDrawnBucket(
+    getDrawTiles(granularity, firstBucketIdx, lastBucketIdx),
+    granularity,
+    aggSlots,
+    resampleSlotCounts,
+    (bucketIdx, { start_slot, end_slot, skipped }) => {
+      const slotCount =
+        start_slot != null && end_slot != null && end_slot >= start_slot
+          ? end_slot - start_slot + 1
+          : 0;
 
-    const { start_slot, end_slot, skipped } = slotCounts;
-    const slotCount =
-      start_slot != null && end_slot != null && end_slot >= start_slot
-        ? end_slot - start_slot + 1
-        : 0;
+      // don't draw empty buckets
+      if (slotCount === 0) return;
 
-    // don't draw empty buckets
-    if (slotCount === 0) continue;
+      const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
 
-    const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
+      const color = getBucketColor(slotCount, skipped);
 
-    const color = getBucketColor(slotCount, skipped);
+      addRectangleToMesh(mesh, rectIdx, x, minY, bucketSizeMs, height, color);
 
-    addRectangleToMesh(mesh, rectIdx, x, minY, bucketSizeMs, height, color);
-
-    rectIdx++;
-  }
+      rectIdx++;
+    },
+  );
   updateRectMeshCounts(mesh, rectIdx);
 
   /** store mesh positions relative to referenceX. This allows GPU to see small coordinates */
   mesh.referenceX = cameraReferenceMs;
   mesh.mesh.position.x = 0;
+}
+
+/**
+ * Combine slot ranges and sum counts. Only used for the slot count and
+ * skipped ratio, so not weighted by overlap.
+ */
+function resampleSlotCounts(overlaps: BucketOverlap<SlotCounts>[]): SlotCounts {
+  const resampled: SlotCounts = {
+    start_slot: null,
+    end_slot: null,
+    skipped: null,
+    mine: null,
+    mine_skipped: null,
+  };
+  for (const { value } of overlaps) {
+    if (value.start_slot != null) {
+      resampled.start_slot = Math.min(
+        resampled.start_slot ?? Infinity,
+        value.start_slot,
+      );
+    }
+    if (value.end_slot != null) {
+      resampled.end_slot = Math.max(
+        resampled.end_slot ?? -Infinity,
+        value.end_slot,
+      );
+    }
+    for (const key of ["skipped", "mine", "mine_skipped"] as const) {
+      const count = value[key];
+      if (count != null) resampled[key] = (resampled[key] ?? 0) + count;
+    }
+  }
+  return resampled;
 }
 
 /**

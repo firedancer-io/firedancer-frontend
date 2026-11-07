@@ -11,6 +11,11 @@ import { msBucketSizes, nsBucketSizes } from "../const.ts";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils.ts";
 import type { CpuUtilizationByGranularity, TilesUtilization } from "./atoms.ts";
 import {
+  forEachDrawnBucket,
+  type BucketOverlap,
+  type GetDrawTiles,
+} from "../useAggQuery.ts";
+import {
   getTileKey,
   rowGapPx,
   rowPaddingPx,
@@ -157,6 +162,7 @@ export function drawCpuData(
   referenceNs: bigint,
   visibleRange: TsRange,
   aggCpu: CpuUtilizationByGranularity,
+  getDrawTiles: GetDrawTiles,
 ) {
   const { rows, geometry } = rendererObj;
   const granularity = getAggGranularity(visibleRange[1] - visibleRange[0]);
@@ -181,11 +187,18 @@ export function drawCpuData(
     return;
   }
 
-  const utilizationByBucketIdx = aggCpu.get(granularity);
   // one point per drawn bucket + the one before
-  const pointsTilesUtilization = Array.from(
-    { length: drawnBucketCount + 1 },
-    (_, i) => utilizationByBucketIdx?.get(firstBucketIdx - 1 + i),
+  const pointsTilesUtilization = new Array<TilesUtilization | undefined>(
+    drawnBucketCount + 1,
+  );
+  forEachDrawnBucket(
+    getDrawTiles(granularity, firstBucketIdx - 1, lastBucketIdx),
+    granularity,
+    aggCpu,
+    resampleTilesUtilization,
+    (bucketIdx, tilesUtilization) => {
+      pointsTilesUtilization[bucketIdx - firstBucketIdx + 1] = tilesUtilization;
+    },
   );
 
   geometry.instanceCount = writeSparklineData(
@@ -202,6 +215,26 @@ export function drawCpuData(
         pointsTilesUtilization[pointIdx + 1],
         rows[row].tileIdxs,
       ),
+  );
+}
+
+/**
+ * Average each tile's utilization, weighted by overlap
+ */
+function resampleTilesUtilization(
+  overlaps: BucketOverlap<TilesUtilization>[],
+): TilesUtilization {
+  const sums: number[] = [];
+  const weights: number[] = [];
+  for (const { value, overlapMs } of overlaps) {
+    value.forEach((utilization, tileIdx) => {
+      if (utilization == null) return;
+      sums[tileIdx] = (sums[tileIdx] ?? 0) + utilization * overlapMs;
+      weights[tileIdx] = (weights[tileIdx] ?? 0) + overlapMs;
+    });
+  }
+  return Array.from({ length: weights.length }, (_, tileIdx) =>
+    weights[tileIdx] ? sums[tileIdx] / weights[tileIdx] : null,
   );
 }
 

@@ -13,6 +13,9 @@ import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import type { Tile, TileStatesGranularity } from "../../../api/types.ts";
 import { TileStatesGranularityEnum } from "../../../api/entities.ts";
 import {
+  itemCount,
+  emptyColumns,
+  TILE_NS,
   tileStatesCaches,
   type TileStateColumns,
   type TileStatesDataTile,
@@ -34,9 +37,14 @@ import {
   type TileKind,
 } from "./consts.ts";
 import { replayTrackBackgroundColor } from "../../../colors.ts";
-import { referenceNsAtom, visibleRangeAtom } from "../atoms.ts";
+import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
-import { calcRelativeMs } from "../utils.ts";
+import {
+  calcAbsoluteNs,
+  calcAbsoluteNsRange,
+  calcRelativeMs,
+} from "../utils.ts";
+import { bigIntMax, bigIntMin } from "../../../mathUtils.ts";
 
 const store = getDefaultStore();
 
@@ -437,37 +445,198 @@ export function syncMeshes(rendererObj: RendererObj, rebuild = false) {
     errorStatesScene,
     availableMeshes,
     dataTileMeshes,
-    liveDataTileKey,
     renderedGranularity,
   } = rendererObj;
   const dataTiles = renderedGranularity
-    ? tileStatesCaches[renderedGranularity].getTiles()
+    ? [
+        ...tileStatesCaches[renderedGranularity].getTiles().map((dataTile) => ({
+          key: dataTileKey(dataTile),
+          getDataTile: () => dataTile,
+        })),
+        ...getFallbackDataTiles(renderedGranularity),
+      ]
     : [];
   const rowOfTile = getRowOfTile(rendererObj.kind);
 
   const keys = new Set<string>();
 
   // Build meshes for new data tiles (skip already built ones)
-  for (const dataTile of dataTiles) {
-    const key = dataTileKey(dataTile);
+  for (const { key, getDataTile } of dataTiles) {
     keys.add(key);
     if (!rebuild && dataTileMeshes.has(key)) continue;
 
     const meshes =
       dataTileMeshes.get(key) ?? addDataTileMeshes(rendererObj, key);
-    buildDataTileMeshes(rendererObj, meshes, dataTile, rowOfTile);
+    buildDataTileMeshes(rendererObj, meshes, getDataTile(), rowOfTile);
+  }
+
+  // Build the live data tile's meshes if they aren't marked, e.g. after a
+  // granularity change, since live deltas only extend them
+  if (renderedGranularity && rendererObj.liveDataTileKey === undefined) {
+    const liveDataTile = tileStatesCaches[renderedGranularity].getLiveTile();
+    if (liveDataTile) {
+      appendLiveStates(rendererObj, liveDataTile, liveDataTile.data, true);
+    }
   }
 
   // Evict meshes for data tiles no longer cached and return them to the pool
   // to be reused. Exclude the live data tile's meshes from eviction.
   for (const [key, meshes] of dataTileMeshes) {
-    if (keys.has(key) || key === liveDataTileKey) continue;
+    if (keys.has(key) || key === rendererObj.liveDataTileKey) continue;
 
     tileStatesScene.remove(meshes.tileStates.mesh);
     if (meshes.errorStates) errorStatesScene.remove(meshes.errorStates.mesh);
     dataTileMeshes.delete(key);
     availableMeshes.push(meshes);
   }
+}
+
+/**
+ * Other granularity data tiles to draw in place of visible (+1 overscan)
+ * data tiles that haven't loaded. A txn data tile is replaced by its batch
+ * data tile clipped to it. A batch data tile is replaced by whichever of its
+ * in-world txn data tiles have loaded, since batch data tiles span many txn
+ * data tiles and only some are usually cached. The live batch data tile is
+ * fetched from its start, so txn data tiles fill in after its data so far.
+ * Data is only derived for meshes that get built.
+ */
+function getFallbackDataTiles(
+  granularity: TileStatesGranularity,
+): { key: string; getDataTile: () => TileStatesDataTile }[] {
+  const referenceNs = store.get(referenceNsAtom);
+  const visibleRange = store.get(visibleRangeAtom);
+  const worldRange = store.get(worldRangeAtom);
+  if (referenceNs == null || !visibleRange || !worldRange) return [];
+  const [worldStartNs, worldEndNs] = calcAbsoluteNsRange(
+    referenceNs,
+    worldRange,
+  );
+
+  const cache = tileStatesCaches[granularity];
+  const tileNs = TILE_NS[granularity];
+  const firstStartNs =
+    (calcAbsoluteNs(referenceNs, visibleRange[0]) / tileNs - 1n) * tileNs;
+  const endNs =
+    (calcAbsoluteNs(referenceNs, visibleRange[1]) / tileNs + 2n) * tileNs;
+
+  const liveBatchDataTile =
+    granularity === TileStatesGranularityEnum.txn_batch
+      ? cache.getLiveTile()
+      : undefined;
+
+  const fallbacks: { key: string; getDataTile: () => TileStatesDataTile }[] =
+    [];
+  for (let startNs = firstStartNs; startNs < endNs; startNs += tileNs) {
+    const tileEndNs = startNs + tileNs;
+    /** inclusive end of a partly fetched live batch data tile's data */
+    const liveFetchedEndNs =
+      liveBatchDataTile?.startNs === startNs
+        ? liveBatchDataTile.fetchedEndNs
+        : undefined;
+    // data tiles are never fetched outside the world
+    const isFetched = cache.isRangeFetched([
+      bigIntMax(startNs, worldStartNs),
+      bigIntMin(tileEndNs, worldEndNs),
+    ]);
+    if (isFetched && liveFetchedEndNs === undefined) continue;
+
+    if (granularity === TileStatesGranularityEnum.txn) {
+      const batchDataTile = tileStatesCaches.txn_batch.getTile(startNs);
+      if (!batchDataTile) continue;
+      fallbacks.push({
+        key: fallbackDataTileKey(
+          `${TileStatesGranularityEnum.txn_batch}:${startNs}`,
+          batchDataTile,
+        ),
+        getDataTile: () => ({
+          startNs,
+          endNs: tileEndNs - 1n,
+          data: clipColumns(
+            batchDataTile.data,
+            calcRelativeMs(referenceNs, startNs),
+            calcRelativeMs(referenceNs, tileEndNs),
+          ),
+          meta: null,
+        }),
+      });
+      continue;
+    }
+
+    const fillStartNs =
+      liveFetchedEndNs === undefined
+        ? bigIntMax(startNs, worldStartNs)
+        : liveFetchedEndNs + 1n;
+    for (
+      let txnStartNs = (fillStartNs / TILE_NS.txn) * TILE_NS.txn;
+      txnStartNs < tileEndNs && txnStartNs < worldEndNs;
+      txnStartNs += TILE_NS.txn
+    ) {
+      const txnDataTile = tileStatesCaches.txn.getTile(txnStartNs);
+      if (!txnDataTile) continue;
+      const key = fallbackDataTileKey(dataTileKey(txnDataTile), txnDataTile);
+      if (txnStartNs >= fillStartNs) {
+        fallbacks.push({ key, getDataTile: () => txnDataTile });
+        continue;
+      }
+
+      // clip off the part the live batch data tile already has
+      fallbacks.push({
+        key: `${key}:from:${fillStartNs}`,
+        getDataTile: () => ({
+          startNs: fillStartNs,
+          endNs: txnDataTile.endNs,
+          data: clipColumns(
+            txnDataTile.data,
+            calcRelativeMs(referenceNs, fillStartNs),
+            calcRelativeMs(referenceNs, txnDataTile.endNs + 1n),
+          ),
+          meta: null,
+        }),
+      });
+    }
+  }
+  return fallbacks;
+}
+
+/**
+ * Fallback data tile mesh key. Live data tiles include their item count, so
+ * their meshes are rebuilt as their data grows.
+ */
+function fallbackDataTileKey(
+  key: string,
+  { data, isLive }: { data: TileStateColumns; isLive: boolean },
+) {
+  return isLive ? `${key}:live:${itemCount(data)}` : key;
+}
+
+/**
+ * Keep states and txn segments overlapping [startMs, endMs), clipped to it
+ */
+function clipColumns(
+  data: TileStateColumns,
+  startMs: number,
+  endMs: number,
+): TileStateColumns {
+  const clipped = emptyColumns();
+  for (let i = 0; i < data.state.length; i++) {
+    if (data.state_end_ms[i] <= startMs || data.state_start_ms[i] >= endMs)
+      continue;
+    clipped.state.push(data.state[i]);
+    clipped.state_tile.push(data.state_tile[i]);
+    clipped.state_start_ms.push(Math.max(startMs, data.state_start_ms[i]));
+    clipped.state_end_ms.push(Math.min(endMs, data.state_end_ms[i]));
+  }
+  for (let i = 0; i < data.txn_idx.length; i++) {
+    if (data.txn_end_ms[i] <= startMs || data.txn_start_ms[i] >= endMs)
+      continue;
+    clipped.txn_slot.push(data.txn_slot[i]);
+    clipped.txn_idx.push(data.txn_idx[i]);
+    clipped.txn_tile.push(data.txn_tile[i]);
+    clipped.txn_start_ms.push(Math.max(startMs, data.txn_start_ms[i]));
+    clipped.txn_end_ms.push(Math.min(endMs, data.txn_end_ms[i]));
+    clipped.txn_error_code.push(data.txn_error_code[i]);
+  }
+  return clipped;
 }
 
 export function appendLiveStates(

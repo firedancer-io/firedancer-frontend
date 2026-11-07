@@ -270,6 +270,65 @@ export function updateMeshRange(
   rectMesh.colorAttr.needsUpdate = true;
 }
 
+const tmpBufferSize = new THREE.Vector2();
+
+/**
+ * Render each scene only within its x ranges of the visible range. Renders
+ * normally when a single scene covers everything.
+ */
+export function renderInRanges(
+  renderer: THREE.WebGLRenderer,
+  visibleRange: TsRange,
+  passes: {
+    scene: THREE.Scene;
+    camera: THREE.Camera;
+    rangesMs: TsRange[];
+  }[],
+) {
+  const activePasses = passes.filter(({ rangesMs }) => rangesMs.length);
+  if (activePasses.length <= 1) {
+    const { scene, camera } = activePasses[0] ?? passes[0];
+    renderer.render(scene, camera);
+    return;
+  }
+
+  const { x: widthPx, y: heightPx } =
+    renderer.getDrawingBufferSize(tmpBufferSize);
+  const pixelRatio = renderer.getPixelRatio();
+  const pxPerMs = widthPx / (visibleRange[1] - visibleRange[0]);
+  // Scissor is set in css px, and three rounds or floors it to device px.
+  // Offset whole device px so either gives the same px.
+  const toCssPx = (px: number) => (px + 0.25) / pixelRatio;
+
+  const autoClear = renderer.autoClear;
+  renderer.clear();
+  renderer.autoClear = false;
+  renderer.setScissorTest(true);
+  for (const { scene, camera, rangesMs } of activePasses) {
+    for (const [startMs, endMs] of rangesMs) {
+      const startPx = Math.max(
+        0,
+        Math.round((startMs - visibleRange[0]) * pxPerMs),
+      );
+      const endPx = Math.min(
+        widthPx,
+        Math.round((endMs - visibleRange[0]) * pxPerMs),
+      );
+      if (endPx <= startPx) continue;
+
+      renderer.setScissor(
+        toCssPx(startPx),
+        0,
+        toCssPx(endPx - startPx),
+        toCssPx(heightPx),
+      );
+      renderer.render(scene, camera);
+    }
+  }
+  renderer.setScissorTest(false);
+  renderer.autoClear = autoClear;
+}
+
 const tmpColor = new THREE.Color();
 const tmpRgb = { r: 0, g: 0, b: 0 };
 /**

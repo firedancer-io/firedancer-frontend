@@ -63,6 +63,13 @@ export interface TileCache<TData, TMeta> {
     endNs: bigint,
   ) => { data: TData[]; hasAllTilesCached: boolean };
   requestRange: (visibleRangeNs: NsTsRange, worldEndNs: bigint) => void;
+  isRangeFetched: (rangeNs: NsTsRange) => boolean;
+  getTile: (
+    ns: bigint,
+  ) => (Tile<TData, TMeta> & { isLive: boolean }) | undefined;
+  getLiveTile: () =>
+    | (Tile<TData, TMeta> & { fetchedEndNs: bigint })
+    | undefined;
   init: () => Unsubscribe;
   reset: () => void;
 }
@@ -460,6 +467,78 @@ export function createTileCache<TData, TMeta>({
     }
   }
 
+  /**
+   * Live tile id, once its first fetch has landed
+   */
+  function getLiveTileIdWithData(): number | undefined {
+    if (live.acc === null) return;
+    const [tileStartNs] = getRange(live.acc.tileId);
+    if (live.acc.fetchedEndNs >= tileStartNs) return live.acc.tileId;
+  }
+
+  /**
+   * Whether the tile containing `ns` has data, counting the live tile once
+   * its first fetch has landed
+   */
+  function isTileFetched(ns: bigint): boolean {
+    const id = tileIdOf(ns);
+    return tileCache.has(id) || id === getLiveTileIdWithData();
+  }
+
+  /**
+   * Tile containing `ns`, counting the live tile once its first fetch has
+   * landed. Live tile data grows as more is fetched.
+   */
+  function getTile(
+    ns: bigint,
+  ): (Tile<TData, TMeta> & { isLive: boolean }) | undefined {
+    const id = tileIdOf(ns);
+    const [startNs, endNs] = getRange(id);
+    const cached = tileCache.get(id);
+    if (cached) {
+      return {
+        startNs,
+        endNs,
+        data: cached.data,
+        meta: cached.meta,
+        isLive: false,
+      };
+    }
+    if (id === getLiveTileIdWithData()) {
+      const liveTile = getLiveTile();
+      if (liveTile) {
+        const { startNs, endNs, data, meta } = liveTile;
+        return { startNs, endNs, data, meta, isLive: true };
+      }
+    }
+  }
+
+  /**
+   * Live tile, once its first fetch has landed, with the inclusive end of its
+   * data so far. It's fetched from its start, so its data grows as more is
+   * fetched.
+   */
+  function getLiveTile():
+    | (Tile<TData, TMeta> & { fetchedEndNs: bigint })
+    | undefined {
+    const id = getLiveTileIdWithData();
+    if (id === undefined || live.acc === null) return;
+    const [startNs, endNs] = getRange(id);
+    const { data, fetchedEndNs } = live.acc;
+    return { startNs, endNs, data, meta: deriveMeta(data), fetchedEndNs };
+  }
+
+  /**
+   * Whether every tile overlapping [startNs, endNs) has data, counting the
+   * live tile once its first fetch has landed
+   */
+  function isRangeFetched([startNs, endNs]: NsTsRange): boolean {
+    for (let ns = (startNs / tileNs) * tileNs; ns < endNs; ns += tileNs) {
+      if (!isTileFetched(ns)) return false;
+    }
+    return true;
+  }
+
   function init(): () => void {
     return store.sub(socketStateAtom, () => {
       if (store.get(socketStateAtom) === SocketState.Disconnected) {
@@ -493,6 +572,9 @@ export function createTileCache<TData, TMeta>({
     getTiles,
     getDataInRange,
     requestRange,
+    isRangeFetched,
+    getTile,
+    getLiveTile,
     init,
     reset,
   };

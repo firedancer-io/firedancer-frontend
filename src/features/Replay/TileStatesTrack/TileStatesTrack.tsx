@@ -8,6 +8,7 @@ import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
+import { getVisibleWorldRangeNs } from "../utils.ts";
 import {
   useTileCacheQuery,
   useTileCacheSubscription,
@@ -102,15 +103,27 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
 
       const prevGranularity = renderer.renderedGranularity;
       const agg = isAggregate(visibleRangeMs);
-      setIsAgg(agg);
-      if (agg) {
+
+      // Keep drawing the previous granularity over the agg placeholder while
+      // all of its visible tiles have loaded
+      const heldGranularity =
+        agg &&
+        prevGranularity &&
+        tileStatesCaches[prevGranularity].isRangeFetched(
+          getVisibleWorldRangeNs(refNs, visibleRangeMs, worldRangeMs),
+        )
+          ? prevGranularity
+          : undefined;
+
+      setIsAgg(agg && !heldGranularity);
+      if (agg && !heldGranularity) {
         renderer.renderedGranularity = undefined;
         return;
       }
 
-      const granularity = getTileStatesGranularity(
-        visibleRangeMs[1] - visibleRangeMs[0],
-      );
+      const granularity =
+        heldGranularity ??
+        getTileStatesGranularity(visibleRangeMs[1] - visibleRangeMs[0]);
       renderer.renderedGranularity = granularity;
       setGranularity(granularity);
 
@@ -125,9 +138,15 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
       } else if (granularityChanged) {
         clearLiveMarker(renderer);
         syncMeshes(renderer);
+      } else if (viewChanged) {
+        // update fallback data tiles for the new visible range
+        syncMeshes(renderer);
       }
 
-      throttledRangeQuery(refNs, visibleRangeMs, worldRangeMs);
+      // agg has no query, so held data isn't extended
+      if (!heldGranularity) {
+        throttledRangeQuery(refNs, visibleRangeMs, worldRangeMs);
+      }
 
       if (viewChanged || granularityChanged) requestRender();
     },
@@ -171,7 +190,13 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
     (granularity: TileStatesGranularity, delta: TileStatesCacheDelta) => {
       const renderer = rendererRef.current;
       if (!renderer) return;
-      if (granularity !== renderer.renderedGranularity) return;
+      if (granularity !== renderer.renderedGranularity) {
+        // other granularity data, including its live data tile, is only drawn
+        // as a fallback
+        syncMeshes(renderer);
+        requestRender();
+        return;
+      }
 
       if (delta.kind === "add") clearLiveMarkerIfAdded(renderer, delta.tiles);
       else if (delta.kind === "clearLive" || delta.kind === "reset")
@@ -179,6 +204,8 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
 
       if (delta.kind === "live") {
         appendLiveStates(renderer, delta.tile, delta.newData, delta.isNewTile);
+        // the live data tile's first data replaces its fallback
+        if (delta.isNewTile) syncMeshes(renderer);
       } else {
         syncMeshes(renderer);
       }
