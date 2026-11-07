@@ -39,6 +39,26 @@ export const emptyBucketColor: RgbColor = convertToWebGlColor(
 
 const minSkippedRatio = 0.3;
 
+/**
+ * Weighted average of [color, weight] pairs
+ */
+export function blendColors(
+  weighted: [color: RgbColor, weight: number][],
+): RgbColor | undefined {
+  const total = weighted.reduce((sum, [, weight]) => sum + weight, 0);
+  if (total === 0) return undefined;
+
+  const blended: RgbColor = [0, 0, 0];
+  for (const [color, weight] of weighted) {
+    const ratio = weight / total;
+    if (ratio === 0) continue;
+    blended[0] += color[0] * ratio;
+    blended[1] += color[1] * ratio;
+    blended[2] += color[2] * ratio;
+  }
+  return blended;
+}
+
 export function getBucketColor({
   slotCount,
   skippedCount,
@@ -61,29 +81,18 @@ export function getBucketColor({
   const otherSkipped = skipped - mySkipped;
   const otherNotSkipped = slotCount - skipped - myNotSkipped;
 
-  const weights: Record<BucketColorState, number> = {
-    [BucketColorState.MySkipped]: mySkipped
-      ? Math.max(mySkipped, slotCount * minSkippedRatio)
-      : 0,
-    [BucketColorState.MyNotSkipped]: myNotSkipped,
-    [BucketColorState.OtherSkipped]: otherSkipped
-      ? Math.max(otherSkipped, slotCount * minSkippedRatio)
-      : 0,
-    [BucketColorState.OtherNotSkipped]: otherNotSkipped,
-  };
-
-  const total = Object.values(weights).reduce((sum, w) => sum + w, 0);
-  if (total === 0) return emptyBucketColor;
-
-  const blended: RgbColor = [0, 0, 0];
-  for (const state of Object.keys(weights) as BucketColorState[]) {
-    const ratio = weights[state] / total;
-    if (ratio === 0) continue;
-    const color = bucketColors[state];
-    blended[0] += color[0] * ratio;
-    blended[1] += color[1] * ratio;
-    blended[2] += color[2] * ratio;
-  }
-
-  return blended;
+  return (
+    blendColors([
+      [
+        bucketColors[BucketColorState.MySkipped],
+        mySkipped ? Math.max(mySkipped, slotCount * minSkippedRatio) : 0,
+      ],
+      [bucketColors[BucketColorState.MyNotSkipped], myNotSkipped],
+      [
+        bucketColors[BucketColorState.OtherSkipped],
+        otherSkipped ? Math.max(otherSkipped, slotCount * minSkippedRatio) : 0,
+      ],
+      [bucketColors[BucketColorState.OtherNotSkipped], otherNotSkipped],
+    ]) ?? emptyBucketColor
+  );
 }
