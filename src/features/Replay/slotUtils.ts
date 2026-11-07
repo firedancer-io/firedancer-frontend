@@ -1,19 +1,4 @@
-import {
-  epochSkippedSlotColor,
-  epochSliderProgressColor,
-  epochSliderTrackColor,
-  mySlotsColor,
-  replayMiniMapSkippedColor,
-} from "../../colors";
-import { type RgbColor, convertToWebGlColor } from "../WebGl/webglUtils";
-
-// Bottom-to-top color order
-export enum ColorState {
-  MineSkipped = "MineSkipped",
-  OtherSkipped = "OtherSkipped",
-  MineNotSkipped = "Mine",
-  OtherNotSkipped = "NotSkipped",
-}
+import type { RgbColor } from "../WebGl/webglUtils";
 
 export enum BucketColorState {
   OtherNotSkipped = "OtherNotSkipped",
@@ -21,23 +6,6 @@ export enum BucketColorState {
   OtherSkipped = "OtherSkipped",
   MySkipped = "MySkipped",
 }
-
-export const bucketColors: Record<BucketColorState, RgbColor> = {
-  [BucketColorState.OtherNotSkipped]: convertToWebGlColor(
-    epochSliderProgressColor,
-  ),
-  [BucketColorState.MyNotSkipped]: convertToWebGlColor(mySlotsColor),
-  [BucketColorState.OtherSkipped]: convertToWebGlColor(
-    replayMiniMapSkippedColor,
-  ),
-  [BucketColorState.MySkipped]: convertToWebGlColor(epochSkippedSlotColor),
-};
-
-export const emptyBucketColor: RgbColor = convertToWebGlColor(
-  epochSliderTrackColor,
-);
-
-const minSkippedRatio = 0.3;
 
 /**
  * Weighted average of [color, weight] pairs
@@ -59,40 +27,77 @@ export function blendColors(
   return blended;
 }
 
+export interface ColorInfo {
+  color: RgbColor;
+  minWeight?: number;
+}
+
+function getBucketWeight(
+  totalCount: number,
+  count: number,
+  minWeight?: number,
+) {
+  if (!count) return 0;
+  return minWeight != null ? Math.max(count, totalCount * minWeight) : count;
+}
+
 export function getBucketColor({
-  slotCount,
+  totalCount,
   skippedCount,
-  mySlotCount,
-  mySkippedSlotCount,
+  mineCount,
+  mySkippedCount,
+  colors,
+  emptyColor,
 }: {
-  slotCount: number;
+  totalCount: number;
   skippedCount: number | null;
-  mySlotCount: number | null;
-  mySkippedSlotCount: number | null;
+  mineCount: number | null;
+  mySkippedCount: number | null;
+  colors: Record<BucketColorState, ColorInfo>;
+  emptyColor: RgbColor;
 }) {
-  if (!slotCount) {
-    return emptyBucketColor;
+  if (!totalCount) {
+    return emptyColor;
   }
 
-  const mine = mySlotCount ?? 0;
   const skipped = skippedCount ?? 0;
-  const mySkipped = mySkippedSlotCount ?? 0;
+  const mine = mineCount ?? 0;
+  const mySkipped = mySkippedCount ?? 0;
   const myNotSkipped = mine - mySkipped;
   const otherSkipped = skipped - mySkipped;
-  const otherNotSkipped = slotCount - skipped - myNotSkipped;
+  const otherNotSkipped = totalCount - skipped - myNotSkipped;
 
+  // Each sub count contributes its color weighted by its (floored) count.
   return (
     blendColors([
       [
-        bucketColors[BucketColorState.MySkipped],
-        mySkipped ? Math.max(mySkipped, slotCount * minSkippedRatio) : 0,
+        colors[BucketColorState.MyNotSkipped].color,
+        getBucketWeight(
+          totalCount,
+          myNotSkipped,
+          colors[BucketColorState.MyNotSkipped].minWeight,
+        ),
       ],
-      [bucketColors[BucketColorState.MyNotSkipped], myNotSkipped],
       [
-        bucketColors[BucketColorState.OtherSkipped],
-        otherSkipped ? Math.max(otherSkipped, slotCount * minSkippedRatio) : 0,
+        colors[BucketColorState.MySkipped].color,
+        getBucketWeight(
+          totalCount,
+          mySkipped,
+          colors[BucketColorState.MySkipped].minWeight,
+        ),
       ],
-      [bucketColors[BucketColorState.OtherNotSkipped], otherNotSkipped],
-    ]) ?? emptyBucketColor
+      [
+        colors[BucketColorState.OtherSkipped].color,
+        getBucketWeight(
+          totalCount,
+          otherSkipped,
+          colors[BucketColorState.OtherSkipped].minWeight,
+        ),
+      ],
+      [
+        colors[BucketColorState.OtherNotSkipped].color,
+        Math.max(0, otherNotSkipped),
+      ],
+    ]) ?? emptyColor
   );
 }

@@ -10,7 +10,6 @@ import {
   addRectangleToMesh,
   updateRectMeshCounts,
   convertToWebGlColor,
-  type RgbColor,
   type TsRange,
 } from "../../WebGl/webglUtils";
 import {
@@ -32,7 +31,12 @@ import {
   replayAggHeaderBackgroundColor,
   replayMiniMapSkippedColor,
 } from "../../../colors";
-import { blendColors } from "../slotUtils";
+import {
+  blendColors,
+  BucketColorState,
+  type ColorInfo,
+  getBucketColor,
+} from "../slotUtils";
 
 const minY = 0;
 const maxY = 1;
@@ -46,41 +50,21 @@ const mineSkippedColor =
     [mineColor, 1],
   ]) ?? mineColor;
 
-const minRatio = 0.3;
-
-function getBucketColor(
-  slotCount: number,
-  skippedCount: number | null,
-  mineCount: number | null,
-  mineSkippedCount: number | null,
-): RgbColor {
-  const skipped = skippedCount ?? 0;
-  const mine = mineCount ?? 0;
-  const mineSkipped = mineSkippedCount ?? 0;
-  const mineNotSkipped = mine - mineSkipped;
-  const otherSkipped = skipped - mineSkipped;
-  const otherNotSkipped = slotCount - skipped - mineNotSkipped;
-
-  const mineSkippedWeight = mineSkipped
-    ? Math.max(mineSkipped, slotCount * minRatio)
-    : 0;
-  const mineWeight = mineNotSkipped
-    ? Math.max(mineNotSkipped, slotCount * minRatio)
-    : 0;
-  const skippedWeight = otherSkipped
-    ? Math.max(otherSkipped, slotCount * minRatio)
-    : 0;
-  const backgroundWeight = Math.max(0, otherNotSkipped);
-
-  return (
-    blendColors([
-      [mineSkippedColor, mineSkippedWeight],
-      [skippedColor, skippedWeight],
-      [mineColor, mineWeight],
-      [backgroundColor, backgroundWeight],
-    ]) ?? backgroundColor
-  );
-}
+const bucketColors: Record<BucketColorState, ColorInfo> = {
+  [BucketColorState.MyNotSkipped]: {
+    color: mineColor,
+    minWeight: 0.3,
+  },
+  [BucketColorState.MySkipped]: {
+    color: mineSkippedColor,
+    minWeight: 0.3,
+  },
+  [BucketColorState.OtherSkipped]: {
+    color: skippedColor,
+    minWeight: 0.3,
+  },
+  [BucketColorState.OtherNotSkipped]: { color: backgroundColor },
+};
 
 export function setUpRenderers(
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
@@ -197,7 +181,14 @@ export function drawAggSlots(
 
     const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
 
-    const color = getBucketColor(slotCount, skipped, mine, mine_skipped);
+    const color = getBucketColor({
+      totalCount: slotCount,
+      skippedCount: skipped,
+      mineCount: mine,
+      mySkippedCount: mine_skipped,
+      colors: bucketColors,
+      emptyColor: backgroundColor,
+    });
 
     addRectangleToMesh(mesh, rectIdx, x, minY, bucketSizeMs, height, color);
 
