@@ -1,9 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useLayoutEffect, useMemo } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { TimelineSlots } from "../../../api/types";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
 import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
-import { useTiledQueries } from "../parallelQueriesCache";
+import { createParallelCache } from "../parallelQueriesCache";
 import { SLOTS_QUERY_KEY, useSlotsQuery } from "../useSlotsQuery";
 import { nsPerMs } from "../../../consts";
 import {
@@ -47,18 +47,29 @@ export function useNonAggHeaderQuery(chartId: string) {
     [deleteTimelineSlotTiles],
   );
 
-  const { queryRange, markQueryComplete } = useTiledQueries<typeof granularity>(
-    {
-      chartId,
-      getTileSizeNs,
-      overscanTilesCount: OVERSCAN_TILES_COUNT,
-      queryKey: SLOTS_QUERY_KEY,
-      sendQuery,
-      getTileEvictionHighWatermark,
-      getTileEvictionLowWatermark,
-      onEvictTiles,
-    },
+  const cache = useMemo(
+    () =>
+      createParallelCache<typeof granularity>({
+        chartId,
+        getTileSizeNs,
+        overscanTilesCount: OVERSCAN_TILES_COUNT,
+        queryKey: SLOTS_QUERY_KEY,
+        sendQuery,
+        getTileEvictionHighWatermark,
+        getTileEvictionLowWatermark,
+        onEvictTiles,
+      }),
+    [chartId, sendQuery, onEvictTiles],
   );
+  const { queryRange, markQueryComplete } = cache;
+
+  useLayoutEffect(() => {
+    const unsub = cache.init();
+    return () => {
+      unsub();
+      cache.clearPending();
+    };
+  }, [cache]);
 
   useTimelineServerMessage(
     SLOTS_QUERY_KEY,
@@ -86,7 +97,13 @@ export function useNonAggHeaderQuery(chartId: string) {
         calcAbsoluteNs(referenceNs, worldRange[0]),
         calcAbsoluteNs(referenceNs, worldRange[1]),
       ];
-      queryRange(visibleRangeNs, worldRangeNs, granularity, onNothingToFetch);
+      queryRange(
+        visibleRangeNs,
+        worldRangeNs,
+        granularity,
+        undefined,
+        onNothingToFetch,
+      );
     },
     [onNothingToFetch, queryRange],
   );

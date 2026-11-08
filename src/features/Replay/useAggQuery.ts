@@ -1,10 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useLayoutEffect, useMemo } from "react";
 import { useAtomValue, useSetAtom, type Atom, type WritableAtom } from "jotai";
 import { useWebSocketSend } from "../../api/ws/utils";
 import type { AggGranularity } from "../../api/types";
 import type { NsTsRange, TsRange } from "../WebGl/webglUtils";
 import { calcAbsoluteNs, useTimelineServerMessage } from "./utils";
-import { useTiledQueries } from "./parallelQueriesCache";
+import { createParallelCache } from "./parallelQueriesCache";
 import { drawEventType, nsBucketSizes, type DrawEmitter } from "./const";
 import type { TimelineQueryKey } from "./atoms";
 
@@ -56,6 +56,7 @@ export function useAggQuery<TValue, TParams extends object = object>({
       startNs: bigint,
       endNs: bigint,
       granularity: AggGranularity,
+      params: TParams | undefined,
     ) => {
       wsSend({
         topic: "timeline",
@@ -69,7 +70,7 @@ export function useAggQuery<TValue, TParams extends object = object>({
         },
       });
     },
-    [wsSend, queryKey, params],
+    [wsSend, queryKey],
   );
 
   const onEvictTiles = useCallback(
@@ -87,17 +88,30 @@ export function useAggQuery<TValue, TParams extends object = object>({
     [deleteBuckets],
   );
 
-  const { queryRange, markQueryComplete, pauseStaleRefreshes, resetQueries } =
-    useTiledQueries<AggGranularity>({
-      chartId,
-      getTileSizeNs,
-      overscanTilesCount: OVERSCAN_TILES_COUNT,
-      queryKey,
-      sendQuery,
-      getTileEvictionHighWatermark,
-      getTileEvictionLowWatermark,
-      onEvictTiles,
-    });
+  const cache = useMemo(
+    () =>
+      createParallelCache<AggGranularity, TParams | undefined>({
+        chartId,
+        getTileSizeNs,
+        overscanTilesCount: OVERSCAN_TILES_COUNT,
+        queryKey,
+        sendQuery,
+        getTileEvictionHighWatermark,
+        getTileEvictionLowWatermark,
+        onEvictTiles,
+      }),
+    [chartId, queryKey, sendQuery, onEvictTiles],
+  );
+  const { queryRange, markQueryComplete, pauseStaleRefreshes, clearCache } =
+    cache;
+
+  useLayoutEffect(() => {
+    const unsub = cache.init();
+    return () => {
+      unsub();
+      cache.clearPending();
+    };
+  }, [cache]);
 
   useTimelineServerMessage(queryKey, (message) => {
     if (!markQueryComplete(message.id)) return;
@@ -126,10 +140,16 @@ export function useAggQuery<TValue, TParams extends object = object>({
         calcAbsoluteNs(referenceNs, worldRange[0]),
         calcAbsoluteNs(referenceNs, worldRange[1]),
       ];
-      queryRange(visibleRangeNs, worldRangeNs, granularity, onNothingToFetch);
+      queryRange(
+        visibleRangeNs,
+        worldRangeNs,
+        granularity,
+        params,
+        onNothingToFetch,
+      );
     },
-    [onNothingToFetch, queryRange],
+    [onNothingToFetch, queryRange, params],
   );
 
-  return { query, pauseStaleRefreshes, resetQueries };
+  return { query, pauseStaleRefreshes, clearCache };
 }

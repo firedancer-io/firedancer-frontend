@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useLayoutEffect, useMemo } from "react";
 import { useStore } from "jotai";
 import { useWebSocketSend } from "../../../api/ws/utils";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
@@ -12,7 +12,7 @@ import {
 import { getNonAggAtoms } from "./atoms";
 import { drawEventType } from "../const";
 import { nsPerMs } from "../../../consts";
-import { useTiledQueries } from "../parallelQueriesCache";
+import { createParallelCache } from "../parallelQueriesCache";
 import type { TimelineQueryKey } from "../atoms";
 
 const QUERY_KEY = "query_shreds" satisfies TimelineQueryKey;
@@ -78,17 +78,29 @@ export function useNonAggShredsQuery(
     [store],
   );
 
-  const { queryRange, markQueryComplete, pauseStaleRefreshes } =
-    useTiledQueries<ShredsGranularity>({
-      chartId,
-      getTileSizeNs,
-      overscanTilesCount: OVERSCAN_TILES_COUNT,
-      queryKey: QUERY_KEY,
-      sendQuery,
-      getTileEvictionHighWatermark,
-      getTileEvictionLowWatermark,
-      onEvictTiles,
-    });
+  const cache = useMemo(
+    () =>
+      createParallelCache<ShredsGranularity>({
+        chartId,
+        getTileSizeNs,
+        overscanTilesCount: OVERSCAN_TILES_COUNT,
+        queryKey: QUERY_KEY,
+        sendQuery,
+        getTileEvictionHighWatermark,
+        getTileEvictionLowWatermark,
+        onEvictTiles,
+      }),
+    [chartId, sendQuery, onEvictTiles],
+  );
+  const { queryRange, markQueryComplete, pauseStaleRefreshes } = cache;
+
+  useLayoutEffect(() => {
+    const unsub = cache.init();
+    return () => {
+      unsub();
+      cache.clearPending();
+    };
+  }, [cache]);
 
   useTimelineServerMessage(
     QUERY_KEY,
@@ -136,7 +148,13 @@ export function useNonAggShredsQuery(
         calcAbsoluteNs(referenceNs, worldRange[0]),
         calcAbsoluteNs(referenceNs, worldRange[1]),
       ];
-      queryRange(visibleRangeNs, worldRangeNs, granularity, onNothingToFetch);
+      queryRange(
+        visibleRangeNs,
+        worldRangeNs,
+        granularity,
+        undefined,
+        onNothingToFetch,
+      );
     },
     [onNothingToFetch, queryRange],
   );
