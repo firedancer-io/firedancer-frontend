@@ -1,14 +1,9 @@
 import clsx from "clsx";
 import { getDefaultStore } from "jotai";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { isEqual } from "lodash";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
-import { MAX_WEBGL_PX_RATIO, nsPerMs } from "../../../consts.ts";
+import { nsPerMs } from "../../../consts.ts";
 import {
   votesColor,
   votesFastFinalizeColor,
@@ -16,46 +11,43 @@ import {
 } from "../../../colors.ts";
 import { epochAtom } from "../../../atoms.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
+import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
+import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
+import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import { useFrameRender } from "../../WebGl/useFrameRender.ts";
-import { observeDevicePixelSize } from "../../WebGl/useWebGlRenderer.ts";
 import type { AggGranularity, VotesGranularity } from "../../../api/types.ts";
 import { VotesGranularityEnum } from "../../../api/entities.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
-import { getVisibleYLabels, trackNames } from "../layout.ts";
+import { trackNames } from "../layout.ts";
+import { getVisibleYLabels } from "./yLabels.ts";
 import TrackControls, { type LegendItem } from "../TrackControls.tsx";
 import {
   useTileCacheQuery,
   useTileCacheSubscription,
 } from "../tiles/useTileCache.ts";
 import chartStyles from "../chart.module.css";
-import styles from "./votesTrack.module.css";
+import trackStyles from "../track.module.css";
 import VoteLineLegend from "./VoteLineLegend.tsx";
 import {
-  FAST_FINALIZE_THRESHOLD,
-  NOTAR_THRESHOLD,
+  THRESHOLD_FRACS,
   getMarkerStyle,
   getVotesGranularity,
   getVotesView,
   type MarkerStyle,
   type VotesView,
 } from "./consts.ts";
+import { getFracY, getVotesPlotLayout } from "./curvesGeometry.ts";
 import {
-  drawVotes,
-  getFracY,
-  getVotesPlotLayout,
-  loadCertIcons,
-  type CertIcons,
-} from "./draw.ts";
-import {
-  drawLatencyChart,
+  buildLatency,
   formatLatencyTick,
   getLatencyPlotLayout,
   getLatencyTicks,
   getLatencyY,
   getVisibleMaxLatency,
   type LatencyChartSeries,
-} from "./drawLatency.ts";
+} from "./latencyGeometry.ts";
 import { getSlotLatencies } from "./latency.ts";
+import { applyVotesDelta, type LiveTiles } from "./liveTiles.ts";
 import { getAggLatencySeries, getSlotLatencySeries } from "./series.ts";
 import {
   aggVotesAtom,
@@ -67,11 +59,28 @@ import {
   useAggVotesQuery,
 } from "./useAggVotesQuery.ts";
 import { votesCaches, type VotesCacheDelta } from "./votesCache.ts";
-import { buildSlotVotes, type SlotVotes, type VotesData } from "./votesData.ts";
+import {
+  buildSlotVotes,
+  type SlotVotes,
+  type VotesDataTile,
+} from "./votesData.ts";
+import {
+  showNearVotesTiles,
+  drawVotesCurves,
+  drawVotesLatency,
+  getRendererSize,
+  isLatencyDrawn,
+  moveVotesCamera,
+  resizeVotesScene,
+  setUpRenderer,
+  showVotesView,
+  syncVotesTiles,
+  type VotesLayout,
+} from "./votesScene.ts";
 
 const store = getDefaultStore();
 
-const AGG_CHART_ID = "votes-agg";
+const AGG_VOTES_CHART_ID = "votes-agg";
 const DEFAULT_TARGET_SLOT_MS = 400;
 const latencyLegend: LegendItem[] = [
   { label: "Notarized", color: votesNotarColor },
@@ -79,15 +88,13 @@ const latencyLegend: LegendItem[] = [
   { label: "Finalized", color: votesColor },
 ];
 
-const thresholds = [FAST_FINALIZE_THRESHOLD, NOTAR_THRESHOLD];
-
 const emptySeries: LatencyChartSeries = {
   notarized: [],
   fast: [],
   slow: [],
 };
 
-function getSpanMs([start, end]: TsRange) {
+function getWindowSizeMs([start, end]: TsRange) {
   return end - start;
 }
 
@@ -100,84 +107,131 @@ interface VotesTrackProps {
   height: number;
 }
 
-export default function VotesTrack({ height }: VotesTrackProps) {
+interface VotesTrackBodyProps extends VotesTrackProps, WebGlRemountProps {
+  aggQuery: ReturnType<typeof useAggVotesQuery>;
+}
+
+function VotesTrackBody({
+  remount,
+  height,
+  aggQuery: { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes },
+}: VotesTrackBodyProps) {
   const [view, setView] = useState<VotesView>("curves");
   const [markerStyle, setMarkerStyle] = useState<MarkerStyle>("icon");
   const [aggGranularity, setAggGranularity] = useState<AggGranularity>();
   const [latencyTicks, setLatencyTicks] = useState<number[]>([]);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const canvasSizeRef = useRef({ width: 0, height: 0 });
-  const certIconsRef = useRef<CertIcons>();
   const slotVotesRef = useRef(new Map<number, SlotVotes>());
+  const dataTilesRef = useRef<VotesDataTile[]>([]);
   const slotLatencySeriesRef = useRef(emptySeries);
   const granularityRef = useRef<VotesGranularity>(VotesGranularityEnum.vote);
-  const liveTilesRef = useRef<
-    Record<VotesGranularity, { startNs: bigint; data: VotesData } | null>
-  >({ vote: null, vote_batch: null });
+  const liveTilesRef = useRef<LiveTiles>({ vote: null, vote_batch: null });
 
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    const visibleRangeMs = store.get(visibleRangeAtom);
-    const { width, height } = canvasSizeRef.current;
-    if (!canvas || !ctx || !visibleRangeMs || !width || !height) return;
+  const getLatencySeries = useCallback(
+    (view: VotesView, visibleRangeMs: TsRange) => {
+      if (view === "slotLatency") return slotLatencySeriesRef.current;
+      const referenceNs = store.get(referenceNsAtom);
+      if (referenceNs == null) return emptySeries;
+      return getAggLatencySeries(
+        store.get(aggVotesAtom),
+        getAggVotesGranularity(getWindowSizeMs(visibleRangeMs)),
+        referenceNs,
+        visibleRangeMs,
+      );
+    },
+    [],
+  );
 
-    ctx.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
-    ctx.clearRect(0, 0, width, height);
-    const spanMs = getSpanMs(visibleRangeMs);
-
-    const drawLatency = (series: LatencyChartSeries) => {
+  const getDrawInput = useCallback(
+    (visibleRangeMs: TsRange) => {
+      const windowSizeMs = getWindowSizeMs(visibleRangeMs);
+      const view = getVotesView(windowSizeMs);
+      const base = {
+        view,
+        granularity: granularityRef.current,
+        markerStyle: getMarkerStyle(windowSizeMs),
+      };
+      if (view === "curves") {
+        const layout: VotesLayout = { ...base, ticks: [] };
+        return { layout, series: emptySeries };
+      }
+      const series = getLatencySeries(view, visibleRangeMs);
       const ticks = getLatencyTicks(
         getVisibleMaxLatency(series, visibleRangeMs),
       );
-      setLatencyTicks((prev) => (prev.join() === ticks.join() ? prev : ticks));
-      drawLatencyChart(ctx, {
-        widthPx: width,
-        visibleRangeMs,
-        series,
-        layout: getLatencyPlotLayout(height, ticks),
-        ticks,
-      });
-    };
+      const layout: VotesLayout = { ...base, ticks };
+      return { layout, series };
+    },
+    [getLatencySeries],
+  );
 
-    switch (getVotesView(spanMs)) {
-      case "curves":
-        drawVotes(ctx, {
-          widthPx: width,
-          heightPx: height,
-          visibleRangeMs,
-          slotVotes: slotVotesRef.current,
-          markerStyle: getMarkerStyle(spanMs),
-          certIcons: certIconsRef.current,
-        });
-        break;
-      case "slotLatency":
-        drawLatency(slotLatencySeriesRef.current);
-        break;
-      case "aggLatency": {
-        const referenceNs = store.get(referenceNsAtom);
-        if (referenceNs == null) return;
-        drawLatency(
-          getAggLatencySeries(
-            store.get(aggVotesAtom),
-            getAggVotesGranularity(spanMs),
-            referenceNs,
-            visibleRangeMs,
-          ),
+  const { containerRef, rendererRef } = useWebGlRenderer({
+    remount,
+    create: ({ setUpContextListeners, getWasContextLost }) =>
+      setUpRenderer(setUpContextListeners, getWasContextLost, requestRender),
+    onResize: (rendererObj) => {
+      const { x: widthPx, y: heightPx } = getRendererSize(rendererObj);
+      resizeVotesScene(
+        rendererObj,
+        widthPx,
+        heightPx,
+        rendererObj.renderer.getPixelRatio(),
+      );
+      const visibleRangeMs = store.get(visibleRangeAtom);
+      if (visibleRangeMs) moveVotesCamera(rendererObj, visibleRangeMs);
+      renderFrame();
+    },
+  });
+
+  const renderFrame = useCallback(() => {
+    const rendererObj = rendererRef.current;
+    const visibleRangeMs = store.get(visibleRangeAtom);
+    if (!rendererObj || !visibleRangeMs) return;
+
+    const { layout, series } = getDrawInput(visibleRangeMs);
+    showVotesView(rendererObj, layout.view);
+    if (layout.view === "curves") {
+      if (!isEqual(rendererObj.curves.layout, layout)) {
+        drawVotesCurves(
+          rendererObj,
+          dataTilesRef.current,
+          slotVotesRef.current,
+          layout,
         );
-        break;
       }
+      showNearVotesTiles(rendererObj);
+    } else if (!isLatencyDrawn(rendererObj, layout, series)) {
+      const { y: heightPx } = getRendererSize(rendererObj);
+      const geometry = buildLatency({
+        series,
+        layout: getLatencyPlotLayout(heightPx, layout.ticks),
+        ticks: layout.ticks,
+      });
+      drawVotesLatency(rendererObj, geometry, layout, series);
+      setLatencyTicks((prev) =>
+        isEqual(prev, layout.ticks) ? prev : layout.ticks,
+      );
     }
-  }, []);
-  const requestRender = useFrameRender(draw);
+    rendererObj.renderer.render(rendererObj.scene, rendererObj.camera);
+  }, [rendererRef, getDrawInput]);
+  const requestRender = useFrameRender(renderFrame);
+
+  const moveCamera = useCallback(() => {
+    const rendererObj = rendererRef.current;
+    const visibleRangeMs = store.get(visibleRangeAtom);
+    if (!rendererObj || !visibleRangeMs) return;
+    moveVotesCamera(rendererObj, visibleRangeMs);
+    requestRender();
+  }, [rendererRef, requestRender]);
 
   const rebuildSlotVotes = useCallback(() => {
     const granularity = granularityRef.current;
-    const tiles = votesCaches[granularity].getTiles().map(({ data }) => data);
+    const tiles: VotesDataTile[] = votesCaches[granularity].getTiles();
     const live = liveTilesRef.current[granularity];
-    if (live) tiles.push(live.data);
-    slotVotesRef.current = buildSlotVotes(tiles);
+    dataTilesRef.current = live ? [...tiles, live] : tiles;
+    slotVotesRef.current = buildSlotVotes(
+      dataTilesRef.current.map(({ data }) => data),
+    );
     slotLatencySeriesRef.current = getSlotLatencySeries(
       getSlotLatencies(slotVotesRef.current, getTargetSlotMs()),
     );
@@ -185,18 +239,16 @@ export default function VotesTrack({ height }: VotesTrackProps) {
 
   const queryVote = useTileCacheQuery(votesCaches.vote);
   const queryBatch = useTileCacheQuery(votesCaches.vote_batch);
-  const { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes } =
-    useAggVotesQuery(AGG_CHART_ID);
 
   const throttledQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
-      const spanMs = getSpanMs(visibleRangeMs);
-      if (getVotesView(spanMs) === "aggLatency") {
+      const windowSizeMs = getWindowSizeMs(visibleRangeMs);
+      if (getVotesView(windowSizeMs) === "aggLatency") {
         aggQuery(
           referenceNs,
           visibleRangeMs,
           worldRangeMs,
-          getAggVotesGranularity(spanMs),
+          getAggVotesGranularity(windowSizeMs),
         );
         return;
       }
@@ -217,22 +269,23 @@ export default function VotesTrack({ height }: VotesTrackProps) {
     const worldRangeMs = store.get(worldRangeAtom);
     if (referenceNs == null || !visibleRangeMs || !worldRangeMs) return;
 
-    const spanMs = getSpanMs(visibleRangeMs);
-    const nextView = getVotesView(spanMs);
+    const windowSizeMs = getWindowSizeMs(visibleRangeMs);
+    const nextView = getVotesView(windowSizeMs);
     setView(nextView);
-    setMarkerStyle(getMarkerStyle(spanMs));
+    setMarkerStyle(getMarkerStyle(windowSizeMs));
 
     if (nextView === "aggLatency") {
-      setAggGranularity(getAggVotesGranularity(spanMs));
+      setAggGranularity(getAggVotesGranularity(windowSizeMs));
     } else {
-      const granularity = getVotesGranularity(spanMs);
+      const granularity = getVotesGranularity(windowSizeMs);
       if (granularity !== granularityRef.current) {
         granularityRef.current = granularity;
         rebuildSlotVotes();
+        requestRender();
       }
     }
     throttledQuery(referenceNs, visibleRangeMs, worldRangeMs);
-  }, [rebuildSlotVotes, throttledQuery]);
+  }, [rebuildSlotVotes, requestRender, throttledQuery]);
 
   useLayoutEffect(() => {
     rebuildSlotVotes();
@@ -241,10 +294,11 @@ export default function VotesTrack({ height }: VotesTrackProps) {
 
     const unsubVisible = store.sub(visibleRangeAtom, () => {
       requestRange();
-      requestRender();
+      moveCamera();
     });
     const unsubWorld = store.sub(worldRangeAtom, requestRange);
     requestRange();
+    moveCamera();
 
     return () => {
       aggEmitter.removeListener(aggDrawEventType, requestRender);
@@ -252,25 +306,35 @@ export default function VotesTrack({ height }: VotesTrackProps) {
       unsubWorld();
       throttledQuery.cancel();
     };
-  }, [rebuildSlotVotes, requestRange, requestRender, throttledQuery]);
+  }, [
+    rebuildSlotVotes,
+    requestRange,
+    moveCamera,
+    requestRender,
+    throttledQuery,
+  ]);
 
   const handleDelta = useCallback(
     (granularity: VotesGranularity, delta: VotesCacheDelta) => {
-      const liveTiles = liveTilesRef.current;
-      const live = liveTiles[granularity];
-      if (delta.kind === "live") {
-        liveTiles[granularity] = delta.tile;
-      } else if (delta.kind === "clearLive" || delta.kind === "reset") {
-        liveTiles[granularity] = null;
-      } else if (live && delta.tiles.some((t) => t.startNs === live.startNs)) {
-        liveTiles[granularity] = null;
-      }
-
+      const changedStartNs = applyVotesDelta(
+        liveTilesRef.current,
+        granularity,
+        delta,
+      );
       if (granularity !== granularityRef.current) return;
       rebuildSlotVotes();
+      const rendererObj = rendererRef.current;
+      if (rendererObj) {
+        syncVotesTiles(
+          rendererObj,
+          dataTilesRef.current,
+          slotVotesRef.current,
+          changedStartNs,
+        );
+      }
       requestRender();
     },
-    [rebuildSlotVotes, requestRender],
+    [rebuildSlotVotes, rendererRef, requestRender],
   );
   const onDeltaVote = useCallback(
     (delta: VotesCacheDelta) => handleDelta(VotesGranularityEnum.vote, delta),
@@ -284,35 +348,6 @@ export default function VotesTrack({ height }: VotesTrackProps) {
   useTileCacheSubscription(votesCaches.vote, onDeltaVote);
   useTileCacheSubscription(votesCaches.vote_batch, onDeltaBatch);
 
-  useEffect(() => {
-    let cancelled = false;
-    void loadCertIcons().then((icons) => {
-      if (cancelled) return;
-      certIconsRef.current = icons;
-      requestRender();
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [requestRender]);
-
-  useLayoutEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    return observeDevicePixelSize(canvas, (widthPx, heightPx) => {
-      const pixelRatio = Math.min(devicePixelRatio, MAX_WEBGL_PX_RATIO);
-      // < 1 when the pixel ratio is capped
-      const scale = pixelRatio / devicePixelRatio;
-      canvas.width = Math.round(widthPx * scale);
-      canvas.height = Math.round(heightPx * scale);
-      canvasSizeRef.current = {
-        width: canvas.clientWidth,
-        height: canvas.clientHeight,
-      };
-      requestRender();
-    });
-  }, [requestRender]);
-
   const curvesLayout = getVotesPlotLayout(height);
   const latencyLayout = getLatencyPlotLayout(
     height,
@@ -320,7 +355,7 @@ export default function VotesTrack({ height }: VotesTrackProps) {
   );
   const yLabels = getVisibleYLabels(
     view === "curves"
-      ? thresholds.map((frac) => ({
+      ? THRESHOLD_FRACS.map((frac) => ({
           label: `${Math.round(frac * 100)}%`,
           top: getFracY(curvesLayout, frac),
         }))
@@ -339,7 +374,7 @@ export default function VotesTrack({ height }: VotesTrackProps) {
 
   return (
     <>
-      <canvas ref={canvasRef} className={styles.canvas} />
+      <div ref={containerRef} className={trackStyles.trackCanvasContainer} />
       <div className={chartStyles.yAxis}>
         {yLabels.map(({ label, top, besideTitle }) => (
           <div
@@ -366,4 +401,10 @@ export default function VotesTrack({ height }: VotesTrackProps) {
       </TrackControls>
     </>
   );
+}
+
+const VotesTrackBodyWithRemount = withWebGlRemount(VotesTrackBody);
+export default function VotesTrack(props: VotesTrackProps) {
+  const aggQuery = useAggVotesQuery(AGG_VOTES_CHART_ID);
+  return <VotesTrackBodyWithRemount aggQuery={aggQuery} {...props} />;
 }

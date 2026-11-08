@@ -445,4 +445,4 @@ export const replayBlockedOnTilesColor = "#AC9834";
 export const votesNotarColor = "#3A8C5F";
 export const votesFastFinalizeColor = "#1FA595";
 export const votesSkippedColor = "#B54A50";
-export const votesThresholdLineColor = "rgba(255, 255, 255, 0.22)";
+export const votesThresholdLineColor = "#FFFFFF";

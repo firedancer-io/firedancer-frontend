@@ -3,7 +3,7 @@ import type { TsRange } from "../../WebGl/webglUtils";
 import { msBucketSizes, nsBucketSizes } from "../const";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
 import type { AggVotesByGranularity, AggVotesBucket } from "./aggAtoms";
-import type { LatencyChartPoint, LatencyChartSeries } from "./drawLatency";
+import type { LatencyChartPoint, LatencyChartSeries } from "./latencyGeometry";
 import type { LatencyPoint, SlotLatencies } from "./latency";
 
 function toSlotPoints(points: LatencyPoint[]): LatencyChartPoint[] {

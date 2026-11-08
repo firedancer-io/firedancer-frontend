@@ -28,24 +28,11 @@ function devicePixelSize(entry: ResizeObserverEntry): [number, number] {
   ];
 }
 
-// DPR changes when the window moves between monitors, which resizes the device pixel box
-export function observeDevicePixelSize(
-  canvas: HTMLCanvasElement,
-  onResize: (widthPx: number, heightPx: number) => void,
-) {
-  const observer = new ResizeObserver(([entry]) =>
-    onResize(...devicePixelSize(entry)),
-  );
-  try {
-    observer.observe(canvas, { box: "device-pixel-content-box" });
-  } catch {
-    observer.observe(canvas);
-  }
-  return () => observer.disconnect();
-}
-
 function syncRendererSize(renderer: THREE.WebGLRenderer, onResize: () => void) {
-  return observeDevicePixelSize(renderer.domElement, (widthPx, heightPx) => {
+  const canvas = renderer.domElement;
+  const observer = new ResizeObserver(([entry]) => {
+    const [widthPx, heightPx] = devicePixelSize(entry);
+    // DPR changes when the window moves between monitors
     const pixelRatio = Math.min(window.devicePixelRatio, MAX_WEBGL_PX_RATIO);
     renderer.setPixelRatio(pixelRatio);
     // < 1 when the pixel ratio is capped
@@ -58,6 +45,12 @@ function syncRendererSize(renderer: THREE.WebGLRenderer, onResize: () => void) {
     );
     onResize();
   });
+  try {
+    observer.observe(canvas, { box: "device-pixel-content-box" });
+  } catch {
+    observer.observe(canvas);
+  }
+  return () => observer.disconnect();
 }
 
 export function useWebGlRenderer<T extends RendererObjBase>({

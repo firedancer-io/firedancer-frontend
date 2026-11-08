@@ -5,8 +5,9 @@ import {
   LINE_WIDTH_PX,
   OWN_VOTE_LINE_ALPHA,
   OWN_VOTE_TRIANGLE_PX,
+  DASH_PERIOD_PX,
   voteLineColors,
-  voteLineDashes,
+  voteLineDashPx,
   type VoteLine,
 } from "./consts";
 
@@ -47,7 +48,11 @@ export default function VoteLineLegend({ showOwnVotes }: VoteLineLegendProps) {
                 y2={3}
                 stroke={voteLineColors[line]}
                 strokeWidth={LINE_WIDTH_PX}
-                strokeDasharray={voteLineDashes[line].join(" ")}
+                strokeDasharray={
+                  voteLineDashPx[line]
+                    ? `${voteLineDashPx[line]} ${DASH_PERIOD_PX - voteLineDashPx[line]}`
+                    : undefined
+                }
               />
             </svg>
             {label}

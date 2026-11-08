@@ -6,11 +6,11 @@ import {
 import type { TsRange } from "../../WebGl/webglUtils";
 import { LINE_WIDTH_PX } from "./consts";
 import {
-  clearDash,
-  drawThresholdLine,
   getVotesPlotLayout,
-  setGuideDash,
-} from "./draw";
+  type Marker,
+  type Stroke,
+  type VotesGeometry,
+} from "./curvesGeometry";
 
 const TICK_STEP_MULTIPLIERS = [1, 2, 2.5, 5];
 const MIN_TICK_SCALE_MS = 10;
@@ -82,57 +82,51 @@ export function getVisibleMaxLatency(
   return max;
 }
 
-interface DrawLatencyArgs {
-  widthPx: number;
-  visibleRangeMs: TsRange;
+interface BuildLatencyArgs {
   series: LatencyChartSeries;
   layout: LatencyPlotLayout;
   ticks: number[];
 }
 
-export function drawLatencyChart(
-  ctx: CanvasRenderingContext2D,
-  { widthPx, visibleRangeMs, series, layout, ticks }: DrawLatencyArgs,
-) {
-  const [startMs, endMs] = visibleRangeMs;
-  const pxPerMs = widthPx / (endMs - startMs);
-  const toX = (ms: number) => (ms - startMs) * pxPerMs;
+export function buildLatency({
+  series,
+  layout,
+  ticks,
+}: BuildLatencyArgs): VotesGeometry & { guideYs: number[] } {
   const toY = (latencyMs: number) => getLatencyY(layout, latencyMs);
+  const markers: Marker[] = [];
 
-  setGuideDash(ctx, startMs, pxPerMs);
-  for (const tick of ticks) drawThresholdLine(ctx, widthPx, toY(tick));
-  clearDash(ctx);
-
-  ctx.lineWidth = LINE_WIDTH_PX;
-  ctx.lineJoin = "round";
-  traceSeries(series.slow, votesColor);
-  traceSeries(series.fast, votesFastFinalizeColor);
-  traceSeries(series.notarized, votesNotarColor);
-
-  function traceSeries(points: LatencyChartPoint[], color: string) {
-    ctx.beginPath();
-    let hasStarted = false;
+  function traceSeries(points: LatencyChartPoint[], color: string): Stroke {
+    const segments: number[] = [];
     for (let i = 0; i < points.length; i++) {
       const { ts, latencyMs, breakBefore } = points[i];
-      const x = toX(ts);
-      const next = points[i + 1];
-      // keep one point past each edge
-      if (next && toX(next.ts) < 0) continue;
-      if (x > widthPx && i > 0 && toX(points[i - 1].ts) > widthPx) break;
-
       const y = toY(latencyMs);
-      const isRunStart = breakBefore || !hasStarted;
-      hasStarted = true;
-      if (!isRunStart) {
-        ctx.lineTo(x, y);
-      } else if (next && !next.breakBefore) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.moveTo(x - ISOLATED_SAMPLE_PX / 2, y);
-        ctx.lineTo(x + ISOLATED_SAMPLE_PX / 2, y);
+      const next = points[i + 1];
+      if (i > 0 && !breakBefore) {
+        const prev = points[i - 1];
+        segments.push(prev.ts, toY(prev.latencyMs), ts, y);
+      } else if (!next || next.breakBefore) {
+        markers.push({
+          x: ts,
+          y,
+          widthPx: ISOLATED_SAMPLE_PX,
+          heightPx: LINE_WIDTH_PX,
+          alpha: 1,
+          color,
+        });
       }
     }
-    ctx.strokeStyle = color;
-    ctx.stroke();
+    return { color, alpha: 1, widthPx: LINE_WIDTH_PX, dashPx: 0, segments };
   }
+
+  return {
+    guideYs: ticks.map(toY),
+    strokes: [
+      traceSeries(series.slow, votesColor),
+      traceSeries(series.fast, votesFastFinalizeColor),
+      traceSeries(series.notarized, votesNotarColor),
+    ],
+    markers,
+    triangles: [],
+  };
 }

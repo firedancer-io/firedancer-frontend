@@ -29,7 +29,9 @@ export enum CertKind {
 
 export const NOTAR_THRESHOLD = 0.6;
 export const FAST_FINALIZE_THRESHOLD = 0.8;
+export const THRESHOLD_FRACS = [NOTAR_THRESHOLD, FAST_FINALIZE_THRESHOLD];
 
+// sub-pixel stake steps; bounds points per raw curve for live parsing
 export const MIN_STEP_FRAC = 0.002;
 
 export type VotesView = "curves" | "slotLatency" | "aggLatency";
@@ -38,16 +40,16 @@ const CURVES_MAX_RANGE_MS = 40_000;
 const SLOT_LATENCY_MAX_RANGE_MS = HEADER_AGG_THRESHOLD_MS;
 const ICON_MARKERS_MAX_RANGE_MS = 10_000;
 
-export function getVotesView(spanMs: number): VotesView {
-  if (spanMs < CURVES_MAX_RANGE_MS) return "curves";
-  if (spanMs < SLOT_LATENCY_MAX_RANGE_MS) return "slotLatency";
+export function getVotesView(windowSizeMs: number): VotesView {
+  if (windowSizeMs < CURVES_MAX_RANGE_MS) return "curves";
+  if (windowSizeMs < SLOT_LATENCY_MAX_RANGE_MS) return "slotLatency";
   return "aggLatency";
 }
 
 export type MarkerStyle = "icon" | "tick";
 
-export function getMarkerStyle(spanMs: number): MarkerStyle {
-  return spanMs < ICON_MARKERS_MAX_RANGE_MS ? "icon" : "tick";
+export function getMarkerStyle(windowSizeMs: number): MarkerStyle {
+  return windowSizeMs < ICON_MARKERS_MAX_RANGE_MS ? "icon" : "tick";
 }
 
 export const PLOT_BOTTOM_PAD_PX = 4;
@@ -58,14 +60,18 @@ export const FADED_ALPHA = 0.35;
 export const OWN_VOTE_LINE_ALPHA = 0.4;
 export const TICK_HALF_HEIGHT_PX = 4;
 export const TICK_WIDTH_PX = 2;
+export const THRESHOLD_LINE_ALPHA = 0.22;
+export const DASH_PERIOD_PX = 8;
+export const GUIDE_DASH_PX = 4;
 
 export type VoteLine = "notar" | "notarFallback" | "skip" | "finalize";
 
-export const voteLineDashes: Record<VoteLine, number[]> = {
-  notar: [],
-  notarFallback: [5, 3],
-  skip: [],
-  finalize: [],
+// dash length in each DASH_PERIOD_PX, 0 for solid
+export const voteLineDashPx: Record<VoteLine, number> = {
+  notar: 0,
+  notarFallback: 5,
+  skip: 0,
+  finalize: 0,
 };
 
 export const voteLineColors: Record<VoteLine, string> = {
@@ -90,10 +96,15 @@ export const voteLineDrawOrder: VoteLine[] = [
   "notar",
 ];
 
+export const VOTES_TILE_NS: Record<VotesGranularity, bigint> = {
+  vote: 4_000_000_000n, // 4s
+  vote_batch: 32_000_000_000n, // 32s
+};
+
 const VOTE_GRANULARITY_MAX_MS = 10_000;
 
-export function getVotesGranularity(spanMs: number): VotesGranularity {
-  return spanMs < VOTE_GRANULARITY_MAX_MS
+export function getVotesGranularity(windowSizeMs: number): VotesGranularity {
+  return windowSizeMs < VOTE_GRANULARITY_MAX_MS
     ? VotesGranularityEnum.vote
     : VotesGranularityEnum.vote_batch;
 }
