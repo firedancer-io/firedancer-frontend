@@ -26,6 +26,11 @@ interface SlotPartial {
 
 export type VotesData = Map<number, SlotPartial>;
 
+export interface VotesDataTile {
+  startNs: bigint;
+  data: VotesData;
+}
+
 export interface SlotVotes {
   notar: StepCurve;
   // null without notar fallback votes

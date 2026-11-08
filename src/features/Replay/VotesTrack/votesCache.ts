@@ -10,6 +10,7 @@ import {
 import { createPendingRequests } from "../tiles/requests";
 import type { Interval } from "../tiles/splitFetch";
 import { referenceNsAtom } from "../atoms";
+import { VOTES_TILE_NS } from "./consts";
 import {
   countPoints,
   mergeVotesData,
@@ -24,11 +25,6 @@ export const votesRequests = createPendingRequests<TimelineVotes>();
 const emptyVotes = (): VotesData => new Map();
 
 export type VotesCacheDelta = TileCacheDelta<VotesData, null>;
-
-const TILE_NS: Record<VotesGranularity, bigint> = {
-  vote: 4_000_000_000n, // 4s
-  vote_batch: 32_000_000_000n, // 32s
-};
 
 function fetchVotes(granularity: VotesGranularity) {
   return async ([start, end]: Interval, id: number) => {
@@ -60,7 +56,7 @@ function fetchVotes(granularity: VotesGranularity) {
 
 function createCache(granularity: VotesGranularity) {
   return createTileCache<VotesData, null>({
-    tileNs: TILE_NS[granularity],
+    tileNs: VOTES_TILE_NS[granularity],
     minSubTileNs: 1_000_000n, // 1ms
     maxItems: 2_000_000,
     maxTiles: 64,
