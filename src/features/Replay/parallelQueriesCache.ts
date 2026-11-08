@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
 import { atom, getDefaultStore } from "jotai";
 import type { NsTsRange } from "../WebGl/webglUtils";
+import { throttleIfVisible } from "../../api/useDebounceIfVisible";
 import {
   isLiveAtom,
   referenceNsAtom,
@@ -9,7 +9,6 @@ import {
   type TimelineQueryKey,
 } from "./atoms";
 import { calcAbsoluteNs } from "./utils";
-import { useThrottledCallbackIfVisible } from "../../api/useDebounceIfVisible";
 import { getTileIdx, getTileIdxRangeWithOverscan } from "./utils";
 
 interface TileStates {
@@ -29,7 +28,10 @@ const tileQueryStateByChartIdAtom = atom<Map<string, ChartQueryState>>(
   new Map(),
 );
 
-interface UseTiledQueriesOpts<Granularity extends string> {
+interface CreateParallelCacheOpts<
+  Granularity extends string,
+  Params = undefined,
+> {
   chartId: string;
   getTileSizeNs: (granularity: Granularity) => bigint;
   /**
@@ -43,6 +45,7 @@ interface UseTiledQueriesOpts<Granularity extends string> {
     startNs: bigint,
     endNs: bigint,
     granularity: Granularity,
+    params: Params,
   ) => void;
   /**
    * When a query completes and the fetched tile count for a granularity exceeds
@@ -62,7 +65,10 @@ interface UseTiledQueriesOpts<Granularity extends string> {
  * Split queries into tiles, which are time windows of equal size (dependent on granularity).
  * Track pending and fetched tile states, and only query for missing tiles.
  */
-export function useTiledQueries<Granularity extends string>({
+export function createParallelCache<
+  Granularity extends string,
+  Params = undefined,
+>({
   chartId,
   getTileSizeNs,
   overscanTilesCount,
@@ -71,115 +77,97 @@ export function useTiledQueries<Granularity extends string>({
   getTileEvictionHighWatermark,
   getTileEvictionLowWatermark,
   onEvictTiles,
-}: UseTiledQueriesOpts<Granularity>) {
-  const pendingQueriesRef = useRef(
-    new Map<
-      number,
-      { tileIdx: number; granularity: Granularity; isStale: boolean }
-    >(),
-  );
-  const latestRequestRef = useRef<
+}: CreateParallelCacheOpts<Granularity, Params>) {
+  const pendingQueries = new Map<
+    number,
+    { tileIdx: number; granularity: Granularity; isStale: boolean }
+  >();
+  let latestRequest:
     | {
         visibleRangeNs: NsTsRange;
         granularity: Granularity;
+        params: Params;
         /** whether any tile in the last request overlapped the world end */
         hasWorldEndTile: boolean;
       }
-    | undefined
-  >();
+    | undefined;
 
-  const { getChartState, getTileStates, getNewQueryId } = useMemo(() => {
-    /**
-     * Get or create this chart's persistent query state
-     */
-    const getChartState = (): ChartQueryState => {
-      const byChartId = store.get(tileQueryStateByChartIdAtom);
-      let chartState = byChartId.get(chartId);
-      if (!chartState) {
-        chartState = new Map();
-        byChartId.set(chartId, chartState);
-      }
-      return chartState;
-    };
+  /**
+   * Get or create this chart's persistent query state
+   */
+  const getChartState = (): ChartQueryState => {
+    const byChartId = store.get(tileQueryStateByChartIdAtom);
+    let chartState = byChartId.get(chartId);
+    if (!chartState) {
+      chartState = new Map();
+      byChartId.set(chartId, chartState);
+    }
+    return chartState;
+  };
 
-    /**
-     * Get or create tile states for this granularity
-     */
-    const getTileStates = (granularity: Granularity): TileStates => {
-      const tileStates = getChartState();
-      let states = tileStates.get(granularity);
-      if (!states) {
-        states = {
-          fetched: new Set(),
-          pending: new Set(),
-          stale: new Set(),
-        };
-        tileStates.set(granularity, states);
-      }
-      return states;
-    };
+  /**
+   * Get or create tile states for this granularity
+   */
+  const getTileStates = (granularity: Granularity): TileStates => {
+    const tileStates = getChartState();
+    let states = tileStates.get(granularity);
+    if (!states) {
+      states = {
+        fetched: new Set(),
+        pending: new Set(),
+        stale: new Set(),
+      };
+      tileStates.set(granularity, states);
+    }
+    return states;
+  };
 
-    /**
-     * If tile is not fetched or pending, mark as pending and return query Id
-     */
-    const getNewQueryId = (
-      granularity: Granularity,
-      tileIdx: number,
-      isStale: boolean,
-    ): number | undefined => {
-      const tileQueryStates = getTileStates(granularity);
-      if (
-        tileQueryStates.fetched.has(tileIdx) ||
-        tileQueryStates.pending.has(tileIdx)
-      ) {
-        return;
-      }
+  /**
+   * If tile is not fetched or pending, mark as pending and return query Id
+   */
+  const getNewQueryId = (
+    granularity: Granularity,
+    tileIdx: number,
+    isStale: boolean,
+  ): number | undefined => {
+    const tileQueryStates = getTileStates(granularity);
+    if (
+      tileQueryStates.fetched.has(tileIdx) ||
+      tileQueryStates.pending.has(tileIdx)
+    ) {
+      return;
+    }
 
-      const queryId = store.set(reserveNextQueryIdAtom, queryKey);
-      tileQueryStates.pending.add(tileIdx);
-      pendingQueriesRef.current.set(queryId, {
-        tileIdx,
-        granularity,
-        isStale,
-      });
-      return queryId;
-    };
+    const queryId = store.set(reserveNextQueryIdAtom, queryKey);
+    tileQueryStates.pending.add(tileIdx);
+    pendingQueries.set(queryId, {
+      tileIdx,
+      granularity,
+      isStale,
+    });
+    return queryId;
+  };
 
-    return { getChartState, getTileStates, getNewQueryId };
-  }, [chartId, queryKey]);
+  const dispatchSingleTileQuery = (
+    granularity: Granularity,
+    queryId: number,
+    tileIdx: number,
+    params: Params,
+  ) => {
+    const tileSizeNs = getTileSizeNs(granularity);
+    const tileStartNs = BigInt(tileIdx) * tileSizeNs;
+    const tileEndNs = tileStartNs + tileSizeNs;
+    sendQuery(queryId, tileStartNs, tileEndNs, granularity, params);
+  };
 
-  // On unmount, abandon in-flight queries
-  useEffect(() => {
-    const pendingQueries = pendingQueriesRef.current;
-    return () => {
-      for (const { pending } of getChartState().values()) {
-        pending.clear();
-      }
-      pendingQueries.clear();
-    };
-  }, [getChartState]);
-
-  const dispatchSingleTileQuery = useCallback(
-    (granularity: Granularity, queryId: number, tileIdx: number) => {
-      const tileSizeNs = getTileSizeNs(granularity);
-      const tileStartNs = BigInt(tileIdx) * tileSizeNs;
-      const tileEndNs = tileStartNs + tileSizeNs;
-      sendQuery(queryId, tileStartNs, tileEndNs, granularity);
-    },
-    [getTileSizeNs, sendQuery],
-  );
-
-  const evictTiles = useCallback(
-    (granularity: Granularity, tileIdxs: number[]) => {
-      const { fetched, stale } = getTileStates(granularity);
-      for (const tileIdx of tileIdxs) {
-        fetched.delete(tileIdx);
-        stale.delete(tileIdx);
-      }
-      onEvictTiles(granularity, tileIdxs);
-    },
-    [getTileStates, onEvictTiles],
-  );
+  const evictTiles = (granularity: Granularity, tileIdxs: number[]) => {
+    const { fetched, stale } = getTileStates(granularity);
+    for (const tileIdx of tileIdxs) {
+      fetched.delete(tileIdx);
+      stale.delete(tileIdx);
+    }
+    onEvictTiles(granularity, tileIdxs);
+  };
 
   /**
    * Once the fetched count exceeds the high watermark, evict tiles
@@ -187,190 +175,176 @@ export function useTiledQueries<Granularity extends string>({
    * granularity. Evict stale tiles first, then tiles farthest from the current range.
    * Return the tile idxs that are evicted.
    */
-  const evictTilesIfNeeded = useCallback(
-    (granularity: Granularity): number[] => {
-      const { fetched, stale } = getTileStates(granularity);
-      const storedCount = fetched.size + stale.size;
-      if (storedCount <= getTileEvictionHighWatermark(granularity)) return [];
+  const evictTilesIfNeeded = (granularity: Granularity): number[] => {
+    const { fetched, stale } = getTileStates(granularity);
+    const storedCount = fetched.size + stale.size;
+    if (storedCount <= getTileEvictionHighWatermark(granularity)) return [];
 
-      let countToEvict = storedCount - getTileEvictionLowWatermark(granularity);
-      if (countToEvict <= 0) return [];
+    let countToEvict = storedCount - getTileEvictionLowWatermark(granularity);
+    if (countToEvict <= 0) return [];
 
-      const visibleRange = latestRequestRef.current?.visibleRangeNs;
-      const tileSizeNs = getTileSizeNs(granularity);
+    const visibleRange = latestRequest?.visibleRangeNs;
+    const tileSizeNs = getTileSizeNs(granularity);
 
-      if (visibleRange == null) {
-        // grab the first few tiles to evict
-        const toEvict = [...stale, ...fetched].slice(0, countToEvict);
-        evictTiles(granularity, toEvict);
-        return toEvict;
-      }
+    if (visibleRange == null) {
+      // grab the first few tiles to evict
+      const toEvict = [...stale, ...fetched].slice(0, countToEvict);
+      evictTiles(granularity, toEvict);
+      return toEvict;
+    }
 
-      const toEvict: number[] = [];
+    const toEvict: number[] = [];
 
-      // Evict all off-screen stale tiles first
-      for (const tileIdx of stale) {
-        const tileStart = tileSizeNs * BigInt(tileIdx);
-        if (
-          calcDistanceBetween(visibleRange, [
-            tileStart,
-            tileStart + tileSizeNs,
-          ]) != null
-        ) {
-          toEvict.push(tileIdx);
-          countToEvict--;
+    // Evict all off-screen stale tiles first
+    for (const tileIdx of stale) {
+      const tileStart = tileSizeNs * BigInt(tileIdx);
+      if (
+        calcDistanceBetween(visibleRange, [
+          tileStart,
+          tileStart + tileSizeNs,
+        ]) != null
+      ) {
+        toEvict.push(tileIdx);
+        countToEvict--;
 
-          if (countToEvict <= 0) {
-            evictTiles(granularity, toEvict);
-            return toEvict;
-          }
+        if (countToEvict <= 0) {
+          evictTiles(granularity, toEvict);
+          return toEvict;
         }
       }
+    }
 
-      // Evict farthest from the visible range first.
-      const evictable = [...fetched].reduce<[dist: bigint, tileIdx: number][]>(
-        (acc, tileIdx) => {
-          const tileStart = tileSizeNs * BigInt(tileIdx);
-          const dist = calcDistanceBetween(visibleRange, [
-            tileStart,
-            tileStart + tileSizeNs,
-          ]);
-          if (dist != null) {
-            acc.push([dist, tileIdx]);
-          }
-          return acc;
-        },
-        [],
-      );
+    // Evict farthest from the visible range first.
+    const evictable = [...fetched].reduce<[dist: bigint, tileIdx: number][]>(
+      (acc, tileIdx) => {
+        const tileStart = tileSizeNs * BigInt(tileIdx);
+        const dist = calcDistanceBetween(visibleRange, [
+          tileStart,
+          tileStart + tileSizeNs,
+        ]);
+        if (dist != null) {
+          acc.push([dist, tileIdx]);
+        }
+        return acc;
+      },
+      [],
+    );
 
-      evictable.sort(([dist1], [dist2]) => {
-        if (dist1 < dist2) return 1;
-        if (dist1 > dist2) return -1;
-        return 0;
-      });
+    evictable.sort(([dist1], [dist2]) => {
+      if (dist1 < dist2) return 1;
+      if (dist1 > dist2) return -1;
+      return 0;
+    });
 
-      for (const [, tileIdx] of evictable.slice(0, countToEvict)) {
-        toEvict.push(tileIdx);
-      }
+    for (const [, tileIdx] of evictable.slice(0, countToEvict)) {
+      toEvict.push(tileIdx);
+    }
 
-      if (toEvict.length > 0) evictTiles(granularity, toEvict);
-      return toEvict;
-    },
-    [
-      getTileStates,
-      getTileEvictionHighWatermark,
-      getTileEvictionLowWatermark,
-      getTileSizeNs,
-      evictTiles,
-    ],
-  );
+    if (toEvict.length > 0) evictTiles(granularity, toEvict);
+    return toEvict;
+  };
 
-  const queryRange = useCallback(
-    (
-      [visibleStartNs, visibleEndNs]: NsTsRange,
-      [worldStartNs, worldEndNs]: NsTsRange,
-      granularity: Granularity,
-      onNothingToFetch?: (granularity: Granularity) => void,
-    ) => {
-      if (visibleEndNs <= visibleStartNs) {
-        latestRequestRef.current = undefined;
-        return;
-      }
+  const queryRange = (
+    [visibleStartNs, visibleEndNs]: NsTsRange,
+    [worldStartNs, worldEndNs]: NsTsRange,
+    granularity: Granularity,
+    params: Params,
+    onNothingToFetch?: (granularity: Granularity) => void,
+  ) => {
+    if (visibleEndNs <= visibleStartNs) {
+      latestRequest = undefined;
+      return;
+    }
 
-      const tileSizeNs = getTileSizeNs(granularity);
+    const tileSizeNs = getTileSizeNs(granularity);
 
-      const { firstTile, lastTile } = getTileIdxRangeWithOverscan(
-        [visibleStartNs, visibleEndNs],
-        [worldStartNs, worldEndNs],
-        tileSizeNs,
-        overscanTilesCount,
-      );
+    const { firstTile, lastTile } = getTileIdxRangeWithOverscan(
+      [visibleStartNs, visibleEndNs],
+      [worldStartNs, worldEndNs],
+      tileSizeNs,
+      overscanTilesCount,
+    );
 
-      const toFetch: { queryId: number; tileIdx: number }[] = [];
-      let hasWorldEndTile = false;
+    const toFetch: { queryId: number; tileIdx: number }[] = [];
+    let hasWorldEndTile = false;
 
-      // mark missing tiles as pending
-      for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
-        const tileEndNs = BigInt(tileIdx + 1) * tileSizeNs;
-        const isStale = tileEndNs >= worldEndNs;
-        if (isStale) hasWorldEndTile = true;
+    // mark missing tiles as pending
+    for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
+      const tileEndNs = BigInt(tileIdx + 1) * tileSizeNs;
+      const isStale = tileEndNs >= worldEndNs;
+      if (isStale) hasWorldEndTile = true;
 
-        const queryId = getNewQueryId(granularity, tileIdx, isStale);
-        if (queryId == null) continue;
-        toFetch.push({ queryId, tileIdx });
-      }
+      const queryId = getNewQueryId(granularity, tileIdx, isStale);
+      if (queryId == null) continue;
+      toFetch.push({ queryId, tileIdx });
+    }
 
-      latestRequestRef.current = {
-        visibleRangeNs: [visibleStartNs, visibleEndNs],
-        granularity,
-        hasWorldEndTile,
-      };
+    latestRequest = {
+      visibleRangeNs: [visibleStartNs, visibleEndNs],
+      granularity,
+      params,
+      hasWorldEndTile,
+    };
 
-      // nothing to fetch
-      if (!toFetch.length) {
-        onNothingToFetch?.(granularity);
-        return;
-      }
+    // nothing to fetch
+    if (!toFetch.length) {
+      onNothingToFetch?.(granularity);
+      return;
+    }
 
-      // fetch tiles closest to the visible center first
-      const visibleCenterTile =
-        (getTileIdx(visibleStartNs, tileSizeNs, false) +
-          getTileIdx(visibleEndNs, tileSizeNs, true)) /
-        2;
-      toFetch.sort(
-        (a, b) =>
-          Math.abs(a.tileIdx - visibleCenterTile) -
-          Math.abs(b.tileIdx - visibleCenterTile),
-      );
+    // fetch tiles closest to the visible center first
+    const visibleCenterTile =
+      (getTileIdx(visibleStartNs, tileSizeNs, false) +
+        getTileIdx(visibleEndNs, tileSizeNs, true)) /
+      2;
+    toFetch.sort(
+      (a, b) =>
+        Math.abs(a.tileIdx - visibleCenterTile) -
+        Math.abs(b.tileIdx - visibleCenterTile),
+    );
 
-      // fetch one tile at a time
-      for (const { queryId, tileIdx } of toFetch) {
-        dispatchSingleTileQuery(granularity, queryId, tileIdx);
-      }
-    },
-    [getTileSizeNs, overscanTilesCount, getNewQueryId, dispatchSingleTileQuery],
-  );
+    // fetch one tile at a time
+    for (const { queryId, tileIdx } of toFetch) {
+      dispatchSingleTileQuery(granularity, queryId, tileIdx, params);
+    }
+  };
 
   /**
    * Mark tile associated with query ID as fetched, and return query info
    */
-  const markQueryComplete = useCallback(
-    (queryId: number, chunksEndNs?: bigint) => {
-      const queryInfo = pendingQueriesRef.current.get(queryId);
-      // query id was not found
-      if (queryInfo == null) return;
+  const markQueryComplete = (queryId: number, chunksEndNs?: bigint) => {
+    const queryInfo = pendingQueries.get(queryId);
+    // query id was not found
+    if (queryInfo == null) return;
 
-      const { granularity, tileIdx, isStale } = queryInfo;
-      const tilesState = getTileStates(granularity);
+    const { granularity, tileIdx, isStale } = queryInfo;
+    const tilesState = getTileStates(granularity);
 
-      pendingQueriesRef.current.delete(queryId);
-      tilesState.pending.delete(tileIdx);
+    pendingQueries.delete(queryId);
+    tilesState.pending.delete(tileIdx);
 
-      // a response ending before the tile end leaves it stale
-      const tileEndNs = BigInt(tileIdx + 1) * getTileSizeNs(granularity);
-      if (isStale || (chunksEndNs !== undefined && chunksEndNs < tileEndNs)) {
-        tilesState.stale.add(tileIdx);
-      } else {
-        tilesState.stale.delete(tileIdx);
-        tilesState.fetched.add(tileIdx);
-      }
+    // a response ending before the tile end leaves it stale
+    const tileEndNs = BigInt(tileIdx + 1) * getTileSizeNs(granularity);
+    if (isStale || (chunksEndNs !== undefined && chunksEndNs < tileEndNs)) {
+      tilesState.stale.add(tileIdx);
+    } else {
+      tilesState.stale.delete(tileIdx);
+      tilesState.fetched.add(tileIdx);
+    }
 
-      // If the new query is evicted (data no longer in range), return undefined
-      // to indicate the response was not cached.
-      const evicted = evictTilesIfNeeded(granularity);
-      if (evicted.includes(tileIdx)) return;
+    // If the new query is evicted (data no longer in range), return undefined
+    // to indicate the response was not cached.
+    const evicted = evictTilesIfNeeded(granularity);
+    if (evicted.includes(tileIdx)) return;
 
-      return queryInfo;
-    },
-    [evictTilesIfNeeded, getTileStates, getTileSizeNs],
-  );
+    return queryInfo;
+  };
 
-  const queryWorldEnd = useThrottledCallbackIfVisible(() => {
+  const queryWorldEnd = () => {
     // in live mode, the visible range will automatically query the last tile
     // so skip this query
     if (store.get(isLiveAtom)) return;
 
-    const latestRequest = latestRequestRef.current;
     if (!latestRequest?.hasWorldEndTile) return;
 
     const worldRange = store.get(worldRangeAtom);
@@ -386,44 +360,56 @@ export function useTiledQueries<Granularity extends string>({
       latestRequest.visibleRangeNs,
       worldRangeNs,
       latestRequest.granularity,
+      latestRequest.params,
     );
-  }, 100);
+  };
+
+  // While visible, throttle. While hidden, cancel the throttle and fall back to
+  // requestAnimationFrame
+  const scheduleQueryWorldEnd = throttleIfVisible(queryWorldEnd, 100);
+
+  const init = () => store.sub(worldRangeAtom, scheduleQueryWorldEnd);
 
   /**
-   * Refresh stale world end data if it was past of the latest request
+   * Abandon in-flight queries
    */
-  useEffect(() => {
-    const unsub = store.sub(worldRangeAtom, queryWorldEnd);
-    return () => {
-      queryWorldEnd.cancel();
-      unsub();
-    };
-  }, [queryWorldEnd]);
+  const clearPending = () => {
+    scheduleQueryWorldEnd.cancel();
+    for (const { pending } of getChartState().values()) {
+      pending.clear();
+    }
+    pendingQueries.clear();
+  };
 
   /**
    * Store refreshing stale tiles.
    * Call when this view becomes inactive (e.g. the track switched to a
    * different granularity / aggregate mode).
    */
-  const pauseStaleRefreshes = useCallback(() => {
-    latestRequestRef.current = undefined;
-    queryWorldEnd.cancel();
-  }, [queryWorldEnd]);
+  const pauseStaleRefreshes = () => {
+    latestRequest = undefined;
+    scheduleQueryWorldEnd.cancel();
+  };
 
   /**
-   * Clear fetched tiles and drop in-flight queries
+   * Evict all cached tiles and drop pending queries.
    */
-  const resetQueries = useCallback(() => {
+  const clearCache = () => {
+    for (const [granularity, { fetched, stale }] of getChartState()) {
+      onEvictTiles(granularity as Granularity, [...fetched, ...stale]);
+    }
     getChartState().clear();
-    pendingQueriesRef.current.clear();
+    pendingQueries.clear();
     pauseStaleRefreshes();
-  }, [getChartState, pauseStaleRefreshes]);
+  };
 
   return {
     queryRange,
     markQueryComplete,
     pauseStaleRefreshes,
-    resetQueries,
+    clearCache,
+    init,
+    clearPending,
   };
 }
 

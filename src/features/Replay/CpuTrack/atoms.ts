@@ -65,7 +65,7 @@ export const [
   aggCpuAtom,
   addAggCpuAtom,
   deleteAggCpuBucketsAtom,
-  syncAggCpuTilesAtom,
+  setTilesKeyAtom,
 ] = (function getAggCpuAtom() {
   const _aggCpuAtom = atom<CpuUtilizationByGranularity>(new Map());
   const _tilesKeyAtom = atom<string | undefined>(undefined);
@@ -141,16 +141,10 @@ export const [
         });
       },
     ),
-    /**
-     * Data is indexed by tile so clear cached utilization if the tiles change
-     */
-    atom(null, (get, set, tilesKey: string) => {
+    atom(null, (get, set, tilesKey: string): boolean => {
       const prevTilesKey = get(_tilesKeyAtom);
       set(_tilesKeyAtom, tilesKey);
-      if (prevTilesKey === undefined || prevTilesKey === tilesKey) return false;
-
-      set(_aggCpuAtom, new Map());
-      return true;
+      return prevTilesKey !== undefined && prevTilesKey !== tilesKey;
     }),
   ];
 })();

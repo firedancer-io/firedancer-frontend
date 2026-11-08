@@ -22,7 +22,7 @@ import {
   cpuSplitByTileAtom,
   queryTilesAtom,
   queryTilesKeyAtom,
-  syncAggCpuTilesAtom,
+  setTilesKeyAtom,
 } from "./atoms.ts";
 import { AGG_CPU_CHART_ID } from "./const.ts";
 import { drawEventType } from "../const.ts";
@@ -53,14 +53,14 @@ interface CpuTrackProps {
 
 interface CpuTrackBodyProps extends CpuTrackProps, WebGlRemountProps {
   query: AggCpuQuery;
-  resetQueries: () => void;
+  clearCache: () => void;
 }
 
 function CpuTrackBody({
   remount,
   height,
   query,
-  resetQueries,
+  clearCache,
 }: CpuTrackBodyProps) {
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
@@ -152,12 +152,12 @@ function CpuTrackBody({
     requestRender();
   }, [rendererRef, draw, throttledRangeQuery, requestRender]);
 
-  // refetch if the tiles change
+  // clear cache and refetch on tile change
   useLayoutEffect(() => {
-    if (!store.set(syncAggCpuTilesAtom, tilesKey)) return;
-    resetQueries();
+    if (!store.set(setTilesKeyAtom, tilesKey)) return;
+    clearCache();
     onRangeChange();
-  }, [tilesKey, resetQueries, onRangeChange]);
+  }, [tilesKey, clearCache, onRangeChange]);
 
   useLayoutEffect(() => {
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
@@ -208,12 +208,8 @@ function CpuTrackBody({
 
 const CpuTrackBodyWithRemount = withWebGlRemount(CpuTrackBody);
 export default function CpuTrack(props: CpuTrackProps) {
-  const { query, resetQueries } = useAggCpuQuery(AGG_CPU_CHART_ID);
+  const { query, clearCache } = useAggCpuQuery(AGG_CPU_CHART_ID);
   return (
-    <CpuTrackBodyWithRemount
-      query={query}
-      resetQueries={resetQueries}
-      {...props}
-    />
+    <CpuTrackBodyWithRemount query={query} clearCache={clearCache} {...props} />
   );
 }
