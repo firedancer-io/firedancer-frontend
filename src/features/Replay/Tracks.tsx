@@ -18,10 +18,10 @@ import styles from "./chart.module.css";
 const allTracks: TrackId[] = [
   "shreds",
   "votes",
-  "income",
   "banks",
   "replay",
   "cpu",
+  "income",
 ];
 
 const banksRowsAtom = atom(

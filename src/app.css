@@ -49,7 +49,7 @@
 .fill-viewport {
   display: flex;
   flex-direction: column;
-  min-height: max(100%, 700px);
+  min-height: max(100%, 440px);
 }
 
 .fill-viewport .fill-viewport-row {
