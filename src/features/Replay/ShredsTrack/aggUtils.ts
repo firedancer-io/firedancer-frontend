@@ -91,7 +91,7 @@ export function drawAggShreds(
     calcRelativeMs(referenceNs, BigInt(startIdx) * nsBucketSizes[granularity]) -
     cameraReferenceMs;
 
-  let maxVisibleShredsPerBucket = 0;
+  let maxVisibleHeight = 0;
   let rectIdx = 0;
   for (
     let bucketIdx = startIdx - OVERSCAN_BUCKETS;
@@ -101,39 +101,47 @@ export function drawAggShreds(
     const eventCounts = eventsByBucketIdx.get(bucketIdx);
     if (!eventCounts) continue;
 
+    const { slotDuration } = eventCounts;
+    if (!slotDuration) continue;
+
+    const total = getAggShredCount(eventCounts);
+    if (total <= 0) continue;
+
     const isOverscan = bucketIdx < startIdx || bucketIdx > endIdx;
     const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
 
-    let shredsInBucket = 0;
+    let heightInBucket = 0;
     for (const { type, webGlColor } of aggShredEvents) {
       const count = eventCounts[type];
       if (!count) continue;
+
+      const height = (count / total) * slotDuration;
 
       ensureRectCapacity(mesh, rectIdx + 1);
       addRectangleToMesh(
         mesh,
         rectIdx,
         x,
-        -shredsInBucket - count,
+        -heightInBucket - height,
         bucketSizeMs,
-        count,
+        height,
         webGlColor,
       );
 
-      shredsInBucket += count;
+      heightInBucket += height;
       rectIdx++;
     }
 
     // exclude overscan from max visible value
-    if (!isOverscan && shredsInBucket > maxVisibleShredsPerBucket) {
-      maxVisibleShredsPerBucket = shredsInBucket;
+    if (!isOverscan && heightInBucket > maxVisibleHeight) {
+      maxVisibleHeight = heightInBucket;
     }
   }
 
   // keep the previous Y scale when there's nothing visible instead of collapsing.
   // Pad so the tallest bucket lands at MAX_HEIGHT_RATIO, leaving room for the last grid line
-  if (maxVisibleShredsPerBucket > 0) {
-    updateCameraYRange(camera, maxVisibleShredsPerBucket / MAX_HEIGHT_RATIO);
+  if (maxVisibleHeight > 0) {
+    updateCameraYRange(camera, maxVisibleHeight / MAX_HEIGHT_RATIO);
   }
   updateRectMeshCounts(mesh, rectIdx);
 
@@ -141,7 +149,7 @@ export function drawAggShreds(
   mesh.referenceX = cameraReferenceMs;
   mesh.mesh.position.x = 0;
 
-  return maxVisibleShredsPerBucket;
+  return maxVisibleHeight;
 }
 
 /**

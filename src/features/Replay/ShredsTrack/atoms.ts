@@ -18,10 +18,14 @@ import { drawEventType, type DrawEmitter } from "../const";
 
 export type ShredEventCounts = Record<AggShredEventType, number | null>;
 
+export type ShredBucket = ShredEventCounts & {
+  slotDuration: number | null;
+};
+
 /**
  * Buckets start at idx 0 of absolute world time
  */
-type EventsByBucketIdx = Map<number, ShredEventCounts>;
+type EventsByBucketIdx = Map<number, ShredBucket>;
 export type ShredBucketsByGranularity = Map<AggGranularity, EventsByBucketIdx>;
 
 export const [
@@ -44,6 +48,7 @@ export const [
         {
           granularity,
           reference_ts_ns,
+          slot_duration,
           turbine,
           repair,
           reconstructed,
@@ -57,7 +62,7 @@ export const [
 
         set(_aggShredsAtom, (prev) => {
           const eventsByBucketIdx =
-            prev.get(granularity) ?? new Map<number, ShredEventCounts>();
+            prev.get(granularity) ?? new Map<number, ShredBucket>();
 
           const startBucketIdx = getBucketIdx(
             reference_ts_ns,
@@ -66,11 +71,12 @@ export const [
           );
 
           for (let i = 0; i < turbine.length; i++) {
-            const values = {
+            const values: ShredBucket = {
               turbine: turbine[i],
               repair: repair[i],
               reconstructed: reconstructed[i],
               published: published[i],
+              slotDuration: slot_duration[i] ?? null,
             };
 
             const bucketIdx = startBucketIdx + i;

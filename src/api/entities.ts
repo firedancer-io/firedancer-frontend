@@ -1570,6 +1570,7 @@ export enum AggShredEventType {
 export const aggShredsSchema = z.object({
   granularity: aggGranularitySchema,
   reference_ts_ns: z.coerce.bigint(),
+  slot_duration: z.array(z.number().nullable()),
   [AggShredEventType.Turbine]: z.array(z.number().nullable()),
   [AggShredEventType.Repair]: z.array(z.number().nullable()),
   [AggShredEventType.Reconstructed]: z.array(z.number().nullable()),

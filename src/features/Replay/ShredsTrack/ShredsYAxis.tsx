@@ -12,20 +12,27 @@ interface ShredsAxisTick {
 interface ShredsYAxisProps {
   height: number;
   maxShreds: number;
+  formatValue?: (value: number) => string;
 }
 
 const MIN_AXIS_TICKS = 3;
 const MAX_AXIS_TICKS = 5;
 const MIN_TICK_GAP_PX = 20;
 
-export default function ShredsYAxis({ height, maxShreds }: ShredsYAxisProps) {
+export default function ShredsYAxis({
+  height,
+  maxShreds,
+  formatValue,
+}: ShredsYAxisProps) {
   if (maxShreds <= 0) return null;
 
   const plotHeightPx = height - trackInsetPx.shreds;
-  const ticks = buildShredsAxisTicks(maxShreds, plotHeightPx).map((tick) => ({
-    ...tick,
-    topPx: trackInsetPx.shreds + tick.topRatio * plotHeightPx,
-  }));
+  const ticks = buildShredsAxisTicks(maxShreds, plotHeightPx, formatValue).map(
+    (tick) => ({
+      ...tick,
+      topPx: trackInsetPx.shreds + tick.topRatio * plotHeightPx,
+    }),
+  );
   let lastLabelTopPx = -Infinity;
   const labeledTicks = ticks.filter(({ label, topPx }) => {
     if (label == null) return false;
@@ -77,6 +84,7 @@ export default function ShredsYAxis({ height, maxShreds }: ShredsYAxisProps) {
 function buildShredsAxisTicks(
   maxShreds: number,
   plotHeightPx: number,
+  formatValue?: (value: number) => string,
 ): ShredsAxisTick[] {
   if (maxShreds <= 0) return [];
 
@@ -93,9 +101,10 @@ function buildShredsAxisTicks(
       return { topRatio };
     }
 
+    const value = valueRatio * maxShreds;
     return {
       topRatio,
-      label: Math.round(valueRatio * maxShreds).toLocaleString(),
+      label: formatValue?.(value) ?? Math.round(value).toLocaleString(),
       suffix: `${Math.round(valueRatio * 100)}%`,
     };
   });

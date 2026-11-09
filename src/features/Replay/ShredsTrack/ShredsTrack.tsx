@@ -57,6 +57,7 @@ import TrackControls from "../TrackControls.tsx";
 import { trackNames } from "../layout.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
 import { clientXToTs, clientYToWorldY } from "../hoverUtils.ts";
+import { nsPerMs } from "../../../consts.ts";
 
 const store = getDefaultStore();
 
@@ -139,12 +140,12 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
           granularity,
           false,
         );
-        // total stacked height of the bucket's bar, in shred count
         const counts = store
           .get(aggShredsAtom)
           .get(granularity)
           ?.get(bucketIdx);
-        const bucketHeight = getAggShredCount(counts);
+        const slotDuration = counts?.slotDuration ?? null;
+        const bucketHeight = slotDuration ?? 0;
 
         // bars span world Y [-bucketHeight, 0]; only show the tooltip when the
         // cursor is actually within the drawn bar
@@ -157,6 +158,8 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
         );
         const onBar =
           counts != null &&
+          slotDuration != null &&
+          getAggShredCount(counts) > 0 &&
           bucketHeight > 0 &&
           worldY <= 0 &&
           -worldY <= bucketHeight;
@@ -482,6 +485,7 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
       <ShredsYAxis
         maxShreds={isAgg ? aggAxisMax : nonAggAxisMax}
         height={height}
+        formatValue={isAgg ? formatAxisMs : undefined}
       />
       <TrackControls
         name={trackNames.shreds}
@@ -491,6 +495,11 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
       />
     </>
   );
+}
+
+function formatAxisMs(ns: number) {
+  const ms = ns / nsPerMs;
+  return `${ms.toLocaleString(undefined, { maximumFractionDigits: 1 })} ms`;
 }
 
 const ShredsTrackWithRemount = withWebGlRemount(ShredsTrackBody);
