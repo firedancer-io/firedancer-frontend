@@ -7,6 +7,7 @@ import { CHART_NOW_DELAY_MS, type PlaybackRate } from "./const";
 import {
   calcAbsoluteNs,
   calcRelativeMs,
+  clampToWorld,
   getAggSlotsGranularity,
   getBucketIdx,
   getInitVisibleRange,
@@ -188,11 +189,17 @@ export const {
     set(setLiveAtom, end - start);
   });
 
-  const pauseAtom = atom(null, (get, set) => {
-    const range = get(visibleRangeAtom);
-    if (!range || get(playbackAtom)?.kind === "paused") return;
+  const pauseAtom = atom(null, (get, set, range?: TsRange) => {
+    // an explicit range pauses directly, even if already paused
+    if (range) {
+      set(playbackAtom, { kind: "paused", range });
+      return;
+    }
 
-    set(playbackAtom, { kind: "paused", range });
+    const currentRange = get(visibleRangeAtom);
+    if (!currentRange || get(playbackAtom)?.kind === "paused") return;
+
+    set(playbackAtom, { kind: "paused", range: currentRange });
   });
 
   return {
@@ -240,6 +247,26 @@ export const {
     visibleRangeAtom,
   };
 })();
+
+const windowSizeMs = 15_000;
+
+export const navigateToReplaySlotAtom = atom(
+  null,
+  (get, set, slot: number, centerNs: bigint) => {
+    const referenceNs = get(referenceNsAtom);
+    if (referenceNs == null) return;
+
+    const centerMs = calcRelativeMs(referenceNs, centerNs);
+    const half = windowSizeMs / 2;
+    let range: TsRange = [centerMs - half, centerMs + half];
+
+    const worldRange = get(worldRangeAtom);
+    if (worldRange) range = clampToWorld(range, worldRange);
+
+    set(_selectedSlotAtom, slot);
+    set(pauseAtom, range);
+  },
+);
 
 function getPlayingRange(
   playback: Extract<Playback, { kind: "playing" }>,

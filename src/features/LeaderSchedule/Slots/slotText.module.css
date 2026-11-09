@@ -15,6 +15,15 @@
     text-decoration: none;
     color: var(--slot-text-active-link-color);
   }
+
+  a.replay-link:link,
+  a.replay-link:visited {
+    color: var(--slot-card-section-primary-color);
+  }
+  a.replay-link:active,
+  a.replay-link:hover {
+    color: white;
+  }
 }
 
 .copy-button {
