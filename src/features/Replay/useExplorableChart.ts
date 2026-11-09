@@ -13,22 +13,14 @@ import { clamp as minMaxClamp } from "lodash";
 import styles from "./chart.module.css";
 import { clampToWorld } from "./utils";
 import { getDrawnSlotAt } from "./slotHighlight";
+import { isExcludedTarget, isTap, PAN_THRESHOLD_PX } from "./gestureUtils";
 
-const PAN_THRESHOLD_PX = 8;
 const ZOOM_INTENSITY = 0.002;
 const EDGE_ZOOM_ZONE_PX = 40;
 
 // Thresholds for double tap reset to live
 const DOUBLE_TAP_MS = 300;
 const DOUBLE_TAP_MOVE_PX = 24;
-
-// Some elements (ex. labels, buttons) are excluded from triggering chart exploration
-function isExcludedTarget(target: EventTarget | null) {
-  return (
-    target instanceof Element &&
-    target.closest(`.${styles.noChartExplore}`) != null
-  );
-}
 
 const LINE_HEIGHT_PX = 40;
 const PAGE_HEIGHT_PX = 800;
@@ -127,15 +119,6 @@ type GestureOwner = "explore" | "miniMap";
 
 const store = getDefaultStore();
 
-type ClientPoint = { clientX: number; clientY: number };
-
-function isTap(press: ClientPoint, release: ClientPoint) {
-  return (
-    Math.abs(release.clientX - press.clientX) < PAN_THRESHOLD_PX &&
-    Math.abs(release.clientY - press.clientY) < PAN_THRESHOLD_PX
-  );
-}
-
 function selectSlotAtPress(press: {
   clientX: number;
   clientY: number;
@@ -165,9 +148,9 @@ export function useExplorableChart() {
   const hasPendingClickPan = useRef(false);
   const lastTapRef = useRef<{ time: number; x: number; y: number }>();
   const gestureOwnerRef = useRef<GestureOwner>();
-  // Identifier of the touch that started the active gesture. The gesture is
-  // ended by that finger only. Lifting a different finger (one that
-  // started elsewhere on the page) will not terminate the in-progress gesture
+  // Identifier of the touch that started the active gesture. A pan is ended by
+  // that finger only, a pinch by either of its fingers; other fingers lifting
+  // don't end it
   const activeTouchIdRef = useRef<number>();
   const touchGestureTeardownRef = useRef<
     Partial<Record<GestureOwner, () => void>>
@@ -496,7 +479,102 @@ export function useExplorableChart() {
       // Whether a chart touch gesture is in progress. A multi-touch gesture is
       // abandoned, so onTouchEnd only ever evaluates a tap for the single-finger gesture it started.
       let isTouchGestureActive = false;
+      // two fingers zoom around their midpoint, which also pans
+      let pinch:
+        | {
+            touchIds: [number, number];
+            distancePx: number;
+            midTs: number;
+            spanMs: number;
+            trackRect: DOMRect;
+          }
+        | undefined;
+
+      const measurePinch = (first: Touch, second: Touch) => ({
+        distancePx: Math.max(
+          Math.hypot(
+            first.clientX - second.clientX,
+            first.clientY - second.clientY,
+          ),
+          1,
+        ),
+        midX: (first.clientX + second.clientX) / 2,
+      });
+
+      const startPinch = (touches: TouchList) => {
+        const visibleRange = store.get(visibleRangeAtom);
+        if (!visibleRange) return;
+        store.set(pauseAtom);
+        const trackRect = trackEl.getBoundingClientRect();
+        const { distancePx, midX } = measurePinch(touches[0], touches[1]);
+        pinch = {
+          touchIds: [touches[0].identifier, touches[1].identifier],
+          distancePx,
+          midTs: clientXToTsWithRect(trackRect, midX, visibleRange),
+          spanMs: visibleRange[1] - visibleRange[0],
+          trackRect,
+        };
+        gestureOwnerRef.current = "explore";
+        activeTouchIdRef.current = touches[0].identifier;
+        lastTapRef.current = undefined;
+        windowPinchListeners.attach();
+      };
+
+      const endPinch = () => {
+        if (!pinch) return;
+        pinch = undefined;
+        if (ownsGesture()) {
+          gestureOwnerRef.current = undefined;
+          activeTouchIdRef.current = undefined;
+        }
+        windowPinchListeners.detach();
+      };
+
+      const onPinchMove = (e: TouchEvent) => {
+        if (!pinch) return;
+        const first = findTouch(e.touches, pinch.touchIds[0]);
+        const second = findTouch(e.touches, pinch.touchIds[1]);
+        if (!first || !second) return;
+        e.preventDefault();
+        const { distancePx, midX } = measurePinch(first, second);
+        const spanMs = Math.max(
+          MIN_VISIBLE_MS,
+          (pinch.spanMs * pinch.distancePx) / distancePx,
+        );
+        const { left, width } = pinch.trackRect;
+        const startTs = pinch.midTs - ((midX - left) / width) * spanMs;
+        setClampedVisibleRange([startTs, startTs + spanMs]);
+      };
+
+      const onPinchEnd = (e: TouchEvent) => {
+        if (pinch?.touchIds.some((id) => findTouch(e.changedTouches, id))) {
+          endPinch();
+        }
+      };
+
+      const windowPinchListeners = createWindowListenerGroup([
+        () => addWindowListener("touchmove", onPinchMove, { passive: false }),
+        () => addWindowListener("touchend", onPinchEnd),
+        () => addWindowListener("touchcancel", onPinchEnd),
+      ]);
+
       const onTouchStartWithTapTracking = (e: TouchEvent) => {
+        // two fingers down start a fresh pinch, replacing one whose end was missed
+        if (
+          e.touches.length === 2 &&
+          (pinch || !gestureOwnerRef.current) &&
+          !isExcludedTarget(e.target)
+        ) {
+          e.preventDefault();
+          endPinch();
+          startPinch(e.touches);
+          return;
+        }
+        if (pinch) {
+          // extra fingers during a pinch
+          if (e.touches.length > 2) return;
+          endPinch();
+        }
         onTouchStart(e);
         // only track as a touch gesture if this touch actually started it
         // (onTouchStart captured its identifier)
@@ -512,6 +590,7 @@ export function useExplorableChart() {
       const onWindowTouchStart = (e: TouchEvent) => {
         if (isTouchGestureActive && e.touches.length > 1) {
           abandonTouchGesture();
+          if (e.touches.length === 2) startPinch(e.touches);
         }
       };
 
@@ -597,7 +676,10 @@ export function useExplorableChart() {
       ]);
 
       // Register teardown so a stale lock can be cleared from the other path's touchstart
-      touchGestureTeardownRef.current.explore = abandonTouchGesture;
+      touchGestureTeardownRef.current.explore = () => {
+        endPinch();
+        abandonTouchGesture();
+      };
 
       const cleanups = [
         addListener(trackEl, "mousedown", onMouseDownStartGesture),
@@ -612,6 +694,7 @@ export function useExplorableChart() {
         cleanups.forEach((off) => off());
         windowTouchListeners.detach();
         windowMouseListeners.detach();
+        endPinch();
         isTouchGestureActive = false;
         endDrag();
         delete touchGestureTeardownRef.current.explore;

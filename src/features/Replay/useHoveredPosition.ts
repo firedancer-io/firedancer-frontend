@@ -1,6 +1,7 @@
 import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
 import { visibleRangeAtom } from "./atoms";
+import { isExcludedTarget, isTap, type ClientPoint } from "./gestureUtils";
 
 const store = getDefaultStore();
 
@@ -66,21 +67,53 @@ export function useHoveredPosition({
         return;
       }
 
-      const onMove = (e: MouseEvent) => {
+      const hover = ({ clientX, clientY }: ClientPoint) => {
         const rect = rectRef.current;
         if (!rect) return;
-        lastClientPosRef.current = { x: e.clientX, y: e.clientY };
-        onHoverChangeRef.current(e.clientX, e.clientY, rect);
+        lastClientPosRef.current = { x: clientX, y: clientY };
+        onHoverChangeRef.current(clientX, clientY, rect);
       };
 
-      const onLeave = () => {
+      const leave = () => {
         lastClientPosRef.current = undefined;
         onHoverLeaveRef.current();
       };
 
+      // touch has no hover: a one-finger tap hovers the tapped point, any touch clears it
+      let tapPress: (ClientPoint & { pointerId: number }) | undefined;
+      const onWindowTouchDown = (e: PointerEvent) => {
+        if (e.pointerType === "mouse") return;
+        leave();
+        const startsTap =
+          !tapPress &&
+          el.contains(e.target as Node) &&
+          !isExcludedTarget(e.target);
+        tapPress = startsTap ? e : undefined;
+      };
+      const onMove = (e: PointerEvent) => {
+        if (e.pointerType === "mouse") hover(e);
+        else if (tapPress && !isTap(tapPress, e)) tapPress = undefined;
+      };
+      const onMouseLeave = (e: PointerEvent) => {
+        if (e.pointerType === "mouse") leave();
+      };
+      const onTouchUp = (e: PointerEvent) => {
+        if (e.pointerType === "mouse" || e.pointerId !== tapPress?.pointerId) {
+          return;
+        }
+        if (isTap(tapPress, e)) hover(e);
+        tapPress = undefined;
+      };
+      const onTouchCancel = () => {
+        tapPress = undefined;
+      };
+
       // NOTE: native event handling: inner containers will see the event before ancestors
-      el.addEventListener("mousemove", onMove);
-      el.addEventListener("mouseleave", onLeave);
+      el.addEventListener("pointermove", onMove);
+      el.addEventListener("pointerleave", onMouseLeave);
+      el.addEventListener("pointerup", onTouchUp);
+      el.addEventListener("pointercancel", onTouchCancel);
+      window.addEventListener("pointerdown", onWindowTouchDown);
 
       // replay the hover if the visible range shifts, even if the cursor doesn't move
       const unsubscribeRange = store.sub(visibleRangeAtom, notifyChange);
@@ -94,8 +127,11 @@ export function useHoveredPosition({
       refreshContainerAndNotify();
 
       cleanUpRef.current = () => {
-        el.removeEventListener("mousemove", onMove);
-        el.removeEventListener("mouseleave", onLeave);
+        el.removeEventListener("pointermove", onMove);
+        el.removeEventListener("pointerleave", onMouseLeave);
+        el.removeEventListener("pointerup", onTouchUp);
+        el.removeEventListener("pointercancel", onTouchCancel);
+        window.removeEventListener("pointerdown", onWindowTouchDown);
         unsubscribeRange();
         rectObserver.disconnect();
         window.removeEventListener("resize", refreshContainerAndNotify);
