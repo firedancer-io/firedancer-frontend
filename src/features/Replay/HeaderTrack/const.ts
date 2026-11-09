@@ -1,8 +1,6 @@
 import type * as THREE from "three";
 import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
 
-export const HEADER_AGG_THRESHOLD_MS = 180_000;
-
 export const trackHeight = 36;
 export const trackMarginTop = 6;
 export const trackMarginBottom = 4;

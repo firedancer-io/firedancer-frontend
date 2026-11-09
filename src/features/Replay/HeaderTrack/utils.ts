@@ -1,4 +1,8 @@
-import { msBucketSizes, nsBucketSizes } from "../const";
+import {
+  msBucketSizes,
+  nsBucketSizes,
+  AGG_SLOT_SHRED_THRESHOLD_MS,
+} from "../const";
 import * as THREE from "three";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers";
 import {
@@ -12,11 +16,7 @@ import {
   convertToWebGlColor,
   type TsRange,
 } from "../../WebGl/webglUtils";
-import {
-  HEADER_AGG_THRESHOLD_MS,
-  type AggRendererResources,
-  type RendererObj,
-} from "./const";
+import { type AggRendererResources, type RendererObj } from "./const";
 import { omit } from "lodash";
 import { getSlotCount, type SlotBucketsByGranularity } from "./aggAtoms";
 import { OVERSCAN_BUCKETS } from "../useAggQuery";
@@ -225,5 +225,5 @@ export function moveAggCamera(
 }
 
 export function isAggregate(rangeMs: TsRange) {
-  return rangeMs[1] - rangeMs[0] > HEADER_AGG_THRESHOLD_MS;
+  return rangeMs[1] - rangeMs[0] > AGG_SLOT_SHRED_THRESHOLD_MS;
 }
