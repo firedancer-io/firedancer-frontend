@@ -30,10 +30,10 @@ const MAX_GAP_FRACTION = 1 / 4;
 export const ROW_LABEL_PX = 13;
 
 export const minTrackPx: Record<TrackId, number> = {
-  shreds: 40,
+  shreds: 24,
   votes: 80,
   income: 40,
-  banks: 40,
+  banks: 32,
   replay: 40,
   cpu: 40,
 };
@@ -132,8 +132,9 @@ function splitWithMinimum(
   shares: Record<TrackId, number>,
 ) {
   const heights = new Map<TrackId, number>();
-  const getMinPx = (id: TrackId) =>
-    Math.min(minTrackPx[id], freePx / visible.length);
+  const minsPx = visible.reduce((sum, id) => sum + minTrackPx[id], 0);
+  const minScale = Math.min(1, freePx / minsPx);
+  const getMinPx = (id: TrackId) => minTrackPx[id] * minScale;
   let flexible = visible;
   let flexiblePx = freePx;
 

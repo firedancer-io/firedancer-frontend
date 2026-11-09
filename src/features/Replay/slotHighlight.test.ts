@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterEach,
+  vi,
+} from "vitest";
 import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
 import { renderHook } from "@testing-library/react";
 import { startupTimeAtom } from "../../api/atoms";
@@ -26,7 +34,7 @@ import {
   NO_SLOT,
   slotHighlightGlsl,
   updateSlotHighlight,
-  useEscapeClearsSelection,
+  useDismissSelection,
   useSlotHighlightRender,
   useSlotHitTest,
 } from "./slotHighlight";
@@ -119,10 +127,23 @@ describe("slot selection", () => {
 
   it("keeps the selected slot on top where it overlaps a later slot", () => {
     store.set(selectSlotAtMsAtom, 100_100);
-    store.set(selectSlotAtMsAtom, 100_700);
-    expect(store.get(selectedSlotAtom)).toBe(1003);
     hover(100_700);
     expect(store.get(hoveredSlotAtom)).toBe(1003);
+  });
+
+  it("deselects on a click on the selected slot", () => {
+    store.set(selectSlotAtMsAtom, 100_100);
+    store.set(selectSlotAtMsAtom, 100_700);
+    expect(store.get(selectedSlotAtom)).toBeUndefined();
+
+    store.set(selectSlotAtMsAtom, 100_700);
+    expect(store.get(selectedSlotAtom)).toBe(1004);
+  });
+
+  it("deselects on a click on the selected slot's drawn mark", () => {
+    store.set(selectSlotAtMsAtom, 100_100, 1004);
+    store.set(selectSlotAtMsAtom, 100_100, 1004);
+    expect(store.get(selectedSlotAtom)).toBeUndefined();
   });
 
   it("clears on a click where there is no slot", () => {
@@ -451,41 +472,110 @@ describe("useSlotHighlightRender", () => {
   });
 });
 
-describe("useEscapeClearsSelection", () => {
+describe("useDismissSelection", () => {
+  let replay: HTMLDivElement;
+  let unmount: () => void;
+
+  beforeEach(() => {
+    replay = document.createElement("div");
+    document.body.appendChild(replay);
+    const replayRef = { current: replay };
+    ({ unmount } = renderHook(() => useDismissSelection(replayRef)));
+    store.set(selectSlotAtMsAtom, 100_100);
+  });
+
+  afterEach(() => {
+    unmount();
+    document.body.replaceChildren();
+  });
+
+  const addToBody = (attribute: string, value = "") => {
+    const layer = document.createElement("div");
+    layer.setAttribute(attribute, value);
+    const item = document.createElement("div");
+    layer.appendChild(item);
+    document.body.appendChild(layer);
+    return item;
+  };
   const pressEscape = (target: Element) =>
     target.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        cancelable: true,
+      }),
     );
+  const mouseDown = (target: Element) =>
+    target.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  const touchStart = (target: Element) =>
+    target.dispatchEvent(new Event("touchstart", { bubbles: true }));
 
-  it("clears the selection and still lets menus close on Escape", () => {
-    const { unmount } = renderHook(() => useEscapeClearsSelection());
-    // Radix layers listen on document in the capture phase
-    const layerListener = vi.fn();
-    document.addEventListener("keydown", layerListener, { capture: true });
-    store.set(selectSlotAtMsAtom, 100_100);
+  it("clears on Escape", () => {
+    pressEscape(document.body);
+    expect(store.get(selectedSlotAtom)).toBeUndefined();
+  });
+
+  it("clears on Escape while an always-open popover handles it", () => {
+    // the minimap's permanent Radix popover marks every Escape as handled
+    const popoverListener = (e: Event) => e.preventDefault();
+    document.addEventListener("keydown", popoverListener, { capture: true });
 
     pressEscape(document.body);
     expect(store.get(selectedSlotAtom)).toBeUndefined();
-    expect(layerListener).toHaveBeenCalled();
 
-    document.removeEventListener("keydown", layerListener, { capture: true });
-    unmount();
+    document.removeEventListener("keydown", popoverListener, {
+      capture: true,
+    });
   });
 
-  it("leaves Escape to an open menu", () => {
-    const { unmount } = renderHook(() => useEscapeClearsSelection());
-    const menu = document.createElement("div");
-    menu.setAttribute("role", "listbox");
-    const option = document.createElement("div");
-    menu.appendChild(option);
-    document.body.appendChild(menu);
-    store.set(selectSlotAtMsAtom, 100_100);
+  it("leaves Escape to a menu that closes on it", () => {
+    const option = addToBody("role", "listbox");
+    // Radix removes the menu before the Escape reaches window
+    const closeMenu = () => option.parentElement?.remove();
+    document.addEventListener("keydown", closeMenu, { capture: true });
 
     pressEscape(option);
     expect(store.get(selectedSlotAtom)).toBe(1003);
 
-    menu.remove();
+    document.removeEventListener("keydown", closeMenu, { capture: true });
+  });
+
+  it("clears on a mouse press outside Replay", () => {
+    mouseDown(document.body);
+    expect(store.get(selectedSlotAtom)).toBeUndefined();
+  });
+
+  it("clears on a touch outside Replay", () => {
+    touchStart(document.body);
+    expect(store.get(selectedSlotAtom)).toBeUndefined();
+  });
+
+  it("keeps the selection on presses inside Replay", () => {
+    const control = document.createElement("button");
+    replay.appendChild(control);
+    mouseDown(control);
+    touchStart(control);
+    expect(store.get(selectedSlotAtom)).toBe(1003);
+  });
+
+  it("keeps the selection on presses in popups and selects outside Replay", () => {
+    for (const [attribute, value] of [
+      ["data-radix-popper-content-wrapper", ""],
+      ["role", "listbox"],
+    ]) {
+      const item = addToBody(attribute, value);
+      mouseDown(item);
+      touchStart(item);
+    }
+    expect(store.get(selectedSlotAtom)).toBe(1003);
+  });
+
+  it("stops listening on unmount", () => {
     unmount();
+    unmount = () => {};
+    mouseDown(document.body);
+    pressEscape(document.body);
+    expect(store.get(selectedSlotAtom)).toBe(1003);
   });
 });
 

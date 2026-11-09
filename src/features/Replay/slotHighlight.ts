@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { getDefaultStore } from "jotai";
-import { useEffect } from "react";
-import { useKey, useLatest } from "react-use";
+import { useEffect, type RefObject } from "react";
+import { useClickAway, useKey, useLatest } from "react-use";
 import {
   clearSelectedSlotAtom,
   hoveredRangeAtom,
@@ -274,13 +274,19 @@ export function useSlotHighlightRender(render: () => void) {
   }, [render]);
 }
 
-// leaves Escape to open menus and dialogs, which close on it
-export function useEscapeClearsSelection() {
+export function useDismissSelection(replayRef: RefObject<HTMLElement>) {
+  // leaves Escape to open menus and dialogs, which close on it
   useKey("Escape", (e) => {
-    const isInLayer = (e.target as Element | null)?.closest(
-      '[role="listbox"], [role="menu"], [role="dialog"]',
-    );
+    const isInLayer =
+      e.target instanceof Element &&
+      e.target.closest('[role="listbox"], [role="menu"], [role="dialog"]');
     if (!isInLayer) store.set(clearSelectedSlotAtom);
+  });
+  useClickAway(replayRef, (e) => {
+    const isInPopup =
+      e.target instanceof Element &&
+      e.target.closest('[data-radix-popper-content-wrapper], [role="listbox"]');
+    if (!isInPopup) store.set(clearSelectedSlotAtom);
   });
 }
 

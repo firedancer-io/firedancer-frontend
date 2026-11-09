@@ -18,7 +18,6 @@ import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
 import { useVotesCache } from "./VotesTrack/useVotesCache.ts";
 import Tracks from "./Tracks.tsx";
 import SlotDividers from "./SlotDividers.tsx";
-import { useEscapeClearsSelection } from "./slotHighlight.ts";
 import HoveredTsLine from "./HoveredTsLine.tsx";
 import ReplayTooltip from "./ReplayTooltip.tsx";
 import { useHoveredPosition, type HoveredRect } from "./useHoveredPosition.ts";
@@ -89,8 +88,6 @@ export default function Chart() {
   useVotesCache();
   // Drive the tile states caches used by the tile states tracks
   useTileStatesCache();
-
-  useEscapeClearsSelection();
 
   if (!isInitialized) return <Spinner />;
 

@@ -414,7 +414,8 @@ export const selectedSlotAtom = atom((get) => {
 export const selectSlotAtMsAtom = atom(
   null,
   (get, set, ms: number, drawnSlot?: number) => {
-    set(_selectedSlotAtom, drawnSlot ?? getSlotAtMs(get, ms));
+    const slot = drawnSlot ?? getSlotAtMs(get, ms);
+    set(_selectedSlotAtom, slot === get(selectedSlotAtom) ? undefined : slot);
   },
 );
 

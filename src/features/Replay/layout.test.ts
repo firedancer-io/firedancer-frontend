@@ -188,7 +188,7 @@ describe("getTrackHeights", () => {
       cpuRows: 18,
     });
     for (const id of allTracks) {
-      expect(heights[id]).toBeGreaterThanOrEqual(40);
+      expect(heights[id]).toBeGreaterThanOrEqual(minTrackPx[id]);
     }
     expect(sum(heights)).toBe(500 - (allTracks.length - 1) * TRACK_GAP_PX);
     expect(((heights.banks ?? 0) - trackInsetPx.banks) % 16).toBe(0);
@@ -206,19 +206,103 @@ describe("getTrackHeights", () => {
     expect(sum(heights)).toBe(500);
   });
 
-  it("shrinks the votes floor evenly when the tracks can't all fit it", () => {
+  it("keeps every track at its minimum when the tracks only just fit", () => {
+    for (const tracks of [allTracks, tracksWithoutVotes]) {
+      const free = tracks.reduce((total, id) => total + minTrackPx[id], 0);
+      const heights = getTrackHeights({
+        heightPx: areaFor(free, tracks.length),
+        tracks,
+        hidden: new Set(),
+        banksRows: 10,
+        cpuRows: 2,
+      });
+      for (const id of tracks) {
+        expect(heights[id]).toBeGreaterThanOrEqual(minTrackPx[id]);
+      }
+      expect(sum(heights)).toBe(free);
+    }
+    // the .fill-viewport floor in app.css is sized for this sum
+    expect(sum(minTrackPx)).toBe(256);
+  });
+
+  it("fills the space and keeps minimums for random sizes, rows and hidden tracks", () => {
+    let seed = 1;
+    const random = () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+    let allHiddenRuns = 0;
+    let scaledRuns = 0;
+    for (let i = 0; i < 2000; i++) {
+      const tracks = random() < 0.5 ? allTracks : tracksWithoutVotes;
+      const hidden = new Set(tracks.filter(() => random() < 0.3));
+      const visible = tracks.filter((id) => !hidden.has(id));
+      const banksRows = Math.floor(random() * 40);
+      const heightPx = random() * 900;
+      const heights = getTrackHeights({
+        heightPx,
+        tracks,
+        hidden,
+        banksRows,
+        cpuRows: Math.floor(random() * 20),
+      });
+
+      const titlesPx = TRACK_TITLE_PX * hidden.size;
+      for (const id of hidden) expect(heights[id]).toBe(TRACK_TITLE_PX);
+      if (!visible.length) {
+        allHiddenRuns++;
+        expect(sum(heights)).toBe(titlesPx);
+        continue;
+      }
+
+      const tracksPx = Math.max(
+        0,
+        Math.floor(heightPx) - TRACK_GAP_PX * (tracks.length - 1) - titlesPx,
+      );
+      expect(sum(heights)).toBe(tracksPx + titlesPx);
+
+      const minsPx = visible.reduce((total, id) => total + minTrackPx[id], 0);
+      const minScale = Math.min(1, tracksPx / minsPx);
+      if (minScale < 1) scaledRuns++;
+      const leftoverId = visible.includes("shreds") ? "shreds" : visible[0];
+      const banksRoundingPx = Math.max(banksRows, 1) - 1;
+      for (const id of visible) {
+        const px = heights[id] ?? -1;
+        const minPx = minTrackPx[id] * minScale;
+        expect(Number.isInteger(px)).toBe(true);
+        if (id === leftoverId) {
+          expect(px).toBeGreaterThanOrEqual(Math.floor(minPx));
+        } else if (id === "banks") {
+          expect(px).toBeGreaterThanOrEqual(
+            Math.floor(minPx) - banksRoundingPx,
+          );
+          if (minScale < 1) expect(px).toBeLessThanOrEqual(minPx);
+        } else if (minScale === 1) {
+          expect(px).toBeGreaterThanOrEqual(minPx);
+        } else {
+          expect(px).toBeGreaterThan(minPx - 1);
+          expect(px).toBeLessThanOrEqual(minPx);
+        }
+      }
+    }
+    expect(allHiddenRuns).toBeGreaterThan(0);
+    expect(scaledRuns).toBeGreaterThan(100);
+  });
+
+  it("scales every minimum down together when the tracks can't all fit them", () => {
     const heights = getTrackHeights({
-      heightPx: areaFor(300),
+      heightPx: areaFor(128),
       tracks: allTracks,
       hidden: new Set(),
       banksRows: 10,
       cpuRows: 2,
     });
-    expect(heights.votes).toBe(50);
-    expect(sum(heights)).toBe(300);
+    expect(heights.votes).toBe(minTrackPx.votes / 2);
+    expect(heights.income).toBe(minTrackPx.income / 2);
+    expect(sum(heights)).toBe(128);
   });
 
-  it("never goes negative when tracks can't all fit 40px", () => {
+  it("never goes negative when tracks can't all fit their minimums", () => {
     const heights = getTrackHeights({
       heightPx: 100,
       tracks: allTracks,

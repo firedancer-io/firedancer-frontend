@@ -172,6 +172,7 @@ function MiniMap({ remount, setUpMiniMap, width, panToTs }: MiniMapProps) {
             sideOffset={4}
             collisionPadding={{ top: -9999, left: 0, right: 0, bottom: 8 }}
             arrowPadding={0}
+            tabIndex={undefined}
             // permanently-open, don't steal focus or trap it
             onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => e.preventDefault()}
