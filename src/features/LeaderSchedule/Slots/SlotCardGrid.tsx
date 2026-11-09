@@ -10,7 +10,11 @@ import { useEffect, useRef, useState } from "react";
 import "react-circular-progressbar/dist/styles.css";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import type { SlotPublish } from "../../../api/types";
-import { fixValue, getDiscountedVoteLatency } from "../../../utils";
+import {
+  fixValue,
+  getDiscountedVoteLatency,
+  getSlotGroupLeader,
+} from "../../../utils";
 import { usePrevious, useUnmount } from "react-use";
 import {
   defaultMaxComputeUnits,
@@ -136,6 +140,9 @@ interface SlotCardGridProps {
 }
 
 function SlotColumn({ slot, currentSlot }: SlotCardGridProps) {
+  const isCurrentGroup =
+    currentSlot != null && slot === getSlotGroupLeader(currentSlot);
+
   return (
     <Flex direction="column">
       <Text className={clsx(styles.headerText, styles.slotText)}>Slot</Text>
@@ -144,7 +151,12 @@ function SlotColumn({ slot, currentSlot }: SlotCardGridProps) {
         const isCurrent = cardSlot === currentSlot;
 
         return (
-          <SlotText key={cardSlot} slot={cardSlot} isCurrent={isCurrent} />
+          <SlotText
+            key={cardSlot}
+            slot={cardSlot}
+            isCurrent={isCurrent}
+            isCurrentGroup={isCurrentGroup}
+          />
         );
       })}
     </Flex>
@@ -154,13 +166,22 @@ function SlotColumn({ slot, currentSlot }: SlotCardGridProps) {
 interface SlotTextProps {
   slot: number;
   isCurrent: boolean;
+  isCurrentGroup: boolean;
 }
 
-function SlotText({ slot, isCurrent }: SlotTextProps) {
+function SlotText({ slot, isCurrent, isCurrentGroup }: SlotTextProps) {
   const queryPublish = useSlotQueryPublish(slot);
   const pubkey = usePubKey(slot);
   const myPubkey = useAtomValue(identityKeyAtom);
   const isLeader = myPubkey === pubkey;
+
+  const completedNs = queryPublish.publish?.completed_time_nanos;
+  const durationNanos = queryPublish.publish?.duration_nanos ?? 0;
+  // no replay link for current group, because replay charts are delayed
+  const replayCenterNs =
+    !isCurrentGroup && completedNs != null
+      ? completedNs - BigInt(Math.trunc(durationNanos / 2))
+      : undefined;
 
   return (
     <Flex
@@ -172,7 +193,11 @@ function SlotText({ slot, isCurrent }: SlotTextProps) {
       align="center"
       gap="2"
     >
-      <LinkedSlotText slot={slot} isLeader={isLeader} />
+      <LinkedSlotText
+        slot={slot}
+        isLeader={isLeader}
+        replayCenterNs={replayCenterNs}
+      />
 
       <SlotStatusIcon
         slot={slot}
