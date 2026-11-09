@@ -19,10 +19,23 @@ import { useVotesCache } from "./VotesTrack/useVotesCache.ts";
 import Tracks from "./Tracks.tsx";
 import SlotDividers from "./SlotDividers.tsx";
 import HoveredTsLine from "./HoveredTsLine.tsx";
+import EpochMarkers from "./EpochMarkers.tsx";
+import { epochLabel } from "../../epochUtils.ts";
+import epochLinesStyles from "./epochLines.module.css";
+import {
+  trackHeight as headerHeight,
+  trackMarginBottom as headerMarginBottom,
+  trackMarginTop as headerMarginTop,
+} from "./HeaderTrack/const.ts";
 import ReplayTooltip from "./ReplayTooltip.tsx";
 import { useHoveredPosition, type HoveredRect } from "./useHoveredPosition.ts";
 
 const store = getDefaultStore();
+
+// sit below the non-agg header row
+const EPOCH_LINE_LABEL_GAP_PX = 5;
+const epochLineLabelTop =
+  headerMarginTop + headerHeight + headerMarginBottom + EPOCH_LINE_LABEL_GAP_PX;
 
 const hoverOwner = "replay-tracks";
 
@@ -62,6 +75,18 @@ export default function Chart() {
   const onHoverLeave = useCallback(() => {
     store.set(clearHoverInfoAtom, hoverOwner);
   }, []);
+
+  const renderEpochLine = useCallback(
+    (epochNumber: number | undefined) => (
+      <span
+        className={epochLinesStyles.label}
+        style={{ top: epochLineLabelTop }}
+      >
+        {epochLabel(epochNumber)}
+      </span>
+    ),
+    [],
+  );
 
   const { setContainer: setHoverContainer } = useHoveredPosition({
     onHoverChange,
@@ -114,6 +139,12 @@ export default function Chart() {
 
             <SlotDividers />
             <HoveredTsLine />
+            <EpochMarkers
+              rootClassName={epochLinesStyles.root}
+              markerParentClassName={epochLinesStyles.line}
+              hideWhenAggregate
+              renderMarker={renderEpochLine}
+            />
             <ReplayTooltip />
           </Flex>
         </>

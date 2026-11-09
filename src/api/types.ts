@@ -7,6 +7,7 @@ import type {
   clusterSchema,
   completedSlotSchema,
   epochNewSchema,
+  epochScheduleConfigSchema,
   estimatedSlotDurationSchema,
   estimatedSlotSchema,
   estimatedTpsSchema,
@@ -187,6 +188,8 @@ export type VoteDistance = z.infer<typeof voteDistanceSchema>;
 export type SkipRate = z.infer<typeof skipRateSchema>;
 
 export type Epoch = z.infer<typeof epochNewSchema>;
+
+export type EpochScheduleConfig = z.infer<typeof epochScheduleConfigSchema>;
 
 export type SlotLevel = z.infer<typeof slotLevelSchema>;
 

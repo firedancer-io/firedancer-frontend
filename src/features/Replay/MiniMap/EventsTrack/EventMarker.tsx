@@ -1,16 +1,33 @@
 import { memo, type CSSProperties } from "react";
-import { Box, Flex, Tooltip } from "@radix-ui/themes";
+import { Flex, Tooltip } from "@radix-ui/themes";
 import { useAtomValue } from "jotai";
 import { HoverCard } from "radix-ui";
 import clsx from "clsx";
-import { TimelineEventType } from "../../../../api/entities.ts";
+import {
+  TimelineEventType,
+  isTimelineIdentityEvent,
+} from "../../../../api/entities.ts";
 import { containerElAtom } from "../../../../atoms.ts";
 import { referenceNsAtom } from "../../atoms.ts";
 import { SlotStatus } from "../../HeaderTrack/SlotStatus.tsx";
 import styles from "./eventsTrack.module.css";
-import chartStyles from "../../chart.module.css";
-import { formatSlotTime, type EventGroup } from "./utils.ts";
-import type { EventTs } from "../../Events/atoms.ts";
+import {
+  formatSlotTime,
+  getIdentityDetailLines,
+  getMultiPinHeader,
+  getSinglePinText,
+  type EventGroup,
+  type IdentityDetailLine,
+} from "./utils.ts";
+import type { EventInfo } from "../../Events/atoms.ts";
+import { Pin } from "./Pin.tsx";
+import { useGetEpochForSlot } from "../../../../epochUtils.ts";
+
+const identityLineClass: Record<IdentityDetailLine["kind"], string> = {
+  keys: styles.pinPopoverIdentityKeys,
+  result: styles.pinPopoverIdentityResult,
+  notes: styles.pinPopoverIdentityNotes,
+};
 
 interface PinContainerProps extends EventGroup {
   type: TimelineEventType;
@@ -20,9 +37,11 @@ interface PinContainerProps extends EventGroup {
 const PinContainer = memo(function PinContainer({
   type,
   ts,
-  slots,
+  events,
   panToTs,
 }: PinContainerProps) {
+  const referenceNs = useAtomValue(referenceNsAtom);
+
   return (
     <Flex
       className={styles.pinContainer}
@@ -31,10 +50,15 @@ const PinContainer = memo(function PinContainer({
       inset="0"
       style={{ "--event-ts": `${ts}` } as CSSProperties}
     >
-      {slots.length > 1 ? (
-        <MultiPin slots={slots} type={type} panToTs={panToTs} />
+      {events.length > 1 ? (
+        <MultiPin events={events} type={type} panToTs={panToTs} />
       ) : (
-        <SinglePin slot={slots[0]} type={type} panToTs={panToTs} />
+        <SinglePin
+          type={type}
+          event={events[0]}
+          referenceNs={referenceNs}
+          panToTs={panToTs}
+        />
       )}
     </Flex>
   );
@@ -43,16 +67,28 @@ const PinContainer = memo(function PinContainer({
 export default PinContainer;
 
 interface SinglePinProps {
-  slot: EventTs;
   type: TimelineEventType;
+  event: EventInfo;
+  referenceNs: bigint | undefined;
   panToTs: (ts: number) => void;
 }
 
 /**
  * Click navigates to event ts
  */
-function SinglePin({ slot, type, panToTs }: SinglePinProps) {
-  const referenceNs = useAtomValue(referenceNsAtom);
+function SinglePin({ type, event, referenceNs, panToTs }: SinglePinProps) {
+  const getEpochForSlot = useGetEpochForSlot();
+  const epochNumber =
+    type === TimelineEventType.EpochStart
+      ? getEpochForSlot?.(event.slot)
+      : undefined;
+  const isIdentity = isTimelineIdentityEvent(type);
+  const { lines, ariaLabel } = getSinglePinText(
+    type,
+    event,
+    epochNumber,
+    referenceNs,
+  );
 
   return (
     <Tooltip
@@ -60,19 +96,22 @@ function SinglePin({ slot, type, panToTs }: SinglePinProps) {
       disableHoverableContent
       // close immediately to open adjacent marker tooltip
       delayDuration={0}
-      content={`Your slot ${slot.slot.toLocaleString()} skipped · ${formatSlotTime(
-        referenceNs,
-        slot.ts,
-      )}`}
+      className={isIdentity ? styles.identityTooltip : undefined}
+      content={lines.map((line, i) => (
+        <span key={i}>
+          {i > 0 && <br />}
+          {line}
+        </span>
+      ))}
     >
       <button
         type="button"
         className={clsx(styles.pinPositioner, styles.pinButton)}
         onClick={(e) => {
           e.stopPropagation();
-          panToTs(slot.ts);
+          panToTs(event.ts);
         }}
-        aria-label={`Jump to skipped slot ${slot.slot.toLocaleString()}`}
+        aria-label={ariaLabel}
       >
         <Pin eventType={type} />
       </button>
@@ -81,22 +120,25 @@ function SinglePin({ slot, type, panToTs }: SinglePinProps) {
 }
 
 interface MultiPinProps {
-  slots: EventTs[];
+  events: EventInfo[];
   type: TimelineEventType;
   panToTs: (ts: number) => void;
 }
 /**
- * Hover opens popover with a button for each slot
+ * Hover opens popover with a button for each event
  */
-function MultiPin({ slots, type, panToTs }: MultiPinProps) {
+function MultiPin({ events, type, panToTs }: MultiPinProps) {
   const popoverContainerEl = useAtomValue(containerElAtom);
   const referenceNs = useAtomValue(referenceNsAtom);
+  const skipped = type === TimelineEventType.LeaderSkip;
+  const isIdentity = isTimelineIdentityEvent(type);
+  const header = getMultiPinHeader(type, events.length);
 
   return (
     <HoverCard.Root openDelay={100} closeDelay={100}>
       <HoverCard.Trigger asChild>
         <div className={styles.pinPositioner}>
-          <Pin count={slots.length} eventType={type} />
+          <Pin count={events.length} eventType={type} />
         </div>
       </HoverCard.Trigger>
 
@@ -114,71 +156,57 @@ function MultiPin({ slots, type, panToTs }: MultiPinProps) {
             justify="between"
             p="2px 4px 8px"
           >
-            <span>{slots.length} of your slots skipped here</span>
+            <span>{header}</span>
             <span className={styles.pinPopoverJumpAll}>click to jump</span>
           </Flex>
 
           <Flex direction="column" maxHeight="180px" overflowY="auto">
-            {slots.map(({ slot, ts: slotTs }) => (
-              <button
-                type="button"
-                key={slot}
-                className={styles.pinPopoverRow}
-                onClick={() => panToTs(slotTs)}
-              >
-                <SlotStatus slot={slot} skipped />
-                <span className={styles.pinPopoverSlot}>
-                  {slot.toLocaleString()}
-                </span>
-                <span className={styles.pinPopoverTime}>
-                  {formatSlotTime(referenceNs, slotTs)}
-                </span>
-                <span className={styles.pinPopoverJump}>jump</span>
-              </button>
-            ))}
+            {events.map((event) => {
+              const { slot, ts: slotTs } = event;
+              const slotTime = (
+                <>
+                  <span className={styles.pinPopoverSlot}>
+                    {slot.toLocaleString()}
+                  </span>
+                  <span className={styles.pinPopoverTime}>
+                    {formatSlotTime(referenceNs, slotTs)}
+                  </span>
+                </>
+              );
+              return (
+                <button
+                  type="button"
+                  key={`${slot}:${slotTs}`}
+                  className={clsx(
+                    styles.pinPopoverRow,
+                    isIdentity && styles.pinPopoverRowIdentity,
+                    skipped && styles.pinPopoverRowSkipped,
+                  )}
+                  onClick={() => panToTs(slotTs)}
+                >
+                  {skipped && <SlotStatus slot={slot} skipped={skipped} />}
+                  {isIdentity ? (
+                    <span className={styles.pinPopoverIdentity}>
+                      {getIdentityDetailLines(event).map((line) => (
+                        <span
+                          key={line.kind}
+                          className={identityLineClass[line.kind]}
+                        >
+                          {line.text}
+                        </span>
+                      ))}
+                      {slotTime}
+                    </span>
+                  ) : (
+                    slotTime
+                  )}
+                  <span className={styles.pinPopoverJump}>jump</span>
+                </button>
+              );
+            })}
           </Flex>
         </HoverCard.Content>
       </HoverCard.Portal>
     </HoverCard.Root>
-  );
-}
-
-const eventTypeClassName: Record<TimelineEventType, string> = {
-  [TimelineEventType.LeaderSkip]: styles.eventType0,
-};
-
-interface PinProps {
-  count?: number;
-  eventType: TimelineEventType;
-}
-
-function Pin({ count, eventType }: PinProps) {
-  return (
-    <Flex
-      width="100%"
-      height="100%"
-      direction="column"
-      align="center"
-      justify="between"
-      className={clsx(
-        chartStyles.noChartExplore,
-        eventTypeClassName[eventType],
-      )}
-    >
-      <Flex position="relative">
-        <svg
-          className={styles.pinTriangle}
-          xmlns="http://www.w3.org/2000/svg"
-          width="10"
-          height="7"
-          viewBox="0 0 10 7"
-          fill="none"
-        >
-          <path d="M1 0.5H9L5 5.5L1 0.5Z" stroke="black" />
-        </svg>
-        {count && <span className={styles.pinCount}>{count}</span>}
-      </Flex>
-      <Box height="10px" width="2px" className={styles.pinBar} />
-    </Flex>
   );
 }

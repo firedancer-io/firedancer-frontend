@@ -1,0 +1,42 @@
+.root {
+  position: absolute;
+  inset: 0;
+  overflow-x: clip;
+  overflow-y: visible;
+  pointer-events: none;
+}
+
+.pin {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  transform-origin: left;
+}
+
+.pin-content {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.pin-icon {
+  position: relative;
+  width: 10px;
+  flex-shrink: 0;
+  transform: translateX(-50%);
+}
+
+.pin-label {
+  align-self: center;
+  margin-left: -2px;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--epoch-line-text-color);
+}

@@ -5,7 +5,7 @@ import { NonAggHeaderTrack } from "./NonAggHeaderTrack.tsx";
 import AggHeaderBucketHighlight from "./AggHeaderBucketHighlight.tsx";
 import styles from "./headerTrack.module.css";
 import { Box } from "@radix-ui/themes";
-import { trackHeight } from "./const.ts";
+import { trackHeight, trackMarginBottom, trackMarginTop } from "./const.ts";
 import { isAggHeaderVisibleAtom } from "./aggAtoms.ts";
 
 const store = getDefaultStore();
@@ -34,8 +34,8 @@ export default function HeaderTrack({ width }: HeaderTrackProps) {
 
   return (
     <Box
-      mt="6px"
-      mb="4px"
+      mt={`${trackMarginTop}px`}
+      mb={`${trackMarginBottom}px`}
       ref={containerRef}
       className={styles.headerTrack}
       position="relative"

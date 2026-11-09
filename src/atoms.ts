@@ -75,6 +75,12 @@ export const epochAtom = atom(
   },
 );
 
+export const epochScheduleAtom = atom(
+  (get) =>
+    get(_epochsAtom).find((epoch) => epoch.epoch_schedule != null)
+      ?.epoch_schedule ?? null,
+);
+
 export const deletePreviousEpochsAtom = atom(
   null,
   (_get, set, currentEpoch: number) => {

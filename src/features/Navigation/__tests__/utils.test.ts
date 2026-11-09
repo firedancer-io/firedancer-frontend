@@ -10,6 +10,7 @@ describe("navigation utils", () => {
         end_time_nanos: null,
         start_slot: 4,
         end_slot: 15,
+        epoch_schedule: null,
         excluded_stake_lamports: 0n,
         staked_pubkeys: [],
         staked_lamports: [],

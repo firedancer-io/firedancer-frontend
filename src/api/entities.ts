@@ -882,12 +882,20 @@ export const summarySchema = z.discriminatedUnion("key", [
   }),
 ]);
 
+export const epochScheduleConfigSchema = z.object({
+  slots_per_epoch: z.number(),
+  first_normal_epoch: z.number(),
+  first_normal_slot: z.number(),
+  warmup: z.boolean(),
+});
+
 export const epochNewSchema = z.object({
   epoch: z.number(),
   start_time_nanos: z.string().nullable(),
   end_time_nanos: z.string().nullable(),
   start_slot: z.number(),
   end_slot: z.number(),
+  epoch_schedule: epochScheduleConfigSchema.nullable(),
   excluded_stake_lamports: z.coerce.bigint(),
   staked_pubkeys: z.string().array(),
   staked_lamports: z.coerce.bigint().array(),
@@ -1643,6 +1651,33 @@ export const timelineVotesSchema = z.object({
 
 export enum TimelineEventType {
   LeaderSkip = 0,
+  IdentitySet = 1,
+  IdentityPromote = 2,
+  IdentityTakeover = 3,
+  IdentityHandoff = 4,
+  EpochStart = 5,
+  Boot = 6,
+  CatchUp = 7,
+}
+
+const timelineIdentityEventTypes = [
+  TimelineEventType.IdentitySet,
+  TimelineEventType.IdentityPromote,
+  TimelineEventType.IdentityTakeover,
+  TimelineEventType.IdentityHandoff,
+] as const;
+
+export type TimelineIdentityEventType =
+  (typeof timelineIdentityEventTypes)[number];
+
+const timelineIdentityEvents = new Set<TimelineIdentityEventType>(
+  timelineIdentityEventTypes,
+);
+
+export function isTimelineIdentityEvent(
+  event: TimelineEventType,
+): event is TimelineIdentityEventType {
+  return timelineIdentityEvents.has(event as TimelineIdentityEventType);
 }
 
 const timelineEventTypesSet = new Set<number>(
@@ -1671,8 +1706,13 @@ export const timelineEventsSchema = z
     event: z.array(z.number()),
     slot: z.array(z.number()),
     ts: z.array(z.coerce.bigint()),
+    // identity arrays have 1 entry per identity event, in the same order
+    identity_result: z.array(z.string()),
+    identity_from: z.array(z.string()),
+    identity_to: z.array(z.string()),
+    identity_notes: z.array(z.string()),
   })
-  // Drop unknown events from arrays
+  // Drop unknown events from the per-row arrays
   .transform(({ event, slot, ts, ...rest }) => {
     const filteredEvent: TimelineEventType[] = [];
     const filteredSlot: number[] = [];
