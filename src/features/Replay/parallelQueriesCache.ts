@@ -87,8 +87,6 @@ export function createParallelCache<
         visibleRangeNs: NsTsRange;
         granularity: Granularity;
         params: Params;
-        /** whether any tile in the last request overlapped the world end */
-        hasWorldEndTile: boolean;
       }
     | undefined;
 
@@ -266,13 +264,11 @@ export function createParallelCache<
     );
 
     const toFetch: { queryId: number; tileIdx: number }[] = [];
-    let hasWorldEndTile = false;
 
     // mark missing tiles as pending
     for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
       const tileEndNs = BigInt(tileIdx + 1) * tileSizeNs;
       const isStale = tileEndNs >= worldEndNs;
-      if (isStale) hasWorldEndTile = true;
 
       const queryId = getNewQueryId(granularity, tileIdx, isStale);
       if (queryId == null) continue;
@@ -283,7 +279,6 @@ export function createParallelCache<
       visibleRangeNs: [visibleStartNs, visibleEndNs],
       granularity,
       params,
-      hasWorldEndTile,
     };
 
     // nothing to fetch
@@ -340,12 +335,12 @@ export function createParallelCache<
     return queryInfo;
   };
 
-  const queryWorldEnd = () => {
+  const refreshStaleTiles = () => {
     // in live mode, the visible range will automatically query the last tile
     // so skip this query
     if (store.get(isLiveAtom)) return;
 
-    if (!latestRequest?.hasWorldEndTile) return;
+    if (!latestRequest) return;
 
     const worldRange = store.get(worldRangeAtom);
     const referenceNs = store.get(referenceNsAtom);
@@ -366,15 +361,15 @@ export function createParallelCache<
 
   // While visible, throttle. While hidden, cancel the throttle and fall back to
   // requestAnimationFrame
-  const scheduleQueryWorldEnd = throttleIfVisible(queryWorldEnd, 100);
+  const scheduleRefreshStaleTiles = throttleIfVisible(refreshStaleTiles, 100);
 
-  const init = () => store.sub(worldRangeAtom, scheduleQueryWorldEnd);
+  const init = () => store.sub(worldRangeAtom, scheduleRefreshStaleTiles);
 
   /**
    * Abandon in-flight queries
    */
   const clearPending = () => {
-    scheduleQueryWorldEnd.cancel();
+    scheduleRefreshStaleTiles.cancel();
     for (const { pending } of getChartState().values()) {
       pending.clear();
     }
@@ -388,7 +383,7 @@ export function createParallelCache<
    */
   const pauseStaleRefreshes = () => {
     latestRequest = undefined;
-    scheduleQueryWorldEnd.cancel();
+    scheduleRefreshStaleTiles.cancel();
   };
 
   /**
