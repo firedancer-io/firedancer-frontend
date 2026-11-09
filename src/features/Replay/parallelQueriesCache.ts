@@ -1,6 +1,7 @@
 import { atom, getDefaultStore } from "jotai";
 import type { NsTsRange } from "../WebGl/webglUtils";
 import { throttleIfVisible } from "../../api/useDebounceIfVisible";
+import { isConnectedAtom } from "../../api/ws/atoms";
 import {
   isLiveAtom,
   referenceNsAtom,
@@ -80,8 +81,13 @@ export function createParallelCache<
 }: CreateParallelCacheOpts<Granularity, Params>) {
   const pendingQueries = new Map<
     number,
-    { tileIdx: number; granularity: Granularity; isStale: boolean }
+    {
+      tileIdx: number;
+      granularity: Granularity;
+      isStale: boolean;
+    }
   >();
+
   let latestRequest:
     | {
         visibleRangeNs: NsTsRange;
@@ -265,10 +271,15 @@ export function createParallelCache<
 
     const toFetch: { queryId: number; tileIdx: number }[] = [];
 
+    const isConnected = store.get(isConnectedAtom);
+
     // mark missing tiles as pending
     for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
       const tileEndNs = BigInt(tileIdx + 1) * tileSizeNs;
       const isStale = tileEndNs >= worldEndNs;
+
+      // while disconnected, don't reserve/query tiles
+      if (!isConnected) continue;
 
       const queryId = getNewQueryId(granularity, tileIdx, isStale);
       if (queryId == null) continue;
@@ -281,7 +292,7 @@ export function createParallelCache<
       params,
     };
 
-    // nothing to fetch
+    // nothing to fetch (also covers the disconnected case)
     if (!toFetch.length) {
       onNothingToFetch?.(granularity);
       return;
@@ -315,8 +326,8 @@ export function createParallelCache<
     const { granularity, tileIdx, isStale } = queryInfo;
     const tilesState = getTileStates(granularity);
 
-    pendingQueries.delete(queryId);
     tilesState.pending.delete(tileIdx);
+    pendingQueries.delete(queryId);
 
     // a response ending before the tile end leaves it stale
     const tileEndNs = BigInt(tileIdx + 1) * getTileSizeNs(granularity);
@@ -363,7 +374,39 @@ export function createParallelCache<
   // requestAnimationFrame
   const scheduleRefreshStaleTiles = throttleIfVisible(refreshStaleTiles, 100);
 
-  const init = () => store.sub(worldRangeAtom, scheduleRefreshStaleTiles);
+  /** Re-send the last visible range */
+  const requeryLatestRange = () => {
+    if (!latestRequest) return;
+    const { visibleRangeNs, granularity, params } = latestRequest;
+
+    const worldRange = store.get(worldRangeAtom);
+    const referenceNs = store.get(referenceNsAtom);
+    if (!worldRange || referenceNs == null) return;
+
+    const worldRangeNs: NsTsRange = [
+      calcAbsoluteNs(referenceNs, worldRange[0]),
+      calcAbsoluteNs(referenceNs, worldRange[1]),
+    ];
+    queryRange(visibleRangeNs, worldRangeNs, granularity, params);
+  };
+
+  const init = () => {
+    if (store.get(isConnectedAtom)) requeryLatestRange();
+
+    const unsubWorldRange = store.sub(
+      worldRangeAtom,
+      scheduleRefreshStaleTiles,
+    );
+    const unsubConnected = store.sub(isConnectedAtom, () => {
+      // isConnectedAtom only notifies when the value actually changes
+      if (store.get(isConnectedAtom)) requeryLatestRange();
+      else clearPending();
+    });
+    return () => {
+      unsubWorldRange();
+      unsubConnected();
+    };
+  };
 
   /**
    * Abandon in-flight queries
