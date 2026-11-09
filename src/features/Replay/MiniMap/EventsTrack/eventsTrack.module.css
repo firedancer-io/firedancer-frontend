@@ -2,7 +2,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .pin-container {
@@ -22,6 +22,20 @@
     cursor: default;
   }
 
+  .pin-positioner:has(.pin-epoch-start) {
+    position: relative;
+    top: -1px;
+  }
+
+  /* the flag icon is anchored at its left-edge pole */
+  .pin-positioner:has(.pin-catch-up) {
+    transform: none;
+
+    .pin-catch-up {
+      align-items: flex-start;
+    }
+  }
+
   .pin-button {
     appearance: none;
     padding: 0;
@@ -30,36 +44,89 @@
     color: inherit;
     font: inherit;
     cursor: pointer;
+
+    * {
+      cursor: pointer;
+    }
   }
 
-  .pin-triangle {
+  .pin-flag {
     display: block;
+    height: 10px;
+    width: auto;
   }
+}
 
-  .pin-count {
-    position: absolute;
-    top: 50%;
-    left: 100%;
-    transform: translateY(-50%);
-    margin-left: -2px;
-    font-size: 6px;
-    line-height: 1;
+.pin-triangle {
+  display: block;
+
+  path {
+    fill: var(--pin-color);
   }
+}
 
-  /* colors by type */
-  .event-type-0 {
-    .pin-triangle path {
-      fill: var(--epoch-skipped-slot-color);
-    }
+.pin-bar {
+  height: 10px;
+  width: 2px;
+  background-color: var(--pin-color);
+}
 
-    .pin-bar {
-      background-color: var(--epoch-skipped-slot-color);
-    }
+.pin-stretch {
+  align-self: stretch;
+  height: 100%;
+}
 
-    .pin-count {
-      color: var(--epoch-skipped-slot-color);
-    }
-  }
+.pin-bar-full {
+  height: auto;
+  flex-grow: 1;
+}
+
+.pin-count {
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%);
+  margin-left: -2px;
+  font-size: 6px;
+  line-height: 1;
+  color: var(--pin-color);
+}
+
+.pin-skipped {
+  --pin-color: var(--epoch-skipped-slot-color);
+}
+
+.pin-identity-set {
+  --pin-color: var(--yellow-11);
+}
+
+.pin-identity-promote {
+  --pin-color: var(--yellow-10);
+}
+
+.pin-identity-takeover {
+  --pin-color: var(--yellow-9);
+}
+
+.pin-identity-handoff {
+  --pin-color: var(--yellow-8);
+}
+
+.pin-epoch-start {
+  --pin-color: var(--epoch-line-text-color);
+}
+
+.pin-boot {
+  --pin-color: var(--boot-color);
+}
+
+.pin-catch-up {
+  --pin-color: var(--epoch-skipped-slot-color);
+}
+
+.identity-tooltip {
+  width: max-content;
+  max-width: var(--radix-tooltip-content-available-width);
 }
 
 /* popover */
@@ -94,8 +161,34 @@
     cursor: pointer;
 
     .pin-popover-slot {
-      color: var(--epoch-skipped-slot-color);
+      color: var(--gray-11);
       font-variant-numeric: tabular-nums;
+    }
+
+    .pin-popover-identity {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+
+      .pin-popover-identity-keys {
+        color: var(--gray-11);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .pin-popover-identity-result {
+        color: var(--gray-10);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .pin-popover-identity-notes {
+        color: var(--gray-10);
+        overflow-wrap: anywhere;
+      }
     }
 
     .pin-popover-time {
@@ -114,5 +207,22 @@
         opacity: 1;
       }
     }
+  }
+
+  .pin-popover-row-skipped .pin-popover-slot {
+    color: var(--epoch-skipped-slot-color);
+  }
+
+  .pin-popover-row-identity {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+
+    .pin-popover-time {
+      color: var(--gray-10);
+    }
+  }
+
+  &:has(.pin-popover-row-identity) {
+    max-width: var(--radix-hover-card-content-available-width);
   }
 }

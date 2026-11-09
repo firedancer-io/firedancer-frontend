@@ -10,7 +10,7 @@ import {
   moveAggCamera,
   setUpRenderers,
 } from "./utils.ts";
-import { aggTrackHeight } from "./const.ts";
+import { aggTrackHeight, aggTrackOverhang } from "./const.ts";
 import { useAggHeaderQuery } from "./useAggHeaderQuery.ts";
 import { getAggSlotsGranularity } from "../utils.ts";
 import type { AggGranularity } from "../../../api/types.ts";
@@ -21,6 +21,11 @@ import styles from "../track.module.css";
 import { aggHeaderEmitterAtom, aggSlotsAtom } from "./aggAtoms.ts";
 import { drawEventType } from "../const.ts";
 import TrackControls from "../TrackControls.tsx";
+import EpochMarkers from "../EpochMarkers.tsx";
+import { TimelineEventType } from "../../../api/entities.ts";
+import { epochLabel } from "../../../epochUtils.ts";
+import { Pin } from "../MiniMap/EventsTrack/Pin.tsx";
+import epochPinsStyles from "../epochPins.module.css";
 import { Box } from "@radix-ui/themes";
 
 const chartId = "agg-header-track";
@@ -139,12 +144,39 @@ function AggHeaderTrack({ remount, className, showAgg }: AggHeaderTrackProps) {
     };
   }, [onRangeChange, throttledDrawAgg, throttledRelativeTsQuery]);
 
+  const renderEpochPin = useCallback(
+    (epochNumber: number | undefined) => (
+      <div className={epochPinsStyles.pinContent}>
+        <div
+          className={epochPinsStyles.pinIcon}
+          style={{
+            // 1px into the header's top margin
+            top: -(aggTrackOverhang + 1),
+            // ends at the track bottom
+            height: `calc(100% + ${aggTrackOverhang + 1}px)`,
+          }}
+        >
+          <Pin eventType={TimelineEventType.EpochStart} fullHeightBar />
+        </div>
+        <span className={epochPinsStyles.pinLabel}>
+          {epochLabel(epochNumber)}
+        </span>
+      </div>
+    ),
+    [],
+  );
+
   return (
     <Box
       height={`${aggTrackHeight}px`}
       className={clsx(className, styles.trackContainer)}
     >
       <div ref={containerRef} className={styles.trackCanvasContainer} />
+      <EpochMarkers
+        rootClassName={epochPinsStyles.root}
+        markerParentClassName={epochPinsStyles.pin}
+        renderMarker={renderEpochPin}
+      />
       <TrackControls name="Slots" bucketSize={granularity} />
     </Box>
   );

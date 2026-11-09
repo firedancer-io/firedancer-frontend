@@ -4,7 +4,11 @@ import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
 export const HEADER_AGG_THRESHOLD_MS = 180_000;
 
 export const trackHeight = 36;
+export const trackMarginTop = 6;
+export const trackMarginBottom = 4;
 export const aggTrackHeight = 30;
+// the agg track is bottom-aligned; epoch pins extend into the space above it
+export const aggTrackOverhang = trackHeight - aggTrackHeight;
 
 export type RendererObj = {
   renderer: THREE.WebGLRenderer;

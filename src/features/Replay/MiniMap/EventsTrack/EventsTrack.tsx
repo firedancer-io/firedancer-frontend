@@ -132,28 +132,28 @@ function EventTypeTrack({ eventType, pxPerMs, panToTs }: EventTypeTrackProps) {
       const groupThresholdMs =
         pxPerMs > 0 ? pinGroupPxThreshold / pxPerMs : Infinity;
 
-      // Group slots that are close together
-      const slotGroups: EventGroup["slots"][] = [];
-      let currentGroup: EventGroup["slots"] = [];
-      for (const { ts, slot } of events) {
+      // Group events that are close together
+      const eventGroups: EventGroup["events"][] = [];
+      let currentGroup: EventGroup["events"] = [];
+      for (const event of events) {
         if (
           currentGroup.length &&
-          // distance from first slot within group
-          ts - currentGroup[0].ts <= groupThresholdMs
+          // distance from first event within group
+          event.ts - currentGroup[0].ts <= groupThresholdMs
         ) {
-          currentGroup.push({ ts, slot });
+          currentGroup.push(event);
         } else {
-          if (currentGroup.length) slotGroups.push(currentGroup);
-          currentGroup = [{ ts, slot }];
+          if (currentGroup.length) eventGroups.push(currentGroup);
+          currentGroup = [event];
         }
       }
-      if (currentGroup.length) slotGroups.push(currentGroup);
+      if (currentGroup.length) eventGroups.push(currentGroup);
 
-      const groups = slotGroups.map((slots) => {
+      const groups = eventGroups.map((events) => {
         return {
           // avg ts
-          ts: slots.reduce((sum, s) => sum + s.ts, 0) / slots.length,
-          slots,
+          ts: events.reduce((sum, s) => sum + s.ts, 0) / events.length,
+          events,
         };
       });
 
@@ -201,7 +201,7 @@ function EventTypeTrack({ eventType, pxPerMs, panToTs }: EventTypeTrackProps) {
           key={getEventGroupKey(group)}
           type={eventType}
           ts={group.ts}
-          slots={group.slots}
+          events={group.events}
           panToTs={panToTs}
         />
       ))}

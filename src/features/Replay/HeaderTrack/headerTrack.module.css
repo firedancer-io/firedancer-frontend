@@ -1,5 +1,6 @@
 .header-track {
-  overflow: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
 
   .agg-container {
     display: none;
