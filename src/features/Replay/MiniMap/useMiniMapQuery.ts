@@ -41,10 +41,8 @@ export default function useMiniMapQuery(
           lastRequest?.granularity === granularity &&
           lastRequest.worldRangeNs[0] === worldRangeNs[0]
         ) {
-          if (lastRequest.worldRangeNs[1] === worldRangeNs[1]) {
-            // nothing to fetch
-            return;
-          }
+          // the smoothed world end can step back; the server closes on a reversed range
+          if (worldRangeNs[1] <= lastRequest.worldRangeNs[1]) return;
 
           // fetch only missing data at end
           const queryId = reserveNextQueryId(AGG_SLOTS_QUERY_KEY);
