@@ -5,7 +5,8 @@ import {
   createRenderer,
   type TsRange,
 } from "../../WebGl/webglUtils";
-import { SHREDS_AGG_THRESHOLD_MS, type RendererObj } from "./const";
+import { type RendererObj } from "./const";
+import { AGG_SLOT_SHRED_THRESHOLD_MS } from "../const";
 import { omit } from "lodash";
 import { setUpAggResources } from "./aggUtils";
 import {
@@ -66,5 +67,5 @@ export function setUpRenderers(
 }
 
 export function isAggregate(rangeMs: TsRange) {
-  return rangeMs[1] - rangeMs[0] > SHREDS_AGG_THRESHOLD_MS;
+  return rangeMs[1] - rangeMs[0] > AGG_SLOT_SHRED_THRESHOLD_MS;
 }

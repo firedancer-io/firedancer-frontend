@@ -32,11 +32,10 @@ import {
   calcRelativeMs,
   getTileIdxRangeWithOverscan,
 } from "../utils";
-import { CHART_NOW_DELAY_MS } from "../const";
+import { CHART_NOW_DELAY_MS, AGG_SLOT_SHRED_THRESHOLD_MS } from "../const";
 import { getNonAggAtoms } from "./atoms";
 import { OVERSCAN_TILES_COUNT, tileSizeNs } from "./useNonAggShredsQuery";
 import {
-  SHREDS_AGG_THRESHOLD_MS,
   MAX_HEIGHT_RATIO,
   type NonAggRendererResources,
   type RendererObj,
@@ -57,7 +56,7 @@ const FEC_EDGE_FALLOFF = 3;
 function getFecEdgeOpacity(windowSizeMs: number): number {
   const t =
     (windowSizeMs - NON_AGG_FEC_THRESHOLD_MS) /
-    (SHREDS_AGG_THRESHOLD_MS - NON_AGG_FEC_THRESHOLD_MS);
+    (AGG_SLOT_SHRED_THRESHOLD_MS - NON_AGG_FEC_THRESHOLD_MS);
   const clamped = Math.min(1, Math.max(0, t));
   return Math.pow(1 - clamped, FEC_EDGE_FALLOFF);
 }

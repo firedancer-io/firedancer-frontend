@@ -15,6 +15,8 @@ export const DEFAULT_WINDOW_MS = 12_000;
 export const MIN_VISIBLE_MS = 0.001;
 export const CHART_NOW_DELAY_MS = 500;
 
+export const AGG_SLOT_SHRED_THRESHOLD_MS = 360_000;
+
 export const playbackRates = [0.25, 0.5, 1, 2, 4, 8, 16, 32] as const;
 export type PlaybackRate = (typeof playbackRates)[number];
 

@@ -22,7 +22,7 @@ export const OVERSCAN_TILES_COUNT = 3;
 function getTileEvictionHighWatermark(granularity: ShredsGranularity): number {
   switch (granularity) {
     case ShredsGranularityEnum.fec:
-      return 80;
+      return 138;
     case ShredsGranularityEnum.shred:
       return 40;
   }
@@ -30,7 +30,7 @@ function getTileEvictionHighWatermark(granularity: ShredsGranularity): number {
 function getTileEvictionLowWatermark(granularity: ShredsGranularity): number {
   switch (granularity) {
     case ShredsGranularityEnum.fec:
-      return 68;
+      return 126;
     case ShredsGranularityEnum.shred:
       return 28;
   }
