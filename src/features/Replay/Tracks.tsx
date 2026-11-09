@@ -79,7 +79,7 @@ export default function Tracks() {
 function renderTrack(id: TrackId, height: number) {
   switch (id) {
     case "shreds":
-      return <ShredsTrack />;
+      return <ShredsTrack height={height} />;
     case "votes":
       return <VotesTrack height={height} />;
     case "income":

@@ -21,6 +21,11 @@ export const SHREDS_AGG_THRESHOLD_MS = 180_000;
 export const AGG_SHREDS_CHART_ID = "agg-shreds-track";
 export const NON_AGG_SHREDS_CHART_ID = "non-agg-shreds-track";
 
+/**
+ * Height ceiling for headroom above the tallest column.
+ */
+export const MAX_HEIGHT_RATIO = 0.95;
+
 export type RendererObj = {
   renderer: THREE.WebGLRenderer;
   aggResources: AggRendererResources;

@@ -46,6 +46,7 @@ import { getNonAggAtoms } from "./atoms";
 import { OVERSCAN_TILES_COUNT, tileSizeNs } from "./useNonAggShredsQuery";
 import {
   SHREDS_AGG_THRESHOLD_MS,
+  MAX_HEIGHT_RATIO,
   type NonAggRendererResources,
   type RendererObj,
 } from "./const";
@@ -352,7 +353,8 @@ function getSlotRangeForDrawRange(
 }
 
 /**
- * Draw shreds at active granularity, or the fallback if available.
+ * Draw shreds at active granularity, or the fallback if available. Returns the
+ * tallest drawn slot's shred count, or 0 when nothing is drawn.
  */
 export function drawNonAggShreds(
   rendererObj: RendererObj,
@@ -360,7 +362,7 @@ export function drawNonAggShreds(
   referenceNs: bigint,
   visibleRange: TsRange,
   worldRange: TsRange,
-) {
+): number {
   const { firstTile, lastTile } = getTileIdxRangeWithOverscan(
     [
       calcAbsoluteNs(referenceNs, visibleRange[0]),
@@ -414,7 +416,7 @@ export function drawNonAggShreds(
       releaseSlot(key);
     }
     resources.lastDrawInfo = undefined;
-    return;
+    return 0;
   }
 
   const isFecActive = granularity === ShredsGranularityEnum.fec;
@@ -439,7 +441,7 @@ export function drawNonAggShreds(
       releaseSlot(key);
     }
     resources.lastDrawInfo = undefined;
-    return;
+    return 0;
   }
 
   const shouldHideStaleIncompleteSlot = (minEventTs: number) => {
@@ -502,7 +504,8 @@ export function drawNonAggShreds(
   drawSlotShreds(
     visibleRange,
     shredsDrawRange,
-    maxShreds,
+    // pad bottom so the tallest column lands at MAX_HEIGHT_RATIO
+    maxShreds > 0 ? maxShreds / MAX_HEIGHT_RATIO : maxShreds,
     drawSlots,
     ({ slotNumber, isFec }) =>
       getSlotMesh(
@@ -521,6 +524,8 @@ export function drawNonAggShreds(
       ),
     CHART_NOW_DELAY_MS,
   );
+
+  return maxShreds;
 }
 
 function getDrawSlotKey(drawSlot: DrawableSlot): string {

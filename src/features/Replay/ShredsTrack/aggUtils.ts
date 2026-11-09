@@ -13,6 +13,7 @@ import {
 } from "../../WebGl/webglUtils";
 import {
   aggShredEvents,
+  MAX_HEIGHT_RATIO,
   type AggRendererResources,
   type RendererObj,
 } from "./const";
@@ -56,18 +57,20 @@ export function setUpAggResources(
 }
 
 /**
- * Redraw all available data in the visible range at the appropriate granularity level
+ * Redraw all available data in the visible range at the appropriate granularity
+ * level. Returns the tallest visible bucket's shred count, or 0 when nothing is
+ * drawn.
  */
 export function drawAggShreds(
   rendererObj: RendererObj,
   referenceNs: bigint,
   visibleRange: TsRange,
   aggShreds: ShredBucketsByGranularity,
-) {
+): number {
   const granularity = getAggGranularity(visibleRange[1] - visibleRange[0]);
 
   const eventsByBucketIdx = aggShreds.get(granularity);
-  if (!eventsByBucketIdx) return;
+  if (!eventsByBucketIdx) return 0;
 
   const { camera, cameraReferenceMs, mesh } = rendererObj.aggResources;
   const bucketSizeMs = msBucketSizes[granularity];
@@ -127,15 +130,18 @@ export function drawAggShreds(
     }
   }
 
-  // keep the previous Y scale when there's nothing visible instead of collapsing
+  // keep the previous Y scale when there's nothing visible instead of collapsing.
+  // Pad so the tallest bucket lands at MAX_HEIGHT_RATIO, leaving room for the last grid line
   if (maxVisibleShredsPerBucket > 0) {
-    updateCameraYRange(camera, maxVisibleShredsPerBucket);
+    updateCameraYRange(camera, maxVisibleShredsPerBucket / MAX_HEIGHT_RATIO);
   }
   updateRectMeshCounts(mesh, rectIdx);
 
   /** store mesh positions relative to referenceX. This allows GPU to see small coordinates */
   mesh.referenceX = cameraReferenceMs;
   mesh.mesh.position.x = 0;
+
+  return maxVisibleShredsPerBucket;
 }
 
 /**

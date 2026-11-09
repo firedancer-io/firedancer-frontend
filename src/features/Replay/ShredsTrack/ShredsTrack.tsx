@@ -22,6 +22,7 @@ import {
   useSlotHitTest,
 } from "../slotHighlight.ts";
 import { releaseMesh } from "../../Shreds/WebGl/drawUtils.ts";
+import ShredsYAxis from "./ShredsYAxis.tsx";
 import {
   AGG_SHREDS_CHART_ID,
   aggShredEvents,
@@ -89,10 +90,19 @@ function getShredAtPoint(
   return getShredAtPosition(ts, worldY, renderer.nonAggResources);
 }
 
-function ShredsTrack({ remount }: WebGlRemountProps) {
+interface ShredsTrackProps {
+  height: number;
+}
+
+interface ShredsTrackBodyProps extends ShredsTrackProps, WebGlRemountProps {}
+
+function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
   const [granularity, setGranularity] = useState<
     AggGranularity | ShredsGranularity | undefined
   >(undefined);
+  const [aggAxisMax, setAggAxisMax] = useState(0);
+  const [nonAggAxisMax, setNonAggAxisMax] = useState(0);
+  const [isAgg, setIsAgg] = useState(true);
 
   const { containerRef, rendererRef } = useWebGlRenderer({
     remount,
@@ -295,7 +305,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
         visibleRange[1] - visibleRange[0],
       );
 
-      drawNonAggShreds(
+      const max = drawNonAggShreds(
         rendererRef.current,
         granularity,
         referenceNs,
@@ -311,6 +321,8 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
 
       requestRender();
       notifyHover();
+      // keep the last nonzero max so the axis doesn't collapse on an empty draw
+      if (max > 0) setNonAggAxisMax(max);
     },
     [requestRender, notifyHover, rendererRef],
   );
@@ -338,11 +350,14 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
     const visibleRange = store.get(visibleRangeAtom);
     if (referenceNs == null || !visibleRange || !worldRange) return;
 
-    if (isAggregate(visibleRange)) {
+    const agg = isAggregate(visibleRange);
+    setIsAgg(agg);
+    if (agg) {
       // Move camera before querying, because query may trigger immediate draw if data is already available
       moveAggCamera(rendererRef.current.aggResources, visibleRange);
       throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
       requestRender();
+      // axis max follows from the draw (throttledDrawAgg) once data arrives
     } else {
       throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
       // trigger a redraw immediately to hide trailing incomplete slots and prevent extended shreds.
@@ -362,9 +377,15 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
       const aggShreds = store.get(aggShredsAtom);
       if (!rendererRef.current || !visibleRange || referenceNs == null) return;
 
-      drawAggShreds(rendererRef.current, referenceNs, visibleRange, aggShreds);
+      const max = drawAggShreds(
+        rendererRef.current,
+        referenceNs,
+        visibleRange,
+        aggShreds,
+      );
       requestRender();
       notifyHover();
+      if (max > 0) setAggAxisMax(max);
     }, [requestRender, notifyHover, rendererRef]),
     50,
     { leading: false, trailing: true },
@@ -458,6 +479,10 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
   return (
     <>
       <div ref={containerRef} className={styles.trackCanvasContainer} />
+      <ShredsYAxis
+        maxShreds={isAgg ? aggAxisMax : nonAggAxisMax}
+        height={height}
+      />
       <TrackControls
         name={trackNames.shreds}
         bucketSize={granularity}
@@ -468,5 +493,7 @@ function ShredsTrack({ remount }: WebGlRemountProps) {
   );
 }
 
-const ShredsTrackWithRemount = withWebGlRemount(ShredsTrack);
-export default ShredsTrackWithRemount;
+const ShredsTrackWithRemount = withWebGlRemount(ShredsTrackBody);
+export default function ShredsTrack(props: ShredsTrackProps) {
+  return <ShredsTrackWithRemount {...props} />;
+}
