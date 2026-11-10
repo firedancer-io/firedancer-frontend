@@ -11,9 +11,9 @@ import "react-circular-progressbar/dist/styles.css";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import type { SlotPublish } from "../../../api/types";
 import {
+  areInSameGroup,
   fixValue,
   getDiscountedVoteLatency,
-  getSlotGroupLeader,
 } from "../../../utils";
 import { usePrevious, useUnmount } from "react-use";
 import {
@@ -141,7 +141,7 @@ interface SlotCardGridProps {
 
 function SlotColumn({ slot, currentSlot }: SlotCardGridProps) {
   const isCurrentGroup =
-    currentSlot != null && slot === getSlotGroupLeader(currentSlot);
+    currentSlot != null && areInSameGroup(slot, currentSlot);
 
   return (
     <Flex direction="column">

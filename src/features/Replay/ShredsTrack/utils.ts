@@ -13,7 +13,7 @@ import {
   cleanUpEdgeResources,
 } from "../../Shreds/WebGl/edgeUtils";
 import { SHRED_EVENT_TYPES_COUNT } from "../../../api/entities";
-import { disposeSlotMaterials } from "./nonAggUtils";
+import { disposeSlotMaterials } from "../../Shreds/WebGl/drawUtils";
 import { createSlotHighlight } from "../slotHighlight";
 
 export function setUpRenderers(

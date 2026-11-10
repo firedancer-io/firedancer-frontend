@@ -61,7 +61,7 @@ export function useWebGlRenderer<T extends RendererObjBase>({
   const { setUpContextListeners, getWasContextLost } = useWebGlEventHandlers({
     remount,
   });
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<T>();
 
   const createRef = useRef(create);

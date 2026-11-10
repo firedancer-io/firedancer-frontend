@@ -1,38 +1,30 @@
 import { getDefaultStore } from "jotai";
-import type * as THREE from "three";
 import type { RectMesh, TsRange } from "../../WebGl/webglUtils";
+import { createRectMesh } from "../../WebGl/webglUtils";
 import {
-  convertToWebGlColor,
-  createRectMaterial,
-  createRectMesh,
-  updateRectMeshCounts,
-} from "../../WebGl/webglUtils";
-import {
-  createEdgeMaterial,
   updateEdgeViewWidth,
   EDGE_RENDER_ORDER_OFFSET,
 } from "../../Shreds/WebGl/edgeUtils";
-import { shredHoverHighlightColor } from "../../../colors";
 import {
   FEC_MESH_CAPACITY,
-  SHREDS_OPACITY,
   SHRED_MESH_CAPACITY,
 } from "../../Shreds/WebGl/const";
 import {
-  SHREDS_PER_FEC_SET,
-  SKIPPED_SLOT_DOT_DURATION_MS,
-  shredEventDescPriorities,
-} from "../../Shreds/const";
-import type { ShredEventTsDeltas } from "../../Shreds/types";
+  createSlotEdgeMaterial,
+  createSlotMaterial,
+} from "../../Shreds/WebGl/slotMaterials";
 import { getDrawInfo } from "../../Shreds/chartUtils";
 import {
-  addEventsForRow,
   drawSlotShreds,
   getIncompleteSlotRightEdge,
   releaseMesh,
-  tempEventPositions,
   updateCameraXRange,
 } from "../../Shreds/WebGl/drawUtils";
+import {
+  getShredAtPosition as sharedGetShredAtPosition,
+  drawHoveredShred as sharedDrawHoveredShred,
+  type HoveredShred,
+} from "../../Shreds/WebGl/shredHover";
 import type { ShredsGranularity } from "../../../api/types";
 import { ShredsGranularityEnum } from "../../../api/entities";
 import {
@@ -40,7 +32,6 @@ import {
   calcRelativeMs,
   getTileIdxRangeWithOverscan,
 } from "../utils";
-import type { HoveredShred } from "../atoms";
 import { CHART_NOW_DELAY_MS } from "../const";
 import { getNonAggAtoms } from "./atoms";
 import { OVERSCAN_TILES_COUNT, tileSizeNs } from "./useNonAggShredsQuery";
@@ -52,16 +43,9 @@ import {
 } from "./const";
 import type { DrawableSlot } from "../../Shreds/chartUtils";
 import { hoveredShredAtom, selectedSlotAtom } from "../atoms";
-import {
-  getRelativeSlot,
-  NO_SLOT,
-  slotHighlightGlsl,
-  type SlotHighlight,
-} from "../slotHighlight";
+import { setMeshSlot } from "../slotHighlight";
 
 const store = getDefaultStore();
-
-const HIGHLIGHT_COLOR = convertToWebGlColor(shredHoverHighlightColor);
 
 const NON_AGG_FEC_THRESHOLD_MS = 30_000;
 
@@ -100,28 +84,6 @@ function getOtherGranularity(
 }
 
 /**
- * Check if any shred event would have been drawn at ts
- */
-function hasShredEventAtTs(
-  shred: ShredEventTsDeltas,
-  ts: number,
-  rightEdge: number,
-  skipped: boolean,
-): boolean {
-  let endTs = rightEdge;
-  for (const eventType of shredEventDescPriorities) {
-    const startTs = shred[eventType];
-    if (startTs == null || startTs >= endTs) continue;
-
-    const segmentEnd = skipped ? startTs + SKIPPED_SLOT_DOT_DURATION_MS : endTs;
-    if (ts >= startTs && ts <= segmentEnd) return true;
-
-    endTs = startTs;
-  }
-  return false;
-}
-
-/**
  * Find the topmost drawn shred at the given position. Returns undefined if no shred is found.
  */
 export function getShredAtPosition(
@@ -132,88 +94,31 @@ export function getShredAtPosition(
   const drawInfo = resources.lastDrawInfo;
   if (!drawInfo) return undefined;
 
-  const { slots, incompleteRightEdges } = drawInfo;
-
-  // check in draw order, top first
-  const getDrawOrder = createSlotDrawOrder();
-  const topFirst = [...slots].sort(
-    (a, b) => getDrawOrder(b.slotNumber) - getDrawOrder(a.slotNumber),
+  return sharedGetShredAtPosition(
+    ts,
+    worldY,
+    drawInfo,
+    getDrawSlotKey,
+    createSlotDrawOrder(),
   );
-  for (const drawSlot of topFirst) {
-    const { slotNumber, slot, isFec, skipped } = drawSlot;
-    if (slot.minEventTsDelta == null || ts < slot.minEventTsDelta) continue;
-
-    const rightEdge =
-      incompleteRightEdges.get(getDrawSlotKey(drawSlot)) ??
-      slot.completionTsDelta ??
-      Infinity;
-
-    // Skipped slots draw a fixed-width dot that can extend past completion, so
-    // check specific event times
-    if (!skipped && ts > rightEdge) continue;
-
-    // rows are drawn at y = -(idx + 1) * rowHeight, so a point at worldY falls
-    // in the row floor(-worldY / rowHeight). idx is a shred index, or a FEC-set
-    // index when isFec.
-    const rowHeight = isFec ? SHREDS_PER_FEC_SET : 1;
-    const idx = Math.floor(-worldY / rowHeight);
-    const shred = slot.shreds[idx];
-    if (!shred) continue;
-    if (!hasShredEventAtTs(shred, ts, rightEdge, skipped)) continue;
-
-    return {
-      slot: slotNumber,
-      isFec,
-      idx,
-      maxIdx: slot.shreds.length - 1,
-      // create copy so we can compare this moment when shred is mutated later
-      shred: [...shred],
-      completeTs: slot.completionTsDelta,
-      skipped,
-    };
-  }
-
-  return undefined;
 }
 
 /**
  * Repaint the highlight mesh to cover the hovered shred's drawn segments in white,
- * or clear it when nothing is hovered. Uses the same segment layout as the real draw
- * (via addEventsForRow) so the white rects line up exactly with the painted bars.
+ * or clear it when nothing is hovered.
  */
 export function drawHoveredShred(
   resources: NonAggRendererResources,
   hovered: HoveredShred | undefined,
   visibleRange: TsRange,
 ) {
-  const { highlightMesh, cameraReferenceMs } = resources;
-
-  if (!hovered) {
-    updateRectMeshCounts(highlightMesh, 0);
-    return;
-  }
-
-  const rowHeight = hovered.isFec ? SHREDS_PER_FEC_SET : 1;
-
-  tempEventPositions.clear();
-  const rectanglesAdded = addEventsForRow({
-    tempEventPositions,
-    slotMesh: highlightMesh,
-    startRectangleIdx: 0,
-    eventTsDeltas: hovered.shred,
-    slotCompletionTsDelta: hovered.completeTs,
-    isSlotSkipped: hovered.skipped,
-    y: -(hovered.idx + 1) * rowHeight,
-    rowHeight,
-    visibleTsRange: visibleRange,
-    cameraReferenceMs,
-    delayMs: CHART_NOW_DELAY_MS,
-    colorOverride: HIGHLIGHT_COLOR,
-  });
-
-  updateRectMeshCounts(highlightMesh, rectanglesAdded);
-  highlightMesh.referenceX = cameraReferenceMs;
-  highlightMesh.mesh.position.x = 0;
+  sharedDrawHoveredShred(
+    resources.highlightMesh,
+    resources.cameraReferenceMs,
+    hovered,
+    visibleRange,
+    CHART_NOW_DELAY_MS,
+  );
 }
 
 export function moveNonAggCamera(
@@ -258,36 +163,6 @@ function getMeshKeySlot(key: string) {
   return Number(key.slice(key.indexOf(":") + 1));
 }
 
-const slotFragmentShader = /* glsl */ `
-precision highp float;
-uniform float uOpacity;
-uniform float uSlot;
-varying vec3 vColor;
-${slotHighlightGlsl}
-void main() {
-  gl_FragColor = vec4(highlightSlot(vColor, uSlot), uOpacity);
-}
-`;
-
-function getSlotUniforms(highlight: SlotHighlight) {
-  return { ...highlight.uniforms, uSlot: { value: NO_SLOT } };
-}
-
-function getSlotMaterial(slotMesh: RectMesh) {
-  return slotMesh.mesh.material as THREE.RawShaderMaterial;
-}
-
-export function disposeSlotMaterials(resources: NonAggRendererResources) {
-  for (const slotMesh of [
-    ...resources.meshes.values(),
-    ...resources.availableMeshes,
-    ...resources.edgeMeshes.values(),
-    ...resources.availableEdgeMeshes,
-  ]) {
-    getSlotMaterial(slotMesh).dispose();
-  }
-}
-
 const FRONT_RENDER_ORDER_STEP = 1e10;
 
 // higher draws on top: the selected slot, then bigger slot numbers
@@ -305,10 +180,7 @@ export function updateSlotMeshes(resources: NonAggRendererResources) {
     for (const [key, slotMesh] of meshes) {
       const slot = getMeshKeySlot(key);
       slotMesh.mesh.renderOrder = getRenderOrder(slot) + renderOrderOffset;
-      getSlotMaterial(slotMesh).uniforms.uSlot.value = getRelativeSlot(
-        resources.highlight,
-        slot,
-      );
+      setMeshSlot(resources.highlight, slotMesh, slot);
     }
   };
   update(resources.meshes, 0);
@@ -554,11 +426,7 @@ function getSlotMesh(
         granularity === ShredsGranularityEnum.fec
           ? FEC_MESH_CAPACITY
           : SHRED_MESH_CAPACITY,
-        createRectMaterial(
-          SHREDS_OPACITY,
-          slotFragmentShader,
-          getSlotUniforms(resources.highlight),
-        ),
+        createSlotMaterial(resources.highlight),
       );
     resources.meshes.set(meshKey, slotMesh);
     resources.scene.add(slotMesh.mesh);
@@ -581,12 +449,7 @@ function getEdgeMesh(
         granularity === ShredsGranularityEnum.fec
           ? FEC_MESH_CAPACITY
           : SHRED_MESH_CAPACITY,
-        createEdgeMaterial(slotFragmentShader, {
-          ...getSlotUniforms(resources.highlight),
-          uViewWidthPx:
-            resources.edgeResources.rectMaterial.uniforms.uViewWidthPx,
-          uOpacity: resources.edgeResources.rectMaterial.uniforms.uOpacity,
-        }),
+        createSlotEdgeMaterial(resources.highlight, resources.edgeResources),
       );
     resources.edgeMeshes.set(meshKey, edgeMesh);
     resources.scene.add(edgeMesh.mesh);
