@@ -20,7 +20,7 @@ import {
 
 export type TileKind = "execrp" | "replay";
 
-const TXN_MAX_MS = 4_000; // 4s
+const TXN_MAX_MS = 20_000; // 20s
 const BATCH_MAX_MS = 4 * 60_000; // 4min
 
 export function getTileStatesGranularity(
