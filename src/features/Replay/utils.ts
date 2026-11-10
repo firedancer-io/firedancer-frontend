@@ -11,10 +11,13 @@ import { AGG_SLOTS_QUERY_KEY } from "./useSlotsQuery.ts";
 import { clamp } from "../../uplotReact/utils.ts";
 import type { TsRange } from "../WebGl/webglUtils.ts";
 import { convertToNsTimestamp } from "../../mathUtils.ts";
+import { getDefaultStore } from "jotai";
 import { useServerMessages } from "../../api/ws/utils.ts";
 import type { WsEntity, WsError } from "../../api/worker/types.ts";
 import type { AggGranularity, Tile } from "../../api/types.ts";
 import type { TimelineAggQueryKey } from "./atoms.ts";
+import { rootSlotAtom } from "../../api/atoms.ts";
+import { slotPublishAtomFamily } from "../../atoms.ts";
 import {
   OVERSCAN_DRAW_TILES_COUNT,
   tileSizeNs,
@@ -22,6 +25,20 @@ import {
 
 export function getTileKey({ kind, kind_id }: Tile) {
   return `${kind}:${kind_id}`;
+}
+
+/**
+ * The ts up to which fetched timeline data is final: the completed time of the
+ * current root (rooted/confirmed) slot. Data before this will not change.
+ */
+export function getRootSlotNs(): bigint | undefined {
+  const store = getDefaultStore();
+  const rootSlot = store.get(rootSlotAtom);
+  if (rootSlot == null) return undefined;
+  return (
+    store.get(slotPublishAtomFamily(rootSlot))?.completed_time_nanos ??
+    undefined
+  );
 }
 
 export function clampToWorld(range: TsRange, worldRange: TsRange) {

@@ -1,76 +1,45 @@
-import { useCallback, useRef } from "react";
-import { useSetAtom } from "jotai";
+import { useCallback } from "react";
 import { getAggGranularityForQuery } from "../utils";
-import { reserveNextQueryIdAtom } from "../atoms";
 import type { AggGranularity, AggSlots } from "../../../api/types";
 import { AGG_SLOTS_QUERY_KEY, useSlotsQuery } from "../useSlotsQuery";
 import type { NsTsRange } from "../../WebGl/webglUtils";
-import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible";
 import { useTimelineServerMessage } from "../utils";
+import useIncrementalQuery from "../useIncrementalQuery";
+
+interface MiniMapRequest {
+  worldRangeNs: NsTsRange;
+  granularity: AggGranularity;
+}
 
 export default function useMiniMapQuery(
   onMessage: (message: { id: number; value: AggSlots }) => void,
 ) {
-  const pendingQueryIdsRef = useRef(new Set<number>());
-  const lastRequestRef = useRef<
-    | {
-        worldRangeNs: NsTsRange;
-        granularity: AggGranularity;
-      }
-    | undefined
-  >(undefined);
-
   const query = useSlotsQuery();
-  const reserveNextQueryId = useSetAtom(reserveNextQueryIdAtom);
+
+  const [sendQuery, markQueryComplete] = useIncrementalQuery<MiniMapRequest>({
+    queryKey: AGG_SLOTS_QUERY_KEY,
+    throttleMs: 400,
+    buildQuery: ({ worldRangeNs, granularity }, prevReq) => ({
+      worldRangeNs,
+      // refetch from start of world on granularity or world start change
+      shouldResetStates:
+        granularity !== prevReq?.granularity ||
+        worldRangeNs[0] !== prevReq.worldRangeNs[0],
+      sendQuery: (queryId, rangeNs) => query(queryId, rangeNs, granularity),
+    }),
+  });
 
   useTimelineServerMessage(
     AGG_SLOTS_QUERY_KEY,
     (message: { id: number; value: AggSlots }) => {
-      if (!pendingQueryIdsRef.current.has(message.id)) return;
-
-      pendingQueryIdsRef.current.delete(message.id);
-      onMessage(message);
+      markQueryComplete(message.id, () => onMessage(message));
     },
   );
 
-  return useThrottledCallbackIfVisible(
-    useCallback(
-      (worldRangeNs: NsTsRange, granularity: AggGranularity) => {
-        const lastRequest = lastRequestRef.current;
-        if (
-          lastRequest?.granularity === granularity &&
-          lastRequest.worldRangeNs[0] === worldRangeNs[0]
-        ) {
-          // the smoothed world end can step back; the server closes on a reversed range
-          if (worldRangeNs[1] <= lastRequest.worldRangeNs[1]) return;
-
-          // fetch only missing data at end
-          const queryId = reserveNextQueryId(AGG_SLOTS_QUERY_KEY);
-          query(
-            queryId,
-            [lastRequest.worldRangeNs[1], worldRangeNs[1]],
-            granularity,
-          );
-          pendingQueryIdsRef.current.add(queryId);
-        } else {
-          // fetch entire world on granularity change or on start range change
-          const queryId = reserveNextQueryId(AGG_SLOTS_QUERY_KEY);
-          query(queryId, worldRangeNs, granularity);
-          pendingQueryIdsRef.current.add(queryId);
-        }
-
-        lastRequestRef.current = {
-          worldRangeNs,
-          granularity,
-        };
-      },
-      [query, reserveNextQueryId],
-    ),
-    400,
-    {
-      leading: true,
-      trailing: true,
-    },
+  return useCallback(
+    (worldRangeNs: NsTsRange, granularity: AggGranularity) =>
+      sendQuery({ worldRangeNs, granularity }),
+    [sendQuery],
   );
 }
 
