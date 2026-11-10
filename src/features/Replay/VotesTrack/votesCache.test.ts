@@ -56,8 +56,10 @@ describe("votes batch cache", () => {
   it("caches a historical tile from an unchunked response", async () => {
     // a past tile, with the world end and newest retained vote well after it
     cache.requestRange([0n, 32n * sNs - 1n], 600n * sNs);
-    await vi.waitFor(() => expect(sent).toHaveLength(1));
-    const [{ id, params }] = sent;
+    // the view tile and its overscan neighbor go out together
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+    const { id, params } = sent[0];
+    expect(params.start_ns).toBe("0");
     expect(params.granularity).toBe("vote_batch");
     votesRequests.resolve(id, {
       value: response(BigInt(params.start_ns), 590n * sNs),

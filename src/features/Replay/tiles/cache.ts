@@ -113,7 +113,7 @@ export function createTileCache<TData, TMeta>({
   let lastStartNs: bigint | null = null;
   let lastEndNs: bigint | null = null;
   let lastWorldEndNs: bigint | null = null;
-  let inFlightTileId: number | null = null;
+  const inFlightTileIds = new Set<number>();
 
   const live: LiveState<TData> = {
     acc: null,
@@ -256,13 +256,12 @@ export function createTileCache<TData, TMeta>({
     });
   }
 
-  /** The tile nearest to the center of the current view that still needs to be fetched */
-  function nextTileToFetch(): number | undefined {
+  /** Tiles in view that still need to be fetched, nearest to the view center first */
+  function tilesToFetch(): number[] {
     const liveTileId =
       lastWorldEndNs === null ? null : tileIdOf(lastWorldEndNs);
     const [viewStartTileId, viewEndTileId] = getViewTileRange();
-    if (viewEndTileId < viewStartTileId || liveTileId === null)
-      return undefined;
+    if (viewEndTileId < viewStartTileId || liveTileId === null) return [];
 
     const low = Math.max(0, viewStartTileId - overscan);
     const high = Math.max(
@@ -271,30 +270,25 @@ export function createTileCache<TData, TMeta>({
     );
     const center = (viewStartTileId + viewEndTileId) / 2;
 
-    let nextTile: number | undefined;
-    let tileDist = 0;
+    const tileIds: number[] = [];
     for (let id = low; id <= high; id++) {
       if (id === liveTileId || id === live.acc?.tileId) continue;
-      if (requestedTilesForView.has(id) || tileCache.has(id)) continue;
-      const dist = id > center ? id - center : center - id;
-      if (nextTile === undefined || dist < tileDist) {
-        nextTile = id;
-        tileDist = dist;
-      }
+      if (requestedTilesForView.has(id) || inFlightTileIds.has(id)) continue;
+      if (tileCache.has(id)) continue;
+      tileIds.push(id);
     }
-    return nextTile;
+    return tileIds.sort((a, b) => Math.abs(a - center) - Math.abs(b - center));
   }
 
-  async function fetchNextTile(): Promise<void> {
-    if (inFlightTileId !== null) return;
+  function fetchMissingTiles(): void {
     if (!store.get(isConnectedAtom)) return;
+    for (const tileId of tilesToFetch()) void fetchTile(tileId);
+  }
 
-    const tileId = nextTileToFetch();
-    if (tileId === undefined) return;
-
+  async function fetchTile(tileId: number): Promise<void> {
     const { signal } = controller;
     requestedTilesForView.add(tileId);
-    inFlightTileId = tileId;
+    inFlightTileIds.add(tileId);
     const [tileStartNs, tileEndNs] = getRange(tileId);
     const data = empty();
     let fetchedEndNs = tileStartNs - 1n;
@@ -307,9 +301,9 @@ export function createTileCache<TData, TMeta>({
       fetchedEndNs = result.fetchedEndNs;
     }
 
+    inFlightTileIds.delete(tileId);
     if (fetchedEndNs === tileEndNs) cacheTile(tileId, data);
-    inFlightTileId = null;
-    void fetchNextTile();
+    else fetchMissingTiles();
   }
 
   function startLive(tileId: number): void {
@@ -366,7 +360,7 @@ export function createTileCache<TData, TMeta>({
       if (live.acc !== null) {
         resetLive();
         publish({ kind: "clearLive" });
-        void fetchNextTile();
+        fetchMissingTiles();
       }
       return;
     }
@@ -456,7 +450,7 @@ export function createTileCache<TData, TMeta>({
 
     if (viewChanged) {
       requestedTilesForView.clear();
-      void fetchNextTile();
+      fetchMissingTiles();
     }
   }
 
@@ -475,7 +469,7 @@ export function createTileCache<TData, TMeta>({
     tileCache.clear();
     sortedTileIds.length = 0;
     cachedItems = 0;
-    inFlightTileId = null;
+    inFlightTileIds.clear();
     requestedTilesForView.clear();
     lastStartNs = null;
     lastEndNs = null;

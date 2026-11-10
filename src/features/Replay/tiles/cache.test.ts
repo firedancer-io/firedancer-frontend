@@ -21,6 +21,7 @@ let maxChunks: number;
 let fetchedWindows: Interval[];
 let deltas: TileCacheDelta<Interval[], null>[];
 let perfNow: number;
+let heldResponses: ((errorCode?: string) => void)[] | null;
 
 // Like the server: aligned chunks, only final ones, capped per response
 function getChunks([startNs, endNs]: Interval) {
@@ -50,13 +51,18 @@ function createCache() {
     fetch: (window) => {
       fetchedWindows.push(window);
       const chunksEndNs = getChunksEndNs(getChunks(window));
-      return Promise.resolve({
+      const result = {
         value:
           chunksEndNs === undefined
             ? []
-            : [[window[0], bigIntMin(chunksEndNs - 1n, window[1])]],
+            : [[window[0], bigIntMin(chunksEndNs - 1n, window[1])] as Interval],
         chunksEndNs,
-      });
+      };
+      const held = heldResponses;
+      if (!held) return Promise.resolve(result);
+      return new Promise((resolve) =>
+        held.push((errorCode) => resolve(errorCode ? { errorCode } : result)),
+      );
     },
     failPendingRequests: () => {},
   });
@@ -79,6 +85,7 @@ describe("tile cache with partial responses", () => {
     fetchedWindows = [];
     deltas = [];
     perfNow = 0;
+    heldResponses = null;
     vi.spyOn(performance, "now").mockImplementation(() => perfNow);
     getDefaultStore().set(socketStateAtom, SocketState.Connected);
     getDefaultStore().set(
@@ -100,6 +107,83 @@ describe("tile cache with partial responses", () => {
       [1_500n * msNs, 3_000n * msNs - 1n],
       [3_000n * msNs, tileNs - 1n],
     ]);
+  });
+
+  it("requests every missing tile without waiting for responses", async () => {
+    finalEndNs = 20n * tileNs;
+    heldResponses = [];
+    const cache = createCache();
+
+    cache.requestRange([2n * tileNs, 4n * tileNs - 1n], 20n * tileNs);
+    // view tiles first, then overscan
+    expect(fetchedWindows.map(([startNs]) => startNs / tileNs)).toEqual([
+      2n,
+      3n,
+      1n,
+      4n,
+    ]);
+
+    // panning while tiles are in flight requests only the new ones
+    cache.requestRange([3n * tileNs, 5n * tileNs - 1n], 20n * tileNs);
+    expect(fetchedWindows.map(([startNs]) => startNs / tileNs)).toEqual([
+      2n,
+      3n,
+      1n,
+      4n,
+      5n,
+    ]);
+
+    for (const respond of heldResponses) respond();
+    await vi.waitFor(() => expect(cache.getTiles()).toHaveLength(5));
+    expect(fetchedWindows).toHaveLength(5);
+  });
+
+  it("retries a tile that fails after the view moved on", async () => {
+    finalEndNs = 20n * tileNs;
+    heldResponses = [];
+    const cache = createCache();
+
+    cache.requestRange([2n * tileNs, 3n * tileNs - 1n], 20n * tileNs);
+    const [tile2Response] = heldResponses;
+    expect(fetchedWindows[0][0]).toBe(2n * tileNs);
+    cache.requestRange([2n * tileNs, 4n * tileNs - 1n], 20n * tileNs);
+    expect(fetchedWindows).toHaveLength(4);
+
+    tile2Response("timeout");
+    await flush();
+    expect(fetchedWindows).toHaveLength(5);
+    expect(fetchedWindows[4][0]).toBe(2n * tileNs);
+
+    // a failure within the same view isn't retried in a loop
+    heldResponses.at(-1)?.("timeout");
+    await flush();
+    expect(fetchedWindows).toHaveLength(5);
+
+    for (const respond of heldResponses) respond();
+    await vi.waitFor(() => expect(cache.getTiles()).toHaveLength(3));
+    expect(fetchedWindows).toHaveLength(5);
+  });
+
+  it("drops responses from before a reset", async () => {
+    finalEndNs = 20n * tileNs;
+    heldResponses = [];
+    const cache = createCache();
+    const viewNs: [bigint, bigint] = [2n * tileNs, 3n * tileNs - 1n];
+
+    cache.requestRange(viewNs, 20n * tileNs);
+    const staleResponses = heldResponses;
+    cache.reset();
+    heldResponses = [];
+    cache.requestRange(viewNs, 20n * tileNs);
+    expect(fetchedWindows).toHaveLength(6);
+
+    for (const respond of staleResponses) respond();
+    await flush();
+    expect(cache.getTiles()).toEqual([]);
+
+    for (const respond of heldResponses) respond();
+    await vi.waitFor(() => expect(cache.getTiles()).toHaveLength(3));
+    expect(fetchedWindows).toHaveLength(6);
   });
 
   it("fetches the tile before the world end live when it may not be final", async () => {
