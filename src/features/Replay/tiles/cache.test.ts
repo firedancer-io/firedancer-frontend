@@ -115,21 +115,21 @@ describe("tile cache with partial responses", () => {
     const cache = createCache();
 
     cache.requestRange([2n * tileNs, 4n * tileNs - 1n], 20n * tileNs);
-    // view tiles first, then overscan
+    // view tiles first, then overscan, right before left at the same distance
     expect(fetchedWindows.map(([startNs]) => startNs / tileNs)).toEqual([
-      2n,
       3n,
-      1n,
+      2n,
       4n,
+      1n,
     ]);
 
     // panning while tiles are in flight requests only the new ones
     cache.requestRange([3n * tileNs, 5n * tileNs - 1n], 20n * tileNs);
     expect(fetchedWindows.map(([startNs]) => startNs / tileNs)).toEqual([
-      2n,
       3n,
-      1n,
+      2n,
       4n,
+      1n,
       5n,
     ]);
 

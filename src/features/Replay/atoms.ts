@@ -32,6 +32,8 @@ import type { AggGranularity } from "../../api/types";
 import type { ShredEventCounts } from "./ShredsTrack/atoms";
 import { aggShredEvents } from "./ShredsTrack/const";
 import type { RevenueSeries, TxnMetaDetails } from "./RevenueTrack/consts";
+import type { TileState } from "../../api/entities";
+import type { TxnSegment, TxnStates } from "./tileStates/hoverUtils";
 
 export type TimelineQueryKey = Extract<WsEntity, { topic: "timeline" }>["key"];
 export type TimelineAggQueryKey = Extract<
@@ -315,6 +317,10 @@ export const [
   const hoveredSlotAtom = atom<number | undefined>((get) => {
     const hoveredShredSlot = get(hoveredShredAtom)?.slot;
     if (hoveredShredSlot != null) return hoveredShredSlot;
+
+    const hoveredExecrpSlot = get(hoveredExecrpTxnAtom)?.slot;
+    if (hoveredExecrpSlot != null) return hoveredExecrpSlot;
+
     if (get(hoveredAggShredsAtom) != null) return undefined;
     const hoveredRevenueTxnSlot = get(hoveredRevenueTxnAtom)?.slot;
     if (hoveredRevenueTxnSlot != null) return hoveredRevenueTxnSlot;
@@ -513,6 +519,44 @@ export const [hiddenTracksAtom, setTrackHiddenAtom] = (function () {
 export const hoveredShredAtom =
   atomWithIsSameCheck<HoveredShred>(isSameHoveredShred);
 
+export interface HoveredExecrpTxn {
+  slot: number;
+  txnIdx: number;
+  ms: number;
+  state: TileState | undefined;
+  states: TxnStates;
+}
+
+function isSameTxnSegment(
+  a: TxnSegment | undefined,
+  b: TxnSegment | undefined,
+) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.tileIdx === b.tileIdx &&
+    a.startMs === b.startMs &&
+    a.endMs === b.endMs &&
+    a.errorCode === b.errorCode &&
+    a.stateMs.size === b.stateMs.size &&
+    [...a.stateMs].every(([state, ms]) => b.stateMs.get(state) === ms)
+  );
+}
+
+function isSameHoveredExecrpTxn(a: HoveredExecrpTxn, b: HoveredExecrpTxn) {
+  return (
+    a.slot === b.slot &&
+    a.txnIdx === b.txnIdx &&
+    a.state === b.state &&
+    isSameTxnSegment(a.states.exec, b.states.exec) &&
+    isSameTxnSegment(a.states.sigverify, b.states.sigverify)
+  );
+}
+
+export const hoveredExecrpTxnAtom = atomWithIsSameCheck<HoveredExecrpTxn>(
+  isSameHoveredExecrpTxn,
+);
+
 export interface HoveredAggShreds {
   bucketIdx: number;
   granularity: AggGranularity;
@@ -587,6 +631,7 @@ export interface HoveredAggHeader {
 /** Which tooltip the Replay chart should show for the current hover. */
 export enum TooltipType {
   Shred,
+  ExecrpTxn,
   AggShred,
   AggRevenue,
   AggCpu,
@@ -599,6 +644,7 @@ export const tooltipTypeAtom = atom<TooltipType | null>((get) => {
   if (get(hoveredMsAtom) == null) return null;
 
   if (get(hoveredShredAtom) != null) return TooltipType.Shred;
+  if (get(hoveredExecrpTxnAtom) != null) return TooltipType.ExecrpTxn;
   if (get(hoveredAggShredsAtom) != null) return TooltipType.AggShred;
   if (get(hoveredAggRevenueAtom) != null) return TooltipType.AggRevenue;
   if (get(hoveredAggCpuAtom) != null) return TooltipType.AggCpu;
