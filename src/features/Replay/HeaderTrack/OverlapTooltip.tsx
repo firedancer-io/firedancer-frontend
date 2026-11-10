@@ -9,8 +9,8 @@ import RowSeparator from "../../../components/RowSeparator";
 import PeerIcon from "../../../components/PeerIcon";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import {
+  clearPinnedReentryGateAtom,
   dismissPinnedAtom,
-  freezeOverlapAtom,
   nonAggHeaderElAtom,
   overlappingSlotsAtom,
   pinnedBackToListAtom,
@@ -36,8 +36,6 @@ const store = getDefaultStore();
 
 const POINTER_GAP_PX = 6;
 const LIST_OFFSET_X_PX = 5;
-// How long to keep the list open after returning from detail before leave-dismissal resumes.
-const DETAIL_RETURN_GRACE_MS = 1500;
 const logoSize = 10;
 const HIT_PADDING_PX = 24;
 
@@ -84,9 +82,8 @@ function PinnedShell() {
   const trackRectRef = useRef<DOMRect | null>(null);
   // list's left/right edges as x offsets from the detail slot, fixed when detail opens
   const detailOffsetXRef = useRef<{ left: number; right: number } | null>(null);
-  // Keep overlap tooltip open when transitioning back from slot detail tooltip
-  const keepOpenOnLeaveRef = useRef(false);
-  const keepOpenTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  // positioning is async; only the latest call may place the tooltip
+  const repositionIdRef = useRef(0);
 
   // open detail beside the list, and keep that offset from the slot
   const captureDetailOffsetX = useCallback((pinned: PinnedTooltip) => {
@@ -117,6 +114,7 @@ function PinnedShell() {
     const root = rootRef.current;
     if (!root) return;
 
+    const repositionId = ++repositionIdRef.current;
     const pinned = store.get(pinnedTooltipAtom);
     const visibleRange = store.get(visibleRangeAtom);
     const trackRect = store.get(nonAggHeaderElAtom)?.getBoundingClientRect();
@@ -127,6 +125,7 @@ function PinnedShell() {
     }
 
     const place = (x: number, y: number) => {
+      if (repositionId !== repositionIdRef.current) return;
       if (store.get(pinnedTooltipAtom) == null) return;
       root.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
       root.style.visibility = "visible";
@@ -162,48 +161,38 @@ function PinnedShell() {
   }, []);
 
   // Tooltip stays with its slot during live playback and panning.
-  useAtomsSubscription([pinnedTooltipAtom, visibleRangeAtom], reposition);
+  useAtomsSubscription([visibleRangeAtom], reposition);
 
+  // capture the detail offset from the list's position before repositioning
   useLayoutEffect(() => {
     let prevMode = store.get(pinnedTooltipAtom)?.mode;
-    const clearKeepOpenTimer = () => clearTimeout(keepOpenTimerRef.current);
     return store.sub(pinnedTooltipAtom, () => {
       const pinned = store.get(pinnedTooltipAtom);
       const mode = pinned?.mode;
-      if (mode === prevMode) return;
-
-      if (mode === "detail" && prevMode === "list" && pinned) {
-        captureDetailOffsetX(pinned);
-      } else if (mode !== "detail") {
-        detailOffsetXRef.current = null;
+      if (mode !== prevMode) {
+        if (mode === "detail" && prevMode === "list" && pinned) {
+          captureDetailOffsetX(pinned);
+        } else if (mode !== "detail") {
+          detailOffsetXRef.current = null;
+        }
+        prevMode = mode;
       }
-
-      clearKeepOpenTimer();
-      keepOpenOnLeaveRef.current = !(mode === "list" && prevMode !== "detail");
-      if (mode === "list" && prevMode === "detail") {
-        keepOpenTimerRef.current = setTimeout(() => {
-          keepOpenOnLeaveRef.current = false;
-        }, DETAIL_RETURN_GRACE_MS);
-      }
-      prevMode = mode;
-
       reposition();
     });
   }, [captureDetailOffsetX, reposition]);
-
-  useUnmount(() => clearTimeout(keepOpenTimerRef.current));
 
   useLayoutEffect(() => {
     window.addEventListener("resize", reposition);
     return () => window.removeEventListener("resize", reposition);
   }, [reposition]);
 
-  // Close behavior by mode :
+  // Close behavior by mode:
   // - list: close when the cursor leaves both header and tooltip (padding bridges
-  //   the gap so the cursor can cross between them).
-  // - detail: ignore hover; close only on click-away.
+  //   the gap so the cursor can cross between them). After a detail→list return,
+  //   it stays open until the cursor is seen over one of them.
+  // - both: close on a click outside the tooltip, except on the header in list mode.
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: PointerEvent) => {
       if (store.get(pinnedTooltipAtom)?.mode !== "list") return;
       const overTooltip = pointInRect(
         rootRectRef.current,
@@ -218,28 +207,39 @@ function PinnedShell() {
         HIT_PADDING_PX,
       );
       if (overTooltip || overHeader) {
-        clearTimeout(keepOpenTimerRef.current);
-        keepOpenOnLeaveRef.current = false;
+        // cursor is back over the tooltip/header: re-entry satisfied
+        store.set(clearPinnedReentryGateAtom);
         return;
       }
-      if (!keepOpenOnLeaveRef.current) {
-        store.set(dismissPinnedAtom, { x: e.clientX, y: e.clientY });
+      if (!store.get(pinnedTooltipAtom)?.suppressLeaveUntilReentry) {
+        store.set(dismissPinnedAtom);
       }
     };
-    // Detail-mode click-away: close on a click outside the tooltip, and swallow
-    // that click so it doesn't also select a slot / pause under the chart.
     const onMouseDownCapture = (e: MouseEvent) => {
-      if (store.get(pinnedTooltipAtom)?.mode !== "detail") return;
+      const mode = store.get(pinnedTooltipAtom)?.mode;
+      if (mode == null) return;
       const root = rootRef.current;
+      // clicks inside the tooltip never dismiss
       if (root && e.target instanceof Node && root.contains(e.target)) return;
-      store.set(dismissPinnedAtom, { x: e.clientX, y: e.clientY });
-      // stop the chart's mousedown gesture so this click doesn't select/pause
-      e.stopPropagation();
+      if (
+        mode === "list" &&
+        pointInRect(
+          store.get(nonAggHeaderElAtom)?.getBoundingClientRect() ?? null,
+          e.clientX,
+          e.clientY,
+        )
+      ) {
+        return;
+      }
+      store.set(dismissPinnedAtom);
+      // in detail mode, stop the chart's mousedown gesture so this click doesn't
+      // also select/pause
+      if (mode === "detail") e.stopPropagation();
     };
-    window.addEventListener("mousemove", onMove);
+    window.addEventListener("pointermove", onMove);
     window.addEventListener("mousedown", onMouseDownCapture, true);
     return () => {
-      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("pointermove", onMove);
       window.removeEventListener("mousedown", onMouseDownCapture, true);
     };
   }, []);
@@ -264,7 +264,6 @@ function PinnedShell() {
       className={clsx(styles.pinnedTooltip, chartStyles.noChartExplore)}
       // keeps presses here from clearing the selected slot (useDismissSelection)
       data-replay-popup
-      onMouseEnter={() => store.set(freezeOverlapAtom)}
     >
       {mode === "detail" ? <DetailView /> : <ListView />}
     </div>

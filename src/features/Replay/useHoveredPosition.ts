@@ -57,31 +57,6 @@ export function useHoveredPosition({
     notifyChange();
   }, [notifyChange]);
 
-  // Replay the hover at an explicit cursor position
-  const replayHoverAt = useCallback((clientX: number, clientY: number) => {
-    const container = containerRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    rectRef.current = {
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-    if (
-      clientX < rect.left ||
-      clientX > rect.right ||
-      clientY < rect.top ||
-      clientY > rect.bottom
-    ) {
-      lastClientPosRef.current = undefined;
-      onHoverLeaveRef.current?.();
-      return;
-    }
-    lastClientPosRef.current = { x: clientX, y: clientY };
-    onHoverChangeRef.current(clientX, clientY, rectRef.current);
-  }, []);
-
   const setContainer = useCallback(
     (el: HTMLElement | null) => {
       containerRef.current = el;
@@ -166,5 +141,5 @@ export function useHoveredPosition({
     [notifyChange, refreshContainerAndNotify],
   );
 
-  return { setContainer, notifyChange, replayHoverAt };
+  return { setContainer, notifyChange };
 }

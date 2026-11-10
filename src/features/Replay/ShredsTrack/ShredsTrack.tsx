@@ -44,7 +44,6 @@ import {
 import {
   hoveredAggShredsAtom,
   hoveredShredAtom,
-  isReplayTooltipPinnedAtom,
   referenceNsAtom,
   selectedSlotAtom,
   visibleRangeAtom,
@@ -119,9 +118,6 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
     (clientX: number, clientY: number, rect: HoveredRect) => {
       const renderer = rendererRef.current;
       if (!renderer) return;
-
-      // while the overlap tooltip is pinned, it owns the spotlight/tooltip
-      if (store.get(isReplayTooltipPinnedAtom)) return;
 
       const visibleRange = store.get(visibleRangeAtom);
       const referenceNs = store.get(referenceNsAtom);

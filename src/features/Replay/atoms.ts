@@ -1,7 +1,7 @@
 import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../nowAtoms";
 import type { TsRange } from "../WebGl/webglUtils";
-import { atom, getDefaultStore, type Getter, type Setter } from "jotai";
+import { atom, type Getter, type Setter } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { CHART_NOW_DELAY_MS, type PlaybackRate } from "./const";
 import {
@@ -356,11 +356,16 @@ function isSameSlotList(a: SlotInfo[], b: SlotInfo[]): boolean {
   return true;
 }
 
+const _pinnedSpotlightSlotAtom = atom<number | undefined>(undefined);
+
 /**
  * Explicit slot to spotlight while the overlap tooltip is pinned, overriding the
- * cursor-derived slot. undefined when no pin-driven spotlight is active.
+ * cursor-derived slot. undefined when no pin-driven spotlight is active, or the
+ * pinned tooltip is hidden.
  */
-const pinnedSpotlightSlotAtom = atom<number | undefined>(undefined);
+const pinnedSpotlightSlotAtom = atom((get) =>
+  get(pinnedTooltipAtom) ? get(_pinnedSpotlightSlotAtom) : undefined,
+);
 
 export const [
   hoveredSlotAtom,
@@ -371,11 +376,19 @@ export const [
 ] = (function getHoveredSlotAtoms() {
   const _hoverInfoAtom = atom<HoverInfo | undefined>(undefined);
 
-  /** hovered cursor ts in ms, or undefined when nothing is hovered */
-  const hoveredMsAtom = atom((get) => get(_hoverInfoAtom)?.cursorMs);
+  /**
+   * hovered cursor ts in ms, or undefined when nothing is hovered. The pinned
+   * overlap tooltip takes priority over the cursor.
+   */
+  const hoveredMsAtom = atom(
+    (get) => get(pinnedTooltipAtom)?.ts ?? get(_hoverInfoAtom)?.cursorMs,
+  );
 
   /** hovered cursor position in px (viewport coords), or undefined */
-  const hoveredClientPosAtom = atom((get) => get(_hoverInfoAtom)?.clientPos);
+  const hoveredClientPosAtom = atom(
+    (get) =>
+      get(pinnedTooltipAtom)?.clientPos ?? get(_hoverInfoAtom)?.clientPos,
+  );
 
   /**
    * The hovered slot number, resolved from the cursor ms against the timeline
@@ -730,9 +743,6 @@ export const hoveredAggHeaderAtom = selectAtom(
 
 export const nonAggHeaderElAtom = atom<HTMLElement | null>(null);
 
-/** Owner used when the pinned overlap tooltip drives the spotlight. */
-const PINNED_HOVER_OWNER = "replay-pinned";
-
 export interface PinnedTooltip {
   ts: number;
   /** highest slot number at ts */
@@ -740,19 +750,27 @@ export interface PinnedTooltip {
   mode: "list" | "detail";
   selectedSlot?: number;
   clientPos: ClientPos;
-  /** true once the cursor enters the tooltip — the list stops following the cursor */
-  isFrozen: boolean;
+  /**
+   * Set when returning from detail to list: suppress leave-dismissal (from
+   * either the tooltip's own hover handler or the header's hover handler) until
+   * the cursor is confirmed back over the tooltip/header. Cleared on re-entry.
+   */
+  suppressLeaveUntilReentry?: boolean;
 }
 
-export const pinnedTooltipAtom = atom<PinnedTooltip | undefined>(undefined);
-// Close as soon as its ts scrolls out of
-// the visible range / aggregate mode
-pinnedTooltipAtom.onMount = () => {
-  const store = getDefaultStore();
-  return store.sub(visibleRangeAtom, () => {
-    store.set(dismissPinnedIfOffscreenAtom);
-  });
-};
+const _pinnedTooltipAtom = atom<PinnedTooltip | undefined>(undefined);
+
+/**
+ * The pinned overlap tooltip, hidden while its ts is outside the visible range
+ * or in aggregate mode. Writers set _pinnedTooltipAtom; everything else reads this.
+ */
+export const pinnedTooltipAtom = atom((get) => {
+  const pinned = get(_pinnedTooltipAtom);
+  const visibleRange = get(visibleRangeAtom);
+  if (!pinned || !visibleRange || isAggregate(visibleRange)) return;
+  if (pinned.ts < visibleRange[0] || pinned.ts > visibleRange[1]) return;
+  return pinned;
+});
 
 export const isReplayTooltipPinnedAtom = atom(
   (get) => get(pinnedTooltipAtom) != null,
@@ -788,32 +806,23 @@ export const pinnedSelectedIdxAtom = atom((get) => {
   );
 });
 
-function pushPinnedSpotlight(get: Getter, set: Setter, slot: number) {
-  const pinned = get(pinnedTooltipAtom);
-  if (!pinned) return;
-  set(pinnedSpotlightSlotAtom, slot);
-  set(setHoverInfoAtom, {
-    owner: PINNED_HOVER_OWNER,
-    cursorMs: pinned.ts,
-    clientPos: pinned.clientPos,
-  });
-}
-
 /**
  * Open or refresh the overlap list at the cursor ts when 2+ slots overlap there;
- * close it when they don't. A frozen or detail-mode tooltip is left untouched.
+ * close it when they don't. A detail-mode tooltip is left untouched.
  */
 export const openOrUpdateOverlapAtom = atom(
   null,
   (get, set, { ts, clientPos }: { ts: number; clientPos: ClientPos }) => {
     const current = get(pinnedTooltipAtom);
 
-    if (current && (current.isFrozen || current.mode === "detail")) return;
+    if (current?.mode === "detail") return;
 
     const overlapping = overlappingSlotsAtMs(get, ts);
     if (overlapping.length <= 1) {
-      // No overlap under the cursor: close the list if one is showing.
-      if (current) set(dismissPinnedAtom);
+      // No overlap under the cursor: close the list if one is showing. After
+      // a detail→list return, keep it open until the cursor is confirmed over an
+      // overlap region / the tooltip.
+      if (current && !current.suppressLeaveUntilReentry) set(dismissPinnedAtom);
       return;
     }
 
@@ -826,46 +835,52 @@ export const openOrUpdateOverlapAtom = atom(
     if (
       current &&
       current.mode === "list" &&
+      !current.suppressLeaveUntilReentry &&
       current.anchorSlot === anchorSlot &&
       isSameSlotList(get(overlappingSlotsAtom), overlapping)
     ) {
       return;
     }
 
-    set(pinnedTooltipAtom, {
+    // cursor is over a real overlap region: re-entry satisfied
+    set(_pinnedTooltipAtom, {
       ts,
       anchorSlot,
       clientPos,
       mode: "list",
-      isFrozen: false,
     });
-
-    pushPinnedSpotlight(get, set, anchorSlot);
+    set(_pinnedSpotlightSlotAtom, anchorSlot);
   },
 );
-
-/** Freeze the list (cursor entered the tooltip) so it stops following the cursor. */
-export const freezeOverlapAtom = atom(null, (get, set) => {
-  const current = get(pinnedTooltipAtom);
-  if (!current || current.mode !== "list" || current.isFrozen) return;
-  set(pinnedTooltipAtom, { ...current, isFrozen: true });
-});
 
 /** Switch to the detail view for a slot and spotlight it. */
 export const selectPinnedSlotAtom = atom(null, (get, set, slot: number) => {
   const pinned = get(pinnedTooltipAtom);
   if (!pinned) return;
-  set(pinnedTooltipAtom, { ...pinned, mode: "detail", selectedSlot: slot });
-  pushPinnedSpotlight(get, set, slot);
+  set(_pinnedTooltipAtom, { ...pinned, mode: "detail", selectedSlot: slot });
+  set(_pinnedSpotlightSlotAtom, slot);
 });
 
 /** Return to the list view and clear the spotlight. */
 export const pinnedBackToListAtom = atom(null, (get, set) => {
   const pinned = get(pinnedTooltipAtom);
   if (!pinned) return;
-  set(pinnedTooltipAtom, { ...pinned, mode: "list", selectedSlot: undefined });
-  set(pinnedSpotlightSlotAtom, undefined);
-  set(clearHoverInfoAtom, PINNED_HOVER_OWNER);
+  // The tooltip jumps from the detail position back under the header,
+  // so the cursor is left off the list. Suppress leave-dismissal
+  // until the cursor is seen over the tooltip/header again.
+  set(_pinnedTooltipAtom, {
+    ...pinned,
+    mode: "list",
+    selectedSlot: undefined,
+    suppressLeaveUntilReentry: true,
+  });
+  set(_pinnedSpotlightSlotAtom, undefined);
+});
+
+export const clearPinnedReentryGateAtom = atom(null, (get, set) => {
+  const pinned = get(pinnedTooltipAtom);
+  if (!pinned?.suppressLeaveUntilReentry) return;
+  set(_pinnedTooltipAtom, { ...pinned, suppressLeaveUntilReentry: false });
 });
 
 /** Step through the overlap list (clamped at ends). */
@@ -882,45 +897,13 @@ export const pinnedStepAtom = atom(null, (get, set, delta: number) => {
 export const pinnedHoverRowAtom = atom(
   null,
   (get, set, slot: number | undefined) => {
-    if (slot == null) {
-      set(pinnedSpotlightSlotAtom, undefined);
-      set(clearHoverInfoAtom, PINNED_HOVER_OWNER);
-      return;
-    }
-    pushPinnedSpotlight(get, set, slot);
+    if (!get(pinnedTooltipAtom)) return;
+    set(_pinnedSpotlightSlotAtom, slot);
   },
 );
-
-/**
- * Cursor position (viewport px) captured at dismiss time, so the regular hover
- * tooltip can be replayed at the real cursor location the instant the pin closes.
- */
-export const lastDismissPosAtom = atom<ClientPos | undefined>(undefined);
 
 /** Close the pinned tooltip and clear its spotlight. */
-export const dismissPinnedAtom = atom(
-  null,
-  (_get, set, clientPos?: ClientPos) => {
-    set(lastDismissPosAtom, clientPos);
-    set(pinnedTooltipAtom, undefined);
-    set(pinnedSpotlightSlotAtom, undefined);
-    set(clearHoverInfoAtom, PINNED_HOVER_OWNER);
-  },
-);
-
-/**
- * Close the pinned tooltip once its ts scrolls out of the visible range or in agg mode
- */
-const dismissPinnedIfOffscreenAtom = atom(null, (get, set) => {
-  const pinned = get(pinnedTooltipAtom);
-  if (!pinned) return;
-  const visibleRange = get(visibleRangeAtom);
-  if (!visibleRange) return;
-  if (
-    isAggregate(visibleRange) ||
-    pinned.ts < visibleRange[0] ||
-    pinned.ts > visibleRange[1]
-  ) {
-    set(dismissPinnedAtom);
-  }
+export const dismissPinnedAtom = atom(null, (_get, set) => {
+  set(_pinnedTooltipAtom, undefined);
+  set(_pinnedSpotlightSlotAtom, undefined);
 });
