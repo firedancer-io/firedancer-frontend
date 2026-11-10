@@ -1,6 +1,5 @@
 import type { VotesGranularity } from "../../../api/types";
 import { VotesGranularityEnum } from "../../../api/entities";
-import { HEADER_AGG_THRESHOLD_MS } from "../HeaderTrack/const";
 import {
   votesColor,
   votesNotarColor,
@@ -37,7 +36,7 @@ export const MIN_STEP_FRAC = 0.002;
 export type VotesView = "curves" | "slotLatency" | "aggLatency";
 
 const CURVES_MAX_RANGE_MS = 40_000;
-const SLOT_LATENCY_MAX_RANGE_MS = HEADER_AGG_THRESHOLD_MS;
+const SLOT_LATENCY_MAX_RANGE_MS = 180_000;
 const ICON_MARKERS_MAX_RANGE_MS = 10_000;
 
 export function getVotesView(windowSizeMs: number): VotesView {
