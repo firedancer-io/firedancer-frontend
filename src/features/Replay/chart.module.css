@@ -77,3 +77,8 @@
 .y-axis-tick.beside-title {
   left: calc(var(--track-title-width, 0px) + 8px);
 }
+
+.y-axis-tick-labels {
+  display: flex;
+  gap: 8px;
+}

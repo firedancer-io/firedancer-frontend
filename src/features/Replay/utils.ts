@@ -13,12 +13,16 @@ import type { TsRange } from "../WebGl/webglUtils.ts";
 import { convertToNsTimestamp } from "../../mathUtils.ts";
 import { useServerMessages } from "../../api/ws/utils.ts";
 import type { WsEntity, WsError } from "../../api/worker/types.ts";
-import type { AggGranularity } from "../../api/types.ts";
+import type { AggGranularity, Tile } from "../../api/types.ts";
 import type { TimelineAggQueryKey } from "./atoms.ts";
 import {
   OVERSCAN_DRAW_TILES_COUNT,
   tileSizeNs,
 } from "./HeaderTrack/useNonAggHeaderQuery.ts";
+
+export function getTileKey({ kind, kind_id }: Tile) {
+  return `${kind}:${kind_id}`;
+}
 
 export function clampToWorld(range: TsRange, worldRange: TsRange) {
   return clamp(

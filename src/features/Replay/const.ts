@@ -4,8 +4,12 @@ import type { TimelineAggQueryKey } from "./atoms";
 import { nsPerMs } from "../../consts";
 
 export const drawEventType = "draw";
+export const dataChangeEventType = "dataChange";
 
-export type DrawEmitter = TypedEmitter<{ [drawEventType]: () => void }>;
+export type DrawEmitter = TypedEmitter<{
+  [drawEventType]: () => void;
+  [dataChangeEventType]: () => void;
+}>;
 
 export const DEFAULT_WINDOW_MS = 12_000;
 export const MIN_VISIBLE_MS = 0.001;
@@ -64,7 +68,7 @@ export const minAggGranularities: Record<TimelineAggQueryKey, AggGranularity> =
     query_agg_revenue: "100ms",
     query_agg_shreds: "250ms",
     query_agg_slots: "250ms",
-    query_agg_tile_states: "2s",
+    query_agg_tile_states: "250ms",
     // 250ms buckets are sometimes empty at 200ms slots, breaking the lines
     query_agg_votes: "500ms",
   };

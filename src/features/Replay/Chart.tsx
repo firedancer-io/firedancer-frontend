@@ -14,7 +14,7 @@ import {
 import MiniMap from "./MiniMap/MiniMap.tsx";
 import HeaderTrack from "./HeaderTrack/index.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
-import { useTileStatesCache } from "./TileStatesTrack/useTileStatesCache.ts";
+import { useTileStatesCache } from "./tileStates/useTileStatesCache.ts";
 import { useVotesCache } from "./VotesTrack/useVotesCache.ts";
 import Tracks from "./Tracks.tsx";
 import SlotDividers from "./SlotDividers.tsx";

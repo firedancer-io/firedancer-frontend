@@ -35,6 +35,7 @@ interface UseAggQueryOpts<TValue, TParams extends object> {
   deleteBucketsAtom: DeleteBucketsAtom;
   emitterAtom: Atom<DrawEmitter>;
   params?: TParams;
+  overscanTilesCount?: number;
 }
 
 export function useAggQuery<TValue, TParams extends object = object>({
@@ -44,6 +45,7 @@ export function useAggQuery<TValue, TParams extends object = object>({
   deleteBucketsAtom,
   emitterAtom,
   params,
+  overscanTilesCount = OVERSCAN_TILES_COUNT,
 }: UseAggQueryOpts<TValue, TParams>) {
   const addValue = useSetAtom(addAtom);
   const deleteBuckets = useSetAtom(deleteBucketsAtom);
@@ -93,14 +95,14 @@ export function useAggQuery<TValue, TParams extends object = object>({
       createParallelCache<AggGranularity, TParams | undefined>({
         chartId,
         getTileSizeNs,
-        overscanTilesCount: OVERSCAN_TILES_COUNT,
+        overscanTilesCount,
         queryKey,
         sendQuery,
         getTileEvictionHighWatermark,
         getTileEvictionLowWatermark,
         onEvictTiles,
       }),
-    [chartId, queryKey, sendQuery, onEvictTiles],
+    [chartId, overscanTilesCount, queryKey, sendQuery, onEvictTiles],
   );
   const { queryRange, markQueryComplete, pauseStaleRefreshes, clearCache } =
     cache;

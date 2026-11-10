@@ -1,17 +1,12 @@
-import { getDefaultStore, useAtom, useAtomValue } from "jotai";
+import { getDefaultStore, useAtomValue } from "jotai";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { useThrottledCallback } from "use-debounce";
-import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import { useFrameRender } from "../../WebGl/useFrameRender.ts";
-import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
+import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
-import {
-  useTileCacheQuery,
-  useTileCacheSubscription,
-} from "../tiles/useTileCache.ts";
+import { useTileCacheSubscription } from "../tiles/useTileCache.ts";
 import {
   tileStatesCaches,
   type TileStatesCacheDelta,
@@ -26,41 +21,44 @@ import {
   handleResize,
   setUpRenderer,
   syncMeshes,
-  updateBarHeight,
+  type TileStatesTrackConfig,
 } from "./utils.ts";
-import {
-  getTileStatesGranularity,
-  isAggregate,
-  type TileKind,
-} from "./consts.ts";
+import { getTileStatesGranularity, isAggregate } from "./consts.ts";
 import type { TileStatesGranularity } from "../../../api/types.ts";
 import { TileStatesGranularityEnum } from "../../../api/entities.ts";
-import AggTileStates from "./AggTileStatesTrack.tsx";
-import TileStatesControls from "./TileStatesControls.tsx";
-import { tileStatesViewOptsAtoms } from "./atoms.ts";
-import RowLabels from "../RowLabels.tsx";
-import { getRowsLayout, trackInsetPx } from "../layout.ts";
-import styles from "../track.module.css";
+import { aggTileStatesAtom, aggTileStatesEmitterAtom } from "./aggAtoms.ts";
+import { dataChangeEventType, drawEventType } from "../const.ts";
 import { useSlotHighlightRender } from "../slotHighlight.ts";
+import { updateAggMaxStateShare, updateAggStatesMesh } from "./aggUtils.ts";
 
 const store = getDefaultStore();
 
-interface TileStatesTrackProps extends WebGlRemountProps {
-  kind: TileKind;
-  height: number;
-}
-
-function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
-  const [opts, setOpts] = useAtom(tileStatesViewOptsAtoms[kind]);
-  const [granularity, setGranularity] = useState<TileStatesGranularity>(
-    TileStatesGranularityEnum.txn,
-  );
+/**
+ * Sets up a tile states track's renderer, and keeps its meshes in sync with the
+ * visible range, tiles, and the txn, batch, and agg data. Queries on range
+ * changes, after moving the camera.
+ */
+export function useTileStatesRenderer({
+  config,
+  remount,
+  query,
+}: {
+  config: TileStatesTrackConfig;
+  remount: () => void;
+  query: (
+    referenceNs: bigint,
+    visibleRangeMs: TsRange,
+    worldRangeMs: TsRange,
+  ) => void;
+}) {
+  const [nonAggGranularity, setNonAggGranularity] =
+    useState<TileStatesGranularity>(TileStatesGranularityEnum.txn);
   const [isAgg, setIsAgg] = useState(false);
 
   const { containerRef, rendererRef } = useWebGlRenderer({
     remount,
     create: ({ setUpContextListeners, getWasContextLost }) =>
-      setUpRenderer(kind, setUpContextListeners, getWasContextLost),
+      setUpRenderer(config, setUpContextListeners, getWasContextLost),
     onResize: (rendererObj) => handleResize(rendererObj),
   });
 
@@ -70,28 +68,10 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
   useSlotHighlightRender(requestRender);
 
   const tiles = useAtomValue(tilesAtom);
-  const rows = useMemo(() => getTileRows(tiles, kind), [tiles, kind]);
-  const rowsLayout = getRowsLayout(height, rows.length, {
-    insetPx: trackInsetPx[kind === "execrp" ? "banks" : "replay"],
-    fillWhenThin: kind === "replay",
-  });
-
-  const queryTxn = useTileCacheQuery(tileStatesCaches.txn);
-  const queryBatch = useTileCacheQuery(tileStatesCaches.txn_batch);
-
-  const throttledRangeQuery = useThrottledCallback(
-    (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
-      const granularity = getTileStatesGranularity(
-        visibleRangeMs[1] - visibleRangeMs[0],
-      );
-      const query =
-        granularity === TileStatesGranularityEnum.txn ? queryTxn : queryBatch;
-      query(referenceNs, visibleRangeMs, worldRangeMs);
-    },
-    100,
-    { leading: true, trailing: true },
+  const rows = useMemo(
+    () => getTileRows(tiles, config.kind),
+    [tiles, config.kind],
   );
-
   const onRangeChange = useCallback(
     (updateView: boolean) => {
       const renderer = rendererRef.current;
@@ -105,8 +85,17 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
       const prevGranularity = renderer.renderedGranularity;
       const agg = isAggregate(visibleRangeMs);
       setIsAgg(agg);
+      renderer.isAgg = agg;
       if (agg) {
         renderer.renderedGranularity = undefined;
+        const viewChanged =
+          updateView && setVisibleRange(renderer, visibleRangeMs);
+        // Pans that stay within the built range skip the mesh rebuild, so
+        // update the lane scale here instead
+        const shareChanged =
+          viewChanged && updateAggMaxStateShare(renderer, visibleRangeMs);
+        query(refNs, visibleRangeMs, worldRangeMs);
+        if (viewChanged || shareChanged) requestRender();
         return;
       }
 
@@ -114,7 +103,7 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
         visibleRangeMs[1] - visibleRangeMs[0],
       );
       renderer.renderedGranularity = granularity;
-      setGranularity(granularity);
+      setNonAggGranularity(granularity);
 
       // Move camera before querying, because query may trigger immediate draw
       // if data is already available
@@ -129,12 +118,32 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
         syncMeshes(renderer);
       }
 
-      throttledRangeQuery(refNs, visibleRangeMs, worldRangeMs);
+      query(refNs, visibleRangeMs, worldRangeMs);
 
       if (viewChanged || granularityChanged) requestRender();
     },
-    [rendererRef, requestRender, throttledRangeQuery],
+    [rendererRef, requestRender, query],
   );
+
+  const drawAgg = useCallback(() => {
+    const renderer = rendererRef.current;
+    const refNs = store.get(referenceNsAtom);
+    const visibleRangeMs = store.get(visibleRangeAtom);
+    if (!renderer?.isAgg || refNs == null || !visibleRangeMs) return;
+
+    const changed = updateAggStatesMesh(
+      renderer,
+      refNs,
+      visibleRangeMs,
+      store.get(aggTileStatesAtom),
+    );
+    if (changed) requestRender();
+  }, [rendererRef, requestRender]);
+
+  const throttledDrawAgg = useThrottledCallbackIfVisible(drawAgg, 50, {
+    leading: false,
+    trailing: true,
+  });
 
   // subscribe to range changes to trigger queries
   useLayoutEffect(() => {
@@ -144,30 +153,36 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
     const unsubscribeWorld = store.sub(worldRangeAtom, () =>
       onRangeChange(false),
     );
+    const aggEmitter = store.get(aggTileStatesEmitterAtom);
+    const onAggChange = () => {
+      if (rendererRef.current) rendererRef.current.aggMeshBuild = undefined;
+    };
+    aggEmitter.addListener(dataChangeEventType, onAggChange);
+    aggEmitter.addListener(drawEventType, throttledDrawAgg);
 
     // trigger initial query, camera, and geometry build
     onRangeChange(true);
 
     return () => {
+      aggEmitter.removeListener(dataChangeEventType, onAggChange);
+      aggEmitter.removeListener(drawEventType, throttledDrawAgg);
+      throttledDrawAgg.cancel();
       unsubscribeVisible();
       unsubscribeWorld();
     };
-  }, [onRangeChange]);
+  }, [rendererRef, onRangeChange, throttledDrawAgg]);
 
   useLayoutEffect(() => {
     const renderer = rendererRef.current;
-    if (!renderer) return;
-    updateBarHeight(renderer);
-    if (renderer.renderedGranularity) syncMeshes(renderer, true);
+    if (renderer) renderer.aggMeshBuild = undefined;
+    if (renderer?.isAgg) {
+      drawAgg();
+      return;
+    }
+    if (!renderer?.renderedGranularity) return;
+    syncMeshes(renderer, true);
     requestRender();
-  }, [rendererRef, requestRender, rows]);
-
-  useLayoutEffect(() => {
-    const renderer = rendererRef.current;
-    if (!renderer) return;
-    renderer.errorStatesScene.visible = opts.showErrorStates;
-    requestRender();
-  }, [opts.showErrorStates, rendererRef, requestRender]);
+  }, [rendererRef, requestRender, rows, drawAgg]);
 
   const handleDelta = useCallback(
     (granularity: TileStatesGranularity, delta: TileStatesCacheDelta) => {
@@ -203,33 +218,12 @@ function TileStatesTrack({ kind, height, remount }: TileStatesTrackProps) {
   useTileCacheSubscription(tileStatesCaches.txn, onDeltaTxn);
   useTileCacheSubscription(tileStatesCaches.txn_batch, onDeltaBatch);
 
-  return (
-    <>
-      <div
-        className={styles.rows}
-        style={{
-          top: rowsLayout.topPx,
-          height: rowsLayout.rowPx * Math.max(rows.length, 1),
-        }}
-      >
-        <div
-          ref={containerRef}
-          className={styles.trackCanvasContainer}
-          style={{ visibility: isAgg ? "hidden" : undefined }}
-        />
-        {isAgg && <AggTileStates />}
-      </div>
-      <RowLabels labels={rows.map(({ label }) => label)} layout={rowsLayout} />
-      <TileStatesControls
-        kind={kind}
-        granularity={granularity}
-        isAgg={isAgg}
-        opts={opts}
-        setOpts={setOpts}
-      />
-    </>
-  );
+  return {
+    containerRef,
+    rendererRef,
+    requestRender,
+    rows,
+    isAgg,
+    nonAggGranularity,
+  };
 }
-
-const TileStatesTrackWithRemount = withWebGlRemount(TileStatesTrack);
-export default TileStatesTrackWithRemount;

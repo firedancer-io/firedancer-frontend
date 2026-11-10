@@ -1,13 +1,18 @@
 import { atom, useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useMeasure } from "react-use";
 import { tilesAtom } from "../../api/atoms.ts";
 import { hiddenTracksAtom } from "./atoms.ts";
 import { getTrackHeights, TRACK_GAP_PX, type TrackId } from "./layout.ts";
 import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
-import TileStatesTrack from "./TileStatesTrack/TileStatesTrack.tsx";
-import { getTileRows } from "./TileStatesTrack/utils.ts";
+import ExecrpTrack from "./ExecrpTrack/ExecrpTrack.tsx";
+import ReplayTrack from "./ReplayTrack/ReplayTrack.tsx";
+import { getTileRows } from "./tileStates/utils.ts";
+import {
+  useAggTileStatesQuery,
+  type AggTileStatesQuery,
+} from "./tileStates/useAggTileStatesQuery.ts";
 import CpuTrack from "./CpuTrack/CpuTrack.tsx";
 import VotesTrack from "./VotesTrack/VotesTrack.tsx";
 import { isVotesTrackAvailableAtom } from "./VotesTrack/atoms.ts";
@@ -37,6 +42,15 @@ export default function Tracks() {
   const cpuRows = useAtomValue(cpuRowCountAtom);
   const hasCpu = useAtomValue(queryTilesAtom).length > 0;
   const hasVotes = useAtomValue(isVotesTrackAvailableAtom);
+
+  const aggTileStatesQuery = useAggTileStatesQuery();
+  const { pauseStaleRefreshes: pauseStaleAggTileStatesRefreshes } =
+    aggTileStatesQuery;
+  const isTileStatesHidden = hidden.has("banks") && hidden.has("replay");
+
+  useEffect(() => {
+    if (isTileStatesHidden) pauseStaleAggTileStatesRefreshes();
+  }, [isTileStatesHidden, pauseStaleAggTileStatesRefreshes]);
 
   const tracks = useMemo(
     () =>
@@ -68,7 +82,7 @@ export default function Tracks() {
           const trackHeight = heights[id] ?? 0;
           return (
             <TrackLayout key={id} trackId={id} height={trackHeight}>
-              {renderTrack(id, trackHeight)}
+              {renderTrack(id, trackHeight, aggTileStatesQuery)}
             </TrackLayout>
           );
         })}
@@ -76,7 +90,11 @@ export default function Tracks() {
   );
 }
 
-function renderTrack(id: TrackId, height: number) {
+function renderTrack(
+  id: TrackId,
+  height: number,
+  aggTileStatesQuery: AggTileStatesQuery,
+) {
   switch (id) {
     case "shreds":
       return <ShredsTrack height={height} />;
@@ -85,9 +103,9 @@ function renderTrack(id: TrackId, height: number) {
     case "income":
       return <RevenueTrack height={height} />;
     case "banks":
-      return <TileStatesTrack kind="execrp" height={height} />;
+      return <ExecrpTrack height={height} aggQuery={aggTileStatesQuery} />;
     case "replay":
-      return <TileStatesTrack kind="replay" height={height} />;
+      return <ReplayTrack height={height} aggQuery={aggTileStatesQuery} />;
     case "cpu":
       return <CpuTrack height={height} />;
   }

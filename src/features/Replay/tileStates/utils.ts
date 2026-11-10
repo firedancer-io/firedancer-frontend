@@ -5,39 +5,33 @@ import {
   createRectResources,
   disposeRectResources,
   type RectResources,
-  convertToWebGlColor,
-  type RgbColor,
   type TsRange,
 } from "../../WebGl/webglUtils.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import type { Tile, TileStatesGranularity } from "../../../api/types.ts";
-import { TileStatesGranularityEnum } from "../../../api/entities.ts";
+import {
+  type TileState,
+  TileStatesGranularityEnum,
+} from "../../../api/entities.ts";
 import {
   tileStatesCaches,
   type TileStateColumns,
   type TileStatesDataTile,
 } from "./tileStatesCache.ts";
 import {
-  linearToSrgbGlsl,
+  createSlotCoverageMaterial,
   createTileStatesMaterial,
-  createErrorStatesMaterial,
   createStatesMesh,
   ensureStatesCapacity,
-  setErrorStatesSize,
   setStatesCount,
   type StatesMesh,
 } from "./tileStatesMesh.ts";
-import {
-  BAR_HEIGHT_RATIO,
-  ErrorState,
-  errorStateColors,
-  tileStateColors,
-  type TileKind,
-} from "./consts.ts";
-import { replayTrackBackgroundColor } from "../../../colors.ts";
+import type { TileKind } from "./consts.ts";
+import { TILE_STATE_PALETTE, type CompositeContext } from "./composite.ts";
 import { referenceNsAtom, visibleRangeAtom } from "../atoms.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
 import { calcRelativeMs } from "../utils.ts";
+import type { AggMeshBuild } from "./aggUtils.ts";
 import {
   createSlotHighlight,
   getRelativeSlot,
@@ -64,16 +58,45 @@ export function getTileRows(
   return rows;
 }
 
-type RowOfTile = Map<number, number>;
+export type RowOfTile = Map<number, number>;
 
-function getRowOfTile(kind: TileKind): RowOfTile {
+export function getRowOfTile(kind: TileKind): RowOfTile {
   const rows = getTileRows(store.get(tilesAtom), kind);
   return new Map(rows.map(({ tileIdx }, row) => [tileIdx, row]));
 }
 
+/** Rects per data tile that a composite draws over itself, e.g. error states */
+interface CompositeOverlay {
+  material: THREE.RawShaderMaterial;
+  scene: THREE.Scene;
+  append: (
+    mesh: StatesMesh,
+    data: TileStateColumns,
+    start: number,
+    rowOfTile: RowOfTile,
+  ) => number;
+}
+
+/** Shades the canvas from the coverage target */
+export interface TileStatesComposite {
+  overlay?: CompositeOverlay;
+  setStates: (states: TileState[]) => void;
+  resize?: () => void;
+  render: (rendererObj: RendererObj, rowCount: number) => void;
+  dispose: () => void;
+}
+
+export interface TileStatesTrackConfig {
+  kind: TileKind;
+  getStates: (granularity: TileStatesGranularity | undefined) => TileState[];
+  createComposite: (ctx: CompositeContext) => TileStatesComposite;
+}
+
 interface DataTileMeshes {
   tileStates: StatesMesh;
-  errorStates?: StatesMesh;
+  overlay?: StatesMesh;
+  startMs: number;
+  endMs: number;
 }
 
 export interface RendererObj {
@@ -83,16 +106,23 @@ export interface RendererObj {
   tileStatesScene: THREE.Scene;
   tileStatesMaterial: THREE.RawShaderMaterial;
   tileStatesTarget: THREE.WebGLRenderTarget;
-  errorStatesMaterial: THREE.RawShaderMaterial;
   highlight: SlotHighlight;
-  errorStatesScene: THREE.Scene;
-  compositeScene: THREE.Scene;
-  compositeMaterial: THREE.RawShaderMaterial;
-  kind: TileKind;
+  slotCoverageMaterial: THREE.RawShaderMaterial;
+  slotCoverageTarget: THREE.WebGLRenderTarget;
+  hasSlotCoverage: THREE.IUniform<number>;
+  composite: TileStatesComposite;
+  config: TileStatesTrackConfig;
+  coverageStates: TileState[];
   dataTileMeshes: Map<string, DataTileMeshes>;
   availableMeshes: DataTileMeshes[];
   liveDataTileKey: string | undefined;
   renderedGranularity: TileStatesGranularity | undefined;
+  aggStatesScene: THREE.Scene;
+  aggMeshes: DataTileMeshes;
+  aggMeshBuild: AggMeshBuild | undefined;
+  /** The largest share of busy time any state has in a visible agg bucket */
+  aggMaxStateShare: number;
+  isAgg: boolean;
   msPerPx: number;
   anchorPx: number;
   viewStartPx: number;
@@ -103,70 +133,8 @@ function dataTileKey(dataTile: TileStatesDataTile): string {
   return `${dataTile.startNs}:${dataTile.endNs}`;
 }
 
-const tmpColor = new THREE.Color();
-
-/**
- * sRGB to linear light.
- * sRGB is gamma-encoded, so a state split over 2 px shows less light than whole.
- * Linear light lets tile state colors be time-weighted and summed accurately.
- */
-function toLinear([r, g, b]: RgbColor): RgbColor {
-  tmpColor.setRGB(r, g, b, THREE.SRGBColorSpace);
-  return [tmpColor.r, tmpColor.g, tmpColor.b];
-}
-
-const BACKGROUND_LINEAR = toLinear(
-  convertToWebGlColor(replayTrackBackgroundColor),
-);
-
-const TILE_STATE_PALETTE = Object.values(tileStateColors).map(
-  (color) => new THREE.Vector3(...toLinear(convertToWebGlColor(color))),
-);
-const ERROR_STATE_PALETTE = Object.values(errorStateColors).map(
-  (color) => new THREE.Vector3(...convertToWebGlColor(color)),
-);
-
-const compositeVertexShader = /* glsl */ `
-attribute vec2 position; // unit quad in [-0.5, 0.5]
-
-void main() {
-  gl_Position = vec4(position * 2.0, 0.0, 1.0);
-}
-`;
-
-/** Shades each px's summed states over the background and encodes to sRGB. */
-const compositeFragmentShader = /* glsl */ `
-precision highp float;
-
-uniform sampler2D uStateColors; // linear rgb = sum of color * coverage, a = busy
-uniform vec2 uCanvasSize;       // px in canvas dimensions
-uniform vec3 uBackground;       // linear color
-${linearToSrgbGlsl}
-void main() {
-  vec4 s = texture2D(uStateColors, gl_FragCoord.xy / uCanvasSize);
-  vec3 color = s.rgb + uBackground * (1.0 - min(s.a, 1.0));
-  gl_FragColor = vec4(linearToSrgb(color), 1.0);
-}
-`;
-
-function createCompositeMaterial(
-  stateColors: THREE.Texture,
-  backgroundLinear: [number, number, number],
-) {
-  return new THREE.RawShaderMaterial({
-    vertexShader: compositeVertexShader,
-    fragmentShader: compositeFragmentShader,
-    depthTest: false,
-    uniforms: {
-      uStateColors: { value: stateColors },
-      uCanvasSize: { value: new THREE.Vector2(1, 1) },
-      uBackground: { value: new THREE.Vector3(...backgroundLinear) },
-    },
-  });
-}
-
 export function setUpRenderer(
-  kind: TileKind,
+  config: TileStatesTrackConfig,
   setUpContextListeners: ContextHelpers["setUpContextListeners"],
   getWasContextLost: ContextHelpers["getWasContextLost"],
 ): RendererObj | undefined {
@@ -184,44 +152,60 @@ export function setUpRenderer(
   const rectResources = createRectResources();
 
   const tileStatesScene = new THREE.Scene();
-  const errorStatesScene = new THREE.Scene();
-  errorStatesScene.visible = false;
-  const highlight = createSlotHighlight();
-  const tileStatesMaterial = createTileStatesMaterial(
-    TILE_STATE_PALETTE,
-    highlight,
-  );
-  const errorStatesMaterial = createErrorStatesMaterial(
-    ERROR_STATE_PALETTE,
-    highlight,
-  );
 
   const canBlendFloat32 =
     renderer.extensions.has("EXT_color_buffer_float") &&
     renderer.extensions.has("EXT_float_blend");
-  // Holds each pixel's state colors summed by time, and how busy it was in
-  // alpha. The composite pass turns this into the final color.
+  // Each px's time per row and coverage state. The composite pass shades every
+  // mode from it
+  const states = config.getStates(undefined);
   const tileStatesTarget = new THREE.WebGLRenderTarget(1, 1, {
+    format: THREE.RedFormat,
     type: canBlendFloat32 ? THREE.FloatType : THREE.HalfFloatType,
     minFilter: THREE.NearestFilter,
     magFilter: THREE.NearestFilter,
     depthBuffer: false,
   });
-
-  const compositeMaterial = createCompositeMaterial(
-    tileStatesTarget.texture,
-    BACKGROUND_LINEAR,
+  const tileStatesMaterial = createTileStatesMaterial(
+    TILE_STATE_PALETTE,
+    getStateIdxs(states),
+    states.length,
   );
-  const compositeMesh = new THREE.Mesh(
-    rectResources.unitQuad,
-    compositeMaterial,
+  // Each px's time per row in the highlighted slots and groups, so composites
+  // can highlight by the slot most of a px's time is in
+  const highlight = createSlotHighlight();
+  const slotCoverageTarget = new THREE.WebGLRenderTarget(1, 1, {
+    format: THREE.RGBAFormat,
+    type: tileStatesTarget.texture.type,
+    minFilter: THREE.NearestFilter,
+    magFilter: THREE.NearestFilter,
+    depthBuffer: false,
+  });
+  const slotCoverageMaterial = createSlotCoverageMaterial(
+    tileStatesMaterial,
+    highlight,
   );
-  compositeMesh.frustumCulled = false;
-  const compositeScene = new THREE.Scene();
-  compositeScene.add(compositeMesh);
+  const hasSlotCoverage = { value: 0 };
+  const composite = config.createComposite({
+    renderer,
+    coverageTarget: tileStatesTarget,
+    unitQuad: rectResources.unitQuad,
+    states,
+    highlight,
+    slotCoverageTarget,
+    hasSlotCoverage,
+  });
 
   const dataTileMeshes = new Map<string, DataTileMeshes>();
   const availableMeshes: DataTileMeshes[] = [];
+
+  const aggMeshes: DataTileMeshes = {
+    tileStates: createStatesMesh(rectResources.unitQuad, tileStatesMaterial),
+    startMs: -Infinity,
+    endMs: Infinity,
+  };
+  const aggStatesScene = new THREE.Scene();
+  aggStatesScene.add(aggMeshes.tileStates.mesh);
 
   const cleanUp = () => {
     // Skip GPU disposal if the context was lost since its objects are already gone.
@@ -229,11 +213,13 @@ export function setUpRenderer(
       for (const meshes of dataTileMeshes.values())
         disposeDataTileMeshes(meshes);
       for (const meshes of availableMeshes) disposeDataTileMeshes(meshes);
+      disposeDataTileMeshes(aggMeshes);
       disposeRectResources(rectResources);
       tileStatesMaterial.dispose();
-      errorStatesMaterial.dispose();
       tileStatesTarget.dispose();
-      compositeMaterial.dispose();
+      slotCoverageMaterial.dispose();
+      slotCoverageTarget.dispose();
+      composite.dispose();
     }
     cleanUpRenderer();
   };
@@ -244,17 +230,23 @@ export function setUpRenderer(
     tileStatesScene,
     rectResources,
     tileStatesMaterial,
-    errorStatesMaterial,
-    highlight,
     tileStatesTarget,
-    errorStatesScene,
-    compositeScene,
-    compositeMaterial,
-    kind,
+    highlight,
+    slotCoverageMaterial,
+    slotCoverageTarget,
+    hasSlotCoverage,
+    composite,
+    config,
+    coverageStates: states,
     dataTileMeshes,
     availableMeshes,
     liveDataTileKey: undefined,
     renderedGranularity: undefined,
+    aggStatesScene,
+    aggMeshes,
+    aggMeshBuild: undefined,
+    aggMaxStateShare: 1,
+    isAgg: false,
     msPerPx: 0,
     anchorPx: 0,
     viewStartPx: 0,
@@ -264,49 +256,94 @@ export function setUpRenderer(
   return rendererObj;
 }
 
+/** Each TileState's texel row among the coverage states, -1 if not drawn */
+function getStateIdxs(states: TileState[]) {
+  return TILE_STATE_PALETTE.map((_, state) => states.indexOf(state));
+}
+
+function syncCoverageStates(rendererObj: RendererObj) {
+  const states = rendererObj.config.getStates(rendererObj.renderedGranularity);
+  if (states === rendererObj.coverageStates) return states;
+  rendererObj.coverageStates = states;
+  rendererObj.tileStatesMaterial.uniforms.uStateIdxs.value =
+    getStateIdxs(states);
+  rendererObj.composite.setStates(states);
+  return states;
+}
+
 export function handleResize(rendererObj: RendererObj) {
-  updateBarHeight(rendererObj);
+  rendererObj.composite.resize?.();
   const visibleRangeMs = store.get(visibleRangeAtom);
   if (visibleRangeMs) setVisibleRange(rendererObj, visibleRangeMs);
   render(rendererObj);
 }
 
-export function updateBarHeight(rendererObj: RendererObj) {
-  const rows = Math.max(getRowOfTile(rendererObj.kind).size, 1);
-  const rowPx = rendererObj.renderer.domElement.height / rows;
-  setErrorStatesSize(
-    rendererObj.errorStatesMaterial,
-    rendererObj.renderer.getPixelRatio(),
-    rowPx * BAR_HEIGHT_RATIO,
-  );
-}
-
 export function render(rendererObj: RendererObj) {
   const {
     renderer,
-    tileStatesScene,
     camera,
     tileStatesTarget,
-    errorStatesScene,
-    compositeScene,
+    highlight,
+    slotCoverageMaterial,
+    slotCoverageTarget,
+    hasSlotCoverage,
+    composite,
   } = rendererObj;
   const { width, height } = renderer.domElement;
   if (!width || !height) return;
-  updateSlotHighlight(rendererObj.highlight, width);
-  if (tileStatesTarget.width !== width || tileStatesTarget.height !== height) {
-    tileStatesTarget.setSize(width, height);
-    (
-      rendererObj.compositeMaterial.uniforms.uCanvasSize.value as THREE.Vector2
-    ).set(width, height);
+  updateSlotHighlight(highlight, width);
+  const rowCount = Math.max(getRowOfTile(rendererObj.config.kind).size, 1);
+  const states = syncCoverageStates(rendererObj);
+  const coverageHeight = rowCount * states.length;
+  if (
+    tileStatesTarget.width !== width ||
+    tileStatesTarget.height !== coverageHeight
+  ) {
+    tileStatesTarget.setSize(width, coverageHeight);
   }
+  for (const material of getRectMaterials(rendererObj)) {
+    material.uniforms.uRowCount.value = rowCount;
+  }
+
+  const statesScene = rendererObj.isAgg
+    ? rendererObj.aggStatesScene
+    : rendererObj.tileStatesScene;
   renderer.setRenderTarget(tileStatesTarget);
   renderer.clear();
-  renderer.render(tileStatesScene, camera);
-  renderer.setRenderTarget(null);
-  renderer.render(compositeScene, camera);
-  if (rendererObj.renderedGranularity === TileStatesGranularityEnum.txn) {
-    renderer.render(errorStatesScene, camera);
+  renderer.render(statesScene, camera);
+
+  // batch and agg data have no slots, so composites highlight them by time
+  const drawSlotCoverage =
+    rendererObj.renderedGranularity === TileStatesGranularityEnum.txn &&
+    highlight.uniforms.uHighlightActive.value > 0.5;
+  hasSlotCoverage.value = drawSlotCoverage ? 1 : 0;
+  if (drawSlotCoverage) {
+    if (
+      slotCoverageTarget.width !== width ||
+      slotCoverageTarget.height !== rowCount
+    ) {
+      slotCoverageTarget.setSize(width, rowCount);
+    }
+    renderer.setRenderTarget(slotCoverageTarget);
+    renderer.clear();
+    statesScene.overrideMaterial = slotCoverageMaterial;
+    renderer.render(statesScene, camera);
+    statesScene.overrideMaterial = null;
   }
+
+  composite.render(rendererObj, rowCount);
+}
+
+/** A rect's relative slot for highlighting, NO_SLOT if it has none */
+export function getRectSlot(highlight: SlotHighlight, slot: number) {
+  return Number.isNaN(slot) ? NO_SLOT : getRelativeSlot(highlight, slot);
+}
+
+/** Materials of the rects positioned in the view */
+function getRectMaterials({ tileStatesMaterial, composite }: RendererObj) {
+  return composite.overlay
+    ? [tileStatesMaterial, composite.overlay.material]
+    : [tileStatesMaterial];
 }
 
 // An anchor near the view keeps shader px values small
@@ -316,8 +353,7 @@ export function setVisibleRange(
   rendererObj: RendererObj,
   visibleRangeMs: TsRange,
 ): boolean {
-  const { renderer, dataTileMeshes, tileStatesMaterial, errorStatesMaterial } =
-    rendererObj;
+  const { renderer, dataTileMeshes } = rendererObj;
 
   const widthPx = Math.max(renderer.domElement.width, 1);
   const prevMsPerPx = rendererObj.msPerPx;
@@ -333,7 +369,7 @@ export function setVisibleRange(
   const anchorMoved = anchorPx !== rendererObj.anchorPx;
   rendererObj.anchorPx = anchorPx;
 
-  for (const material of [tileStatesMaterial, errorStatesMaterial]) {
+  for (const material of getRectMaterials(rendererObj)) {
     material.uniforms.uMsPerPx.value = msPerPx;
     material.uniforms.uViewWidthPx.value = widthPx;
     material.uniforms.uOffsetPx.value = anchorPx - viewStartPx;
@@ -343,39 +379,59 @@ export function setVisibleRange(
   if (scaleChanged || anchorMoved) {
     for (const meshes of dataTileMeshes.values())
       updateDataTileMeshPositions(rendererObj, meshes);
+    updateDataTileMeshPositions(rendererObj, rendererObj.aggMeshes);
+  }
+  if (scaleChanged || viewMoved) {
+    for (const meshes of dataTileMeshes.values())
+      updateDataTileMeshVisibility(rendererObj, meshes);
   }
 
   // Callers can skip rendering if no px value has changed
   return scaleChanged || viewMoved;
 }
 
-function updateDataTileMeshPositions(
+export function updateDataTileMeshPositions(
   rendererObj: RendererObj,
   meshes: DataTileMeshes,
 ) {
   const { msPerPx, anchorPx } = rendererObj;
   const anchorMs = anchorPx * msPerPx - meshes.tileStates.referenceX;
   const anchorHi = Math.fround(anchorMs);
-  for (const statesMesh of [meshes.tileStates, meshes.errorStates]) {
+  for (const statesMesh of [meshes.tileStates, meshes.overlay]) {
     if (!statesMesh) continue;
     statesMesh.mesh.position.x = anchorHi;
     statesMesh.mesh.position.y = anchorMs - anchorHi;
   }
 }
 
+/** Hides a data tile's meshes out of view, so the GPU skips their rects */
+function updateDataTileMeshVisibility(
+  rendererObj: RendererObj,
+  meshes: DataTileMeshes,
+) {
+  const { msPerPx, viewStartPx, renderer } = rendererObj;
+  const viewStartMs = viewStartPx * msPerPx;
+  const viewEndMs = viewStartMs + renderer.domElement.width * msPerPx;
+  const visible = meshes.endMs >= viewStartMs && meshes.startMs <= viewEndMs;
+  meshes.tileStates.mesh.visible = visible;
+  if (meshes.overlay) meshes.overlay.mesh.visible = visible;
+}
+
 function createDataTileMeshes(rendererObj: RendererObj): DataTileMeshes {
-  const { rectResources, tileStatesMaterial, errorStatesMaterial, kind } =
-    rendererObj;
+  const { rectResources, tileStatesMaterial, composite } = rendererObj;
   const tileStates = createStatesMesh(
     rectResources.unitQuad,
     tileStatesMaterial,
   );
-  // Top/bottom borders drawn over the tile states.
-  const errorStates =
-    kind === "execrp"
-      ? createStatesMesh(rectResources.unitQuad, errorStatesMaterial)
-      : undefined;
-  return { tileStates, errorStates };
+  const overlay =
+    composite.overlay &&
+    createStatesMesh(rectResources.unitQuad, composite.overlay.material);
+  return {
+    tileStates,
+    overlay,
+    startMs: 0,
+    endMs: 0,
+  };
 }
 
 /** Acquires pooled or new meshes for a data tile and adds them to scenes. */
@@ -387,15 +443,14 @@ function addDataTileMeshes(
     rendererObj.availableMeshes.pop() ?? createDataTileMeshes(rendererObj);
   rendererObj.dataTileMeshes.set(key, meshes);
   rendererObj.tileStatesScene.add(meshes.tileStates.mesh);
-  if (meshes.errorStates) {
-    rendererObj.errorStatesScene.add(meshes.errorStates.mesh);
-  }
+  if (meshes.overlay)
+    rendererObj.composite.overlay?.scene.add(meshes.overlay.mesh);
   return meshes;
 }
 
 function disposeDataTileMeshes(meshes: DataTileMeshes) {
   meshes.tileStates.mesh.geometry.dispose();
-  meshes.errorStates?.mesh.geometry.dispose();
+  meshes.overlay?.mesh.geometry.dispose();
 }
 
 function buildDataTileMeshes(
@@ -407,13 +462,14 @@ function buildDataTileMeshes(
 ) {
   if (!appendData) {
     // referenceX is the data tile's start, so rects are stored in small ms from it
-    const referenceX = calcRelativeMs(
-      store.get(referenceNsAtom) ?? 0n,
-      dataTile.startNs,
-    );
+    const referenceNs = store.get(referenceNsAtom) ?? 0n;
+    const referenceX = calcRelativeMs(referenceNs, dataTile.startNs);
     meshes.tileStates.referenceX = referenceX;
-    if (meshes.errorStates) meshes.errorStates.referenceX = referenceX;
+    if (meshes.overlay) meshes.overlay.referenceX = referenceX;
+    meshes.startMs = referenceX;
+    meshes.endMs = calcRelativeMs(referenceNs, dataTile.endNs);
     updateDataTileMeshPositions(rendererObj, meshes);
+    updateDataTileMeshVisibility(rendererObj, meshes);
   }
 
   const data = appendData ?? dataTile.data;
@@ -431,18 +487,13 @@ function buildDataTileMeshes(
     tileStatesStart,
   );
 
-  if (meshes.errorStates) {
-    const errorStatesStart = appendData ? meshes.errorStates.count : 0;
+  const overlay = rendererObj.composite.overlay;
+  if (meshes.overlay && overlay) {
+    const overlayStart = appendData ? meshes.overlay.count : 0;
     setStatesCount(
-      meshes.errorStates,
-      appendErrorStates(
-        rendererObj.highlight,
-        meshes.errorStates,
-        data,
-        errorStatesStart,
-        rowOfTile,
-      ),
-      errorStatesStart,
+      meshes.overlay,
+      overlay.append(meshes.overlay, data, overlayStart, rowOfTile),
+      overlayStart,
     );
   }
 }
@@ -456,7 +507,7 @@ export function syncMeshes(rendererObj: RendererObj, rebuild = false) {
   if (rebuild) rendererObj.liveDataTileKey = undefined;
   const {
     tileStatesScene,
-    errorStatesScene,
+    composite,
     availableMeshes,
     dataTileMeshes,
     liveDataTileKey,
@@ -465,7 +516,7 @@ export function syncMeshes(rendererObj: RendererObj, rebuild = false) {
   const dataTiles = renderedGranularity
     ? tileStatesCaches[renderedGranularity].getTiles()
     : [];
-  const rowOfTile = getRowOfTile(rendererObj.kind);
+  const rowOfTile = getRowOfTile(rendererObj.config.kind);
 
   const keys = new Set<string>();
 
@@ -486,7 +537,7 @@ export function syncMeshes(rendererObj: RendererObj, rebuild = false) {
     if (keys.has(key) || key === liveDataTileKey) continue;
 
     tileStatesScene.remove(meshes.tileStates.mesh);
-    if (meshes.errorStates) errorStatesScene.remove(meshes.errorStates.mesh);
+    if (meshes.overlay) composite.overlay?.scene.remove(meshes.overlay.mesh);
     dataTileMeshes.delete(key);
     availableMeshes.push(meshes);
   }
@@ -512,7 +563,7 @@ export function appendLiveStates(
     rendererObj,
     meshes,
     liveDataTile,
-    getRowOfTile(rendererObj.kind),
+    getRowOfTile(rendererObj.config.kind),
     hasLiveMeshes ? newData : undefined,
   );
 }
@@ -532,12 +583,6 @@ export function clearLiveMarkerIfAdded(
   clearLiveMarker(rendererObj);
 }
 
-/** Row height and bar height in [0, 1] view space. */
-function getRowLayout(rowOfTile: RowOfTile) {
-  const rowH = 1 / rowOfTile.size;
-  return { rowH, barH: rowH * BAR_HEIGHT_RATIO };
-}
-
 function appendTileStates(
   highlight: SlotHighlight,
   mesh: StatesMesh,
@@ -553,7 +598,6 @@ function appendTileStates(
   }
   ensureStatesCapacity(mesh, start + needed);
 
-  const { rowH, barH } = getRowLayout(rowOfTile);
   let count = start;
   for (let i = 0; i < data.state.length; i++) {
     const row = rowOfTile.get(data.state_tile[i]);
@@ -563,60 +607,24 @@ function appendTileStates(
       count++,
       data.state_start_ms[i],
       data.state_end_ms[i],
-      tileYPosition(row, rowH),
-      barH,
+      row,
       data.state[i],
-      toRelativeSlot(highlight, data.state_slot[i]),
+      1,
+      getRectSlot(highlight, data.state_slot[i]),
     );
   }
   return count;
 }
 
-function appendErrorStates(
-  highlight: SlotHighlight,
-  mesh: StatesMesh,
-  data: TileStateColumns,
-  start: number,
-  rowOfTile: RowOfTile,
-): number {
-  if (rowOfTile.size === 0) return start;
-
-  let needed = 0;
-  for (let i = 0; i < data.txn_idx.length; i++) {
-    if (rowOfTile.has(data.txn_tile[i]) && data.txn_error_code[i] !== null)
-      needed++;
-  }
-  ensureStatesCapacity(mesh, start + needed);
-
-  const { rowH, barH } = getRowLayout(rowOfTile);
-  let count = start;
-  for (let i = 0; i < data.txn_idx.length; i++) {
-    const row = rowOfTile.get(data.txn_tile[i]);
-    const errorCode = data.txn_error_code[i];
-    if (row === undefined || errorCode === null) continue;
-    addRectToMesh(
-      mesh,
-      count++,
-      data.txn_start_ms[i],
-      data.txn_end_ms[i],
-      tileYPosition(row, rowH),
-      barH,
-      errorCode ? ErrorState.Failed : ErrorState.Succeeded,
-      toRelativeSlot(highlight, data.txn_slot[i]),
-    );
-  }
-  return count;
-}
-
-function addRectToMesh(
+export function addRectToMesh(
   mesh: StatesMesh,
   idx: number,
   startMs: number,
   endMs: number,
-  y: number,
-  height: number,
+  row: number,
   colorIndex: number,
-  slot: number,
+  weight = 1,
+  slot = NO_SLOT,
 ) {
   const localStart = startMs - mesh.referenceX;
   const localEnd = endMs - mesh.referenceX;
@@ -628,17 +636,8 @@ function addRectToMesh(
   mesh.edges[r + 2] = endHi;
   mesh.edges[r + 3] = localEnd - endHi;
   const b = idx * 3;
-  mesh.bar[b] = y;
-  mesh.bar[b + 1] = height;
-  mesh.bar[b + 2] = colorIndex;
+  mesh.bar[b] = row;
+  mesh.bar[b + 1] = colorIndex;
+  mesh.bar[b + 2] = weight;
   mesh.slot[idx] = slot;
-}
-
-function toRelativeSlot(highlight: SlotHighlight, slot: number) {
-  return Number.isNaN(slot) ? NO_SLOT : getRelativeSlot(highlight, slot);
-}
-
-/** Bottom y of a row, rows stacked top-down. */
-function tileYPosition(row: number, rowH: number) {
-  return 1 - (row + 1) * rowH;
 }

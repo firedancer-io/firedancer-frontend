@@ -1,26 +1,27 @@
 import { TileState, TileStatesGranularityEnum } from "../../../api/entities.ts";
 import type { TileStatesGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
+import type { LegendItem } from "../TrackControls.tsx";
 import {
-  transactionErrorOutlineColor,
-  transactionSuccessOutlineColor,
   replayBlockedOnConflictsColor,
   replayBlockedOnNetworkColor,
   replayBlockedOnTilesColor,
   replayExecrpExecuteColor,
   replayExecrpLoadingColor,
-  replayExecrpLthashBatchColor,
   replayExecrpLthashColor,
   replayExecrpPostExecuteColor,
   replayExecrpSigverifyColor,
   replayExecrpValidateColor,
   replaySlotFinishColor,
+  replayTrackBackgroundColor,
+  transactionErrorOutlineColor,
+  transactionSuccessOutlineColor,
 } from "../../../colors.ts";
 
 export type TileKind = "execrp" | "replay";
 
-export const TXN_MAX_MS = 30_000; // 30s
-export const BATCH_MAX_MS = 30 * 60_000; // 30min
+const TXN_MAX_MS = 4_000; // 4s
+const BATCH_MAX_MS = 4 * 60_000; // 4min
 
 export function getTileStatesGranularity(
   spanMs: number,
@@ -50,7 +51,7 @@ export const errorStateColors: Record<ErrorState, string> = {
 };
 
 export const tileStateColors: Record<TileState, string> = {
-  [TileState.Idle]: "#000000",
+  [TileState.Idle]: replayTrackBackgroundColor,
   [TileState.Sigverify]: replayExecrpSigverifyColor,
   [TileState.Loading]: replayExecrpLoadingColor,
   [TileState.Validate]: replayExecrpValidateColor,
@@ -66,7 +67,7 @@ export const tileStateColors: Record<TileState, string> = {
   [TileState.ValidBatch]: replayExecrpValidateColor,
   [TileState.ExecBatch]: replayExecrpExecuteColor,
   [TileState.PostExecBatch]: replayExecrpPostExecuteColor,
-  [TileState.LthashBatch]: replayExecrpLthashBatchColor,
+  [TileState.LthashBatch]: replayExecrpLthashColor,
 };
 
 export const tileStateLabels: Record<TileState, string> = {
@@ -76,10 +77,10 @@ export const tileStateLabels: Record<TileState, string> = {
   [TileState.Validate]: "Validate",
   [TileState.Execute]: "Execute",
   [TileState.PostExecute]: "Post-Execute",
-  [TileState.BlockedOnTiles]: "Blocked on tiles",
-  [TileState.BlockedOnConflicts]: "Blocked on conflicts",
-  [TileState.BlockedOnNetwork]: "Blocked on network",
-  [TileState.SlotFinish]: "Slot finish",
+  [TileState.BlockedOnTiles]: "Tiles",
+  [TileState.BlockedOnConflicts]: "Conflicts",
+  [TileState.BlockedOnNetwork]: "Network",
+  [TileState.SlotFinish]: "Finish",
   [TileState.Lthash]: "LtHash",
   [TileState.SigverifyBatch]: "Sigverify batch",
   [TileState.LoadBatch]: "Load batch",
@@ -89,36 +90,6 @@ export const tileStateLabels: Record<TileState, string> = {
   [TileState.LthashBatch]: "LtHash batch",
 };
 
-export const replayStates: TileState[] = [
-  TileState.BlockedOnTiles,
-  TileState.BlockedOnConflicts,
-  TileState.BlockedOnNetwork,
-  TileState.SlotFinish,
-];
-
-export const execrpStates: Record<TileStatesGranularity, TileState[]> = {
-  txn: [
-    TileState.Loading,
-    TileState.Validate,
-    TileState.Execute,
-    TileState.PostExecute,
-    TileState.Sigverify,
-    TileState.Lthash,
-  ],
-  txn_batch: [
-    TileState.LoadBatch,
-    TileState.ValidBatch,
-    TileState.ExecBatch,
-    TileState.PostExecBatch,
-    TileState.SigverifyBatch,
-    TileState.LthashBatch,
-  ],
-};
-
-export interface TileStatesViewOpts {
-  showErrorStates: boolean;
+export function toLegendItem(state: TileState): LegendItem {
+  return { label: tileStateLabels[state], color: tileStateColors[state] };
 }
-
-export const DEFAULT_TILE_STATES_VIEW_OPTS: TileStatesViewOpts = {
-  showErrorStates: false,
-};
