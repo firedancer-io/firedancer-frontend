@@ -435,7 +435,6 @@ export const replayExecrpPostExecuteColor = "#6C6F73";
 export const replayExecrpLoadingColor = "#C48225";
 export const replayExecrpSigverifyColor = "#8F6CE0";
 export const replayExecrpLthashColor = "#239382";
-export const replayExecrpLthashBatchColor = "#1A463E";
 export const replayBlockedOnNetworkColor = "#3F6789";
 export const replaySlotFinishColor = "#458B68";
 export const replayBlockedOnConflictsColor = "#D36854";

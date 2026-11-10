@@ -8,15 +8,14 @@ import {
   type TsRange,
 } from "../../WebGl/webglUtils.ts";
 import { msBucketSizes, nsBucketSizes } from "../const.ts";
-import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils.ts";
-import type { CpuUtilizationByGranularity, TilesUtilization } from "./atoms.ts";
 import {
+  calcAbsoluteNs,
+  calcRelativeMs,
+  getBucketIdx,
   getTileKey,
-  rowGapPx,
-  rowPaddingPx,
-  strokeWidthPx,
-  type CpuRow,
-} from "./const.ts";
+} from "../utils.ts";
+import type { CpuUtilizationByGranularity, TilesUtilization } from "./atoms.ts";
+import { rowGapPx, rowPaddingPx, strokeWidthPx, type CpuRow } from "./const.ts";
 import { getRowsLayout, trackInsetPx } from "../layout.ts";
 import {
   createDataTexture,

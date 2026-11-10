@@ -1,4 +1,3 @@
-import type { Tile } from "../../../api/types";
 import { strokeLineWidth } from "../../Overview/SlotPerformance/useTileSparkline";
 
 export const AGG_CPU_CHART_ID = "agg-cpu-track";
@@ -12,10 +11,6 @@ export const DEFAULT_SELECTED_KINDS = ["execrp", "pack", "replay"];
 export const rowGapPx = 2;
 export const strokeWidthPx = strokeLineWidth;
 export const rowPaddingPx = strokeWidthPx / 2;
-
-export function getTileKey({ kind, kind_id }: Tile) {
-  return `${kind}:${kind_id}`;
-}
 
 export interface CpuRow {
   key: string;

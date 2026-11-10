@@ -9,7 +9,7 @@ import ReplayCursorTooltip, {
 import { formatSol, formatTooltipTime, sumLamports } from "../Tooltip/utils";
 import { useSlotQueryPublish } from "../../../hooks/useSlotQuery";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
-import { useSlotTransactions } from "../TileStatesTrack/useSlotTransactions";
+import { useSlotTransactions } from "../tileStates/useSlotTransactions";
 import { hoveredSlotInfoAtom, referenceNsAtom } from "../atoms";
 import { calcAbsoluteNs } from "../utils";
 import type { SlotInfo } from "./nonAggAtoms";

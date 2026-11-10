@@ -21,6 +21,24 @@ const store = getDefaultStore();
 
 export const tileStatesRequests = createPendingRequests<TimelineTileStates>();
 
+const tileStatesSet = new Set<number>(
+  Object.values(TileState).filter(
+    (value): value is number => typeof value === "number",
+  ),
+);
+
+// only log unknown states once each
+const loggedUnknownTileStates = new Set<number>();
+
+function isKnownTileState(state: number): state is TileState {
+  const isKnown = tileStatesSet.has(state);
+  if (!isKnown && !loggedUnknownTileStates.has(state)) {
+    loggedUnknownTileStates.add(state);
+    console.error(`Received unrecognized tile state: ${state}`);
+  }
+  return isKnown;
+}
+
 /** Timestamps are relative to referenceNsAtom */
 export interface TileStateColumns {
   // One entry per drawn state (Idle is dropped)
@@ -75,13 +93,16 @@ function parseTileStates(res: TimelineTileStatesChunk): TileStateColumns {
   //   state_cnt: 3       | 6                | 3
   //
   // The tile at `tileIdx` owns the next `state_cnt[tileIdx]` entries
-  // in `state` and `dur`. Each tile starts at the response's `start_ts`.
+  // in `state` and `dur`. A tile's first state starts at `start_ts` plus its
+  // `tile_start_ts_delta`, which can be negative, and each later state where
+  // the previous one ends.
   let stateIdx = 0;
   for (let tileIdx = 0; tileIdx < res.tile.length; tileIdx++) {
     const tile = res.tile[tileIdx] ?? -1;
     const endStateIdxForTile = stateIdx + res.state_cnt[tileIdx];
 
-    let nextStateStartNs = baseStartNs;
+    let nextStateStartNs =
+      baseStartNs + (res.tile_start_ts_delta[tileIdx] || 0);
     for (; stateIdx < endStateIdxForTile; stateIdx++) {
       const state = res.state[stateIdx];
       const startNs = nextStateStartNs;
@@ -91,8 +112,14 @@ function parseTileStates(res: TimelineTileStatesChunk): TileStateColumns {
       stateStartNs[stateIdx] = startNs;
       stateTile[stateIdx] = tile;
 
-      // Skips idle state because it isn't drawn
-      if (tile < 0 || state === TileState.Idle || endNs === startNs) continue;
+      // Skips idle state and unknown states
+      if (
+        tile < 0 ||
+        state === TileState.Idle ||
+        endNs === startNs ||
+        !isKnownTileState(state)
+      )
+        continue;
       acc.state.push(state);
       acc.state_tile.push(tile);
       acc.state_start_ms.push(startNs / nsPerMs);
@@ -147,6 +174,11 @@ function getStateSlots(res: TimelineTileStatesChunk, refSlot: number) {
       );
     }
   }
+  // each LtHash task is one state
+  for (let taskIdx = 0; taskIdx < res.lthash_state_lo.length; taskIdx++) {
+    stateSlot[res.lthash_state_lo[taskIdx]] =
+      refSlot + res.lthash_slot_delta[taskIdx];
+  }
   return stateSlot;
 }
 
@@ -174,9 +206,8 @@ function itemCount(states: TileStateColumns): number {
 
 const CACHE_MAX_TILES = 128;
 const MIN_SUB_TILE_NS = 1_000_000n; // 1ms
-const TXN_TILE_NS = 8_000_000_000n; // 8s
-const BATCH_TILE_MULTIPLE = 8; // 64s
-const BATCH_TILE_NS = TXN_TILE_NS * BigInt(BATCH_TILE_MULTIPLE);
+const TXN_TILE_NS = 2_000_000_000n; // 2s
+const BATCH_TILE_NS = 30_000_000_000n; // 30s
 
 const TILE_NS: Record<TileStatesGranularity, bigint> = {
   txn: TXN_TILE_NS,

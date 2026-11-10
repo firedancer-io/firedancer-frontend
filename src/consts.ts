@@ -7,6 +7,7 @@ export const maxSolDecimals = 9;
 export const lamportsPerSol = 1_000_000_000;
 
 export const nsPerMs = 1_000_000;
+export const usPerMs = 1_000;
 export const msPerMinute = 60_000;
 export const msPerHour = msPerMinute * 60;
 export const msPerDay = 24 * msPerHour;

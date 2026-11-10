@@ -27,8 +27,8 @@ describe("tile states cache", () => {
     await vi.waitFor(() => expect(sendMessage).toHaveBeenCalled());
     const { id } = vi.mocked(sendMessage).mock.calls[0][0] as { id: number };
 
-    // execrp tile 5: an unattributed state, then a txn of slot 500.
-    // replay tile 7: two slot states of slot 501.
+    // execrp tile 5: an unattributed state, a txn of slot 500, then an LtHash
+    // task of slot 502. replay tile 7: two slot states of slot 501.
     const response: TimelineTileStates = {
       granularity: TileStatesGranularityEnum.txn,
       available_start_ns: 0n,
@@ -38,18 +38,20 @@ describe("tile states cache", () => {
           chunk_ts: 0n,
           chunk_dur: tileNs,
           start_ts: 0n,
+          tile_start_ts_delta: Float64Array.from([0, 0]),
           reference_slot: 500,
           tile: [5, 7],
-          state_cnt: Int32Array.from([3, 2]),
+          state_cnt: Int32Array.from([4, 2]),
           state: Int32Array.from([
             TileState.BlockedOnTiles,
             TileState.Loading,
             TileState.Execute,
+            TileState.Lthash,
             TileState.SlotFinish,
             TileState.ExecBatch,
           ]),
-          dur: Float64Array.from([ms, ms, ms, ms, ms]),
-          slot_state_lo: Int32Array.from([3]),
+          dur: Float64Array.from([ms, ms, ms, ms, ms, ms]),
+          slot_state_lo: Int32Array.from([4]),
           slot_state_cnt: Int32Array.from([2]),
           slot_delta: Int32Array.from([1]),
           txn_state_lo: Int32Array.from([1]),
@@ -57,6 +59,8 @@ describe("tile states cache", () => {
           txn_slot_delta: Int32Array.from([0]),
           txn_idx: Int32Array.from([0]),
           txn_error_code: Float64Array.from([0]),
+          lthash_state_lo: Int32Array.from([3]),
+          lthash_slot_delta: Int32Array.from([2]),
         },
       ],
     };
@@ -64,7 +68,7 @@ describe("tile states cache", () => {
     await added;
 
     const [tile] = cache.getTiles();
-    expect(tile.data.state_slot).toEqual([NaN, 500, 500, 501, 501]);
+    expect(tile.data.state_slot).toEqual([NaN, 500, 500, 502, 501, 501]);
     expect(tile.data.txn_slot).toEqual([500]);
   });
 });

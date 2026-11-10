@@ -3,7 +3,8 @@ import EventEmitter from "events";
 import type { AggCpu, AggGranularity } from "../../../api/types";
 import { getBucketIdx } from "../utils";
 import { tilesAtom } from "../../../api/atoms";
-import { DEFAULT_SELECTED_KINDS, getTileKey, MAX_QUERY_TILES } from "./const";
+import { DEFAULT_SELECTED_KINDS, MAX_QUERY_TILES } from "./const";
+import { getTileKey } from "../utils";
 import { getCpuRows } from "./utils";
 import { drawEventType, type DrawEmitter } from "../const";
 
