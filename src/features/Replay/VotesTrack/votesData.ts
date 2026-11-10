@@ -69,16 +69,16 @@ function isCertKind(event: number): event is CertKind {
 interface SlotAccumulator {
   partial: SlotPartial;
   total: number;
-  sums: Float64Array;
-  keptSums: Float64Array;
+  stakes: Float64Array;
+  keptStakes: Float64Array;
   lastTs: Float64Array;
 }
 
 function keepPoint(acc: SlotAccumulator, kind: VoteKind) {
   const curve = acc.partial.curves[kind];
   curve.ts.push(acc.lastTs[kind]);
-  curve.frac.push(acc.sums[kind] / acc.total);
-  acc.keptSums[kind] = acc.sums[kind];
+  curve.frac.push(acc.stakes[kind] / acc.total);
+  acc.keptStakes[kind] = acc.stakes[kind];
 }
 
 export function parseVotes(res: TimelineVotes, referenceNs: bigint): VotesData {
@@ -118,8 +118,8 @@ export function parseVotes(res: TimelineVotes, referenceNs: bigint): VotesData {
       acc = {
         partial: emptyPartial(),
         total: slot >= nextEpochStartSlot ? nextTotalStake : totalStake,
-        sums: new Float64Array(VOTE_KIND_COUNT),
-        keptSums: new Float64Array(VOTE_KIND_COUNT),
+        stakes: new Float64Array(VOTE_KIND_COUNT),
+        keptStakes: new Float64Array(VOTE_KIND_COUNT),
         lastTs: new Float64Array(VOTE_KIND_COUNT),
       };
       accs.set(slot, acc);
@@ -138,11 +138,12 @@ export function parseVotes(res: TimelineVotes, referenceNs: bigint): VotesData {
       setEarliest(acc.partial.certs, event, ts);
       continue;
     }
-    if (acc.total <= 0) continue;
+    const stake = res.cumulative_stake[i];
+    if (acc.total <= 0 || Number.isNaN(stake)) continue;
 
-    acc.sums[event] += Number(res.stake[i]);
+    acc.stakes[event] = stake;
     acc.lastTs[event] = ts;
-    if ((acc.sums[event] - acc.keptSums[event]) / acc.total >= minStepFrac) {
+    if ((stake - acc.keptStakes[event]) / acc.total >= minStepFrac) {
       keepPoint(acc, event);
     }
   }
@@ -150,7 +151,7 @@ export function parseVotes(res: TimelineVotes, referenceNs: bigint): VotesData {
   // keep each curve's final point
   for (const acc of accs.values()) {
     for (let kind = 0; kind < VOTE_KIND_COUNT; kind++) {
-      if (acc.sums[kind] > acc.keptSums[kind]) keepPoint(acc, kind);
+      if (acc.stakes[kind] > acc.keptStakes[kind]) keepPoint(acc, kind);
     }
   }
 
@@ -158,6 +159,14 @@ export function parseVotes(res: TimelineVotes, referenceNs: bigint): VotesData {
 }
 
 export function sumCurves(a: StepCurve, b: StepCurve): StepCurve {
+  return combineCurves(a, b, (aFrac, bFrac) => aFrac + bFrac);
+}
+
+function combineCurves(
+  a: StepCurve,
+  b: StepCurve,
+  combine: (aFrac: number, bFrac: number) => number,
+): StepCurve {
   if (!a.ts.length) return b;
   if (!b.ts.length) return a;
 
@@ -171,7 +180,7 @@ export function sumCurves(a: StepCurve, b: StepCurve): StepCurve {
     while (i < a.ts.length && a.ts[i] === ts) aFrac = a.frac[i++];
     while (j < b.ts.length && b.ts[j] === ts) bFrac = b.frac[j++];
     out.ts.push(ts);
-    out.frac.push(aFrac + bFrac);
+    out.frac.push(combine(aFrac, bFrac));
   }
   return out;
 }
@@ -185,10 +194,12 @@ export function mergeVotesData(acc: VotesData, add: VotesData): void {
 }
 
 function mergePartial(existing: SlotPartial, partial: SlotPartial) {
+  // each tile holds cumulative samples of the same rising curve
   for (let kind = 0; kind < VOTE_KIND_COUNT; kind++) {
-    existing.curves[kind] = sumCurves(
+    existing.curves[kind] = combineCurves(
       existing.curves[kind],
       partial.curves[kind],
+      Math.max,
     );
   }
   existing.parentReadyTs = minTs(existing.parentReadyTs, partial.parentReadyTs);

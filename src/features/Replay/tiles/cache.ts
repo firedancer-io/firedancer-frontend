@@ -32,8 +32,6 @@ export interface TileCacheConfig<TData, TMeta> {
   deriveMeta: (data: TData) => TMeta;
   filterOwned?: (data: TData, window: Interval) => TData;
   fetch: (window: Interval, requestId: number) => Promise<FetchResult<TData>>;
-  // for data whose consecutive windows don't sum, e.g. re-simplified recent data
-  fetchLive?: TileCacheConfig<TData, TMeta>["fetch"];
   failPendingRequests: () => void;
 }
 
@@ -101,7 +99,6 @@ export function createTileCache<TData, TMeta>({
   deriveMeta,
   filterOwned,
   fetch,
-  fetchLive = fetch,
   failPendingRequests,
 }: TileCacheConfig<TData, TMeta>): TileCache<TData, TMeta> {
   const tileCache = new Map<number, CachedTile<TData, TMeta>>();
@@ -247,17 +244,14 @@ export function createTileCache<TData, TMeta>({
     publish({ kind: "add", tiles: [{ startNs, endNs, data, meta }] });
   }
 
-  function fetchDataForRange(
-    range: Interval,
-    fetchWindow: TileCacheConfig<TData, TMeta>["fetch"] = fetch,
-  ) {
+  function fetchDataForRange(range: Interval) {
     const { signal } = controller;
     return splitFetch<TData>(range, {
       minWindowInterval: minSubTileNs,
       empty,
       merge,
       filterOwned,
-      fetch: (window) => fetchWindow(window, Number(uniqueId())),
+      fetch: (window) => fetch(window, Number(uniqueId())),
       signal,
     });
   }
@@ -340,10 +334,10 @@ export function createTileCache<TData, TMeta>({
     if (endNs < startNs) return false;
 
     const { signal } = controller;
-    const { data, canRetry, fetchedEndNs } = await fetchDataForRange(
-      [startNs, endNs],
-      fetchLive,
-    );
+    const { data, canRetry, fetchedEndNs } = await fetchDataForRange([
+      startNs,
+      endNs,
+    ]);
     if (signal.aborted) return false;
     if (canRetry || fetchedEndNs < startNs) return true;
     if (live.acc === null || startNs !== live.acc.fetchedEndNs + 1n)

@@ -1463,16 +1463,18 @@ const nullableFloat64ArraySchema = z
   .nullable()
   .array()
   .transform((a) => Float64Array.from(a, (v) => v ?? NaN));
+// lamport strings, null -> NaN
+const nullableLamportsArraySchema = z
+  .string()
+  .nullable()
+  .array()
+  .transform((a) =>
+    Float64Array.from(a, (v) => (v === null ? NaN : Number(v))),
+  );
 const bigInt64ArraySchema = z.coerce
   .bigint()
   .array()
   .transform((a) => BigInt64Array.from(a));
-// null -> 0n
-const nullableBigInt64ArraySchema = z.coerce
-  .bigint()
-  .nullable()
-  .array()
-  .transform((a) => BigInt64Array.from(a, (v) => v ?? 0n));
 
 const chunkWindowSchema = z.object({
   chunk_ts: z.coerce.bigint(),
@@ -1633,7 +1635,7 @@ export const timelineVotesSchema = z.object({
   slot_delta: int32ArraySchema,
   event: int32ArraySchema,
   event_ts_delta: bigInt64ArraySchema,
-  stake: nullableBigInt64ArraySchema,
+  cumulative_stake: nullableLamportsArraySchema,
   total_stake: z.coerce.bigint().nullable(),
   next_epoch_start_slot: z.number().nullable(),
   next_total_stake: z.coerce.bigint().nullable(),

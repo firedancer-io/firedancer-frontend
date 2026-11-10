@@ -65,8 +65,6 @@ function createCache(granularity: VotesGranularity) {
     itemCount: countPoints,
     deriveMeta: () => null,
     fetch: fetchVotes(granularity),
-    // batches of recent slots are re-simplified per query, so they don't sum
-    fetchLive: fetchVotes(VotesGranularityEnum.vote),
     failPendingRequests: votesRequests.failAll,
   });
 }
