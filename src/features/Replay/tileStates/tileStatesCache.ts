@@ -206,7 +206,7 @@ function itemCount(states: TileStateColumns): number {
 
 const CACHE_MAX_TILES = 128;
 const MIN_SUB_TILE_NS = 1_000_000n; // 1ms
-const TXN_TILE_NS = 2_000_000_000n; // 2s
+const TXN_TILE_NS = 3_000_000_000n; // 3s
 const BATCH_TILE_NS = 30_000_000_000n; // 30s
 
 const TILE_NS: Record<TileStatesGranularity, bigint> = {

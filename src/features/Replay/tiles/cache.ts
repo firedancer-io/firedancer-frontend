@@ -256,7 +256,10 @@ export function createTileCache<TData, TMeta>({
     });
   }
 
-  /** Tiles in view that still need to be fetched, nearest to the view center first */
+  /**
+   * Tiles in view that still need to be fetched, nearest to the view center
+   * first, right before left at the same distance
+   */
   function tilesToFetch(): number[] {
     const liveTileId =
       lastWorldEndNs === null ? null : tileIdOf(lastWorldEndNs);
@@ -277,7 +280,9 @@ export function createTileCache<TData, TMeta>({
       if (tileCache.has(id)) continue;
       tileIds.push(id);
     }
-    return tileIds.sort((a, b) => Math.abs(a - center) - Math.abs(b - center));
+    return tileIds.sort(
+      (a, b) => Math.abs(a - center) - Math.abs(b - center) || b - a,
+    );
   }
 
   function fetchMissingTiles(): void {
