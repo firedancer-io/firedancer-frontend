@@ -5,7 +5,10 @@ import type { SlotVotes } from "./votesData";
 
 const empty = { ts: [], frac: [] };
 
-function slot(certs: [CertKind, number][], parentReadyTs?: number): SlotVotes {
+function slot(
+  certs: [CertKind, number][],
+  parentReadyTs?: number,
+): Omit<SlotVotes, "slot"> {
   return {
     notar: empty,
     notarFallback: null,
@@ -17,10 +20,14 @@ function slot(certs: [CertKind, number][], parentReadyTs?: number): SlotVotes {
   };
 }
 
+function slotMap(entries: [number, Omit<SlotVotes, "slot">][]) {
+  return new Map(entries.map(([slot, votes]) => [slot, { ...votes, slot }]));
+}
+
 describe("getSlotLatencies", () => {
   it("measures from the window's parent ready plus the slot offset", () => {
     const latencies = getSlotLatencies(
-      new Map([
+      slotMap([
         [8, slot([[CertKind.Notar, 150]], 100)],
         [10, slot([[CertKind.Notar, 600]])],
       ]),
@@ -35,7 +42,7 @@ describe("getSlotLatencies", () => {
 
   it("uses the first of notar and fast finalize for notarized", () => {
     const latencies = getSlotLatencies(
-      new Map([
+      slotMap([
         [
           8,
           slot(
@@ -55,7 +62,7 @@ describe("getSlotLatencies", () => {
 
   it("uses the notarization for slow finalization when it came later", () => {
     const latencies = getSlotLatencies(
-      new Map([
+      slotMap([
         [
           8,
           slot(
@@ -87,7 +94,7 @@ describe("getSlotLatencies", () => {
 
   it("skips slots whose window has no parent ready", () => {
     const latencies = getSlotLatencies(
-      new Map([[8, slot([[CertKind.Notar, 150]])]]),
+      slotMap([[8, slot([[CertKind.Notar, 150]])]]),
       200,
     );
     expect(latencies.notarized).toEqual([]);

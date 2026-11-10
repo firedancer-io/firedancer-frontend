@@ -60,6 +60,16 @@ export interface Stroke {
   dashPx: number;
   // x0, y0, x1, y1 per segment, in ms and px from the top
   segments: number[];
+  slots: (number | undefined)[];
+}
+
+export function addSegment(
+  stroke: Stroke,
+  slot: number | undefined,
+  ...points: [x0: number, y0: number, x1: number, y1: number]
+) {
+  stroke.segments.push(...points);
+  stroke.slots.push(slot);
 }
 
 export type Marker = {
@@ -68,6 +78,7 @@ export type Marker = {
   widthPx: number;
   heightPx: number;
   alpha: number;
+  slot: number | undefined;
 } & ({ color: string } | { icon: CertIcon });
 
 export interface VotesGeometry {
@@ -134,6 +145,7 @@ function createLineStrokes(alpha: number): Record<VoteLine, Stroke> {
     widthPx: LINE_WIDTH_PX,
     dashPx: voteLineDashPx[line],
     segments: [],
+    slots: [],
   });
   return {
     notar: stroke("notar"),
@@ -182,6 +194,7 @@ export function buildVotes({
         if (ts === undefined) continue;
         const icon = certIconByKind[cert];
         const position = {
+          slot: votes.slot,
           x: ts,
           y: cert === CertKind.FastFinalize ? fastFinalizeY : notarY,
           alpha: fadeTs !== undefined && ts > fadeTs ? FADED_ALPHA : 1,
@@ -198,7 +211,7 @@ export function buildVotes({
         );
       }
 
-      traceCurve(solid[line], faded[line], curve, fadeTs, toY);
+      traceCurve(solid[line], faded[line], votes.slot, curve, fadeTs, toY);
     }
   }
 
@@ -230,12 +243,20 @@ function getOwnVotes(
   const strokes: Stroke[] = [];
   const triangles: Marker[] = [];
   for (const [kind, color] of ownVoteColors) {
-    const segments: number[] = [];
-    for (const { ownVotes } of slotVotes) {
+    const stroke: Stroke = {
+      color,
+      alpha: OWN_VOTE_LINE_ALPHA,
+      widthPx: 1,
+      dashPx: 0,
+      segments: [],
+      slots: [],
+    };
+    for (const { slot, ownVotes } of slotVotes) {
       const ts = ownVotes.get(kind);
       if (ts === undefined) continue;
-      segments.push(ts, topPx, ts, bottomPx);
+      addSegment(stroke, slot, ts, topPx, ts, bottomPx);
       triangles.push({
+        slot,
         x: ts,
         y: topPx - OWN_VOTE_TRIANGLE_PX / 2,
         widthPx: OWN_VOTE_TRIANGLE_PX,
@@ -244,13 +265,7 @@ function getOwnVotes(
         color,
       });
     }
-    strokes.push({
-      color,
-      alpha: OWN_VOTE_LINE_ALPHA,
-      widthPx: 1,
-      dashPx: 0,
-      segments,
-    });
+    strokes.push(stroke);
   }
   return { strokes, triangles };
 }
@@ -259,6 +274,7 @@ function getOwnVotes(
 function traceCurve(
   solid: Stroke,
   faded: Stroke,
+  slot: number,
   { ts, frac }: StepCurve,
   fadeTs: number | undefined,
   toY: (frac: number) => number,
@@ -272,12 +288,12 @@ function traceCurve(
     if (target === solid && fadeTs !== undefined && x > fadeTs) {
       const t = (fadeTs - ts[i - 1]) / (x - ts[i - 1]);
       const fadeY = toY(frac[i - 1] + t * (frac[i] - frac[i - 1]));
-      solid.segments.push(prevX, prevY, fadeTs, fadeY);
+      addSegment(solid, slot, prevX, prevY, fadeTs, fadeY);
       prevX = fadeTs;
       prevY = fadeY;
       target = faded;
     }
-    target.segments.push(prevX, prevY, x, y);
+    addSegment(target, slot, prevX, prevY, x, y);
     prevX = x;
     prevY = y;
   }

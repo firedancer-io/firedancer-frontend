@@ -31,6 +31,13 @@ import {
   type VotesGeometry,
 } from "./curvesGeometry";
 import type { SlotVotes, VotesData, VotesDataTile } from "./votesData";
+import {
+  NO_SLOT,
+  createSlotHighlight,
+  getRelativeSlot,
+  slotHighlightGlsl,
+  type SlotHighlight,
+} from "../slotHighlight";
 
 type CertIconImages = Awaited<ReturnType<typeof loadCertIcons>>;
 
@@ -56,12 +63,15 @@ in vec2 position;
 in vec4 instanceSegment;
 in vec4 instanceColor;
 in vec4 instanceStyle; // half width px, dash px, layer, dash along y
+in float instanceSlot;
 
 out vec4 vColor;
 out float vDashPx;
 out float vDashAlongY;
 
 const float LAYER_DEPTH_STEP = ${glslFloat(LAYER_DEPTH_STEP)};
+
+${slotHighlightGlsl}
 
 void main() {
   mat4 mvp = projectionMatrix * modelViewMatrix;
@@ -84,7 +94,7 @@ void main() {
   // one depth per stroke so its overlapping segments blend once, like a 2D path
   float depth = 1.0 - (instanceStyle.z + 1.0) * LAYER_DEPTH_STEP;
   gl_Position = vec4(px / halfResolution, depth, 1.0);
-  vColor = instanceColor;
+  vColor = vec4(highlightSlot(instanceColor.rgb, instanceSlot), instanceColor.a);
   vDashPx = instanceStyle.y;
   vDashAlongY = instanceStyle.w;
 }
@@ -124,10 +134,12 @@ in vec2 position; // y down
 in vec4 instanceMarker; // center x, y, width px, height px
 in vec4 instanceColor;
 in float instanceIcon;
+in float instanceSlot;
 
 out vec4 vColor;
 out vec2 vUv;
 flat out int vIcon;
+flat out float vSlot;
 
 void main() {
   vec4 clip = projectionMatrix * modelViewMatrix * vec4(instanceMarker.xy, 0.0, 1.0);
@@ -137,6 +149,7 @@ void main() {
   vColor = instanceColor;
   vUv = vec2(position.x + 0.5, 0.5 - position.y);
   vIcon = int(instanceIcon);
+  vSlot = instanceSlot;
 }
 `;
 
@@ -148,20 +161,26 @@ uniform sampler2D uIcons[${certIconOrder.length}];
 in vec4 vColor;
 in vec2 vUv;
 flat in int vIcon;
+flat in float vSlot;
 
 out vec4 fragColor;
+
+${slotHighlightGlsl}
 
 void main() {
   vec4 icon =
     texture(uIcons[0], vUv) * float(vIcon == 0) +
     texture(uIcons[1], vUv) * float(vIcon == 1) +
     texture(uIcons[2], vUv) * float(vIcon == 2);
-  vec4 color = mix(vec4(vColor.rgb, 1.0), icon, float(vIcon >= 0));
-  fragColor = color * vColor.a;
+  float isIcon = float(vIcon >= 0);
+  // icons are premultiplied
+  vec3 rgb = mix(vColor.rgb, icon.rgb / max(icon.a, 1e-4), isIcon);
+  float alpha = mix(1.0, icon.a, isIcon);
+  fragColor = vec4(highlightSlot(rgb, vSlot) * alpha, alpha) * vColor.a;
 }
 `;
 
-function createSegmentMaterial() {
+function createSegmentMaterial(uniforms: Record<string, THREE.IUniform>) {
   return new THREE.RawShaderMaterial({
     glslVersion: THREE.GLSL3,
     vertexShader: segmentVertexShader,
@@ -171,15 +190,11 @@ function createSegmentMaterial() {
     depthTest: true,
     depthWrite: true,
     depthFunc: THREE.LessDepth,
-    uniforms: {
-      uResolution: { value: new THREE.Vector2(1, 1) },
-      uPixelRatio: { value: 1 },
-      uDashOffsetPx: { value: 0 },
-    },
+    uniforms,
   });
 }
 
-function createMarkerMaterial() {
+function createMarkerMaterial(highlight: SlotHighlight) {
   return new THREE.RawShaderMaterial({
     glslVersion: THREE.GLSL3,
     vertexShader: markerVertexShader,
@@ -192,6 +207,7 @@ function createMarkerMaterial() {
     uniforms: {
       uResolution: { value: new THREE.Vector2(1, 1) },
       uIcons: { value: certIconOrder.map(() => null) },
+      ...highlight.uniforms,
     },
   });
 }
@@ -214,11 +230,13 @@ const segmentItemSizes = {
   instanceSegment: 4,
   instanceColor: 4,
   instanceStyle: 4,
+  instanceSlot: 1,
 };
 const markerItemSizes = {
   instanceMarker: 4,
   instanceColor: 4,
   instanceIcon: 1,
+  instanceSlot: 1,
 };
 
 interface InstancedMesh<Name extends string> {
@@ -297,37 +315,43 @@ function setInstanceCount<Name extends string>(
   }
 }
 
+function toRelativeSlot(highlight: SlotHighlight, slot: number | undefined) {
+  return slot === undefined ? NO_SLOT : getRelativeSlot(highlight, slot);
+}
+
 function setStrokes(
   instanced: InstancedMesh<keyof typeof segmentItemSizes>,
   strokes: Stroke[],
   referenceMs: number,
   firstLayer: number,
   dashAlongY: boolean,
+  highlight: SlotHighlight,
 ) {
   const count = strokes.reduce(
     (sum, { segments }) => sum + segments.length / 4,
     0,
   );
-  const { instanceSegment, instanceColor, instanceStyle } = getInstanceArrays(
-    instanced,
-    count,
-  );
+  const { instanceSegment, instanceColor, instanceStyle, instanceSlot } =
+    getInstanceArrays(instanced, count);
   let i = 0;
-  strokes.forEach(({ color, alpha, widthPx, dashPx, segments }, strokeIdx) => {
-    const rgba = [...convertToWebGlColor(color), alpha];
-    const layer = firstLayer + strokeIdx;
-    const style = [widthPx / 2, dashPx, layer, dashAlongY ? 1 : 0];
-    for (let s = 0; s < segments.length; s += 4, i++) {
-      instanceSegment[i * 4] = segments[s] - referenceMs;
-      instanceSegment[i * 4 + 1] = segments[s + 1];
-      instanceSegment[i * 4 + 2] = segments[s + 2] - referenceMs;
-      instanceSegment[i * 4 + 3] = segments[s + 3];
-      for (let c = 0; c < 4; c++) {
-        instanceColor[i * 4 + c] = rgba[c];
-        instanceStyle[i * 4 + c] = style[c];
+  strokes.forEach(
+    ({ color, alpha, widthPx, dashPx, segments, slots }, strokeIdx) => {
+      const rgba = [...convertToWebGlColor(color), alpha];
+      const layer = firstLayer + strokeIdx;
+      const style = [widthPx / 2, dashPx, layer, dashAlongY ? 1 : 0];
+      for (let s = 0; s < segments.length; s += 4, i++) {
+        instanceSlot[i] = toRelativeSlot(highlight, slots[s / 4]);
+        instanceSegment[i * 4] = segments[s] - referenceMs;
+        instanceSegment[i * 4 + 1] = segments[s + 1];
+        instanceSegment[i * 4 + 2] = segments[s + 2] - referenceMs;
+        instanceSegment[i * 4 + 3] = segments[s + 3];
+        for (let c = 0; c < 4; c++) {
+          instanceColor[i * 4 + c] = rgba[c];
+          instanceStyle[i * 4 + c] = style[c];
+        }
       }
-    }
-  });
+    },
+  );
   setInstanceCount(instanced, count);
 }
 
@@ -335,12 +359,12 @@ function setMarkers(
   instanced: InstancedMesh<keyof typeof markerItemSizes>,
   markers: Marker[],
   referenceMs: number,
+  highlight: SlotHighlight,
 ) {
-  const { instanceMarker, instanceColor, instanceIcon } = getInstanceArrays(
-    instanced,
-    markers.length,
-  );
+  const { instanceMarker, instanceColor, instanceIcon, instanceSlot } =
+    getInstanceArrays(instanced, markers.length);
   markers.forEach((marker, i) => {
+    instanceSlot[i] = toRelativeSlot(highlight, marker.slot);
     instanceMarker[i * 4] = marker.x - referenceMs;
     instanceMarker[i * 4 + 1] = marker.y;
     instanceMarker[i * 4 + 2] = marker.widthPx;
@@ -356,6 +380,7 @@ function setMarkers(
 
 interface Resources {
   segmentMaterial: THREE.RawShaderMaterial;
+  guideMaterial: THREE.RawShaderMaterial;
   markerMaterial: THREE.RawShaderMaterial;
   unitQuad: THREE.BufferGeometry;
   triangle: THREE.BufferGeometry;
@@ -417,18 +442,20 @@ function setGeometry(
   meshes: GeometryMeshes,
   { strokes, markers, triangles }: VotesGeometry,
   cameraReferenceMs: number,
+  highlight: SlotHighlight,
 ) {
   meshes.referenceMs = cameraReferenceMs;
   meshes.group.position.x = 0;
   // guides take layer 0
-  setStrokes(meshes.lines, strokes, cameraReferenceMs, 1, true);
-  setMarkers(meshes.markers, markers, cameraReferenceMs);
-  setMarkers(meshes.triangles, triangles, cameraReferenceMs);
+  setStrokes(meshes.lines, strokes, cameraReferenceMs, 1, true, highlight);
+  setMarkers(meshes.markers, markers, cameraReferenceMs, highlight);
+  setMarkers(meshes.triangles, triangles, cameraReferenceMs, highlight);
 }
 
 function setGuides(
   guides: InstancedMesh<keyof typeof segmentItemSizes>,
   guideYs: number[],
+  highlight: SlotHighlight,
 ) {
   const guideStroke: Stroke = {
     color: votesThresholdLineColor,
@@ -439,8 +466,9 @@ function setGuides(
       const crispY = Math.round(y) + 0.5;
       return [0, crispY, 1, crispY];
     }),
+    slots: guideYs.map(() => undefined),
   };
-  setStrokes(guides, [guideStroke], 0, 0, false);
+  setStrokes(guides, [guideStroke], 0, 0, false, highlight);
 }
 
 export function createVotesScene(
@@ -450,16 +478,30 @@ export function createVotesScene(
   const camera = new THREE.OrthographicCamera(0, 1, 0, 1, 0.5, 10);
   camera.position.z = 1;
 
+  const highlight = createSlotHighlight();
+  const strokeUniforms = {
+    uResolution: { value: new THREE.Vector2(1, 1) },
+    uPixelRatio: { value: 1 },
+    uDashOffsetPx: { value: 0 },
+  };
   const resources: Resources = {
-    segmentMaterial: createSegmentMaterial(),
-    markerMaterial: createMarkerMaterial(),
+    segmentMaterial: createSegmentMaterial({
+      ...strokeUniforms,
+      ...highlight.uniforms,
+    }),
+    // guides never dim, like the other tracks' gridlines
+    guideMaterial: createSegmentMaterial({
+      ...strokeUniforms,
+      ...createSlotHighlight().uniforms,
+    }),
+    markerMaterial: createMarkerMaterial(highlight),
     unitQuad: createUnitQuad(),
     triangle: createTriangle(),
   };
   const createGuides = () =>
     createInstancedMesh(
       resources.unitQuad,
-      resources.segmentMaterial,
+      resources.guideMaterial,
       segmentItemSizes,
       0,
     );
@@ -494,6 +536,7 @@ export function createVotesScene(
     curves.guides.mesh.geometry.dispose();
     latency.guides.mesh.geometry.dispose();
     resources.segmentMaterial.dispose();
+    resources.guideMaterial.dispose();
     resources.markerMaterial.dispose();
     resources.unitQuad.dispose();
     resources.triangle.dispose();
@@ -504,6 +547,7 @@ export function createVotesScene(
     scene,
     camera,
     resources,
+    highlight,
     curves,
     latency,
     iconTextures: [] as THREE.Texture[],
@@ -640,7 +684,12 @@ function buildTile(
     markerStyle: layout.markerStyle,
     certIcons,
   });
-  setGeometry(tile.meshes, geometry, votesScene.cameraReferenceMs);
+  setGeometry(
+    tile.meshes,
+    geometry,
+    votesScene.cameraReferenceMs,
+    votesScene.highlight,
+  );
   tile.meshes.group.visible = true;
   tile.stale = false;
 }
@@ -781,7 +830,11 @@ export function drawVotesCurves(
 ) {
   const { curves } = votesScene;
   curves.layout = layout;
-  setGuides(curves.guides, getThresholdYs(votesScene.camera.bottom));
+  setGuides(
+    curves.guides,
+    getThresholdYs(votesScene.camera.bottom),
+    votesScene.highlight,
+  );
   syncVotesTiles(votesScene, dataTiles, slotVotes, [], true);
 }
 
@@ -828,8 +881,13 @@ export function drawVotesLatency(
   const { latency } = votesScene;
   latency.layout = layout;
   latency.data = data;
-  setGuides(latency.guides, geometry.guideYs);
-  setGeometry(latency.meshes, geometry, votesScene.cameraReferenceMs);
+  setGuides(latency.guides, geometry.guideYs, votesScene.highlight);
+  setGeometry(
+    latency.meshes,
+    geometry,
+    votesScene.cameraReferenceMs,
+    votesScene.highlight,
+  );
 }
 
 function createIconTexture(image: HTMLImageElement) {

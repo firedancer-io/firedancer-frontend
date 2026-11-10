@@ -32,6 +32,7 @@ export interface VotesDataTile {
 }
 
 export interface SlotVotes {
+  slot: number;
   notar: StepCurve;
   // null without notar fallback votes
   notarFallback: StepCurve | null;
@@ -222,6 +223,7 @@ export function buildSlotVotes(tiles: VotesData[]): Map<number, SlotVotes> {
   const slotVotes = new Map<number, SlotVotes>();
   for (const [slot, { curves, certs, ownVotes, parentReadyTs }] of merged) {
     slotVotes.set(slot, {
+      slot,
       notar: curves[VoteKind.Notar],
       notarFallback: curves[VoteKind.NotarFallback].ts.length
         ? sumCurves(curves[VoteKind.Notar], curves[VoteKind.NotarFallback])

@@ -57,6 +57,7 @@ function slot(
   skipAll: StepCurve = { ts: [], frac: [] },
 ): SlotVotes {
   return {
+    slot: 1,
     notar: curve,
     notarFallback: null,
     finalize: { ts: [], frac: [] },
@@ -189,6 +190,7 @@ describe("buildVotes", () => {
     ]) {
       expect(geometry.markers).toEqual([
         {
+          slot: 1,
           x: 30,
           y: toY(NOTAR_THRESHOLD),
           widthPx: TICK_WIDTH_PX,
@@ -218,6 +220,26 @@ describe("buildVotes", () => {
 
     expect(build([slot(sparseCurve, [])], "tick").triangles).toEqual([]);
     expect(ownVoteStrokes("tick")).toEqual([]);
+  });
+
+  it("tags every segment and marker with the slot it belongs to", () => {
+    const { strokes, markers, triangles } = build([
+      slot(sparseCurve, [[CertKind.Notar, 30]]),
+      { ...slot(sparseCurve, [[CertKind.Notar, 40]]), slot: 2 },
+    ]);
+    for (const { segments, slots } of strokes) {
+      expect(slots).toHaveLength(segments.length / 4);
+    }
+    const ownVoteSlots = strokes
+      .filter((s) => s.alpha === OWN_VOTE_LINE_ALPHA)
+      .flatMap((s) => s.slots);
+    expect(ownVoteSlots).toEqual([1, 2, 1, 2]);
+    expect(new Set(strokes.flatMap((s) => s.slots))).toEqual(new Set([1, 2]));
+    expect(markers.map((m) => [m.x, m.slot])).toEqual([
+      [30, 1],
+      [40, 2],
+    ]);
+    expect(triangles.map((t) => t.slot)).toEqual([1, 2, 1, 2]);
   });
 
   it("places guides at the notar and fast finalize thresholds", () => {
