@@ -1,8 +1,7 @@
 import { getDefaultStore } from "jotai";
-import { TileState, TileStatesGranularityEnum } from "../../../api/entities";
+import { TileStatesGranularityEnum } from "../../../api/entities";
 import type {
   TileStatesGranularity,
-  TimelineTileStates,
   TimelineTileStatesChunk,
 } from "../../../api/types";
 import { sendMessage } from "../../../api/worker/useWsWorker";
@@ -16,38 +15,24 @@ import {
 import { createPendingRequests } from "../tiles/requests";
 import { getChunksEndNs } from "../utils";
 import { referenceNsAtom } from "../atoms";
+import { tileKinds, tileStatesTileNs } from "./consts";
+import {
+  concatLevels,
+  pruneLevels,
+  type MergedLevels,
+  type MergedTileStatesResponse,
+} from "./mergeTileStates";
 
 const store = getDefaultStore();
 
-export const tileStatesRequests = createPendingRequests<TimelineTileStates>();
+export const tileStatesRequests =
+  createPendingRequests<MergedTileStatesResponse>();
 
-const tileStatesSet = new Set<number>(
-  Object.values(TileState).filter(
-    (value): value is number => typeof value === "number",
-  ),
-);
-
-// only log unknown states once each
-const loggedUnknownTileStates = new Set<number>();
-
-function isKnownTileState(state: number): state is TileState {
-  const isKnown = tileStatesSet.has(state);
-  if (!isKnown && !loggedUnknownTileStates.has(state)) {
-    loggedUnknownTileStates.add(state);
-    console.error(`Received unrecognized tile state: ${state}`);
-  }
-  return isKnown;
-}
-
-/** Timestamps are relative to referenceNsAtom */
-export interface TileStateColumns {
-  // One entry per drawn state (Idle is dropped)
-  state: TileState[];
-  state_tile: number[];
-  state_start_ms: number[];
-  state_end_ms: number[];
-  // NaN for a state outside any slot or txn segment
-  state_slot: number[];
+/** Txn timestamps are relative to referenceNsAtom */
+export interface TileStatesData {
+  levels: MergedLevels;
+  // the levels' slots are from it, NaN without slots
+  referenceSlot: number;
   // One entry per txn segment: a sigverify, or a txn's execution stages
   txn_slot: number[];
   txn_idx: number[];
@@ -57,13 +42,10 @@ export interface TileStateColumns {
   txn_error_code: (number | null)[];
 }
 
-function emptyColumns(): TileStateColumns {
+function emptyData(): TileStatesData {
   return {
-    state: [],
-    state_tile: [],
-    state_start_ms: [],
-    state_end_ms: [],
-    state_slot: [],
+    levels: { execrp: [], replay: [] },
+    referenceSlot: NaN,
     txn_slot: [],
     txn_idx: [],
     txn_tile: [],
@@ -73,18 +55,14 @@ function emptyColumns(): TileStateColumns {
   };
 }
 
-function parseTileStates(res: TimelineTileStatesChunk): TileStateColumns {
-  const acc = emptyColumns();
-  if (res.state.length === 0) return acc;
-
-  const referenceNs = store.get(referenceNsAtom);
-  if (referenceNs == null) return acc;
+function parseTxns(
+  res: TimelineTileStatesChunk,
+  referenceNs: bigint,
+  acc: TileStatesData,
+) {
   const baseStartNs = Number(res.start_ts - referenceNs);
-
   const stateStartNs = new Float64Array(res.state.length);
   const stateTile = new Int32Array(res.state.length);
-  const refSlot = res.reference_slot ?? 0;
-  const stateSlot = getStateSlots(res, refSlot);
 
   // `state` and `dur` hold every tile's states back to back, e.g.
   //
@@ -100,31 +78,12 @@ function parseTileStates(res: TimelineTileStatesChunk): TileStateColumns {
   for (let tileIdx = 0; tileIdx < res.tile.length; tileIdx++) {
     const tile = res.tile[tileIdx] ?? -1;
     const endStateIdxForTile = stateIdx + res.state_cnt[tileIdx];
-
     let nextStateStartNs =
       baseStartNs + (res.tile_start_ts_delta[tileIdx] || 0);
     for (; stateIdx < endStateIdxForTile; stateIdx++) {
-      const state = res.state[stateIdx];
-      const startNs = nextStateStartNs;
-      const endNs = startNs + res.dur[stateIdx];
-      nextStateStartNs = endNs;
-
-      stateStartNs[stateIdx] = startNs;
+      stateStartNs[stateIdx] = nextStateStartNs;
       stateTile[stateIdx] = tile;
-
-      // Skips idle state and unknown states
-      if (
-        tile < 0 ||
-        state === TileState.Idle ||
-        endNs === startNs ||
-        !isKnownTileState(state)
-      )
-        continue;
-      acc.state.push(state);
-      acc.state_tile.push(tile);
-      acc.state_start_ms.push(startNs / nsPerMs);
-      acc.state_end_ms.push(endNs / nsPerMs);
-      acc.state_slot.push(stateSlot[stateIdx]);
+      nextStateStartNs += res.dur[stateIdx];
     }
   }
 
@@ -134,6 +93,7 @@ function parseTileStates(res: TimelineTileStatesChunk): TileStateColumns {
   //   state:     ·  S  · | ·  L  V  E  P  ·
   //   segment 0:    ^    |                    lo 1, cnt 1
   //   segment 1:         |    ^--------^      lo 4, cnt 4
+  const refSlot = res.reference_slot ?? 0;
   for (let segmentIdx = 0; segmentIdx < res.txn_state_lo.length; segmentIdx++) {
     const firstStateIdx = res.txn_state_lo[segmentIdx];
     const lastStateIdx = firstStateIdx + res.txn_state_cnt[segmentIdx] - 1;
@@ -148,47 +108,27 @@ function parseTileStates(res: TimelineTileStatesChunk): TileStateColumns {
     const errorCode = res.txn_error_code[segmentIdx];
     acc.txn_error_code.push(Number.isNaN(errorCode) ? null : errorCode);
   }
+}
+
+function parseTileStates(res: MergedTileStatesResponse): TileStatesData {
+  const acc = emptyData();
+  const referenceNs = store.get(referenceNsAtom);
+  if (referenceNs == null || !res.merged) return acc;
+  acc.levels = res.merged.levels;
+  acc.referenceSlot = res.merged.referenceSlot;
+  for (const chunk of res.chunks) parseTxns(chunk, referenceNs, acc);
   return acc;
 }
 
-function parseChunks(res: TimelineTileStates): TileStateColumns {
-  const acc = emptyColumns();
-  for (const chunk of res.chunks) appendColumns(acc, parseTileStates(chunk));
-  return acc;
-}
-
-// each state's slot, from the replay tile's slot segments and the txn segments
-function getStateSlots(res: TimelineTileStatesChunk, refSlot: number) {
-  const stateSlot = new Float64Array(res.state.length).fill(NaN);
-  const segments = [
-    [res.slot_state_lo, res.slot_state_cnt, res.slot_delta],
-    [res.txn_state_lo, res.txn_state_cnt, res.txn_slot_delta],
-  ];
-  for (const [stateLo, stateCnt, slotDelta] of segments) {
-    for (let segmentIdx = 0; segmentIdx < stateLo.length; segmentIdx++) {
-      const firstStateIdx = stateLo[segmentIdx];
-      stateSlot.fill(
-        refSlot + slotDelta[segmentIdx],
-        firstStateIdx,
-        firstStateIdx + stateCnt[segmentIdx],
-      );
-    }
-  }
-  // each LtHash task is one state
-  for (let taskIdx = 0; taskIdx < res.lthash_state_lo.length; taskIdx++) {
-    stateSlot[res.lthash_state_lo[taskIdx]] =
-      refSlot + res.lthash_slot_delta[taskIdx];
-  }
-  return stateSlot;
-}
-
-function appendColumns(acc: TileStateColumns, src: TileStateColumns): void {
-  for (let i = 0; i < src.state.length; i++) {
-    acc.state.push(src.state[i]);
-    acc.state_tile.push(src.state_tile[i]);
-    acc.state_start_ms.push(src.state_start_ms[i]);
-    acc.state_end_ms.push(src.state_end_ms[i]);
-    acc.state_slot.push(src.state_slot[i]);
+function appendData(acc: TileStatesData, src: TileStatesData): void {
+  if (Number.isNaN(acc.referenceSlot)) acc.referenceSlot = src.referenceSlot;
+  const slotShift = src.referenceSlot - acc.referenceSlot;
+  for (const kind of tileKinds) {
+    acc.levels[kind] = concatLevels(
+      acc.levels[kind],
+      src.levels[kind],
+      slotShift,
+    );
   }
   for (let i = 0; i < src.txn_idx.length; i++) {
     acc.txn_slot.push(src.txn_slot[i]);
@@ -200,39 +140,49 @@ function appendColumns(acc: TileStateColumns, src: TileStateColumns): void {
   }
 }
 
-function itemCount(states: TileStateColumns): number {
-  return states.state.length + states.txn_idx.length;
+function itemCount(data: TileStatesData): number {
+  let rectCount = 0;
+  for (const kind of tileKinds) {
+    for (const { count } of data.levels[kind]) rectCount += count;
+  }
+  return rectCount + data.txn_idx.length;
+}
+
+// only a fully fetched tile's rect counts tell which levels to drop
+function completeData(data: TileStatesData): TileStatesData {
+  return {
+    ...data,
+    levels: {
+      execrp: pruneLevels(data.levels.execrp),
+      replay: pruneLevels(data.levels.replay),
+    },
+  };
 }
 
 const CACHE_MAX_TILES = 128;
 const MIN_SUB_TILE_NS = 1_000_000n; // 1ms
-const TXN_TILE_NS = 3_000_000_000n; // 3s
-const BATCH_TILE_NS = 30_000_000_000n; // 30s
 
-const TILE_NS: Record<TileStatesGranularity, bigint> = {
-  txn: TXN_TILE_NS,
-  txn_batch: BATCH_TILE_NS,
-};
-
+// items count every kept level
 const CACHE_MAX_ITEMS: Record<TileStatesGranularity, number> = {
-  txn: 1_000_000,
-  txn_batch: 2_000_000,
+  txn: 2_000_000,
+  txn_batch: 4_000_000,
 };
 
-export type TileStatesDataTile = Tile<TileStateColumns, null>;
-export type TileStatesCacheDelta = TileCacheDelta<TileStateColumns, null>;
+export type TileStatesDataTile = Tile<TileStatesData, null>;
+export type TileStatesCacheDelta = TileCacheDelta<TileStatesData, null>;
 
 function createCache(
   granularity: TileStatesGranularity,
-): TileCache<TileStateColumns, null> {
-  return createTileCache<TileStateColumns, null>({
-    tileNs: TILE_NS[granularity],
+): TileCache<TileStatesData, null> {
+  return createTileCache<TileStatesData, null>({
+    tileNs: tileStatesTileNs[granularity],
     minSubTileNs: MIN_SUB_TILE_NS,
     maxItems: CACHE_MAX_ITEMS[granularity],
     maxTiles: CACHE_MAX_TILES,
-    empty: emptyColumns,
-    merge: appendColumns,
+    empty: emptyData,
+    merge: appendData,
     itemCount,
+    complete: completeData,
     deriveMeta: () => null,
     fetch: async ([start, end], id) => {
       sendMessage({
@@ -250,7 +200,7 @@ function createCache(
 
       return "value" in result
         ? {
-            value: parseChunks(result.value),
+            value: parseTileStates(result.value),
             chunksEndNs: getChunksEndNs(result.value.chunks),
           }
         : result;
@@ -261,7 +211,7 @@ function createCache(
 
 export const tileStatesCaches: Record<
   TileStatesGranularity,
-  TileCache<TileStateColumns, null>
+  TileCache<TileStatesData, null>
 > = {
   txn: createCache(TileStatesGranularityEnum.txn),
   txn_batch: createCache(TileStatesGranularityEnum.txn_batch),

@@ -5,15 +5,23 @@ import type { TileStatesGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { referenceNsAtom } from "../atoms.ts";
 import type { HoveredExecrpTxn } from "../atoms.ts";
-import { calcAbsoluteNs } from "../utils.ts";
-import { BAR_HEIGHT_RATIO } from "./consts.ts";
-import { tileStatesCaches, type TileStateColumns } from "./tileStatesCache.ts";
-import { getTileRows, type RendererObj } from "./utils.ts";
+import { calcAbsoluteNs, calcRelativeMs } from "../utils.ts";
+import {
+  BAR_HEIGHT_RATIO,
+  getTileRows,
+  tileStatesTileNs,
+  trackStates,
+} from "./consts.ts";
+import { tileStatesCaches, type TileStatesData } from "./tileStatesCache.ts";
+import { MAX_COVERAGE_STATES } from "./tileStatesRects.ts";
+import { getRowOfTile, type RendererObj } from "./utils.ts";
 
 const store = getDefaultStore();
 
 const HOVER_TOLERANCE_PX = 2;
 const SEARCH_WINDOW_MS = 1_000;
+// below the 1ns step of state and txn edges, above their float error
+const HALF_NS_MS = 0.5e-6;
 
 export interface TrackPoint {
   fracX: number;
@@ -21,16 +29,37 @@ export interface TrackPoint {
   widthPx: number;
 }
 
+export interface DataTileInRange {
+  data: TileStatesData;
+  startMs: number;
+  granularity: TileStatesGranularity;
+}
+
 function getDataTilesInRange(
   granularity: TileStatesGranularity,
   startMs: number,
   endMs: number,
-): TileStateColumns[] {
+): DataTileInRange[] {
   const referenceNs = store.get(referenceNsAtom) ?? 0n;
-  return tileStatesCaches[granularity].getDataInRange(
-    calcAbsoluteNs(referenceNs, startMs),
-    calcAbsoluteNs(referenceNs, endMs),
-  ).data;
+  const tileNs = tileStatesTileNs[granularity];
+  const cache = tileStatesCaches[granularity];
+  const endNs = calcAbsoluteNs(referenceNs, endMs);
+  const tiles: DataTileInRange[] = [];
+  for (
+    let tileStartNs = (calcAbsoluteNs(referenceNs, startMs) / tileNs) * tileNs;
+    tileStartNs <= endNs;
+    tileStartNs += tileNs
+  ) {
+    const [data] = cache.getDataInRange(tileStartNs, tileStartNs).data;
+    if (data) {
+      tiles.push({
+        data,
+        startMs: calcRelativeMs(referenceNs, tileStartNs),
+        granularity,
+      });
+    }
+  }
+  return tiles;
 }
 
 interface TileRowAtCursor {
@@ -62,20 +91,21 @@ function findTileRowAtCursor(
 function findNearestTxnColumn(
   granularity: TileStatesGranularity,
   { tileIdx, ms, toleranceMs }: TileRowAtCursor,
-): { data: TileStateColumns; i: number } | undefined {
+): { tile: DataTileInRange; i: number } | undefined {
   let best:
     | {
-        data: TileStateColumns;
+        tile: DataTileInRange;
         i: number;
         distMs: number;
         centerDistMs: number;
       }
     | undefined;
-  for (const data of getDataTilesInRange(
+  for (const tile of getDataTilesInRange(
     granularity,
     ms - toleranceMs,
     ms + toleranceMs,
   )) {
+    const { data } = tile;
     for (let i = 0; i < data.txn_tile.length; i++) {
       if (data.txn_tile[i] !== tileIdx) continue;
       const start = data.txn_start_ms[i];
@@ -91,28 +121,71 @@ function findNearestTxnColumn(
       ) {
         continue;
       }
-      best = { data, i, distMs, centerDistMs };
+      best = { tile, i, distMs, centerDistMs };
     }
   }
   return best;
 }
 
+interface StateInterval {
+  state: TileState;
+  startMs: number;
+  endMs: number;
+}
+
+/** A tile row's states overlapping a range, in ms from the reference */
+function getRowStateIntervals(
+  { data, startMs: tileStartMs, granularity }: DataTileInRange,
+  tileIdx: number,
+  startMs: number,
+  endMs: number,
+): StateInterval[] {
+  const row = getRowOfTile("execrp").get(tileIdx);
+  const level = data.levels.execrp[0];
+  if (row === undefined || !level) return [];
+  const states = trackStates.execrp[granularity];
+  const { edges, bar, count } = level;
+  const stride = MAX_COVERAGE_STATES + 1;
+  const intervals: StateInterval[] = [];
+  for (let i = 0; i < count; i++) {
+    if (bar[i * stride] !== row) continue;
+    const stateStartMs = tileStartMs + edges[i * 4] + edges[i * 4 + 1];
+    const stateEndMs = tileStartMs + edges[i * 4 + 2] + edges[i * 4 + 3];
+    if (
+      stateEndMs <= startMs + HALF_NS_MS ||
+      stateStartMs >= endMs - HALF_NS_MS
+    ) {
+      continue;
+    }
+    let stateIdx = 0;
+    while (stateIdx < states.length && !bar[i * stride + 1 + stateIdx]) {
+      stateIdx++;
+    }
+    if (stateIdx === states.length) continue;
+    intervals.push({
+      state: states[stateIdx],
+      startMs: stateStartMs,
+      endMs: stateEndMs,
+    });
+  }
+  return intervals;
+}
+
 function findHoveredStage(
-  data: TileStateColumns,
+  tile: DataTileInRange,
   i: number,
   ms: number,
 ): TileState | undefined {
-  const tileIdx = data.txn_tile[i];
-  const txnStart = data.txn_start_ms[i];
-  const txnEnd = data.txn_end_ms[i];
+  const { data } = tile;
   let best: { state: TileState; distMs: number } | undefined;
-  for (let j = 0; j < data.state.length; j++) {
-    if (data.state_tile[j] !== tileIdx) continue;
-    const start = data.state_start_ms[j];
-    const end = data.state_end_ms[j];
-    if (end <= txnStart || start >= txnEnd) continue;
+  for (const { state, startMs: start, endMs: end } of getRowStateIntervals(
+    tile,
+    data.txn_tile[i],
+    data.txn_start_ms[i],
+    data.txn_end_ms[i],
+  )) {
     const distMs = ms < start ? start - ms : ms > end ? ms - end : 0;
-    if (!best || distMs < best.distMs) best = { state: data.state[j], distMs };
+    if (!best || distMs < best.distMs) best = { state, distMs };
   }
   return best?.state;
 }
@@ -134,7 +207,8 @@ export function findTxnAtCursor(
 
   const column = findNearestTxnColumn(granularity, row);
   if (!column) return;
-  const { data, i } = column;
+  const { tile, i } = column;
+  const { data } = tile;
   const slot = data.txn_slot[i];
   const txnIdx = data.txn_idx[i];
   const states = getTxnStateDurations(slot, txnIdx, row.ms);
@@ -143,36 +217,22 @@ export function findTxnAtCursor(
     slot,
     txnIdx,
     ms: row.ms,
-    state: findHoveredStage(data, i, row.ms),
+    state: findHoveredStage(tile, i, row.ms),
     states,
   };
 }
 
-interface StateInterval {
-  state: TileState;
-  startMs: number;
-  endMs: number;
-}
-
 function getStateIntervals(
-  data: TileStateColumns,
+  tile: DataTileInRange,
   tileIdx: number,
   startMs: number,
   endMs: number,
 ): StateInterval[] {
-  const intervals: StateInterval[] = [];
-  for (let j = 0; j < data.state.length; j++) {
-    if (data.state_tile[j] !== tileIdx) continue;
-    if (data.state_start_ms[j] < startMs || data.state_end_ms[j] > endMs) {
-      continue;
-    }
-    intervals.push({
-      state: data.state[j],
-      startMs: data.state_start_ms[j],
-      endMs: data.state_end_ms[j],
-    });
-  }
-  return intervals;
+  return getRowStateIntervals(tile, tileIdx, startMs, endMs).filter(
+    (interval) =>
+      interval.startMs >= startMs - HALF_NS_MS &&
+      interval.endMs <= endMs + HALF_NS_MS,
+  );
 }
 
 /**
@@ -216,7 +276,7 @@ interface SegmentFragments extends Omit<TxnSegment, "stateMs"> {
 }
 
 export function mergeTxnSegments(
-  dataTiles: TileStateColumns[],
+  dataTiles: DataTileInRange[],
   slot: number,
   txnIdx: number,
 ): TxnStates | undefined {
@@ -224,7 +284,8 @@ export function mergeTxnSegments(
     exec: undefined,
     sigverify: undefined,
   };
-  for (const data of dataTiles) {
+  for (const tile of dataTiles) {
+    const { data } = tile;
     for (let i = 0; i < data.txn_idx.length; i++) {
       if (data.txn_slot[i] !== slot || data.txn_idx[i] !== txnIdx) continue;
 
@@ -232,7 +293,7 @@ export function mergeTxnSegments(
       const startMs = data.txn_start_ms[i];
       const endMs = data.txn_end_ms[i];
       const errorCode = data.txn_error_code[i];
-      const intervals = getStateIntervals(data, tileIdx, startMs, endMs);
+      const intervals = getStateIntervals(tile, tileIdx, startMs, endMs);
       const key = intervals.some(({ state }) => state === TileState.Sigverify)
         ? "sigverify"
         : "exec";

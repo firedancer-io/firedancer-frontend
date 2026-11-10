@@ -15,7 +15,6 @@ import {
   appendLiveStates,
   clearLiveMarker,
   clearLiveMarkerIfAdded,
-  getTileRows,
   setVisibleRange,
   render,
   handleResize,
@@ -23,7 +22,11 @@ import {
   syncMeshes,
   type TileStatesTrackConfig,
 } from "./utils.ts";
-import { getTileStatesGranularity, isAggregate } from "./consts.ts";
+import {
+  getTileRows,
+  getTileStatesGranularity,
+  isAggregate,
+} from "./consts.ts";
 import type { TileStatesGranularity } from "../../../api/types.ts";
 import { TileStatesGranularityEnum } from "../../../api/entities.ts";
 import { aggTileStatesAtom, aggTileStatesEmitterAtom } from "./aggAtoms.ts";

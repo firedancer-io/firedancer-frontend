@@ -16,9 +16,12 @@ import {
   setErrorStatesSize,
   type StatesMesh,
 } from "../tileStates/tileStatesMesh.ts";
-import type { TileStateColumns } from "../tileStates/tileStatesCache.ts";
+import type { TileStatesData } from "../tileStates/tileStatesCache.ts";
 import {
-  addRectToMesh,
+  addRect,
+  errorStatesBarLayout,
+} from "../tileStates/tileStatesRects.ts";
+import {
   getRectSlot,
   type RowOfTile,
   type TileStatesComposite,
@@ -102,11 +105,14 @@ export function canShowErrorStates(
   return granularity === TileStatesGranularityEnum.txn && mode === "heatmap";
 }
 
+const failedValues = [ErrorState.Failed];
+const succeededValues = [ErrorState.Succeeded];
+
 /** Top/bottom borders per txn with an error code */
 function appendErrorStates(
   highlight: SlotHighlight,
   mesh: StatesMesh,
-  data: TileStateColumns,
+  data: TileStatesData,
   start: number,
   rowOfTile: RowOfTile,
 ): number {
@@ -124,15 +130,14 @@ function appendErrorStates(
     const row = rowOfTile.get(data.txn_tile[i]);
     const errorCode = data.txn_error_code[i];
     if (row === undefined || errorCode === null) continue;
-    addRectToMesh(
+    addRect(
       mesh,
       count++,
       data.txn_start_ms[i],
       data.txn_end_ms[i],
       row,
-      errorCode ? ErrorState.Failed : ErrorState.Succeeded,
-      1,
       getRectSlot(highlight, data.txn_slot[i]),
+      errorCode ? failedValues : succeededValues,
     );
   }
   return count;
@@ -170,6 +175,7 @@ export function createExecrpComposite(
   return {
     overlay: {
       material: errorStatesMaterial,
+      barLayout: errorStatesBarLayout,
       scene: errorStatesScene,
       append: (mesh, data, start, rowOfTile) =>
         appendErrorStates(ctx.highlight, mesh, data, start, rowOfTile),

@@ -8,7 +8,7 @@ import ShredsTrack from "./ShredsTrack/ShredsTrack.tsx";
 import RevenueTrack from "./RevenueTrack/RevenueTrack.tsx";
 import ExecrpTrack from "./ExecrpTrack/ExecrpTrack.tsx";
 import ReplayTrack from "./ReplayTrack/ReplayTrack.tsx";
-import { getTileRows } from "./tileStates/utils.ts";
+import { getTileRows } from "./tileStates/consts.ts";
 import {
   useAggTileStatesQuery,
   type AggTileStatesQuery,

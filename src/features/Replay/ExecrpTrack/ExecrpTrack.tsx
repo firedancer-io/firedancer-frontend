@@ -4,8 +4,8 @@ import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import type { TileStatesGranularity } from "../../../api/types.ts";
-import { TileState, TileStatesGranularityEnum } from "../../../api/entities.ts";
-import { toLegendItem } from "../tileStates/consts.ts";
+import { TileStatesGranularityEnum } from "../../../api/entities.ts";
+import { toLegendItem, trackStates } from "../tileStates/consts.ts";
 import type { TileStatesTrackConfig } from "../tileStates/utils.ts";
 import {
   canShowErrorStates,
@@ -46,24 +46,6 @@ const execrpViewOptsAtom = atom<ExecrpViewOpts>({
   idleWeight: 0.05,
 });
 
-const txnStates: TileState[] = [
-  TileState.Loading,
-  TileState.Validate,
-  TileState.Execute,
-  TileState.PostExecute,
-  TileState.Sigverify,
-  TileState.Lthash,
-];
-
-const batchStates: TileState[] = [
-  TileState.LoadBatch,
-  TileState.ValidBatch,
-  TileState.ExecBatch,
-  TileState.PostExecBatch,
-  TileState.SigverifyBatch,
-  TileState.LthashBatch,
-];
-
 function getTxnAtPoint(
   renderer: RendererObj,
   clientX: number,
@@ -90,9 +72,7 @@ const granularityLabels: Record<TileStatesGranularity, string> = {
 };
 
 function getStates(granularity: TileStatesGranularity | undefined) {
-  return granularity === TileStatesGranularityEnum.txn_batch
-    ? batchStates
-    : txnStates;
+  return trackStates.execrp[granularity ?? TileStatesGranularityEnum.txn];
 }
 
 const config: TileStatesTrackConfig = {

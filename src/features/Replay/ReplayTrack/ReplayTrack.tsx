@@ -1,10 +1,10 @@
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
-import { TileState } from "../../../api/entities.ts";
 import {
   BAR_HEIGHT_RATIO,
   tileStateLabels,
   toLegendItem,
+  trackStates,
 } from "../tileStates/consts.ts";
 import type { TileStatesTrackConfig } from "../tileStates/utils.ts";
 import { createReplayComposite, getLaneGapPx } from "./replayComposite.ts";
@@ -22,12 +22,7 @@ import {
 import styles from "../track.module.css";
 
 /** A lane per state, top-down */
-const states: TileState[] = [
-  TileState.BlockedOnTiles,
-  TileState.BlockedOnConflicts,
-  TileState.BlockedOnNetwork,
-  TileState.SlotFinish,
-];
+const states = trackStates.replay.txn;
 
 const laneLabels = states.map((state) => tileStateLabels[state]);
 const legend = states.map(toLegendItem);

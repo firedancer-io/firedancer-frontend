@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
 import { socketStateAtom } from "../../../api/ws/atoms";
 import { SocketState } from "../../../api/ws/types";
-import { createTileCache, type TileCacheDelta } from "./cache";
+import {
+  createTileCache,
+  type TileCacheConfig,
+  type TileCacheDelta,
+} from "./cache";
 import type { Interval } from "./splitFetch";
 import { getChunksEndNs } from "../utils";
 import { bigIntMin } from "../../../mathUtils";
@@ -38,7 +42,9 @@ function getChunks([startNs, endNs]: Interval) {
   return chunks;
 }
 
-function createCache() {
+function createCache(
+  overrides: Partial<TileCacheConfig<Interval[], null>> = {},
+) {
   const cache = createTileCache<Interval[], null>({
     tileNs,
     minSubTileNs: msNs,
@@ -65,6 +71,7 @@ function createCache() {
       );
     },
     failPendingRequests: () => {},
+    ...overrides,
   });
   cache.subscribe((delta) => deltas.push(delta));
   return cache;
@@ -92,6 +99,17 @@ describe("tile cache with partial responses", () => {
       smoothedNowNsAtom as PrimitiveAtom<bigint | undefined>,
       undefined,
     );
+  });
+
+  it("keeps a fully fetched tile as complete returns it", async () => {
+    finalEndNs = 10n * tileNs;
+    maxChunks = 15;
+    const cache = createCache({ complete: (data) => [data[data.length - 1]] });
+
+    cache.requestRange([0n, tileNs - 1n], 9n * tileNs);
+    await vi.waitFor(() => expect(cache.getTiles().length).toBeGreaterThan(0));
+
+    expect(cache.getTiles()[0].data).toEqual([[3_000n * msNs, tileNs - 1n]]);
   });
 
   it("requests the rest of a historical tile until it is complete", async () => {
