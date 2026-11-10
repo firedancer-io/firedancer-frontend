@@ -10,7 +10,8 @@ import {
   maxHeightRatio,
   nonAggMinAlpha,
   nonAggMaxAlpha,
-  revenueExpBase,
+  revenueLogMinRatio,
+  revenuePowerRoot,
   type RevenueScale,
   RevenueSeries,
   revenueSeriesAddends,
@@ -41,7 +42,7 @@ export interface TxnResources {
 export const SCALE_UNIFORM = {
   linear: 1,
   power: 2,
-  exp: 3,
+  log: 3,
 } as const satisfies Record<RevenueScale, number>;
 
 const INITIAL_CAPACITY = 2 ** 15;
@@ -87,7 +88,8 @@ const float MIN_HEIGHT_RATIO = ${glslFloat(minHeightRatio)};
 const float MAX_HEIGHT_RATIO = ${glslFloat(maxHeightRatio)};
 const float MIN_ALPHA = ${glslFloat(nonAggMinAlpha)};
 const float MAX_ALPHA = ${glslFloat(nonAggMaxAlpha)};
-const float EXP_BASE = ${glslFloat(revenueExpBase)};
+const float POWER_ROOT = ${glslFloat(revenuePowerRoot)};
+const float LOG_MIN_RATIO = ${glslFloat(Math.log(revenueLogMinRatio))};
 
 // Mirrors getRevenueRatio() in scale.ts
 float revenueRatio(float value, float maxValue, float minRatio) {
@@ -99,9 +101,9 @@ float revenueRatio(float value, float maxValue, float minRatio) {
   if (uScale == ${SCALE_UNIFORM.linear}) {
     ratio = normalized;
   } else if (uScale == ${SCALE_UNIFORM.power}) {
-    ratio = normalized * normalized;
+    ratio = pow(normalized, 1.0 / POWER_ROOT);
   } else {
-    ratio = (exp(EXP_BASE * normalized) - 1.0) / (exp(EXP_BASE) - 1.0);
+    ratio = max(1.0 - log(normalized) / LOG_MIN_RATIO, minRatio);
   }
 
   return ratio == 0.0 ? 0.0 : clamp(ratio, minRatio, 1.0);

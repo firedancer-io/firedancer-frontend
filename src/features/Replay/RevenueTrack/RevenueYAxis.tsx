@@ -30,7 +30,15 @@ interface RevenueYAxisProps {
 const MIN_AXIS_TICKS = 3;
 const MAX_AXIS_TICKS = 5;
 const MIN_TICK_GAP_PX = 20;
-const LABEL_SIG_DIGITS = 3;
+const SOL_SIG_DIGITS = 3;
+const PCT_SIG_DIGITS = 2;
+
+function formatSigDigits(value: number, sigDigits: number) {
+  return value.toLocaleString(undefined, {
+    minimumSignificantDigits: sigDigits,
+    maximumSignificantDigits: sigDigits,
+  });
+}
 
 export default function RevenueYAxis({
   height,
@@ -70,6 +78,10 @@ export default function RevenueYAxis({
     0,
     ...labeledTicks.map((tick) => tick.label.length),
   );
+  const maxSuffixWidth = Math.max(
+    0,
+    ...labeledTicks.map((tick) => tick.suffix.length),
+  );
 
   return (
     <div className={styles.yAxis}>
@@ -93,7 +105,12 @@ export default function RevenueYAxis({
           >
             {tick.label}
           </span>
-          <span className={styles.yAxisTickSuffix}>{tick.suffix}</span>
+          <span
+            className={styles.yAxisTickSuffix}
+            style={{ width: `${maxSuffixWidth}ch` }}
+          >
+            {tick.suffix}
+          </span>
         </div>
       ))}
     </div>
@@ -126,10 +143,8 @@ function buildRevenueAxisTicks(
       heightRatio / maxHeightRatio,
       maxNum,
     );
-    const valueSol = (value / lamportsPerSol).toLocaleString(undefined, {
-      maximumSignificantDigits: LABEL_SIG_DIGITS,
-    });
-    const valuePct = `${((value / maxNum) * 100).toFixed(0)}%`;
+    const valueSol = formatSigDigits(value / lamportsPerSol, SOL_SIG_DIGITS);
+    const valuePct = `${formatSigDigits((value / maxNum) * 100, PCT_SIG_DIGITS)}%`;
 
     // Bottom tick is "≤" prefixed because minHeightRatio floor clamps
     const prefix = heightRatio === minHeightRatio ? "≤" : "";
