@@ -45,7 +45,10 @@ function getTileSizeNs() {
 
 export function useNonAggShredsQuery(
   chartId: string,
-  resetMeshes: (granularity: ShredsGranularity, slotNumbers: number[]) => void,
+  markMeshesStale: (
+    granularity: ShredsGranularity,
+    slotNumbers: number[],
+  ) => void,
 ) {
   const store = useStore();
   const wsSend = useWebSocketSend();
@@ -117,11 +120,11 @@ export function useNonAggShredsQuery(
           queryInfo.tileIdx,
           message.value,
         );
-        // clear meshes so next draw recreates them with fresh data
-        resetMeshes(granularity, touchedSlots);
+        // next draw redraws these slots with fresh data
+        markMeshesStale(granularity, touchedSlots);
         store.get(getNonAggAtoms(granularity).emitter).emit(drawEventType);
       },
-      [store, markQueryComplete, resetMeshes],
+      [store, markQueryComplete, markMeshesStale],
     ),
   );
 

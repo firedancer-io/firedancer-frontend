@@ -42,6 +42,7 @@ export function setUpRenderers(
     cameraReferenceMs: 0,
     ...edgeResourceBundle,
     highlight: createSlotHighlight(),
+    staleMeshKeys: new Set<string>(),
   };
   const aggResources = setUpAggResources(getWasContextLost);
 
