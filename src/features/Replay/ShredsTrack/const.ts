@@ -50,6 +50,11 @@ export interface NonAggRendererResources extends EdgeResourceBundle<string> {
   cameraReferenceMs: number;
   highlight: SlotHighlight;
   lastDrawInfo?: NonAggDrawInfo;
+  /**
+   * Mesh keys whose slot data changed since the last draw. The next draw
+   * redraws them in place, so the old geometry stays visible until then.
+   */
+  staleMeshKeys: Set<string>;
 }
 
 export interface NonAggDrawInfo {

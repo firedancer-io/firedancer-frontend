@@ -415,6 +415,7 @@ export function drawNonAggShreds(
     for (const key of resources.meshes.keys()) {
       releaseSlot(key);
     }
+    resources.staleMeshKeys.clear();
     resources.lastDrawInfo = undefined;
     return 0;
   }
@@ -440,6 +441,7 @@ export function drawNonAggShreds(
     for (const key of resources.meshes.keys()) {
       releaseSlot(key);
     }
+    resources.staleMeshKeys.clear();
     resources.lastDrawInfo = undefined;
     return 0;
   }
@@ -482,11 +484,17 @@ export function drawNonAggShreds(
   const dirtySlots = new Set<number>();
   for (const drawSlot of drawSlots) {
     const { slot, slotNumber, skipped } = drawSlot;
+    const key = getDrawSlotKey(drawSlot);
+
+    // slot data changed since the last draw
+    const isStale = resources.staleMeshKeys.has(key);
+    if (isStale) dirtySlots.add(slotNumber);
+
     if (slot.completionTsDelta != null || skipped) continue;
 
-    // incomplete unskipped slot, check if right edge needs to be extended
-    const key = getDrawSlotKey(drawSlot);
-    const prevEdge = prevIncompleteEdges.get(key);
+    // incomplete unskipped slot, check if right edge needs to be extended.
+    // A stale mesh redraws against the current edge, not its old one
+    const prevEdge = isStale ? undefined : prevIncompleteEdges.get(key);
 
     if (prevEdge == null || prevEdge < currentIncompleteRightEdge) {
       dirtySlots.add(slotNumber);
@@ -496,6 +504,9 @@ export function drawNonAggShreds(
       newIncompleteRightEdges.set(key, prevEdge);
     }
   }
+  // undrawn stale keys either have no mesh or were just released, and new
+  // meshes always draw, so nothing is left to redraw
+  resources.staleMeshKeys.clear();
   resources.lastDrawInfo = {
     slots: drawSlots,
     incompleteRightEdges: newIncompleteRightEdges,

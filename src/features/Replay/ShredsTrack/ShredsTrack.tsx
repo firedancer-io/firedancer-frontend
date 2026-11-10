@@ -21,7 +21,6 @@ import {
   useSlotHighlightRender,
   useSlotHitTest,
 } from "../slotHighlight.ts";
-import { releaseMesh } from "../../Shreds/WebGl/drawUtils.ts";
 import ShredsYAxis from "./ShredsYAxis.tsx";
 import {
   AGG_SHREDS_CHART_ID,
@@ -197,33 +196,23 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
   const { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes } =
     useAggShredsQuery(AGG_SHREDS_CHART_ID);
 
-  // Free meshes for slots whose data was just refetched, so the next draw
-  // rebuilds them. Does not render; the stale frame stays until that draw.
-  const resetMeshes = useCallback(
+  // Mark meshes for slots whose data was just refetched, so the next draw
+  // redraws them in place. Freeing them here instead would leave a gap: a
+  // render already queued for this frame would draw the scene without them.
+  const markMeshesStale = useCallback(
     (granularity: ShredsGranularity, slotNumbers: number[]) => {
       if (!rendererRef.current || !slotNumbers.length) return;
-      const {
-        scene,
-        meshes,
-        availableMeshes,
-        edgeMeshes,
-        availableEdgeMeshes,
-        lastDrawInfo,
-      } = rendererRef.current.nonAggResources;
+      // keep recorded edges so hit-testing matches the drawn bars until the redraw
+      const { staleMeshKeys } = rendererRef.current.nonAggResources;
       for (const slotNumber of slotNumbers) {
-        const key = getSlotMeshKey(granularity, slotNumber);
-        releaseMesh(scene, meshes, availableMeshes, key);
-        releaseMesh(scene, edgeMeshes, availableEdgeMeshes, key);
-        // drop the recorded edge so the rebuilt mesh re-records against the
-        // current draw edge instead of reusing the stale one
-        lastDrawInfo?.incompleteRightEdges.delete(key);
+        staleMeshKeys.add(getSlotMeshKey(granularity, slotNumber));
       }
     },
     [rendererRef],
   );
 
   const { query: nonAggQuery, pauseStaleRefreshes: pauseStaleNonAggRefreshes } =
-    useNonAggShredsQuery(NON_AGG_SHREDS_CHART_ID, resetMeshes);
+    useNonAggShredsQuery(NON_AGG_SHREDS_CHART_ID, markMeshesStale);
 
   const throttledRelativeTsQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
