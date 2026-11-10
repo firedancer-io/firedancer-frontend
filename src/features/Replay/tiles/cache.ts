@@ -29,6 +29,8 @@ export interface TileCacheConfig<TData, TMeta> {
   empty: () => TData;
   merge: (acc: TData, add: TData) => void;
   itemCount: (data: TData) => number;
+  // a tile's data once it's fully fetched, as the cache keeps it
+  complete?: (data: TData) => TData;
   deriveMeta: (data: TData) => TMeta;
   filterOwned?: (data: TData, window: Interval) => TData;
   fetch: (window: Interval, requestId: number) => Promise<FetchResult<TData>>;
@@ -96,6 +98,7 @@ export function createTileCache<TData, TMeta>({
   empty,
   merge,
   itemCount,
+  complete = (data) => data,
   deriveMeta,
   filterOwned,
   fetch,
@@ -229,9 +232,10 @@ export function createTileCache<TData, TMeta>({
     }
   }
 
-  function cacheTile(tileId: number, data: TData): void {
+  function cacheTile(tileId: number, fetchedData: TData): void {
     if (tileCache.has(tileId)) return;
 
+    const data = complete(fetchedData);
     sortedTileIds.splice(insertionIndex(sortedTileIds, tileId), 0, tileId);
     cachedItems += itemCount(data);
     const meta = deriveMeta(data);

@@ -3,15 +3,12 @@ import type { AggGranularity } from "../../../api/types";
 import { usPerMs } from "../../../consts";
 import { msBucketSizes, nsBucketSizes } from "../const";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
+import { NO_SLOT } from "../slotHighlight";
 import type { TileStatesBucketsByGranularity } from "./aggAtoms";
 import { getAggGranularity, OVERSCAN_BUCKETS } from "./useAggTileStatesQuery";
 import { ensureStatesCapacity, setStatesCount } from "./tileStatesMesh";
-import {
-  addRectToMesh,
-  getRowOfTile,
-  updateDataTileMeshPositions,
-  type RendererObj,
-} from "./utils";
+import { addRect, MAX_COVERAGE_STATES } from "./tileStatesRects";
+import { getRowOfTile, updateMeshPosition, type RendererObj } from "./utils";
 
 /**
  * What the agg mesh was last built from, to skip rebuilding the same rects.
@@ -87,7 +84,7 @@ export function updateAggStatesMesh(
 }
 
 /**
- * Builds a rect per busy state weighted by its time share of its bucket, and
+ * Builds a rect per busy bucket and tile with each state's time share, and
  * records each bucket's largest share of busy time any state has
  */
 function buildAggStatesMesh(
@@ -95,7 +92,7 @@ function buildAggStatesMesh(
   { referenceNs, granularity, startIdx, endIdx, maxStateShares }: AggMeshBuild,
   aggTileStates: TileStatesBucketsByGranularity,
 ) {
-  const mesh = rendererObj.aggMeshes.tileStates;
+  const mesh = rendererObj.aggMesh;
   const rowOfTile = getRowOfTile(rendererObj.config.kind);
   const states = rendererObj.config.getStates(undefined);
   const statesByBucketIdx = aggTileStates.get(granularity);
@@ -112,12 +109,11 @@ function buildAggStatesMesh(
     referenceNs,
     BigInt(startIdx) * nsBucketSizes[granularity],
   );
-  updateDataTileMeshPositions(rendererObj, rendererObj.aggMeshes);
-  ensureStatesCapacity(
-    mesh,
-    (endIdx - startIdx + 1) * rowOfTile.size * states.length,
-  );
+  updateMeshPosition(rendererObj, mesh);
+  ensureStatesCapacity(mesh, (endIdx - startIdx + 1) * rowOfTile.size);
 
+  // shares past the track's states stay 0
+  const shares = new Float64Array(MAX_COVERAGE_STATES);
   let count = 0;
   for (let bucketIdx = startIdx; bucketIdx <= endIdx; bucketIdx++) {
     const statesByTile = statesByBucketIdx.get(bucketIdx);
@@ -131,26 +127,24 @@ function buildAggStatesMesh(
 
       let busyWeight = 0;
       let maxWeight = 0;
-      for (const state of states) {
-        const us = durationsUs[state];
-        if (!us) continue;
-
-        const weight = Math.min(us / bucketUs, 1);
+      for (let i = 0; i < states.length; i++) {
+        const weight = Math.min((durationsUs[states[i]] ?? 0) / bucketUs, 1);
+        shares[i] = weight;
         busyWeight += weight;
         maxWeight = Math.max(maxWeight, weight);
-        addRectToMesh(
-          mesh,
-          count++,
-          startMs,
-          startMs + bucketSizeMs,
-          row,
-          state,
-          weight,
-        );
       }
-      if (busyWeight > 0) {
-        maxStateShare = Math.max(maxStateShare, maxWeight / busyWeight);
-      }
+      if (!busyWeight) continue;
+
+      addRect(
+        mesh,
+        count++,
+        startMs,
+        startMs + bucketSizeMs,
+        row,
+        NO_SLOT,
+        shares,
+      );
+      maxStateShare = Math.max(maxStateShare, maxWeight / busyWeight);
     }
     maxStateShares[bucketIdx - startIdx] = maxStateShare;
   }

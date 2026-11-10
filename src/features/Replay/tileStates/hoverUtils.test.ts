@@ -1,108 +1,400 @@
-import { describe, it, expect } from "vitest";
-import { TileState } from "../../../api/entities";
-import type { TileStateColumns } from "./tileStatesCache";
-import { mergeTxnSegments } from "./hoverUtils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getDefaultStore } from "jotai";
+import { startupTimeAtom, tilesAtom } from "../../../api/atoms";
+import { socketStateAtom } from "../../../api/ws/atoms";
+import { SocketState } from "../../../api/ws/types";
+import { sendMessage } from "../../../api/worker/useWsWorker";
+import { createMessageHandler } from "../../../api/worker/messageHandler";
+import type { WsEntity } from "../../../api/worker/types";
+import { TileState, TileStatesGranularityEnum } from "../../../api/entities";
+import type { TimelineTileStates } from "../../../api/types";
+import { tileStatesCaches, tileStatesRequests } from "./tileStatesCache";
+import { getTileRows, tileStatesTileNs } from "./consts";
+import { findTxnAtCursor, getTxnStateDurations } from "./hoverUtils";
+import {
+  createRandom,
+  createResponse,
+  createTestRendererObj,
+  getRequest,
+  testTiles,
+  type TestState,
+} from "./tileStatesTestData";
 
+vi.mock("../../../api/worker/useWsWorker", () => ({ sendMessage: vi.fn() }));
+
+const store = getDefaultStore();
+const ms = 1_000_000;
+const TILE_NS = tileStatesTileNs.txn;
+const TILE_MS = Number(TILE_NS) / ms;
+const cache = tileStatesCaches.txn;
 const SLOT = 10;
 const TXN_IDX = 3;
+// execrp tile
 const TILE = 0;
+// just before the second data tile, so a search reaches both
+const BASE_MS = TILE_MS - 2;
 
-function dataTile(
-  txnStartMs: number,
-  txnEndMs: number,
-  states: [TileState, number, number][],
-  errorCode: number | null = 0,
-): TileStateColumns {
+let requests: { id: number; startNs: bigint }[];
+
+/** Answers the request starting at startNs through the worker merge */
+async function respondTo(startNs: bigint, res: TimelineTileStates) {
+  await vi.waitFor(
+    () =>
+      expect(requests.some((request) => request.startNs === startNs)).toBe(
+        true,
+      ),
+    { interval: 1 },
+  );
+  const { id } = getRequest(requests, startNs);
+  const handler = createMessageHandler(() => {});
+  handler.onMessage({ topic: "summary", key: "tiles", value: testTiles });
+  const item = { topic: "timeline", key: "query_tile_states", id, value: res };
+  handler.onMessage(item as WsEntity);
+  tileStatesRequests.resolve(id, { value: item.value });
+}
+
+/** Caches a data tile from a response, through the worker merge and the cache */
+async function cacheResponse(tileId: number, res: TimelineTileStates) {
+  const tileStartNs = BigInt(tileId) * TILE_NS;
+  cache.requestRange([tileStartNs, tileStartNs + TILE_NS - 1n], 100n * TILE_NS);
+  await respondTo(tileStartNs, res);
+  await vi.waitFor(
+    () =>
+      expect(
+        cache.getTiles().some(({ startNs }) => startNs === tileStartNs),
+      ).toBe(true),
+    { interval: 1 },
+  );
+}
+
+interface Segment {
+  // back to back [state, startMs, endMs]
+  states: [TileState, number, number][];
+  errorCode?: number | null;
+  isTxn?: boolean;
+}
+
+/** A data tile's response with segments of the execrp tile, idle between */
+function txnResponse(
+  tileId: number,
+  segments: Segment[],
+  chunkDurNs = TILE_NS,
+): TimelineTileStates {
+  const tileStartNs = BigInt(tileId) * TILE_NS;
+  const firstMs = segments[0].states[0][1];
+  const state: number[] = [];
+  const dur: number[] = [];
+  const txnStateLo: number[] = [];
+  const txns = segments.filter(({ isTxn = true }) => isTxn);
+  let endMs = firstMs;
+  for (const segment of segments) {
+    const { states } = segment;
+    if (states[0][1] > endMs) {
+      state.push(TileState.Idle);
+      dur.push(Math.round((states[0][1] - endMs) * ms));
+    }
+    if (txns.includes(segment)) txnStateLo.push(state.length);
+    for (const [tileState, startMs, stateEndMs] of states) {
+      state.push(tileState);
+      dur.push(Math.round((stateEndMs - startMs) * ms));
+      endMs = stateEndMs;
+    }
+  }
   return {
-    state: states.map(([state]) => state),
-    state_tile: states.map(() => TILE),
-    state_start_ms: states.map(([, start]) => start),
-    state_end_ms: states.map(([, , end]) => end),
-    state_slot: states.map(() => SLOT),
-    txn_slot: [SLOT],
-    txn_idx: [TXN_IDX],
-    txn_tile: [TILE],
-    txn_start_ms: [txnStartMs],
-    txn_end_ms: [txnEndMs],
-    txn_error_code: [errorCode],
+    granularity: TileStatesGranularityEnum.txn,
+    available_start_ns: 0n,
+    available_end_ns: 100n * TILE_NS,
+    chunks: [
+      {
+        chunk_ts: tileStartNs,
+        chunk_dur: chunkDurNs,
+        start_ts: tileStartNs,
+        tile_start_ts_delta: Float64Array.from([
+          Math.round(firstMs * ms) - Number(tileStartNs),
+        ]),
+        reference_slot: SLOT,
+        tile: [TILE],
+        state_cnt: Int32Array.from([state.length]),
+        state: Int32Array.from(state),
+        dur: Float64Array.from(dur),
+        slot_state_lo: new Int32Array(0),
+        slot_state_cnt: new Int32Array(0),
+        slot_delta: new Int32Array(0),
+        txn_state_lo: Int32Array.from(txnStateLo),
+        txn_state_cnt: Int32Array.from(txns.map((s) => s.states.length)),
+        txn_slot_delta: Int32Array.from(txns.map(() => 0)),
+        txn_idx: Int32Array.from(txns.map(() => TXN_IDX)),
+        txn_error_code: Float64Array.from(
+          txns.map(({ errorCode = 0 }) => errorCode ?? NaN),
+        ),
+        lthash_state_lo: new Int32Array(0),
+        lthash_slot_delta: new Int32Array(0),
+      },
+    ],
   };
 }
 
-describe("mergeTxnSegments", () => {
-  it("keeps every state from overlapping fragments, counting overlap once", () => {
-    const exec = mergeTxnSegments(
-      [
-        dataTile(0, 3, [
-          [TileState.Loading, 0, 1],
-          [TileState.Execute, 1, 3],
-        ]),
-        dataTile(1, 4, [
-          [TileState.Execute, 1, 3],
-          [TileState.PostExecute, 3, 4],
-        ]),
-      ],
-      SLOT,
-      TXN_IDX,
+/** The txn's states from the data tiles cached for each segment list */
+async function getDurations(...tilesSegments: Segment[][]) {
+  for (const [tileId, segments] of tilesSegments.entries()) {
+    await cacheResponse(tileId, txnResponse(tileId, segments));
+  }
+  return getTxnStateDurations(SLOT, TXN_IDX, BASE_MS);
+}
+
+const at = (
+  state: TileState,
+  startMs: number,
+  endMs: number,
+): [TileState, number, number] => [state, BASE_MS + startMs, BASE_MS + endMs];
+
+beforeEach(() => {
+  requests = [];
+  vi.mocked(sendMessage).mockImplementation((message) => {
+    const { id, params } = message as {
+      id: number;
+      params: { start_ns: string };
+    };
+    requests.push({ id, startNs: BigInt(params.start_ns) });
+  });
+  store.set(socketStateAtom, SocketState.Connected);
+  store.set(startupTimeAtom, { startupTimeNanos: 0n } as never);
+  store.set(tilesAtom, testTiles);
+  cache.reset();
+});
+
+afterEach(() => {
+  cache.reset();
+  vi.restoreAllMocks();
+});
+
+describe("getTxnStateDurations", () => {
+  it("keeps every state from overlapping fragments, counting overlap once", async () => {
+    const exec = (
+      await getDurations(
+        [
+          {
+            states: [at(TileState.Loading, 0, 1), at(TileState.Execute, 1, 3)],
+          },
+        ],
+        [
+          {
+            states: [
+              at(TileState.Execute, 1, 3),
+              at(TileState.PostExecute, 3, 4),
+            ],
+          },
+        ],
+      )
     )?.exec;
 
-    expect(exec?.startMs).toBe(0);
-    expect(exec?.endMs).toBe(4);
-    expect(Object.fromEntries(exec?.stateMs ?? [])).toEqual({
-      [TileState.Loading]: 1,
-      [TileState.Execute]: 2,
-      [TileState.PostExecute]: 1,
-    });
+    expect(exec?.startMs).toBeCloseTo(BASE_MS, 6);
+    expect(exec?.endMs).toBeCloseTo(BASE_MS + 4, 6);
+    const stateMs = Object.fromEntries(exec?.stateMs ?? []);
+    expect(Object.keys(stateMs).map(Number).sort()).toEqual([
+      TileState.Loading,
+      TileState.Execute,
+      TileState.PostExecute,
+    ]);
+    expect(stateMs[TileState.Loading]).toBeCloseTo(1, 6);
+    expect(stateMs[TileState.Execute]).toBeCloseTo(2, 6);
+    expect(stateMs[TileState.PostExecute]).toBeCloseTo(1, 6);
   });
 
-  it("sums a state split across disjoint fragments", () => {
-    const exec = mergeTxnSegments(
-      [
-        dataTile(0, 2, [[TileState.Execute, 0, 2]]),
-        dataTile(2, 5, [[TileState.Execute, 2, 5]]),
-      ],
-      SLOT,
-      TXN_IDX,
+  it("sums a state split across disjoint fragments", async () => {
+    const exec = (
+      await getDurations(
+        [{ states: [at(TileState.Execute, 0, 2)] }],
+        [{ states: [at(TileState.Execute, 2, 5)] }],
+      )
     )?.exec;
 
-    expect(exec?.stateMs.get(TileState.Execute)).toBe(5);
+    expect(exec?.stateMs.get(TileState.Execute)).toBeCloseTo(5, 6);
   });
 
-  it("counts a partially overlapping state once", () => {
-    const exec = mergeTxnSegments(
-      [
-        dataTile(0, 3, [[TileState.Execute, 0, 3]]),
-        dataTile(2, 5, [[TileState.Execute, 2, 5]]),
-      ],
-      SLOT,
-      TXN_IDX,
+  it("counts a partially overlapping state once", async () => {
+    const exec = (
+      await getDurations(
+        [{ states: [at(TileState.Execute, 0, 3)] }],
+        [{ states: [at(TileState.Execute, 2, 5)] }],
+      )
     )?.exec;
 
-    expect(exec?.stateMs.get(TileState.Execute)).toBe(5);
+    expect(exec?.stateMs.get(TileState.Execute)).toBeCloseTo(5, 6);
   });
 
-  it("splits sigverify from execution and keeps the latest error code", () => {
-    const states = mergeTxnSegments(
+  it("splits sigverify from execution and keeps the latest error code", async () => {
+    const states = await getDurations(
       [
-        dataTile(0, 1, [[TileState.Sigverify, 0, 1]], 0),
-        dataTile(2, 4, [[TileState.Execute, 2, 4]], null),
-        dataTile(3, 5, [[TileState.Execute, 3, 5]], 7),
+        { states: [at(TileState.Sigverify, 0, 1)], errorCode: 0 },
+        { states: [at(TileState.Execute, 2, 4)], errorCode: null },
       ],
-      SLOT,
-      TXN_IDX,
+      [{ states: [at(TileState.Execute, 3, 5)], errorCode: 7 }],
     );
 
-    expect(states?.sigverify?.stateMs.get(TileState.Sigverify)).toBe(1);
-    expect(states?.exec?.stateMs.get(TileState.Execute)).toBe(3);
+    expect(states?.sigverify?.stateMs.get(TileState.Sigverify)).toBeCloseTo(
+      1,
+      6,
+    );
+    expect(states?.exec?.stateMs.get(TileState.Execute)).toBeCloseTo(3, 6);
     expect(states?.exec?.errorCode).toBe(7);
   });
 
-  it("returns undefined when the txn isn't loaded", () => {
-    expect(
-      mergeTxnSegments(
-        [dataTile(0, 1, [[TileState.Execute, 0, 1]])],
-        SLOT,
-        TXN_IDX + 1,
-      ),
-    ).toBeUndefined();
+  it("returns undefined when the txn isn't loaded", async () => {
+    await cacheResponse(
+      0,
+      txnResponse(0, [{ states: [at(TileState.Execute, 0, 1)] }]),
+    );
+    expect(getTxnStateDurations(SLOT, TXN_IDX + 1, BASE_MS)).toBeUndefined();
+  });
+});
+
+describe("findTxnAtCursor", () => {
+  // A txn's states from the raw response, as the column parse kept them: the
+  // stage at a point inside one, and each state's total time
+  function expectLikeRawStates(states: TestState[], tileStartMs: number) {
+    const rendererObj = createTestRendererObj("execrp", "txn");
+    rendererObj.renderedGranularity = "txn";
+    const rows = getTileRows(testTiles, "execrp");
+    const visibleRangeMs: [number, number] = [
+      tileStartMs,
+      tileStartMs + TILE_MS,
+    ];
+    const [{ data }] = cache.getTiles();
+    let checked = 0;
+    for (let i = 0; i < data.txn_idx.length; i += 7) {
+      const tileIdx = data.txn_tile[i];
+      const startMs = data.txn_start_ms[i];
+      const endMs = data.txn_end_ms[i];
+      const inTxn = states.filter(
+        (state) =>
+          state.tileIdx === tileIdx &&
+          tileStartMs + state.startNs / ms >= startMs - 1e-6 &&
+          tileStartMs + state.endNs / ms <= endMs + 1e-6,
+      );
+      const hovered = inTxn.find(
+        ({ startNs, endNs }) => endNs - startNs > 5_000,
+      );
+      if (!hovered) continue;
+      const cursorMs = tileStartMs + (hovered.startNs + hovered.endNs) / 2 / ms;
+      const row = rows.findIndex((tile) => tile.tileIdx === tileIdx);
+      const txn = findTxnAtCursor(rendererObj, visibleRangeMs, {
+        fracX: (cursorMs - visibleRangeMs[0]) / TILE_MS,
+        fracY: (row + 0.95) / rows.length,
+        widthPx: 1_000_000,
+      });
+      expect(txn?.txnIdx).toBe(data.txn_idx[i]);
+      expect(txn?.state).toBe(hovered.state);
+
+      const segment = txn?.states.exec ?? txn?.states.sigverify;
+      const rawMs = new Map<TileState, number>();
+      for (const { state, startNs, endNs } of inTxn) {
+        rawMs.set(state, (rawMs.get(state) ?? 0) + (endNs - startNs) / ms);
+      }
+      for (const [state, totalMs] of rawMs) {
+        expect(segment?.stateMs.get(state)).toBeCloseTo(totalMs, 6);
+      }
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(5);
+  }
+
+  it("finds the stage and state times of the column parse", async () => {
+    for (const seed of [1, 2]) {
+      cache.reset();
+      requests = [];
+      const { res, states } = createResponse(createRandom(seed), {
+        granularity: "txn",
+        startNs: TILE_NS,
+        chunkCount: 1,
+        chunkNs: Number(TILE_NS),
+        stateNs: 1_000_000,
+        idleChance: 0.3,
+      });
+      // one slot and txn index per segment, so txns don't share them
+      for (const chunk of res.chunks) {
+        chunk.txn_slot_delta = chunk.txn_slot_delta.map(
+          (_, segmentIdx) => segmentIdx,
+        );
+      }
+      await cacheResponse(1, res);
+      expectLikeRawStates(states, TILE_MS);
+    }
+  });
+});
+
+describe("hover at a txn's edge and on the live tile", () => {
+  function hoverAt(cursorMs: number) {
+    const rendererObj = createTestRendererObj("execrp", "txn");
+    rendererObj.renderedGranularity = "txn";
+    const rows = getTileRows(testTiles, "execrp");
+    const row = rows.findIndex(({ tileIdx }) => tileIdx === TILE);
+    return findTxnAtCursor(rendererObj, [cursorMs - 50, cursorMs + 50], {
+      fracX: 0.5,
+      fracY: (row + 0.95) / rows.length,
+      widthPx: 2800,
+    });
+  }
+
+  it("leaves out a state ending exactly where the txn starts", async () => {
+    for (let k = 0; k < 100; k++) {
+      cache.reset();
+      requests = [];
+      // whole ns, at varied offsets so float error shows at some
+      const txnStartMs = TILE_MS + 0.250001 + k * 0.137003;
+      await cacheResponse(
+        1,
+        txnResponse(1, [
+          {
+            states: [[TileState.Lthash, txnStartMs - 0.25, txnStartMs]],
+            isTxn: false,
+          },
+          {
+            states: [
+              [TileState.Loading, txnStartMs, txnStartMs + 0.25],
+              [TileState.Execute, txnStartMs + 0.25, txnStartMs + 0.5],
+            ],
+          },
+        ]),
+      );
+
+      // in the LtHash state, within the hover tolerance of the txn
+      const txn = hoverAt(txnStartMs - 0.01);
+      expect(txn?.txnIdx).toBe(TXN_IDX);
+      expect(txn?.state).toBe(TileState.Loading);
+      expect([...(txn?.states.exec?.stateMs.keys() ?? [])].sort()).toEqual([
+        TileState.Loading,
+        TileState.Execute,
+      ]);
+    }
+  });
+
+  it("finds a txn on the live tile", async () => {
+    const tileStartMs = 5 * TILE_MS;
+    const segment: Segment = {
+      states: [
+        [TileState.Loading, tileStartMs + 10, tileStartMs + 20],
+        [TileState.Execute, tileStartMs + 20, tileStartMs + 50],
+      ],
+    };
+    // the tile before is still pending, so live finishes it first
+    const worldEndNs = 5n * TILE_NS + 500_000_000n;
+    cache.requestRange([5n * TILE_NS, worldEndNs], worldEndNs);
+    await respondTo(
+      4n * TILE_NS,
+      txnResponse(4, [{ ...segment, isTxn: false }]),
+    );
+    await respondTo(5n * TILE_NS, txnResponse(5, [segment], 100_000_000n));
+    await vi.waitFor(() =>
+      expect(getTxnStateDurations(SLOT, TXN_IDX, tileStartMs)).toBeDefined(),
+    );
+    expect(cache.getTiles().map(({ startNs }) => startNs)).toEqual([
+      4n * TILE_NS,
+    ]);
+
+    const txn = hoverAt(tileStartMs + 15);
+    expect(txn?.state).toBe(TileState.Loading);
+    expect(txn?.states.exec?.stateMs.get(TileState.Loading)).toBeCloseTo(10, 6);
+    expect(txn?.states.exec?.stateMs.get(TileState.Execute)).toBeCloseTo(30, 6);
   });
 });

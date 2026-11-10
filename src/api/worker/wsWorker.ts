@@ -7,6 +7,7 @@ import {
 } from "./types";
 import { createMessageHandler } from "./messageHandler";
 import { loadZstd, type ZstdDecoder } from "./zstd/zstd";
+import type { MergedTileStatesResponse } from "../../features/Replay/tileStates/mergeTileStates";
 
 const reconnectDelayMs = 3_000;
 const flushDelayMs = 32; // ~30fps
@@ -67,6 +68,15 @@ function collectTransferables(item: WsEntity, transfer: Transferable[]) {
   for (const columns of columnGroups) {
     for (const v of Object.values(columns)) {
       if (ArrayBuffer.isView(v)) transfer.push(v.buffer);
+    }
+  }
+  if (item.key !== "query_tile_states") return;
+  const { merged }: MergedTileStatesResponse = item.value;
+  if (merged) {
+    for (const levels of Object.values(merged.levels)) {
+      for (const { edges, bar, slot } of levels) {
+        transfer.push(edges.buffer, bar.buffer, slot.buffer);
+      }
     }
   }
 }

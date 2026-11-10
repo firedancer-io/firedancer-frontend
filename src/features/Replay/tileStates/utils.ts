@@ -8,26 +8,30 @@ import {
   type TsRange,
 } from "../../WebGl/webglUtils.ts";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
-import type { Tile, TileStatesGranularity } from "../../../api/types.ts";
+import type { TileStatesGranularity } from "../../../api/types.ts";
 import {
   type TileState,
   TileStatesGranularityEnum,
 } from "../../../api/entities.ts";
 import {
   tileStatesCaches,
-  type TileStateColumns,
+  type TileStatesData,
   type TileStatesDataTile,
 } from "./tileStatesCache.ts";
 import {
+  appendStates,
+  clearStates,
   createSlotCoverageMaterial,
   createTileStatesMaterial,
   createStatesMesh,
-  ensureStatesCapacity,
   setStatesCount,
+  wrapStates,
   type StatesMesh,
 } from "./tileStatesMesh.ts";
-import type { TileKind } from "./consts.ts";
-import { TILE_STATE_PALETTE, type CompositeContext } from "./composite.ts";
+import { tileStatesBarLayout, type BarLayout } from "./tileStatesRects.ts";
+import type { MergedLevel } from "./mergeTileStates.ts";
+import { getTileRows, MERGE_BIN_PX, type TileKind } from "./consts.ts";
+import type { CompositeContext } from "./composite.ts";
 import { referenceNsAtom, visibleRangeAtom } from "../atoms.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
 import { calcRelativeMs } from "../utils.ts";
@@ -42,22 +46,6 @@ import {
 
 const store = getDefaultStore();
 
-interface TileRow {
-  tileIdx: number;
-  label: string;
-}
-
-export function getTileRows(
-  tiles: Tile[] | undefined,
-  trackKind: TileKind,
-): TileRow[] {
-  const rows: TileRow[] = [];
-  tiles?.forEach(({ kind, kind_id }, tileIdx) => {
-    if (kind === trackKind) rows.push({ tileIdx, label: `${kind_id}` });
-  });
-  return rows;
-}
-
 export type RowOfTile = Map<number, number>;
 
 export function getRowOfTile(kind: TileKind): RowOfTile {
@@ -68,10 +56,11 @@ export function getRowOfTile(kind: TileKind): RowOfTile {
 /** Rects per data tile that a composite draws over itself, e.g. error states */
 interface CompositeOverlay {
   material: THREE.RawShaderMaterial;
+  barLayout: BarLayout;
   scene: THREE.Scene;
   append: (
     mesh: StatesMesh,
-    data: TileStateColumns,
+    data: TileStatesData,
     start: number,
     rowOfTile: RowOfTile,
   ) => number;
@@ -92,8 +81,16 @@ export interface TileStatesTrackConfig {
   createComposite: (ctx: CompositeContext) => TileStatesComposite;
 }
 
+interface LevelMesh {
+  binMs: number;
+  mesh: StatesMesh;
+}
+
 interface DataTileMeshes {
-  tileStates: StatesMesh;
+  // ascending bins, one shown at a time
+  levels: LevelMesh[];
+  // built from the live tile, so they hold copies of every level
+  isLive: boolean;
   overlay?: StatesMesh;
   startMs: number;
   endMs: number;
@@ -118,7 +115,7 @@ export interface RendererObj {
   liveDataTileKey: string | undefined;
   renderedGranularity: TileStatesGranularity | undefined;
   aggStatesScene: THREE.Scene;
-  aggMeshes: DataTileMeshes;
+  aggMesh: StatesMesh;
   aggMeshBuild: AggMeshBuild | undefined;
   /** The largest share of busy time any state has in a visible agg bucket */
   aggMaxStateShare: number;
@@ -166,11 +163,7 @@ export function setUpRenderer(
     magFilter: THREE.NearestFilter,
     depthBuffer: false,
   });
-  const tileStatesMaterial = createTileStatesMaterial(
-    TILE_STATE_PALETTE,
-    getStateIdxs(states),
-    states.length,
-  );
+  const tileStatesMaterial = createTileStatesMaterial(states.length);
   // Each px's time per row in the highlighted slots and groups, so composites
   // can highlight by the slot most of a px's time is in
   const highlight = createSlotHighlight();
@@ -199,13 +192,13 @@ export function setUpRenderer(
   const dataTileMeshes = new Map<string, DataTileMeshes>();
   const availableMeshes: DataTileMeshes[] = [];
 
-  const aggMeshes: DataTileMeshes = {
-    tileStates: createStatesMesh(rectResources.unitQuad, tileStatesMaterial),
-    startMs: -Infinity,
-    endMs: Infinity,
-  };
+  const aggMesh = createStatesMesh(
+    rectResources.unitQuad,
+    tileStatesMaterial,
+    tileStatesBarLayout,
+  );
   const aggStatesScene = new THREE.Scene();
-  aggStatesScene.add(aggMeshes.tileStates.mesh);
+  aggStatesScene.add(aggMesh.mesh);
 
   const cleanUp = () => {
     // Skip GPU disposal if the context was lost since its objects are already gone.
@@ -213,7 +206,7 @@ export function setUpRenderer(
       for (const meshes of dataTileMeshes.values())
         disposeDataTileMeshes(meshes);
       for (const meshes of availableMeshes) disposeDataTileMeshes(meshes);
-      disposeDataTileMeshes(aggMeshes);
+      aggMesh.mesh.geometry.dispose();
       disposeRectResources(rectResources);
       tileStatesMaterial.dispose();
       tileStatesTarget.dispose();
@@ -243,7 +236,7 @@ export function setUpRenderer(
     liveDataTileKey: undefined,
     renderedGranularity: undefined,
     aggStatesScene,
-    aggMeshes,
+    aggMesh,
     aggMeshBuild: undefined,
     aggMaxStateShare: 1,
     isAgg: false,
@@ -256,17 +249,10 @@ export function setUpRenderer(
   return rendererObj;
 }
 
-/** Each TileState's texel row among the coverage states, -1 if not drawn */
-function getStateIdxs(states: TileState[]) {
-  return TILE_STATE_PALETTE.map((_, state) => states.indexOf(state));
-}
-
 function syncCoverageStates(rendererObj: RendererObj) {
   const states = rendererObj.config.getStates(rendererObj.renderedGranularity);
   if (states === rendererObj.coverageStates) return states;
   rendererObj.coverageStates = states;
-  rendererObj.tileStatesMaterial.uniforms.uStateIdxs.value =
-    getStateIdxs(states);
   rendererObj.composite.setStates(states);
   return states;
 }
@@ -377,9 +363,11 @@ export function setVisibleRange(
 
   const scaleChanged = msPerPx !== prevMsPerPx;
   if (scaleChanged || anchorMoved) {
-    for (const meshes of dataTileMeshes.values())
-      updateDataTileMeshPositions(rendererObj, meshes);
-    updateDataTileMeshPositions(rendererObj, rendererObj.aggMeshes);
+    for (const meshes of dataTileMeshes.values()) {
+      for (const statesMesh of getStatesMeshes(meshes))
+        updateMeshPosition(rendererObj, statesMesh);
+    }
+    updateMeshPosition(rendererObj, rendererObj.aggMesh);
   }
   if (scaleChanged || viewMoved) {
     for (const meshes of dataTileMeshes.values())
@@ -390,21 +378,33 @@ export function setVisibleRange(
   return scaleChanged || viewMoved;
 }
 
-export function updateDataTileMeshPositions(
+export function updateMeshPosition(
   rendererObj: RendererObj,
-  meshes: DataTileMeshes,
+  statesMesh: StatesMesh,
 ) {
   const { msPerPx, anchorPx } = rendererObj;
-  const anchorMs = anchorPx * msPerPx - meshes.tileStates.referenceX;
+  const anchorMs = anchorPx * msPerPx - statesMesh.referenceX;
   const anchorHi = Math.fround(anchorMs);
-  for (const statesMesh of [meshes.tileStates, meshes.overlay]) {
-    if (!statesMesh) continue;
-    statesMesh.mesh.position.x = anchorHi;
-    statesMesh.mesh.position.y = anchorMs - anchorHi;
-  }
+  statesMesh.mesh.position.x = anchorHi;
+  statesMesh.mesh.position.y = anchorMs - anchorHi;
 }
 
-/** Hides a data tile's meshes out of view, so the GPU skips their rects */
+function getStatesMeshes(meshes: DataTileMeshes): StatesMesh[] {
+  const statesMeshes = meshes.levels.map(({ mesh }) => mesh);
+  if (meshes.overlay) statesMeshes.push(meshes.overlay);
+  return statesMeshes;
+}
+
+/** The coarsest level with bins at most MERGE_BIN_PX */
+function getLevelIdx(levels: LevelMesh[], msPerPx: number) {
+  let levelIdx = 0;
+  for (let i = 1; i < levels.length; i++) {
+    if (levels[i].binMs <= msPerPx * MERGE_BIN_PX) levelIdx = i;
+  }
+  return levelIdx;
+}
+
+/** Shows a data tile's level for the view's scale, and hides it out of view */
 function updateDataTileMeshVisibility(
   rendererObj: RendererObj,
   meshes: DataTileMeshes,
@@ -413,21 +413,25 @@ function updateDataTileMeshVisibility(
   const viewStartMs = viewStartPx * msPerPx;
   const viewEndMs = viewStartMs + renderer.domElement.width * msPerPx;
   const visible = meshes.endMs >= viewStartMs && meshes.startMs <= viewEndMs;
-  meshes.tileStates.mesh.visible = visible;
+  const levelIdx = getLevelIdx(meshes.levels, msPerPx);
+  for (let i = 0; i < meshes.levels.length; i++) {
+    meshes.levels[i].mesh.mesh.visible = visible && i === levelIdx;
+  }
   if (meshes.overlay) meshes.overlay.mesh.visible = visible;
 }
 
 function createDataTileMeshes(rendererObj: RendererObj): DataTileMeshes {
-  const { rectResources, tileStatesMaterial, composite } = rendererObj;
-  const tileStates = createStatesMesh(
-    rectResources.unitQuad,
-    tileStatesMaterial,
-  );
+  const { rectResources, composite } = rendererObj;
   const overlay =
     composite.overlay &&
-    createStatesMesh(rectResources.unitQuad, composite.overlay.material);
+    createStatesMesh(
+      rectResources.unitQuad,
+      composite.overlay.material,
+      composite.overlay.barLayout,
+    );
   return {
-    tileStates,
+    levels: [],
+    isLive: false,
     overlay,
     startMs: 0,
     endMs: 0,
@@ -442,15 +446,54 @@ function addDataTileMeshes(
   const meshes =
     rendererObj.availableMeshes.pop() ?? createDataTileMeshes(rendererObj);
   rendererObj.dataTileMeshes.set(key, meshes);
-  rendererObj.tileStatesScene.add(meshes.tileStates.mesh);
+  for (const level of meshes.levels) {
+    rendererObj.tileStatesScene.add(level.mesh.mesh);
+  }
   if (meshes.overlay)
     rendererObj.composite.overlay?.scene.add(meshes.overlay.mesh);
   return meshes;
 }
 
 function disposeDataTileMeshes(meshes: DataTileMeshes) {
-  meshes.tileStates.mesh.geometry.dispose();
-  meshes.overlay?.mesh.geometry.dispose();
+  for (const statesMesh of getStatesMeshes(meshes)) {
+    statesMesh.mesh.geometry.dispose();
+  }
+}
+
+/** Adds meshes for at least levelCount levels */
+function ensureLevelMeshes(
+  rendererObj: RendererObj,
+  meshes: DataTileMeshes,
+  levelCount: number,
+) {
+  while (meshes.levels.length < levelCount) {
+    const mesh = createStatesMesh(
+      rendererObj.rectResources.unitQuad,
+      rendererObj.tileStatesMaterial,
+      tileStatesBarLayout,
+    );
+    rendererObj.tileStatesScene.add(mesh.mesh);
+    meshes.levels.push({ binMs: Infinity, mesh });
+  }
+}
+
+/** A level's slots relative to the highlight's, NO_SLOT for none */
+function getRelativeSlots(
+  highlight: SlotHighlight,
+  { slot, count }: MergedLevel,
+  referenceSlot: number,
+) {
+  const relativeSlots = new Float32Array(count);
+  let offset: number | undefined;
+  for (let i = 0; i < count; i++) {
+    if (Number.isNaN(slot[i])) {
+      relativeSlots[i] = NO_SLOT;
+      continue;
+    }
+    offset ??= getRelativeSlot(highlight, referenceSlot);
+    relativeSlots[i] = slot[i] + offset;
+  }
+  return relativeSlots;
 }
 
 function buildDataTileMeshes(
@@ -458,35 +501,55 @@ function buildDataTileMeshes(
   meshes: DataTileMeshes,
   dataTile: TileStatesDataTile,
   rowOfTile: RowOfTile,
-  appendData?: TileStateColumns,
+  isLive: boolean,
+  appendData?: TileStatesData,
 ) {
-  if (!appendData) {
-    // referenceX is the data tile's start, so rects are stored in small ms from it
+  const { config, highlight } = rendererObj;
+  if (appendData) {
+    appendData.levels[config.kind].forEach((level, i) => {
+      const { edges, bar, count } = level;
+      const slots = getRelativeSlots(
+        highlight,
+        level,
+        appendData.referenceSlot,
+      );
+      appendStates(meshes.levels[i].mesh, edges, bar, slots, count);
+    });
+  } else {
+    const { levels: levelsByKind, referenceSlot } = dataTile.data;
+    const levels = levelsByKind[config.kind];
+    ensureLevelMeshes(rendererObj, meshes, levels.length);
     const referenceNs = store.get(referenceNsAtom) ?? 0n;
     const referenceX = calcRelativeMs(referenceNs, dataTile.startNs);
-    meshes.tileStates.referenceX = referenceX;
-    if (meshes.overlay) meshes.overlay.referenceX = referenceX;
+    meshes.levels.forEach((levelMesh, i) => {
+      const level = levels.at(i);
+      levelMesh.binMs = level?.binMs ?? Infinity;
+      const { mesh } = levelMesh;
+      if (!level) {
+        if (mesh.count || !mesh.capacity) clearStates(mesh);
+        return;
+      }
+      const { edges, bar, count } = level;
+      const slots = getRelativeSlots(highlight, level, referenceSlot);
+      // the live tile's arrays are replaced as its states arrive
+      if (isLive) {
+        setStatesCount(mesh, 0);
+        appendStates(mesh, edges, bar, slots, count);
+      } else {
+        wrapStates(mesh, edges, bar, slots, count);
+      }
+    });
+    meshes.isLive = isLive;
+    for (const statesMesh of getStatesMeshes(meshes)) {
+      statesMesh.referenceX = referenceX;
+      updateMeshPosition(rendererObj, statesMesh);
+    }
     meshes.startMs = referenceX;
     meshes.endMs = calcRelativeMs(referenceNs, dataTile.endNs);
-    updateDataTileMeshPositions(rendererObj, meshes);
     updateDataTileMeshVisibility(rendererObj, meshes);
   }
 
   const data = appendData ?? dataTile.data;
-
-  const tileStatesStart = appendData ? meshes.tileStates.count : 0;
-  setStatesCount(
-    meshes.tileStates,
-    appendTileStates(
-      rendererObj.highlight,
-      meshes.tileStates,
-      data,
-      tileStatesStart,
-      rowOfTile,
-    ),
-    tileStatesStart,
-  );
-
   const overlay = rendererObj.composite.overlay;
   if (meshes.overlay && overlay) {
     const overlayStart = appendData ? meshes.overlay.count : 0;
@@ -520,15 +583,15 @@ export function syncMeshes(rendererObj: RendererObj, rebuild = false) {
 
   const keys = new Set<string>();
 
-  // Build meshes for new data tiles (skip already built ones)
+  // Build meshes for new data tiles, and rebuild the ones built while live
   for (const dataTile of dataTiles) {
     const key = dataTileKey(dataTile);
     keys.add(key);
-    if (!rebuild && dataTileMeshes.has(key)) continue;
+    const built = dataTileMeshes.get(key);
+    if (!rebuild && built && !built.isLive) continue;
 
-    const meshes =
-      dataTileMeshes.get(key) ?? addDataTileMeshes(rendererObj, key);
-    buildDataTileMeshes(rendererObj, meshes, dataTile, rowOfTile);
+    const meshes = built ?? addDataTileMeshes(rendererObj, key);
+    buildDataTileMeshes(rendererObj, meshes, dataTile, rowOfTile, false);
   }
 
   // Evict meshes for data tiles no longer cached and return them to the pool
@@ -536,7 +599,7 @@ export function syncMeshes(rendererObj: RendererObj, rebuild = false) {
   for (const [key, meshes] of dataTileMeshes) {
     if (keys.has(key) || key === liveDataTileKey) continue;
 
-    tileStatesScene.remove(meshes.tileStates.mesh);
+    for (const level of meshes.levels) tileStatesScene.remove(level.mesh.mesh);
     if (meshes.overlay) composite.overlay?.scene.remove(meshes.overlay.mesh);
     dataTileMeshes.delete(key);
     availableMeshes.push(meshes);
@@ -546,7 +609,7 @@ export function syncMeshes(rendererObj: RendererObj, rebuild = false) {
 export function appendLiveStates(
   rendererObj: RendererObj,
   liveDataTile: TileStatesDataTile,
-  newData: TileStateColumns,
+  newData: TileStatesData,
   isNewDataTile: boolean,
 ) {
   const { dataTileMeshes } = rendererObj;
@@ -564,6 +627,7 @@ export function appendLiveStates(
     meshes,
     liveDataTile,
     getRowOfTile(rendererObj.config.kind),
+    true,
     hasLiveMeshes ? newData : undefined,
   );
 }
@@ -581,63 +645,4 @@ export function clearLiveMarkerIfAdded(
   if (!addedDataTiles.some((t) => dataTileKey(t) === liveDataTileKey)) return;
 
   clearLiveMarker(rendererObj);
-}
-
-function appendTileStates(
-  highlight: SlotHighlight,
-  mesh: StatesMesh,
-  data: TileStateColumns,
-  start: number,
-  rowOfTile: RowOfTile,
-): number {
-  if (rowOfTile.size === 0) return start;
-
-  let needed = 0;
-  for (let i = 0; i < data.state.length; i++) {
-    if (rowOfTile.has(data.state_tile[i])) needed++;
-  }
-  ensureStatesCapacity(mesh, start + needed);
-
-  let count = start;
-  for (let i = 0; i < data.state.length; i++) {
-    const row = rowOfTile.get(data.state_tile[i]);
-    if (row === undefined) continue;
-    addRectToMesh(
-      mesh,
-      count++,
-      data.state_start_ms[i],
-      data.state_end_ms[i],
-      row,
-      data.state[i],
-      1,
-      getRectSlot(highlight, data.state_slot[i]),
-    );
-  }
-  return count;
-}
-
-export function addRectToMesh(
-  mesh: StatesMesh,
-  idx: number,
-  startMs: number,
-  endMs: number,
-  row: number,
-  colorIndex: number,
-  weight = 1,
-  slot = NO_SLOT,
-) {
-  const localStart = startMs - mesh.referenceX;
-  const localEnd = endMs - mesh.referenceX;
-  const startHi = Math.fround(localStart);
-  const endHi = Math.fround(localEnd);
-  const r = idx * 4;
-  mesh.edges[r] = startHi;
-  mesh.edges[r + 1] = localStart - startHi;
-  mesh.edges[r + 2] = endHi;
-  mesh.edges[r + 3] = localEnd - endHi;
-  const b = idx * 3;
-  mesh.bar[b] = row;
-  mesh.bar[b + 1] = colorIndex;
-  mesh.bar[b + 2] = weight;
-  mesh.slot[idx] = slot;
 }

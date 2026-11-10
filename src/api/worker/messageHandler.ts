@@ -18,6 +18,11 @@ import {
   tpsHistoryIntervalMs,
 } from "./cache/consts";
 import { gossipHealthEmaFields } from "../atoms";
+import {
+  mergeTileStatesResponse,
+  type MergedTileStatesResponse,
+} from "../../features/Replay/tileStates/mergeTileStates";
+import type { Tile } from "../types";
 import { epochNow } from "../../clockUtils";
 import {
   defaultValidatorState,
@@ -71,6 +76,7 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
   );
 
   let validatorState = { ...defaultValidatorState };
+  let tiles: Tile[] | undefined;
 
   return {
     onConnectionChange(msg: {
@@ -98,6 +104,13 @@ export function createMessageHandler(post: (msg: FromWorkerMessage) => void) {
           ...validatorState,
           isStartup: item.value.phase !== "running",
         };
+      }
+
+      if (isEntry(item, "summary", "tiles")) tiles = item.value;
+
+      if (isEntry(item, "timeline", "query_tile_states")) {
+        const response: MergedTileStatesResponse = item.value;
+        response.merged = mergeTileStatesResponse(response, tiles);
       }
 
       if (isEntry(item, "gossip", "network_stats")) {
