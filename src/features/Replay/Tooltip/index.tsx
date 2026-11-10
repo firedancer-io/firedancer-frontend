@@ -3,12 +3,12 @@ import { memo, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import clsx from "clsx";
 import { getDefaultStore, useAtomValue } from "jotai";
-import { computePosition, offset, flip, shift } from "@floating-ui/dom";
 import MonoText from "../../../components/MonoText";
 import { containerElAtom } from "../../../atoms";
 import { useAtomsSubscription } from "../../../atomUtils";
 import { hoveredClientPosAtom, hoveredMsAtom, referenceNsAtom } from "../atoms";
 import { calcAbsoluteNs } from "../utils";
+import { positionBelowPoint } from "../floatingPosition";
 import { formatTooltipTime } from "./utils";
 import styles from "./replayCursorTooltip.module.css";
 
@@ -16,8 +16,6 @@ const store = getDefaultStore();
 
 // 16px gap from the cursor
 const POINTER_GAP_PX = 16;
-// 8px from the viewport edge
-const EDGE_MARGIN_PX = 8;
 
 /**
  * Tooltip that follows the cursor on the replay page. Mount it only when its
@@ -38,29 +36,7 @@ export default function ReplayCursorTooltip({ children }: PropsWithChildren) {
       return;
     }
 
-    // zero-size anchor at the cursor, in viewport coords
-    const anchor = {
-      x: pos.x,
-      y: pos.y,
-      left: pos.x,
-      right: pos.x,
-      top: pos.y,
-      bottom: pos.y,
-      width: 0,
-      height: 0,
-    };
-
-    void computePosition({ getBoundingClientRect: () => anchor }, root, {
-      // strategy "fixed" so x/y are viewport-relative
-      strategy: "fixed",
-      // prefer below the cursor
-      placement: "bottom-start",
-      middleware: [
-        offset(POINTER_GAP_PX),
-        flip(),
-        shift({ padding: EDGE_MARGIN_PX }),
-      ],
-    }).then(({ x, y }) => {
+    void positionBelowPoint(pos, root, POINTER_GAP_PX).then(({ x, y }) => {
       // return if hover was cleared while the promise was pending
       if (store.get(hoveredClientPosAtom) == null) return;
 

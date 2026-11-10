@@ -498,7 +498,7 @@ export function useExplorableChart() {
         pinch = {
           touchIds: [touches[0].identifier, touches[1].identifier],
           distancePx,
-          midTs: clientXToTsWithRect(trackRect, midX, visibleRange),
+          midTs: clientXToMs(midX, trackRect, visibleRange),
           spanMs: visibleRange[1] - visibleRange[0],
           trackRect,
         };

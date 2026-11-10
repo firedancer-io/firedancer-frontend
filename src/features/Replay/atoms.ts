@@ -1,7 +1,7 @@
 import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../nowAtoms";
 import type { TsRange } from "../WebGl/webglUtils";
-import { atom, type Getter, type Setter } from "jotai";
+import { atom, getDefaultStore, type Getter, type Setter } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { CHART_NOW_DELAY_MS, type PlaybackRate } from "./const";
 import {
@@ -291,6 +291,22 @@ export interface HoverInfo {
   clientPos: ClientPos;
 }
 
+function collectLeaderSlotsInRange(
+  tileSlotGroups: Map<number, Set<number>>,
+  referenceNs: bigint,
+  visibleRange: TsRange,
+): Set<number> {
+  const { startIdx, endIdx } = getSlotDrawTileIdxs(referenceNs, visibleRange);
+
+  const leaderSlots = new Set<number>();
+  for (let tileIdx = startIdx; tileIdx <= endIdx; tileIdx++) {
+    const tileGroups = tileSlotGroups.get(tileIdx);
+    if (!tileGroups) continue;
+    for (const leaderSlot of tileGroups) leaderSlots.add(leaderSlot);
+  }
+  return leaderSlots;
+}
+
 /**
  * Leader slots whose tiles overlap the visible range, or undefined when not in
  * non-aggregate slot mode / timeline not ready.
@@ -303,14 +319,11 @@ function getVisibleLeaderSlots(get: Getter) {
   if (!visibleRange || isAggregate(visibleRange)) return;
 
   const { slotGroups, tileSlotGroups } = get(timelineSlotsAtom);
-  const { startIdx, endIdx } = getSlotDrawTileIdxs(referenceNs, visibleRange);
-
-  const leaderSlots = new Set<number>();
-  for (let tileIdx = startIdx; tileIdx <= endIdx; tileIdx++) {
-    const tileGroups = tileSlotGroups.get(tileIdx);
-    if (!tileGroups) continue;
-    for (const leaderSlot of tileGroups) leaderSlots.add(leaderSlot);
-  }
+  const leaderSlots = collectLeaderSlotsInRange(
+    tileSlotGroups,
+    referenceNs,
+    visibleRange,
+  );
   if (leaderSlots.size === 0) return;
 
   return { slotGroups, leaderSlots };
@@ -332,6 +345,15 @@ function overlappingSlotsAtMs(get: Getter, ms: number): SlotInfo[] {
   }
   overlapping.sort((a, b) => a.startMs - b.startMs);
   return overlapping;
+}
+
+function isSameSlotList(a: SlotInfo[], b: SlotInfo[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].slot !== b[i].slot) return false;
+  }
+  return true;
 }
 
 /**
@@ -417,14 +439,11 @@ function getSlotAtMs(get: Getter, ms: number) {
     if (topSlot !== undefined) return topSlot;
   }
 
-  const { startIdx, endIdx } = getSlotDrawTileIdxs(referenceNs, visibleRange);
-
-  const leaderSlots = new Set<number>();
-  for (let tileIdx = startIdx; tileIdx <= endIdx; tileIdx++) {
-    const tileGroups = tileSlotGroups.get(tileIdx);
-    if (!tileGroups) continue;
-    for (const leaderSlot of tileGroups) leaderSlots.add(leaderSlot);
-  }
+  const leaderSlots = collectLeaderSlotsInRange(
+    tileSlotGroups,
+    referenceNs,
+    visibleRange,
+  );
   if (leaderSlots.size === 0) return;
 
   const descLeaders = [...leaderSlots].sort((a, b) => b - a);
@@ -709,6 +728,8 @@ export const hoveredAggHeaderAtom = selectAtom(
       a.granularity === b.granularity),
 );
 
+export const nonAggHeaderElAtom = atom<HTMLElement | null>(null);
+
 /** Owner used when the pinned overlap tooltip drives the spotlight. */
 const PINNED_HOVER_OWNER = "replay-pinned";
 
@@ -724,20 +745,33 @@ export interface PinnedTooltip {
 }
 
 export const pinnedTooltipAtom = atom<PinnedTooltip | undefined>(undefined);
+// Close as soon as its ts scrolls out of
+// the visible range / aggregate mode
+pinnedTooltipAtom.onMount = () => {
+  const store = getDefaultStore();
+  return store.sub(visibleRangeAtom, () => {
+    store.set(dismissPinnedIfOffscreenAtom);
+  });
+};
 
 export const isReplayTooltipPinnedAtom = atom(
   (get) => get(pinnedTooltipAtom) != null,
 );
 
-/**
- * All slots overlapping the pinned ts, sorted ascending by start ts.
- * Empty when nothing is pinned.
- */
-export const overlappingSlotsAtom = atom<SlotInfo[]>((get) => {
+const overlappingSlotsBaseAtom = atom<SlotInfo[]>((get) => {
   const pinned = get(pinnedTooltipAtom);
   if (!pinned) return [];
   return overlappingSlotsAtMs(get, pinned.ts);
 });
+
+/**
+ * All slots overlapping the pinned ts, sorted ascending by start ts.
+ */
+export const overlappingSlotsAtom = selectAtom(
+  overlappingSlotsBaseAtom,
+  (list) => list,
+  isSameSlotList,
+);
 
 export const pinnedSelectedSlotInfoAtom = atom<SlotInfo | undefined>((get) => {
   const pinned = get(pinnedTooltipAtom);
@@ -788,6 +822,15 @@ export const openOrUpdateOverlapAtom = atom(
       (max, s) => Math.max(max, s.slot),
       -1,
     );
+
+    if (
+      current &&
+      current.mode === "list" &&
+      current.anchorSlot === anchorSlot &&
+      isSameSlotList(get(overlappingSlotsAtom), overlapping)
+    ) {
+      return;
+    }
 
     set(pinnedTooltipAtom, {
       ts,
@@ -868,7 +911,7 @@ export const dismissPinnedAtom = atom(
 /**
  * Close the pinned tooltip once its ts scrolls out of the visible range or in agg mode
  */
-export const dismissPinnedIfOffscreenAtom = atom(null, (get, set) => {
+const dismissPinnedIfOffscreenAtom = atom(null, (get, set) => {
   const pinned = get(pinnedTooltipAtom);
   if (!pinned) return;
   const visibleRange = get(visibleRangeAtom);

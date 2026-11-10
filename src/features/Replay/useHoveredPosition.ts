@@ -21,7 +21,7 @@ export function useHoveredPosition({
   onHoverLeave,
 }: {
   onHoverChange: (clientX: number, clientY: number, rect: HoveredRect) => void;
-  onHoverLeave: () => void;
+  onHoverLeave?: () => void;
 }) {
   const containerRef = useRef<HTMLElement | null>(null);
   const lastClientPosRef = useRef<{ x: number; y: number }>();
@@ -75,7 +75,7 @@ export function useHoveredPosition({
       clientY > rect.bottom
     ) {
       lastClientPosRef.current = undefined;
-      onHoverLeaveRef.current();
+      onHoverLeaveRef.current?.();
       return;
     }
     lastClientPosRef.current = { x: clientX, y: clientY };
@@ -101,7 +101,7 @@ export function useHoveredPosition({
 
       const leave = () => {
         lastClientPosRef.current = undefined;
-        onHoverLeaveRef.current();
+        onHoverLeaveRef.current?.();
       };
 
       // touch has no hover: a one-finger tap hovers the tapped point, any touch clears it

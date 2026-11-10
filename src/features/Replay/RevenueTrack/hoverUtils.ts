@@ -1,8 +1,8 @@
 import { getDefaultStore } from "jotai";
 import { referenceNsAtom } from "../atoms.ts";
-import { calcAbsoluteNs } from "../utils.ts";
+import { calcAbsoluteNs, clientXToMs } from "../utils.ts";
 import type { HoveredRect } from "../useHoveredPosition.ts";
-import { clientXToTs, clientYToWorldY } from "../hoverUtils.ts";
+import { clientYToWorldY } from "../hoverUtils.ts";
 import {
   maxHeightRatio,
   maxY,
@@ -116,7 +116,7 @@ function xToMs(rendererObj: RendererObj, clientX: number, rect: HoveredRect) {
 
   const visibleStartMs = cameraReferenceMs + camera.left;
   const visibleEndMs = cameraReferenceMs + camera.right;
-  const ms = clientXToTs(rect, clientX, [visibleStartMs, visibleEndMs]);
+  const ms = clientXToMs(clientX, rect, [visibleStartMs, visibleEndMs]);
 
   const canvasCssPx = rendererObj.renderer.domElement.clientWidth || 1;
   const msPerCssPx = (visibleEndMs - visibleStartMs) / canvasCssPx;

@@ -1,6 +1,7 @@
 import { type Atom, atom, getDefaultStore, useAtomValue } from "jotai";
 import {
   hoveredSlotAtom,
+  nonAggHeaderElAtom,
   openOrUpdateOverlapAtom,
   referenceNsAtom,
   selectedSlotAtom,
@@ -45,7 +46,7 @@ import {
 import { aggHeaderEmitterAtom } from "./aggAtoms";
 import { drawEventType } from "../const";
 import MonoText from "../../../components/MonoText";
-import { trackHeight, NON_AGG_TRACK_ID } from "./const";
+import { trackHeight } from "./const";
 
 const store = getDefaultStore();
 const logoSize = 8;
@@ -299,13 +300,15 @@ export function NonAggHeaderTrack({
     [],
   );
 
-  // overlap tooltip handles closing
-  const onHoverLeave = useCallback(() => {}, []);
+  const { setContainer, notifyChange } = useHoveredPosition({ onHoverChange });
 
-  const { setContainer, notifyChange } = useHoveredPosition({
-    onHoverChange,
-    onHoverLeave,
-  });
+  const setTrackRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      setContainer(el);
+      store.set(nonAggHeaderElAtom, el);
+    },
+    [setContainer],
+  );
 
   // set up renderer and subscribe to range change, to trigger queries
   useLayoutEffect(() => {
@@ -370,7 +373,7 @@ export function NonAggHeaderTrack({
   }, [containerStartMs, updateGroupPositionsOnly]);
 
   return (
-    <div className={className} id={NON_AGG_TRACK_ID} ref={setContainer}>
+    <div className={className} ref={setTrackRef}>
       <div ref={containerRef} className={styles.container}>
         {renderState?.slotGroups.map((group) => (
           <SlotGroupContainer
