@@ -8,6 +8,7 @@ import type { LatencyPoint, SlotLatencies } from "./latency";
 
 function toSlotPoints(points: LatencyPoint[]): LatencyChartPoint[] {
   return points.map(({ slot, ts, latencyMs }, i) => ({
+    slot,
     ts,
     latencyMs,
     breakBefore: i > 0 && slot !== points[i - 1].slot + 1,
@@ -58,7 +59,12 @@ export function getAggLatencySeries(
         broken[line] = true;
         continue;
       }
-      series[line].push({ ts, latencyMs, breakBefore: broken[line] });
+      series[line].push({
+        slot: undefined,
+        ts,
+        latencyMs,
+        breakBefore: broken[line],
+      });
       broken[line] = false;
     }
   }

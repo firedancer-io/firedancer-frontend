@@ -13,6 +13,7 @@ import {
   type VotesDataTile,
 } from "./votesData";
 import { applyVotesDelta, type LiveTiles } from "./liveTiles";
+import { NO_SLOT } from "../slotHighlight";
 import type { VotesCacheDelta } from "./votesCache";
 import {
   showNearVotesTiles,
@@ -674,6 +675,7 @@ describe("drawVotesLatency", () => {
           widthPx: 1,
           dashPx: 0,
           segments: [10_100, 5, 10_200, 6],
+          slots: [1_000],
         },
         {
           color: "#000000",
@@ -681,6 +683,7 @@ describe("drawVotesLatency", () => {
           widthPx: 2,
           dashPx: 5,
           segments: [10_300, 7, 10_400, 8, 10_400, 8, 10_500, 9],
+          slots: [1_001, undefined],
         },
       ],
       markers: [
@@ -691,6 +694,7 @@ describe("drawVotesLatency", () => {
           heightPx: 4,
           alpha: 1,
           color: "#FF0000",
+          slot: undefined,
         },
         {
           x: 10_260,
@@ -699,6 +703,7 @@ describe("drawVotesLatency", () => {
           heightPx: 6,
           alpha: 0.5,
           icon: "finalized",
+          slot: 1_002,
         },
       ],
       triangles: [],
@@ -740,6 +745,36 @@ describe("drawVotesLatency", () => {
     ]);
   });
 
+  it("stores slots relative to the scene's reference slot", () => {
+    expect(getArray(meshes.lines.mesh, "instanceSlot")).toEqual([
+      0,
+      1,
+      NO_SLOT,
+    ]);
+    expect(getArray(meshes.markers.mesh, "instanceSlot")).toEqual([NO_SLOT, 2]);
+    expect(getArray(guides.mesh, "instanceSlot")).toEqual([NO_SLOT]);
+  });
+
+  it("spotlights marks but never the guides", () => {
+    const { highlight, resources } = votesScene;
+    const { uniforms } = highlight;
+    expect(resources.segmentMaterial.uniforms.uHighlightActive).toBe(
+      uniforms.uHighlightActive,
+    );
+    expect(resources.markerMaterial.uniforms.uHighlightActive).toBe(
+      uniforms.uHighlightActive,
+    );
+    expect(guides.mesh.material.uniforms.uHighlightActive).not.toBe(
+      uniforms.uHighlightActive,
+    );
+    expect(guides.mesh.material.uniforms.uResolution).toBe(
+      resources.segmentMaterial.uniforms.uResolution,
+    );
+    expect(guides.mesh.material.uniforms.uDashOffsetPx).toBe(
+      resources.segmentMaterial.uniforms.uDashOffsetPx,
+    );
+  });
+
   it("marks icons by index and other markers as plain color", () => {
     expect(getArray(meshes.markers.mesh, "instanceIcon")).toEqual([-1, 1]);
   });
@@ -769,7 +804,14 @@ describe("drawVotesLatency", () => {
       {
         guideYs: [],
         strokes: [
-          { color: "#FFFFFF", alpha: 1, widthPx: 1, dashPx: 0, segments },
+          {
+            color: "#FFFFFF",
+            alpha: 1,
+            widthPx: 1,
+            dashPx: 0,
+            segments,
+            slots: [],
+          },
         ],
         markers: [],
         triangles: [],

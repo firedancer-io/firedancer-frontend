@@ -6,6 +6,7 @@ import {
 import type { TsRange } from "../../WebGl/webglUtils";
 import { LINE_WIDTH_PX } from "./consts";
 import {
+  addSegment,
   getVotesPlotLayout,
   type Marker,
   type Stroke,
@@ -19,6 +20,8 @@ const DEFAULT_MAX_MS = 150;
 const ISOLATED_SAMPLE_PX = 3;
 
 export interface LatencyChartPoint {
+  // undefined for aggregate buckets
+  slot: number | undefined;
   ts: number;
   latencyMs: number;
   breakBefore: boolean;
@@ -97,16 +100,29 @@ export function buildLatency({
   const markers: Marker[] = [];
 
   function traceSeries(points: LatencyChartPoint[], color: string): Stroke {
-    const segments: number[] = [];
+    const stroke: Stroke = {
+      color,
+      alpha: 1,
+      widthPx: LINE_WIDTH_PX,
+      dashPx: 0,
+      segments: [],
+      slots: [],
+    };
     for (let i = 0; i < points.length; i++) {
-      const { ts, latencyMs, breakBefore } = points[i];
+      const { slot, ts, latencyMs, breakBefore } = points[i];
       const y = toY(latencyMs);
       const next = points[i + 1];
       if (i > 0 && !breakBefore) {
+        // each half of the line takes the slot of its point
         const prev = points[i - 1];
-        segments.push(prev.ts, toY(prev.latencyMs), ts, y);
+        const prevY = toY(prev.latencyMs);
+        const midX = (prev.ts + ts) / 2;
+        const midY = (prevY + y) / 2;
+        addSegment(stroke, prev.slot, prev.ts, prevY, midX, midY);
+        addSegment(stroke, slot, midX, midY, ts, y);
       } else if (!next || next.breakBefore) {
         markers.push({
+          slot,
           x: ts,
           y,
           widthPx: ISOLATED_SAMPLE_PX,
@@ -116,7 +132,7 @@ export function buildLatency({
         });
       }
     }
-    return { color, alpha: 1, widthPx: LINE_WIDTH_PX, dashPx: 0, segments };
+    return stroke;
   }
 
   return {

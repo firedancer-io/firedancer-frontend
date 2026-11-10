@@ -37,7 +37,8 @@ const point = (
   ts: number,
   latencyMs: number,
   breakBefore = false,
-): LatencyChartPoint => ({ ts, latencyMs, breakBefore });
+  slot?: number,
+): LatencyChartPoint => ({ slot, ts, latencyMs, breakBefore });
 
 describe("formatLatencyTick", () => {
   it("switches to seconds from 1s", () => {
@@ -67,6 +68,7 @@ describe("buildLatency", () => {
     ]);
     expect(strokes.every((s) => s.segments.length === 0)).toBe(true);
     expect(markers).toContainEqual({
+      slot: undefined,
       x: 50,
       y: toY(100),
       widthPx: 3,
@@ -89,7 +91,20 @@ describe("buildLatency", () => {
     const [{ segments }] = build([point(0, 50), point(10, 900)]).strokes.slice(
       -1,
     );
-    expect(segments).toEqual([0, toY(50), 10, toY(ticks.at(-1)!)]);
+    const topY = toY(ticks.at(-1)!);
+    const midY = (toY(50) + topY) / 2;
+    expect(segments).toEqual([0, toY(50), 5, midY, 5, midY, 10, topY]);
+  });
+
+  it("gives each half of a line the slot of its nearer point", () => {
+    const { strokes, markers } = build([
+      point(0, 50, false, 7),
+      point(10, 100, false, 8),
+      point(30, 50, true, 10),
+    ]);
+    const notarized = strokes.at(-1)!;
+    expect(notarized.slots).toEqual([7, 8]);
+    expect(markers.map((m) => m.slot)).toEqual([10]);
   });
 
   it("places guides at the ticks", () => {
@@ -115,12 +130,10 @@ describe("buildLatency", () => {
         const prev = points[i - 1];
         const next = points[i + 1];
         if (prev && !breakBefore) {
-          expectedSegments.push(
-            prev.ts,
-            toY(prev.latencyMs),
-            ts,
-            toY(latencyMs),
-          );
+          const midX = (prev.ts + ts) / 2;
+          const midY = (toY(prev.latencyMs) + toY(latencyMs)) / 2;
+          expectedSegments.push(prev.ts, toY(prev.latencyMs), midX, midY);
+          expectedSegments.push(midX, midY, ts, toY(latencyMs));
         }
         const joinsPrev = prev && !breakBefore;
         const joinsNext = next && !next.breakBefore;

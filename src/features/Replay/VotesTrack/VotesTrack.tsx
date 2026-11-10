@@ -19,6 +19,10 @@ import type { AggGranularity, VotesGranularity } from "../../../api/types.ts";
 import { VotesGranularityEnum } from "../../../api/entities.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import { trackNames } from "../layout.ts";
+import {
+  updateSlotHighlight,
+  useSlotHighlightRender,
+} from "../slotHighlight.ts";
 import { getVisibleYLabels } from "./yLabels.ts";
 import TrackControls, { type LegendItem } from "../TrackControls.tsx";
 import {
@@ -212,9 +216,14 @@ function VotesTrackBody({
         isEqual(prev, layout.ticks) ? prev : layout.ticks,
       );
     }
+    updateSlotHighlight(
+      rendererObj.highlight,
+      rendererObj.renderer.domElement.width,
+    );
     rendererObj.renderer.render(rendererObj.scene, rendererObj.camera);
   }, [rendererRef, getDrawInput]);
   const requestRender = useFrameRender(renderFrame);
+  useSlotHighlightRender(requestRender);
 
   const moveCamera = useCallback(() => {
     const rendererObj = rendererRef.current;
