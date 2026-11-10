@@ -4,8 +4,10 @@ import { timelineVotesSchema } from "../../../api/entities";
 import { nsPerMs } from "../../../consts";
 import {
   CertKind,
+  MIN_STEP_FRAC,
   OWN_VOTE_EVENT_OFFSET,
   PARENT_READY_EVENT,
+  VOTE_BATCH_EVENT_OFFSET,
   VoteKind,
 } from "./consts";
 import {
@@ -24,6 +26,23 @@ interface Row {
   event: number;
   ms: number;
   stake?: number;
+  // the server's running total when the slot started before the window
+  cumulativeStake?: number | null;
+}
+
+// like the server: each vote row carries its slot's running total per kind
+function getCumulativeStakes(rows: Row[]) {
+  const totals = new Map<string, number>();
+  return rows.map(({ slot, event, stake, cumulativeStake }) => {
+    if (cumulativeStake !== undefined) {
+      return cumulativeStake === null ? null : String(cumulativeStake);
+    }
+    if (stake == null) return null;
+    const key = `${slot}:${event % 21}`;
+    const total = (totals.get(key) ?? 0) + stake;
+    totals.set(key, total);
+    return String(total);
+  });
 }
 
 function response(
@@ -41,7 +60,7 @@ function response(
       slot_delta: [],
       event: [],
       event_ts_delta: [],
-      stake: [],
+      cumulative_stake: [],
       total_stake: null,
       next_epoch_start_slot: null,
       next_total_stake: null,
@@ -60,11 +79,29 @@ function response(
     event_ts_delta: rows.map(
       (r) => referenceNs + BigInt(r.ms * nsPerMs) - referenceTs,
     ),
-    stake: rows.map((r) => (r.stake == null ? null : BigInt(r.stake))),
+    cumulative_stake: getCumulativeStakes(rows),
     total_stake: BigInt(totalStake),
     next_epoch_start_slot: nextEpoch?.startSlot ?? null,
     next_total_stake: nextEpoch == null ? null : BigInt(nextEpoch.totalStake),
   });
+}
+
+// one window's rows per response, with totals running across windows
+function splitResponses(windows: Row[][]) {
+  const cumulativeStakes = getCumulativeStakes(windows.flat());
+  let i = 0;
+  return windows.map((rows) =>
+    response(
+      rows.map((row) => {
+        const cumulativeStake = cumulativeStakes[i++];
+        return {
+          ...row,
+          cumulativeStake:
+            cumulativeStake === null ? null : Number(cumulativeStake),
+        };
+      }),
+    ),
+  );
 }
 
 function expectCurve(
@@ -255,8 +292,9 @@ describe("mergeVotesData", () => {
       { slot: 10, event: CertKind.Skip, ms: 2 },
     ];
 
-    const acc = parseVotes(response(first), referenceNs);
-    mergeVotesData(acc, parseVotes(response(second), referenceNs));
+    const [firstRes, secondRes] = splitResponses([first, second]);
+    const acc = parseVotes(firstRes, referenceNs);
+    mergeVotesData(acc, parseVotes(secondRes, referenceNs));
 
     expectCurve(acc.get(10)?.curves[VoteKind.Notar], {
       ts: [1, 4],
@@ -268,24 +306,141 @@ describe("mergeVotesData", () => {
   });
 });
 
-describe("buildSlotVotes", () => {
-  it("combines tiles and derives finalize and skip curves", () => {
-    const tileA = parseVotes(
+describe("parseVotes cumulative stake", () => {
+  it("starts a slot that began before the window at its running total", () => {
+    const data = parseVotes(
       response([
-        vote(10, VoteKind.Notar, 1, 100),
-        vote(10, VoteKind.Skip, 1, 100),
+        { slot: 10, event: VoteKind.Notar, ms: 1, cumulativeStake: 600 },
+        { slot: 10, event: VoteKind.Notar, ms: 2, cumulativeStake: 700 },
       ]),
       referenceNs,
     );
-    const tileB = parseVotes(
+    expectCurve(data.get(10)?.curves[VoteKind.Notar], {
+      ts: [1, 2],
+      frac: [0.6, 0.7],
+    });
+  });
+
+  it("skips vote rows without a running total", () => {
+    const data = parseVotes(
       response([
+        vote(10, VoteKind.Notar, 1, 100),
+        { slot: 10, event: VoteKind.Notar, ms: 2, cumulativeStake: null },
+      ]),
+      referenceNs,
+    );
+    expectCurve(data.get(10)?.curves[VoteKind.Notar], {
+      ts: [1],
+      frac: [0.1],
+    });
+  });
+});
+
+describe("buildSlotVotes merging windows", () => {
+  const total = 1000;
+
+  // seeded so failures reproduce
+  function createRandom(seed: number) {
+    let state = seed;
+    return () => {
+      state = (state * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return state / 2_147_483_648;
+    };
+  }
+
+  function randomRows(random: () => number, eventOffset: number) {
+    const rows: Row[] = [];
+    for (let slot = 10; slot < 13; slot++) {
+      for (const kind of [VoteKind.Notar, VoteKind.Skip]) {
+        let ms = slot * 100 + random() * 50;
+        for (let i = 0; i < 1 + random() * 40; i++) {
+          ms += random() < 0.2 ? 0 : random() * 20;
+          rows.push({
+            slot,
+            event: eventOffset + kind,
+            ms: Math.round(ms),
+            stake: 1 + Math.floor(random() * 30),
+          });
+        }
+      }
+    }
+    return rows.sort((a, b) => a.ms - b.ms);
+  }
+
+  function getTrueFrac(rows: Row[], slot: number, kind: VoteKind, ms: number) {
+    let stake = 0;
+    for (const row of rows) {
+      if (row.slot === slot && row.event % 21 === kind && row.ms <= ms) {
+        stake += row.stake ?? 0;
+      }
+    }
+    return stake / total;
+  }
+
+  // the curve as drawn: the last point at or before ms
+  function getStepFrac(
+    { ts, frac }: { ts: number[]; frac: number[] },
+    ms: number,
+  ) {
+    let value = 0;
+    for (let i = 0; i < ts.length && ts[i] <= ms; i++) value = frac[i];
+    return value;
+  }
+
+  it("matches the true curve at every vote however windows split and merge", () => {
+    const random = createRandom(7);
+    for (let run = 0; run < 300; run++) {
+      const isBatch = run % 2 === 1;
+      const eventOffset = isBatch ? VOTE_BATCH_EVENT_OFFSET : 0;
+      const rows = randomRows(random, eventOffset);
+      const cuts = Array.from({ length: Math.floor(random() * 4) }, () =>
+        Math.round(1_000 + random() * 400),
+      ).sort((a, b) => a - b);
+      const windows = [...cuts, Infinity].map((cutMs, i) =>
+        rows.filter((r) => r.ms >= (cuts[i - 1] ?? -Infinity) && r.ms < cutMs),
+      );
+      const tiles = splitResponses(windows)
+        .map((res) => ({
+          ...res,
+          granularity: isBatch ? ("vote_batch" as const) : ("vote" as const),
+        }))
+        .map((res) => parseVotes(res, referenceNs))
+        .sort(() => random() - 0.5);
+      const tolerance = isBatch ? 1e-9 : MIN_STEP_FRAC;
+
+      const slotVotes = buildSlotVotes(tiles);
+      for (const [slot, votes] of slotVotes) {
+        for (const [kind, curve] of [
+          [VoteKind.Notar, votes.notar],
+          [VoteKind.Skip, votes.skipAll],
+        ] as const) {
+          for (const { ms } of rows.filter(
+            (r) => r.slot === slot && r.event % 21 === kind,
+          )) {
+            for (const atMs of [ms - 0.5, ms]) {
+              const error = Math.abs(
+                getStepFrac(curve, atMs) - getTrueFrac(rows, slot, kind, atMs),
+              );
+              expect(error).toBeLessThanOrEqual(tolerance);
+            }
+          }
+        }
+      }
+    }
+  });
+});
+
+describe("buildSlotVotes", () => {
+  it("combines tiles and derives finalize and skip curves", () => {
+    const [tileA, tileB] = splitResponses([
+      [vote(10, VoteKind.Notar, 1, 100), vote(10, VoteKind.Skip, 1, 100)],
+      [
         vote(10, VoteKind.Notar, 2, 300),
         vote(10, VoteKind.Finalize, 3, 600),
         vote(10, VoteKind.SkipFallback, 3, 200),
         { slot: 10, event: CertKind.Finalize, ms: 3 },
-      ]),
-      referenceNs,
-    );
+      ],
+    ]).map((res) => parseVotes(res, referenceNs));
 
     const slot = buildSlotVotes([tileA, tileB]).get(10);
     expectCurve(slot?.notar, { ts: [1, 2], frac: [0.1, 0.4] });

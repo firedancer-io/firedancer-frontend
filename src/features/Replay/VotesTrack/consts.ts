@@ -31,7 +31,7 @@ export const NOTAR_THRESHOLD = 0.6;
 export const FAST_FINALIZE_THRESHOLD = 0.8;
 export const THRESHOLD_FRACS = [NOTAR_THRESHOLD, FAST_FINALIZE_THRESHOLD];
 
-// sub-pixel stake steps; bounds points per raw curve for live parsing
+// sub-pixel stake steps; bounds points per raw curve
 export const MIN_STEP_FRAC = 0.002;
 
 export type VotesView = "curves" | "slotLatency" | "aggLatency";
