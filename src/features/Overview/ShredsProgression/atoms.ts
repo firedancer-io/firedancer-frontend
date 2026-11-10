@@ -1,9 +1,10 @@
-import { atom } from "jotai";
+import { atom, type Getter } from "jotai";
 import type { LiveShreds } from "../../../api/types";
 import { xRangeMs } from "../../Shreds/const";
 import { nsPerMs, slotsPerLeader } from "../../../consts";
-import { getSlotGroupLeader } from "../../../utils";
-import { epochAtom } from "../../../atoms";
+import { areInSameGroup, getSlotGroupLeader } from "../../../utils";
+import { currentSlotAtom, epochAtom } from "../../../atoms";
+import { isInitializedAtom } from "../../Replay/atoms";
 import { smoothedNowNsAtom } from "../../../nowAtoms";
 import { slotCaughtUpAtom } from "../../../api/atoms";
 import { getDelayedNowNs } from "./utils";
@@ -13,6 +14,34 @@ import { calcRelativeMs } from "../../Replay/utils";
 import { setMinDirtySlotByChartIfSmaller } from "../../Shreds/atoms";
 import { mergeShredEvents } from "../../Shreds/dataUtils";
 import type { SlotRange, SlotsShreds } from "../../Shreds/types";
+import { atomWithIsSameCheck } from "../../../atomUtils";
+import {
+  type HoveredShred,
+  isSameHoveredShred,
+} from "../../Shreds/WebGl/shredHover";
+
+export const overviewHoveredShredAtom =
+  atomWithIsSameCheck<HoveredShred>(isSameHoveredShred);
+
+export const labelHoveredSlotAtom = atom<number | undefined>(undefined);
+
+export const overviewHoveredSlotAtom = atom(
+  (get) => get(labelHoveredSlotAtom) ?? get(overviewHoveredShredAtom)?.slot,
+);
+
+// Replay charts lag behind the current group
+export function canOpenInReplay(get: Getter, slot: number) {
+  const currentSlot = get(currentSlotAtom);
+  return (
+    get(isInitializedAtom) &&
+    !(currentSlot != null && areInSameGroup(slot, currentSlot))
+  );
+}
+
+export const canOpenHoveredShredAtom = atom((get) => {
+  const hovered = get(overviewHoveredShredAtom);
+  return hovered != null && canOpenInReplay(get, hovered.slot);
+});
 
 /**
  * Store live shreds
@@ -251,15 +280,9 @@ export const liveShredsPostStartupRangeAtom = atom((get) =>
   get(shredsAtoms.rangeAfterStartup),
 );
 
-/**
- *  leader slots after startup, used for labels
- * */
-export const liveShredsPostStartupLeaderSlotsAtom = atom((get) => {
-  const rangeAfterStartup = get(liveShredsPostStartupRangeAtom);
-  if (!rangeAfterStartup) return;
-
+export function getLeaderSlotsRange(range: { min: number; max: number }) {
   return {
-    min: getSlotGroupLeader(rangeAfterStartup.min),
-    max: getSlotGroupLeader(rangeAfterStartup.max),
+    min: getSlotGroupLeader(range.min),
+    max: getSlotGroupLeader(range.max),
   };
-});
+}

@@ -1,5 +1,6 @@
 import { delayNs, xRangeMs } from "../../Shreds/const";
 import { getSlotGroupLeader } from "../../../utils";
+import { slotsPerLeader } from "../../../consts";
 
 export function getSlotGroupLabelId(slot: number) {
   return `slot-group-label-${getSlotGroupLeader(slot)}`;
@@ -52,6 +53,40 @@ export type LabelsState = {
   groups: Map<number, LabelState>;
   slots: Map<number, LabelState>;
 };
+
+// x is px from the labels' left
+export function getLabelSlotAtX({ groups, slots }: LabelsState, x: number) {
+  // later groups paint on top
+  let topGroupSlot: number | undefined;
+  for (const [groupSlot, group] of groups) {
+    if (group.width == null) continue;
+    if (x < group.transformX || x > group.transformX + group.width) continue;
+    if (topGroupSlot == null || groupSlot > topGroupSlot) {
+      topGroupSlot = groupSlot;
+    }
+  }
+  if (topGroupSlot == null) return;
+
+  const groupLeft = groups.get(topGroupSlot)!.transformX;
+  let bestSlot: number | undefined;
+  let bestDistance = Infinity;
+  for (let slot = topGroupSlot; slot < topGroupSlot + slotsPerLeader; slot++) {
+    const bar = slots.get(slot);
+    if (bar?.width == null) continue;
+    // bars are positioned relative to their group
+    const left = groupLeft + bar.transformX;
+    const right = left + bar.width;
+    // hidden bars sit far outside their group
+    if (right < groupLeft) continue;
+
+    const distance = Math.max(left - x, x - right, 0);
+    if (distance <= bestDistance) {
+      bestSlot = slot;
+      bestDistance = distance;
+    }
+  }
+  return bestSlot;
+}
 
 export function createLabelsState(): LabelsState {
   return {

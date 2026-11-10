@@ -10,11 +10,8 @@ import ReplayCursorTooltip, {
   CursorTimestampRow,
 } from "../Tooltip";
 import styles from "./shredTooltip.module.css";
-import {
-  hoveredShredAtom,
-  hoveredSlotInfoAtom,
-  type HoveredShred,
-} from "../atoms";
+import { hoveredShredAtom, hoveredSlotInfoAtom } from "../atoms";
+import type { HoveredShred } from "../../Shreds/WebGl/shredHover";
 
 export default function ShredTooltip() {
   const hovered = useAtomValue(hoveredShredAtom);

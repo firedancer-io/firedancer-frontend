@@ -54,6 +54,23 @@ export function releaseMesh<MeshKey>(
   availableMeshes.push(slotMesh);
 }
 
+// for renderers whose slot/edge meshes each own a material
+export function disposeSlotMaterials<MeshKey>(collections: {
+  meshes: Map<MeshKey, RectMesh>;
+  availableMeshes: RectMesh[];
+  edgeMeshes: Map<MeshKey, RectMesh>;
+  availableEdgeMeshes: RectMesh[];
+}) {
+  for (const slotMesh of [
+    ...collections.meshes.values(),
+    ...collections.availableMeshes,
+    ...collections.edgeMeshes.values(),
+    ...collections.availableEdgeMeshes,
+  ]) {
+    (slotMesh.mesh.material as THREE.RawShaderMaterial).dispose();
+  }
+}
+
 export function drawSlotShreds(
   visibleTsRange: TsRange,
   // visible range + overscan to draw

@@ -1,6 +1,8 @@
 import type * as THREE from "three";
 import type { RectMesh, RectResources } from "../WebGl/webglUtils";
 import type { EdgeResourceBundle } from "./WebGl/edgeUtils";
+import type { DrawInfo } from "./WebGl/shredHover";
+import type { SlotHighlight } from "../Replay/slotHighlight";
 
 export type RendererObj<MeshKey extends string | number = number> = {
   renderer: THREE.WebGLRenderer;
@@ -10,6 +12,9 @@ export type RendererObj<MeshKey extends string | number = number> = {
   availableMeshes: RectMesh[];
   // resources shared by this renderer's slot meshes
   resources: RectResources;
+  highlight: SlotHighlight;
+  highlightMesh: RectMesh;
+  lastDrawInfo?: DrawInfo;
   cleanUp: () => void;
 } & EdgeResourceBundle<MeshKey>;
 

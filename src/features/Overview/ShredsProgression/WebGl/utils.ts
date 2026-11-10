@@ -1,25 +1,42 @@
 import type { MutableRefObject } from "react";
 import type { RendererObj } from "../../../Shreds/types";
-import { getDelayedNowNs, type LabelsState } from "../utils";
+import type { LabelsState } from "../utils";
 import { skippedClusterSlotsAtom } from "../../../../atoms";
-import { smoothedNowNsAtom } from "../../../../nowAtoms";
 import { getDrawInfo } from "../../../Shreds/chartUtils";
-import { xRangeMs } from "../../../Shreds/const";
+import { delayMs } from "../../../Shreds/const";
 import { SHRED_MESH_CAPACITY } from "../../../Shreds/WebGl/const";
-import { showStartupProgressAtom } from "../../../StartupProgress/atoms";
-import { type TsRange, createRectMesh } from "../../../WebGl/webglUtils";
-import { calcRelativeMs } from "../../../Replay/utils";
-import { shredsAtoms, liveShredsPostStartupRangeAtom } from "../atoms";
+import {
+  createSlotEdgeMaterial,
+  createSlotMaterial,
+} from "../../../Shreds/WebGl/slotMaterials";
+import { createRectMesh } from "../../../WebGl/webglUtils";
+import {
+  getLeaderSlotsRange,
+  overviewHoveredShredAtom,
+  overviewHoveredSlotAtom,
+} from "../atoms";
 import { updateLabels } from "../shredsProgressionPlugin";
 import { drawSlotShreds, releaseMesh } from "../../../Shreds/WebGl/drawUtils";
 import { minDirtySlotByChartAtom } from "../../../Shreds/atoms";
+import {
+  getShredsState,
+  getVisibleTsRange,
+  isShredsPausedAtom,
+} from "../pauseAtoms";
 import { getDefaultStore } from "jotai";
 import {
   updateEdgeViewWidth,
   EDGE_RENDER_ORDER_OFFSET,
 } from "../../../Shreds/WebGl/edgeUtils";
+import { drawHoveredShred } from "../../../Shreds/WebGl/shredHover";
+import {
+  setMeshSlot,
+  updateSlotHighlightForSlots,
+} from "../../../Replay/slotHighlight";
 
 const store = getDefaultStore();
+
+const EMPTY_INCOMPLETE_RIGHT_EDGES: ReadonlyMap<string, number> = new Map();
 
 export function drawLive(
   chartId: string,
@@ -32,34 +49,17 @@ export function drawLive(
   forceDraw: boolean,
   cssRange: [min: number, max: number],
 ) {
-  const liveShreds = store.get(shredsAtoms.slotsShreds);
-  const slotRange = store.get(shredsAtoms.range);
-  const minCompletedSlot = store.get(shredsAtoms.minCompletedSlot);
+  // frozen while hovered. Not drawn during startup; we may have missed completion
+  // events for the first slots, so only draw from min completed.
+  const isPaused = store.get(isShredsPausedAtom);
+  // paused frames only change on forced draws (pause, hover, resize)
+  if (isPaused && !forceDraw) return;
+
+  const state = getShredsState(store.get);
+  if (!state) return;
+  const { liveShreds, slotRange, minCompletedSlot, rangeAfterStartup } = state;
   const skippedSlotsCluster = store.get(skippedClusterSlotsAtom);
-  const rangeAfterStartup = store.get(liveShredsPostStartupRangeAtom);
-  const smoothedNowNs = store.get(smoothedNowNsAtom);
-
-  // if startup is running, prevent drawing non-startup screen chart
-  // Sometimes we've missed the completion event for the first slots
-  // depending on connection time. Ignore those slots, and only draw slots
-  // from min completed.
-  if (
-    !liveShreds ||
-    !slotRange ||
-    store.get(showStartupProgressAtom) ||
-    minCompletedSlot == null ||
-    !rangeAfterStartup ||
-    smoothedNowNs == null
-  )
-    return;
-
-  const delayedNowNs = getDelayedNowNs(smoothedNowNs);
-  const maxReferenceTs = calcRelativeMs(liveShreds.referenceTs, delayedNowNs);
-
-  const visibleTsRange: TsRange = [
-    maxReferenceTs - xRangeMs * scale,
-    maxReferenceTs,
-  ];
+  const visibleTsRange = getVisibleTsRange(state, scale);
 
   const minSlot = Math.max(slotRange.min, minCompletedSlot);
   const maxSlot = slotRange.max;
@@ -74,6 +74,12 @@ export function drawLive(
     visibleTsRange,
     (_slot, slotNumber) => skippedSlotsCluster.has(slotNumber),
   );
+
+  // for hit-testing. Incomplete slots are drawn to the live edge, so no right edges
+  rendererObj.lastDrawInfo = {
+    slots: drawSlots,
+    incompleteRightEdges: EMPTY_INCOMPLETE_RIGHT_EDGES,
+  };
 
   // keep the edge mark 1px wide as the canvas resizes
   const viewportWidthPx = rendererObj.renderer.domElement.width;
@@ -103,7 +109,10 @@ export function drawLive(
     }
   }
 
-  const minDirtySlot = store.get(minDirtySlotByChartAtom).get(chartId);
+  // a paused draw redraws every slot from the snapshot
+  const minDirtySlot = isPaused
+    ? undefined
+    : store.get(minDirtySlotByChartAtom).get(chartId);
   const needsRender = drawSlotShreds(
     visibleTsRange,
     // Overview draws exactly the visible range (no overscan padding)
@@ -116,6 +125,7 @@ export function drawLive(
     (slotNumber) => minDirtySlot == null || slotNumber >= minDirtySlot,
     ({ slotNumber }) => getEdgeMesh(rendererObj, slotNumber),
   );
+
   if (needsRender || forceDraw) {
     rendererObj.renderer.render(rendererObj.scene, rendererObj.camera);
   }
@@ -135,6 +145,7 @@ export function drawLive(
     cssRange,
     prevLabels,
     tempNewLabels,
+    getLeaderSlotsRange(rangeAfterStartup),
   );
   // switch map for reuse, don't create new maps each render
   labelsRef.current = {
@@ -151,11 +162,17 @@ function getLiveSlotMesh(rendererObj: RendererObj, slotNumber: number) {
   if (!slotMesh) {
     const lastMesh = rendererObj.availableMeshes.pop();
     slotMesh =
-      lastMesh ?? createRectMesh(rendererObj.resources, SHRED_MESH_CAPACITY);
+      lastMesh ??
+      createRectMesh(
+        rendererObj.resources,
+        SHRED_MESH_CAPACITY,
+        createSlotMaterial(rendererObj.highlight),
+      );
     rendererObj.meshes.set(slotNumber, slotMesh);
     rendererObj.scene.add(slotMesh.mesh);
     // paint bigger slot numbers on top of smaller numbers
     slotMesh.mesh.renderOrder = slotNumber;
+    setMeshSlot(rendererObj.highlight, slotMesh, slotNumber);
   }
 
   return { isNewMesh, slotMesh };
@@ -167,11 +184,44 @@ function getEdgeMesh(rendererObj: RendererObj, slotNumber: number) {
   let edgeMesh = edgeMeshes.get(slotNumber);
   if (!edgeMesh) {
     const lastMesh = availableEdgeMeshes.pop();
-    edgeMesh = lastMesh ?? createRectMesh(edgeResources, SHRED_MESH_CAPACITY);
+    edgeMesh =
+      lastMesh ??
+      createRectMesh(
+        edgeResources,
+        SHRED_MESH_CAPACITY,
+        createSlotEdgeMaterial(rendererObj.highlight, edgeResources),
+      );
     edgeMeshes.set(slotNumber, edgeMesh);
     rendererObj.scene.add(edgeMesh.mesh);
     edgeMesh.mesh.renderOrder = slotNumber + EDGE_RENDER_ORDER_OFFSET;
+    setMeshSlot(rendererObj.highlight, edgeMesh, slotNumber);
   }
 
   return edgeMesh;
+}
+
+// like Replay's shreds track, hover doesn't redraw slot geometry
+export function renderOverviewHover(rendererObj: RendererObj, scale: number) {
+  const state = getShredsState(store.get);
+  if (!state) return;
+
+  const hovered = store.get(overviewHoveredShredAtom);
+  // above its own slot but below newer slots, like Replay's updateSlotMeshes
+  if (hovered) {
+    rendererObj.highlightMesh.mesh.renderOrder =
+      hovered.slot + EDGE_RENDER_ORDER_OFFSET;
+  }
+  // Overview draws in absolute ts deltas, so camera reference is 0
+  drawHoveredShred(
+    rendererObj.highlightMesh,
+    0,
+    hovered,
+    getVisibleTsRange(state, scale),
+    delayMs,
+  );
+  updateSlotHighlightForSlots(
+    rendererObj.highlight,
+    store.get(overviewHoveredSlotAtom),
+  );
+  rendererObj.renderer.render(rendererObj.scene, rendererObj.camera);
 }

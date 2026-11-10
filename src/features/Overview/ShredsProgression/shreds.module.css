@@ -64,6 +64,14 @@
   }
 }
 
+.shred-pointer {
+  cursor: pointer;
+}
+
+.replay-link {
+  display: contents;
+}
+
 .legend-color-box {
   width: 10px;
   height: 10px;

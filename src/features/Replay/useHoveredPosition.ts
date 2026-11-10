@@ -19,9 +19,12 @@ export interface HoveredRect {
 export function useHoveredPosition({
   onHoverChange,
   onHoverLeave,
+  followsVisibleRange = true,
 }: {
   onHoverChange: (clientX: number, clientY: number, rect: HoveredRect) => void;
   onHoverLeave: () => void;
+  // false for charts outside Replay
+  followsVisibleRange?: boolean;
 }) {
   const containerRef = useRef<HTMLElement | null>(null);
   const lastClientPosRef = useRef<{ x: number; y: number }>();
@@ -116,7 +119,9 @@ export function useHoveredPosition({
       window.addEventListener("pointerdown", onWindowTouchDown);
 
       // replay the hover if the visible range shifts, even if the cursor doesn't move
-      const unsubscribeRange = store.sub(visibleRangeAtom, notifyChange);
+      const unsubscribeRange = followsVisibleRange
+        ? store.sub(visibleRangeAtom, notifyChange)
+        : () => {};
       const rectObserver = new ResizeObserver(refreshContainerAndNotify);
       rectObserver.observe(el);
       window.addEventListener("resize", refreshContainerAndNotify);
@@ -138,7 +143,7 @@ export function useHoveredPosition({
         window.removeEventListener("scroll", refreshContainerAndNotify, true);
       };
     },
-    [notifyChange, refreshContainerAndNotify],
+    [notifyChange, refreshContainerAndNotify, followsVisibleRange],
   );
 
   return { setContainer, notifyChange };

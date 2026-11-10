@@ -1,5 +1,7 @@
 import { useMedia } from "react-use";
 
+export const maxShredsChartScale = 1;
+
 export function useShredsChartScale() {
   const isXL = useMedia("(max-width: 2100px)");
   const isL = useMedia("(max-width: 1800px)");
@@ -19,7 +21,7 @@ export function useShredsChartScale() {
             ? 5 / 7
             : isXL
               ? 6 / 7
-              : 1;
+              : maxShredsChartScale;
 
   return scale;
 }

@@ -1,14 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { Text } from "@radix-ui/themes";
-import { useCallback } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
 import styles from "./slotText.module.css";
 import clsx from "clsx";
 import CopyButton from "../../../components/CopyButton";
-import {
-  navigateToReplaySlotAtom,
-  isInitializedAtom,
-} from "../../Replay/atoms";
+import ReplayLink from "../../Replay/ReplayLink";
 
 interface LinkedSlotTextProps {
   slot: number;
@@ -23,14 +18,6 @@ export default function LinkedSlotText({
   replayCenterNs,
   className,
 }: LinkedSlotTextProps) {
-  const isReplayInitialized = useAtomValue(isInitializedAtom);
-  const navigateToReplaySlot = useSetAtom(navigateToReplaySlotAtom);
-
-  const onClick = useCallback(() => {
-    if (replayCenterNs == null) return;
-    navigateToReplaySlot(slot, replayCenterNs);
-  }, [navigateToReplaySlot, slot, replayCenterNs]);
-
   return (
     <CopyButton
       className={styles.copyButton}
@@ -43,15 +30,13 @@ export default function LinkedSlotText({
           <Link to="/slotDetails" search={{ slot }} draggable={false}>
             {slot}
           </Link>
-        ) : replayCenterNs != null && isReplayInitialized ? (
-          <Link
-            to="/replay"
-            draggable={false}
-            onClick={onClick}
+        ) : replayCenterNs != null ? (
+          <ReplayLink
+            getTarget={() => ({ slot, centerNs: replayCenterNs })}
             className={styles.replayLink}
           >
             {slot}
-          </Link>
+          </ReplayLink>
         ) : (
           slot
         )}

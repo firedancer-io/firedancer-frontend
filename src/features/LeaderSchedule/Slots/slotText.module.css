@@ -24,6 +24,10 @@
   a.replay-link:hover {
     color: white;
   }
+  /* disabled until Replay is initialized */
+  a.replay-link:not([href]) {
+    color: var(--slot-card-section-primary-color);
+  }
 }
 
 .copy-button {

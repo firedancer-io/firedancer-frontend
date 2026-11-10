@@ -1,4 +1,4 @@
-import { useAtomValue } from "jotai";
+import { atom, getDefaultStore, useAtomValue } from "jotai";
 import { Flex, Text } from "@radix-ui/themes";
 import {
   getSlotGroupLabelId,
@@ -6,13 +6,24 @@ import {
   getSlotLabelId,
 } from "./utils";
 import styles from "./shreds.module.css";
-import { memo, useLayoutEffect, useMemo, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type MouseEvent,
+} from "react";
 import { slotsPerLeader } from "../../../consts";
+import ReplayLink, { type ReplayTarget } from "../../Replay/ReplayLink";
+import { canOpenInReplay, labelHoveredSlotAtom } from "./atoms";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import clsx from "clsx";
 import PeerIcon from "../../../components/PeerIcon";
 import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
-import { liveShredsPostStartupLeaderSlotsAtom } from "./atoms";
+import { shredsLeaderSlotsRangeAtom } from "./pauseAtoms";
+
+const store = getDefaultStore();
 
 const extraGroups = 20;
 
@@ -34,14 +45,26 @@ function getRangeWithExtraLeaders(
   };
 }
 
+type GetReplayTarget = (
+  slot: number,
+  clientX: number,
+) => ReplayTarget | undefined;
+
 /**
  * Labels for shreds slots.
  * Don't render during startup, because there will be multiple overlapping slots
  * during the catching up phase.
  */
-export default function ShredsSlotLabels() {
+export default function ShredsSlotLabels({
+  setContainer,
+  getReplayTarget,
+}: {
+  setContainer?: (el: HTMLDivElement | null) => void;
+  // links group labels to Replay when set
+  getReplayTarget?: GetReplayTarget;
+}) {
   const isStartup = useAtomValue(isStartupProgressVisibleAtom);
-  const leaderSlotsRange = useAtomValue(liveShredsPostStartupLeaderSlotsAtom);
+  const leaderSlotsRange = useAtomValue(shredsLeaderSlotsRangeAtom);
   const [renderSlotRange, setRenderSlotRange] = useState(
     getRangeWithExtraLeaders(leaderSlotsRange),
   );
@@ -68,17 +91,25 @@ export default function ShredsSlotLabels() {
     <SlotGroupContainer
       firstLeader={renderSlotRange?.min}
       lastLeader={renderSlotRange?.max}
+      setContainer={setContainer}
+      getReplayTarget={getReplayTarget}
     />
   );
 }
 
+const getLabelHoveredSlot = () => store.get(labelHoveredSlotAtom);
+
 interface SlotGroupContainerProps {
   firstLeader?: number;
   lastLeader?: number;
+  setContainer?: (el: HTMLDivElement | null) => void;
+  getReplayTarget?: GetReplayTarget;
 }
 const SlotGroupContainer = memo(function SlotGroupContainer({
   firstLeader,
   lastLeader,
+  setContainer,
+  getReplayTarget,
 }: SlotGroupContainerProps) {
   const leaderSlots = useMemo(() => {
     if (firstLeader == null || lastLeader == null) return;
@@ -90,10 +121,29 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
     return result;
   }, [firstLeader, lastLeader]);
 
+  // the hovered slot is resolved from label positions on hover
+  const getTarget = useCallback(
+    (e: MouseEvent) => {
+      const slot = getLabelHoveredSlot();
+      return slot == null ? undefined : getReplayTarget?.(slot, e.clientX);
+    },
+    [getReplayTarget],
+  );
+
   return (
-    <Flex flexShrink="0" overflowX="hidden" position="relative" height="15px">
+    <Flex
+      ref={setContainer}
+      flexShrink="0"
+      overflowX="hidden"
+      position="relative"
+      height="15px"
+    >
       {leaderSlots?.map((slot) => (
-        <SlotGroupLabel key={slot} firstSlot={slot} />
+        <SlotGroupLabel
+          key={slot}
+          firstSlot={slot}
+          getTarget={getReplayTarget && getTarget}
+        />
       ))}
     </Flex>
   );
@@ -101,16 +151,21 @@ const SlotGroupContainer = memo(function SlotGroupContainer({
 
 interface SlotGroupLabelProps {
   firstSlot: number;
+  getTarget?: (e: MouseEvent) => ReplayTarget | undefined;
 }
 const SlotGroupLabel = memo(function SlotGroupLabel({
   firstSlot,
+  getTarget,
 }: SlotGroupLabelProps) {
   const { peer, name, isLeader } = useSlotInfo(firstSlot);
   const slots = useMemo(() => {
     return Array.from({ length: slotsPerLeader }, (_, i) => firstSlot + i);
   }, [firstSlot]);
+  const canOpen = useAtomValue(
+    useMemo(() => atom((get) => canOpenInReplay(get, firstSlot)), [firstSlot]),
+  );
 
-  return (
+  const label = (
     <Flex
       height="100%"
       minHeight="0"
@@ -161,5 +216,18 @@ const SlotGroupLabel = memo(function SlotGroupLabel({
         ))}
       </Flex>
     </Flex>
+  );
+
+  return getTarget ? (
+    <ReplayLink
+      getTarget={getTarget}
+      getHoveredSlot={getLabelHoveredSlot}
+      disabled={!canOpen}
+      className={styles.replayLink}
+    >
+      {label}
+    </ReplayLink>
+  ) : (
+    label
   );
 });

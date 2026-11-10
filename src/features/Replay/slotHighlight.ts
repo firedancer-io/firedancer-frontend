@@ -17,6 +17,7 @@ import { replayTrackBackgroundColor } from "../../colors";
 import {
   convertToWebGlColor,
   glslFloat,
+  type RectMesh,
   type TsRange,
 } from "../WebGl/webglUtils";
 
@@ -166,6 +167,22 @@ vec3 highlightTime(vec3 color, float px) {
 }
 `;
 
+// dims/lifts by the mesh's own relative slot (uSlot)
+export const slotFragmentShader = /* glsl */ `
+precision highp float;
+uniform float uOpacity;
+uniform float uSlot;
+varying vec3 vColor;
+${slotHighlightGlsl}
+void main() {
+  gl_FragColor = vec4(highlightSlot(vColor, uSlot), uOpacity);
+}
+`;
+
+export function getSlotUniforms(highlight: SlotHighlight) {
+  return { ...highlight.uniforms, uSlot: { value: NO_SLOT } };
+}
+
 export interface SlotHighlight {
   uniforms: {
     uHighlightActive: THREE.IUniform<number>;
@@ -200,6 +217,15 @@ export function getRelativeSlot(highlight: SlotHighlight, slot: number) {
   return slot - highlight.referenceSlot;
 }
 
+export function setMeshSlot(
+  highlight: SlotHighlight,
+  slotMesh: RectMesh,
+  slot: number,
+) {
+  const material = slotMesh.mesh.material as THREE.RawShaderMaterial;
+  material.uniforms.uSlot.value = getRelativeSlot(highlight, slot);
+}
+
 function setRangePx(
   target: THREE.Vector4,
   range: SlotRange | undefined,
@@ -221,17 +247,21 @@ function setRangePx(
   );
 }
 
-// call before each render
-export function updateSlotHighlight(
+// omit for slot-only highlights, which don't draw range marks
+interface HighlightRanges {
+  visibleRange: TsRange;
+  focusRange: SlotRange | undefined;
+  hoveredOtherRange: SlotRange | undefined;
+}
+
+function applySlotHighlight(
   highlight: SlotHighlight,
   viewWidthPx: number,
+  focus: SlotFocus | undefined,
+  ranges?: HighlightRanges,
 ) {
   const { uniforms } = highlight;
-  const hoveredSlot = store.get(hoveredSlotAtom);
-  const selectedSlot = store.get(selectedSlotAtom);
-  const focus = getSlotFocus(hoveredSlot, selectedSlot);
-  const visibleRange = store.get(visibleRangeAtom);
-  if (!focus || !visibleRange) {
+  if (!focus) {
     uniforms.uHighlightActive.value = 0;
     return;
   }
@@ -245,21 +275,54 @@ export function updateSlotHighlight(
   uniforms.uLevels.value.set(focus.levels.group, focus.levels.other);
   uniforms.uLifts.value.set(focus.lifts.group, focus.lifts.slot);
 
-  const isSelected = selectedSlot !== undefined;
+  if (!ranges) {
+    uniforms.uFocusRangePx.value.set(0, 0, 0, 0);
+    uniforms.uHoveredOtherRangePx.value.set(0, 0, 0, 0);
+    return;
+  }
+
   setRangePx(
     uniforms.uFocusRangePx.value,
-    store.get(isSelected ? selectedRangeAtom : hoveredRangeAtom),
-    visibleRange,
+    ranges.focusRange,
+    ranges.visibleRange,
     viewWidthPx,
   );
   setRangePx(
     uniforms.uHoveredOtherRangePx.value,
-    focus.hoveredOtherSlot === undefined
-      ? undefined
-      : store.get(hoveredRangeAtom),
-    visibleRange,
+    focus.hoveredOtherSlot === undefined ? undefined : ranges.hoveredOtherRange,
+    ranges.visibleRange,
     viewWidthPx,
   );
+}
+
+// slot-only hover highlight, for charts outside Replay
+export function updateSlotHighlightForSlots(
+  highlight: SlotHighlight,
+  hoveredSlot: number | undefined,
+) {
+  applySlotHighlight(highlight, 0, getSlotFocus(hoveredSlot, undefined));
+}
+
+// call before each render
+export function updateSlotHighlight(
+  highlight: SlotHighlight,
+  viewWidthPx: number,
+) {
+  const hoveredSlot = store.get(hoveredSlotAtom);
+  const selectedSlot = store.get(selectedSlotAtom);
+  const focus = getSlotFocus(hoveredSlot, selectedSlot);
+  const visibleRange = store.get(visibleRangeAtom);
+  if (!focus || !visibleRange) {
+    highlight.uniforms.uHighlightActive.value = 0;
+    return;
+  }
+
+  const isSelected = selectedSlot !== undefined;
+  applySlotHighlight(highlight, viewWidthPx, focus, {
+    visibleRange,
+    focusRange: store.get(isSelected ? selectedRangeAtom : hoveredRangeAtom),
+    hoveredOtherRange: store.get(hoveredRangeAtom),
+  });
 }
 
 export function useSlotHighlightRender(render: () => void) {

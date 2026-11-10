@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
+import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
 import chartStyles from "./chart.module.css";
 import { useHoveredPosition } from "./useHoveredPosition";
+import { visibleRangeAtom } from "./atoms";
+
+vi.mock("./atoms", () => ({
+  visibleRangeAtom: atom<[number, number] | undefined>(undefined),
+}));
+
+const store = getDefaultStore();
 
 const onHoverChange = vi.fn();
 const onHoverLeave = vi.fn();
@@ -164,5 +172,43 @@ describe("useHoveredPosition", () => {
     pointer(container, "pointerdown", "touch", 300, 3);
     pointer(container, "pointerup", "touch", 300, 1);
     expect(onHoverChange).not.toHaveBeenCalled();
+  });
+
+  describe("visible range changes", () => {
+    const moveRange = () =>
+      store.set(
+        visibleRangeAtom as unknown as PrimitiveAtom<[number, number]>,
+        [Math.random(), 1],
+      );
+
+    it("re-resolve a still cursor", () => {
+      pointer(container, "pointermove", "mouse", 300);
+      onHoverChange.mockClear();
+      moveRange();
+      expect(onHoverChange).toHaveBeenLastCalledWith(
+        300,
+        50,
+        expect.anything(),
+      );
+    });
+
+    it("are ignored by charts outside Replay", () => {
+      const onOtherHoverChange = vi.fn();
+      const other = document.createElement("div");
+      other.getBoundingClientRect = () => new DOMRect(0, 0, 1000, 100);
+      document.body.appendChild(other);
+      const { result } = renderHook(() =>
+        useHoveredPosition({
+          onHoverChange: onOtherHoverChange,
+          onHoverLeave,
+          followsVisibleRange: false,
+        }),
+      );
+      result.current.setContainer(other);
+      pointer(other, "pointermove", "mouse", 300);
+      onOtherHoverChange.mockClear();
+      moveRange();
+      expect(onOtherHoverChange).not.toHaveBeenCalled();
+    });
   });
 });

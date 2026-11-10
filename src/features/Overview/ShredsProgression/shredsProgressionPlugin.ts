@@ -2,8 +2,8 @@ import type uPlot from "uplot";
 import { getDefaultStore } from "jotai";
 import {
   shredsAtoms,
-  liveShredsPostStartupLeaderSlotsAtom,
   liveShredsPostStartupRangeAtom,
+  getLeaderSlotsRange,
 } from "./atoms";
 import {
   rowShredEventDescPriorities,
@@ -255,6 +255,7 @@ export function shredsProgressionPlugin(
               cssRange,
               prevLabels,
               tempNewLabels,
+              getLeaderSlotsRange(rangeAfterStartup),
             );
             // switch map for reuse, don't create new maps each render
             [prevLabels, tempNewLabels] = [tempNewLabels, prevLabels];
@@ -452,11 +453,13 @@ export function updateLabels(
     groups: Map<number, LabelState>;
     slots: Map<number, LabelState>;
   },
+  leaderSlotsRange: {
+    min: number;
+    max: number;
+  },
 ) {
   const slotBlocks = getSlotBlocks(slotRange, slots);
   const slotTsDeltas = estimateSlotTsDeltas(slotBlocks, skippedSlotsCluster);
-  const leaderSlotsRange = store.get(liveShredsPostStartupLeaderSlotsAtom);
-  if (!leaderSlotsRange) return;
 
   const groupTsDeltas = getGroupTsDeltas(slotTsDeltas, leaderSlotsRange);
   for (

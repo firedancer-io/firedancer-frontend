@@ -23,7 +23,10 @@ import type { TrackId } from "./layout";
 import type { SetStateAction } from "react";
 import { atomWithImmer } from "jotai-immer";
 import { onFrameUpdate } from "../../frameLoop";
-import type { ShredEventTsDeltas } from "../Shreds/types";
+import {
+  type HoveredShred,
+  isSameHoveredShred,
+} from "../Shreds/WebGl/shredHover";
 import { atomWithIsSameCheck } from "../../atomUtils";
 import type { AggGranularity } from "../../api/types";
 import type { ShredEventCounts } from "./ShredsTrack/atoms";
@@ -506,29 +509,6 @@ export const [hiddenTracksAtom, setTrackHiddenAtom] = (function () {
     }),
   ] as const;
 })();
-
-export interface HoveredShred {
-  slot: number;
-  isFec: boolean;
-  idx: number;
-  maxIdx: number;
-  shred: ShredEventTsDeltas;
-  completeTs: number | undefined;
-  skipped: boolean;
-}
-
-function isSameHoveredShred(a: HoveredShred, b: HoveredShred): boolean {
-  return (
-    a.slot === b.slot &&
-    a.isFec === b.isFec &&
-    a.idx === b.idx &&
-    a.maxIdx === b.maxIdx &&
-    a.completeTs === b.completeTs &&
-    a.skipped === b.skipped &&
-    a.shred.length === b.shred.length &&
-    a.shred.every((d, i) => d === b.shred[i])
-  );
-}
 
 export const hoveredShredAtom =
   atomWithIsSameCheck<HoveredShred>(isSameHoveredShred);
