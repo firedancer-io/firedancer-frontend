@@ -1,5 +1,6 @@
 import { atom, getDefaultStore, useAtom } from "jotai";
-import { useLayoutEffect } from "react";
+import { useCallback, useLayoutEffect } from "react";
+import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import type { TileStatesGranularity } from "../../../api/types.ts";
@@ -13,6 +14,13 @@ import {
   type ExecrpViewOpts,
 } from "./execrpComposite.ts";
 import { useTileStatesRenderer } from "../tileStates/useTileStatesRenderer.ts";
+import { tileStatesCaches } from "../tileStates/tileStatesCache.ts";
+import { findTxnAtCursor } from "../tileStates/hoverUtils.ts";
+import type { RendererObj } from "../tileStates/utils.ts";
+import { useTileCacheSubscription } from "../tiles/useTileCache.ts";
+import { hoveredExecrpTxnAtom, visibleRangeAtom } from "../atoms.ts";
+import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
+import { useContainerSlotHitTest } from "../slotHighlight.ts";
 import { useTileStatesQuery } from "../tileStates/useTileStatesQuery.ts";
 import type { AggTileStatesQuery } from "../tileStates/useAggTileStatesQuery.ts";
 import RowLabels from "../RowLabels.tsx";
@@ -56,6 +64,26 @@ const batchStates: TileState[] = [
   TileState.LthashBatch,
 ];
 
+function getTxnAtPoint(
+  renderer: RendererObj,
+  clientX: number,
+  clientY: number,
+  rect: HoveredRect,
+) {
+  const visibleRange = store.get(visibleRangeAtom);
+  if (!visibleRange || !rect.width || !rect.height) return;
+
+  return findTxnAtCursor(renderer, visibleRange, {
+    fracX: (clientX - rect.left) / rect.width,
+    fracY: (clientY - rect.top) / rect.height,
+    widthPx: rect.width,
+  });
+}
+
+function clearHoveredExecrpTxn() {
+  store.set(hoveredExecrpTxnAtom, undefined);
+}
+
 const granularityLabels: Record<TileStatesGranularity, string> = {
   txn: "txn",
   txn_batch: "batch",
@@ -82,8 +110,14 @@ interface ExecrpTrackProps extends WebGlRemountProps {
 function ExecrpTrack({ height, aggQuery, remount }: ExecrpTrackProps) {
   const [opts, setOpts] = useAtom(execrpViewOptsAtom);
   const { query, aggGranularity } = useTileStatesQuery(aggQuery);
-  const { containerRef, requestRender, rows, isAgg, nonAggGranularity } =
-    useTileStatesRenderer({ config, remount, query });
+  const {
+    containerRef,
+    rendererRef,
+    requestRender,
+    rows,
+    isAgg,
+    nonAggGranularity,
+  } = useTileStatesRenderer({ config, remount, query });
   const granularity = isAgg ? undefined : nonAggGranularity;
   const layout = getRowsLayout(height, rows.length, {
     insetPx: trackInsetPx.banks,
@@ -93,6 +127,46 @@ function ExecrpTrack({ height, aggQuery, remount }: ExecrpTrackProps) {
   useLayoutEffect(() => {
     requestRender();
   }, [opts, requestRender]);
+
+  const throttledResolveHoverTxn = useThrottledCallback(
+    (clientX: number, clientY: number, rect: HoveredRect) => {
+      const renderer = rendererRef.current;
+      store.set(
+        hoveredExecrpTxnAtom,
+        renderer && getTxnAtPoint(renderer, clientX, clientY, rect),
+      );
+    },
+    30,
+  );
+
+  const onHoverLeave = useCallback(() => {
+    throttledResolveHoverTxn.cancel();
+    clearHoveredExecrpTxn();
+  }, [throttledResolveHoverTxn]);
+
+  const { setContainer: setHoverContainer, notifyChange: notifyHover } =
+    useHoveredPosition({
+      onHoverChange: throttledResolveHoverTxn,
+      onHoverLeave,
+    });
+
+  useLayoutEffect(() => {
+    setHoverContainer(containerRef.current);
+    return () => {
+      setHoverContainer(null);
+      onHoverLeave();
+    };
+  }, [containerRef, setHoverContainer, onHoverLeave]);
+
+  // new txn data can change the txn under a still cursor
+  useTileCacheSubscription(tileStatesCaches.txn, notifyHover);
+
+  useContainerSlotHitTest(containerRef, (clientX, clientY, rect) => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+
+    return getTxnAtPoint(renderer, clientX, clientY, rect)?.slot;
+  });
 
   return (
     <>

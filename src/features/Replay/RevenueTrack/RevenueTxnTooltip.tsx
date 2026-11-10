@@ -1,19 +1,15 @@
 import { useAtomValue } from "jotai";
 import RowSeparator from "../../../components/RowSeparator.tsx";
 import { feesColor, incomeColor, tipsColor } from "../../../colors.ts";
-import { useSlotInfo } from "../../../hooks/useSlotInfo.ts";
 import ReplayCursorTooltip, {
+  IntoSlotRow,
+  SlotLeaderRow,
+  TimeRow,
   TooltipHeader,
   TooltipRow,
 } from "../Tooltip/index.tsx";
-import { formatSol, formatTooltipTime, sumLamports } from "../Tooltip/utils.ts";
-import {
-  hoveredRevenueTxnAtom,
-  hoveredSlotInfoAtom,
-  referenceNsAtom,
-  type HoveredRevenueTxn,
-} from "../atoms.ts";
-import { calcAbsoluteNs } from "../utils.ts";
+import { formatSol, sumLamports } from "../Tooltip/utils.ts";
+import { hoveredRevenueTxnAtom, type HoveredRevenueTxn } from "../atoms.ts";
 import { revenueSeriesHexColors, revenueSeriesLabels } from "./consts.ts";
 
 /** The txn hovered on the non-agg revenue track */
@@ -74,36 +70,7 @@ function RevenueTxnTooltipContent({ info }: { info: HoveredRevenueTxn }) {
       />
 
       <RowSeparator />
-      <TxnTimeRow startMs={meta.loadStartMs} />
+      <TimeRow startMs={meta.loadStartMs} />
     </>
-  );
-}
-
-/** How far the txn started into its slot */
-function IntoSlotRow({ startMs }: { startMs: number }) {
-  const slotStartMs = useAtomValue(hoveredSlotInfoAtom)?.startMs;
-
-  const intoSlotMs =
-    slotStartMs === undefined ? undefined : (startMs - slotStartMs).toFixed(0);
-
-  return <TooltipRow label="Into slot" value={intoSlotMs} unit="ms" />;
-}
-
-/** When the txn started (its load-start time) */
-function TxnTimeRow({ startMs }: { startMs: number }) {
-  const referenceNs = useAtomValue(referenceNsAtom);
-
-  const time =
-    referenceNs == null
-      ? undefined
-      : formatTooltipTime(calcAbsoluteNs(referenceNs, startMs));
-
-  return <TooltipRow label="Time" value={time} />;
-}
-
-function SlotLeaderRow({ slot }: { slot: number }) {
-  const { name, isLeader } = useSlotInfo(slot);
-  return (
-    <TooltipRow label="Leader" value={isLeader ? `You · ${name}` : name} />
   );
 }
