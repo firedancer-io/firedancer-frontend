@@ -20,15 +20,15 @@ export const minHeightRatio = 0.05;
 /** Height ceiling for the max value so there is headroom below the top grid line. */
 export const maxHeightRatio = 0.95;
 
-export const nonAggMinAlpha = 0.01;
+export const nonAggMinAlpha = 0.05;
 export const nonAggMaxAlpha = 0.9;
 
-export type RevenueScale = "linear" | "power" | "exp";
+export type RevenueScale = "linear" | "power" | "log";
 export const DEFAULT_REVENUE_SCALE: RevenueScale = "linear";
 export const revenueScaleOptions: { value: RevenueScale; label: string }[] = [
   { value: "linear", label: "Linear" },
   { value: "power", label: "Power" },
-  { value: "exp", label: "Exponential" },
+  { value: "log", label: "Log" },
 ];
 
 export enum RevenueSeries {
@@ -63,8 +63,11 @@ export const DEFAULT_REVENUE_VIEW_OPTS: RevenueViewOpts = {
   splitByRow: false,
 };
 
-/** Steepness of the "exp" scale. Larger values concentrate more height on the top values. */
-export const revenueExpBase = 4;
+/** n in the "power" scale's x^(1/n). Larger values give more height to small values. */
+export const revenuePowerRoot = 4;
+
+/** Smallest value / max ratio spanned by the "log" scale. Smaller values are floored. */
+export const revenueLogMinRatio = 1e-6;
 
 export const revenueSeriesLabels: Record<RevenueSeries, string> = {
   [RevenueSeries.Fees]: "Fees",

@@ -1,5 +1,10 @@
 import { clampNonZeroValue } from "../../../mathUtils.ts";
-import { minHeightRatio, revenueExpBase, type RevenueScale } from "./consts.ts";
+import {
+  minHeightRatio,
+  revenueLogMinRatio,
+  revenuePowerRoot,
+  type RevenueScale,
+} from "./consts.ts";
 
 // Mirrors revenueRatio() in txnMesh.ts (GLSL)
 export function getRevenueRatio(
@@ -18,13 +23,13 @@ export function getRevenueRatio(
       ratio = normalized;
       break;
     case "power":
-      ratio = normalized * normalized;
+      ratio = Math.pow(normalized, 1 / revenuePowerRoot);
       break;
-    case "exp":
-      // exp(base·normalized) rescaled from its [1, e^base] range to [0, 1]
-      ratio =
-        (Math.exp(revenueExpBase * normalized) - 1) /
-        (Math.exp(revenueExpBase) - 1);
+    case "log":
+      ratio = Math.max(
+        1 - Math.log(normalized) / Math.log(revenueLogMinRatio),
+        minHeightRatio,
+      );
       break;
   }
   return clampNonZeroValue(ratio, minHeightRatio, 1);
@@ -39,12 +44,8 @@ export function invertRevenueRatio(
     case "linear":
       return maxValue * heightRatio;
     case "power":
-      return maxValue * Math.sqrt(heightRatio);
-    case "exp":
-      return (
-        (maxValue *
-          Math.log(1 + heightRatio * (Math.exp(revenueExpBase) - 1))) /
-        revenueExpBase
-      );
+      return maxValue * Math.pow(heightRatio, revenuePowerRoot);
+    case "log":
+      return maxValue * Math.pow(revenueLogMinRatio, 1 - heightRatio);
   }
 }
