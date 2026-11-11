@@ -22,7 +22,10 @@ import { hoveredExecrpTxnAtom, visibleRangeAtom } from "../atoms.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
 import { isInRanges } from "../hoverUtils.ts";
 import { clientXToMs } from "../utils.ts";
-import { useContainerSlotHitTest } from "../slotHighlight.ts";
+import {
+  useContainerSlotHitTest,
+  type SlotHighlightStyle,
+} from "../slotHighlight.ts";
 import { useTileStatesQuery } from "../tileStates/useTileStatesQuery.ts";
 import type { AggTileStatesQuery } from "../tileStates/useAggTileStatesQuery.ts";
 import RowLabels from "../RowLabels.tsx";
@@ -79,11 +82,25 @@ function getStates(granularity: TileStatesGranularity | undefined) {
   return trackStates.execrp[granularity ?? TileStatesGranularityEnum.txn];
 }
 
+const highlightStyle: SlotHighlightStyle = {
+  levels: {
+    hover: { group: 0.85, other: 0.65 },
+    selected: { group: 0.75, other: 0.5 },
+  },
+  hoveredOtherLevel: 0.85,
+  lifts: {
+    hover: { group: 0.05, slot: 0.1 },
+    selected: { group: 0.07, slot: 0.14 },
+    selectedHovered: { group: 0.09, slot: 0.2 },
+  },
+};
+
 const config: TileStatesTrackConfig = {
   kind: "execrp",
   getStates,
   createComposite: (ctx) =>
     createExecrpComposite(ctx, () => store.get(execrpViewOptsAtom)),
+  highlightStyle,
 };
 
 interface ExecrpTrackProps extends WebGlRemountProps {

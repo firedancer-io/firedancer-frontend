@@ -60,6 +60,7 @@ import {
   NO_SLOT,
   updateSlotHighlight,
   type SlotHighlight,
+  type SlotHighlightStyle,
 } from "../slotHighlight.ts";
 
 const store = getDefaultStore();
@@ -97,6 +98,7 @@ export interface TileStatesTrackConfig {
   kind: TileKind;
   getStates: (granularity: TileStatesGranularity | undefined) => TileState[];
   createComposite: (ctx: CompositeContext) => TileStatesComposite;
+  highlightStyle?: SlotHighlightStyle;
 }
 
 interface LevelMesh {
@@ -298,7 +300,7 @@ export function render(rendererObj: RendererObj) {
   } = rendererObj;
   const { width, height } = renderer.domElement;
   if (!width || !height) return;
-  updateSlotHighlight(highlight, width);
+  updateSlotHighlight(highlight, width, rendererObj.config.highlightStyle);
   const rowCount = Math.max(getRowOfTile(rendererObj.config.kind).size, 1);
   const states = syncCoverageStates(rendererObj);
   const coverageHeight = rowCount * states.length;

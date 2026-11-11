@@ -26,45 +26,72 @@ import {
 
 const store = getDefaultStore();
 
-const slotLevels = {
-  hover: { group: 0.85, other: 0.65 },
-  selected: { group: 0.75, other: 0.5 },
-};
+interface SlotLevels {
+  group: number;
+  other: number;
+}
 
-const hoveredOtherLevel = 0.85;
+interface SlotLifts {
+  group: number;
+  slot: number;
+}
 
-const slotLifts = {
-  hover: { group: 0.1, slot: 0.2 },
-  selected: { group: 0.14, slot: 0.28 },
-  selectedHovered: { group: 0.18, slot: 0.4 },
+export interface SlotHighlightStyle {
+  levels: { hover: SlotLevels; selected: SlotLevels };
+  hoveredOtherLevel: number;
+  lifts: { hover: SlotLifts; selected: SlotLifts; selectedHovered: SlotLifts };
+}
+
+const defaultSlotHighlightStyle: SlotHighlightStyle = {
+  levels: {
+    hover: { group: 0.85, other: 0.65 },
+    selected: { group: 0.75, other: 0.5 },
+  },
+  hoveredOtherLevel: 0.85,
+  lifts: {
+    hover: { group: 0.1, slot: 0.2 },
+    selected: { group: 0.14, slot: 0.28 },
+    selectedHovered: { group: 0.18, slot: 0.4 },
+  },
 };
 
 interface SlotFocus {
   focusSlot: number;
   hoveredOtherSlot: number | undefined;
-  levels: { group: number; other: number };
-  lifts: { group: number; slot: number };
+  levels: SlotLevels;
+  lifts: SlotLifts;
+  hoveredOtherLevel: number;
+  hoveredOtherLifts: SlotLifts;
 }
 
 export function getSlotFocus(
   hoveredSlot: number | undefined,
   selectedSlot: number | undefined,
+  style = defaultSlotHighlightStyle,
 ): SlotFocus | undefined {
+  const hoveredOther = {
+    hoveredOtherLevel: style.hoveredOtherLevel,
+    hoveredOtherLifts: style.lifts.hover,
+  };
   if (selectedSlot === undefined) {
     if (hoveredSlot === undefined) return;
     return {
       focusSlot: hoveredSlot,
       hoveredOtherSlot: undefined,
-      levels: slotLevels.hover,
-      lifts: slotLifts.hover,
+      levels: style.levels.hover,
+      lifts: style.lifts.hover,
+      ...hoveredOther,
     };
   }
   const isHoveringSelected = hoveredSlot === selectedSlot;
   return {
     focusSlot: selectedSlot,
     hoveredOtherSlot: isHoveringSelected ? undefined : hoveredSlot,
-    levels: slotLevels.selected,
-    lifts: isHoveringSelected ? slotLifts.selectedHovered : slotLifts.selected,
+    levels: style.levels.selected,
+    lifts: isHoveringSelected
+      ? style.lifts.selectedHovered
+      : style.lifts.selected,
+    ...hoveredOther,
   };
 }
 
@@ -100,12 +127,12 @@ uniform vec2 uLevels;
 uniform vec2 uLifts;
 uniform vec4 uFocusRangePx;
 uniform vec4 uHoveredOtherRangePx;
+uniform float uHoveredOtherLevel;
+uniform vec2 uHoveredOtherLifts;
 
 const float SLOTS_PER_LEADER = ${glslFloat(slotsPerLeader)};
 const float NO_SLOT = ${glslFloat(NO_SLOT)};
 const vec3 HIGHLIGHT_BACKGROUND = vec3(${background.map(glslFloat).join(", ")});
-const float HOVERED_OTHER_LEVEL = ${glslFloat(hoveredOtherLevel)};
-const vec2 HOVERED_OTHER_LIFTS = vec2(${glslFloat(slotLifts.hover.group)}, ${glslFloat(slotLifts.hover.slot)});
 
 vec3 overlayWhite(vec3 color, float alpha) {
   vec3 dark = color * (1.0 + alpha);
@@ -125,13 +152,13 @@ vec3 applyHighlight(
     float level = uLevels.y;
     if (inFocusGroup) level = uLevels.x;
     if (inFocusSlot) level = 1.0;
-    if (inHoveredOtherSlot) level = max(level, HOVERED_OTHER_LEVEL);
+    if (inHoveredOtherSlot) level = max(level, uHoveredOtherLevel);
     color = mix(HIGHLIGHT_BACKGROUND, color, level);
 
     if (inFocusGroup) color = overlayWhite(color, uLifts.x);
     if (inFocusSlot) color = overlayWhite(color, uLifts.y);
-    if (inHoveredOtherGroup) color = overlayWhite(color, HOVERED_OTHER_LIFTS.x);
-    if (inHoveredOtherSlot) color = overlayWhite(color, HOVERED_OTHER_LIFTS.y);
+    if (inHoveredOtherGroup) color = overlayWhite(color, uHoveredOtherLifts.x);
+    if (inHoveredOtherSlot) color = overlayWhite(color, uHoveredOtherLifts.y);
   }
   return color;
 }
@@ -195,6 +222,8 @@ export interface SlotHighlight {
     uLifts: THREE.IUniform<THREE.Vector2>;
     uFocusRangePx: THREE.IUniform<THREE.Vector4>;
     uHoveredOtherRangePx: THREE.IUniform<THREE.Vector4>;
+    uHoveredOtherLevel: THREE.IUniform<number>;
+    uHoveredOtherLifts: THREE.IUniform<THREE.Vector2>;
   };
   referenceSlot: number | undefined;
 }
@@ -209,6 +238,8 @@ export function createSlotHighlight(): SlotHighlight {
       uLifts: { value: new THREE.Vector2() },
       uFocusRangePx: { value: new THREE.Vector4() },
       uHoveredOtherRangePx: { value: new THREE.Vector4() },
+      uHoveredOtherLevel: { value: 1 },
+      uHoveredOtherLifts: { value: new THREE.Vector2() },
     },
     referenceSlot: undefined,
   };
@@ -277,6 +308,11 @@ function applySlotHighlight(
       : getRelativeSlot(highlight, focus.hoveredOtherSlot);
   uniforms.uLevels.value.set(focus.levels.group, focus.levels.other);
   uniforms.uLifts.value.set(focus.lifts.group, focus.lifts.slot);
+  uniforms.uHoveredOtherLevel.value = focus.hoveredOtherLevel;
+  uniforms.uHoveredOtherLifts.value.set(
+    focus.hoveredOtherLifts.group,
+    focus.hoveredOtherLifts.slot,
+  );
 
   if (!ranges) {
     uniforms.uFocusRangePx.value.set(0, 0, 0, 0);
@@ -310,10 +346,11 @@ export function updateSlotHighlightForSlots(
 export function updateSlotHighlight(
   highlight: SlotHighlight,
   viewWidthPx: number,
+  style?: SlotHighlightStyle,
 ) {
   const hoveredSlot = store.get(hoveredSlotAtom);
   const selectedSlot = store.get(selectedSlotAtom);
-  const focus = getSlotFocus(hoveredSlot, selectedSlot);
+  const focus = getSlotFocus(hoveredSlot, selectedSlot, style);
   const visibleRange = store.get(visibleRangeAtom);
   if (!focus || !visibleRange) {
     highlight.uniforms.uHighlightActive.value = 0;
