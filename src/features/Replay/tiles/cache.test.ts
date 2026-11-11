@@ -238,20 +238,20 @@ describe("tile cache with partial responses", () => {
     finalEndNs = 400n * msNs;
     cache.requestRange(viewNs, 750n * msNs);
     await vi.waitFor(() => expect(tile0LiveDeltas()).toHaveLength(1));
-    expect(fetchedWindows.at(-1)).toEqual([0n, 700n * msNs - 1n]);
+    expect(fetchedWindows.at(-1)).toEqual([0n, 750n * msNs]);
 
     // no new final chunks: nothing published and nothing skipped
     advanceQueryThrottle();
     cache.requestRange(viewNs, 800n * msNs);
     await flush();
-    expect(fetchedWindows.at(-1)).toEqual([400n * msNs, 800n * msNs - 1n]);
+    expect(fetchedWindows.at(-1)).toEqual([400n * msNs, 800n * msNs]);
     expect(tile0LiveDeltas()).toHaveLength(1);
 
     finalEndNs = 900n * msNs;
     advanceQueryThrottle();
     cache.requestRange(viewNs, 950n * msNs);
     await vi.waitFor(() => expect(tile0LiveDeltas()).toHaveLength(2));
-    expect(fetchedWindows.at(-1)).toEqual([400n * msNs, 900n * msNs - 1n]);
+    expect(fetchedWindows.at(-1)).toEqual([400n * msNs, 950n * msNs]);
 
     // world end crosses into the next tile before the first one is final
     advanceQueryThrottle();
@@ -271,10 +271,7 @@ describe("tile cache with partial responses", () => {
       [900n * msNs, tileNs - 1n],
     ]);
     await vi.waitFor(() =>
-      expect(fetchedWindows.at(-1)).toEqual([
-        tileNs,
-        tileNs + 300n * msNs - 1n,
-      ]),
+      expect(fetchedWindows.at(-1)).toEqual([tileNs, tileNs + 300n * msNs]),
     );
 
     advanceQueryThrottle();
@@ -282,7 +279,7 @@ describe("tile cache with partial responses", () => {
     await vi.waitFor(() =>
       expect(fetchedWindows.at(-1)).toEqual([
         tileNs + 200n * msNs,
-        tileNs + 400n * msNs - 1n,
+        tileNs + 400n * msNs,
       ]),
     );
   });
@@ -297,7 +294,7 @@ describe("tile cache with partial responses", () => {
     finalEndNs = 1_700n * msNs;
     cache.requestRange([0n, tileNs - 1n], 1_500n * msNs);
     await vi.waitFor(() =>
-      expect(fetchedWindows.at(-1)).toEqual([0n, 2_000n * msNs - 1n]),
+      expect(fetchedWindows.at(-1)).toEqual([0n, 2_000n * msNs]),
     );
     await vi.waitFor(() =>
       expect(
@@ -305,6 +302,27 @@ describe("tile cache with partial responses", () => {
           (delta) => delta.kind === "live" && delta.tile.startNs === 0n,
         ),
       ).toMatchObject({ newData: [[0n, 1_700n * msNs - 1n]] }),
+    );
+  });
+
+  it("requests the live tile through its end before the world end crosses it", async () => {
+    const cache = createCache();
+    getDefaultStore().set(
+      smoothedNowNsAtom as PrimitiveAtom<bigint | undefined>,
+      tileNs + 200n * msNs,
+    );
+
+    finalEndNs = tileNs + 100n * msNs;
+    cache.requestRange([0n, tileNs - 1n], tileNs - 300n * msNs);
+    await vi.waitFor(() =>
+      expect(fetchedWindows.at(-1)).toEqual([0n, tileNs - 1n]),
+    );
+    await vi.waitFor(() =>
+      expect(
+        deltas.findLast(
+          (delta) => delta.kind === "live" && delta.tile.startNs === 0n,
+        ),
+      ).toMatchObject({ newData: [[0n, tileNs - 1n]] }),
     );
   });
 
