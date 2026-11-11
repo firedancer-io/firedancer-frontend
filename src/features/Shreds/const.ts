@@ -5,7 +5,7 @@ import {
   shredReceivedRepairColor,
   shredReceivedTurbineColor,
   shredRepairRequestedColor,
-  shredReplayedNothingColor,
+  shredReconstructedColor,
   shredReplayedRepairColor,
   shredReplayedTurbineColor,
   shredSkippedColor,
@@ -48,7 +48,7 @@ export const legend = {
   "Received Repair": shredReceivedRepairColor,
   "Replayed Turbine": shredReplayedTurbineColor,
   "Replayed Repair": shredReplayedRepairColor,
-  "Replayed Nothing": shredReplayedNothingColor,
+  "Replayed Reconstructed": shredReconstructedColor,
   Skipped: shredSkippedColor,
   Published: shredPublishedColor,
 };

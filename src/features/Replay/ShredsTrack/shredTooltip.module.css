@@ -15,7 +15,11 @@
 }
 
 .reconstructed-text-color {
-  color: #8e909d;
+  color: var(--shred-reconstructed-color);
+}
+
+.hovered-reconstructed-text-color {
+  color: var(--shred-hovered-reconstructed-color);
 }
 
 .published-color {
