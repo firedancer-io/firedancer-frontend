@@ -36,6 +36,7 @@ export function useAggTileStatesQuery() {
     addAtom: addAggTileStatesAtom,
     deleteBucketsAtom: deleteAggTileStatesBucketsAtom,
     emitterAtom: aggTileStatesEmitterAtom,
+    getGranularity: getAggGranularity,
     overscanTilesCount: OVERSCAN_TILES_COUNT,
   });
 }

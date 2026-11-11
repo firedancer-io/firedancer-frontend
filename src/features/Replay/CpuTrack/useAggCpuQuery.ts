@@ -40,6 +40,7 @@ export function useAggCpuQuery(chartId: string) {
     params,
     addAtom: addAggCpuAtom,
     deleteBucketsAtom: deleteAggCpuBucketsAtom,
+    getGranularity: getAggGranularity,
     emitterAtom: aggCpuEmitterAtom,
     drawTilesAtom: aggCpuDrawTilesAtom,
   });

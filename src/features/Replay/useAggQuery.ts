@@ -8,6 +8,7 @@ import {
   type WritableAtom,
 } from "jotai";
 import { useWebSocketSend } from "../../api/ws/utils";
+import { throttleIfVisible } from "../../api/useDebounceIfVisible";
 import type { AggGranularity } from "../../api/types";
 import type { NsTsRange, TsRange } from "../WebGl/webglUtils";
 import { calcAbsoluteNsRange, useTimelineServerMessage } from "./utils";
@@ -55,6 +56,7 @@ interface UseAggQueryOpts<TValue, TParams extends object> {
   deleteBucketsAtom: DeleteBucketsAtom;
   emitterAtom: Atom<DrawEmitter>;
   drawTilesAtom?: PrimitiveAtom<GetDrawTiles | undefined>;
+  getGranularity: (windowSizeMs: number) => AggGranularity;
   params?: TParams;
   overscanTilesCount?: number;
 }
@@ -66,6 +68,7 @@ export function useAggQuery<TValue, TParams extends object = object>({
   deleteBucketsAtom,
   emitterAtom,
   drawTilesAtom,
+  getGranularity,
   params,
   overscanTilesCount = OVERSCAN_TILES_COUNT,
 }: UseAggQueryOpts<TValue, TParams>) {
@@ -128,6 +131,7 @@ export function useAggQuery<TValue, TParams extends object = object>({
   );
   const {
     queryRange,
+    prefetchWorld,
     markQueryComplete,
     pauseStaleRefreshes,
     clearCache,
@@ -195,6 +199,30 @@ export function useAggQuery<TValue, TParams extends object = object>({
     },
     [granularityLevels, onNothingToFetch, queryRange, params],
   );
+
+  // so zooming all the way out doesn't wait on the network
+  useLayoutEffect(() => {
+    const prefetch = () => {
+      const referenceNs = store.get(referenceNsAtom);
+      const worldRange = store.get(worldRangeAtom);
+      if (referenceNs == null || !worldRange) return;
+
+      const worldGranularity = getGranularity(worldRange[1] - worldRange[0]);
+      prefetchWorld(
+        calcAbsoluteNsRange(referenceNs, worldRange),
+        worldGranularity,
+        nsBucketSizes[worldGranularity],
+        params,
+      );
+    };
+    prefetch();
+    const throttledPrefetch = throttleIfVisible(prefetch, 100);
+    const unsub = store.sub(worldRangeAtom, throttledPrefetch);
+    return () => {
+      unsub();
+      throttledPrefetch.cancel();
+    };
+  }, [prefetchWorld, getGranularity, params]);
 
   /** Agg granularity to draw each span from, or a fallback if not loaded */
   const getDrawTiles: GetDrawTiles = useCallback(
