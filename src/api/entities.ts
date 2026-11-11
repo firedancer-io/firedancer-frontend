@@ -1718,6 +1718,9 @@ export const timelineEventsSchema = availableRangeSchema
 
     for (let i = 0; i < event.length; i++) {
       if (!isKnownTimelineEventType(event[i])) continue;
+      // TODO: add back identity events once icons are confirmed
+      if (isTimelineIdentityEvent(event[i])) continue;
+
       filteredEvent.push(event[i]);
       filteredSlot.push(slot[i]);
       filteredTs.push(ts[i]);
