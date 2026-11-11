@@ -2,7 +2,6 @@ import * as THREE from "three";
 import type { RectMesh } from "../../WebGl/webglUtils";
 import {
   createRectResources,
-  createRectMesh,
   createRenderer,
   disposeRectResources,
 } from "../../WebGl/webglUtils";
@@ -11,7 +10,6 @@ import type { RendererObj } from "../types";
 import { SHREDS_OPACITY } from "./const";
 import { setUpEdgeResources, cleanUpEdgeResources } from "./edgeUtils";
 import { disposeSlotMaterials } from "./drawUtils";
-import { SHRED_EVENT_TYPES_COUNT } from "../../../api/entities";
 import { createSlotHighlight } from "../../Replay/slotHighlight";
 
 export function setUpRendererResources<MeshKey extends string | number>(
@@ -73,15 +71,10 @@ export function setUpLiveRenderer(
 
   const highlight = createSlotHighlight();
 
-  // covers one shred row; shared material so it isn't dimmed
-  const highlightMesh = createRectMesh(resources, SHRED_EVENT_TYPES_COUNT - 1);
-  scene.add(highlightMesh.mesh);
-
   renderer.render(scene, camera);
 
   const cleanUp = () => {
     if (!getWasContextLost()) {
-      highlightMesh.mesh.geometry.dispose();
       disposeSlotMaterials({
         meshes,
         availableMeshes,
@@ -105,7 +98,6 @@ export function setUpLiveRenderer(
     availableMeshes,
     resources,
     highlight,
-    highlightMesh,
     edgeResources,
     edgeMeshes,
     availableEdgeMeshes,

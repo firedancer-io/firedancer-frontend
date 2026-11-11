@@ -13,7 +13,6 @@ export type RendererObj<MeshKey extends string | number = number> = {
   // resources shared by this renderer's slot meshes
   resources: RectResources;
   highlight: SlotHighlight;
-  highlightMesh: RectMesh;
   lastDrawInfo?: DrawInfo;
   cleanUp: () => void;
 } & EdgeResourceBundle<MeshKey>;
