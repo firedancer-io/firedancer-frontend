@@ -11,7 +11,6 @@ import { splitFetch, type FetchResult, type Interval } from "./splitFetch";
 const store = getDefaultStore();
 
 const LIVE_QUERY_INTERVAL_MS = 100;
-const LIVE_QUERY_STEP_NS = 100_000_000n; // 100ms
 
 export interface Tile<TData, TMeta> {
   startNs: bigint;
@@ -424,9 +423,7 @@ export function createTileCache<TData, TMeta>({
     }
 
     if (live.acc?.tileId === fetchEndTileId) {
-      const alignedEndNs =
-        (fetchEndNs / LIVE_QUERY_STEP_NS) * LIVE_QUERY_STEP_NS - 1n;
-      const canRetry = await fetchLiveRange(alignedEndNs);
+      const canRetry = await fetchLiveRange(fetchEndNs);
       if (signal.aborted) return;
       if (canRetry) {
         live.inFlight = false;
