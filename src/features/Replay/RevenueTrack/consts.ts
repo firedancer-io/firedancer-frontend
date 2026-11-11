@@ -4,7 +4,7 @@ import { RevenueType } from "../../../api/entities.ts";
 import { trackInsetPx } from "../layout.ts";
 
 /** Visible range wider than this switches from txn bars to aggregated buckets. */
-export const AGGREGATE_THRESHOLD_MS = 60_000;
+export const AGGREGATE_THRESHOLD_MS = 180_000;
 
 /** Vertical bounds of the view/coordinate space */
 export const minY = 0;
