@@ -4,7 +4,7 @@ import { TileState, TileStatesGranularityEnum } from "../../../api/entities.ts";
 import type { TileStatesGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { referenceNsAtom } from "../atoms.ts";
-import type { HoveredExecrpTxn } from "../atoms.ts";
+import type { HoveredExecrpLthash, HoveredExecrpTxn } from "../atoms.ts";
 import { calcAbsoluteNs, calcRelativeMs } from "../utils.ts";
 import {
   BAR_HEIGHT_RATIO,
@@ -47,7 +47,8 @@ function getDataTilesInRange(
   const tiles: DataTileInRange[] = [];
   for (
     let tileStartNs = (calcAbsoluteNs(referenceNs, startMs) / tileNs) * tileNs;
-    tileStartNs <= endNs;
+    // a tile's first state can start before it, so take the next tile too
+    tileStartNs <= endNs + tileNs;
     tileStartNs += tileNs
   ) {
     const [data] = cache.getDataInRange(tileStartNs, tileStartNs).data;
@@ -91,7 +92,7 @@ function findTileRowAtCursor(
 function findNearestTxnColumn(
   granularity: TileStatesGranularity,
   { tileIdx, ms, toleranceMs }: TileRowAtCursor,
-): { tile: DataTileInRange; i: number } | undefined {
+): { tile: DataTileInRange; i: number; distMs: number } | undefined {
   let best:
     | {
         tile: DataTileInRange;
@@ -131,6 +132,7 @@ interface StateInterval {
   state: TileState;
   startMs: number;
   endMs: number;
+  slot: number;
 }
 
 /** A tile row's states overlapping a range, in ms from the reference */
@@ -166,6 +168,7 @@ function getRowStateIntervals(
       state: states[stateIdx],
       startMs: stateStartMs,
       endMs: stateEndMs,
+      slot: data.referenceSlot + level.slot[i],
     });
   }
   return intervals;
@@ -190,36 +193,77 @@ function findHoveredStage(
   return best?.state;
 }
 
-/**
- * Which txn (and execution stage) is under the cursor on the execrp track, with
- * its state durations. txn granularity only.
- */
-export function findTxnAtCursor(
-  rendererObj: RendererObj,
-  visibleRangeMs: TsRange,
-  point: TrackPoint,
-): HoveredExecrpTxn | undefined {
-  if (rendererObj.config.kind !== "execrp") return;
-  const granularity = rendererObj.renderedGranularity;
-  if (granularity !== TileStatesGranularityEnum.txn) return;
-  const row = findTileRowAtCursor(rendererObj, visibleRangeMs, point);
-  if (!row) return;
-
+/** The txn (and execution stage) near the cursor, with its state durations */
+function findTxnNearCursor(
+  granularity: TileStatesGranularity,
+  row: TileRowAtCursor,
+): { txn: HoveredExecrpTxn; distMs: number } | undefined {
   const column = findNearestTxnColumn(granularity, row);
   if (!column) return;
-  const { tile, i } = column;
+  const { tile, i, distMs } = column;
   const { data } = tile;
   const slot = data.txn_slot[i];
   const txnIdx = data.txn_idx[i];
   const states = getTxnStateDurations(slot, txnIdx, row.ms);
   if (!states) return;
   return {
-    slot,
-    txnIdx,
-    ms: row.ms,
-    state: findHoveredStage(tile, i, row.ms),
-    states,
+    txn: {
+      slot,
+      txnIdx,
+      ms: row.ms,
+      state: findHoveredStage(tile, i, row.ms),
+      states,
+    },
+    distMs,
   };
+}
+
+function findLthashNearCursor(
+  granularity: TileStatesGranularity,
+  { tileIdx, ms, toleranceMs }: TileRowAtCursor,
+): { lthash: HoveredExecrpLthash; distMs: number } | undefined {
+  let best: { lthash: HoveredExecrpLthash; distMs: number } | undefined;
+  for (const tile of getDataTilesInRange(
+    granularity,
+    ms - toleranceMs,
+    ms + toleranceMs,
+  )) {
+    for (const { state, slot, startMs, endMs } of getRowStateIntervals(
+      tile,
+      tileIdx,
+      ms - toleranceMs,
+      ms + toleranceMs,
+    )) {
+      if (state !== TileState.Lthash || Number.isNaN(slot)) continue;
+      const distMs = ms < startMs ? startMs - ms : ms > endMs ? ms - endMs : 0;
+      if (distMs > toleranceMs || (best && best.distMs <= distMs)) continue;
+      best = { lthash: { slot, tileIdx, startMs, endMs }, distMs };
+    }
+  }
+  return best;
+}
+
+type ExecrpHover =
+  | { txn: HoveredExecrpTxn; lthash?: undefined }
+  | { txn?: undefined; lthash: HoveredExecrpLthash };
+
+export function findExecrpHoverAtCursor(
+  rendererObj: RendererObj,
+  visibleRangeMs: TsRange,
+  point: TrackPoint,
+): ExecrpHover | undefined {
+  if (rendererObj.config.kind !== "execrp") return;
+  const granularity = rendererObj.renderedGranularity;
+  if (granularity !== TileStatesGranularityEnum.txn) return;
+  const row = findTileRowAtCursor(rendererObj, visibleRangeMs, point);
+  if (!row) return;
+
+  const txn = findTxnNearCursor(granularity, row);
+  const lthash = findLthashNearCursor(granularity, row);
+  if (lthash && (!txn || lthash.distMs < txn.distMs)) {
+    return { lthash: lthash.lthash };
+  }
+  if (txn) return { txn: txn.txn };
 }
 
 function getStateIntervals(
