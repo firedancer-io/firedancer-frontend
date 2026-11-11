@@ -13,6 +13,7 @@ import {
   setPlaybackRateAtom,
   togglePlaybackAtom,
   visibleRangeAtom,
+  zoomVisibleRangeAtom,
 } from "./atoms";
 import { CHART_NOW_DELAY_MS, DEFAULT_WINDOW_MS } from "./const";
 import { setStartupTimeAtom } from "./resetReplayState";
@@ -242,6 +243,41 @@ describe("replay playback", () => {
     setWorldEnd(120_000);
     runFrame(1_000);
     expect(range()).toEqual([96_000, 106_000]);
+  });
+
+  it("zooming out to world end while playing goes live", () => {
+    store.set(visibleRangeAtom, [80_000, 90_000]);
+    store.set(togglePlaybackAtom);
+    store.set(zoomVisibleRangeAtom, [70_000, 100_000]);
+    expect(store.get(isLiveAtom)).toBe(true);
+    expect(range()).toEqual([70_000, 100_000]);
+  });
+
+  it("zooming between frames keeps the time since the last frame", () => {
+    store.set(visibleRangeAtom, [10_000, 20_000]);
+    store.set(togglePlaybackAtom);
+    runFrame(16);
+    expect(range()).toEqual([10_016, 20_016]);
+
+    // zoom 1ms before the next frame
+    perfNow += 15;
+    store.set(zoomVisibleRangeAtom, [12_000, 18_000]);
+    runFrame(1);
+    expect(range()).toEqual([12_016, 18_016]);
+  });
+
+  it("zooming while waiting at world end advances one frame, not the wait", () => {
+    store.set(visibleRangeAtom, [80_000, 90_000]);
+    store.set(togglePlaybackAtom);
+    runFrame(15_000);
+    expect(range()).toEqual([90_000, 100_000]);
+
+    store.set(zoomVisibleRangeAtom, [92_000, 98_000]);
+    expect(store.get(isPlayingAtom)).toBe(true);
+    expect(range()).toEqual([92_000, 98_000]);
+
+    runFrame(16);
+    expect(range()).toEqual([92_016, 98_016]);
   });
 
   it("world time ticks don't notify the visible range while playing", () => {

@@ -8,6 +8,7 @@ import {
   selectSlotAtMsAtom,
   visibleRangeAtom,
   worldRangeAtom,
+  zoomVisibleRangeAtom,
 } from "./atoms";
 import { clamp as minMaxClamp } from "lodash";
 import styles from "./chart.module.css";
@@ -152,6 +153,17 @@ export function useExplorableChart() {
     if (!worldRange) return;
 
     store.set(visibleRangeAtom, clampToWorld(unclampedNewRange, worldRange));
+  }, []);
+
+  // unlike panning, zooming keeps playback running
+  const setClampedZoomRange = useCallback((unclampedNewRange: TsRange) => {
+    const worldRange = store.get(worldRangeAtom);
+    if (!worldRange) return;
+
+    store.set(
+      zoomVisibleRangeAtom,
+      clampToWorld(unclampedNewRange, worldRange),
+    );
   }, []);
 
   const panToTs = useCallback(
@@ -300,7 +312,7 @@ export function useExplorableChart() {
         if (!isZoomingOut && span * scale < MIN_VISIBLE_MS) {
           scale = MIN_VISIBLE_MS / span;
         }
-        setClampedVisibleRange([
+        setClampedZoomRange([
           zoomPointTs - (zoomPointTs - startTs) * scale,
           zoomPointTs + (endTs - zoomPointTs) * scale,
         ]);
@@ -379,7 +391,7 @@ export function useExplorableChart() {
         },
       };
     },
-    [setClampedVisibleRange],
+    [setClampedVisibleRange, setClampedZoomRange],
   );
 
   return useMemo(() => {
@@ -473,6 +485,8 @@ export function useExplorableChart() {
             touchIds: [number, number];
             distancePx: number;
             midTs: number;
+            // start of the range the pinch last set, to follow playback
+            lastStartTs: number;
             spanMs: number;
             trackRect: DOMRect;
           }
@@ -492,13 +506,13 @@ export function useExplorableChart() {
       const startPinch = (touches: TouchList) => {
         const visibleRange = store.get(visibleRangeAtom);
         if (!visibleRange) return;
-        store.set(pauseAtom);
         const trackRect = trackEl.getBoundingClientRect();
         const { distancePx, midX } = measurePinch(touches[0], touches[1]);
         pinch = {
           touchIds: [touches[0].identifier, touches[1].identifier],
           distancePx,
           midTs: clientXToMs(midX, trackRect, visibleRange),
+          lastStartTs: visibleRange[0],
           spanMs: visibleRange[1] - visibleRange[0],
           trackRect,
         };
@@ -522,8 +536,11 @@ export function useExplorableChart() {
         if (!pinch) return;
         const first = findTouch(e.touches, pinch.touchIds[0]);
         const second = findTouch(e.touches, pinch.touchIds[1]);
-        if (!first || !second) return;
+        const visibleRange = store.get(visibleRangeAtom);
+        if (!first || !second || !visibleRange) return;
         e.preventDefault();
+        // shift the anchor by however far playback advanced since the last move
+        pinch.midTs += visibleRange[0] - pinch.lastStartTs;
         const { distancePx, midX } = measurePinch(first, second);
         const spanMs = Math.max(
           MIN_VISIBLE_MS,
@@ -531,7 +548,8 @@ export function useExplorableChart() {
         );
         const { left, width } = pinch.trackRect;
         const startTs = pinch.midTs - ((midX - left) / width) * spanMs;
-        setClampedVisibleRange([startTs, startTs + spanMs]);
+        setClampedZoomRange([startTs, startTs + spanMs]);
+        pinch.lastStartTs = store.get(visibleRangeAtom)?.[0] ?? startTs;
       };
 
       const onPinchEnd = (e: TouchEvent) => {
@@ -757,12 +775,9 @@ export function useExplorableChart() {
         const [start, end] = visibleRange;
 
         if (edge === "start") {
-          setClampedVisibleRange([
-            Math.min(cursorTs, end - MIN_VISIBLE_MS),
-            end,
-          ]);
+          setClampedZoomRange([Math.min(cursorTs, end - MIN_VISIBLE_MS), end]);
         } else {
-          setClampedVisibleRange([
+          setClampedZoomRange([
             start,
             Math.max(cursorTs, start + MIN_VISIBLE_MS),
           ]);
@@ -1000,5 +1015,5 @@ export function useExplorableChart() {
       setUpMiniMap,
       panToTs,
     };
-  }, [createCallbacks, setClampedVisibleRange, panToTs]);
+  }, [createCallbacks, setClampedZoomRange, panToTs]);
 }
