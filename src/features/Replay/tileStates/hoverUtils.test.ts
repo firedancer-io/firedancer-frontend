@@ -488,4 +488,27 @@ describe("findExecrpHoverAtCursor on LtHash tasks", () => {
     expect(second?.startMs).toBeCloseTo(BASE_MS - 0.5, 6);
     expect(second?.endMs).toBeCloseTo(BASE_MS + 0.5, 6);
   });
+
+  it("finds a task crossing into the next data tile from before the edge", async () => {
+    await cacheResponse(
+      0,
+      txnResponse(0, [{ states: [at(TileState.Execute, -2, -1)] }]),
+    );
+    // stored only in the later data tile, starting before its edge
+    await cacheResponse(
+      1,
+      txnResponse(1, [
+        {
+          states: [[TileState.Lthash, TILE_MS - 0.5, TILE_MS + 0.5]],
+          isTxn: false,
+          lthashSlotDelta: 3,
+        },
+      ]),
+    );
+
+    const lthash = hoverAt(TILE_MS - 0.25);
+    expect(lthash?.slot).toBe(SLOT + 3);
+    expect(lthash?.startMs).toBeCloseTo(TILE_MS - 0.5, 6);
+    expect(lthash?.endMs).toBeCloseTo(TILE_MS + 0.5, 6);
+  });
 });

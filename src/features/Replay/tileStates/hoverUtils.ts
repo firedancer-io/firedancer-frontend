@@ -222,8 +222,8 @@ function findLthashNearCursor(
   let best: { lthash: HoveredExecrpLthash; distMs: number } | undefined;
   for (const tile of getDataTilesInRange(
     granularity,
-    ms - toleranceMs,
-    ms + toleranceMs,
+    ms - SEARCH_WINDOW_MS,
+    ms + SEARCH_WINDOW_MS,
   )) {
     const { data } = tile;
     for (let i = 0; i < data.lthash_tile.length; i++) {
