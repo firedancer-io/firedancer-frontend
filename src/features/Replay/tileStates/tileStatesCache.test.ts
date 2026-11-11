@@ -457,6 +457,66 @@ describe("tile states cache", () => {
     });
   });
 
+  it("keeps following a live tile whose first window exceeds the result limit", async () => {
+    const tileStartNs = 10n * TILE_NS;
+    const viewNs: [bigint, bigint] = [tileStartNs, tileStartNs + TILE_NS - 1n];
+    const server = createServer({ finalEndNs: Number(tileStartNs) + 350 * ms });
+    const live = createTestRendererObj("execrp", GRANULARITY);
+    setVisibleRange(live, [
+      Number(tileStartNs) / ms,
+      Number(tileStartNs) / ms + TILE_MS,
+    ]);
+    // the first live window is over the limit down to its smallest split, so
+    // its first publish has no levels
+    let isOverLimit = true;
+    const liveDraws: [DrawnRects, DrawnRects][] = [];
+    const unsubscribe = cache.subscribe((delta: TileStatesCacheDelta) => {
+      if (delta.kind === "live" && delta.tile.startNs === tileStartNs) {
+        isOverLimit = false;
+        appendLiveStates(live, delta.tile, delta.newData, delta.isNewTile);
+        const whole = createTestRendererObj("execrp", GRANULARITY);
+        setVisibleRange(whole, [0, TILE_MS]);
+        appendLiveStates(whole, delta.tile, delta.tile.data, true);
+        liveDraws.push([
+          getDrawnRects(live, delta.tile.startNs),
+          getDrawnRects(whole, delta.tile.startNs),
+        ]);
+      } else if (delta.kind === "add") {
+        clearLiveMarkerIfAdded(live, delta.tiles);
+        syncMeshes(live);
+      }
+    });
+
+    for (let step = 0; step < 20 && !getTile(tileStartNs); step++) {
+      cache.requestRange(viewNs, BigInt(server.finalEndNs) - 1n);
+      while (requests.length) {
+        const request = requests.shift();
+        if (!request) continue;
+        const hasChunk =
+          (request.startNs - tileStartNs) % BigInt(CHUNK_NS) === 0n ||
+          request.endNs - request.startNs > BigInt(CHUNK_NS);
+        if (isOverLimit && request.startNs >= tileStartNs && hasChunk) {
+          tileStatesRequests.resolve(request.id, {
+            errorCode: "result_limit_exceeded",
+          });
+        } else {
+          server.respond(request);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      perfNow += 200;
+      server.finalEndNs += 450 * ms;
+    }
+    unsubscribe();
+
+    expect(getTile(tileStartNs)).toBeDefined();
+    expect(liveDraws[0][1]).toEqual([]);
+    expect(liveDraws.length).toBeGreaterThan(2);
+    for (const [liveRects, wholeRects] of liveDraws) {
+      expectSameRects(liveRects, wholeRects);
+    }
+  });
+
   it("takes the reference slot of the first response that has one", async () => {
     const server = createServer({ maxChunks: 5 });
     // the first response's chunks have no slots
