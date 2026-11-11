@@ -756,7 +756,7 @@ function getFallbackDataTiles(
 }
 
 /**
- * Keep the data tile's rects, txn segments and LtHash tasks overlapping [startNs, endNs),
+ * Keep the data tile's rects and txn segments overlapping [startNs, endNs),
  * clipped to it. Rect edges are moved to be from startNs.
  */
 function clipData(
@@ -800,14 +800,6 @@ function clipData(
     clipped.txn_start_ms.push(Math.max(startMs, data.txn_start_ms[i]));
     clipped.txn_end_ms.push(Math.min(endMs, data.txn_end_ms[i]));
     clipped.txn_error_code.push(data.txn_error_code[i]);
-  }
-  for (let i = 0; i < data.lthash_slot.length; i++) {
-    if (data.lthash_end_ms[i] <= startMs || data.lthash_start_ms[i] >= endMs)
-      continue;
-    clipped.lthash_slot.push(data.lthash_slot[i]);
-    clipped.lthash_tile.push(data.lthash_tile[i]);
-    clipped.lthash_start_ms.push(Math.max(startMs, data.lthash_start_ms[i]));
-    clipped.lthash_end_ms.push(Math.min(endMs, data.lthash_end_ms[i]));
   }
   return clipped;
 }
