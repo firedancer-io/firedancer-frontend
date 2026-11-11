@@ -5,7 +5,9 @@ import { smoothedNowNsAtom } from "../../nowAtoms";
 import {
   initializeVisibleRangeAtom,
   isLiveAtom,
+  isPlayingAtom,
   resetToLiveAtom,
+  togglePlaybackAtom,
   visibleRangeAtom,
 } from "./atoms";
 import { CHART_NOW_DELAY_MS, DEFAULT_WINDOW_MS, MIN_VISIBLE_MS } from "./const";
@@ -18,6 +20,18 @@ vi.mock("../../nowAtoms", () => ({
 
 const store = getDefaultStore();
 const TRACK_WIDTH_PX = 1_000;
+
+let perfNow = 0;
+// kept across tests: the frame loop's pending frame request outlives a test
+const frames = new Map<number, FrameRequestCallback>();
+let nextFrameId = 1;
+
+function runFrame(ms: number) {
+  perfNow += ms;
+  const pending = [...frames.values()];
+  frames.clear();
+  pending.forEach((cb) => cb(perfNow));
+}
 const WORLD_END_MS = 100_000;
 
 function setWorldEnd(ms: number) {
@@ -54,6 +68,12 @@ function tsAtClientX(clientX: number) {
 }
 
 beforeEach(() => {
+  perfNow = 0;
+  vi.spyOn(performance, "now").mockImplementation(() => perfNow);
+  vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+    frames.set(nextFrameId, cb);
+    return nextFrameId++;
+  });
   store.set(setStartupTimeAtom, 0n);
   setWorldEnd(WORLD_END_MS);
   store.set(initializeVisibleRangeAtom);
@@ -74,6 +94,21 @@ describe("replay wheel zoom", () => {
     expect(tsAtClientX(cursorX)).toBeCloseTo(cursorTs, 6);
     const [start, end] = store.get(visibleRangeAtom)!;
     expect(end - start).toBeLessThan(DEFAULT_WINDOW_MS);
+  });
+
+  it("zooming while playing keeps playing, anchored on the cursor", () => {
+    const trackEl = setUpTrack();
+    store.set(visibleRangeAtom, [50_000, 60_000]);
+    store.set(togglePlaybackAtom);
+    const cursorX = 500;
+    const cursorTs = tsAtClientX(cursorX);
+
+    wheel(trackEl, cursorX, -100);
+
+    expect(store.get(isPlayingAtom)).toBe(true);
+    expect(tsAtClientX(cursorX)).toBeCloseTo(cursorTs, 6);
+    const [start, end] = store.get(visibleRangeAtom)!;
+    expect(end - start).toBeLessThan(10_000);
   });
 
   it("zooming in near the right edge keeps the right edge and stays live", () => {
@@ -147,6 +182,22 @@ describe("replay pinch zoom", () => {
     trackEl.dispatchEvent(touches("touchstart", from));
     window.dispatchEvent(touches("touchmove", to));
   }
+
+  it("pinching while playing keeps playing and follows playback", () => {
+    const trackEl = setUpTrack();
+    store.set(visibleRangeAtom, [50_000, 60_000]);
+    store.set(togglePlaybackAtom);
+
+    pinch(trackEl, [400, 600], [300, 700]);
+    expect(store.get(isPlayingAtom)).toBe(true);
+    expect(store.get(visibleRangeAtom)).toEqual([52_500, 57_500]);
+
+    // playback advances 1s between moves: the same fingers follow it
+    runFrame(1_000);
+    expect(store.get(visibleRangeAtom)).toEqual([53_500, 58_500]);
+    window.dispatchEvent(touches("touchmove", [300, 700]));
+    expect(store.get(visibleRangeAtom)).toEqual([53_500, 58_500]);
+  });
 
   it("zooms around the fingers' midpoint", () => {
     const trackEl = setUpTrack();

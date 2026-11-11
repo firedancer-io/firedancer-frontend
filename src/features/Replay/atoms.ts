@@ -76,6 +76,7 @@ export const {
   pauseAtom,
   togglePlaybackAtom,
   playbackRateAtom,
+  zoomVisibleRangeAtom,
   setPlaybackRateAtom,
   visibleRangeAtom,
   worldRangeAtom,
@@ -111,9 +112,12 @@ export const {
   });
 
   const playbackNowAtom = atom(0);
+  // playbackNowAtom lags this while waiting at world end
+  let lastFrameMs = 0;
   let stopPlaybackClock: (() => void) | undefined;
   const startPlayingAtom = atom(null, (get, set, range: TsRange) => {
     const nowMs = performance.now();
+    lastFrameMs = nowMs;
     set(playbackNowAtom, nowMs);
     set(playbackAtom, {
       kind: "playing",
@@ -130,6 +134,7 @@ export const {
       }
 
       const tickMs = performance.now();
+      lastFrameMs = tickMs;
       const rate = get(playbackRateAtom);
       const currentRange = getPlayingRange(playback, tickMs, rate);
       const worldEnd = get(worldRangeAtom)?.[1] ?? Infinity;
@@ -187,6 +192,29 @@ export const {
       set(playbackAtom, { kind: "paused", range: value });
     },
   );
+
+  // zooming while playing keeps playing from the zoomed range
+  const zoomVisibleRangeAtom = atom(null, (get, set, value: TsRange) => {
+    const playback = get(playbackAtom);
+    const worldEnd = get(worldRangeAtom)?.[1];
+    // reaching world end goes live, like any other range change
+    if (
+      playback?.kind !== "playing" ||
+      (worldEnd != null && value[1] >= worldEnd)
+    ) {
+      set(visibleRangeAtom, value);
+      return;
+    }
+
+    // rebase onto the last frame: the next frame advances by the time since
+    // it, and any wait at world end is dropped
+    set(playbackNowAtom, lastFrameMs);
+    set(playbackAtom, {
+      ...playback,
+      clockStartMs: lastFrameMs,
+      startRange: value,
+    });
+  });
 
   const resetToLiveAtom = atom(null, (get, set) => {
     const worldRange = get(worldRangeAtom);
@@ -261,6 +289,7 @@ export const {
       }
     }),
     visibleRangeAtom,
+    zoomVisibleRangeAtom,
   };
 })();
 

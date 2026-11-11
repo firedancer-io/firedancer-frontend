@@ -1,13 +1,13 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { cleanup, renderHook } from "@testing-library/react";
 import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
-import { startupTimeAtom } from "../../api/atoms";
 import { socketStateAtom } from "../../api/ws/atoms";
 import { SocketState } from "../../api/ws/types";
 import { isDocumentVisibleAtom } from "../../atoms";
 import { smoothedNowNsAtom } from "../../nowAtoms";
 import { nsPerMs } from "../../consts";
 import { useAggShredsQuery } from "./ShredsTrack/useAggShredsQuery";
+import { setStartupTimeAtom } from "./resetReplayState";
 
 vi.mock("../../nowAtoms", () => ({
   smoothedNowNsAtom: atom<bigint | undefined>(undefined),
@@ -44,7 +44,7 @@ beforeEach(() => {
   wsSend.mockClear();
   store.set(isDocumentVisibleAtom, true);
   store.set(socketStateAtom, SocketState.Connected);
-  store.set(startupTimeAtom, { startupTimeNanos: 0n });
+  store.set(setStartupTimeAtom, 0n);
   setNowMs(100_000);
 });
 
