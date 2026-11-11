@@ -3,9 +3,9 @@ import { getDefaultStore } from "jotai";
 import { socketStateAtom } from "../../../api/ws/atoms";
 import { SocketState } from "../../../api/ws/types";
 import type { TimelineVotes, VotesGranularity } from "../../../api/types";
-import { startupTimeAtom } from "../../../api/atoms";
 import { timelineVotesSchema } from "../../../api/entities";
 import { votesCaches, votesRequests } from "./votesCache";
+import { setStartupTimeAtom } from "../resetReplayState";
 
 interface SentMessage {
   id: number;
@@ -48,7 +48,7 @@ describe("votes batch cache", () => {
     vi.spyOn(performance, "now").mockImplementation(() => perfNow);
     const store = getDefaultStore();
     store.set(socketStateAtom, SocketState.Connected);
-    store.set(startupTimeAtom, { startupTimeNanos: 0n });
+    store.set(setStartupTimeAtom, 0n);
     cache.reset();
     sent.length = 0;
   });

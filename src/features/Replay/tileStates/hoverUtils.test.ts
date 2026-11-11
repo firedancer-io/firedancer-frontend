@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDefaultStore } from "jotai";
-import { startupTimeAtom, tilesAtom } from "../../../api/atoms";
+import { tilesAtom } from "../../../api/atoms";
 import { socketStateAtom } from "../../../api/ws/atoms";
 import { SocketState } from "../../../api/ws/types";
 import { sendMessage } from "../../../api/worker/useWsWorker";
@@ -19,6 +19,7 @@ import {
   testTiles,
   type TestState,
 } from "./tileStatesTestData";
+import { setStartupTimeAtom } from "../resetReplayState";
 
 vi.mock("../../../api/worker/useWsWorker", () => ({ sendMessage: vi.fn() }));
 
@@ -158,7 +159,7 @@ beforeEach(() => {
     requests.push({ id, startNs: BigInt(params.start_ns) });
   });
   store.set(socketStateAtom, SocketState.Connected);
-  store.set(startupTimeAtom, { startupTimeNanos: 0n } as never);
+  store.set(setStartupTimeAtom, 0n);
   store.set(tilesAtom, testTiles);
   cache.reset();
 });

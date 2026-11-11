@@ -3,6 +3,7 @@ import EventEmitter from "events";
 import type { AggGranularity, AggRevenue } from "../../../api/types";
 import type { RevenueType } from "../../../api/entities";
 import { getBucketIdx } from "../utils";
+import { createClearAggAtom } from "../clearAggAtom";
 import {
   DEFAULT_REVENUE_VIEW_OPTS,
   revenueSeriesAddends,
@@ -43,11 +44,13 @@ export const [
   addAggRevenueAtom,
   /** delete buckets, but don't emit a draw (skip redraw trigger) */
   deleteAggRevenueBucketsAtom,
+  clearAggRevenueAtom,
 ] = (function getAggRevenueAtom() {
   const _aggRevenueAtom = atom<RevenueBucketsByGranularity>(new Map());
+  const emitterAtom = atom(new EventEmitter() as DrawEmitter);
 
   return [
-    atom(new EventEmitter() as DrawEmitter),
+    emitterAtom,
     atom((get) => get(_aggRevenueAtom)),
     atom(
       null,
@@ -104,5 +107,6 @@ export const [
         });
       },
     ),
+    createClearAggAtom(_aggRevenueAtom, emitterAtom),
   ];
 })();

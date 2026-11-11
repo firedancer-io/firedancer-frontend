@@ -12,6 +12,7 @@ import {
   type AggShredEventType,
 } from "../../../api/entities";
 import { getBucketIdx } from "../utils";
+import { createClearAggAtom } from "../clearAggAtom";
 import { mergeShredEvents } from "../../Shreds/dataUtils";
 import type { SlotsShreds } from "../../Shreds/types";
 import { referenceNsAtom } from "../atoms";
@@ -33,11 +34,13 @@ export const [
   addAggShredsAtom,
   /** delete buckets, but don't emit a draw (skip redraw trigger) */
   deleteAggShredsBucketsAtom,
+  clearAggShredsAtom,
 ] = (function getAggShredsAtom() {
   const _aggShredsAtom = atom<ShredBucketsByGranularity>(new Map());
+  const emitterAtom = atom(new EventEmitter() as DrawEmitter);
 
   return [
-    atom(new EventEmitter() as DrawEmitter),
+    emitterAtom,
     atom((get) => get(_aggShredsAtom)),
     atom(
       null,
@@ -102,6 +105,7 @@ export const [
         });
       },
     ),
+    createClearAggAtom(_aggShredsAtom, emitterAtom),
   ];
 })();
 
@@ -222,6 +226,11 @@ export function createShredAtoms() {
         });
         return prevTileToSlots;
       });
+    }),
+    clear: atom(null, (get, set) => {
+      set(_slotsShredAtom, undefined);
+      set(_tileToSlotsAtom, new Map());
+      get(_emitterAtom).emit(drawEventType);
     }),
   };
 }

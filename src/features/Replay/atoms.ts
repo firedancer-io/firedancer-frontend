@@ -70,6 +70,7 @@ export const {
   isInitializedAtom,
   referenceNsAtom,
   initializeVisibleRangeAtom,
+  restartPlaybackAtom,
   resetToLiveAtom,
   returnToLiveAtom,
   pauseAtom,
@@ -195,6 +196,15 @@ export const {
     set(setLiveAtom, end - start);
   });
 
+  /**
+   * Set to default live range if world range is initialized but visible range is not initialized
+   */
+  const initializeVisibleRangeAtom = atom(null, (get, set) => {
+    if (get(playbackAtom)) return;
+
+    set(resetToLiveAtom);
+  });
+
   const pauseAtom = atom(null, (get, set, range?: TsRange) => {
     // an explicit range pauses directly, even if already paused
     if (range) {
@@ -214,13 +224,13 @@ export const {
     isInitializedAtom,
     referenceNsAtom,
     worldRangeAtom,
-    /**
-     * Set to default live range if world range is initialized but visible range is not initialized
-     */
-    initializeVisibleRangeAtom: atom(null, (get, set) => {
-      if (get(playbackAtom)) return;
-
-      set(resetToLiveAtom);
+    initializeVisibleRangeAtom,
+    // start over at the default live range, e.g. after a validator restart
+    restartPlaybackAtom: atom(null, (_get, set) => {
+      set(playbackAtom, undefined);
+      // set here too, in case there's no world range yet to go live on
+      set(playbackRateAtom, 1);
+      set(initializeVisibleRangeAtom);
     }),
     resetToLiveAtom,
     // keeps the current window size
@@ -382,6 +392,7 @@ export const [
   hoveredClientPosAtom,
   setHoverInfoAtom,
   clearHoverInfoAtom,
+  resetHoverInfoAtom,
   delayHoveredSlotClear,
 ] = (function getHoveredSlotAtoms() {
   const _hoverInfoAtom = atom<HoverInfo | undefined>(undefined);
@@ -467,6 +478,10 @@ export const [
       if (get(_hoverInfoAtom)?.owner === owner) {
         set(_hoverInfoAtom, undefined);
       }
+    }),
+    // clear regardless of owner
+    atom(null, (_get, set) => {
+      set(_hoverInfoAtom, undefined);
     }),
     delayHoveredSlotClear,
   ] as const;

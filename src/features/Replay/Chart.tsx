@@ -8,6 +8,7 @@ import {
   clearHoverInfoAtom,
   initializeVisibleRangeAtom,
   isInitializedAtom,
+  referenceNsAtom,
   setHoverInfoAtom,
   visibleRangeAtom,
 } from "./atoms.ts";
@@ -17,6 +18,7 @@ import HeaderTrack from "./HeaderTrack/index.tsx";
 import ResetLiveButton from "./ResetLiveButton.tsx";
 import { useTileStatesCache } from "./tileStates/useTileStatesCache.ts";
 import { useVotesCache } from "./VotesTrack/useVotesCache.ts";
+import { useTxnMetaCache } from "./RevenueTrack/txnMeta/useTxnMetaCache.ts";
 import Tracks from "./Tracks.tsx";
 import SlotDividers from "./SlotDividers.tsx";
 import HoveredTsLine from "./HoveredTsLine.tsx";
@@ -48,6 +50,7 @@ const hoverOwner = "replay-tracks";
  */
 export default function Chart() {
   const isInitialized = useAtomValue(isInitializedAtom);
+  const referenceNs = useAtomValue(referenceNsAtom);
 
   const [measureRef, { width }] = useMeasure<HTMLDivElement>();
 
@@ -113,11 +116,18 @@ export default function Chart() {
   useVotesCache();
   // Drive the tile states caches used by the tile states tracks
   useTileStatesCache();
+  useTxnMetaCache();
 
   if (!isInitialized) return <Spinner />;
 
+  // a validator restart remounts the tracks, dropping their renderers' meshes
+  // built from the old run's data
   return (
-    <div className={styles.container} ref={measureRef}>
+    <div
+      key={String(referenceNs)}
+      className={styles.container}
+      ref={measureRef}
+    >
       {!!width && (
         <>
           <MiniMap

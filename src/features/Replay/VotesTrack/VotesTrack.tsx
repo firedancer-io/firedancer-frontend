@@ -55,11 +55,8 @@ import {
 import { getSlotLatencies } from "./latency.ts";
 import { applyVotesDelta, type LiveTiles } from "./liveTiles.ts";
 import { getCoverageLatencySeries, getSlotLatencySeries } from "./series.ts";
-import {
-  aggVotesAtom,
-  aggVotesEmitterAtom,
-  drawEventType as aggDrawEventType,
-} from "./aggAtoms.ts";
+import { aggVotesAtom, aggVotesEmitterAtom } from "./aggAtoms.ts";
+import { drawEventType } from "../const.ts";
 import {
   getAggVotesGranularity,
   useAggVotesQuery,
@@ -400,7 +397,7 @@ function VotesTrackBody({
   useLayoutEffect(() => {
     rebuildSlotVotes();
     const aggEmitter = store.get(aggVotesEmitterAtom);
-    aggEmitter.addListener(aggDrawEventType, requestRender);
+    aggEmitter.addListener(drawEventType, requestRender);
 
     const unsubVisible = store.sub(visibleRangeAtom, () => {
       requestRange();
@@ -411,7 +408,7 @@ function VotesTrackBody({
     moveCamera();
 
     return () => {
-      aggEmitter.removeListener(aggDrawEventType, requestRender);
+      aggEmitter.removeListener(drawEventType, requestRender);
       unsubVisible();
       unsubWorld();
       throttledQuery.cancel();

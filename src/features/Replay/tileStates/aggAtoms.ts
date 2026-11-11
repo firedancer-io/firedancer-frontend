@@ -2,6 +2,7 @@ import { atom } from "jotai";
 import EventEmitter from "events";
 import type { AggGranularity, AggTileStates } from "../../../api/types";
 import { getBucketIdx } from "../utils";
+import { createClearAggAtom } from "../clearAggAtom";
 import { dataChangeEventType, drawEventType, type DrawEmitter } from "../const";
 
 export type StateDurationsByTile = Map<number, (number | null)[]>;
@@ -18,12 +19,14 @@ export const [
   addAggTileStatesAtom,
   deleteAggTileStatesBucketsAtom,
   syncAggTileStatesTilesAtom,
+  clearAggTileStatesAtom,
 ] = (function getAggTileStatesAtom() {
   const _aggTileStatesAtom = atom<TileStatesBucketsByGranularity>(new Map());
+  const emitterAtom = atom(new EventEmitter() as DrawEmitter);
   const _tilesKeyAtom = atom<string | undefined>(undefined);
 
   return [
-    atom(new EventEmitter() as DrawEmitter),
+    emitterAtom,
     atom((get) => get(_aggTileStatesAtom)),
     atom(
       null,
@@ -97,5 +100,6 @@ export const [
       get(aggTileStatesEmitterAtom).emit(dataChangeEventType);
       return true;
     }),
+    createClearAggAtom(_aggTileStatesAtom, emitterAtom),
   ];
 })();

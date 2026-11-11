@@ -3,6 +3,7 @@ import EventEmitter from "events";
 import type { GetDrawTiles } from "../aggDraw";
 import type { AggGranularity, AggSlots } from "../../../api/types";
 import { getBucketIdx } from "../utils";
+import { createClearAggAtom } from "../clearAggAtom";
 import { dataChangeEventType, drawEventType, type DrawEmitter } from "../const";
 
 /**
@@ -41,11 +42,13 @@ export const [
   addAggSlotsAtom,
   /** delete buckets, but don't emit a draw (skip redraw trigger) */
   deleteAggSlotsBucketsAtom,
+  clearAggSlotsAtom,
 ] = (function getAggSlotsAtom() {
   const _aggSlotsAtom = atom<SlotBucketsByGranularity>(new Map());
+  const emitterAtom = atom(new EventEmitter() as DrawEmitter);
 
   return [
-    atom(new EventEmitter() as DrawEmitter),
+    emitterAtom,
     atom((get) => get(_aggSlotsAtom)),
     atom(
       null,
@@ -114,5 +117,6 @@ export const [
         get(aggHeaderEmitterAtom).emit(dataChangeEventType);
       },
     ),
+    createClearAggAtom(_aggSlotsAtom, emitterAtom),
   ];
 })();

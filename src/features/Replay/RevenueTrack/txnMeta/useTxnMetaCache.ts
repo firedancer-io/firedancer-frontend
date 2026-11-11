@@ -1,12 +1,8 @@
-import { useAtomValue } from "jotai";
 import { useEffect } from "react";
-import { referenceNsAtom } from "../../atoms";
 import { useTimelineServerMessage } from "../../utils";
 import { txnMetaCache, txnMetaRequests } from "./txnMetaCache";
 
 export function useTxnMetaCache(): void {
-  const referenceNs = useAtomValue(referenceNsAtom);
-
   useTimelineServerMessage(
     "query_txn_meta",
     (m) => txnMetaRequests.resolve(m.id, { value: m.value }),
@@ -19,5 +15,5 @@ export function useTxnMetaCache(): void {
       unsub();
       txnMetaCache.reset();
     };
-  }, [referenceNs]);
+  }, []);
 }

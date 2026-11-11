@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, renderHook } from "@testing-library/react";
 import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
-import { startupTimeAtom, tilesAtom } from "../../../api/atoms";
+import { tilesAtom } from "../../../api/atoms";
 import { isDocumentVisibleAtom } from "../../../atoms";
 import { smoothedNowNsAtom } from "../../../nowAtoms";
 import { visibleRangeAtom } from "../atoms";
@@ -40,6 +40,7 @@ import { updateAggStatesMesh } from "./aggUtils";
 import { getTileSizeNs } from "../useAggQuery";
 import type { DataLevel } from "../coverage";
 import type { GetDrawTiles } from "../aggDraw";
+import { setStartupTimeAtom } from "../resetReplayState";
 
 const hooks = vi.hoisted(() => ({
   rendererRef: { current: undefined as RendererObj | undefined },
@@ -117,7 +118,7 @@ function getLevels(rendererObj: RendererObj) {
 
 beforeEach(() => {
   store.set(tilesAtom, testTiles);
-  store.set(startupTimeAtom, { startupTimeNanos: 0n } as never);
+  store.set(setStartupTimeAtom, 0n);
 });
 
 afterEach(() => {

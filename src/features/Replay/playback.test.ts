@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from "vitest";
 import { atom, createStore, type PrimitiveAtom } from "jotai";
-import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../nowAtoms";
 import { onFrameUpdate } from "../../frameLoop";
 import type * as FrameLoop from "../../frameLoop";
@@ -16,6 +15,7 @@ import {
   visibleRangeAtom,
 } from "./atoms";
 import { CHART_NOW_DELAY_MS, DEFAULT_WINDOW_MS } from "./const";
+import { setStartupTimeAtom } from "./resetReplayState";
 
 vi.mock("../../nowAtoms", () => ({
   smoothedNowNsAtom: atom<bigint | undefined>(undefined),
@@ -68,7 +68,7 @@ beforeEach(() => {
     return nextFrameId++;
   });
   store = createStore();
-  store.set(startupTimeAtom, { startupTimeNanos: 0n });
+  store.set(setStartupTimeAtom, 0n);
   setWorldEnd(100_000);
   store.set(initializeVisibleRangeAtom);
 });

@@ -3,6 +3,7 @@ import EventEmitter from "events";
 import type { GetDrawTiles } from "../aggDraw";
 import type { AggCpu, AggGranularity } from "../../../api/types";
 import { getBucketIdx } from "../utils";
+import { createClearAggAtom } from "../clearAggAtom";
 import { tilesAtom } from "../../../api/atoms";
 import { DEFAULT_SELECTED_KINDS, MAX_QUERY_TILES } from "./const";
 import { getTileKey } from "../utils";
@@ -70,12 +71,14 @@ export const [
   addAggCpuAtom,
   deleteAggCpuBucketsAtom,
   setTilesKeyAtom,
+  clearAggCpuAtom,
 ] = (function getAggCpuAtom() {
   const _aggCpuAtom = atom<CpuUtilizationByGranularity>(new Map());
+  const emitterAtom = atom(new EventEmitter() as DrawEmitter);
   const _tilesKeyAtom = atom<string | undefined>(undefined);
 
   return [
-    atom(new EventEmitter() as DrawEmitter),
+    emitterAtom,
     atom((get) => get(_aggCpuAtom)),
     atom(
       null,
@@ -150,5 +153,6 @@ export const [
       set(_tilesKeyAtom, tilesKey);
       return prevTilesKey !== undefined && prevTilesKey !== tilesKey;
     }),
+    createClearAggAtom(_aggCpuAtom, emitterAtom),
   ];
 })();

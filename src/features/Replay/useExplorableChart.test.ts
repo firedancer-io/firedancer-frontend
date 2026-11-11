@@ -1,7 +1,6 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
-import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../nowAtoms";
 import {
   initializeVisibleRangeAtom,
@@ -11,6 +10,7 @@ import {
 } from "./atoms";
 import { CHART_NOW_DELAY_MS, DEFAULT_WINDOW_MS, MIN_VISIBLE_MS } from "./const";
 import { useExplorableChart } from "./useExplorableChart";
+import { setStartupTimeAtom } from "./resetReplayState";
 
 vi.mock("../../nowAtoms", () => ({
   smoothedNowNsAtom: atom<bigint | undefined>(undefined),
@@ -54,7 +54,7 @@ function tsAtClientX(clientX: number) {
 }
 
 beforeEach(() => {
-  store.set(startupTimeAtom, { startupTimeNanos: 0n });
+  store.set(setStartupTimeAtom, 0n);
   setWorldEnd(WORLD_END_MS);
   store.set(initializeVisibleRangeAtom);
   store.set(resetToLiveAtom);

@@ -107,6 +107,7 @@ import {
   isAlpenglowAtom,
   finalizedSlotAtom,
 } from "./atoms";
+import { setStartupTimeAtom } from "../features/Replay/resetReplayState";
 import {
   tpsSampleIntervalMs,
   liveNetworkMetricsDebounceMs,
@@ -251,7 +252,8 @@ function useUpdateAtoms() {
   const setVoteBalance = useSetAtom(voteBalanceAtom);
   const setScheduleStrategy = useSetAtom(scheduleStrategyAtom);
 
-  const [startupTime, setStartupTime] = useAtom(startupTimeAtom);
+  const startupTime = useAtomValue(startupTimeAtom);
+  const setStartupTime = useSetAtom(setStartupTimeAtom);
 
   const [slotDurationDbMs, updateSlotDurationDbMs] = useReducer(() => {
     const uptimeDuration =
@@ -608,7 +610,7 @@ function useUpdateAtoms() {
               break;
             }
             case "startup_time_nanos": {
-              setStartupTime({ startupTimeNanos: value });
+              setStartupTime(value);
               break;
             }
             case "tiles": {

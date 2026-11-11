@@ -33,6 +33,7 @@ export const [
   addTimelineSlotsAtom,
   /** delete tiles, but don't emit a draw (skip redraw trigger) */
   deleteTimelineSlotTilesAtom,
+  clearTimelineSlotsAtom,
 ] = (function getNonAggSlotsAtom() {
   const _timelineSlotGroupsAtom = atom({
     slotGroups: new Map<number, SlotGroup>(),
@@ -168,6 +169,13 @@ export const [
 
         return { slotGroups, tileSlotGroups };
       });
+    }),
+    atom(null, (get, set) => {
+      set(_timelineSlotGroupsAtom, {
+        slotGroups: new Map<number, SlotGroup>(),
+        tileSlotGroups: new Map<number, Set<number>>(),
+      });
+      get(timelineSlotsEmitterAtom).emit(drawEventType);
     }),
   ];
 })();
