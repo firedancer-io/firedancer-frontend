@@ -42,6 +42,10 @@ export interface TileStatesData {
   txn_start_ms: number[];
   txn_end_ms: number[];
   txn_error_code: (number | null)[];
+  lthash_slot: number[];
+  lthash_tile: number[];
+  lthash_start_ms: number[];
+  lthash_end_ms: number[];
 }
 
 function emptyData(): TileStatesData {
@@ -54,6 +58,10 @@ function emptyData(): TileStatesData {
     txn_start_ms: [],
     txn_end_ms: [],
     txn_error_code: [],
+    lthash_slot: [],
+    lthash_tile: [],
+    lthash_start_ms: [],
+    lthash_end_ms: [],
   };
 }
 
@@ -110,6 +118,17 @@ function parseTxns(
     const errorCode = res.txn_error_code[segmentIdx];
     acc.txn_error_code.push(Number.isNaN(errorCode) ? null : errorCode);
   }
+
+  for (let taskIdx = 0; taskIdx < res.lthash_state_lo.length; taskIdx++) {
+    const stateIdx = res.lthash_state_lo[taskIdx];
+    if (stateTile[stateIdx] < 0 || !res.dur[stateIdx]) continue;
+    acc.lthash_slot.push(refSlot + res.lthash_slot_delta[taskIdx]);
+    acc.lthash_tile.push(stateTile[stateIdx]);
+    acc.lthash_start_ms.push(stateStartNs[stateIdx] / nsPerMs);
+    acc.lthash_end_ms.push(
+      (stateStartNs[stateIdx] + res.dur[stateIdx]) / nsPerMs,
+    );
+  }
 }
 
 function parseTileStates(res: MergedTileStatesResponse): TileStatesData {
@@ -140,6 +159,12 @@ function appendData(acc: TileStatesData, src: TileStatesData): void {
     acc.txn_end_ms.push(src.txn_end_ms[i]);
     acc.txn_error_code.push(src.txn_error_code[i]);
   }
+  for (let i = 0; i < src.lthash_slot.length; i++) {
+    acc.lthash_slot.push(src.lthash_slot[i]);
+    acc.lthash_tile.push(src.lthash_tile[i]);
+    acc.lthash_start_ms.push(src.lthash_start_ms[i]);
+    acc.lthash_end_ms.push(src.lthash_end_ms[i]);
+  }
 }
 
 function itemCount(data: TileStatesData): number {
@@ -147,7 +172,7 @@ function itemCount(data: TileStatesData): number {
   for (const kind of tileKinds) {
     for (const { count } of data.levels[kind]) rectCount += count;
   }
-  return rectCount + data.txn_idx.length;
+  return rectCount + data.txn_idx.length + data.lthash_slot.length;
 }
 
 // only a fully fetched tile's rect counts tell which levels to drop
