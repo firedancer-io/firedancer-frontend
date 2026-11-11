@@ -8,6 +8,7 @@ import {
 import { type RendererObj } from "./const";
 import { AGG_SLOT_SHRED_THRESHOLD_MS } from "../const";
 import { omit } from "lodash";
+import { createSmoothPass } from "../../WebGl/smoothPass";
 import { setUpAggResources } from "./aggUtils";
 import {
   setUpEdgeResources,
@@ -44,6 +45,7 @@ export function setUpRenderers(
     ...edgeResourceBundle,
     highlight: createSlotHighlight(),
     staleMeshKeys: new Set<string>(),
+    smoothPass: createSmoothPass(),
   };
   const aggResources = setUpAggResources(getWasContextLost);
 
@@ -52,6 +54,7 @@ export function setUpRenderers(
     if (!getWasContextLost()) {
       highlightMesh.mesh.geometry.dispose();
       disposeSlotMaterials(nonAggResources);
+      nonAggResources.smoothPass.dispose();
     }
     nonAggResources.cleanUpResources();
     cleanUpEdgeResources(edgeResourceBundle, getWasContextLost());

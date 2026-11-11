@@ -12,6 +12,7 @@ import {
   type TsRange,
   createRenderer,
   createRectMaterial,
+  getWholePxRange,
 } from "../../WebGl/webglUtils.ts";
 import {
   createSlotHighlight,
@@ -640,12 +641,10 @@ export function moveNonAggCamera(
 ) {
   const { camera, tileMeshes } = rendererObj.nonAggResources;
 
-  const viewWidthPx = rendererObj.renderer.domElement.width;
-  const msPerPx = (visibleRangeMs[1] - visibleRangeMs[0]) / viewWidthPx;
-  // Pan in whole device px so bars keep their spacing
-  const cameraReferenceMs = viewWidthPx
-    ? Math.round(visibleRangeMs[0] / msPerPx) * msPerPx
-    : visibleRangeMs[0];
+  const [cameraReferenceMs] = getWholePxRange(
+    visibleRangeMs,
+    rendererObj.renderer.domElement.width,
+  );
   rendererObj.nonAggResources.cameraReferenceMs = cameraReferenceMs;
   camera.left = 0;
   camera.right = visibleRangeMs[1] - visibleRangeMs[0];

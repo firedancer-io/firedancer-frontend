@@ -98,10 +98,12 @@ function getShredAtPoint(
   clientX: number,
   clientY: number,
   rect: HoveredRect,
-  visibleRange: TsRange,
 ) {
-  const ts = clientXToMs(clientX, rect, visibleRange);
-  const { camera } = renderer.nonAggResources;
+  const { camera, cameraReferenceMs } = renderer.nonAggResources;
+  const ts = clientXToMs(clientX, rect, [
+    cameraReferenceMs + camera.left,
+    cameraReferenceMs + camera.right,
+  ]);
   const worldY = clientYToWorldY(rect, clientY, camera.top, camera.bottom);
   return getShredAtPosition(ts, worldY, renderer.nonAggResources);
 }
@@ -261,7 +263,7 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
       clearHoveredAggShreds();
       store.set(
         hoveredShredAtom,
-        getShredAtPoint(renderer, clientX, clientY, rect, visibleRange),
+        getShredAtPoint(renderer, clientX, clientY, rect),
       );
     },
     30,
@@ -356,7 +358,12 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
 
     updateSlotHighlight(nonAggResources.highlight, renderer.domElement.width);
     updateSlotMeshes(nonAggResources);
-    renderModes(renderer, aggResources, nonAggResources);
+    nonAggResources.smoothPass.renderToTarget(
+      renderer,
+      nonAggResources.scene,
+      nonAggResources.camera,
+    );
+    renderModes(renderer, aggResources, nonAggResources.smoothPass.output);
   }, [rendererRef, modeRangesRef, renderModes, applyAxisMax]);
 
   const requestRender = useFrameRender(renderActive);
@@ -376,8 +383,7 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
       return;
     }
 
-    return getShredAtPoint(renderer, clientX, clientY, rect, visibleRange)
-      ?.slot;
+    return getShredAtPoint(renderer, clientX, clientY, rect)?.slot;
   });
 
   // the selected slot draws on top, so the shred under a still cursor can change
@@ -391,7 +397,11 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
       const worldRange = store.get(worldRangeAtom);
       if (referenceNs == null || !worldRange) return;
 
-      moveNonAggCamera(rendererRef.current.nonAggResources, visibleRange);
+      moveNonAggCamera(
+        rendererRef.current.nonAggResources,
+        visibleRange,
+        rendererRef.current.renderer.domElement.width,
+      );
       const granularity = getNonAggGranularity(
         visibleRange[1] - visibleRange[0],
       );

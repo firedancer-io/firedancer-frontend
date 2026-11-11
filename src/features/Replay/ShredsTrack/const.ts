@@ -3,6 +3,7 @@ import type { RectResources, RectMesh } from "../../WebGl/webglUtils";
 import type { DrawableSlot } from "../../Shreds/chartUtils";
 import type { SlotHighlight } from "../slotHighlight";
 import type { EdgeResourceBundle } from "../../Shreds/WebGl/edgeUtils";
+import type { createSmoothPass } from "../../WebGl/smoothPass";
 import { AggShredEventType } from "../../../api/entities";
 import {
   shredPublishedColor,
@@ -53,6 +54,7 @@ export interface NonAggRendererResources extends EdgeResourceBundle<string> {
    * redraws them in place, so the old geometry stays visible until then.
    */
   staleMeshKeys: Set<string>;
+  smoothPass: ReturnType<typeof createSmoothPass>;
 }
 
 export interface NonAggDrawInfo {
