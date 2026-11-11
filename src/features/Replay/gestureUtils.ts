@@ -18,3 +18,19 @@ export function isTap(press: ClientPoint, release: ClientPoint) {
     Math.abs(release.clientY - press.clientY) < PAN_THRESHOLD_PX
   );
 }
+
+const GESTURE_SURFACE_ATTR = "data-chart-gesture";
+
+/** Mark an element whose presses pan, zoom or select */
+export function markGestureSurface(el: HTMLElement) {
+  el.setAttribute(GESTURE_SURFACE_ATTR, "");
+  return () => el.removeAttribute(GESTURE_SURFACE_ATTR);
+}
+
+export function isGestureSurfaceTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    target.closest(`[${GESTURE_SURFACE_ATTR}]`) != null &&
+    !isExcludedTarget(target)
+  );
+}

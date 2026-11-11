@@ -40,6 +40,8 @@ export function positionBelowPoint(
 /**
  * Position a floating element to the right of a horizontal span (in viewport
  * coords), top-aligned to it, flipping to the left side if there isn't room.
+ * If neither side fits, or the span is off screen, it's shifted onto the screen,
+ * overlapping the span.
  */
 export function positionBesideSpan(
   span: { left: number; right: number; y: number },
@@ -61,7 +63,7 @@ export function positionBesideSpan(
     placement: "right-start",
     middleware: [
       flip({ fallbackPlacements: ["left-start"], crossAxis: false }),
-      shift({ padding: EDGE_MARGIN_PX }),
+      shift({ padding: EDGE_MARGIN_PX, crossAxis: true }),
     ],
   });
 }
