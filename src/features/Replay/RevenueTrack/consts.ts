@@ -24,7 +24,7 @@ export const nonAggMinAlpha = 0.05;
 export const nonAggMaxAlpha = 0.9;
 
 export type RevenueScale = "linear" | "power" | "log";
-export const DEFAULT_REVENUE_SCALE: RevenueScale = "linear";
+export const DEFAULT_REVENUE_SCALE: RevenueScale = "log";
 export const revenueScaleOptions: { value: RevenueScale; label: string }[] = [
   { value: "linear", label: "Linear" },
   { value: "power", label: "Power" },
