@@ -204,13 +204,10 @@ function ShredsChart({ remount, chartId, ...flexProps }: ShredsChartProps) {
   // like Replay's shreds track, hover only repaints the highlight
   const requestHoverRender = useFrameRender(() => {
     if (rendererRef.current) {
-      renderOverviewHover(rendererRef.current, scaleRef.current);
+      renderOverviewHover(rendererRef.current);
     }
   });
-  useAtomsSubscription(
-    [overviewHoveredShredAtom, overviewHoveredSlotAtom],
-    requestHoverRender,
-  );
+  useAtomsSubscription([overviewHoveredSlotAtom], requestHoverRender);
 
   // paused frames only redraw here
   useAtomsSubscription([isShredsPausedAtom], () => {

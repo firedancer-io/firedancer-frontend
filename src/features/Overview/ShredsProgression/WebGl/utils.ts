@@ -3,18 +3,13 @@ import type { RendererObj } from "../../../Shreds/types";
 import type { LabelsState } from "../utils";
 import { skippedClusterSlotsAtom } from "../../../../atoms";
 import { getDrawInfo } from "../../../Shreds/chartUtils";
-import { delayMs } from "../../../Shreds/const";
 import { SHRED_MESH_CAPACITY } from "../../../Shreds/WebGl/const";
 import {
   createSlotEdgeMaterial,
   createSlotMaterial,
 } from "../../../Shreds/WebGl/slotMaterials";
 import { createRectMesh } from "../../../WebGl/webglUtils";
-import {
-  getLeaderSlotsRange,
-  overviewHoveredShredAtom,
-  overviewHoveredSlotAtom,
-} from "../atoms";
+import { getLeaderSlotsRange, overviewHoveredSlotAtom } from "../atoms";
 import { updateLabels } from "../shredsProgressionPlugin";
 import { drawSlotShreds, releaseMesh } from "../../../Shreds/WebGl/drawUtils";
 import { minDirtySlotByChartAtom } from "../../../Shreds/atoms";
@@ -28,7 +23,6 @@ import {
   updateEdgeViewWidth,
   EDGE_RENDER_ORDER_OFFSET,
 } from "../../../Shreds/WebGl/edgeUtils";
-import { drawHoveredShred } from "../../../Shreds/WebGl/shredHover";
 import {
   setMeshSlot,
   updateSlotHighlightForSlots,
@@ -201,24 +195,7 @@ function getEdgeMesh(rendererObj: RendererObj, slotNumber: number) {
 }
 
 // like Replay's shreds track, hover doesn't redraw slot geometry
-export function renderOverviewHover(rendererObj: RendererObj, scale: number) {
-  const state = getShredsState(store.get);
-  if (!state) return;
-
-  const hovered = store.get(overviewHoveredShredAtom);
-  // above its own slot but below newer slots, like Replay's updateSlotMeshes
-  if (hovered) {
-    rendererObj.highlightMesh.mesh.renderOrder =
-      hovered.slot + EDGE_RENDER_ORDER_OFFSET;
-  }
-  // Overview draws in absolute ts deltas, so camera reference is 0
-  drawHoveredShred(
-    rendererObj.highlightMesh,
-    0,
-    hovered,
-    getVisibleTsRange(state, scale),
-    delayMs,
-  );
+export function renderOverviewHover(rendererObj: RendererObj) {
   updateSlotHighlightForSlots(
     rendererObj.highlight,
     store.get(overviewHoveredSlotAtom),
