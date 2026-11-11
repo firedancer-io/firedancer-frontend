@@ -26,6 +26,7 @@ export function useAggVotesQuery(chartId: string) {
     queryKey: QUERY_KEY,
     addAtom: addAggVotesAtom,
     deleteBucketsAtom: deleteAggVotesBucketsAtom,
+    getGranularity: getAggVotesGranularity,
     emitterAtom: aggVotesEmitterAtom,
   });
 }

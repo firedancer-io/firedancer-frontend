@@ -94,6 +94,10 @@ export function createParallelCache<
     }
   >();
 
+  let lastPrefetch:
+    | { granularity: Granularity; params: Params; worldEndBucket: bigint }
+    | undefined;
+
   let latestRequest:
     | {
         visibleRangeNs: NsTsRange;
@@ -342,6 +346,42 @@ export function createParallelCache<
     }
   };
 
+  /** Fetch the whole world, refreshing the tail tile once per new bucket */
+  const prefetchWorld = (
+    [worldStartNs, worldEndNs]: NsTsRange,
+    granularity: Granularity,
+    bucketSizeNs: bigint,
+    params: Params,
+  ) => {
+    if (worldEndNs <= worldStartNs || !store.get(isConnectedAtom)) return;
+
+    const worldEndBucket = worldEndNs / bucketSizeNs;
+    if (
+      lastPrefetch?.granularity === granularity &&
+      lastPrefetch.params === params &&
+      lastPrefetch.worldEndBucket === worldEndBucket
+    ) {
+      return;
+    }
+    lastPrefetch = { granularity, params, worldEndBucket };
+
+    const tileSizeNs = getTileSizeNs(granularity);
+    const { availableStartNs } = getTileStates(granularity);
+    const firstTile = getTileIdx(worldStartNs, tileSizeNs, false);
+    const lastTile = getTileIdx(worldEndNs, tileSizeNs, true);
+    for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
+      const tileEndNs = BigInt(tileIdx + 1) * tileSizeNs;
+      // evicted from the server
+      if (availableStartNs !== undefined && tileEndNs <= availableStartNs) {
+        continue;
+      }
+      const isStale = tileEndNs >= worldEndNs;
+      const queryId = getNewQueryId(granularity, tileIdx, isStale);
+      if (queryId == null) continue;
+      dispatchSingleTileQuery(granularity, queryId, tileIdx, params);
+    }
+  };
+
   /**
    * Mark tile associated with query ID as fetched, and return query info
    */
@@ -496,6 +536,7 @@ export function createParallelCache<
       pending.clear();
     }
     pendingQueries.clear();
+    lastPrefetch = undefined;
   };
 
   /**
@@ -517,11 +558,13 @@ export function createParallelCache<
     }
     getChartState().clear();
     pendingQueries.clear();
+    lastPrefetch = undefined;
     pauseStaleRefreshes();
   };
 
   return {
     queryRange,
+    prefetchWorld,
     markQueryComplete,
     pauseStaleRefreshes,
     clearCache,

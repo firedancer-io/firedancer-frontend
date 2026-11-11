@@ -26,6 +26,7 @@ export function useAggShredsQuery(chartId: string) {
     queryKey: QUERY_KEY,
     addAtom: addAggShredsAtom,
     deleteBucketsAtom: deleteAggShredsBucketsAtom,
+    getGranularity: getAggGranularity,
     emitterAtom: aggShredsEmitterAtom,
     drawTilesAtom: aggShredsDrawTilesAtom,
   });

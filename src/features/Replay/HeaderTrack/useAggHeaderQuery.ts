@@ -24,6 +24,7 @@ export function useAggHeaderQuery(chartId: string) {
     deleteBucketsAtom: deleteAggSlotsBucketsAtom,
     emitterAtom: aggHeaderEmitterAtom,
     drawTilesAtom: aggSlotsDrawTilesAtom,
+    getGranularity: getAggSlotsGranularity,
   });
   const { granularityLevels } = aggQuery;
 

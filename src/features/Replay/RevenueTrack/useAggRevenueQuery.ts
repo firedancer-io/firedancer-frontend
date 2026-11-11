@@ -30,6 +30,7 @@ export default function useAggRevenueQuery() {
     queryKey: QUERY_KEY,
     addAtom: addAggRevenueAtom,
     deleteBucketsAtom: deleteAggRevenueBucketsAtom,
+    getGranularity,
     emitterAtom: aggRevenueEmitterAtom,
   });
 }
