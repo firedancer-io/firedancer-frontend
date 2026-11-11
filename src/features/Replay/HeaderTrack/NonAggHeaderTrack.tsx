@@ -380,7 +380,8 @@ export function NonAggHeaderTrack({
   }, [containerStartMs, updateGroupPositionsOnly]);
 
   return (
-    <div className={className} ref={setTrackRef}>
+    <div className={clsx(className, styles.smoothed)} ref={setTrackRef}>
+      <SmoothFilter />
       <div ref={containerRef} className={styles.container}>
         {renderState?.slotGroups.map((group) => (
           <SlotGroupContainer
@@ -396,6 +397,16 @@ export function NonAggHeaderTrack({
     </div>
   );
 }
+
+const SmoothFilter = memo(function SmoothFilter() {
+  return (
+    <svg className={styles.smoothFilter} aria-hidden>
+      <filter id="non-agg-header-smooth" colorInterpolationFilters="sRGB">
+        <feConvolveMatrix order="3 1" kernelMatrix="1 4 1" divisor="6" />
+      </filter>
+    </svg>
+  );
+});
 
 function getSlotInGroupAtom(
   slotAtom: Atom<number | undefined>,
