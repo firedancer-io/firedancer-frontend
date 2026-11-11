@@ -20,12 +20,14 @@ import { useVotesCache } from "./VotesTrack/useVotesCache.ts";
 import Tracks from "./Tracks.tsx";
 import SlotDividers from "./SlotDividers.tsx";
 import HoveredTsLine from "./HoveredTsLine.tsx";
-import EpochMarkers from "./EpochMarkers.tsx";
-import { epochLabel } from "../../epochUtils.ts";
+import TrackEventMarkers, {
+  EPOCH_LABEL_WIDTH_PX,
+} from "./TrackEventMarkers.tsx";
+import { epochLabel, useGetEpochForSlot } from "../../epochUtils.ts";
+import { TimelineEventType } from "../../api/entities.ts";
 import epochLinesStyles from "./epochLines.module.css";
 import {
   trackHeight as headerHeight,
-  trackMarginBottom as headerMarginBottom,
   trackMarginTop as headerMarginTop,
 } from "./HeaderTrack/const.ts";
 import ReplayTooltip from "./ReplayTooltip.tsx";
@@ -34,10 +36,12 @@ import { useHoveredPosition, type HoveredRect } from "./useHoveredPosition.ts";
 
 const store = getDefaultStore();
 
-// sit below the non-agg header row
-const EPOCH_LINE_LABEL_GAP_PX = 5;
+const epochLineCullMarginPx = { left: 4 + EPOCH_LABEL_WIDTH_PX, right: 1 };
+
+// below the non-agg header's bottom
+const EPOCH_LINE_LABEL_GAP_PX = 10;
 const epochLineLabelTop =
-  headerMarginTop + headerHeight + headerMarginBottom + EPOCH_LINE_LABEL_GAP_PX;
+  headerMarginTop + headerHeight + EPOCH_LINE_LABEL_GAP_PX;
 
 const hoverOwner = "replay-tracks";
 
@@ -76,16 +80,24 @@ export default function Chart() {
     store.set(clearHoverInfoAtom, hoverOwner);
   }, []);
 
+  const getEpochForSlot = useGetEpochForSlot();
   const renderEpochLine = useCallback(
-    (epochNumber: number | undefined) => (
-      <span
-        className={epochLinesStyles.label}
-        style={{ top: epochLineLabelTop }}
-      >
-        {epochLabel(epochNumber)}
-      </span>
+    (slot: number) => (
+      <>
+        <div
+          className={epochLinesStyles.stroke}
+          // starts at the non-agg header's top
+          style={{ top: headerMarginTop }}
+        />
+        <span
+          className={epochLinesStyles.label}
+          style={{ top: epochLineLabelTop }}
+        >
+          {epochLabel(getEpochForSlot?.(slot))}
+        </span>
+      </>
     ),
-    [],
+    [getEpochForSlot],
   );
 
   const { setContainer: setHoverContainer } = useHoveredPosition({
@@ -139,10 +151,12 @@ export default function Chart() {
 
             <SlotDividers />
             <HoveredTsLine />
-            <EpochMarkers
+            <TrackEventMarkers
+              eventType={TimelineEventType.EpochStart}
               rootClassName={epochLinesStyles.root}
               markerParentClassName={epochLinesStyles.line}
-              hideWhenAggregate
+              showIn="nonAgg"
+              cullMarginPx={epochLineCullMarginPx}
               renderMarker={renderEpochLine}
             />
             <ReplayTooltip />

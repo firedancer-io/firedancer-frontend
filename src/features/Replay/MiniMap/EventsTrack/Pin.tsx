@@ -39,6 +39,10 @@ function PinFrame({
   );
 }
 
+export const PIN_TRIANGLE_WIDTH_PX = 10;
+export const PIN_TRIANGLE_HEIGHT_PX = 7;
+export const PIN_TRIANGLE_PATH = "M1 0.5H9L5 5.5L1 0.5Z";
+
 interface BasePinProps {
   noBar?: boolean;
   fullHeightBar?: boolean;
@@ -54,12 +58,12 @@ function BasePin({ noBar, fullHeightBar }: BasePinProps) {
       <svg
         className={styles.pinTriangle}
         xmlns="http://www.w3.org/2000/svg"
-        width="10"
-        height="7"
-        viewBox="0 0 10 7"
+        width={PIN_TRIANGLE_WIDTH_PX}
+        height={PIN_TRIANGLE_HEIGHT_PX}
+        viewBox={`0 0 ${PIN_TRIANGLE_WIDTH_PX} ${PIN_TRIANGLE_HEIGHT_PX}`}
         fill="none"
       >
-        <path d="M1 0.5H9L5 5.5L1 0.5Z" stroke="black" />
+        <path d={PIN_TRIANGLE_PATH} stroke="black" />
       </svg>
       {!noBar && (
         <Box

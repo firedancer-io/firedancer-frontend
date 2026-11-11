@@ -1,4 +1,5 @@
 import { useAtomValue } from "jotai";
+import { useMemo } from "react";
 import { epochScheduleAtom } from "./atoms";
 import type { EpochScheduleConfig } from "./api/types";
 
@@ -27,8 +28,11 @@ export function epochForSlot(slot: number, schedule: EpochScheduleConfig) {
 
 export function useGetEpochForSlot() {
   const schedule = useAtomValue(epochScheduleAtom);
-  if (!schedule) return undefined;
-  return (slot: number) => epochForSlot(slot, schedule);
+  return useMemo(
+    () =>
+      schedule ? (slot: number) => epochForSlot(slot, schedule) : undefined,
+    [schedule],
+  );
 }
 
 export function epochLabel(epochNumber: number | undefined) {

@@ -11,17 +11,25 @@
   bottom: 0;
   left: 0;
   width: 100%;
-  box-sizing: border-box;
-  margin-left: -0.5px;
-  border-left: 1px solid var(--epoch-line-color);
   transform-origin: left;
+}
+
+.stroke {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: var(--epoch-line-color);
 }
 
 .label {
   position: absolute;
-  left: 12px;
+  left: 4px;
   white-space: nowrap;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--epoch-line-text-color);
+  text-shadow:
+    0 0 3px var(--replay-track-background-color),
+    0 0 3px var(--replay-track-background-color);
 }

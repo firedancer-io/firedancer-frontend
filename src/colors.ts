@@ -193,8 +193,9 @@ export const epochNotLiveColor = "#3CB4FF";
 export const epochSliderProgressColor = "#142D53";
 export const epochSkippedSlotColor = "#FF5353";
 export const epochSliderTrackColor = "#24262B";
-export const epochLineColor = "rgba(200, 205, 215, 0.6)";
-export const epochLineTextColor = "#c8cdd7";
+export const epochLineColor = "#C8CDD799";
+export const epochLineTextColor = "#C8CDD7";
+export const epochPinColor = "rgba(200, 205, 215, 0.70)";
 export const bootColor = "#f5a524";
 
 // replay headers
