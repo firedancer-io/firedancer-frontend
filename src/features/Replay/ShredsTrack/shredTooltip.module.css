@@ -14,8 +14,8 @@
   color: var(--shred-replayed-repair-color);
 }
 
-.reconstructed-text-color {
-  color: #8e909d;
+.reconstructed-color {
+  color: var(--shred-reconstructed-color);
 }
 
 .published-color {

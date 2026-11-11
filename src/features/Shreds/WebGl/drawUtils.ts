@@ -343,7 +343,7 @@ function getShredEventColor(
       } else if (eventPositions.has(ShredEvent.shred_received_turbine)) {
         return colors.replayedTurbine;
       } else {
-        return colors.replayedNothing;
+        return colors.reconstructed;
       }
     }
     case ShredEvent.shred_published: {

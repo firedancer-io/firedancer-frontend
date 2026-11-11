@@ -21,7 +21,7 @@ import styles from "./shredTooltip.module.css";
 
 const seriesColorClassName: Record<AggShredEventType, string | undefined> = {
   [AggShredEventType.Repair]: styles.replayedRepairColor,
-  [AggShredEventType.Reconstructed]: styles.reconstructedTextColor,
+  [AggShredEventType.Reconstructed]: styles.reconstructedColor,
   [AggShredEventType.Turbine]: styles.replayedTurbineColor,
   [AggShredEventType.Published]: styles.publishedColor,
 };
