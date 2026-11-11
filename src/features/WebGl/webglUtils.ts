@@ -97,6 +97,26 @@ export type RectResources = {
   rectMaterial: THREE.RawShaderMaterial;
 };
 
+// The visible range moved to a whole device px, so content pans without resampling
+export function getWholePxRange(
+  visibleRangeMs: TsRange,
+  viewWidthPx: number,
+): TsRange {
+  if (!viewWidthPx) return visibleRangeMs;
+  const windowSizeMs = visibleRangeMs[1] - visibleRangeMs[0];
+  const msPerPx = windowSizeMs / viewWidthPx;
+  const startMs = Math.round(visibleRangeMs[0] / msPerPx) * msPerPx;
+  return [startMs, startMs + windowSizeMs];
+}
+
+export const fullscreenVertexShader = /* glsl */ `
+  in vec2 position; // unit quad in [-0.5, 0.5]
+
+  void main() {
+    gl_Position = vec4(position * 2.0, 0.0, 1.0);
+  }
+`;
+
 export function createUnitQuad() {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(

@@ -1,6 +1,6 @@
 import { getDefaultStore } from "jotai";
 import type { RectMesh, TsRange } from "../../WebGl/webglUtils";
-import { createRectMesh } from "../../WebGl/webglUtils";
+import { createRectMesh, getWholePxRange } from "../../WebGl/webglUtils";
 import {
   updateEdgeViewWidth,
   EDGE_RENDER_ORDER_OFFSET,
@@ -123,14 +123,16 @@ export function drawHoveredShred(
 export function moveNonAggCamera(
   resources: NonAggRendererResources,
   visibleRange: TsRange,
+  viewWidthPx: number,
 ) {
   const { camera } = resources;
 
-  const cameraReferenceMs = visibleRange[0];
+  const cameraRange = getWholePxRange(visibleRange, viewWidthPx);
+  const cameraReferenceMs = cameraRange[0];
   resources.cameraReferenceMs = cameraReferenceMs;
 
   const changed = updateCameraXRange(
-    [visibleRange[0] - cameraReferenceMs, visibleRange[1] - cameraReferenceMs],
+    [0, cameraRange[1] - cameraReferenceMs],
     camera,
   );
 
@@ -250,6 +252,7 @@ export function drawNonAggShreds(
   const resources = rendererObj.nonAggResources;
 
   const viewportWidthPx = rendererObj.renderer.domElement.width;
+  const drawnRange = getWholePxRange(visibleRange, viewportWidthPx);
   if (viewportWidthPx > 0) {
     updateEdgeViewWidth(resources.edgeResources.rectMaterial, viewportWidthPx);
   }
@@ -326,7 +329,7 @@ export function drawNonAggShreds(
     slotRange.max,
     primary,
     fallback,
-    visibleRange,
+    drawnRange,
     shredsDrawRange,
     (slot) => !!slot.skipped,
     undefined,
@@ -384,7 +387,7 @@ export function drawNonAggShreds(
   };
 
   drawSlotShreds(
-    visibleRange,
+    drawnRange,
     shredsDrawRange,
     // pad bottom so the tallest column lands at MAX_HEIGHT_RATIO
     maxShreds > 0 ? maxShreds / MAX_HEIGHT_RATIO : maxShreds,

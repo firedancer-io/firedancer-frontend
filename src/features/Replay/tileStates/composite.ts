@@ -1,5 +1,9 @@
 import * as THREE from "three";
-import { convertToWebGlColor, type RgbColor } from "../../WebGl/webglUtils.ts";
+import {
+  convertToWebGlColor,
+  fullscreenVertexShader,
+  type RgbColor,
+} from "../../WebGl/webglUtils.ts";
 import type { TileState } from "../../../api/entities.ts";
 import { replayTrackBackgroundColor } from "../../../colors.ts";
 import { BAR_HEIGHT_RATIO, tileStateColors } from "./consts.ts";
@@ -59,14 +63,6 @@ export function getLinearColors(states: TileState[]) {
 function getSrgbColors(states: TileState[]) {
   return states.map((state) => SRGB_PALETTE[state]);
 }
-
-const fullscreenVertexShader = /* glsl */ `
-  in vec2 position; // unit quad in [-0.5, 0.5]
-
-  void main() {
-    gl_Position = vec4(position * 2.0, 0.0, 1.0);
-  }
-`;
 
 /**
  * Highlights a px by the slot and group most of its busy time is in. Agg data
