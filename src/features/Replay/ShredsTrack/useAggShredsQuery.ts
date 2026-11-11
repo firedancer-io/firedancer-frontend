@@ -7,6 +7,7 @@ import {
   addAggShredsAtom,
   deleteAggShredsBucketsAtom,
   aggShredsEmitterAtom,
+  aggShredsDrawTilesAtom,
 } from "./atoms";
 
 const QUERY_KEY = "query_agg_shreds" satisfies TimelineQueryKey;
@@ -26,5 +27,6 @@ export function useAggShredsQuery(chartId: string) {
     addAtom: addAggShredsAtom,
     deleteBucketsAtom: deleteAggShredsBucketsAtom,
     emitterAtom: aggShredsEmitterAtom,
+    drawTilesAtom: aggShredsDrawTilesAtom,
   });
 }

@@ -97,7 +97,7 @@ export function createReplayComposite(
 
   return {
     setStates: pass.setStates,
-    render: ({ msPerPx, isAgg, aggMaxStateShare }, rowCount) => {
+    render: ({ msPerPx, aggMaxStateShare }, rowCount, isAgg) => {
       const { width, height } = renderer.domElement;
       const pixelRatio = renderer.getPixelRatio();
       const lanePx = ((height / rowCount) * BAR_HEIGHT_RATIO) / laneCount;

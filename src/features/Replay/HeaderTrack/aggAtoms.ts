@@ -1,8 +1,9 @@
 import { atom } from "jotai";
 import EventEmitter from "events";
+import type { GetDrawTiles } from "../aggDraw";
 import type { AggGranularity, AggSlots } from "../../../api/types";
 import { getBucketIdx } from "../utils";
-import { drawEventType, type DrawEmitter } from "../const";
+import { dataChangeEventType, drawEventType, type DrawEmitter } from "../const";
 
 /**
  * Whether the aggregate header is currently shown
@@ -31,6 +32,8 @@ export function getSlotCount(
  */
 type SlotsByBucketIdx = Map<number, SlotCounts>;
 export type SlotBucketsByGranularity = Map<AggGranularity, SlotsByBucketIdx>;
+
+export const aggSlotsDrawTilesAtom = atom<GetDrawTiles | undefined>(undefined);
 
 export const [
   aggHeaderEmitterAtom,
@@ -90,12 +93,13 @@ export const [
           prev.set(granularity, slotsByBucketIdx);
           return prev;
         });
+        get(aggHeaderEmitterAtom).emit(dataChangeEventType);
         get(aggHeaderEmitterAtom).emit(drawEventType);
       },
     ),
     atom(
       null,
-      (_get, set, granularity: AggGranularity, bucketIdxs: number[]) => {
+      (get, set, granularity: AggGranularity, bucketIdxs: number[]) => {
         set(_aggSlotsAtom, (prev) => {
           const slotsByBucketIdx = prev.get(granularity);
           if (!slotsByBucketIdx) return prev;
@@ -107,6 +111,7 @@ export const [
           prev.set(granularity, slotsByBucketIdx);
           return prev;
         });
+        get(aggHeaderEmitterAtom).emit(dataChangeEventType);
       },
     ),
   ];

@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
-import { calcAbsoluteNs } from "../utils";
+import { calcAbsoluteNs, calcAbsoluteNsRange } from "../utils";
 import type { TileCache, TileCacheDelta } from "./cache";
 
 /**
@@ -10,6 +10,7 @@ import type { TileCache, TileCacheDelta } from "./cache";
  */
 export function useTileCacheQuery<TData, TMeta>(
   cache: TileCache<TData, TMeta>,
+  hasFallbackData?: (tileRangeNs: NsTsRange) => boolean,
 ): (
   referenceNs: bigint,
   visibleRangeMs: TsRange,
@@ -17,14 +18,11 @@ export function useTileCacheQuery<TData, TMeta>(
 ) => void {
   return useCallback(
     (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
-      const visibleRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, visibleRangeMs[0]),
-        calcAbsoluteNs(referenceNs, visibleRangeMs[1]),
-      ];
+      const visibleRangeNs = calcAbsoluteNsRange(referenceNs, visibleRangeMs);
       const worldEndNs = calcAbsoluteNs(referenceNs, worldRangeMs[1]);
-      cache.requestRange(visibleRangeNs, worldEndNs);
+      cache.requestRange(visibleRangeNs, worldEndNs, hasFallbackData);
     },
-    [cache],
+    [cache, hasFallbackData],
   );
 }
 

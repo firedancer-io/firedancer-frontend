@@ -39,11 +39,13 @@ interface ReplayTrackProps extends WebGlRemountProps {
 }
 
 function ReplayTrack({ height, aggQuery, remount }: ReplayTrackProps) {
-  const { query, aggGranularity } = useTileStatesQuery(aggQuery);
+  const { query, aggGranularity, granularityLevels } =
+    useTileStatesQuery(aggQuery);
   const { containerRef, rows, isAgg } = useTileStatesRenderer({
     config,
     remount,
     query,
+    granularityLevels,
   });
   const layout = getLanesLayout(height, rows.length);
   const laneGapPx = getLaneGapPx(

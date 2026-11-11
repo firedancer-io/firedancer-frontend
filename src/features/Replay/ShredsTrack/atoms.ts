@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import EventEmitter from "events";
+import type { GetDrawTiles } from "../aggDraw";
 import type {
   AggGranularity,
   AggShreds,
@@ -23,6 +24,8 @@ export type ShredEventCounts = Record<AggShredEventType, number | null>;
  */
 type EventsByBucketIdx = Map<number, ShredEventCounts>;
 export type ShredBucketsByGranularity = Map<AggGranularity, EventsByBucketIdx>;
+
+export const aggShredsDrawTilesAtom = atom<GetDrawTiles | undefined>(undefined);
 
 export const [
   aggShredsEmitterAtom,

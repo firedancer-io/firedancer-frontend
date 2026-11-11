@@ -4,6 +4,9 @@ import {
   createRenderer,
   createRectResources,
   disposeRectResources,
+  drawInRangesPx,
+  getRangesPx,
+  type NsTsRange,
   type RectResources,
   type TsRange,
 } from "../../WebGl/webglUtils.ts";
@@ -28,14 +31,29 @@ import {
   wrapStates,
   type StatesMesh,
 } from "./tileStatesMesh.ts";
-import { tileStatesBarLayout, type BarLayout } from "./tileStatesRects.ts";
+import {
+  MAX_COVERAGE_STATES,
+  tileStatesBarLayout,
+  type BarLayout,
+} from "./tileStatesRects.ts";
 import type { MergedLevel } from "./mergeTileStates.ts";
-import { getTileRows, MERGE_BIN_PX, type TileKind } from "./consts.ts";
+import {
+  getTileRows,
+  MERGE_BIN_PX,
+  tileKinds,
+  tileStatesTileNs,
+  type TileKind,
+} from "./consts.ts";
 import type { CompositeContext } from "./composite.ts";
-import { referenceNsAtom, visibleRangeAtom } from "../atoms.ts";
+import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
-import { calcRelativeMs } from "../utils.ts";
+import {
+  calcAbsoluteNs,
+  calcAbsoluteNsRange,
+  calcRelativeMs,
+} from "../utils.ts";
 import type { AggMeshBuild } from "./aggUtils.ts";
+import type { ModeRanges } from "../coverage.ts";
 import {
   createSlotHighlight,
   getRelativeSlot,
@@ -71,7 +89,7 @@ export interface TileStatesComposite {
   overlay?: CompositeOverlay;
   setStates: (states: TileState[]) => void;
   resize?: () => void;
-  render: (rendererObj: RendererObj, rowCount: number) => void;
+  render: (rendererObj: RendererObj, rowCount: number, isAgg: boolean) => void;
   dispose: () => void;
 }
 
@@ -114,12 +132,14 @@ export interface RendererObj {
   availableMeshes: DataTileMeshes[];
   liveDataTileKey: string | undefined;
   renderedGranularity: TileStatesGranularity | undefined;
+  /** Visible data tiles range the meshes were last synced for */
+  syncedTileRangeNs: NsTsRange | undefined;
   aggStatesScene: THREE.Scene;
   aggMesh: StatesMesh;
   aggMeshBuild: AggMeshBuild | undefined;
   /** The largest share of busy time any state has in a visible agg bucket */
   aggMaxStateShare: number;
-  isAgg: boolean;
+  modeRanges: ModeRanges;
   msPerPx: number;
   anchorPx: number;
   viewStartPx: number;
@@ -235,11 +255,12 @@ export function setUpRenderer(
     availableMeshes,
     liveDataTileKey: undefined,
     renderedGranularity: undefined,
+    syncedTileRangeNs: undefined,
     aggStatesScene,
     aggMesh,
     aggMeshBuild: undefined,
     aggMaxStateShare: 1,
-    isAgg: false,
+    modeRanges: { agg: [], nonAgg: [] },
     msPerPx: 0,
     anchorPx: 0,
     viewStartPx: 0,
@@ -291,18 +312,36 @@ export function render(rendererObj: RendererObj) {
     material.uniforms.uRowCount.value = rowCount;
   }
 
-  const statesScene = rendererObj.isAgg
-    ? rendererObj.aggStatesScene
-    : rendererObj.tileStatesScene;
+  const visibleRange = store.get(visibleRangeAtom);
+  const { agg, nonAgg } = rendererObj.modeRanges;
+  const aggRangesPx =
+    visibleRange && nonAgg.length ? getRangesPx(visibleRange, agg, width) : [];
+  const isAggOnly = !nonAgg.length;
+
+  // Each mode's states cover its ranges. Agg is drawn over the non agg base
   renderer.setRenderTarget(tileStatesTarget);
   renderer.clear();
-  renderer.render(statesScene, camera);
+  renderer.render(
+    isAggOnly ? rendererObj.aggStatesScene : rendererObj.tileStatesScene,
+    camera,
+  );
+  if (aggRangesPx.length) {
+    tileStatesTarget.scissorTest = true;
+    for (const [startPx, endPx] of aggRangesPx) {
+      tileStatesTarget.scissor.set(startPx, 0, endPx - startPx, coverageHeight);
+      // reapplies the target's scissor
+      renderer.setRenderTarget(tileStatesTarget);
+      renderer.clear();
+      renderer.render(rendererObj.aggStatesScene, camera);
+    }
+    tileStatesTarget.scissorTest = false;
+  }
 
   // batch and agg data have no slots, so composites highlight them by time
   const drawSlotCoverage =
+    !isAggOnly &&
     rendererObj.renderedGranularity === TileStatesGranularityEnum.txn &&
     highlight.uniforms.uHighlightActive.value > 0.5;
-  hasSlotCoverage.value = drawSlotCoverage ? 1 : 0;
   if (drawSlotCoverage) {
     if (
       slotCoverageTarget.width !== width ||
@@ -310,14 +349,22 @@ export function render(rendererObj: RendererObj) {
     ) {
       slotCoverageTarget.setSize(width, rowCount);
     }
+    const { tileStatesScene } = rendererObj;
     renderer.setRenderTarget(slotCoverageTarget);
     renderer.clear();
-    statesScene.overrideMaterial = slotCoverageMaterial;
-    renderer.render(statesScene, camera);
-    statesScene.overrideMaterial = null;
+    tileStatesScene.overrideMaterial = slotCoverageMaterial;
+    renderer.render(tileStatesScene, camera);
+    tileStatesScene.overrideMaterial = null;
   }
 
-  composite.render(rendererObj, rowCount);
+  hasSlotCoverage.value = drawSlotCoverage ? 1 : 0;
+  composite.render(rendererObj, rowCount, isAggOnly);
+  if (aggRangesPx.length) {
+    hasSlotCoverage.value = 0;
+    drawInRangesPx(renderer, aggRangesPx, () =>
+      composite.render(rendererObj, rowCount, true),
+    );
+  }
 }
 
 /** A rect's relative slot for highlighting, NO_SLOT if it has none */
@@ -573,37 +620,220 @@ export function syncMeshes(rendererObj: RendererObj, rebuild = false) {
     composite,
     availableMeshes,
     dataTileMeshes,
-    liveDataTileKey,
     renderedGranularity,
   } = rendererObj;
+  rendererObj.syncedTileRangeNs =
+    renderedGranularity && getVisibleTileRangeNs(renderedGranularity);
   const dataTiles = renderedGranularity
-    ? tileStatesCaches[renderedGranularity].getTiles()
+    ? [
+        ...tileStatesCaches[renderedGranularity].getTiles().map((dataTile) => ({
+          key: dataTileKey(dataTile),
+          getDataTile: () => dataTile,
+        })),
+        ...getFallbackDataTiles(renderedGranularity),
+      ]
     : [];
   const rowOfTile = getRowOfTile(rendererObj.config.kind);
 
   const keys = new Set<string>();
 
   // Build meshes for new data tiles, and rebuild the ones built while live
-  for (const dataTile of dataTiles) {
-    const key = dataTileKey(dataTile);
+  for (const { key, getDataTile } of dataTiles) {
     keys.add(key);
     const built = dataTileMeshes.get(key);
     if (!rebuild && built && !built.isLive) continue;
 
     const meshes = built ?? addDataTileMeshes(rendererObj, key);
-    buildDataTileMeshes(rendererObj, meshes, dataTile, rowOfTile, false);
+    buildDataTileMeshes(rendererObj, meshes, getDataTile(), rowOfTile, false);
+  }
+
+  // Build unmarked live data tile meshes, e.g. after a granularity change
+  if (renderedGranularity && rendererObj.liveDataTileKey === undefined) {
+    const liveDataTile = tileStatesCaches[renderedGranularity].getLiveTile();
+    // skip a just cached live tile, which is drawn from its kept levels
+    if (liveDataTile && !keys.has(dataTileKey(liveDataTile))) {
+      appendLiveStates(rendererObj, liveDataTile, liveDataTile.data, true);
+    }
   }
 
   // Evict meshes for data tiles no longer cached and return them to the pool
   // to be reused. Exclude the live data tile's meshes from eviction.
   for (const [key, meshes] of dataTileMeshes) {
-    if (keys.has(key) || key === liveDataTileKey) continue;
+    if (keys.has(key) || key === rendererObj.liveDataTileKey) continue;
 
     for (const level of meshes.levels) tileStatesScene.remove(level.mesh.mesh);
     if (meshes.overlay) composite.overlay?.scene.remove(meshes.overlay.mesh);
     dataTileMeshes.delete(key);
     availableMeshes.push(meshes);
   }
+}
+
+/** Whether the visible data tiles changed since the meshes were synced */
+export function isVisibleTileRangeChanged(rendererObj: RendererObj) {
+  const { renderedGranularity, syncedTileRangeNs } = rendererObj;
+  if (!renderedGranularity) return false;
+  const rangeNs = getVisibleTileRangeNs(renderedGranularity);
+  return (
+    rangeNs?.[0] !== syncedTileRangeNs?.[0] ||
+    rangeNs?.[1] !== syncedTileRangeNs?.[1]
+  );
+}
+
+function getVisibleTileRangeNs(
+  granularity: TileStatesGranularity,
+): NsTsRange | undefined {
+  const referenceNs = store.get(referenceNsAtom);
+  const visibleRange = store.get(visibleRangeAtom);
+  if (referenceNs == null || !visibleRange) return;
+
+  const tileNs = tileStatesTileNs[granularity];
+  return [
+    (calcAbsoluteNs(referenceNs, visibleRange[0]) / tileNs - 1n) * tileNs,
+    (calcAbsoluteNs(referenceNs, visibleRange[1]) / tileNs + 2n) * tileNs,
+  ];
+}
+
+interface DataTileSource {
+  key: string;
+  getDataTile: () => TileStatesDataTile;
+}
+
+/** Other granularity data tiles to draw where visible ones haven't loaded */
+function getFallbackDataTiles(
+  granularity: TileStatesGranularity,
+): DataTileSource[] {
+  const referenceNs = store.get(referenceNsAtom);
+  const worldRange = store.get(worldRangeAtom);
+  const tileRangeNs = getVisibleTileRangeNs(granularity);
+  if (referenceNs == null || !worldRange || !tileRangeNs) return [];
+  const [worldStartNs, worldEndNs] = calcAbsoluteNsRange(
+    referenceNs,
+    worldRange,
+  );
+
+  const tileNs = tileStatesTileNs[granularity];
+  const [firstStartNs, endNs] = tileRangeNs;
+
+  const fallbacks: DataTileSource[] = [];
+  for (let startNs = firstStartNs; startNs < endNs; startNs += tileNs) {
+    const tileEndNs = startNs + tileNs;
+    // data tiles are never fetched outside the world
+    if (startNs >= worldEndNs || tileEndNs <= worldStartNs) continue;
+    // cached data tiles, including partial ones, are drawn from their own data
+    if (tileStatesCaches[granularity].getTile(startNs)) continue;
+
+    if (granularity === TileStatesGranularityEnum.txn) {
+      // its batch data tile, clipped to it
+      const batchDataTile = tileStatesCaches.txn_batch.getTile(startNs);
+      if (!batchDataTile || batchDataTile.isLive) continue;
+      fallbacks.push({
+        key: `${TileStatesGranularityEnum.txn_batch}:${startNs}`,
+        getDataTile: () => ({
+          startNs,
+          endNs: tileEndNs - 1n,
+          data: clipData(batchDataTile, startNs, tileEndNs, referenceNs),
+          meta: null,
+        }),
+      });
+      continue;
+    }
+
+    // whichever of its txn data tiles have loaded
+    for (
+      let txnStartNs = startNs;
+      txnStartNs < tileEndNs;
+      txnStartNs += tileStatesTileNs.txn
+    ) {
+      const txnDataTile = tileStatesCaches.txn.getTile(txnStartNs);
+      if (!txnDataTile || txnDataTile.isLive) continue;
+      fallbacks.push({
+        key: dataTileKey(txnDataTile),
+        getDataTile: () => txnDataTile,
+      });
+    }
+  }
+  return fallbacks;
+}
+
+/**
+ * Keep the data tile's rects and txn segments overlapping [startNs, endNs),
+ * clipped to it. Rect edges are moved to be from startNs.
+ */
+function clipData(
+  dataTile: TileStatesDataTile,
+  startNs: bigint,
+  endNs: bigint,
+  referenceNs: bigint,
+): TileStatesData {
+  const { data } = dataTile;
+  const offsetMs = calcRelativeMs(dataTile.startNs, startNs);
+  const durationMs = calcRelativeMs(startNs, endNs);
+  const levels = {} as TileStatesData["levels"];
+  for (const kind of tileKinds) {
+    levels[kind] = data.levels[kind].map((level) =>
+      clipLevel(level, offsetMs, durationMs),
+    );
+  }
+
+  const clipped: TileStatesData = {
+    levels,
+    referenceSlot: data.referenceSlot,
+    txn_slot: [],
+    txn_idx: [],
+    txn_tile: [],
+    txn_start_ms: [],
+    txn_end_ms: [],
+    txn_error_code: [],
+  };
+  const startMs = calcRelativeMs(referenceNs, startNs);
+  const endMs = calcRelativeMs(referenceNs, endNs);
+  for (let i = 0; i < data.txn_idx.length; i++) {
+    if (data.txn_end_ms[i] <= startMs || data.txn_start_ms[i] >= endMs)
+      continue;
+    clipped.txn_slot.push(data.txn_slot[i]);
+    clipped.txn_idx.push(data.txn_idx[i]);
+    clipped.txn_tile.push(data.txn_tile[i]);
+    clipped.txn_start_ms.push(Math.max(startMs, data.txn_start_ms[i]));
+    clipped.txn_end_ms.push(Math.min(endMs, data.txn_end_ms[i]));
+    clipped.txn_error_code.push(data.txn_error_code[i]);
+  }
+  return clipped;
+}
+
+/**
+ * Keep rects overlapping [offsetMs, offsetMs + durationMs) of the level's
+ * data tile, clipped to it and moved to be from offsetMs
+ */
+function clipLevel(
+  level: MergedLevel,
+  offsetMs: number,
+  durationMs: number,
+): MergedLevel {
+  const barStride = MAX_COVERAGE_STATES + 1;
+  const edges: number[] = [];
+  const bar: number[] = [];
+  const slot: number[] = [];
+  const pushEdge = (ms: number) => {
+    const hi = Math.fround(ms);
+    edges.push(hi, ms - hi);
+  };
+  for (let i = 0; i < level.count; i++) {
+    const r = i * 4;
+    const startMs = level.edges[r] + level.edges[r + 1] - offsetMs;
+    const endMs = level.edges[r + 2] + level.edges[r + 3] - offsetMs;
+    if (endMs <= 0 || startMs >= durationMs) continue;
+    pushEdge(Math.max(0, startMs));
+    pushEdge(Math.min(durationMs, endMs));
+    for (let j = 0; j < barStride; j++) bar.push(level.bar[i * barStride + j]);
+    slot.push(level.slot[i]);
+  }
+  return {
+    binMs: level.binMs,
+    edges: Float32Array.from(edges),
+    bar: Uint16Array.from(bar),
+    slot: Float32Array.from(slot),
+    count: slot.length,
+  };
 }
 
 export function appendLiveStates(

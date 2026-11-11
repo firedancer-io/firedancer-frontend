@@ -15,7 +15,7 @@ export const revenueViewOptsAtom = atom<RevenueViewOpts>(
   DEFAULT_REVENUE_VIEW_OPTS,
 );
 
-type Revenues = Record<RevenueType, bigint | null>;
+export type Revenues = Record<RevenueType, bigint | null>;
 
 export function getAggRevenueValue(
   revenues: Revenues,

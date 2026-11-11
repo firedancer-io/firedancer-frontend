@@ -21,7 +21,7 @@ import {
   clientXToMs,
   getSlotDrawTileIdxs,
 } from "../utils";
-import { tileSizeNs, useNonAggHeaderQuery } from "./useNonAggHeaderQuery";
+import { tileSizeNs, type useNonAggHeaderQuery } from "./useNonAggHeaderQuery";
 import { isAggregate } from "./utils";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible";
@@ -43,14 +43,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { aggHeaderEmitterAtom } from "./aggAtoms";
+import { isAggHeaderVisibleAtom } from "./aggAtoms";
 import { drawEventType } from "../const";
 import MonoText from "../../../components/MonoText";
 import { trackHeight } from "./const";
 
 const store = getDefaultStore();
 const logoSize = 8;
-const chartId = "non-agg-header-track";
 const containerWindowMs = Number(tileSizeNs) / nsPerMs;
 
 /**
@@ -148,13 +147,13 @@ function applyTierClasses(
 export interface NonAggHeaderTrackProps {
   className: string;
   width: number;
-  showNonAgg: () => void;
+  nonAggQuery: ReturnType<typeof useNonAggHeaderQuery>;
 }
 
 export function NonAggHeaderTrack({
   className,
   width,
-  showNonAgg,
+  nonAggQuery: { query: nonAggQuery, isVisibleFetched },
 }: NonAggHeaderTrackProps) {
   const [renderState, setRenderState] = useState<{
     slotGroups: SlotGroup[];
@@ -164,8 +163,6 @@ export function NonAggHeaderTrack({
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const containerStartMsRef = useRef(0);
-
-  const nonAggQuery = useNonAggHeaderQuery(chartId);
 
   const throttledRelativeTsQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
@@ -260,25 +257,30 @@ export function NonAggHeaderTrack({
 
     updateGroupPositionsOnly(referenceNs, visibleRange);
 
-    if (isAggregate(visibleRange)) return;
-
-    throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
-  }, [updateGroupPositionsOnly, throttledRelativeTsQuery]);
+    const isDrawable = isVisibleFetched(referenceNs, visibleRange, worldRange);
+    const isAgg = isAggregate(visibleRange);
+    if (isDrawable && isAgg !== store.get(isAggHeaderVisibleAtom)) {
+      throttledUpdateGroups(referenceNs, visibleRange);
+    }
+    if (!isAgg) throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
+  }, [
+    updateGroupPositionsOnly,
+    isVisibleFetched,
+    throttledUpdateGroups,
+    throttledRelativeTsQuery,
+  ]);
 
   /**
-   * Update groups that are rendered and switch to showing non-agg
+   * Update groups that are rendered
    */
-  const throttledUpdateGroupsAndShow = useThrottledCallbackIfVisible(
+  const throttledUpdateGroupsForData = useThrottledCallbackIfVisible(
     useCallback(() => {
       const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
-      if (!visibleRange || referenceNs == null || isAggregate(visibleRange)) {
-        return;
-      }
+      if (!visibleRange || referenceNs == null) return;
 
       throttledUpdateGroups(referenceNs, visibleRange);
-      showNonAgg();
-    }, [showNonAgg, throttledUpdateGroups]),
+    }, [throttledUpdateGroups]),
     70,
     { leading: true, trailing: true },
   );
@@ -317,18 +319,23 @@ export function NonAggHeaderTrack({
     // listen for non-agg slots draw events
     const emitter = store.get(timelineSlotsEmitterAtom);
     const onDraw = () => {
-      throttledUpdateGroupsAndShow();
+      throttledUpdateGroupsForData();
       notifyChange();
     };
     emitter.addListener(drawEventType, onDraw);
 
-    const aggEmitter = store.get(aggHeaderEmitterAtom);
-    const clearIfAgg = () => {
+    // drop the groups while agg is shown, and rebuild them once it's hidden
+    const unsubscribeShown = store.sub(isAggHeaderVisibleAtom, () => {
+      if (store.get(isAggHeaderVisibleAtom)) {
+        setRenderState(null);
+        return;
+      }
+      const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
-      if (!visibleRange || !isAggregate(visibleRange)) return;
-      setRenderState(null);
-    };
-    aggEmitter.addListener(drawEventType, clearIfAgg);
+      if (referenceNs != null && visibleRange) {
+        throttledUpdateGroups(referenceNs, visibleRange);
+      }
+    });
 
     // trigger initial draw
     onRangeChange();
@@ -336,15 +343,15 @@ export function NonAggHeaderTrack({
     // cleanup
     return () => {
       emitter.removeListener(drawEventType, onDraw);
-      aggEmitter.removeListener(drawEventType, clearIfAgg);
-      throttledUpdateGroupsAndShow.cancel();
+      unsubscribeShown();
+      throttledUpdateGroupsForData.cancel();
       throttledUpdateGroups.cancel();
       throttledRelativeTsQuery.cancel();
       unsubscribeRange();
     };
   }, [
     onRangeChange,
-    throttledUpdateGroupsAndShow,
+    throttledUpdateGroupsForData,
     throttledUpdateGroups,
     throttledRelativeTsQuery,
     notifyChange,

@@ -1,10 +1,20 @@
+import { isEqual } from "lodash";
 import type { TsRange } from "../../WebGl/webglUtils";
 import type { AggGranularity } from "../../../api/types";
 import { usPerMs } from "../../../consts";
 import { msBucketSizes, nsBucketSizes } from "../const";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
 import { NO_SLOT } from "../slotHighlight";
-import type { TileStatesBucketsByGranularity } from "./aggAtoms";
+import type {
+  StateDurationsByTile,
+  TileStatesBucketsByGranularity,
+} from "./aggAtoms";
+import {
+  drawnBuckets,
+  type AggDrawTile,
+  type BucketOverlap,
+  type GetDrawTiles,
+} from "../aggDraw";
 import { getAggGranularity, OVERSCAN_BUCKETS } from "./useAggTileStatesQuery";
 import { ensureStatesCapacity, setStatesCount } from "./tileStatesMesh";
 import { addRect, MAX_COVERAGE_STATES } from "./tileStatesRects";
@@ -19,6 +29,7 @@ export interface AggMeshBuild {
   granularity: AggGranularity;
   startIdx: number;
   endIdx: number;
+  drawTiles: AggDrawTile[];
   maxStateShares: Float32Array;
 }
 
@@ -42,8 +53,9 @@ function getVisibleBucketRange(
 }
 
 /**
- * Rebuilds the agg mesh if the view left the built bucket range, or the
- * granularity changed, and updates the lane scale.
+ * Rebuilds the agg mesh if the view left the built bucket range, the
+ * granularity changed, or the granularity each span is drawn from changed, and
+ * updates the lane scale.
  * Returns whether anything drawn changed.
  */
 export function updateAggStatesMesh(
@@ -51,6 +63,7 @@ export function updateAggStatesMesh(
   referenceNs: bigint,
   visibleRange: TsRange,
   aggTileStates: TileStatesBucketsByGranularity,
+  getDrawTiles: GetDrawTiles,
 ) {
   const granularity = getAggGranularity(visibleRange[1] - visibleRange[0]);
   const [visibleStartIdx, visibleEndIdx] = getVisibleBucketRange(
@@ -60,19 +73,26 @@ export function updateAggStatesMesh(
   );
 
   const built = rendererObj.aggMeshBuild;
-  const isBuilt =
+  const isInBuiltRange =
     built?.referenceNs === referenceNs &&
     built.granularity === granularity &&
     built.startIdx <= visibleStartIdx &&
     visibleEndIdx <= built.endIdx;
+  const startIdx = isInBuiltRange
+    ? built.startIdx
+    : visibleStartIdx - OVERSCAN_BUCKETS;
+  const endIdx = isInBuiltRange
+    ? built.endIdx
+    : visibleEndIdx + OVERSCAN_BUCKETS;
+  const drawTiles = getDrawTiles(granularity, startIdx, endIdx);
+  const isBuilt = isInBuiltRange && isEqual(drawTiles, built.drawTiles);
   if (!isBuilt) {
-    const startIdx = visibleStartIdx - OVERSCAN_BUCKETS;
-    const endIdx = visibleEndIdx + OVERSCAN_BUCKETS;
     const build: AggMeshBuild = {
       referenceNs,
       granularity,
       startIdx,
       endIdx,
+      drawTiles,
       maxStateShares: new Float32Array(endIdx - startIdx + 1),
     };
     buildAggStatesMesh(rendererObj, build, aggTileStates);
@@ -89,15 +109,21 @@ export function updateAggStatesMesh(
  */
 function buildAggStatesMesh(
   rendererObj: RendererObj,
-  { referenceNs, granularity, startIdx, endIdx, maxStateShares }: AggMeshBuild,
+  {
+    referenceNs,
+    granularity,
+    startIdx,
+    endIdx,
+    drawTiles,
+    maxStateShares,
+  }: AggMeshBuild,
   aggTileStates: TileStatesBucketsByGranularity,
 ) {
   const mesh = rendererObj.aggMesh;
   const rowOfTile = getRowOfTile(rendererObj.config.kind);
   const states = rendererObj.config.getStates(undefined);
-  const statesByBucketIdx = aggTileStates.get(granularity);
 
-  if (!statesByBucketIdx || !rowOfTile.size) {
+  if (!drawTiles.length || !rowOfTile.size) {
     setStatesCount(mesh, 0);
     return;
   }
@@ -115,10 +141,12 @@ function buildAggStatesMesh(
   // shares past the track's states stay 0
   const shares = new Float64Array(MAX_COVERAGE_STATES);
   let count = 0;
-  for (let bucketIdx = startIdx; bucketIdx <= endIdx; bucketIdx++) {
-    const statesByTile = statesByBucketIdx.get(bucketIdx);
-    if (!statesByTile) continue;
-
+  for (const [bucketIdx, statesByTile] of drawnBuckets(
+    drawTiles,
+    granularity,
+    aggTileStates,
+    resampleDurations,
+  )) {
     const startMs = mesh.referenceX + (bucketIdx - startIdx) * bucketSizeMs;
     let maxStateShare = 0;
     for (const [tileIdx, durationsUs] of statesByTile) {
@@ -150,6 +178,31 @@ function buildAggStatesMesh(
   }
 
   setStatesCount(mesh, count);
+}
+
+/**
+ * Each state's time in a draw bucket from the fallback buckets overlapping it,
+ * assuming time is spread evenly over each fallback bucket
+ */
+function resampleDurations(
+  overlaps: BucketOverlap<StateDurationsByTile>[],
+): StateDurationsByTile {
+  const resampled: StateDurationsByTile = new Map();
+  for (const { value, overlapMs, bucketMs } of overlaps) {
+    const share = overlapMs / bucketMs;
+    for (const [tileIdx, durationsUs] of value) {
+      let sums = resampled.get(tileIdx);
+      if (!sums) {
+        sums = new Array<number | null>(durationsUs.length).fill(null);
+        resampled.set(tileIdx, sums);
+      }
+      for (let state = 0; state < durationsUs.length; state++) {
+        const us = durationsUs[state];
+        if (us != null) sums[state] = (sums[state] ?? 0) + us * share;
+      }
+    }
+  }
+  return resampled;
 }
 
 /**

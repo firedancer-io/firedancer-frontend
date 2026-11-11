@@ -3,7 +3,11 @@ import { bigIntMin } from "../../../mathUtils";
 export type Interval = [startNs: bigint, endNs: bigint];
 
 export type FetchResult<TData> =
-  | { value: TData; chunksEndNs?: bigint }
+  | {
+      value: TData;
+      chunksEndNs?: bigint;
+      availableStartNs?: bigint | null;
+    }
   | { errorCode: string };
 
 const RESULT_LIMIT_EXCEEDED = "result_limit_exceeded"; // server error code

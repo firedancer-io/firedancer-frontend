@@ -1,6 +1,7 @@
 import { getDefaultStore, useAtom, useAtomValue } from "jotai";
-import { useRef, useCallback, useLayoutEffect, useState } from "react";
+import { useRef, useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { minY, maxHeightRatio } from "./consts.ts";
+import { bigIntMax } from "../../../mathUtils.ts";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
@@ -14,10 +15,12 @@ import {
   syncNonAggMeshes,
   moveNonAggCamera,
   refreshNonAggView,
+  setNonAggScaleMax,
   resizeRenderer,
   appendLiveTxns,
   clearLiveMarkerIfAdded,
   clearLiveMarker,
+  resampleRevenues,
   type RendererObj,
 } from "./utils.ts";
 import {
@@ -32,7 +35,7 @@ import useAggRevenueQuery, {
 } from "./useAggRevenueQuery.ts";
 import { useTxnMetaCache } from "./txnMeta/useTxnMetaCache.ts";
 import type { AggGranularity } from "../../../api/types.ts";
-import type { TsRange } from "../../WebGl/webglUtils.ts";
+import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
 import {
   hoveredAggRevenueAtom,
   hoveredRevenueTxnAtom,
@@ -50,7 +53,7 @@ import { drawEventType } from "../const.ts";
 import { getRevenueRatio } from "./scale.ts";
 import { findHighestTxnAtPoint } from "./hoverUtils.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
-import { clientYToWorldY } from "../hoverUtils.ts";
+import { clientYToWorldY, isInRanges } from "../hoverUtils.ts";
 import { tileCountAtom } from "../../Overview/SlotPerformance/atoms.ts";
 import RevenueYAxis from "./RevenueYAxis.tsx";
 import RevenueControls from "./RevenueControls.tsx";
@@ -60,6 +63,7 @@ import {
 } from "../tiles/useTileCache.ts";
 import {
   txnMetaCache,
+  txnMetaLevel,
   type TxnMetaCacheDelta,
 } from "./txnMeta/txnMetaCache.ts";
 import styles from "../track.module.css";
@@ -68,6 +72,9 @@ import {
   useSlotHighlightRender,
   useContainerSlotHitTest,
 } from "../slotHighlight.ts";
+import type { DataLevel } from "../coverage.ts";
+import { useModeCoverage } from "../useModeCoverage.ts";
+import { getDrawnBucket } from "../aggDraw.ts";
 
 const store = getDefaultStore();
 
@@ -87,27 +94,42 @@ interface RevenueTrackBodyProps extends RevenueTrackProps, WebGlRemountProps {
   aggQuery: AggRevenueQuery;
 }
 
+/**
+ * Granularity the visible range should be drawn at
+ */
+function getTargetGranularity(visibleRangeMs: TsRange): string {
+  return isAggregate(visibleRangeMs)
+    ? getGranularity(visibleRangeMs[1] - visibleRangeMs[0])
+    : txnMetaLevel.id;
+}
+
 function RevenueTrackBody({
   remount,
   height,
-  aggQuery: { query: aggQuery, pauseStaleRefreshes },
+  aggQuery: {
+    query: aggQuery,
+    granularityLevels: aggLevels,
+    getDrawTiles,
+    pauseStaleRefreshes,
+  },
 }: RevenueTrackBodyProps) {
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
   );
-  const [aggAxisMax, setAggAxisMax] = useState(0n);
-  const [nonAggAxisMax, setNonAggAxisMax] = useState(0n);
-
-  const aggAxisMaxRef = useRef(aggAxisMax);
-  aggAxisMaxRef.current = aggAxisMax;
-  const nonAggAxisMaxRef = useRef(nonAggAxisMax);
-  nonAggAxisMaxRef.current = nonAggAxisMax;
+  // the axis follows the modes drawn, sharing a max when both are
+  const [axisMax, setAxisMax] = useState(0n);
+  const [isNonAggOnly, setIsNonAggOnly] = useState(false);
+  const axisMaxRef = useRef(0n);
+  const aggMaxRef = useRef(0n);
+  const aggScaleMaxRef = useRef(0n);
+  // drawn on the next render, after the non agg max it may share is refreshed
+  const needsAggDrawRef = useRef(false);
+  const nonAggMaxRef = useRef(0n);
   const [opts, setOpts] = useAtom(revenueViewOptsAtom);
   const { type } = opts;
 
   const [isAgg, setIsAgg] = useState(true);
-  const isAggCurrentRef = useRef(isAgg);
-  const isAggPreviousRef = useRef(isAgg);
+  const isNonAggDrawnRef = useRef(false);
   const needsRefreshRef = useRef(true);
 
   const { containerRef, rendererRef } = useWebGlRenderer({
@@ -117,8 +139,7 @@ function RevenueTrackBody({
     onResize: (rendererObj) => {
       resizeRenderer(rendererObj);
       const visibleRangeMs = store.get(visibleRangeAtom);
-      if (!isAggCurrentRef.current && visibleRangeMs)
-        moveNonAggCamera(rendererObj, visibleRangeMs);
+      if (visibleRangeMs) moveNonAggCamera(rendererObj, visibleRangeMs);
       needsRefreshRef.current = true;
       renderActive();
     },
@@ -130,9 +151,31 @@ function RevenueTrackBody({
     [referenceNs],
   );
 
-  const txnMetaQuery = useTileCacheQuery(txnMetaCache);
+  const hasAggData = useCallback(
+    (tileRangeNs: NsTsRange) =>
+      aggLevels.some((level) => level.isRangeFetched(tileRangeNs)),
+    [aggLevels],
+  );
+  const txnMetaQuery = useTileCacheQuery(txnMetaCache, hasAggData);
   const execrpCount = useAtomValue(tileCountAtom).execrp;
   const numRows = getNumRows(opts.splitByRow, execrpCount);
+
+  const granularityLevels = useMemo<DataLevel[]>(
+    () => [...aggLevels, txnMetaLevel],
+    [aggLevels],
+  );
+
+  const {
+    modeRangesRef,
+    resolveModeRanges,
+    startAggDraw,
+    shouldDrawAgg,
+    renderModes,
+  } = useModeCoverage({
+    granularityLevels,
+    getTargetGranularity,
+    getAggGranularity: getGranularity,
+  });
 
   const throttledRangeQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
@@ -140,7 +183,13 @@ function RevenueTrackBody({
         const queryGranularity = getGranularity(
           visibleRangeMs[1] - visibleRangeMs[0],
         );
-        aggQuery(referenceNs, visibleRangeMs, worldRangeMs, queryGranularity);
+        aggQuery(
+          referenceNs,
+          visibleRangeMs,
+          worldRangeMs,
+          queryGranularity,
+          granularityLevels,
+        );
         setGranularity(queryGranularity);
       } else {
         pauseStaleRefreshes();
@@ -154,7 +203,7 @@ function RevenueTrackBody({
 
   /**
    * Computes the max value across visible txns and pushes the shared
-   * uniforms to every mesh (no rebuild), then updates the axis max.
+   * uniforms to every mesh (no rebuild).
    */
   const refreshNonAgg = useCallback(
     (renderer: RendererObj) => {
@@ -167,10 +216,7 @@ function RevenueTrackBody({
         numRows,
         opts.scale,
       );
-      if (max > 0n) {
-        nonAggAxisMaxRef.current = max;
-        setNonAggAxisMax(max);
-      }
+      nonAggMaxRef.current = max;
     },
     [type, getRelativeMs, numRows, opts.scale],
   );
@@ -199,12 +245,7 @@ function RevenueTrackBody({
         const visibleRange = store.get(visibleRangeAtom);
         const referenceNs = store.get(referenceNsAtom);
 
-        if (
-          !renderer ||
-          !visibleRange ||
-          referenceNs == null ||
-          !isAggregate(visibleRange)
-        ) {
+        if (!renderer || !visibleRange || referenceNs == null) {
           clearRevenueHover();
           return;
         }
@@ -216,10 +257,13 @@ function RevenueTrackBody({
           granularity,
           false,
         );
-        const revenues = store
-          .get(aggRevenueAtom)
-          .get(granularity)
-          ?.get(bucketIdx);
+        const revenues = getDrawnBucket(
+          getDrawTiles,
+          granularity,
+          bucketIdx,
+          store.get(aggRevenueAtom),
+          resampleRevenues,
+        );
         const lamportValue = revenues && getAggRevenueValue(revenues, type);
 
         // bar spans world Y [minY, barHeight].
@@ -236,7 +280,7 @@ function RevenueTrackBody({
           lamportValue > 0n &&
           worldY >= minY &&
           worldY <=
-            getRevenueRatio(opts.scale, aggAxisMaxRef.current, lamportValue) *
+            getRevenueRatio(opts.scale, axisMaxRef.current, lamportValue) *
               maxHeightRatio;
 
         store.set(
@@ -244,7 +288,7 @@ function RevenueTrackBody({
           onBar ? { bucketIdx, granularity, type, lamportValue } : undefined,
         );
       },
-      [rendererRef, aggAxisMaxRef, type, opts.scale],
+      [rendererRef, getDrawTiles, type, opts.scale],
     ),
     30,
   );
@@ -255,7 +299,7 @@ function RevenueTrackBody({
         const renderer = rendererRef.current;
         const visibleRange = store.get(visibleRangeAtom);
 
-        if (!renderer || !visibleRange || isAggregate(visibleRange)) {
+        if (!renderer || !visibleRange) {
           store.set(hoveredRevenueTxnAtom, undefined);
           return;
         }
@@ -264,7 +308,7 @@ function RevenueTrackBody({
           renderer,
           type,
           opts.scale,
-          nonAggAxisMaxRef.current,
+          axisMaxRef.current,
           clientX,
           clientY,
           rect,
@@ -280,7 +324,7 @@ function RevenueTrackBody({
             : undefined,
         );
       },
-      [rendererRef, nonAggAxisMaxRef, type, opts.scale],
+      [rendererRef, type, opts.scale],
     ),
     30,
   );
@@ -290,7 +334,9 @@ function RevenueTrackBody({
       const visibleRange = store.get(visibleRangeAtom);
       if (!visibleRange) return;
 
-      if (!isAggregate(visibleRange)) {
+      // show the tooltip of the mode drawn under the cursor
+      const ts = clientXToMs(clientX, rect, visibleRange);
+      if (!isInRanges(modeRangesRef.current.agg, ts)) {
         throttledResolveAggRevenue.cancel();
         store.set(hoveredAggRevenueAtom, undefined);
         throttledResolveHoveredRevenueTxn(clientX, clientY, rect);
@@ -301,7 +347,11 @@ function RevenueTrackBody({
       store.set(hoveredRevenueTxnAtom, undefined);
       throttledResolveAggRevenue(clientX, clientY, rect);
     },
-    [throttledResolveAggRevenue, throttledResolveHoveredRevenueTxn],
+    [
+      modeRangesRef,
+      throttledResolveAggRevenue,
+      throttledResolveHoveredRevenueTxn,
+    ],
   );
 
   const onHoverLeave = useCallback(() => {
@@ -316,27 +366,82 @@ function RevenueTrackBody({
       onHoverLeave,
     });
 
+  /**
+   * Draw the agg mesh for the agg spans, scaled to the non agg max too if
+   * both are drawn
+   */
+  const drawAgg = useCallback(() => {
+    if (!rendererRef.current) return;
+    const aggDraw = startAggDraw();
+    if (!aggDraw) return;
+
+    const nonAggMax = modeRangesRef.current.nonAgg.length
+      ? nonAggMaxRef.current
+      : 0n;
+    const maxValue = drawAggRevenue(
+      rendererRef.current,
+      aggDraw.referenceNs,
+      aggDraw.visibleRange,
+      type,
+      store.get(aggRevenueAtom),
+      aggDraw.granularity,
+      aggDraw.getDrawTiles,
+      opts.scale,
+      nonAggMax,
+    );
+    aggMaxRef.current = maxValue;
+    aggScaleMaxRef.current = bigIntMax(maxValue, nonAggMax);
+    needsAggDrawRef.current = false;
+  }, [rendererRef, startAggDraw, modeRangesRef, type, opts.scale]);
+
   const renderActive = useCallback(() => {
     const renderer = rendererRef.current;
     if (!renderer) return;
 
-    const agg = isAggCurrentRef.current;
-    if (!agg && (needsRefreshRef.current || isAggPreviousRef.current)) {
-      // mode entry (agg to nonAgg)
-      if (isAggPreviousRef.current) syncNonAggRef.current(renderer);
+    const { agg, nonAgg } = modeRangesRef.current;
+    const isNonAggDrawn = nonAgg.length > 0;
+    const isRefreshed =
+      isNonAggDrawn && (needsRefreshRef.current || !isNonAggDrawnRef.current);
+    if (isRefreshed) {
+      // non agg draw entry
+      if (!isNonAggDrawnRef.current) syncNonAggRef.current(renderer);
       refreshNonAggRef.current(renderer);
       needsRefreshRef.current = false;
-      refreshHover();
     }
-    isAggPreviousRef.current = agg;
+    isNonAggDrawnRef.current = isNonAggDrawn;
 
-    const { aggResources, nonAggResources } = renderer;
-    const { camera, scene } = agg ? aggResources : nonAggResources;
+    const getAxisMax = () =>
+      bigIntMax(
+        agg.length ? aggMaxRef.current : 0n,
+        isNonAggDrawn ? nonAggMaxRef.current : 0n,
+      );
+    if (
+      agg.length &&
+      (needsAggDrawRef.current || aggScaleMaxRef.current !== getAxisMax())
+    ) {
+      drawAgg();
+    }
+    const max = getAxisMax();
+    if (isNonAggDrawn) setNonAggScaleMax(renderer, max);
+    // an empty view keeps the previous axis instead of collapsing
+    const isAxisChanged = max > 0n && max !== axisMaxRef.current;
+    if (isAxisChanged) {
+      axisMaxRef.current = max;
+      setAxisMax(max);
+    }
+    setIsNonAggOnly(isNonAggDrawn && !agg.length);
+    // after the axis max, which hover hit tests against
+    if (isRefreshed || isAxisChanged) refreshHover();
+
     updateSlotHighlight(renderer.highlight, renderer.renderer.domElement.width);
-    renderer.renderer.render(scene, camera);
-  }, [rendererRef, refreshHover]);
+    renderModes(
+      renderer.renderer,
+      renderer.aggResources,
+      renderer.nonAggResources,
+    );
+  }, [modeRangesRef, rendererRef, renderModes, refreshHover, drawAgg]);
 
-  // highlight changes only redraw; data, range and view changes also refresh the axis max
+  // highlight changes only redraw; data, range and view changes also refresh non agg
   const requestHighlightRender = useFrameRender(renderActive);
   const requestRender = useCallback(() => {
     needsRefreshRef.current = true;
@@ -347,13 +452,22 @@ function RevenueTrackBody({
   useContainerSlotHitTest(containerRef, (clientX, clientY, rect) => {
     const renderer = rendererRef.current;
     const visibleRange = store.get(visibleRangeAtom);
-    if (!renderer || !visibleRange || isAggregate(visibleRange)) return;
+    if (
+      !renderer ||
+      !visibleRange ||
+      !isInRanges(
+        modeRangesRef.current.nonAgg,
+        clientXToMs(clientX, rect, visibleRange),
+      )
+    ) {
+      return;
+    }
 
     return findHighestTxnAtPoint(
       renderer,
       type,
       opts.scale,
-      nonAggAxisMaxRef.current,
+      axisMaxRef.current,
       clientX,
       clientY,
       rect,
@@ -372,43 +486,37 @@ function RevenueTrackBody({
       const visibleRangeMs = store.get(visibleRangeAtom);
       if (referenceNs == null || !visibleRangeMs || !worldRangeMs) return;
 
-      // Move camera before querying, because query may trigger immediate draw if data is already available
+      // Move camera before querying, because query may trigger immediate draw if data is already available.
+      // Move both since both modes may be drawn
       if (updateView) {
-        const agg = isAggregate(visibleRangeMs);
-        isAggCurrentRef.current = agg;
-        setIsAgg(agg);
+        moveAggCamera(rendererRef.current, visibleRangeMs);
+        moveNonAggCamera(rendererRef.current, visibleRangeMs);
+        setIsAgg(isAggregate(visibleRangeMs));
 
-        if (agg) moveAggCamera(rendererRef.current, visibleRangeMs);
-        else moveNonAggCamera(rendererRef.current, visibleRangeMs);
+        resolveModeRanges();
+        if (shouldDrawAgg()) needsAggDrawRef.current = true;
       }
 
       throttledRangeQuery(referenceNs, visibleRangeMs, worldRangeMs);
 
       if (updateView) requestRender();
     },
-    [requestRender, rendererRef, throttledRangeQuery],
+    [
+      requestRender,
+      rendererRef,
+      resolveModeRanges,
+      shouldDrawAgg,
+      throttledRangeQuery,
+    ],
   );
 
   const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
-      const referenceNs = store.get(referenceNsAtom);
-      const visibleRangeMs = store.get(visibleRangeAtom);
-      const aggRevenue = store.get(aggRevenueAtom);
-      if (!rendererRef.current || !visibleRangeMs || referenceNs == null)
-        return;
-      const maxValue = drawAggRevenue(
-        rendererRef.current,
-        referenceNs,
-        visibleRangeMs,
-        type,
-        aggRevenue,
-        opts.scale,
-      );
-      aggAxisMaxRef.current = maxValue;
-      setAggAxisMax(maxValue);
+      resolveModeRanges();
+      drawAgg();
       requestRender();
       refreshHover();
-    }, [rendererRef, type, opts.scale, requestRender, refreshHover]),
+    }, [drawAgg, requestRender, resolveModeRanges, refreshHover]),
     50,
     { leading: false, trailing: true },
   );
@@ -455,17 +563,16 @@ function RevenueTrackBody({
     containerRef,
   ]);
 
-  // Trigger refresh for agg mode entry or a scale/type change.
+  // Trigger agg refresh for a scale/type change. Agg may be drawn in either
+  // target mode.
   useLayoutEffect(() => {
-    if (!isAgg) return;
     throttledDrawAgg();
-  }, [isAgg, opts.scale, type, throttledDrawAgg]);
+  }, [opts.scale, type, throttledDrawAgg]);
 
-  // Trigger refresh for nonAgg mode entry or a rows/scale/type/timeline-reference change
+  // Trigger nonAgg refresh for a rows/scale/type/timeline-reference change
   useLayoutEffect(() => {
-    if (isAgg) return;
     requestRender();
-  }, [isAgg, numRows, opts.scale, type, getRelativeMs, requestRender]);
+  }, [numRows, opts.scale, type, getRelativeMs, requestRender]);
 
   /**
    * Trigger updates for nonAgg data changes.
@@ -491,10 +598,24 @@ function RevenueTrackBody({
         syncNonAggRef.current(renderer);
       }
 
-      // Only render on delta updates when non aggregate view is active
-      if (!isAggCurrentRef.current) requestRender();
+      const { nonAgg } = resolveModeRanges();
+      if (shouldDrawAgg()) needsAggDrawRef.current = true;
+      // Only render on delta updates when something is drawn from them
+      if (
+        needsAggDrawRef.current ||
+        nonAgg.length ||
+        isNonAggDrawnRef.current
+      ) {
+        requestRender();
+      }
     },
-    [getRelativeMs, requestRender, rendererRef],
+    [
+      getRelativeMs,
+      requestRender,
+      rendererRef,
+      resolveModeRanges,
+      shouldDrawAgg,
+    ],
   );
 
   useTileCacheSubscription(txnMetaCache, onCacheDelta);
@@ -504,9 +625,9 @@ function RevenueTrackBody({
       <div ref={containerRef} className={styles.trackCanvasContainer} />
       <RevenueYAxis
         height={height}
-        maxValue={isAgg ? aggAxisMax : nonAggAxisMax}
+        maxValue={axisMax}
         scale={opts.scale}
-        splitRows={!isAgg && opts.splitByRow}
+        splitRows={isNonAggOnly && opts.splitByRow}
         numRows={numRows}
       />
       <RevenueControls

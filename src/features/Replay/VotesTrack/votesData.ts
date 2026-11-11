@@ -212,6 +212,55 @@ function mergePartial(existing: SlotPartial, partial: SlotPartial) {
   }
 }
 
+/**
+ * Votes in [startMs, endMs)
+ */
+export function clipVotesData(
+  data: VotesData,
+  startMs: number,
+  endMs: number,
+): VotesData {
+  const inRange = (ts: number) => ts >= startMs && ts < endMs;
+  const clipped: VotesData = new Map();
+  for (const [slot, partial] of data) {
+    const out = emptyPartial();
+    out.curves = partial.curves.map((curve) =>
+      clipCurve(curve, startMs, endMs),
+    );
+    for (const [cert, ts] of partial.certs) {
+      if (inRange(ts)) out.certs.set(cert, ts);
+    }
+    for (const [kind, ts] of partial.ownVotes) {
+      if (inRange(ts)) out.ownVotes.set(kind, ts);
+    }
+    if (partial.parentReadyTs !== undefined && inRange(partial.parentReadyTs)) {
+      out.parentReadyTs = partial.parentReadyTs;
+    }
+
+    if (
+      out.curves.some(({ ts }) => ts.length) ||
+      out.certs.size ||
+      out.ownVotes.size ||
+      out.parentReadyTs !== undefined
+    ) {
+      clipped.set(slot, out);
+    }
+  }
+  return clipped;
+}
+
+function clipCurve({ ts, frac }: StepCurve, startMs: number, endMs: number) {
+  const out = emptyCurve();
+  // samples are cumulative, so clipped ranges merge back with max
+  for (let i = 0; i < ts.length; i++) {
+    if (ts[i] >= startMs && ts[i] < endMs) {
+      out.ts.push(ts[i]);
+      out.frac.push(frac[i]);
+    }
+  }
+  return out;
+}
+
 export function countPoints(data: VotesData): number {
   let count = 0;
   for (const { curves } of data.values()) {

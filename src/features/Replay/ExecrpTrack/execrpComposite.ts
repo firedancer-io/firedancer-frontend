@@ -195,11 +195,15 @@ export function createExecrpComposite(
         renderer.getPixelRatio(),
         renderer.domElement.height,
       ),
-    render: ({ renderedGranularity }, rowCount) => {
+    render: ({ renderedGranularity }, rowCount, isAgg) => {
       const { mode, idleWeight, showErrorStates } = getOpts();
       pass.uniforms.uIdleWeight.value = idleWeight;
       pass.render(mode, rowCount);
-      if (showErrorStates && canShowErrorStates(renderedGranularity, mode)) {
+      if (
+        !isAgg &&
+        showErrorStates &&
+        canShowErrorStates(renderedGranularity, mode)
+      ) {
         renderer.render(errorStatesScene, camera);
       }
     },

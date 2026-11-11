@@ -7,10 +7,20 @@ import ReplayCursorTooltip, {
 import { useAtomValue } from "jotai";
 import { nsBucketSizes } from "../const";
 import { hoveredAggHeaderAtom, type HoveredAggHeader } from "../atoms";
-import { getAggShredCount } from "../ShredsTrack/aggUtils";
-import { aggShredsAtom, aggShredsEmitterAtom } from "../ShredsTrack/atoms";
+import { getAggShredCount, resampleEventCounts } from "../ShredsTrack/aggUtils";
+import {
+  aggShredsAtom,
+  aggShredsDrawTilesAtom,
+  aggShredsEmitterAtom,
+} from "../ShredsTrack/atoms";
 import { useAggBucket } from "../useAggBucket";
-import { aggHeaderEmitterAtom, aggSlotsAtom, getSlotCount } from "./aggAtoms";
+import {
+  aggHeaderEmitterAtom,
+  aggSlotsAtom,
+  aggSlotsDrawTilesAtom,
+  getSlotCount,
+} from "./aggAtoms";
+import { resampleSlotCounts } from "./utils";
 import styles from "./replaySlotTooltip.module.css";
 
 export default function AggHeaderTooltip() {
@@ -38,12 +48,16 @@ function AggHeaderTooltipContent({ hovered }: AggHeaderTooltipContentProps) {
   const slotCounts = useAggBucket(
     aggSlotsAtom,
     aggHeaderEmitterAtom,
+    aggSlotsDrawTilesAtom,
+    resampleSlotCounts,
     granularity,
     bucketIdx,
   );
   const shredCounts = useAggBucket(
     aggShredsAtom,
     aggShredsEmitterAtom,
+    aggShredsDrawTilesAtom,
+    resampleEventCounts,
     granularity,
     bucketIdx,
   );

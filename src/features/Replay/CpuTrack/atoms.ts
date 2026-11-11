@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import EventEmitter from "events";
+import type { GetDrawTiles } from "../aggDraw";
 import type { AggCpu, AggGranularity } from "../../../api/types";
 import { getBucketIdx } from "../utils";
 import { tilesAtom } from "../../../api/atoms";
@@ -60,6 +61,8 @@ function fillNullsWithPreviousValue(
   }
   return filledNull;
 }
+
+export const aggCpuDrawTilesAtom = atom<GetDrawTiles | undefined>(undefined);
 
 export const [
   aggCpuEmitterAtom,

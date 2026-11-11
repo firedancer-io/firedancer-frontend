@@ -179,6 +179,16 @@ describe("syncVotesTiles", () => {
     ]);
   });
 
+  it("rebuilds the owner of a slot a new tile adds votes to, without its start", () => {
+    // like a fallback slice from the other granularity's delta
+    const tiles = createTiles();
+    const votesScene = createDrawnScene(tiles);
+    const before = getVersions(votesScene);
+    tiles.push(tile(12_000, [[4, [12_500]]]));
+    sync(votesScene, tiles, []);
+    expect(getRebuilt(before, votesScene)).toEqual([8_000]);
+  });
+
   it("rebuilds only the live tile for a live delta to its own slots", () => {
     const tiles = createTiles();
     const votesScene = createDrawnScene(tiles);

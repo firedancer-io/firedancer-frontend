@@ -1,4 +1,5 @@
 import { getDefaultStore, useAtomValue } from "jotai";
+import { isEqual } from "lodash";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import { useFrameRender } from "../../WebGl/useFrameRender.ts";
@@ -18,8 +19,10 @@ import {
   setVisibleRange,
   render,
   handleResize,
+  isVisibleTileRangeChanged,
   setUpRenderer,
   syncMeshes,
+  type RendererObj,
   type TileStatesTrackConfig,
 } from "./utils.ts";
 import {
@@ -32,9 +35,19 @@ import { TileStatesGranularityEnum } from "../../../api/entities.ts";
 import { aggTileStatesAtom, aggTileStatesEmitterAtom } from "./aggAtoms.ts";
 import { dataChangeEventType, drawEventType } from "../const.ts";
 import { useSlotHighlightRender } from "../slotHighlight.ts";
-import { updateAggMaxStateShare, updateAggStatesMesh } from "./aggUtils.ts";
+import { updateAggStatesMesh } from "./aggUtils.ts";
+import { getAggGranularity } from "./useAggTileStatesQuery.ts";
+import type { DataLevel } from "../coverage.ts";
+import { useModeCoverage } from "../useModeCoverage.ts";
 
 const store = getDefaultStore();
+
+function getTargetGranularity(visibleRangeMs: TsRange): string {
+  const windowMs = visibleRangeMs[1] - visibleRangeMs[0];
+  return isAggregate(visibleRangeMs)
+    ? getAggGranularity(windowMs)
+    : getTileStatesGranularity(windowMs);
+}
 
 /**
  * Sets up a tile states track's renderer, and keeps its meshes in sync with the
@@ -45,6 +58,7 @@ export function useTileStatesRenderer({
   config,
   remount,
   query,
+  granularityLevels,
 }: {
   config: TileStatesTrackConfig;
   remount: () => void;
@@ -53,6 +67,7 @@ export function useTileStatesRenderer({
     visibleRangeMs: TsRange,
     worldRangeMs: TsRange,
   ) => void;
+  granularityLevels: DataLevel[];
 }) {
   const [nonAggGranularity, setNonAggGranularity] =
     useState<TileStatesGranularity>(TileStatesGranularityEnum.txn);
@@ -75,6 +90,62 @@ export function useTileStatesRenderer({
     () => getTileRows(tiles, config.kind),
     [tiles, config.kind],
   );
+  const { resolveModeRanges, startAggDraw } = useModeCoverage({
+    granularityLevels,
+    getTargetGranularity,
+    getAggGranularity,
+  });
+
+  const syncModes = useCallback(
+    (renderer: RendererObj) => {
+      const visibleRangeMs = store.get(visibleRangeAtom);
+      if (!visibleRangeMs) return false;
+
+      const prevModeRanges = renderer.modeRanges;
+      const modeRanges = resolveModeRanges();
+      renderer.modeRanges = modeRanges;
+
+      // Agg views keep the last non agg granularity drawn for its fallback data
+      const prevGranularity = renderer.renderedGranularity;
+      const granularity = !modeRanges.nonAgg.length
+        ? undefined
+        : isAggregate(visibleRangeMs)
+          ? (prevGranularity ?? TileStatesGranularityEnum.txn_batch)
+          : getTileStatesGranularity(visibleRangeMs[1] - visibleRangeMs[0]);
+      renderer.renderedGranularity = granularity;
+      if (granularity) setNonAggGranularity(granularity);
+
+      const granularityChanged = granularity !== prevGranularity;
+      if (granularity && granularityChanged) {
+        if (prevGranularity === undefined) {
+          syncMeshes(renderer, true);
+        } else {
+          clearLiveMarker(renderer);
+          syncMeshes(renderer);
+        }
+      }
+
+      let aggChanged = false;
+      if (modeRanges.agg.length) {
+        const aggDraw = startAggDraw();
+        aggChanged =
+          !!aggDraw &&
+          updateAggStatesMesh(
+            renderer,
+            aggDraw.referenceNs,
+            aggDraw.visibleRange,
+            store.get(aggTileStatesAtom),
+            aggDraw.getDrawTiles,
+          );
+      }
+
+      return (
+        granularityChanged || aggChanged || !isEqual(modeRanges, prevModeRanges)
+      );
+    },
+    [resolveModeRanges, startAggDraw],
+  );
+
   const onRangeChange = useCallback(
     (updateView: boolean) => {
       const renderer = rendererRef.current;
@@ -85,65 +156,30 @@ export function useTileStatesRenderer({
       const worldRangeMs = store.get(worldRangeAtom);
       if (refNs == null || !visibleRangeMs || !worldRangeMs) return;
 
-      const prevGranularity = renderer.renderedGranularity;
-      const agg = isAggregate(visibleRangeMs);
-      setIsAgg(agg);
-      renderer.isAgg = agg;
-      if (agg) {
-        renderer.renderedGranularity = undefined;
-        const viewChanged =
-          updateView && setVisibleRange(renderer, visibleRangeMs);
-        // Pans that stay within the built range skip the mesh rebuild, so
-        // update the lane scale here instead
-        const shareChanged =
-          viewChanged && updateAggMaxStateShare(renderer, visibleRangeMs);
-        query(refNs, visibleRangeMs, worldRangeMs);
-        if (viewChanged || shareChanged) requestRender();
-        return;
-      }
-
-      const granularity = getTileStatesGranularity(
-        visibleRangeMs[1] - visibleRangeMs[0],
-      );
-      renderer.renderedGranularity = granularity;
-      setNonAggGranularity(granularity);
+      setIsAgg(isAggregate(visibleRangeMs));
 
       // Move camera before querying, because query may trigger immediate draw
       // if data is already available
       const viewChanged =
         updateView && setVisibleRange(renderer, visibleRangeMs);
-
-      const granularityChanged = granularity !== prevGranularity;
-      if (prevGranularity === undefined) {
-        syncMeshes(renderer, true);
-      } else if (granularityChanged) {
-        clearLiveMarker(renderer);
+      const modesChanged = syncModes(renderer);
+      if (viewChanged && isVisibleTileRangeChanged(renderer)) {
         syncMeshes(renderer);
       }
 
       query(refNs, visibleRangeMs, worldRangeMs);
 
-      if (viewChanged || granularityChanged) requestRender();
+      if (viewChanged || modesChanged) requestRender();
     },
-    [rendererRef, requestRender, query],
+    [rendererRef, requestRender, query, syncModes],
   );
 
-  const drawAgg = useCallback(() => {
+  const drawModes = useCallback(() => {
     const renderer = rendererRef.current;
-    const refNs = store.get(referenceNsAtom);
-    const visibleRangeMs = store.get(visibleRangeAtom);
-    if (!renderer?.isAgg || refNs == null || !visibleRangeMs) return;
+    if (renderer && syncModes(renderer)) requestRender();
+  }, [rendererRef, requestRender, syncModes]);
 
-    const changed = updateAggStatesMesh(
-      renderer,
-      refNs,
-      visibleRangeMs,
-      store.get(aggTileStatesAtom),
-    );
-    if (changed) requestRender();
-  }, [rendererRef, requestRender]);
-
-  const throttledDrawAgg = useThrottledCallbackIfVisible(drawAgg, 50, {
+  const throttledDrawModes = useThrottledCallbackIfVisible(drawModes, 50, {
     leading: false,
     trailing: true,
   });
@@ -161,37 +197,41 @@ export function useTileStatesRenderer({
       if (rendererRef.current) rendererRef.current.aggMeshBuild = undefined;
     };
     aggEmitter.addListener(dataChangeEventType, onAggChange);
-    aggEmitter.addListener(drawEventType, throttledDrawAgg);
+    aggEmitter.addListener(drawEventType, throttledDrawModes);
 
     // trigger initial query, camera, and geometry build
     onRangeChange(true);
 
     return () => {
       aggEmitter.removeListener(dataChangeEventType, onAggChange);
-      aggEmitter.removeListener(drawEventType, throttledDrawAgg);
-      throttledDrawAgg.cancel();
+      aggEmitter.removeListener(drawEventType, throttledDrawModes);
+      throttledDrawModes.cancel();
       unsubscribeVisible();
       unsubscribeWorld();
     };
-  }, [rendererRef, onRangeChange, throttledDrawAgg]);
+  }, [rendererRef, onRangeChange, throttledDrawModes]);
 
   useLayoutEffect(() => {
     const renderer = rendererRef.current;
-    if (renderer) renderer.aggMeshBuild = undefined;
-    if (renderer?.isAgg) {
-      drawAgg();
-      return;
-    }
-    if (!renderer?.renderedGranularity) return;
-    syncMeshes(renderer, true);
+    if (!renderer) return;
+    renderer.aggMeshBuild = undefined;
+    syncModes(renderer);
+    if (renderer.renderedGranularity) syncMeshes(renderer, true);
     requestRender();
-  }, [rendererRef, requestRender, rows, drawAgg]);
+  }, [rendererRef, requestRender, rows, syncModes]);
 
   const handleDelta = useCallback(
     (granularity: TileStatesGranularity, delta: TileStatesCacheDelta) => {
       const renderer = rendererRef.current;
       if (!renderer) return;
-      if (granularity !== renderer.renderedGranularity) return;
+      const modesChanged = syncModes(renderer);
+      if (granularity !== renderer.renderedGranularity) {
+        if (delta.kind !== "live" && renderer.renderedGranularity) {
+          syncMeshes(renderer);
+        }
+        if (delta.kind !== "live" || modesChanged) requestRender();
+        return;
+      }
 
       if (delta.kind === "add") clearLiveMarkerIfAdded(renderer, delta.tiles);
       else if (delta.kind === "clearLive" || delta.kind === "reset")
@@ -199,13 +239,14 @@ export function useTileStatesRenderer({
 
       if (delta.kind === "live") {
         appendLiveStates(renderer, delta.tile, delta.newData, delta.isNewTile);
+        if (delta.isNewTile) syncMeshes(renderer);
       } else {
         syncMeshes(renderer);
       }
 
       requestRender();
     },
-    [rendererRef, requestRender],
+    [rendererRef, requestRender, syncModes],
   );
 
   const onDeltaTxn = useCallback(

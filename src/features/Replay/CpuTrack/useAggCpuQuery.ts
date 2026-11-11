@@ -7,6 +7,7 @@ import type { TimelineQueryKey } from "../atoms";
 import {
   addAggCpuAtom,
   aggCpuEmitterAtom,
+  aggCpuDrawTilesAtom,
   deleteAggCpuBucketsAtom,
   queryTileIdxsAtom,
 } from "./atoms";
@@ -40,6 +41,7 @@ export function useAggCpuQuery(chartId: string) {
     addAtom: addAggCpuAtom,
     deleteBucketsAtom: deleteAggCpuBucketsAtom,
     emitterAtom: aggCpuEmitterAtom,
+    drawTilesAtom: aggCpuDrawTilesAtom,
   });
 }
 

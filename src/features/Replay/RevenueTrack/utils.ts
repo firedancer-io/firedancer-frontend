@@ -1,3 +1,4 @@
+import { RevenueType } from "../../../api/entities.ts";
 import * as THREE from "three";
 import {
   createUnitQuad,
@@ -22,6 +23,7 @@ import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers.ts";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils.ts";
 import { msBucketSizes, nsBucketSizes } from "../const.ts";
 import { omit } from "lodash";
+import { bigIntMax } from "../../../mathUtils.ts";
 import {
   AGGREGATE_THRESHOLD_MS,
   revenueSeriesColors,
@@ -33,14 +35,18 @@ import {
   type RevenueSeries,
 } from "./consts.ts";
 import { getRevenueRatio } from "./scale.ts";
-import {
-  AGG_REVENUE_BUCKET_COUNT_THRESHOLD,
-  getGranularity,
-} from "./useAggRevenueQuery.ts";
+import { AGG_REVENUE_BUCKET_COUNT_THRESHOLD } from "./useAggRevenueQuery.ts";
+import type { AggGranularity } from "../../../api/types.ts";
 import { OVERSCAN_BUCKETS } from "../useAggQuery.ts";
+import {
+  drawnBuckets,
+  type BucketOverlap,
+  type GetDrawTiles,
+} from "../aggDraw.ts";
 import {
   getAggRevenueValue,
   type RevenueBucketsByGranularity,
+  type Revenues,
 } from "./atoms.ts";
 import {
   getSeriesColumns,
@@ -193,7 +199,8 @@ export function setUpAggResources(
 
 /**
  * Redraw all available data in the visible range at the appropriate granularity
- * level. Returns the max visible (non-overscan) value for axis scaling.
+ * level, scaled to the max visible (non-overscan) value or `minScaleMax` if
+ * larger. Returns the max visible value for axis scaling.
  */
 export function drawAggRevenue(
   rendererObj: RendererObj,
@@ -201,22 +208,17 @@ export function drawAggRevenue(
   visibleRangeMs: TsRange,
   type: RevenueSeries,
   aggRevenue: RevenueBucketsByGranularity,
+  granularity: AggGranularity,
+  getDrawTiles: GetDrawTiles,
   scale: RevenueScale,
+  minScaleMax: bigint,
 ): bigint {
-  const granularity = getGranularity(visibleRangeMs[1] - visibleRangeMs[0]);
-  const revenueByBucketIdx = aggRevenue.get(granularity);
-
   const { cameraReferenceMs, mesh } = rendererObj.aggResources;
   const bucketSizeMs = msBucketSizes[granularity];
 
   /** store mesh positions relative to referenceX. This allows GPU to see small coordinates */
   mesh.referenceX = cameraReferenceMs;
   mesh.mesh.position.x = 0;
-
-  if (!revenueByBucketIdx) {
-    updateRectMeshCounts(mesh, 0);
-    return 0n;
-  }
 
   const startIdx = getBucketIdx(
     calcAbsoluteNs(referenceNs, visibleRangeMs[0]),
@@ -237,14 +239,19 @@ export function drawAggRevenue(
 
   let maxVisibleValue = 0n;
   const toDraw: [value: bigint, x: number][] = [];
-  for (
-    let bucketIdx = startIdx - OVERSCAN_BUCKETS;
-    bucketIdx <= endIdx + OVERSCAN_BUCKETS;
-    bucketIdx++
-  ) {
+  const buckets = drawnBuckets(
+    getDrawTiles(
+      granularity,
+      startIdx - OVERSCAN_BUCKETS,
+      endIdx + OVERSCAN_BUCKETS,
+    ),
+    granularity,
+    aggRevenue,
+    resampleRevenues,
+  );
+  for (const [bucketIdx, revenues] of buckets) {
     const isOverscan = bucketIdx < startIdx || bucketIdx > endIdx;
-    const revenues = revenueByBucketIdx.get(bucketIdx);
-    const value = revenues && getAggRevenueValue(revenues, type);
+    const value = getAggRevenueValue(revenues, type);
     // don't draw missing or zero values
     if (!value) continue;
 
@@ -259,6 +266,7 @@ export function drawAggRevenue(
 
   ensureRectCapacity(mesh, toDraw.length);
 
+  const scaleMax = bigIntMax(maxVisibleValue, minScaleMax);
   for (let rectIdx = 0; rectIdx < toDraw.length; rectIdx++) {
     const [value, x] = toDraw[rectIdx];
     addRectangleToMesh(
@@ -267,13 +275,41 @@ export function drawAggRevenue(
       x,
       minY,
       bucketSizeMs,
-      getRevenueRatio(scale, maxVisibleValue, value) * maxHeightRatio,
+      getRevenueRatio(scale, scaleMax, value) * maxHeightRatio,
       revenueSeriesColors[type],
     );
   }
   updateRectMeshCounts(mesh, toDraw.length);
 
   return maxVisibleValue;
+}
+
+const revenueTypes = Object.values(RevenueType);
+
+/**
+ * Sum each revenue type, weighted by the portion of each bucket overlapping
+ */
+export function resampleRevenues(
+  overlaps: BucketOverlap<Revenues>[],
+): Revenues {
+  const resampled: Revenues = {
+    [RevenueType.TxnFees]: null,
+    [RevenueType.PrioFees]: null,
+    [RevenueType.Tips]: null,
+  };
+  for (const { value, overlapMs, bucketMs } of overlaps) {
+    for (const type of revenueTypes) {
+      const revenue = value[type];
+      if (revenue == null) continue;
+      // finer buckets are usually fully inside the target bucket
+      const weighted =
+        overlapMs === bucketMs
+          ? revenue
+          : (revenue * BigInt(overlapMs)) / BigInt(bucketMs);
+      resampled[type] = (resampled[type] ?? 0n) + weighted;
+    }
+  }
+  return resampled;
 }
 
 /**
@@ -499,6 +535,12 @@ export function refreshNonAggView(
   );
 
   return maxValue;
+}
+
+/** Scale the non agg txns to `maxValue`, e.g. a max shared with agg */
+export function setNonAggScaleMax(rendererObj: RendererObj, maxValue: bigint) {
+  rendererObj.nonAggResources.resources.material.uniforms.uMaxValue.value =
+    Number(maxValue);
 }
 
 /** Max value of a tile's txns that fall within the visible range. */

@@ -64,7 +64,19 @@ export interface TileCache<TData, TMeta> {
     startNs: bigint,
     endNs: bigint,
   ) => { data: TData[]; hasAllTilesCached: boolean };
-  requestRange: (visibleRangeNs: NsTsRange, worldEndNs: bigint) => void;
+  requestRange: (
+    visibleRangeNs: NsTsRange,
+    worldEndNs: bigint,
+    hasFallbackData?: (tileRangeNs: NsTsRange) => boolean,
+  ) => void;
+  isRangeFetched: (rangeNs: NsTsRange) => boolean;
+  getAvailableStartNs: () => bigint | undefined;
+  getTile: (
+    ns: bigint,
+  ) => (Tile<TData, TMeta> & { isLive: boolean }) | undefined;
+  getLiveTile: () =>
+    | (Tile<TData, TMeta> & { fetchedEndNs: bigint })
+    | undefined;
   init: () => Unsubscribe;
   reset: () => void;
 }
@@ -72,6 +84,8 @@ export interface TileCache<TData, TMeta> {
 interface CachedTile<TData, TMeta> {
   data: TData;
   meta: TMeta;
+  // started before the available start when fetched (is missing data)
+  isPartial: boolean;
 }
 
 interface LiveState<TData> {
@@ -117,6 +131,10 @@ export function createTileCache<TData, TMeta>({
   let lastEndNs: bigint | null = null;
   let lastWorldEndNs: bigint | null = null;
   const inFlightTileIds = new Set<number>();
+  // latest start of the server's data (tiles ending before it aren't fetched)
+  let availableStartNs: bigint | undefined;
+  /** whether a tile can be drawn from other data while it loads */
+  let hasFallbackData: ((tileRangeNs: NsTsRange) => boolean) | undefined;
 
   const live: LiveState<TData> = {
     acc: null,
@@ -239,12 +257,14 @@ export function createTileCache<TData, TMeta>({
     sortedTileIds.splice(insertionIndex(sortedTileIds, tileId), 0, tileId);
     cachedItems += itemCount(data);
     const meta = deriveMeta(data);
-    tileCache.set(tileId, { data, meta });
+    const [startNs, endNs] = getRange(tileId);
+    const isPartial =
+      availableStartNs !== undefined && startNs < availableStartNs;
+    tileCache.set(tileId, { data, meta, isPartial });
     evictToBudget();
 
     if (!tileCache.has(tileId)) return;
 
-    const [startNs, endNs] = getRange(tileId);
     publish({ kind: "add", tiles: [{ startNs, endNs, data, meta }] });
   }
 
@@ -255,14 +275,28 @@ export function createTileCache<TData, TMeta>({
       empty,
       merge,
       filterOwned,
-      fetch: (window) => fetch(window, Number(uniqueId())),
+      fetch: async (window) => {
+        const result = await fetch(window, Number(uniqueId()));
+        if (
+          !signal.aborted &&
+          "value" in result &&
+          result.availableStartNs != null
+        ) {
+          availableStartNs = bigIntMax(
+            availableStartNs ?? result.availableStartNs,
+            result.availableStartNs,
+          );
+        }
+        return result;
+      },
       signal,
     });
   }
 
   /**
-   * Tiles in view that still need to be fetched, nearest to the view center
-   * first, right before left at the same distance
+   * Tiles in view that still need to be fetched, tiles with nothing to draw
+   * first, then nearest to the view center, right before left at the same
+   * distance
    */
   function tilesToFetch(): number[] {
     const liveTileId =
@@ -277,16 +311,25 @@ export function createTileCache<TData, TMeta>({
     );
     const center = (viewStartTileId + viewEndTileId) / 2;
 
-    const tileIds: number[] = [];
+    const tiles: { id: number; hasFallback: boolean }[] = [];
     for (let id = low; id <= high; id++) {
       if (id === liveTileId || id === live.acc?.tileId) continue;
       if (requestedTilesForView.has(id) || inFlightTileIds.has(id)) continue;
       if (tileCache.has(id)) continue;
-      tileIds.push(id);
+      const [startNs, endNs] = getRange(id);
+      // evicted from the server
+      if (availableStartNs !== undefined && endNs < availableStartNs) continue;
+      const hasFallback = hasFallbackData?.([startNs, endNs + 1n]) ?? false;
+      tiles.push({ id, hasFallback });
     }
-    return tileIds.sort(
-      (a, b) => Math.abs(a - center) - Math.abs(b - center) || b - a,
-    );
+    return tiles
+      .sort(
+        (a, b) =>
+          Number(a.hasFallback) - Number(b.hasFallback) ||
+          Math.abs(a.id - center) - Math.abs(b.id - center) ||
+          b.id - a.id,
+      )
+      .map(({ id }) => id);
   }
 
   function fetchMissingTiles(): void {
@@ -442,7 +485,12 @@ export function createTileCache<TData, TMeta>({
     }
   }
 
-  function requestRange(visibleRangeNs: NsTsRange, worldEndNs: bigint): void {
+  function requestRange(
+    visibleRangeNs: NsTsRange,
+    worldEndNs: bigint,
+    hasFallbackDataForView?: (tileRangeNs: NsTsRange) => boolean,
+  ): void {
+    hasFallbackData = hasFallbackDataForView;
     const [startNs, endNs] = visibleRangeNs;
     if (endNs <= startNs) return;
 
@@ -461,6 +509,89 @@ export function createTileCache<TData, TMeta>({
       requestedTilesForView.clear();
       fetchMissingTiles();
     }
+  }
+
+  /**
+   * Live tile id, once its first fetch has landed
+   */
+  function getLiveTileIdWithData(): number | undefined {
+    if (live.acc === null) return;
+    const [tileStartNs] = getRange(live.acc.tileId);
+    if (live.acc.fetchedEndNs >= tileStartNs) return live.acc.tileId;
+  }
+
+  /**
+   * Whether the tile containing `ns` has all its data, counting the live tile
+   * once its first fetch has landed. `allowPartial` counts a tile missing
+   * data before the available start.
+   */
+  function isTileFetched(ns: bigint, allowPartial = false): boolean {
+    const id = tileIdOf(ns);
+    const cached = tileCache.get(id);
+    if (cached) return allowPartial || !cached.isPartial;
+    return id === getLiveTileIdWithData();
+  }
+
+  /**
+   * Tile containing `ns`, counting the live tile once its first fetch has
+   * landed. Live tile data grows as more is fetched.
+   */
+  function getTile(
+    ns: bigint,
+  ): (Tile<TData, TMeta> & { isLive: boolean }) | undefined {
+    const id = tileIdOf(ns);
+    const [startNs, endNs] = getRange(id);
+    const cached = tileCache.get(id);
+    if (cached) {
+      return {
+        startNs,
+        endNs,
+        data: cached.data,
+        meta: cached.meta,
+        isLive: false,
+      };
+    }
+    const liveTile = getLiveTile();
+    if (liveTile?.startNs === startNs) {
+      const { data, meta } = liveTile;
+      return { startNs, endNs, data, meta, isLive: true };
+    }
+  }
+
+  /**
+   * Live tile, once its first fetch has landed, with the inclusive end of its
+   * data so far. It's fetched from its start, so its data grows as more is
+   * fetched.
+   */
+  function getLiveTile():
+    | (Tile<TData, TMeta> & { fetchedEndNs: bigint })
+    | undefined {
+    const id = getLiveTileIdWithData();
+    if (id === undefined || live.acc === null) return;
+    const [startNs, endNs] = getRange(id);
+    const { data, fetchedEndNs } = live.acc;
+    return { startNs, endNs, data, meta: deriveMeta(data), fetchedEndNs };
+  }
+
+  /**
+   * Whether every tile overlapping the range has all its data, counting the
+   * live tile once its first fetch has landed. The server has no data before
+   * the available start, so a range ending after it only needs the rest.
+   */
+  function isRangeFetched(rangeNs: NsTsRange): boolean {
+    const startNs =
+      availableStartNs !== undefined && rangeNs[1] > availableStartNs
+        ? bigIntMax(rangeNs[0], availableStartNs)
+        : undefined;
+    for (
+      let ns = ((startNs ?? rangeNs[0]) / tileNs) * tileNs;
+      ns < rangeNs[1];
+      ns += tileNs
+    ) {
+      // a partial tile has all the data after the available start
+      if (!isTileFetched(ns, startNs !== undefined)) return false;
+    }
+    return true;
   }
 
   function init(): () => void {
@@ -483,6 +614,7 @@ export function createTileCache<TData, TMeta>({
     lastStartNs = null;
     lastEndNs = null;
     lastWorldEndNs = null;
+    availableStartNs = undefined;
     live.inFlight = false;
     resetLive();
     publish({ kind: "reset" });
@@ -496,6 +628,10 @@ export function createTileCache<TData, TMeta>({
     getTiles,
     getDataInRange,
     requestRange,
+    isRangeFetched,
+    getAvailableStartNs: () => availableStartNs,
+    getTile,
+    getLiveTile,
     init,
     reset,
   };

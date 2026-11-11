@@ -22,6 +22,7 @@ const chunkNs = 100n * msNs;
 
 let finalEndNs: bigint;
 let maxChunks: number;
+let availableStartNs: bigint | null;
 let fetchedWindows: Interval[];
 let deltas: TileCacheDelta<Interval[], null>[];
 let perfNow: number;
@@ -63,6 +64,7 @@ function createCache(
             ? []
             : [[window[0], bigIntMin(chunksEndNs - 1n, window[1])] as Interval],
         chunksEndNs,
+        availableStartNs,
       };
       const held = heldResponses;
       if (!held) return Promise.resolve(result);
@@ -89,6 +91,7 @@ describe("tile cache with partial responses", () => {
   beforeEach(() => {
     finalEndNs = 0n;
     maxChunks = Infinity;
+    availableStartNs = null;
     fetchedWindows = [];
     deltas = [];
     perfNow = 0;
@@ -110,6 +113,35 @@ describe("tile cache with partial responses", () => {
     await vi.waitFor(() => expect(cache.getTiles().length).toBeGreaterThan(0));
 
     expect(cache.getTiles()[0].data).toEqual([[3_000n * msNs, tileNs - 1n]]);
+  });
+
+  it("skips tiles the server evicted, keeping ones fetched before", async () => {
+    finalEndNs = 100n * tileNs;
+    const cache = createCache();
+    const fetchedTiles = () =>
+      fetchedWindows.map(([startNs]) => Number(startNs / tileNs));
+
+    cache.requestRange([10n * tileNs, 11n * tileNs - 1n], 90n * tileNs);
+    await vi.waitFor(() => expect(cache.getTiles()).toHaveLength(3));
+
+    // the server evicts into tile 20. The next view's tiles are requested
+    // together, before a response reports it
+    availableStartNs = 20n * tileNs + 1n;
+    cache.requestRange([20n * tileNs, 21n * tileNs - 1n], 90n * tileNs);
+    await vi.waitFor(() => expect(cache.getTiles()).toHaveLength(6));
+
+    // tiles 16 to 18 end before the reported available start, so they're skipped
+    cache.requestRange([17n * tileNs, 18n * tileNs - 1n], 90n * tileNs);
+    await flush();
+    expect(fetchedTiles()).toHaveLength(6);
+    expect(cache.isRangeFetched([10n * tileNs, 11n * tileNs])).toBe(true);
+    // tile 20 was fetched after its start was evicted, so it only has the data
+    // after the available start
+    expect(cache.isRangeFetched([20n * tileNs, 21n * tileNs])).toBe(true);
+    expect(cache.isRangeFetched([20n * tileNs, 20n * tileNs + 1n])).toBe(false);
+    expect(cache.isRangeFetched([20n * tileNs + 2n, 20n * tileNs + 3n])).toBe(
+      true,
+    );
   });
 
   it("requests the rest of a historical tile until it is complete", async () => {

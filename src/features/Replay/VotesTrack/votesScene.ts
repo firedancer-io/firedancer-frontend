@@ -784,6 +784,10 @@ export function syncVotesTiles(
     releaseMeshes(votesScene, tile);
     curves.tiles.delete(startNs);
   }
+  // a new tile's votes may extend slots drawn by other tiles
+  for (const [startNs, tile] of tileByStartNs) {
+    if (!curves.tiles.has(startNs)) changedSlots.push(...tile.data.keys());
+  }
   for (const slot of changedSlots) {
     for (const owner of [curves.ownerBySlot.get(slot), ownerBySlot.get(slot)]) {
       if (owner !== undefined && tileByStartNs.has(owner)) dirty.add(owner);

@@ -8,6 +8,7 @@ import { visibleRangeAtom } from "../atoms";
 import { useTileStatesRenderer } from "./useTileStatesRenderer";
 import {
   tileStatesCaches,
+  tileStatesLevels,
   type TileStatesData,
   type TileStatesDataTile,
 } from "./tileStatesCache";
@@ -32,10 +33,13 @@ import {
   aggTileStatesAtom,
   aggTileStatesEmitterAtom,
 } from "./aggAtoms";
-import { drawEventType, msBucketSizes } from "../const";
+import { ascBucketGranularities, drawEventType, msBucketSizes } from "../const";
 import { usPerMs } from "../../../consts";
 import { OVERSCAN_BUCKETS } from "./useAggTileStatesQuery";
 import { updateAggStatesMesh } from "./aggUtils";
+import { getTileSizeNs } from "../useAggQuery";
+import type { DataLevel } from "../coverage";
+import type { GetDrawTiles } from "../aggDraw";
 
 const hooks = vi.hoisted(() => ({
   rendererRef: { current: undefined as RendererObj | undefined },
@@ -58,6 +62,22 @@ vi.mock("../../WebGl/useFrameRender", () => ({
 
 const store = getDefaultStore();
 const GRANULARITY = "txn";
+
+// draw every bucket from its own granularity
+const drawOwnTiles: GetDrawTiles = (granularity, first, last) => [
+  { granularity, first, last },
+];
+
+// every agg granularity is loaded
+const granularityLevels: DataLevel[] = [
+  ...[...ascBucketGranularities].reverse().map((granularity) => ({
+    id: granularity,
+    isAgg: true,
+    tileSizeNs: getTileSizeNs(granularity),
+    isRangeFetched: () => true,
+  })),
+  ...tileStatesLevels,
+];
 const TILE_NS = tileStatesTileNs[GRANULARITY];
 const TILE_MS = Number(TILE_NS) / 1e6;
 
@@ -223,6 +243,7 @@ describe("agg tile states", () => {
       0n,
       [0, viewMs],
       store.get(aggTileStatesAtom),
+      drawOwnTiles,
     );
 
     const { aggMesh } = rendererObj;
@@ -297,6 +318,7 @@ describe("agg tile states", () => {
         config: rendererObj.config,
         remount: () => {},
         query: () => {},
+        granularityLevels,
       }),
     );
 

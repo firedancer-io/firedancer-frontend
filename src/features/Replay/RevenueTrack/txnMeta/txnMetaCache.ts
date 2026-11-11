@@ -15,6 +15,7 @@ import type { Interval } from "../../tiles/splitFetch";
 import { referenceNsAtom } from "../../atoms";
 import { calcRelativeMs, getChunksEndNs } from "../../utils";
 import { RevenueSeries, revenueSeriesAddends } from "../consts";
+import type { DataLevel } from "../../coverage";
 
 const store = getDefaultStore();
 
@@ -224,8 +225,16 @@ export const txnMetaCache = createTileCache<TxnMetaColumns, TxnMetaMaxima>({
       ? {
           value: parseChunks(result.value),
           chunksEndNs: getChunksEndNs(result.value.chunks),
+          availableStartNs: result.value.available_start_ns,
         }
       : result;
   },
   failPendingRequests: txnMetaRequests.failAll,
 });
+
+export const txnMetaLevel: DataLevel = {
+  id: "txn",
+  isAgg: false,
+  tileSizeNs: TILE_NS,
+  isRangeFetched: txnMetaCache.isRangeFetched,
+};
