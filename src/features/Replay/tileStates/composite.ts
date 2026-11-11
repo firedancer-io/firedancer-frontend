@@ -98,12 +98,14 @@ const spotlightGlsl = /* glsl */ `
 `;
 
 /**
- * Shades each px's row bar from its per state time coverage.
+ * Shades each px's row bar from its per state time coverage, optionally
+ * averaged with its neighbors so sub-px detail doesn't shimmer as it moves.
  */
 export const createCompositeFragmentShader = (
   stateCount: number,
   declarations: string,
   shade: string,
+  smoothPx: 0 | 1 = 0,
 ) => /* glsl */ `
   precision highp float;
 
@@ -118,29 +120,46 @@ export const createCompositeFragmentShader = (
 
   out vec4 fragColor;
 
+  const int SMOOTH_PX = ${smoothPx};
+  // by distance from the center px: [1 2 1] / 4 when smoothing
+  const float SMOOTH_WEIGHTS[2] = float[2](${smoothPx ? "0.5, 0.25" : "1.0, 0.0"});
+
   void main() {
     vec2 uv = gl_FragCoord.xy / uCanvasSize;
     float rowH = 1.0 / uRowCount;
     // bars sit at the bottom of their rows
     float barY = mod(uv.y, rowH) / (rowH * uBarRatio);
-    vec3 color = uBackground;
+    vec3 result = uBackground;
     if (barY < 1.0) {
       int row = int(uv.y / rowH);
       int firstTexelRow = row * ${stateCount};
       int x = int(gl_FragCoord.x);
-      float coverage[${stateCount}];
-      float busy = 0.0;
-      for (int i = 0; i < ${stateCount}; i++) {
-        coverage[i] = texelFetch(uCoverage, ivec2(x, firstTexelRow + i), 0).r;
-        busy += coverage[i];
+      int maxX = textureSize(uCoverage, 0).x - 1;
+      result = vec3(0.0);
+      float centerBusy = 0.0;
+      bool centerDrawn = false;
+      for (int offset = -SMOOTH_PX; offset <= SMOOTH_PX; offset++) {
+        int sampleX = clamp(x + offset, 0, maxX);
+        float coverage[${stateCount}];
+        float busy = 0.0;
+        for (int i = 0; i < ${stateCount}; i++) {
+          coverage[i] = texelFetch(uCoverage, ivec2(sampleX, firstTexelRow + i), 0).r;
+          busy += coverage[i];
+        }
+        vec3 color = uBackground;
+        ${shade}
+        result += color * SMOOTH_WEIGHTS[abs(offset)];
+        if (offset == 0) {
+          centerBusy = busy;
+          centerDrawn = color != uBackground;
+        }
       }
-      ${shade}
       // only what's drawn, not the bar's background
-      if (busy > 0.0 && color != uBackground) {
-        color = spotlight(color, x, row, busy);
+      if (centerBusy > 0.0 && centerDrawn) {
+        result = spotlight(result, x, row, centerBusy);
       }
     }
-    fragColor = vec4(color, 1.0);
+    fragColor = vec4(result, 1.0);
   }
 `;
 
