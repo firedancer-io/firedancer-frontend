@@ -433,7 +433,7 @@ function RevenueTrackBody({
     // after the axis max, which hover hit tests against
     if (isRefreshed || isAxisChanged) refreshHover();
 
-    updateSlotHighlight(renderer.highlight, renderer.renderer.domElement.width);
+    updateSlotHighlight(renderer.highlight, renderer.renderer);
     renderModes(
       renderer.renderer,
       renderer.aggResources,
