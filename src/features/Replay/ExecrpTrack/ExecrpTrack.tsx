@@ -15,10 +15,14 @@ import {
 } from "./execrpComposite.ts";
 import { useTileStatesRenderer } from "../tileStates/useTileStatesRenderer.ts";
 import { tileStatesCaches } from "../tileStates/tileStatesCache.ts";
-import { findTxnAtCursor } from "../tileStates/hoverUtils.ts";
+import { findExecrpHoverAtCursor } from "../tileStates/hoverUtils.ts";
 import type { RendererObj } from "../tileStates/utils.ts";
 import { useTileCacheSubscription } from "../tiles/useTileCache.ts";
-import { hoveredExecrpTxnAtom, visibleRangeAtom } from "../atoms.ts";
+import {
+  hoveredExecrpLthashAtom,
+  hoveredExecrpTxnAtom,
+  visibleRangeAtom,
+} from "../atoms.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
 import { isInRanges } from "../hoverUtils.ts";
 import { clientXToMs } from "../utils.ts";
@@ -48,7 +52,7 @@ const execrpViewOptsAtom = atom<ExecrpViewOpts>({
   idleWeight: 0.05,
 });
 
-function getTxnAtPoint(
+function getHoverAtPoint(
   renderer: RendererObj,
   clientX: number,
   clientY: number,
@@ -59,15 +63,16 @@ function getTxnAtPoint(
   const ms = clientXToMs(clientX, rect, visibleRange);
   if (!isInRanges(renderer.modeRanges.nonAgg, ms)) return;
 
-  return findTxnAtCursor(renderer, visibleRange, {
+  return findExecrpHoverAtCursor(renderer, visibleRange, {
     fracX: (clientX - rect.left) / rect.width,
     fracY: (clientY - rect.top) / rect.height,
     widthPx: rect.width,
   });
 }
 
-function clearHoveredExecrpTxn() {
+function clearHoveredExecrp() {
   store.set(hoveredExecrpTxnAtom, undefined);
+  store.set(hoveredExecrpLthashAtom, undefined);
 }
 
 const granularityLabels: Record<TileStatesGranularity, string> = {
@@ -113,25 +118,25 @@ function ExecrpTrack({ height, aggQuery, remount }: ExecrpTrackProps) {
     requestRender();
   }, [opts, requestRender]);
 
-  const throttledResolveHoverTxn = useThrottledCallback(
+  const throttledResolveHover = useThrottledCallback(
     (clientX: number, clientY: number, rect: HoveredRect) => {
       const renderer = rendererRef.current;
-      store.set(
-        hoveredExecrpTxnAtom,
-        renderer && getTxnAtPoint(renderer, clientX, clientY, rect),
-      );
+      const hovered =
+        renderer && getHoverAtPoint(renderer, clientX, clientY, rect);
+      store.set(hoveredExecrpTxnAtom, hovered?.txn);
+      store.set(hoveredExecrpLthashAtom, hovered?.lthash);
     },
     30,
   );
 
   const onHoverLeave = useCallback(() => {
-    throttledResolveHoverTxn.cancel();
-    clearHoveredExecrpTxn();
-  }, [throttledResolveHoverTxn]);
+    throttledResolveHover.cancel();
+    clearHoveredExecrp();
+  }, [throttledResolveHover]);
 
   const { setContainer: setHoverContainer, notifyChange: notifyHover } =
     useHoveredPosition({
-      onHoverChange: throttledResolveHoverTxn,
+      onHoverChange: throttledResolveHover,
       onHoverLeave,
     });
 
@@ -150,7 +155,8 @@ function ExecrpTrack({ height, aggQuery, remount }: ExecrpTrackProps) {
     const renderer = rendererRef.current;
     if (!renderer) return;
 
-    return getTxnAtPoint(renderer, clientX, clientY, rect)?.slot;
+    const hovered = getHoverAtPoint(renderer, clientX, clientY, rect);
+    return hovered?.txn?.slot ?? hovered?.lthash?.slot;
   });
 
   return (

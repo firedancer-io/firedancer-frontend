@@ -411,6 +411,9 @@ export const [
     const hoveredExecrpSlot = get(hoveredExecrpTxnAtom)?.slot;
     if (hoveredExecrpSlot != null) return hoveredExecrpSlot;
 
+    const hoveredLthashSlot = get(hoveredExecrpLthashAtom)?.slot;
+    if (hoveredLthashSlot != null) return hoveredLthashSlot;
+
     if (get(hoveredAggShredsAtom) != null) return undefined;
     const hoveredRevenueTxnSlot = get(hoveredRevenueTxnAtom)?.slot;
     if (hoveredRevenueTxnSlot != null) return hoveredRevenueTxnSlot;
@@ -680,6 +683,29 @@ export const hoveredExecrpTxnAtom = atomWithIsSameCheck<HoveredExecrpTxn>(
   isSameHoveredExecrpTxn,
 );
 
+export interface HoveredExecrpLthash {
+  slot: number;
+  tileIdx: number;
+  startMs: number;
+  endMs: number;
+}
+
+function isSameHoveredExecrpLthash(
+  a: HoveredExecrpLthash,
+  b: HoveredExecrpLthash,
+) {
+  return (
+    a.slot === b.slot &&
+    a.tileIdx === b.tileIdx &&
+    a.startMs === b.startMs &&
+    a.endMs === b.endMs
+  );
+}
+
+export const hoveredExecrpLthashAtom = atomWithIsSameCheck<HoveredExecrpLthash>(
+  isSameHoveredExecrpLthash,
+);
+
 export interface HoveredAggShreds {
   bucketIdx: number;
   granularity: AggGranularity;
@@ -755,6 +781,7 @@ export interface HoveredAggHeader {
 export enum TooltipType {
   Shred,
   ExecrpTxn,
+  ExecrpLthash,
   AggShred,
   AggRevenue,
   AggCpu,
@@ -768,6 +795,7 @@ export const tooltipTypeAtom = atom<TooltipType | null>((get) => {
 
   if (get(hoveredShredAtom) != null) return TooltipType.Shred;
   if (get(hoveredExecrpTxnAtom) != null) return TooltipType.ExecrpTxn;
+  if (get(hoveredExecrpLthashAtom) != null) return TooltipType.ExecrpLthash;
   if (get(hoveredAggShredsAtom) != null) return TooltipType.AggShred;
   if (get(hoveredAggRevenueAtom) != null) return TooltipType.AggRevenue;
   if (get(hoveredAggCpuAtom) != null) return TooltipType.AggCpu;

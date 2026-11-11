@@ -10,7 +10,7 @@ import { TileState, TileStatesGranularityEnum } from "../../../api/entities";
 import type { TimelineTileStates } from "../../../api/types";
 import { tileStatesCaches, tileStatesRequests } from "./tileStatesCache";
 import { getTileRows, tileStatesTileNs } from "./consts";
-import { findTxnAtCursor, getTxnStateDurations } from "./hoverUtils";
+import { findExecrpHoverAtCursor, getTxnStateDurations } from "./hoverUtils";
 import {
   createRandom,
   createResponse,
@@ -72,6 +72,7 @@ interface Segment {
   states: [TileState, number, number][];
   errorCode?: number | null;
   isTxn?: boolean;
+  lthashSlotDelta?: number;
 }
 
 /** A data tile's response with segments of the execrp tile, idle between */
@@ -85,6 +86,7 @@ function txnResponse(
   const state: number[] = [];
   const dur: number[] = [];
   const txnStateLo: number[] = [];
+  const lthash = { lo: [] as number[], delta: [] as number[] };
   const txns = segments.filter(({ isTxn = true }) => isTxn);
   let endMs = firstMs;
   for (const segment of segments) {
@@ -94,6 +96,10 @@ function txnResponse(
       dur.push(Math.round((states[0][1] - endMs) * ms));
     }
     if (txns.includes(segment)) txnStateLo.push(state.length);
+    if (segment.lthashSlotDelta !== undefined) {
+      lthash.lo.push(state.length);
+      lthash.delta.push(segment.lthashSlotDelta);
+    }
     for (const [tileState, startMs, stateEndMs] of states) {
       state.push(tileState);
       dur.push(Math.round((stateEndMs - startMs) * ms));
@@ -127,8 +133,8 @@ function txnResponse(
         txn_error_code: Float64Array.from(
           txns.map(({ errorCode = 0 }) => errorCode ?? NaN),
         ),
-        lthash_state_lo: new Int32Array(0),
-        lthash_slot_delta: new Int32Array(0),
+        lthash_state_lo: Int32Array.from(lthash.lo),
+        lthash_slot_delta: Int32Array.from(lthash.delta),
       },
     ],
   };
@@ -249,7 +255,7 @@ describe("getTxnStateDurations", () => {
   });
 });
 
-describe("findTxnAtCursor", () => {
+describe("findExecrpHoverAtCursor on txns", () => {
   // A txn's states from the raw response, as the column parse kept them: the
   // stage at a point inside one, and each state's total time
   function expectLikeRawStates(states: TestState[], tileStartMs: number) {
@@ -278,11 +284,11 @@ describe("findTxnAtCursor", () => {
       if (!hovered) continue;
       const cursorMs = tileStartMs + (hovered.startNs + hovered.endNs) / 2 / ms;
       const row = rows.findIndex((tile) => tile.tileIdx === tileIdx);
-      const txn = findTxnAtCursor(rendererObj, visibleRangeMs, {
+      const txn = findExecrpHoverAtCursor(rendererObj, visibleRangeMs, {
         fracX: (cursorMs - visibleRangeMs[0]) / TILE_MS,
         fracY: (row + 0.95) / rows.length,
         widthPx: 1_000_000,
-      });
+      })?.txn;
       expect(txn?.txnIdx).toBe(data.txn_idx[i]);
       expect(txn?.state).toBe(hovered.state);
 
@@ -329,11 +335,15 @@ describe("hover at a txn's edge and on the live tile", () => {
     rendererObj.renderedGranularity = "txn";
     const rows = getTileRows(testTiles, "execrp");
     const row = rows.findIndex(({ tileIdx }) => tileIdx === TILE);
-    return findTxnAtCursor(rendererObj, [cursorMs - 50, cursorMs + 50], {
-      fracX: 0.5,
-      fracY: (row + 0.95) / rows.length,
-      widthPx: 2800,
-    });
+    return findExecrpHoverAtCursor(
+      rendererObj,
+      [cursorMs - 50, cursorMs + 50],
+      {
+        fracX: 0.5,
+        fracY: (row + 0.95) / rows.length,
+        widthPx: 2800,
+      },
+    )?.txn;
   }
 
   it("leaves out a state ending exactly where the txn starts", async () => {
@@ -396,5 +406,104 @@ describe("hover at a txn's edge and on the live tile", () => {
     expect(txn?.state).toBe(TileState.Loading);
     expect(txn?.states.exec?.stateMs.get(TileState.Loading)).toBeCloseTo(10, 6);
     expect(txn?.states.exec?.stateMs.get(TileState.Execute)).toBeCloseTo(30, 6);
+  });
+});
+
+describe("findExecrpHoverAtCursor on LtHash tasks", () => {
+  beforeEach(() => {
+    cache.reset();
+    requests = [];
+  });
+
+  function hoverAt(cursorMs: number) {
+    const rendererObj = createTestRendererObj("execrp", "txn");
+    rendererObj.renderedGranularity = "txn";
+    const rows = getTileRows(testTiles, "execrp");
+    const row = rows.findIndex(({ tileIdx }) => tileIdx === TILE);
+    return findExecrpHoverAtCursor(
+      rendererObj,
+      [cursorMs - 50, cursorMs + 50],
+      {
+        fracX: 0.5,
+        fracY: (row + 0.95) / rows.length,
+        widthPx: 2800,
+      },
+    )?.lthash;
+  }
+
+  it("finds the LtHash task and its slot", async () => {
+    await cacheResponse(
+      0,
+      txnResponse(0, [
+        { states: [at(TileState.Execute, -2, -1)] },
+        {
+          states: [at(TileState.Lthash, -0.5, 0.5)],
+          isTxn: false,
+          lthashSlotDelta: 2,
+        },
+      ]),
+    );
+
+    const lthash = hoverAt(BASE_MS);
+    expect(lthash?.slot).toBe(SLOT + 2);
+    expect(lthash?.tileIdx).toBe(TILE);
+    expect(lthash?.startMs).toBeCloseTo(BASE_MS - 0.5, 6);
+    expect(lthash?.endMs).toBeCloseTo(BASE_MS + 0.5, 6);
+    expect(hoverAt(BASE_MS - 1.5)).toBeUndefined();
+  });
+
+  it("prefers a direct hit over a nearby txn, either way", async () => {
+    await cacheResponse(
+      0,
+      txnResponse(0, [
+        {
+          states: [at(TileState.Lthash, -0.05, 0)],
+          isTxn: false,
+          lthashSlotDelta: 1,
+        },
+        { states: [at(TileState.Execute, 0, 0.05)] },
+      ]),
+    );
+
+    // each is within the hover tolerance of the other
+    expect(hoverAt(BASE_MS - 0.025)?.slot).toBe(SLOT + 1);
+    expect(hoverAt(BASE_MS + 0.025)).toBeUndefined();
+  });
+
+  it("keeps back to back tasks of a slot apart", async () => {
+    const lthash = { isTxn: false, lthashSlotDelta: 1 };
+    await cacheResponse(
+      0,
+      txnResponse(0, [
+        { ...lthash, states: [at(TileState.Lthash, -1, -0.5)] },
+        { ...lthash, states: [at(TileState.Lthash, -0.5, 0.5)] },
+      ]),
+    );
+
+    const first = hoverAt(BASE_MS - 0.75);
+    expect(first?.startMs).toBeCloseTo(BASE_MS - 1, 6);
+    expect(first?.endMs).toBeCloseTo(BASE_MS - 0.5, 6);
+    const second = hoverAt(BASE_MS);
+    expect(second?.startMs).toBeCloseTo(BASE_MS - 0.5, 6);
+    expect(second?.endMs).toBeCloseTo(BASE_MS + 0.5, 6);
+  });
+
+  it("finds a task starting before the data tile holding it", async () => {
+    await cacheResponse(
+      1,
+      txnResponse(1, [
+        {
+          states: [at(TileState.Lthash, 1.5, 2.5)],
+          isTxn: false,
+          lthashSlotDelta: 1,
+        },
+      ]),
+    );
+
+    // in the data tile before, which isn't cached
+    const hovered = hoverAt(BASE_MS + 1.75);
+    expect(hovered?.slot).toBe(SLOT + 1);
+    expect(hovered?.startMs).toBeCloseTo(BASE_MS + 1.5, 6);
+    expect(hovered?.endMs).toBeCloseTo(BASE_MS + 2.5, 6);
   });
 });

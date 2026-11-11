@@ -1,6 +1,7 @@
 import { useAtomValue } from "jotai";
 import ShredTooltip from "./ShredsTrack/ShredTooltip";
 import ExecrpTxnTooltip from "./tileStates/ExecrpTxnTooltip";
+import ExecrpLthashTooltip from "./tileStates/ExecrpLthashTooltip";
 import AggShredTooltip from "./ShredsTrack/AggShredTooltip";
 import AggRevenueTooltip from "./RevenueTrack/AggRevenueTooltip";
 import RevenueTxnTooltip from "./RevenueTrack/RevenueTxnTooltip";
@@ -26,6 +27,8 @@ export default function ReplayTooltip() {
       return <ShredTooltip />;
     case TooltipType.ExecrpTxn:
       return <ExecrpTxnTooltip />;
+    case TooltipType.ExecrpLthash:
+      return <ExecrpLthashTooltip />;
     case TooltipType.AggShred:
       return <AggShredTooltip />;
     case TooltipType.AggRevenue:
