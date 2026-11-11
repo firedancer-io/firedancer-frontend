@@ -23,7 +23,11 @@ import {
   updateSlotHighlight,
   useSlotHighlightRender,
 } from "../slotHighlight.ts";
-import { calcAbsoluteNsRange, getVisibleWorldRangeNs } from "../utils.ts";
+import {
+  calcAbsoluteNsRange,
+  getVisibleWorldRangeNs,
+  getWindowNs,
+} from "../utils.ts";
 import { resolveCoverage, type DataLevel } from "../coverage.ts";
 import { getVisibleYLabels } from "./yLabels.ts";
 import TrackControls, { type LegendItem } from "../TrackControls.tsx";
@@ -165,6 +169,7 @@ function VotesTrackBody({
         granularityLevels,
         targetId,
         calcAbsoluteNsRange(referenceNs, visibleRangeMs),
+        getWindowNs(visibleRangeMs),
         calcAbsoluteNsRange(referenceNs, worldRangeMs),
       );
       return getCoverageLatencySeries(

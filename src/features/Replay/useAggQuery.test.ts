@@ -8,15 +8,19 @@ import { smoothedNowNsAtom } from "../../nowAtoms";
 import { nsPerMs } from "../../consts";
 import { useAggShredsQuery } from "./ShredsTrack/useAggShredsQuery";
 import { setStartupTimeAtom } from "./resetReplayState";
+import { nsBucketSizes } from "./const";
 
 vi.mock("../../nowAtoms", () => ({
   smoothedNowNsAtom: atom<bigint | undefined>(undefined),
 }));
 
 const wsSend = vi.fn();
+let serverMessageHandler: ((message: unknown) => void) | undefined;
 vi.mock("../../api/ws/utils", () => ({
   useWebSocketSend: () => wsSend,
-  useServerMessages: () => {},
+  useServerMessages: (handler: (message: unknown) => void) => {
+    serverMessageHandler = handler;
+  },
 }));
 
 const store = getDefaultStore();
@@ -39,6 +43,29 @@ const sentTileIdxs = () =>
     return Number(BigInt(params.start_ns) / BigInt(tileMs * nsPerMs));
   });
 
+const answerAll = () => {
+  const ids = wsSend.mock.calls.map(
+    ([message]) => (message as { id: number }).id,
+  );
+  wsSend.mockClear();
+  for (const id of ids) {
+    serverMessageHandler?.({
+      type: "kv",
+      topic: "timeline",
+      key: "query_agg_shreds",
+      id,
+      value: {
+        granularity: "250ms",
+        reference_ts_ns: 0n,
+        turbine: [],
+        repair: [],
+        reconstructed: [],
+        published: [],
+      },
+    });
+  }
+};
+
 beforeEach(() => {
   vi.useFakeTimers();
   wsSend.mockClear();
@@ -50,18 +77,30 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  serverMessageHandler = undefined;
   vi.useRealTimers();
   store.set(socketStateAtom, SocketState.Disconnected);
 });
 
 describe("useAggQuery world prefetch", () => {
-  it("prefetches the world on mount and follows it until unmount", () => {
+  it("prefetches the world one tile per response and stops on unmount", () => {
     const { unmount } = renderHook(() => useAggShredsQuery("prefetch-mount"));
-    expect(sentTileIdxs()).toEqual([0, 1]);
+    expect(wsSend).not.toHaveBeenCalled();
 
-    wsSend.mockClear();
+    // the world range tick starts prefetching
+    setNowMs(100_001);
+    vi.advanceTimersByTime(100);
+    expect(sentTileIdxs()).toEqual([0]);
+
+    answerAll();
+    expect(sentTileIdxs()).toEqual([1]);
+    answerAll();
+    expect(wsSend).not.toHaveBeenCalled();
+
     setNowMs(130_000);
     vi.advanceTimersByTime(100);
+    expect(sentTileIdxs()).toEqual([1]);
+    answerAll();
     expect(sentTileIdxs()).toEqual([2]);
 
     unmount();
@@ -79,6 +118,15 @@ describe("useAggQuery world prefetch", () => {
     store.set(socketStateAtom, SocketState.Connected);
     setNowMs(100_010);
     vi.advanceTimersByTime(100);
-    expect(sentTileIdxs()).toEqual([0, 1]);
+    expect(sentTileIdxs()).toEqual([0]);
+  });
+
+  it("gives each agg level its bucket size", () => {
+    const { result } = renderHook(() => useAggShredsQuery("bucket-sizes"));
+    for (const level of result.current.granularityLevels) {
+      expect(level.bucketSizeNs).toBe(
+        nsBucketSizes[level.id as keyof typeof nsBucketSizes],
+      );
+    }
   });
 });

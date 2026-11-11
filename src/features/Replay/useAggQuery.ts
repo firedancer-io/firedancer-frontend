@@ -8,11 +8,15 @@ import {
   type WritableAtom,
 } from "jotai";
 import { useWebSocketSend } from "../../api/ws/utils";
-import { throttleIfVisible } from "../../api/useDebounceIfVisible";
 import type { AggGranularity } from "../../api/types";
 import type { NsTsRange, TsRange } from "../WebGl/webglUtils";
-import { calcAbsoluteNsRange, useTimelineServerMessage } from "./utils";
+import {
+  calcAbsoluteNsRange,
+  getWindowNs,
+  useTimelineServerMessage,
+} from "./utils";
 import { createParallelCache } from "./parallelQueriesCache";
+import { registerPrefetcher } from "./prefetchQueue";
 import {
   ascBucketGranularities,
   drawEventType,
@@ -21,6 +25,7 @@ import {
 } from "./const";
 import {
   referenceNsAtom,
+  visibleRangeAtom,
   worldRangeAtom,
   type TimelineQueryKey,
 } from "./atoms";
@@ -146,6 +151,21 @@ export function useAggQuery<TValue, TParams extends object = object>({
     };
   }, [cache]);
 
+  // so zooming all the way out doesn't wait on the network
+  const prefetch = useCallback(() => {
+    const referenceNs = store.get(referenceNsAtom);
+    const worldRange = store.get(worldRangeAtom);
+    if (referenceNs == null || !worldRange) return false;
+
+    const worldGranularity = getGranularity(worldRange[1] - worldRange[0]);
+    return prefetchWorld(
+      calcAbsoluteNsRange(referenceNs, worldRange),
+      worldGranularity,
+      nsBucketSizes[worldGranularity],
+      params,
+    );
+  }, [prefetchWorld, getGranularity, params]);
+
   useTimelineServerMessage(queryKey, (message) => {
     if (!markQueryComplete(message.id)) return;
 
@@ -160,9 +180,10 @@ export function useAggQuery<TValue, TParams extends object = object>({
   // Agg granularities ordered from coarsest to finest
   const granularityLevels = useMemo(
     () =>
-      [...ascBucketGranularities]
-        .reverse()
-        .map((granularity) => getLevel(granularity, true)),
+      [...ascBucketGranularities].reverse().map((granularity) => ({
+        ...getLevel(granularity, true),
+        bucketSizeNs: nsBucketSizes[granularity],
+      })),
     [getLevel],
   );
 
@@ -193,6 +214,7 @@ export function useAggQuery<TValue, TParams extends object = object>({
             fallbackLevels,
             granularity,
             tileRangeNs,
+            visibleRangeNs[1] - visibleRangeNs[0],
             worldRangeNs,
           ),
       );
@@ -200,38 +222,18 @@ export function useAggQuery<TValue, TParams extends object = object>({
     [granularityLevels, onNothingToFetch, queryRange, params],
   );
 
-  // so zooming all the way out doesn't wait on the network
-  useLayoutEffect(() => {
-    const prefetch = () => {
-      const referenceNs = store.get(referenceNsAtom);
-      const worldRange = store.get(worldRangeAtom);
-      if (referenceNs == null || !worldRange) return;
-
-      const worldGranularity = getGranularity(worldRange[1] - worldRange[0]);
-      prefetchWorld(
-        calcAbsoluteNsRange(referenceNs, worldRange),
-        worldGranularity,
-        nsBucketSizes[worldGranularity],
-        params,
-      );
-    };
-    prefetch();
-    const throttledPrefetch = throttleIfVisible(prefetch, 100);
-    const unsub = store.sub(worldRangeAtom, throttledPrefetch);
-    return () => {
-      unsub();
-      throttledPrefetch.cancel();
-    };
-  }, [prefetchWorld, getGranularity, params]);
+  useLayoutEffect(() => registerPrefetcher(prefetch), [prefetch]);
 
   /** Agg granularity to draw each span from, or a fallback if not loaded */
   const getDrawTiles: GetDrawTiles = useCallback(
     (drawGranularity, firstBucketIdx, lastBucketIdx) => {
       const referenceNs = store.get(referenceNsAtom);
+      const visibleRange = store.get(visibleRangeAtom);
       const worldRange = store.get(worldRangeAtom);
       return getCoverageDrawTiles(
         granularityLevels,
         drawGranularity,
+        visibleRange ? getWindowNs(visibleRange) : 0n,
         referenceNs != null && worldRange
           ? calcAbsoluteNsRange(referenceNs, worldRange)
           : undefined,

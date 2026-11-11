@@ -168,6 +168,7 @@ export function useNonAggShredsQuery(
             fallbackLevels,
             granularity,
             tileRangeNs,
+            visibleRangeNs[1] - visibleRangeNs[0],
             worldRangeNs,
           ),
       );

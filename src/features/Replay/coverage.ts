@@ -9,8 +9,23 @@ export interface DataLevel {
   id: string;
   isAgg: boolean;
   tileSizeNs: bigint;
-  /** Returns whether every tile overlapping the range has data */
-  isRangeFetched: (rangeNs: NsTsRange) => boolean;
+  // agg levels only
+  bucketSizeNs?: bigint;
+  /**
+   * Returns whether every tile overlapping the range has data. Stale tiles
+   * only have data up to their last refresh.
+   */
+  isRangeFetched: (rangeNs: NsTsRange, includeStale?: boolean) => boolean;
+}
+
+// fewer buckets in view draw as blocks that look nothing like the data
+const MIN_FALLBACK_BUCKETS_IN_VIEW = 60n;
+
+export function isTooCoarseFallback(level: DataLevel, windowNs: bigint) {
+  return (
+    level.bucketSizeNs !== undefined &&
+    level.bucketSizeNs * MIN_FALLBACK_BUCKETS_IN_VIEW > windowNs
+  );
 }
 
 /**
@@ -32,6 +47,7 @@ export function resolveCoverage(
   granularityLevels: DataLevel[],
   targetLevelId: string,
   rangeNs: NsTsRange,
+  windowNs: bigint,
   worldRangeNs?: NsTsRange,
 ): CoverageSpan[] {
   const targetLevelIdx = granularityLevels.findIndex(
@@ -43,11 +59,18 @@ export function resolveCoverage(
     ...granularityLevels.slice(targetLevelIdx),
     ...granularityLevels.slice(0, targetLevelIdx).reverse(),
   ];
+  const usable = byDist.filter(
+    (level) =>
+      level.id === targetLevelId || !isTooCoarseFallback(level, windowNs),
+  );
   // prefer the target's mode since each switch between modes adds a render pass
   const candidates = [
-    ...byDist.filter((level) => level.isAgg === isAgg),
-    ...byDist.filter((level) => level.isAgg !== isAgg),
+    ...usable.filter((level) => level.isAgg === isAgg),
+    ...usable.filter((level) => level.isAgg !== isAgg),
   ];
+
+  // coarser levels refresh their stale tail too rarely to stand in for the target
+  const coarserLevels = new Set(granularityLevels.slice(0, targetLevelIdx));
 
   const spans: CoverageSpan[] = [];
   for (
@@ -67,7 +90,9 @@ export function resolveCoverage(
         bigIntMax(tileStartNs, rangeNs[0]),
         bigIntMin(tileEndNs, rangeNs[1]),
       ],
-      level: candidates.find((level) => level.isRangeFetched(fetchRangeNs)),
+      level: candidates.find((level) =>
+        level.isRangeFetched(fetchRangeNs, !coarserLevels.has(level)),
+      ),
     });
   }
   return spans;
@@ -81,6 +106,7 @@ export function hasFallbackData(
   granularityLevels: DataLevel[],
   targetLevelId: string,
   rangeNs: NsTsRange,
+  windowNs: bigint,
   worldRangeNs?: NsTsRange,
 ): boolean {
   const fetchRangeNs: NsTsRange = worldRangeNs
@@ -89,8 +115,14 @@ export function hasFallbackData(
         bigIntMin(rangeNs[1], worldRangeNs[1]),
       ]
     : rangeNs;
+  const targetLevelIdx = granularityLevels.findIndex(
+    ({ id }) => id === targetLevelId,
+  );
   return granularityLevels.some(
-    (level) => level.id !== targetLevelId && level.isRangeFetched(fetchRangeNs),
+    (level, idx) =>
+      idx !== targetLevelIdx &&
+      !isTooCoarseFallback(level, windowNs) &&
+      level.isRangeFetched(fetchRangeNs, idx > targetLevelIdx),
   );
 }
 
@@ -101,12 +133,14 @@ export function isRangeCovered(
   granularityLevels: DataLevel[],
   targetLevelId: string,
   rangeNs: NsTsRange,
+  windowNs: bigint,
   worldRangeNs?: NsTsRange,
 ): boolean {
   return resolveCoverage(
     granularityLevels,
     targetLevelId,
     rangeNs,
+    windowNs,
     worldRangeNs,
   ).every(({ level }) => level !== undefined);
 }

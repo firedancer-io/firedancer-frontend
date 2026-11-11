@@ -12,6 +12,7 @@ import {
 import { calcAbsoluteNs } from "./utils";
 import { getTileIdx, getTileIdxRangeWithOverscan } from "./utils";
 import type { DataLevel } from "./coverage";
+import { endPrefetch, setLoading } from "./prefetchQueue";
 import { bigIntMax } from "../../mathUtils";
 
 interface TileStates {
@@ -96,10 +97,15 @@ export function createParallelCache<
       tileIdx: number;
       granularity: Granularity;
       isStale: boolean;
+      isPrefetch: boolean;
+      hasData: boolean;
     }
   >();
+  const loadingOwner = {};
+  // only prefetch between init and its cleanup
+  let isActive = false;
 
-  let lastPrefetch:
+  let lastTailRefresh:
     | { granularity: Granularity; params: Params; worldEndBucket: bigint }
     | undefined;
 
@@ -142,6 +148,14 @@ export function createParallelCache<
     return states;
   };
 
+  const updateLoading = () => {
+    let isLoading = false;
+    for (const { isPrefetch, hasData } of pendingQueries.values()) {
+      if (!isPrefetch && !hasData) isLoading = true;
+    }
+    setLoading(loadingOwner, isLoading);
+  };
+
   /**
    * If tile is not fetched or pending, mark as pending and return query Id
    */
@@ -149,6 +163,7 @@ export function createParallelCache<
     granularity: Granularity,
     tileIdx: number,
     isStale: boolean,
+    isPrefetch = false,
   ): number | undefined => {
     const tileQueryStates = getTileStates(granularity);
     if (
@@ -164,7 +179,10 @@ export function createParallelCache<
       tileIdx,
       granularity,
       isStale,
+      isPrefetch,
+      hasData: tileQueryStates.stale.has(tileIdx),
     });
+    updateLoading();
     return queryId;
   };
 
@@ -351,27 +369,23 @@ export function createParallelCache<
     }
   };
 
-  /** Fetch the whole world, refreshing the tail tile once per new bucket */
+  /** Send the next missing world tile; the tail refreshes once per bucket */
   const prefetchWorld = (
     [worldStartNs, worldEndNs]: NsTsRange,
     granularity: Granularity,
     bucketSizeNs: bigint,
     params: Params,
-  ) => {
-    if (worldEndNs <= worldStartNs || !store.get(isConnectedAtom)) return;
-
-    const worldEndBucket = worldEndNs / bucketSizeNs;
+  ): boolean => {
     if (
-      lastPrefetch?.granularity === granularity &&
-      lastPrefetch.params === params &&
-      lastPrefetch.worldEndBucket === worldEndBucket
+      !isActive ||
+      worldEndNs <= worldStartNs ||
+      !store.get(isConnectedAtom)
     ) {
-      return;
+      return false;
     }
-    lastPrefetch = { granularity, params, worldEndBucket };
 
     const tileSizeNs = getTileSizeNs(granularity);
-    const { availableStartNs } = getTileStates(granularity);
+    const { fetched, stale, availableStartNs } = getTileStates(granularity);
     const firstTile = getTileIdx(worldStartNs, tileSizeNs, false);
     const lastTile = getTileIdx(worldEndNs, tileSizeNs, true);
     for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
@@ -380,11 +394,28 @@ export function createParallelCache<
       if (availableStartNs !== undefined && tileEndNs <= availableStartNs) {
         continue;
       }
-      const isStale = tileEndNs >= worldEndNs;
-      const queryId = getNewQueryId(granularity, tileIdx, isStale);
-      if (queryId == null) continue;
+      if (fetched.has(tileIdx)) continue;
+
+      const isTail = tileEndNs >= worldEndNs;
+      if (isTail) {
+        const worldEndBucket = worldEndNs / bucketSizeNs;
+        if (
+          stale.has(tileIdx) &&
+          lastTailRefresh?.granularity === granularity &&
+          lastTailRefresh.params === params &&
+          lastTailRefresh.worldEndBucket === worldEndBucket
+        ) {
+          return false;
+        }
+        lastTailRefresh = { granularity, params, worldEndBucket };
+      }
+
+      const queryId = getNewQueryId(granularity, tileIdx, isTail, true);
+      if (queryId == null) return false;
       dispatchSingleTileQuery(granularity, queryId, tileIdx, params);
+      return true;
     }
+    return false;
   };
 
   /**
@@ -425,17 +456,22 @@ export function createParallelCache<
       tilesState.fetched.add(tileIdx);
     }
 
+    const evicted = evictTilesIfNeeded(granularity);
+
+    // the tile's state is settled, so the next fetch won't resend it
+    updateLoading();
+    if (queryInfo.isPrefetch) endPrefetch();
+
     // If the new query is evicted (data no longer in range), return undefined
     // to indicate the response was not cached.
-    const evicted = evictTilesIfNeeded(granularity);
     if (evicted.includes(tileIdx)) return;
 
     return queryInfo;
   };
 
   /**
-   * Granularity as a data level. A tile has data if it's fetched or stale,
-   * and isn't partial.
+   * Granularity as a data level. A tile has data if it's fetched (or stale,
+   * when included) and isn't partial.
    */
   const getLevel = (granularity: Granularity, isAgg: boolean): DataLevel => {
     const tileSizeNs = getTileSizeNs(granularity);
@@ -443,7 +479,7 @@ export function createParallelCache<
       id: granularity,
       isAgg,
       tileSizeNs,
-      isRangeFetched: (rangeNs) => {
+      isRangeFetched: (rangeNs, includeStale = true) => {
         if (rangeNs[1] <= rangeNs[0]) return true;
 
         const { fetched, stale, partial, availableStartNs } =
@@ -457,12 +493,13 @@ export function createParallelCache<
         const firstTile = getTileIdx(startNs, tileSizeNs, false);
         const lastTile = getTileIdx(rangeNs[1], tileSizeNs, true);
 
-        if (lastTile - firstTile + 1 > fetched.size + stale.size) {
-          return false;
-        }
+        const dataTileCount = fetched.size + (includeStale ? stale.size : 0);
+        if (lastTile - firstTile + 1 > dataTileCount) return false;
 
         for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
-          if (!fetched.has(tileIdx) && !stale.has(tileIdx)) return false;
+          const hasData =
+            fetched.has(tileIdx) || (includeStale && stale.has(tileIdx));
+          if (!hasData) return false;
           if (!allowPartial && partial.has(tileIdx)) return false;
         }
         return true;
@@ -515,6 +552,7 @@ export function createParallelCache<
   };
 
   const init = () => {
+    isActive = true;
     if (store.get(isConnectedAtom)) requeryLatestRange();
 
     const unsubWorldRange = store.sub(
@@ -527,9 +565,19 @@ export function createParallelCache<
       else clearPending();
     });
     return () => {
+      isActive = false;
       unsubWorldRange();
       unsubConnected();
     };
+  };
+
+  const dropPendingQueries = () => {
+    const hadPrefetch = [...pendingQueries.values()].some(
+      ({ isPrefetch }) => isPrefetch,
+    );
+    pendingQueries.clear();
+    updateLoading();
+    if (hadPrefetch) endPrefetch();
   };
 
   /**
@@ -540,8 +588,8 @@ export function createParallelCache<
     for (const { pending } of getChartState().values()) {
       pending.clear();
     }
-    pendingQueries.clear();
-    lastPrefetch = undefined;
+    dropPendingQueries();
+    lastTailRefresh = undefined;
   };
 
   /**
@@ -562,8 +610,8 @@ export function createParallelCache<
       onEvictTiles(granularity as Granularity, [...fetched, ...stale]);
     }
     getChartState().clear();
-    pendingQueries.clear();
-    lastPrefetch = undefined;
+    dropPendingQueries();
+    lastTailRefresh = undefined;
     pauseStaleRefreshes();
   };
 

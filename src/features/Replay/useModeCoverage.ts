@@ -18,7 +18,7 @@ import {
   type GetDrawTiles,
 } from "./aggDraw";
 import { msBucketSizes } from "./const";
-import { calcAbsoluteNsRange } from "./utils";
+import { calcAbsoluteNsRange, getWindowNs } from "./utils";
 
 const store = getDefaultStore();
 
@@ -77,6 +77,7 @@ export function useModeCoverage({
       granularityLevels,
       targetGranularity,
       visibleRangeNs,
+      getWindowNs(visibleRange),
       worldRangeNs,
     );
     modeRangesRef.current = getModeRanges(
@@ -110,6 +111,7 @@ export function useModeCoverage({
       const tiles = getCoverageDrawTiles(
         granularityLevels,
         targetGranularity,
+        getWindowNs(visibleRange),
         worldRangeNs,
         drawGranularity,
         firstBucketIdx,
@@ -151,6 +153,7 @@ export function useModeCoverage({
       getCoverageDrawTiles(
         granularityLevels,
         getTargetGranularity(visibleRange),
+        getWindowNs(visibleRange),
         calcAbsoluteNsRange(referenceNs, worldRange),
         drawn.granularity,
         firstBucketIdx,

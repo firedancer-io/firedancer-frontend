@@ -3,6 +3,7 @@ import {
   calcAbsoluteNsRange,
   getAggSlotsGranularity,
   getVisibleWorldRangeNs,
+  getWindowNs,
 } from "../utils";
 import type { AggSlots } from "../../../api/types";
 import type { TsRange } from "../../WebGl/webglUtils";
@@ -37,6 +38,7 @@ export function useAggHeaderQuery(chartId: string) {
         granularityLevels,
         getAggSlotsGranularity(visibleRange[1] - visibleRange[0]),
         getVisibleWorldRangeNs(referenceNs, visibleRange, worldRange),
+        getWindowNs(visibleRange),
         calcAbsoluteNsRange(referenceNs, worldRange),
       ),
     [granularityLevels],
