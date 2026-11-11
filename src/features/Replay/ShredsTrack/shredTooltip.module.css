@@ -14,12 +14,8 @@
   color: var(--shred-replayed-repair-color);
 }
 
-.reconstructed-text-color {
+.reconstructed-color {
   color: var(--shred-reconstructed-color);
-}
-
-.hovered-reconstructed-text-color {
-  color: var(--shred-hovered-reconstructed-color);
 }
 
 .published-color {

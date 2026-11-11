@@ -84,7 +84,7 @@ const eventTypeInfo: Record<
   // replayed with neither receipt
   reconstructed: {
     replayedLabel: "Replayed reconstructed",
-    replayedColorClassName: styles.hoveredReconstructedTextColor,
+    replayedColorClassName: styles.reconstructedColor,
   },
 };
 
@@ -102,7 +102,7 @@ function getHeaderColorClassName(
     case "turbine":
       return styles.receivedTurbineColor;
     case "reconstructed":
-      return styles.hoveredReconstructedTextColor;
+      return styles.reconstructedColor;
     case undefined:
       // use the default header color
       return undefined;
