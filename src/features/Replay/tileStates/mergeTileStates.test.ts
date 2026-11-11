@@ -111,13 +111,18 @@ function coverage(
   return texels;
 }
 
-function randomResponse(seed: number) {
+const granularities: TileStatesGranularity[] = ["txn", "txn_batch"];
+
+function randomResponse(
+  seed: number,
+  granularity: TileStatesGranularity,
+  offsetChunks?: number,
+) {
   const random = createRandom(seed);
-  const granularity: TileStatesGranularity =
-    random() < 0.5 ? "txn" : "txn_batch";
   const tileNs = tileStatesTileNs[granularity];
   // starts somewhere in a data tile, at a chunk boundary
-  const offsetNs = BigInt(Math.floor(random() * 5)) * 100_000_000n;
+  const offsetNs =
+    BigInt(offsetChunks ?? Math.floor(random() * 5)) * 100_000_000n;
   const { res, states } = createResponse(random, {
     granularity,
     startNs: 7n * tileNs + offsetNs,
@@ -126,7 +131,7 @@ function randomResponse(seed: number) {
     stateNs: 10 ** (4.5 + random() * 2.5),
     idleChance: random(),
   });
-  return { random, granularity, res, states, offsetMs: Number(offsetNs) / 1e6 };
+  return { random, res, states, offsetMs: Number(offsetNs) / 1e6 };
 }
 
 function expectMatchesStates(
@@ -275,11 +280,13 @@ function splitResponse(
   ];
 }
 
-describe("mergeTileStatesResponse", () => {
+describe.each(granularities)("mergeTileStatesResponse (%s)", (granularity) => {
   it("matches each track's states within every level's bin", () => {
     for (let seed = 1; seed <= 30; seed++) {
-      const { random, granularity, res, states, offsetMs } =
-        randomResponse(seed);
+      const { random, res, states, offsetMs } = randomResponse(
+        seed,
+        granularity,
+      );
       const { levels, referenceSlot } = mergeTileStatesResponse(res, testTiles);
       for (const kind of tileKinds) {
         const rowCount = getRowOfTile(kind).size;
@@ -298,7 +305,7 @@ describe("mergeTileStatesResponse", () => {
   });
 
   it("keeps every state in the 0 bin level", () => {
-    const { granularity, res, states, offsetMs } = randomResponse(3);
+    const { res, states, offsetMs } = randomResponse(3, granularity);
     const { levels, referenceSlot } = mergeTileStatesResponse(res, testTiles);
     for (const kind of tileKinds) {
       const raw = toRawRects(states, kind, granularity, offsetMs);
@@ -316,14 +323,7 @@ describe("mergeTileStatesResponse", () => {
   });
 
   it("places states from the tile owning the chunk, even if they start before it", () => {
-    const aligned = Array.from({ length: 50 }, (_, seed) =>
-      randomResponse(seed + 1),
-    ).find(
-      ({ res }) =>
-        res.chunks[0].chunk_ts % tileStatesTileNs[res.granularity] === 0n,
-    );
-    if (!aligned) throw new Error("No response starting at a tile start");
-    const { res } = aligned;
+    const { res } = randomResponse(1, granularity, 0);
     // the first chunk's states start 1ms before its tile, at the same times
     const shiftNs = 1_000_000;
     const [first, ...rest] = res.chunks;
@@ -348,8 +348,10 @@ describe("mergeTileStatesResponse", () => {
 
   it("merges split responses into levels that stay within each response", () => {
     for (let seed = 1; seed <= 20; seed++) {
-      const { random, granularity, res, states, offsetMs } =
-        randomResponse(seed);
+      const { random, res, states, offsetMs } = randomResponse(
+        seed,
+        granularity,
+      );
       if (res.chunks.length < 2) continue;
       const splitIdx = 1 + Math.floor(random() * (res.chunks.length - 1));
       const [first, second] = splitResponse(res, splitIdx);
@@ -386,7 +388,7 @@ describe("mergeTileStatesResponse", () => {
   });
 
   it("has no slots without a reference slot", () => {
-    const { res } = randomResponse(5);
+    const { res } = randomResponse(5, granularity);
     const noReference = {
       ...res,
       chunks: res.chunks.map((chunk) => ({ ...chunk, reference_slot: null })),
@@ -404,7 +406,7 @@ describe("mergeTileStatesResponse", () => {
   });
 
   it("merges an empty response into no levels, which concat skips", () => {
-    const { res } = randomResponse(6);
+    const { res } = randomResponse(6, granularity);
     const merged = mergeTileStatesResponse(res, testTiles);
     const empty = mergeTileStatesResponse({ ...res, chunks: [] }, testTiles);
     expect(empty.levels).toEqual({ execrp: [], replay: [] });
@@ -419,10 +421,10 @@ describe("mergeTileStatesResponse", () => {
   });
 });
 
-describe("pruneLevels", () => {
+describe.each(granularities)("pruneLevels (%s)", (granularity) => {
   it("keeps the finest level and levels with at most 3/4 of the last kept one's rects", () => {
     for (let seed = 1; seed <= 20; seed++) {
-      const { res } = randomResponse(seed);
+      const { res } = randomResponse(seed, granularity);
       const { levels } = mergeTileStatesResponse(res, testTiles);
       for (const kind of tileKinds) {
         const kept = pruneLevels(levels[kind]);

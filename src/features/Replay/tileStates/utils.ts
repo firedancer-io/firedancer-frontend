@@ -615,13 +615,18 @@ export function appendLiveStates(
   const { dataTileMeshes } = rendererObj;
   const key = dataTileKey(liveDataTile);
 
+  const built = dataTileMeshes.get(key);
+  // a live tile's first windows can have no levels, e.g. past the result limit
   const hasLiveMeshes =
     !isNewDataTile &&
     rendererObj.liveDataTileKey === key &&
-    dataTileMeshes.has(key);
+    !!built &&
+    newData.levels[rendererObj.config.kind].every(
+      ({ binMs }, i) => built.levels[i]?.binMs === binMs,
+    );
   rendererObj.liveDataTileKey = key;
 
-  const meshes = dataTileMeshes.get(key) ?? addDataTileMeshes(rendererObj, key);
+  const meshes = built ?? addDataTileMeshes(rendererObj, key);
   buildDataTileMeshes(
     rendererObj,
     meshes,
