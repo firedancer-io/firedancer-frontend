@@ -356,7 +356,7 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
       return;
     }
 
-    updateSlotHighlight(nonAggResources.highlight, renderer.domElement.width);
+    updateSlotHighlight(nonAggResources.highlight, renderer);
     updateSlotMeshes(nonAggResources);
     nonAggResources.smoothPass.renderToTarget(
       renderer,

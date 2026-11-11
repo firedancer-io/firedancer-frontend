@@ -30,6 +30,7 @@ import { useExplorableChart } from "./useExplorableChart";
 import {
   createSlotHighlight,
   getGroupLevel,
+  getLiftScale,
   getRelativeSlot,
   getSlotFocus,
   NO_SLOT,
@@ -221,11 +222,16 @@ describe("slot selection", () => {
 });
 
 describe("updateSlotHighlight", () => {
-  function update() {
+  function update(viewWidthPx = 1000, pixelRatio = 1) {
     const highlight = createSlotHighlight();
     // a mark drawn before anything is hovered sets the reference
     getRelativeSlot(highlight, 1004);
-    updateSlotHighlight(highlight, 1000);
+    const domElement = document.createElement("canvas");
+    domElement.width = viewWidthPx;
+    updateSlotHighlight(highlight, {
+      domElement,
+      getPixelRatio: () => pixelRatio,
+    });
     const { uniforms } = highlight;
     return {
       active: uniforms.uHighlightActive.value,
@@ -233,6 +239,7 @@ describe("updateSlotHighlight", () => {
       hoveredOtherSlot: uniforms.uHoveredOtherSlot.value,
       levels: uniforms.uLevels.value.toArray(),
       lifts: uniforms.uLifts.value.toArray(),
+      liftScale: uniforms.uLiftScale.value,
       focusRangePx: uniforms.uFocusRangePx.value.toArray(),
       hoveredOtherRangePx: uniforms.uHoveredOtherRangePx.value.toArray(),
     };
@@ -248,7 +255,7 @@ describe("updateSlotHighlight", () => {
       active: 1,
       focusSlot: 0,
       hoveredOtherSlot: NO_SLOT,
-      levels: [0.85, 0.65],
+      levels: [1, 0.85],
       lifts: [0.1, 0.2],
     });
   });
@@ -259,7 +266,7 @@ describe("updateSlotHighlight", () => {
     expect(update()).toMatchObject({
       focusSlot: -1,
       hoveredOtherSlot: 1,
-      levels: [0.75, 0.5],
+      levels: [0.85, 0.73],
       lifts: [0.14, 0.28],
     });
 
@@ -280,6 +287,40 @@ describe("updateSlotHighlight", () => {
       hoveredOtherRangePx: [140, 220, 60, 220],
     });
   });
+
+  it("lifts less as the focused slot widens on zoom in", () => {
+    hover(100_100);
+    const zoomedOut = update().liftScale;
+    store.set(visibleRangeAtom, [100_000, 101_000]);
+    const zoomedIn = update().liftScale;
+    expect(zoomedIn).toBeLessThan(zoomedOut);
+    expect(zoomedOut).toBeLessThan(1);
+
+    store.set(visibleRangeAtom, [0, 1_000_000]);
+    expect(update().liftScale).toBe(1);
+  });
+
+  it("scales lift by css px, not device px", () => {
+    hover(100_100);
+    const cssScale = update(1000, 1).liftScale;
+    expect(cssScale).toBeGreaterThan(0.4);
+    expect(cssScale).toBeLessThan(1);
+    expect(update(2000, 2).liftScale).toBeCloseTo(cssScale);
+  });
+});
+
+describe("getLiftScale", () => {
+  it("falls from full lift on narrow slots to a floor on wide ones", () => {
+    const widthsPx = [0, 10, 20, 40, 80, 160, 320, 500, 1000, 5000];
+    const scales = widthsPx.map(getLiftScale);
+    expect(scales[0]).toBe(1);
+    expect(scales[2]).toBe(1);
+    expect(scales[7]).toBeCloseTo(0.4);
+    expect(scales.at(-1)).toBe(0.4);
+    for (let i = 1; i < scales.length; i++) {
+      expect(scales[i]).toBeLessThanOrEqual(scales[i - 1]);
+    }
+  });
 });
 
 describe("slotHighlightGlsl", () => {
@@ -298,7 +339,7 @@ describe("getGroupLevel", () => {
     const focus = getSlotFocus(1005, 1003);
     expect(getGroupLevel(1000, focus)).toBe(1);
     expect(getGroupLevel(1004, focus)).toBe(1);
-    expect(getGroupLevel(1008, focus)).toBe(0.5);
+    expect(getGroupLevel(1008, focus)).toBe(0.73);
     expect(getGroupLevel(1008, undefined)).toBe(1);
   });
 });

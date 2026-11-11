@@ -298,7 +298,7 @@ export function render(rendererObj: RendererObj) {
   } = rendererObj;
   const { width, height } = renderer.domElement;
   if (!width || !height) return;
-  updateSlotHighlight(highlight, width);
+  updateSlotHighlight(highlight, renderer);
   const rowCount = Math.max(getRowOfTile(rendererObj.config.kind).size, 1);
   const states = syncCoverageStates(rendererObj);
   const coverageHeight = rowCount * states.length;

@@ -279,10 +279,7 @@ function VotesTrackBody({
         isEqual(prev, layout.ticks) ? prev : layout.ticks,
       );
     }
-    updateSlotHighlight(
-      rendererObj.highlight,
-      rendererObj.renderer.domElement.width,
-    );
+    updateSlotHighlight(rendererObj.highlight, rendererObj.renderer);
     rendererObj.renderer.render(rendererObj.scene, rendererObj.camera);
   }, [rendererRef, getDrawInput]);
   const requestRender = useFrameRender(renderFrame);

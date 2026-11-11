@@ -27,11 +27,27 @@ import {
 const store = getDefaultStore();
 
 const slotLevels = {
-  hover: { group: 0.85, other: 0.65 },
-  selected: { group: 0.75, other: 0.5 },
+  hover: { group: 1, other: 0.85 },
+  selected: { group: 0.85, other: 0.73 },
 };
 
 const hoveredOtherLevel = 0.85;
+
+// wide slots lift a large area, so lift them less
+const liftScaleBySlotWidthPx = {
+  narrow: { widthPx: 20, scale: 1 },
+  wide: { widthPx: 500, scale: 0.4 },
+};
+
+export function getLiftScale(slotWidthPx: number) {
+  const { narrow, wide } = liftScaleBySlotWidthPx;
+  if (slotWidthPx <= narrow.widthPx) return narrow.scale;
+  if (slotWidthPx >= wide.widthPx) return wide.scale;
+  const progress =
+    Math.log(slotWidthPx / narrow.widthPx) /
+    Math.log(wide.widthPx / narrow.widthPx);
+  return narrow.scale + (wide.scale - narrow.scale) * progress;
+}
 
 const slotLifts = {
   hover: { group: 0.1, slot: 0.2 },
@@ -98,6 +114,7 @@ uniform float uFocusSlot;
 uniform float uHoveredOtherSlot;
 uniform vec2 uLevels;
 uniform vec2 uLifts;
+uniform float uLiftScale;
 uniform vec4 uFocusRangePx;
 uniform vec4 uHoveredOtherRangePx;
 
@@ -128,10 +145,12 @@ vec3 applyHighlight(
     if (inHoveredOtherSlot) level = max(level, HOVERED_OTHER_LEVEL);
     color = mix(HIGHLIGHT_BACKGROUND, color, level);
 
-    if (inFocusGroup) color = overlayWhite(color, uLifts.x);
-    if (inFocusSlot) color = overlayWhite(color, uLifts.y);
-    if (inHoveredOtherGroup) color = overlayWhite(color, HOVERED_OTHER_LIFTS.x);
-    if (inHoveredOtherSlot) color = overlayWhite(color, HOVERED_OTHER_LIFTS.y);
+    vec2 lifts = uLifts * uLiftScale;
+    vec2 hoveredOtherLifts = HOVERED_OTHER_LIFTS * uLiftScale;
+    if (inFocusGroup) color = overlayWhite(color, lifts.x);
+    if (inFocusSlot) color = overlayWhite(color, lifts.y);
+    if (inHoveredOtherGroup) color = overlayWhite(color, hoveredOtherLifts.x);
+    if (inHoveredOtherSlot) color = overlayWhite(color, hoveredOtherLifts.y);
   }
   return color;
 }
@@ -193,6 +212,7 @@ export interface SlotHighlight {
     uHoveredOtherSlot: THREE.IUniform<number>;
     uLevels: THREE.IUniform<THREE.Vector2>;
     uLifts: THREE.IUniform<THREE.Vector2>;
+    uLiftScale: THREE.IUniform<number>;
     uFocusRangePx: THREE.IUniform<THREE.Vector4>;
     uHoveredOtherRangePx: THREE.IUniform<THREE.Vector4>;
   };
@@ -207,6 +227,7 @@ export function createSlotHighlight(): SlotHighlight {
       uHoveredOtherSlot: { value: NO_SLOT },
       uLevels: { value: new THREE.Vector2(1, 1) },
       uLifts: { value: new THREE.Vector2() },
+      uLiftScale: { value: 1 },
       uFocusRangePx: { value: new THREE.Vector4() },
       uHoveredOtherRangePx: { value: new THREE.Vector4() },
     },
@@ -260,6 +281,7 @@ interface HighlightRanges {
 function applySlotHighlight(
   highlight: SlotHighlight,
   viewWidthPx: number,
+  pixelRatio: number,
   focus: SlotFocus | undefined,
   ranges?: HighlightRanges,
 ) {
@@ -281,6 +303,7 @@ function applySlotHighlight(
   if (!ranges) {
     uniforms.uFocusRangePx.value.set(0, 0, 0, 0);
     uniforms.uHoveredOtherRangePx.value.set(0, 0, 0, 0);
+    uniforms.uLiftScale.value = 1;
     return;
   }
 
@@ -289,6 +312,10 @@ function applySlotHighlight(
     ranges.focusRange,
     ranges.visibleRange,
     viewWidthPx,
+  );
+  const focusRangePx = uniforms.uFocusRangePx.value;
+  uniforms.uLiftScale.value = getLiftScale(
+    (focusRangePx.y - focusRangePx.x) / pixelRatio,
   );
   setRangePx(
     uniforms.uHoveredOtherRangePx.value,
@@ -303,13 +330,13 @@ export function updateSlotHighlightForSlots(
   highlight: SlotHighlight,
   hoveredSlot: number | undefined,
 ) {
-  applySlotHighlight(highlight, 0, getSlotFocus(hoveredSlot, undefined));
+  applySlotHighlight(highlight, 0, 1, getSlotFocus(hoveredSlot, undefined));
 }
 
 // call before each render
 export function updateSlotHighlight(
   highlight: SlotHighlight,
-  viewWidthPx: number,
+  renderer: Pick<THREE.WebGLRenderer, "domElement" | "getPixelRatio">,
 ) {
   const hoveredSlot = store.get(hoveredSlotAtom);
   const selectedSlot = store.get(selectedSlotAtom);
@@ -321,11 +348,17 @@ export function updateSlotHighlight(
   }
 
   const isSelected = selectedSlot !== undefined;
-  applySlotHighlight(highlight, viewWidthPx, focus, {
-    visibleRange,
-    focusRange: store.get(isSelected ? selectedRangeAtom : hoveredRangeAtom),
-    hoveredOtherRange: store.get(hoveredRangeAtom),
-  });
+  applySlotHighlight(
+    highlight,
+    renderer.domElement.width,
+    renderer.getPixelRatio(),
+    focus,
+    {
+      visibleRange,
+      focusRange: store.get(isSelected ? selectedRangeAtom : hoveredRangeAtom),
+      hoveredOtherRange: store.get(hoveredRangeAtom),
+    },
+  );
 }
 
 export function useSlotHighlightRender(render: () => void) {

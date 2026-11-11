@@ -156,7 +156,7 @@ function CpuTrackBody({
   const render = useCallback(() => {
     if (!rendererRef.current) return;
     const { renderer, scene, camera, highlight } = rendererRef.current;
-    updateSlotHighlight(highlight, renderer.domElement.width);
+    updateSlotHighlight(highlight, renderer);
     renderer.render(scene, camera);
   }, [rendererRef]);
 
