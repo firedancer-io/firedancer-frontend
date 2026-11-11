@@ -438,10 +438,10 @@ export const replayExecrpPostExecuteColor = "#6C6F73";
 export const replayExecrpLoadingColor = "#C48225";
 export const replayExecrpSigverifyColor = "#8F6CE0";
 export const replayExecrpLthashColor = "#239382";
-export const replayBlockedOnNetworkColor = "#3F6789";
-export const replaySlotFinishColor = "#458B68";
-export const replayBlockedOnConflictsColor = "#D36854";
-export const replayBlockedOnTilesColor = "#AC9834";
+export const replayBlockedOnNetworkColor = "#486588";
+export const replaySlotFinishColor = "#477F6D";
+export const replayBlockedOnConflictsColor = "#9F5845";
+export const replayBlockedOnTilesColor = "#A19753";
 
 // replay votes
 export const votesNotarColor = "#3A8C5F";
