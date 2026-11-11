@@ -328,6 +328,9 @@ describe("tile states cache", () => {
     expect(slots("execrp")).toEqual([500, 500, 502]);
     expect(slots("replay")).toEqual([501]);
     expect(data.txn_slot).toEqual([500]);
+    expect(data.lthash_slot).toEqual([502]);
+    expect(data.lthash_tile).toEqual([5]);
+    expect(data.lthash_end_ms[0] - data.lthash_start_ms[0]).toBeCloseTo(1, 6);
   });
 
   it("skips null tiles, unknown states, and reads missing start deltas as 0", () => {

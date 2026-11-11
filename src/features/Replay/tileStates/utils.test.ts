@@ -104,6 +104,10 @@ function toData(levels: MergedLevels, referenceSlot: number): TileStatesData {
     txn_start_ms: [],
     txn_end_ms: [],
     txn_error_code: [],
+    lthash_slot: [],
+    lthash_tile: [],
+    lthash_start_ms: [],
+    lthash_end_ms: [],
   };
 }
 

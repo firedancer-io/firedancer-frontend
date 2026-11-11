@@ -47,8 +47,7 @@ function getDataTilesInRange(
   const tiles: DataTileInRange[] = [];
   for (
     let tileStartNs = (calcAbsoluteNs(referenceNs, startMs) / tileNs) * tileNs;
-    // a tile's first state can start before it, so take the next tile too
-    tileStartNs <= endNs + tileNs;
+    tileStartNs <= endNs;
     tileStartNs += tileNs
   ) {
     const [data] = cache.getDataInRange(tileStartNs, tileStartNs).data;
@@ -132,7 +131,6 @@ interface StateInterval {
   state: TileState;
   startMs: number;
   endMs: number;
-  slot: number;
 }
 
 /** A tile row's states overlapping a range, in ms from the reference */
@@ -168,7 +166,6 @@ function getRowStateIntervals(
       state: states[stateIdx],
       startMs: stateStartMs,
       endMs: stateEndMs,
-      slot: data.referenceSlot + level.slot[i],
     });
   }
   return intervals;
@@ -228,16 +225,22 @@ function findLthashNearCursor(
     ms - toleranceMs,
     ms + toleranceMs,
   )) {
-    for (const { state, slot, startMs, endMs } of getRowStateIntervals(
-      tile,
-      tileIdx,
-      ms - toleranceMs,
-      ms + toleranceMs,
-    )) {
-      if (state !== TileState.Lthash || Number.isNaN(slot)) continue;
+    const { data } = tile;
+    for (let i = 0; i < data.lthash_tile.length; i++) {
+      if (data.lthash_tile[i] !== tileIdx) continue;
+      const startMs = data.lthash_start_ms[i];
+      const endMs = data.lthash_end_ms[i];
       const distMs = ms < startMs ? startMs - ms : ms > endMs ? ms - endMs : 0;
       if (distMs > toleranceMs || (best && best.distMs <= distMs)) continue;
-      best = { lthash: { slot, tileIdx, startMs, endMs }, distMs };
+      best = {
+        lthash: {
+          slot: data.lthash_slot[i],
+          tileIdx,
+          startMs,
+          endMs,
+        },
+        distMs,
+      };
     }
   }
   return best;

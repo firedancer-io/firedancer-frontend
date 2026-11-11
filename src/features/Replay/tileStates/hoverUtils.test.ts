@@ -488,23 +488,4 @@ describe("findExecrpHoverAtCursor on LtHash tasks", () => {
     expect(second?.startMs).toBeCloseTo(BASE_MS - 0.5, 6);
     expect(second?.endMs).toBeCloseTo(BASE_MS + 0.5, 6);
   });
-
-  it("finds a task starting before the data tile holding it", async () => {
-    await cacheResponse(
-      1,
-      txnResponse(1, [
-        {
-          states: [at(TileState.Lthash, 1.5, 2.5)],
-          isTxn: false,
-          lthashSlotDelta: 1,
-        },
-      ]),
-    );
-
-    // in the data tile before, which isn't cached
-    const hovered = hoverAt(BASE_MS + 1.75);
-    expect(hovered?.slot).toBe(SLOT + 1);
-    expect(hovered?.startMs).toBeCloseTo(BASE_MS + 1.5, 6);
-    expect(hovered?.endMs).toBeCloseTo(BASE_MS + 2.5, 6);
-  });
 });
