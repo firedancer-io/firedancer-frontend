@@ -10,7 +10,7 @@ import type {
 import { TileStatesGranularityEnum } from "../../../api/entities.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import { useTileCacheQuery } from "../tiles/useTileCache.ts";
-import { getTileKey } from "../utils.ts";
+import { getTileKey, getWindowNs } from "../utils.ts";
 import {
   hasFallbackData,
   tileStatesCaches,
@@ -18,7 +18,7 @@ import {
 } from "./tileStatesCache.ts";
 import { getTileStatesGranularity, isAggregate } from "./consts.ts";
 import { syncAggTileStatesTilesAtom } from "./aggAtoms.ts";
-import type { DataLevel } from "../coverage.ts";
+import { isTooCoarseFallback, type DataLevel } from "../coverage.ts";
 import {
   getAggGranularity,
   type AggTileStatesQuery,
@@ -44,9 +44,17 @@ export function useTileStatesQuery({
   );
 
   const getHasFallbackData = useCallback(
-    (granularity: TileStatesGranularity) => (tileRangeNs: NsTsRange) =>
-      hasFallbackData[granularity](tileRangeNs) ||
-      aggLevels.some((level) => level.isRangeFetched(tileRangeNs)),
+    (granularity: TileStatesGranularity) => (tileRangeNs: NsTsRange) => {
+      if (hasFallbackData[granularity](tileRangeNs)) return true;
+      const visibleRange = store.get(visibleRangeAtom);
+      if (!visibleRange) return false;
+      const windowNs = getWindowNs(visibleRange);
+      return aggLevels.some(
+        (level) =>
+          !isTooCoarseFallback(level, windowNs) &&
+          level.isRangeFetched(tileRangeNs, false),
+      );
+    },
     [aggLevels],
   );
   const hasTxnFallback = useMemo(

@@ -7,6 +7,7 @@ import { bigIntMax, bigIntMin } from "../../../mathUtils";
 import { logError } from "../../../logger";
 import type { NsTsRange } from "../../WebGl/webglUtils";
 import { getSortedInsertIdx } from "../utils";
+import { setLoading } from "../prefetchQueue";
 import { splitFetch, type FetchResult, type Interval } from "./splitFetch";
 
 const store = getDefaultStore();
@@ -131,6 +132,7 @@ export function createTileCache<TData, TMeta>({
   let lastEndNs: bigint | null = null;
   let lastWorldEndNs: bigint | null = null;
   const inFlightTileIds = new Set<number>();
+  const loadingOwner = {};
   // latest start of the server's data (tiles ending before it aren't fetched)
   let availableStartNs: bigint | undefined;
   /** whether a tile can be drawn from other data while it loads */
@@ -351,6 +353,7 @@ export function createTileCache<TData, TMeta>({
     const { signal } = controller;
     requestedTilesForView.add(tileId);
     inFlightTileIds.add(tileId);
+    setLoading(loadingOwner, true);
     const [tileStartNs, tileEndNs] = getRange(tileId);
     const data = empty();
     let fetchedEndNs = tileStartNs - 1n;
@@ -366,6 +369,7 @@ export function createTileCache<TData, TMeta>({
     inFlightTileIds.delete(tileId);
     if (fetchedEndNs === tileEndNs) cacheTile(tileId, data);
     else fetchMissingTiles();
+    setLoading(loadingOwner, inFlightTileIds.size > 0);
   }
 
   function startLive(tileId: number): void {
@@ -628,6 +632,7 @@ export function createTileCache<TData, TMeta>({
     sortedTileIds.length = 0;
     cachedItems = 0;
     inFlightTileIds.clear();
+    setLoading(loadingOwner, false);
     requestedTilesForView.clear();
     lastStartNs = null;
     lastEndNs = null;

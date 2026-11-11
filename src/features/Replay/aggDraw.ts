@@ -20,6 +20,7 @@ export type GetDrawTiles = (
 export function getCoverageDrawTiles(
   granularityLevels: DataLevel[],
   targetLevelId: string,
+  windowNs: bigint,
   worldRangeNs: NsTsRange | undefined,
   drawGranularity: AggGranularity,
   firstBucketIdx: number,
@@ -32,6 +33,7 @@ export function getCoverageDrawTiles(
     granularityLevels,
     targetLevelId,
     [BigInt(firstBucketIdx) * bucketNs, BigInt(lastBucketIdx + 1) * bucketNs],
+    windowNs,
     worldRangeNs,
   );
 

@@ -64,6 +64,10 @@ export function calcRelativeMs(referenceNs: bigint, valueNs: bigint) {
   return Number(valueNs - referenceNs) / nsPerMs;
 }
 
+export function getWindowNs([startMs, endMs]: TsRange) {
+  return BigInt(Math.round((endMs - startMs) * nsPerMs));
+}
+
 export function calcAbsoluteNs(referenceNs: bigint, relativeMs: number) {
   return referenceNs + convertToNsTimestamp(relativeMs);
 }
