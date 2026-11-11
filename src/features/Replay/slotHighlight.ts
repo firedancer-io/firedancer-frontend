@@ -4,6 +4,7 @@ import { useEffect, type RefObject } from "react";
 import { useClickAway, useKey, useLatest } from "react-use";
 import {
   clearSelectedSlotAtom,
+  delayHoveredSlotClear,
   dismissPinnedAtom,
   hoveredRangeAtom,
   hoveredSlotAtom,
@@ -337,6 +338,10 @@ export function useSlotHighlightRender(render: () => void) {
     ];
     return () => unsubs.forEach((unsub) => unsub());
   }, [render]);
+}
+
+export function useHoveredSlotClearDelay() {
+  useEffect(() => delayHoveredSlotClear(store), []);
 }
 
 // On Escape close the pinned overlap tooltip if it's open, otherwise clear the
