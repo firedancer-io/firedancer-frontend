@@ -14,6 +14,7 @@ import { smoothedNowNsAtom } from "../../nowAtoms";
 import {
   clearHoverInfoAtom,
   clearSelectedSlotAtom,
+  delayHoveredSlotClear,
   hoveredShredAtom,
   hoveredSlotAtom,
   returnToLiveAtom,
@@ -111,6 +112,44 @@ beforeEach(() => {
   store.set(clearHoverInfoAtom, owner);
   store.set(clearSelectedSlotAtom);
   store.set(hoveredShredAtom, undefined);
+});
+
+describe("hovered slot clear delay", () => {
+  let undo: () => void;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    undo = delayHoveredSlotClear(store);
+  });
+  afterEach(() => {
+    undo();
+    vi.useRealTimers();
+  });
+
+  it("keeps the hovered slot briefly after leaving it", () => {
+    hover(100_100);
+    hover(108_000);
+    expect(store.get(hoveredSlotAtom)).toBe(1003);
+
+    vi.advanceTimersByTime(149);
+    expect(store.get(hoveredSlotAtom)).toBe(1003);
+    vi.advanceTimersByTime(1);
+    expect(store.get(hoveredSlotAtom)).toBeUndefined();
+  });
+
+  it("switches to a newly hovered slot immediately", () => {
+    hover(100_100);
+    hover(108_000);
+    hover(101_500);
+    expect(store.get(hoveredSlotAtom)).toBe(1005);
+
+    // restarts the delay from the latest slot
+    vi.advanceTimersByTime(50);
+    hover(108_000);
+    vi.advanceTimersByTime(149);
+    expect(store.get(hoveredSlotAtom)).toBe(1005);
+    vi.advanceTimersByTime(1);
+    expect(store.get(hoveredSlotAtom)).toBeUndefined();
+  });
 });
 
 describe("slot selection", () => {

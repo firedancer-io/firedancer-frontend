@@ -8,13 +8,14 @@ import { isWebgl2SupportedAtom } from "../WebGl/atoms";
 import { isFullScreenAtom } from "./atoms";
 import PlaybackControls from "./PlaybackControls";
 import styles from "./replay.module.css";
-import { useDismissSelection } from "./slotHighlight";
+import { useDismissSelection, useHoveredSlotClearDelay } from "./slotHighlight";
 
 export default function Replay() {
   const isWebGl2Supported = useAtomValue(isWebgl2SupportedAtom);
   const [isFullScreen, setIsFullScreen] = useAtom(isFullScreenAtom);
   const replayRef = useRef<HTMLDivElement>(null);
   useDismissSelection(replayRef);
+  useHoveredSlotClearDelay();
 
   useEffect(() => () => setIsFullScreen(false), [setIsFullScreen]);
 

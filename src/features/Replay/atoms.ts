@@ -1,7 +1,7 @@
 import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../nowAtoms";
 import type { TsRange } from "../WebGl/webglUtils";
-import { atom, type Getter, type Setter } from "jotai";
+import { atom, type createStore, type Getter, type Setter } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { CHART_NOW_DELAY_MS, type PlaybackRate } from "./const";
 import {
@@ -289,6 +289,10 @@ export interface ClientPos {
   y: number;
 }
 
+type Store = ReturnType<typeof createStore>;
+
+const HOVERED_SLOT_CLEAR_DELAY_MS = 150;
+
 export interface HoverInfo {
   owner: string;
   cursorMs: number;
@@ -378,6 +382,7 @@ export const [
   hoveredClientPosAtom,
   setHoverInfoAtom,
   clearHoverInfoAtom,
+  delayHoveredSlotClear,
 ] = (function getHoveredSlotAtoms() {
   const _hoverInfoAtom = atom<HoverInfo | undefined>(undefined);
 
@@ -399,11 +404,7 @@ export const [
    * The hovered slot number, resolved from the cursor ms against the timeline
    * slots, or undefined when nothing is hovered.
    */
-  const hoveredSlotAtom = atom<number | undefined>((get) => {
-    // a pinned overlap tooltip spotlights an explicit slot
-    const pinnedSlot = get(pinnedSpotlightSlotAtom);
-    if (pinnedSlot != null) return pinnedSlot;
-
+  const _rawHoveredSlotAtom = atom<number | undefined>((get) => {
     const hoveredShredSlot = get(hoveredShredAtom)?.slot;
     if (hoveredShredSlot != null) return hoveredShredSlot;
 
@@ -421,6 +422,39 @@ export const [
     return getSlotAtMs(get, cursorMs);
   });
 
+  /** the last hovered slot, kept briefly after it's unhovered */
+  const _lingeringSlotAtom = atom<number | undefined>(undefined);
+
+  // a pinned overlap tooltip spotlights an explicit slot
+  const hoveredSlotAtom = atom(
+    (get) =>
+      get(pinnedSpotlightSlotAtom) ??
+      get(_rawHoveredSlotAtom) ??
+      get(_lingeringSlotAtom),
+  );
+
+  function delayHoveredSlotClear(store: Store) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let prevSlot = store.get(_rawHoveredSlotAtom);
+    const unsub = store.sub(_rawHoveredSlotAtom, () => {
+      const slot = store.get(_rawHoveredSlotAtom);
+      if (slot === undefined && prevSlot !== undefined) {
+        clearTimeout(timer);
+        store.set(_lingeringSlotAtom, prevSlot);
+        timer = setTimeout(
+          () => store.set(_lingeringSlotAtom, undefined),
+          HOVERED_SLOT_CLEAR_DELAY_MS,
+        );
+      }
+      prevSlot = slot;
+    });
+    return () => {
+      unsub();
+      clearTimeout(timer);
+      store.set(_lingeringSlotAtom, undefined);
+    };
+  }
+
   return [
     hoveredSlotAtom,
     hoveredMsAtom,
@@ -434,6 +468,7 @@ export const [
         set(_hoverInfoAtom, undefined);
       }
     }),
+    delayHoveredSlotClear,
   ] as const;
 })();
 
