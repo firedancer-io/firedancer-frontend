@@ -14,7 +14,12 @@ import { clamp as minMaxClamp } from "lodash";
 import styles from "./chart.module.css";
 import { clampToWorld, clientXToMs } from "./utils";
 import { getDrawnSlotAt } from "./slotHighlight";
-import { isExcludedTarget, isTap, PAN_THRESHOLD_PX } from "./gestureUtils";
+import {
+  isExcludedTarget,
+  isTap,
+  markGestureSurface,
+  PAN_THRESHOLD_PX,
+} from "./gestureUtils";
 
 const ZOOM_INTENSITY = 0.002;
 const EDGE_ZOOM_ZONE_PX = 40;
@@ -688,6 +693,7 @@ export function useExplorableChart() {
       };
 
       const cleanups = [
+        markGestureSurface(trackEl),
         addListener(trackEl, "mousedown", onMouseDownStartGesture),
         addListener(trackEl, "dblclick", onDblClick),
         addListener(trackEl, "touchstart", onTouchStartWithTapTracking, {
@@ -964,6 +970,7 @@ export function useExplorableChart() {
       };
 
       const cleanups = [
+        markGestureSurface(trackEl),
         addListener(
           trackEl,
           "pointerdown",

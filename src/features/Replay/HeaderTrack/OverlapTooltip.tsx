@@ -26,6 +26,7 @@ import {
 } from "../atoms";
 import { msToClientX } from "../utils";
 import { positionBelowPoint, positionBesideSpan } from "../floatingPosition";
+import { isGestureSurfaceTarget } from "../gestureUtils";
 import type { SlotInfo } from "./nonAggAtoms";
 import { SlotStatus } from "./SlotStatus";
 import { SlotTooltipContent } from "./ReplaySlotTooltip";
@@ -190,8 +191,9 @@ function PinnedShell() {
   // - list: close when the cursor leaves both header and tooltip (padding bridges
   //   the gap so the cursor can cross between them). After a detail→list return,
   //   it stays open until the cursor is seen over one of them.
-  // - both: close on a click outside the tooltip, except on the header in list
-  //   mode. That click only closes it and doesn't reach the chart.
+  // - both: close on a click or tap outside the tooltip, except on the header in
+  //   list mode. On the chart, that press only closes it, without selecting or
+  //   panning; elsewhere (ex. a button) it also goes through.
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       if (store.get(pinnedTooltipAtom)?.mode !== "list") return;
@@ -216,32 +218,64 @@ function PinnedShell() {
         store.set(dismissPinnedAtom);
       }
     };
-    const onMouseDownCapture = (e: MouseEvent) => {
+    // whether the press closed the tooltip
+    const dismissOnPressOutside = (
+      target: EventTarget | null,
+      clientX: number,
+      clientY: number,
+    ) => {
       const mode = store.get(pinnedTooltipAtom)?.mode;
-      if (mode == null) return;
+      if (mode == null) return false;
       const root = rootRef.current;
-      // clicks inside the tooltip never dismiss
-      if (root && e.target instanceof Node && root.contains(e.target)) return;
+      // presses inside the tooltip never dismiss
+      if (root && target instanceof Node && root.contains(target)) return false;
       if (
         mode === "list" &&
         pointInRect(
           store.get(nonAggHeaderElAtom)?.getBoundingClientRect() ?? null,
-          e.clientX,
-          e.clientY,
+          clientX,
+          clientY,
         )
       ) {
-        return;
+        return false;
       }
       store.set(dismissPinnedAtom);
-      // stop the chart's mousedown gesture so this click only closes the tooltip,
-      // without also selecting/pausing
-      e.stopPropagation();
+      return true;
+    };
+    const onMouseDownCapture = (e: MouseEvent) => {
+      if (
+        dismissOnPressOutside(e.target, e.clientX, e.clientY) &&
+        isGestureSurfaceTarget(e.target)
+      ) {
+        e.stopPropagation();
+      }
+    };
+    // the chart cancels touches' default, so taps fire no mousedown
+    const onTouchStartCapture = (e: TouchEvent) => {
+      const touch = e.changedTouches[0];
+      if (
+        touch &&
+        dismissOnPressOutside(e.target, touch.clientX, touch.clientY) &&
+        // only the gesture's first fingers; later ones reach the chart as usual
+        e.touches.length === e.changedTouches.length &&
+        isGestureSurfaceTarget(e.target)
+      ) {
+        // also cancels the browser's emulated mouse events
+        e.preventDefault();
+        e.stopPropagation();
+      }
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("mousedown", onMouseDownCapture, true);
+    window.addEventListener("touchstart", onTouchStartCapture, {
+      capture: true,
+      // to cancel the closing tap's emulated mouse events
+      passive: false,
+    });
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("mousedown", onMouseDownCapture, true);
+      window.removeEventListener("touchstart", onTouchStartCapture, true);
     };
   }, []);
 
