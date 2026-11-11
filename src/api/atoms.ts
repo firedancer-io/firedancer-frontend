@@ -60,9 +60,10 @@ export const commitHashAtom = atom<CommitHash | undefined>(undefined);
 
 export const identityKeyAtom = atom<IdentityKey | undefined>(undefined);
 
-export const startupTimeAtom = atom<
+export const startupTimeBaseAtom = atom<
   { startupTimeNanos: StartupTimeNanos } | undefined
 >(undefined);
+export const startupTimeAtom = atom((get) => get(startupTimeBaseAtom));
 
 export const tilesAtom = atom<Tile[] | undefined>(undefined);
 

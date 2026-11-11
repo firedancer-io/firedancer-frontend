@@ -35,6 +35,11 @@ const tileQueryStateByChartIdAtom = atom<Map<string, ChartQueryState>>(
   new Map(),
 );
 
+/** forget every chart's fetched/pending/stale tiles */
+export const clearAllTileQueryStateAtom = atom(null, (_get, set) => {
+  set(tileQueryStateByChartIdAtom, new Map());
+});
+
 interface CreateParallelCacheOpts<
   Granularity extends string,
   Params = undefined,

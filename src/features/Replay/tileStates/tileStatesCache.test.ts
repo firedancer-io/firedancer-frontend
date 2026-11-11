@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
-import { startupTimeAtom, tilesAtom } from "../../../api/atoms";
+import { tilesAtom } from "../../../api/atoms";
 import { socketStateAtom } from "../../../api/ws/atoms";
 import { SocketState } from "../../../api/ws/types";
 import { sendMessage } from "../../../api/worker/useWsWorker";
@@ -42,6 +42,7 @@ import {
   getRequest,
   testTiles,
 } from "./tileStatesTestData";
+import { setStartupTimeAtom } from "../resetReplayState";
 
 vi.mock("../../../api/worker/useWsWorker", () => ({ sendMessage: vi.fn() }));
 vi.mock("../../../nowAtoms", () => ({
@@ -247,7 +248,7 @@ beforeEach(() => {
     });
   });
   store.set(socketStateAtom, SocketState.Connected);
-  store.set(startupTimeAtom, { startupTimeNanos: 0n } as never);
+  store.set(setStartupTimeAtom, 0n);
   store.set(tilesAtom, testTiles);
   store.set(smoothedNowNsAtom as PrimitiveAtom<bigint | undefined>, undefined);
   cache.reset();

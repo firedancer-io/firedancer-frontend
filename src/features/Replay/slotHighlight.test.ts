@@ -9,7 +9,6 @@ import {
 } from "vitest";
 import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
 import { renderHook } from "@testing-library/react";
-import { startupTimeAtom } from "../../api/atoms";
 import { smoothedNowNsAtom } from "../../nowAtoms";
 import {
   clearHoverInfoAtom,
@@ -47,6 +46,7 @@ import {
 import { shredEventDescPriorities } from "../Shreds/const";
 import type { NonAggRendererResources } from "./ShredsTrack/const";
 import type { RectMesh } from "../WebGl/webglUtils";
+import { setStartupTimeAtom } from "./resetReplayState";
 
 vi.mock("../../nowAtoms", () => ({
   smoothedNowNsAtom: atom<bigint | undefined>(undefined),
@@ -86,7 +86,7 @@ function hover(ms: number) {
 }
 
 beforeAll(() => {
-  store.set(startupTimeAtom, { startupTimeNanos: 0n });
+  store.set(setStartupTimeAtom, 0n);
   store.set(
     smoothedNowNsAtom as PrimitiveAtom<bigint | undefined>,
     BigInt(400_000 + CHART_NOW_DELAY_MS) * nsPerMs,

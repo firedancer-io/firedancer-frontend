@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { atom, createStore, type PrimitiveAtom } from "jotai";
-import { startupTimeAtom } from "../../api/atoms";
 import type * as NonAggAtoms from "./HeaderTrack/nonAggAtoms";
 import type { SlotGroup, SlotInfo } from "./HeaderTrack/nonAggAtoms";
+import { setStartupTimeAtom } from "./resetReplayState";
 
 vi.mock("./HeaderTrack/nonAggAtoms", async (importOriginal) => {
   const original = await importOriginal<typeof NonAggAtoms>();
@@ -73,7 +73,7 @@ const TS_OTHER_OVERLAP = 7500; // a different pair overlaps here
 beforeEach(() => {
   store = createStore();
   // referenceNs = 0 so a slot's relative ms maps straight into the tile math
-  store.set(startupTimeAtom, { startupTimeNanos: 0n });
+  store.set(setStartupTimeAtom, 0n);
   // No world clock set, so this pauses the range over tile 0
   store.set(visibleRangeAtom, [0, 10_000]);
   seedSlots();

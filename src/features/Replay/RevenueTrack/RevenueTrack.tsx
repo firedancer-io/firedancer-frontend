@@ -33,7 +33,6 @@ import useAggRevenueQuery, {
   getGranularity,
   type AggRevenueQuery,
 } from "./useAggRevenueQuery.ts";
-import { useTxnMetaCache } from "./txnMeta/useTxnMetaCache.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
 import {
@@ -643,7 +642,6 @@ function RevenueTrackBody({
 const RevenueTrackBodyWithRemount = withWebGlRemount(RevenueTrackBody);
 export default function RevenueTrack(props: RevenueTrackProps) {
   const aggQuery = useAggRevenueQuery();
-  useTxnMetaCache();
 
   return <RevenueTrackBodyWithRemount aggQuery={aggQuery} {...props} />;
 }

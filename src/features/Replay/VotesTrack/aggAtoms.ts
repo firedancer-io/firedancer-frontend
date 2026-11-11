@@ -1,11 +1,10 @@
 import { atom } from "jotai";
 import EventEmitter from "events";
-import type TypedEmitter from "typed-emitter";
 import type { AggGranularity, AggVotes } from "../../../api/types";
 import { nsPerMs } from "../../../consts";
 import { getBucketIdx } from "../utils";
-
-export const drawEventType = "draw";
+import { createClearAggAtom } from "../clearAggAtom";
+import { drawEventType, type DrawEmitter } from "../const";
 
 // ms from the slot's scheduled start
 export interface AggVotesBucket {
@@ -25,11 +24,10 @@ export const [
   addAggVotesAtom,
   // doesn't emit a draw
   deleteAggVotesBucketsAtom,
+  clearAggVotesAtom,
 ] = (function getAggVotesAtoms() {
   const _aggVotesAtom = atom<AggVotesByGranularity>(new Map());
-  const emitterAtom = atom(
-    new EventEmitter() as TypedEmitter<{ [drawEventType]: () => void }>,
-  );
+  const emitterAtom = atom(new EventEmitter() as DrawEmitter);
 
   return [
     emitterAtom,
@@ -66,5 +64,6 @@ export const [
         });
       },
     ),
+    createClearAggAtom(_aggVotesAtom, emitterAtom),
   ] as const;
 })();
