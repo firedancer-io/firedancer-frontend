@@ -1,8 +1,12 @@
 import { useCallback, useLayoutEffect, useMemo } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { TimelineSlots } from "../../../api/types";
-import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
-import { calcAbsoluteNs, useTimelineServerMessage } from "../utils";
+import type { TsRange } from "../../WebGl/webglUtils";
+import {
+  calcAbsoluteNsRange,
+  getVisibleWorldRangeNs,
+  useTimelineServerMessage,
+} from "../utils";
 import { createParallelCache } from "../parallelQueriesCache";
 import { SLOTS_QUERY_KEY, useSlotsQuery } from "../useSlotsQuery";
 import { nsPerMs } from "../../../consts";
@@ -61,7 +65,7 @@ export function useNonAggHeaderQuery(chartId: string) {
       }),
     [chartId, sendQuery, onEvictTiles],
   );
-  const { queryRange, markQueryComplete } = cache;
+  const { queryRange, markQueryComplete, getLevel } = cache;
 
   useLayoutEffect(() => {
     const unsub = cache.init();
@@ -86,20 +90,11 @@ export function useNonAggHeaderQuery(chartId: string) {
     emitter.emit(drawEventType);
   }, [emitter]);
 
-  return useCallback(
+  const query = useCallback(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
-      const visibleRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, visibleRange[0]),
-        calcAbsoluteNs(referenceNs, visibleRange[1]),
-      ];
-
-      const worldRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, worldRange[0]),
-        calcAbsoluteNs(referenceNs, worldRange[1]),
-      ];
       queryRange(
-        visibleRangeNs,
-        worldRangeNs,
+        calcAbsoluteNsRange(referenceNs, visibleRange),
+        calcAbsoluteNsRange(referenceNs, worldRange),
         granularity,
         undefined,
         onNothingToFetch,
@@ -107,4 +102,19 @@ export function useNonAggHeaderQuery(chartId: string) {
     },
     [onNothingToFetch, queryRange],
   );
+
+  const level = useMemo(() => getLevel(granularity, false), [getLevel]);
+
+  /**
+   * Whether every in world visible tile has loaded
+   */
+  const isVisibleFetched = useCallback(
+    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) =>
+      level.isRangeFetched(
+        getVisibleWorldRangeNs(referenceNs, visibleRange, worldRange),
+      ),
+    [level],
+  );
+
+  return { query, isVisibleFetched };
 }

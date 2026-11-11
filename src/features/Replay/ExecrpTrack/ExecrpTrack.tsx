@@ -20,6 +20,8 @@ import type { RendererObj } from "../tileStates/utils.ts";
 import { useTileCacheSubscription } from "../tiles/useTileCache.ts";
 import { hoveredExecrpTxnAtom, visibleRangeAtom } from "../atoms.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
+import { isInRanges } from "../hoverUtils.ts";
+import { clientXToMs } from "../utils.ts";
 import { useContainerSlotHitTest } from "../slotHighlight.ts";
 import { useTileStatesQuery } from "../tileStates/useTileStatesQuery.ts";
 import type { AggTileStatesQuery } from "../tileStates/useAggTileStatesQuery.ts";
@@ -54,6 +56,8 @@ function getTxnAtPoint(
 ) {
   const visibleRange = store.get(visibleRangeAtom);
   if (!visibleRange || !rect.width || !rect.height) return;
+  const ms = clientXToMs(clientX, rect, visibleRange);
+  if (!isInRanges(renderer.modeRanges.nonAgg, ms)) return;
 
   return findTxnAtCursor(renderer, visibleRange, {
     fracX: (clientX - rect.left) / rect.width,
@@ -89,7 +93,8 @@ interface ExecrpTrackProps extends WebGlRemountProps {
 
 function ExecrpTrack({ height, aggQuery, remount }: ExecrpTrackProps) {
   const [opts, setOpts] = useAtom(execrpViewOptsAtom);
-  const { query, aggGranularity } = useTileStatesQuery(aggQuery);
+  const { query, aggGranularity, granularityLevels } =
+    useTileStatesQuery(aggQuery);
   const {
     containerRef,
     rendererRef,
@@ -97,7 +102,7 @@ function ExecrpTrack({ height, aggQuery, remount }: ExecrpTrackProps) {
     rows,
     isAgg,
     nonAggGranularity,
-  } = useTileStatesRenderer({ config, remount, query });
+  } = useTileStatesRenderer({ config, remount, query, granularityLevels });
   const granularity = isAgg ? undefined : nonAggGranularity;
   const layout = getRowsLayout(height, rows.length, {
     insetPx: trackInsetPx.banks,

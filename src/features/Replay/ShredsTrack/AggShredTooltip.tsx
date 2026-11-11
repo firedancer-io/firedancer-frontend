@@ -12,8 +12,10 @@ import { useAggBucket } from "../useAggBucket";
 import {
   aggHeaderEmitterAtom,
   aggSlotsAtom,
+  aggSlotsDrawTilesAtom,
   getSlotCount,
 } from "../HeaderTrack/aggAtoms";
+import { resampleSlotCounts } from "../HeaderTrack/utils";
 import { aggShredEvents } from "./const";
 import styles from "./shredTooltip.module.css";
 
@@ -45,6 +47,8 @@ function AggShredTooltipContent({ hovered }: AggShredTooltipContentProps) {
   const slotCounts = useAggBucket(
     aggSlotsAtom,
     aggHeaderEmitterAtom,
+    aggSlotsDrawTilesAtom,
+    resampleSlotCounts,
     granularity,
     bucketIdx,
   );

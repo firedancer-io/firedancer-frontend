@@ -1,11 +1,11 @@
 import { useCallback, useLayoutEffect, useMemo } from "react";
 import { useStore } from "jotai";
 import { useWebSocketSend } from "../../../api/ws/utils";
-import type { NsTsRange, TsRange } from "../../WebGl/webglUtils";
+import type { TsRange } from "../../WebGl/webglUtils";
 import type { TimelineShreds, ShredsGranularity } from "../../../api/types";
 import { ShredsGranularityEnum } from "../../../api/entities";
 import {
-  calcAbsoluteNs,
+  calcAbsoluteNsRange,
   getChunksEndNs,
   useTimelineServerMessage,
 } from "../utils";
@@ -13,6 +13,7 @@ import { getNonAggAtoms } from "./atoms";
 import { drawEventType } from "../const";
 import { nsPerMs } from "../../../consts";
 import { createParallelCache } from "../parallelQueriesCache";
+import { hasFallbackData, type DataLevel } from "../coverage";
 import type { TimelineQueryKey } from "../atoms";
 
 const QUERY_KEY = "query_shreds" satisfies TimelineQueryKey;
@@ -95,7 +96,8 @@ export function useNonAggShredsQuery(
       }),
     [chartId, sendQuery, onEvictTiles],
   );
-  const { queryRange, markQueryComplete, pauseStaleRefreshes } = cache;
+  const { queryRange, markQueryComplete, getLevel, pauseStaleRefreshes } =
+    cache;
 
   useLayoutEffect(() => {
     const unsub = cache.init();
@@ -109,10 +111,11 @@ export function useNonAggShredsQuery(
     QUERY_KEY,
     useCallback(
       (message: { id: number; value: TimelineShreds }) => {
-        const { granularity, chunks } = message.value;
+        const { granularity, chunks, available_start_ns } = message.value;
         const queryInfo = markQueryComplete(
           message.id,
           getChunksEndNs(chunks) ?? 0n,
+          available_start_ns,
         );
         if (queryInfo == null) return;
         const touchedSlots = store.set(
@@ -136,27 +139,37 @@ export function useNonAggShredsQuery(
     [store],
   );
 
+  const granularityLevels = useMemo(
+    () =>
+      [ShredsGranularityEnum.fec, ShredsGranularityEnum.shred].map(
+        (granularity) => getLevel(granularity, false),
+      ),
+    [getLevel],
+  );
+
   const query = useCallback(
     (
       referenceNs: bigint,
       visibleRange: TsRange,
       worldRange: TsRange,
       granularity: ShredsGranularity,
+      fallbackLevels: DataLevel[],
     ) => {
-      const visibleRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, visibleRange[0]),
-        calcAbsoluteNs(referenceNs, visibleRange[1]),
-      ];
-      const worldRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, worldRange[0]),
-        calcAbsoluteNs(referenceNs, worldRange[1]),
-      ];
+      const visibleRangeNs = calcAbsoluteNsRange(referenceNs, visibleRange);
+      const worldRangeNs = calcAbsoluteNsRange(referenceNs, worldRange);
       queryRange(
         visibleRangeNs,
         worldRangeNs,
         granularity,
         undefined,
         onNothingToFetch,
+        (tileRangeNs) =>
+          hasFallbackData(
+            fallbackLevels,
+            granularity,
+            tileRangeNs,
+            worldRangeNs,
+          ),
       );
     },
     [onNothingToFetch, queryRange],
@@ -164,6 +177,7 @@ export function useNonAggShredsQuery(
 
   return {
     query,
+    granularityLevels,
     pauseStaleRefreshes,
   };
 }

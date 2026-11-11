@@ -18,8 +18,17 @@ import {
 } from "../../WebGl/webglUtils";
 import { type AggRendererResources, type RendererObj } from "./const";
 import { omit } from "lodash";
-import { getSlotCount, type SlotBucketsByGranularity } from "./aggAtoms";
+import {
+  getSlotCount,
+  type SlotBucketsByGranularity,
+  type SlotCounts,
+} from "./aggAtoms";
 import { OVERSCAN_BUCKETS } from "../useAggQuery";
+import {
+  drawnBuckets,
+  type BucketOverlap,
+  type GetDrawTiles,
+} from "../aggDraw";
 import {
   calcAbsoluteNs,
   calcRelativeMs,
@@ -132,11 +141,9 @@ export function drawAggSlots(
   referenceNs: bigint,
   visibleRange: TsRange,
   aggSlots: SlotBucketsByGranularity,
+  getDrawTiles: GetDrawTiles,
 ) {
   const granularity = getAggSlotsGranularity(visibleRange[1] - visibleRange[0]);
-  const slotsByBucketIdx = aggSlots.get(granularity);
-  if (!slotsByBucketIdx) return;
-
   const { cameraReferenceMs, mesh } = rendererObj.aggResources;
   const bucketSizeMs = msBucketSizes[granularity];
 
@@ -165,14 +172,13 @@ export function drawAggSlots(
   ensureRectCapacity(mesh, lastBucketIdx - firstBucketIdx + 1);
 
   let rectIdx = 0;
-  for (
-    let bucketIdx = firstBucketIdx;
-    bucketIdx <= lastBucketIdx;
-    bucketIdx++
-  ) {
-    const slotCounts = slotsByBucketIdx.get(bucketIdx);
-    if (!slotCounts) continue;
-
+  const buckets = drawnBuckets(
+    getDrawTiles(granularity, firstBucketIdx, lastBucketIdx),
+    granularity,
+    aggSlots,
+    resampleSlotCounts,
+  );
+  for (const [bucketIdx, slotCounts] of buckets) {
     const { skipped, mine, mine_skipped } = slotCounts;
     const slotCount = getSlotCount(slotCounts);
 
@@ -201,6 +207,60 @@ export function drawAggSlots(
   mesh.mesh.position.x = 0;
 }
 
+const countKeys = ["skipped", "mine", "mine_skipped"] as const;
+
+/**
+ * Slot range spanning the overlapping buckets, with each count's share of its
+ * slots weighted by overlap
+ */
+export function resampleSlotCounts(
+  overlaps: BucketOverlap<SlotCounts>[],
+): SlotCounts {
+  const resampled: SlotCounts = {
+    start_slot: null,
+    end_slot: null,
+    skipped: null,
+    mine: null,
+    mine_skipped: null,
+  };
+  let weightedSlotCount = 0;
+  const weightedCounts: Partial<Record<(typeof countKeys)[number], number>> =
+    {};
+  for (const { value, overlapMs, bucketMs } of overlaps) {
+    if (value.start_slot != null) {
+      resampled.start_slot = Math.min(
+        resampled.start_slot ?? Infinity,
+        value.start_slot,
+      );
+    }
+    if (value.end_slot != null) {
+      resampled.end_slot = Math.max(
+        resampled.end_slot ?? -Infinity,
+        value.end_slot,
+      );
+    }
+    const weight = overlapMs / bucketMs;
+    weightedSlotCount += (getSlotCount(value) ?? 0) * weight;
+    for (const key of countKeys) {
+      const count = value[key];
+      if (count != null) {
+        weightedCounts[key] = (weightedCounts[key] ?? 0) + count * weight;
+      }
+    }
+  }
+
+  // scale the weighted shares to the slot range, since only shares are drawn
+  const slotCount = getSlotCount(resampled);
+  if (!slotCount || !weightedSlotCount) return resampled;
+  for (const key of countKeys) {
+    const count = weightedCounts[key];
+    if (count !== undefined) {
+      resampled[key] = (slotCount * count) / weightedSlotCount;
+    }
+  }
+  return resampled;
+}
+
 /**
  * Move camera and update mesh reference x
  */
@@ -226,4 +286,17 @@ export function moveAggCamera(
 
 export function isAggregate(rangeMs: TsRange) {
   return rangeMs[1] - rangeMs[0] > AGG_SLOT_SHRED_THRESHOLD_MS;
+}
+
+/**
+ * Keep drawing the `prev` mode until all of the `target` mode's visible data
+ * has arrived, as long as all of `prev`'s visible data is still available.
+ */
+export function resolveHeldDraw(
+  prev: boolean,
+  target: boolean,
+  isVisibleDrawable: (isAgg: boolean) => boolean,
+): boolean {
+  if (prev === target || isVisibleDrawable(target)) return target;
+  return isVisibleDrawable(prev) ? prev : target;
 }

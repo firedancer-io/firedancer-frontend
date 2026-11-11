@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { updateCameraYRange } from "../../Shreds/WebGl/drawUtils";
 import { msBucketSizes, nsBucketSizes } from "../const";
 import type { ContextHelpers } from "../../WebGl/useWebGlEventHandlers";
 import {
@@ -13,13 +12,17 @@ import {
 } from "../../WebGl/webglUtils";
 import {
   aggShredEvents,
-  MAX_HEIGHT_RATIO,
   type AggRendererResources,
   type RendererObj,
 } from "./const";
 import { type ShredBucketsByGranularity, type ShredEventCounts } from "./atoms";
-import { getAggGranularity } from "./useAggShredsQuery";
+import type { AggGranularity } from "../../../api/types";
 import { OVERSCAN_BUCKETS } from "../useAggQuery";
+import {
+  drawnBuckets,
+  type BucketOverlap,
+  type GetDrawTiles,
+} from "../aggDraw";
 import { calcAbsoluteNs, calcRelativeMs, getBucketIdx } from "../utils";
 
 export function setUpAggResources(
@@ -66,13 +69,10 @@ export function drawAggShreds(
   referenceNs: bigint,
   visibleRange: TsRange,
   aggShreds: ShredBucketsByGranularity,
+  granularity: AggGranularity,
+  getDrawTiles: GetDrawTiles,
 ): number {
-  const granularity = getAggGranularity(visibleRange[1] - visibleRange[0]);
-
-  const eventsByBucketIdx = aggShreds.get(granularity);
-  if (!eventsByBucketIdx) return 0;
-
-  const { camera, cameraReferenceMs, mesh } = rendererObj.aggResources;
+  const { cameraReferenceMs, mesh } = rendererObj.aggResources;
   const bucketSizeMs = msBucketSizes[granularity];
   const startIdx = getBucketIdx(
     calcAbsoluteNs(referenceNs, visibleRange[0]),
@@ -93,14 +93,17 @@ export function drawAggShreds(
 
   let maxVisibleShredsPerBucket = 0;
   let rectIdx = 0;
-  for (
-    let bucketIdx = startIdx - OVERSCAN_BUCKETS;
-    bucketIdx <= endIdx + OVERSCAN_BUCKETS;
-    bucketIdx++
-  ) {
-    const eventCounts = eventsByBucketIdx.get(bucketIdx);
-    if (!eventCounts) continue;
-
+  const buckets = drawnBuckets(
+    getDrawTiles(
+      granularity,
+      startIdx - OVERSCAN_BUCKETS,
+      endIdx + OVERSCAN_BUCKETS,
+    ),
+    granularity,
+    aggShreds,
+    resampleEventCounts,
+  );
+  for (const [bucketIdx, eventCounts] of buckets) {
     const isOverscan = bucketIdx < startIdx || bucketIdx > endIdx;
     const x = startX + (bucketIdx - startIdx) * bucketSizeMs;
 
@@ -130,11 +133,6 @@ export function drawAggShreds(
     }
   }
 
-  // keep the previous Y scale when there's nothing visible instead of collapsing.
-  // Pad so the tallest bucket lands at MAX_HEIGHT_RATIO, leaving room for the last grid line
-  if (maxVisibleShredsPerBucket > 0) {
-    updateCameraYRange(camera, maxVisibleShredsPerBucket / MAX_HEIGHT_RATIO);
-  }
   updateRectMeshCounts(mesh, rectIdx);
 
   /** store mesh positions relative to referenceX. This allows GPU to see small coordinates */
@@ -170,4 +168,23 @@ export function moveAggCamera(
 export function getAggShredCount(counts: ShredEventCounts | undefined): number {
   if (!counts) return 0;
   return aggShredEvents.reduce((sum, { type }) => sum + (counts[type] ?? 0), 0);
+}
+
+/**
+ * Sum each event type, weighted by the portion of each bucket overlapping
+ */
+export function resampleEventCounts(
+  overlaps: BucketOverlap<ShredEventCounts>[],
+): ShredEventCounts {
+  const resampled = Object.fromEntries(
+    aggShredEvents.map(({ type }) => [type, null]),
+  ) as ShredEventCounts;
+  for (const { value, overlapMs, bucketMs } of overlaps) {
+    for (const { type } of aggShredEvents) {
+      const count = value[type];
+      if (count == null) continue;
+      resampled[type] = (resampled[type] ?? 0) + (count * overlapMs) / bucketMs;
+    }
+  }
+  return resampled;
 }

@@ -4,7 +4,7 @@ import type { AggGranularity, AggTileStates } from "../../../api/types";
 import { getBucketIdx } from "../utils";
 import { dataChangeEventType, drawEventType, type DrawEmitter } from "../const";
 
-type StateDurationsByTile = Map<number, (number | null)[]>;
+export type StateDurationsByTile = Map<number, (number | null)[]>;
 
 type StatesByBucketIdx = Map<number, StateDurationsByTile>;
 export type TileStatesBucketsByGranularity = Map<

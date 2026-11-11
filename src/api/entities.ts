@@ -1431,14 +1431,17 @@ export const aggGranularitySchema = z.enum([
   "1d",
 ]);
 
-const timelineAggSchema = z.object({
-  granularity: aggGranularitySchema,
-  reference_ts_ns: z.coerce.bigint(),
+const availableRangeSchema = z.object({
   available_start_ns: z.coerce.bigint().nullable(),
   available_end_ns: z.coerce.bigint().nullable(),
 });
 
-export const aggSlotsSchema = timelineAggSchema.extend({
+const aggSchema = z.object({
+  granularity: aggGranularitySchema,
+  reference_ts_ns: z.coerce.bigint(),
+});
+
+export const aggSlotsSchema = aggSchema.extend({
   start_slot: z.array(z.number().nullable()),
   end_slot: z.array(z.number().nullable()),
   skipped: z.array(z.number().nullable()),
@@ -1454,7 +1457,7 @@ export enum RevenueType {
 
 export const revenueTypeSchema = z.enum(["txn_fees", "prio_fees", "tips"]);
 
-export const aggRevenueSchema = timelineAggSchema.extend({
+export const aggRevenueSchema = aggSchema.extend({
   [RevenueType.TxnFees]: z.array(z.coerce.bigint().nullable()),
   [RevenueType.PrioFees]: z.array(z.coerce.bigint().nullable()),
   [RevenueType.Tips]: z.array(z.coerce.bigint().nullable()),
@@ -1498,11 +1501,6 @@ const bigInt64ArraySchema = z.coerce
 const chunkWindowSchema = z.object({
   chunk_ts: z.coerce.bigint(),
   chunk_dur: z.coerce.bigint(),
-});
-
-const availableRangeSchema = z.object({
-  available_start_ns: z.coerce.bigint().nullable(),
-  available_end_ns: z.coerce.bigint().nullable(),
 });
 
 function chunkedSchema<T extends z.ZodRawShape>(chunk: z.ZodObject<T>) {
@@ -1575,7 +1573,7 @@ export const tileStatesResponseSchema = chunkedSchema(
   tileStatesChunkSchema,
 ).extend({ granularity: tileStatesGranularitySchema });
 
-export const aggTileStatesSchema = timelineAggSchema.extend({
+export const aggTileStatesSchema = aggSchema.extend({
   tiles: z.number().nullable().array(),
   tile_states: z.array(z.array(z.array(z.number().nullable()).nullable())),
 });
@@ -1587,28 +1585,24 @@ export enum AggShredEventType {
   Published = "published",
 }
 
-export const aggShredsSchema = timelineAggSchema.extend({
+export const aggShredsSchema = aggSchema.extend({
   [AggShredEventType.Turbine]: z.array(z.number().nullable()),
   [AggShredEventType.Repair]: z.array(z.number().nullable()),
   [AggShredEventType.Reconstructed]: z.array(z.number().nullable()),
   [AggShredEventType.Published]: z.array(z.number().nullable()),
 });
 
-export const aggVotesSchema = z.object({
-  granularity: aggGranularitySchema,
-  reference_ts_ns: z.coerce.bigint(),
+export const aggVotesSchema = aggSchema.extend({
   notarized_latency_ns: z.array(z.number().nullable()),
   finalized_fast_latency_ns: z.array(z.number().nullable()),
   finalized_slow_latency_ns: z.array(z.number().nullable()),
 });
 
-export const aggCpuSchema = timelineAggSchema.extend({
+export const aggCpuSchema = aggSchema.extend({
   utilization: z.array(z.array(z.number().nullable())),
 });
 
-export const timelineSlotsSchema = z.object({
-  available_start_ns: z.coerce.bigint().nullable(),
-  available_end_ns: z.coerce.bigint().nullable(),
+export const timelineSlotsSchema = availableRangeSchema.extend({
   reference_slot: z.number().nullable(),
   reference_ts: z.coerce.bigint().nullable(),
   slot_delta: z.array(z.number()),
@@ -1704,11 +1698,9 @@ function isKnownTimelineEventType(event: number): event is TimelineEventType {
   return isKnown;
 }
 
-export const timelineEventsSchema = z
-  .object({
+export const timelineEventsSchema = availableRangeSchema
+  .extend({
     // TODO: mark data availability
-    available_start_ns: z.coerce.bigint().nullable(),
-    available_end_ns: z.coerce.bigint().nullable(),
     event: z.array(z.number()),
     slot: z.array(z.number()),
     ts: z.array(z.coerce.bigint()),

@@ -22,6 +22,8 @@ import {
   type MergedLevels,
   type MergedTileStatesResponse,
 } from "./mergeTileStates";
+import type { NsTsRange } from "../../WebGl/webglUtils";
+import type { DataLevel } from "../coverage";
 
 const store = getDefaultStore();
 
@@ -202,6 +204,7 @@ function createCache(
         ? {
             value: parseTileStates(result.value),
             chunksEndNs: getChunksEndNs(result.value.chunks),
+            availableStartNs: result.value.available_start_ns,
           }
         : result;
     },
@@ -216,3 +219,39 @@ export const tileStatesCaches: Record<
   txn: createCache(TileStatesGranularityEnum.txn),
   txn_batch: createCache(TileStatesGranularityEnum.txn_batch),
 };
+
+/**
+ * Whether a data tile's range has other granularity data to draw while it loads
+ */
+export const hasFallbackData: Record<
+  TileStatesGranularity,
+  (tileRangeNs: NsTsRange) => boolean
+> = {
+  txn: (tileRangeNs) => tileStatesCaches.txn_batch.isRangeFetched(tileRangeNs),
+  txn_batch: (tileRangeNs) => {
+    for (
+      let txnStartNs =
+        (tileRangeNs[0] / tileStatesTileNs.txn) * tileStatesTileNs.txn;
+      txnStartNs < tileRangeNs[1];
+      txnStartNs += tileStatesTileNs.txn
+    ) {
+      const txnRangeNs: NsTsRange = [
+        txnStartNs,
+        txnStartNs + tileStatesTileNs.txn,
+      ];
+      if (tileStatesCaches.txn.isRangeFetched(txnRangeNs)) return true;
+    }
+    return false;
+  },
+};
+
+export const tileStatesLevels: DataLevel[] = [
+  TileStatesGranularityEnum.txn_batch,
+  TileStatesGranularityEnum.txn,
+].map((granularity) => ({
+  id: granularity,
+  isAgg: false,
+  tileSizeNs: tileStatesTileNs[granularity],
+  isRangeFetched: (rangeNs) =>
+    tileStatesCaches[granularity].isRangeFetched(rangeNs),
+}));

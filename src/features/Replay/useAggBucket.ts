@@ -2,41 +2,73 @@ import { getDefaultStore, type Atom } from "jotai";
 import { useEffect, useState } from "react";
 import type { AggGranularity } from "../../api/types";
 import { drawEventType, type DrawEmitter } from "./const";
+import {
+  getDrawnBucket,
+  type BucketOverlap,
+  type GetDrawTiles,
+} from "./aggDraw";
 
 const store = getDefaultStore();
 
 function readBucket<T>(
   bucketsAtom: Atom<Map<AggGranularity, Map<number, T>>>,
+  drawTilesAtom: Atom<GetDrawTiles | undefined>,
+  resample: (overlaps: BucketOverlap<T>[]) => T,
   granularity: AggGranularity,
   bucketIdx: number,
 ) {
-  return store.get(bucketsAtom).get(granularity)?.get(bucketIdx);
+  const getDrawTiles = store.get(drawTilesAtom);
+  if (!getDrawTiles) return;
+  return getDrawnBucket(
+    getDrawTiles,
+    granularity,
+    bucketIdx,
+    store.get(bucketsAtom),
+    resample,
+  );
 }
 
 /**
- * read one agg bucket's value, updating on draw emits.
+ * read one agg bucket's drawn value, updating on draw emits.
  */
 export function useAggBucket<T>(
   bucketsAtom: Atom<Map<AggGranularity, Map<number, T>>>,
   emitterAtom: Atom<DrawEmitter>,
+  drawTilesAtom: Atom<GetDrawTiles | undefined>,
+  resample: (overlaps: BucketOverlap<T>[]) => T,
   granularity: AggGranularity,
   bucketIdx: number,
 ): T | undefined {
   const [value, setValue] = useState(() =>
-    readBucket(bucketsAtom, granularity, bucketIdx),
+    readBucket(bucketsAtom, drawTilesAtom, resample, granularity, bucketIdx),
   );
 
   useEffect(() => {
-    setValue(readBucket(bucketsAtom, granularity, bucketIdx));
+    const onDraw = () =>
+      setValue(
+        readBucket(
+          bucketsAtom,
+          drawTilesAtom,
+          resample,
+          granularity,
+          bucketIdx,
+        ),
+      );
+    onDraw();
 
     const emitter = store.get(emitterAtom);
-    const onDraw = () =>
-      setValue(readBucket(bucketsAtom, granularity, bucketIdx));
     emitter.addListener(drawEventType, onDraw);
     return () => {
       emitter.removeListener(drawEventType, onDraw);
     };
-  }, [bucketsAtom, emitterAtom, granularity, bucketIdx]);
+  }, [
+    bucketsAtom,
+    emitterAtom,
+    drawTilesAtom,
+    resample,
+    granularity,
+    bucketIdx,
+  ]);
 
   return value;
 }

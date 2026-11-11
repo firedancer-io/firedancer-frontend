@@ -1,16 +1,24 @@
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
-import type { TsRange } from "../../WebGl/webglUtils.ts";
+import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
-import type { AggGranularity } from "../../../api/types.ts";
+import type {
+  AggGranularity,
+  TileStatesGranularity,
+} from "../../../api/types.ts";
 import { TileStatesGranularityEnum } from "../../../api/entities.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import { useTileCacheQuery } from "../tiles/useTileCache.ts";
 import { getTileKey } from "../utils.ts";
-import { tileStatesCaches } from "./tileStatesCache.ts";
+import {
+  hasFallbackData,
+  tileStatesCaches,
+  tileStatesLevels,
+} from "./tileStatesCache.ts";
 import { getTileStatesGranularity, isAggregate } from "./consts.ts";
 import { syncAggTileStatesTilesAtom } from "./aggAtoms.ts";
+import type { DataLevel } from "../coverage.ts";
 import {
   getAggGranularity,
   type AggTileStatesQuery,
@@ -24,13 +32,36 @@ const store = getDefaultStore();
  */
 export function useTileStatesQuery({
   query: aggQuery,
+  granularityLevels: aggLevels,
   pauseStaleRefreshes: pauseStaleAggRefreshes,
   clearCache: clearAggCache,
 }: AggTileStatesQuery) {
   const [aggGranularity, setAggGranularity] = useState<AggGranularity>();
 
-  const queryTxn = useTileCacheQuery(tileStatesCaches.txn);
-  const queryBatch = useTileCacheQuery(tileStatesCaches.txn_batch);
+  const granularityLevels = useMemo<DataLevel[]>(
+    () => [...aggLevels, ...tileStatesLevels],
+    [aggLevels],
+  );
+
+  const getHasFallbackData = useCallback(
+    (granularity: TileStatesGranularity) => (tileRangeNs: NsTsRange) =>
+      hasFallbackData[granularity](tileRangeNs) ||
+      aggLevels.some((level) => level.isRangeFetched(tileRangeNs)),
+    [aggLevels],
+  );
+  const hasTxnFallback = useMemo(
+    () => getHasFallbackData(TileStatesGranularityEnum.txn),
+    [getHasFallbackData],
+  );
+  const hasBatchFallback = useMemo(
+    () => getHasFallbackData(TileStatesGranularityEnum.txn_batch),
+    [getHasFallbackData],
+  );
+  const queryTxn = useTileCacheQuery(tileStatesCaches.txn, hasTxnFallback);
+  const queryBatch = useTileCacheQuery(
+    tileStatesCaches.txn_batch,
+    hasBatchFallback,
+  );
 
   const query = useThrottledCallback(
     (referenceNs: bigint, visibleRangeMs: TsRange, worldRangeMs: TsRange) => {
@@ -38,7 +69,13 @@ export function useTileStatesQuery({
         const aggGranularity = getAggGranularity(
           visibleRangeMs[1] - visibleRangeMs[0],
         );
-        aggQuery(referenceNs, visibleRangeMs, worldRangeMs, aggGranularity);
+        aggQuery(
+          referenceNs,
+          visibleRangeMs,
+          worldRangeMs,
+          aggGranularity,
+          granularityLevels,
+        );
         setAggGranularity(aggGranularity);
         return;
       }
@@ -78,5 +115,5 @@ export function useTileStatesQuery({
     requery();
   }, [tilesKey, clearAggCache, requery]);
 
-  return { query, aggGranularity };
+  return { query, aggGranularity, granularityLevels };
 }

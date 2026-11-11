@@ -276,6 +276,83 @@ export function updateMeshRange(
   rectMesh.colorAttr.needsUpdate = true;
 }
 
+const tmpBufferSize = new THREE.Vector2();
+
+/**
+ * Each range's [startPx, endPx) in drawing buffer px, skipping ranges out of
+ * view
+ */
+export function getRangesPx(
+  visibleRange: TsRange,
+  rangesMs: TsRange[],
+  widthPx: number,
+): TsRange[] {
+  const pxPerMs = widthPx / (visibleRange[1] - visibleRange[0]);
+  const rangesPx: TsRange[] = [];
+  for (const [startMs, endMs] of rangesMs) {
+    const startPx = Math.max(
+      0,
+      Math.round((startMs - visibleRange[0]) * pxPerMs),
+    );
+    const endPx = Math.min(
+      widthPx,
+      Math.round((endMs - visibleRange[0]) * pxPerMs),
+    );
+    if (endPx > startPx) rangesPx.push([startPx, endPx]);
+  }
+  return rangesPx;
+}
+
+/**
+ * Scissor the canvas to each drawing buffer px range and draw in it
+ */
+export function drawInRangesPx(
+  renderer: THREE.WebGLRenderer,
+  rangesPx: TsRange[],
+  draw: () => void,
+) {
+  const { y: heightPx } = renderer.getDrawingBufferSize(tmpBufferSize);
+  const pixelRatio = renderer.getPixelRatio();
+  const toCssPx = (px: number) => (px + 0.25) / pixelRatio;
+
+  renderer.setScissorTest(true);
+  for (const [startPx, endPx] of rangesPx) {
+    renderer.setScissor(
+      toCssPx(startPx),
+      0,
+      toCssPx(endPx - startPx),
+      toCssPx(heightPx),
+    );
+    draw();
+  }
+  renderer.setScissorTest(false);
+}
+
+/**
+ * Render the base scene unclipped, then the overlay scene within its x ranges
+ * over it. Use the scene with the most draw calls as the base.
+ */
+export function renderInRanges(
+  renderer: THREE.WebGLRenderer,
+  visibleRange: TsRange,
+  base: { scene: THREE.Scene; camera: THREE.Camera },
+  overlay: { scene: THREE.Scene; camera: THREE.Camera; rangesMs: TsRange[] },
+) {
+  const { x: widthPx } = renderer.getDrawingBufferSize(tmpBufferSize);
+  const rangesPx = getRangesPx(visibleRange, overlay.rangesMs, widthPx);
+
+  renderer.render(base.scene, base.camera);
+
+  const autoClear = renderer.autoClear;
+  renderer.autoClear = false;
+  drawInRangesPx(renderer, rangesPx, () => {
+    // clear is scissored too, so only this range's base is cleared
+    renderer.clear();
+    renderer.render(overlay.scene, overlay.camera);
+  });
+  renderer.autoClear = autoClear;
+}
+
 const tmpColor = new THREE.Color();
 const tmpRgb = { r: 0, g: 0, b: 0 };
 /**

@@ -1,12 +1,24 @@
 import { getDefaultStore } from "jotai";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useThrottledCallback } from "use-debounce";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import { useFrameRender } from "../../WebGl/useFrameRender.ts";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
 import { isAggregate, setUpRenderers } from "./utils.ts";
-import { drawAggShreds, getAggShredCount, moveAggCamera } from "./aggUtils.ts";
+import {
+  drawAggShreds,
+  getAggShredCount,
+  moveAggCamera,
+  resampleEventCounts,
+} from "./aggUtils.ts";
 import {
   drawHoveredShred,
   drawNonAggShreds,
@@ -21,10 +33,12 @@ import {
   useSlotHighlightRender,
   useContainerSlotHitTest,
 } from "../slotHighlight.ts";
+import { updateCameraYRange } from "../../Shreds/WebGl/drawUtils.ts";
 import ShredsYAxis from "./ShredsYAxis.tsx";
 import {
   AGG_SHREDS_CHART_ID,
   aggShredEvents,
+  MAX_HEIGHT_RATIO,
   NON_AGG_SHREDS_CHART_ID,
   shredLegend,
   type RendererObj,
@@ -55,7 +69,10 @@ import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible
 import TrackControls from "../TrackControls.tsx";
 import { trackNames } from "../layout.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
-import { clientYToWorldY } from "../hoverUtils.ts";
+import { clientYToWorldY, isInRanges } from "../hoverUtils.ts";
+import type { DataLevel } from "../coverage.ts";
+import { useModeCoverage } from "../useModeCoverage.ts";
+import { getDrawnBucket } from "../aggDraw.ts";
 
 const store = getDefaultStore();
 
@@ -89,6 +106,18 @@ function getShredAtPoint(
   return getShredAtPosition(ts, worldY, renderer.nonAggResources);
 }
 
+/**
+ * Granularity the visible range should be drawn at
+ */
+function getTargetGranularity(
+  visibleRange: TsRange,
+): AggGranularity | ShredsGranularity {
+  const windowMs = visibleRange[1] - visibleRange[0];
+  return isAggregate(visibleRange)
+    ? getAggGranularity(windowMs)
+    : getNonAggGranularity(windowMs);
+}
+
 interface ShredsTrackProps {
   height: number;
 }
@@ -99,15 +128,61 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
   const [granularity, setGranularity] = useState<
     AggGranularity | ShredsGranularity | undefined
   >(undefined);
-  const [aggAxisMax, setAggAxisMax] = useState(0);
-  const [nonAggAxisMax, setNonAggAxisMax] = useState(0);
-  const [isAgg, setIsAgg] = useState(true);
+  const [axisMax, setAxisMax] = useState(0);
+  const aggMaxRef = useRef(0);
+  const isAggDataChangedRef = useRef(false);
+  const nonAggMaxRef = useRef(0);
 
   const { containerRef, rendererRef } = useWebGlRenderer({
     remount,
     create: ({ setUpContextListeners, getWasContextLost }) =>
       setUpRenderers(setUpContextListeners, getWasContextLost),
-    onResize: () => redrawActive(),
+    onResize: () => redraw(),
+  });
+
+  const {
+    query: aggQuery,
+    granularityLevels: aggLevels,
+    getDrawTiles,
+    pauseStaleRefreshes: pauseStaleAggRefreshes,
+  } = useAggShredsQuery(AGG_SHREDS_CHART_ID);
+
+  // Mark meshes for slots whose data was just refetched, so the next draw
+  // redraws them in place. Freeing them here instead would leave a gap: a
+  // render already queued for this frame would draw the scene without them.
+  const markMeshesStale = useCallback(
+    (granularity: ShredsGranularity, slotNumbers: number[]) => {
+      if (!rendererRef.current || !slotNumbers.length) return;
+      // keep recorded edges so hit-testing matches the drawn bars until the redraw
+      const { staleMeshKeys } = rendererRef.current.nonAggResources;
+      for (const slotNumber of slotNumbers) {
+        staleMeshKeys.add(getSlotMeshKey(granularity, slotNumber));
+      }
+    },
+    [rendererRef],
+  );
+
+  const {
+    query: nonAggQuery,
+    granularityLevels: nonAggLevels,
+    pauseStaleRefreshes: pauseStaleNonAggRefreshes,
+  } = useNonAggShredsQuery(NON_AGG_SHREDS_CHART_ID, markMeshesStale);
+
+  const granularityLevels = useMemo<DataLevel[]>(
+    () => [...aggLevels, ...nonAggLevels],
+    [aggLevels, nonAggLevels],
+  );
+
+  const {
+    modeRangesRef,
+    resolveModeRanges,
+    startAggDraw,
+    shouldDrawAgg,
+    renderModes,
+  } = useModeCoverage({
+    granularityLevels,
+    getTargetGranularity,
+    getAggGranularity,
   });
 
   /**
@@ -127,8 +202,16 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
       }
 
       const ts = clientXToMs(clientX, rect, visibleRange);
+      // show the tooltip of the mode drawn under the cursor
+      const { agg, nonAgg } = modeRangesRef.current;
+      const isAgg = isInRanges(agg, ts);
+      if (!isAgg && !isInRanges(nonAgg, ts)) {
+        clearHoveredShred();
+        clearHoveredAggShreds();
+        return;
+      }
 
-      if (isAggregate(visibleRange)) {
+      if (isAgg) {
         clearHoveredShred();
         const granularity = getAggGranularity(
           visibleRange[1] - visibleRange[0],
@@ -139,10 +222,13 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
           false,
         );
         // total stacked height of the bucket's bar, in shred count
-        const counts = store
-          .get(aggShredsAtom)
-          .get(granularity)
-          ?.get(bucketIdx);
+        const counts = getDrawnBucket(
+          getDrawTiles,
+          granularity,
+          bucketIdx,
+          store.get(aggShredsAtom),
+          resampleEventCounts,
+        );
         const bucketHeight = getAggShredCount(counts);
 
         // bars span world Y [-bucketHeight, 0]; only show the tooltip when the
@@ -193,27 +279,6 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
       onHoverLeave,
     });
 
-  const { query: aggQuery, pauseStaleRefreshes: pauseStaleAggRefreshes } =
-    useAggShredsQuery(AGG_SHREDS_CHART_ID);
-
-  // Mark meshes for slots whose data was just refetched, so the next draw
-  // redraws them in place. Freeing them here instead would leave a gap: a
-  // render already queued for this frame would draw the scene without them.
-  const markMeshesStale = useCallback(
-    (granularity: ShredsGranularity, slotNumbers: number[]) => {
-      if (!rendererRef.current || !slotNumbers.length) return;
-      // keep recorded edges so hit-testing matches the drawn bars until the redraw
-      const { staleMeshKeys } = rendererRef.current.nonAggResources;
-      for (const slotNumber of slotNumbers) {
-        staleMeshKeys.add(getSlotMeshKey(granularity, slotNumber));
-      }
-    },
-    [rendererRef],
-  );
-
-  const { query: nonAggQuery, pauseStaleRefreshes: pauseStaleNonAggRefreshes } =
-    useNonAggShredsQuery(NON_AGG_SHREDS_CHART_ID, markMeshesStale);
-
   const throttledRelativeTsQuery = useThrottledCallback(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
       if (isAggregate(visibleRange)) {
@@ -221,14 +286,26 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
         const queryGranularity = getAggGranularity(
           visibleRange[1] - visibleRange[0],
         );
-        aggQuery(referenceNs, visibleRange, worldRange, queryGranularity);
+        aggQuery(
+          referenceNs,
+          visibleRange,
+          worldRange,
+          queryGranularity,
+          granularityLevels,
+        );
         setGranularity(queryGranularity);
       } else {
         pauseStaleAggRefreshes();
         const queryGranularity = getNonAggGranularity(
           visibleRange[1] - visibleRange[0],
         );
-        nonAggQuery(referenceNs, visibleRange, worldRange, queryGranularity);
+        nonAggQuery(
+          referenceNs,
+          visibleRange,
+          worldRange,
+          queryGranularity,
+          granularityLevels,
+        );
         setGranularity(queryGranularity);
       }
     },
@@ -236,16 +313,41 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
     { leading: true, trailing: true },
   );
 
+  /**
+   * Scale the modes drawn to the axis max, shared if both are drawn. An empty
+   * draw keeps the previous scale instead of collapsing.
+   */
+  const applyAxisMax = useCallback(() => {
+    if (!rendererRef.current) return;
+    const { aggResources, nonAggResources } = rendererRef.current;
+    const { agg, nonAgg } = modeRangesRef.current;
+    const max = Math.max(
+      agg.length ? aggMaxRef.current : 0,
+      nonAgg.length ? nonAggMaxRef.current : 0,
+    );
+    if (max <= 0) return;
+
+    if (agg.length) {
+      updateCameraYRange(aggResources.camera, max / MAX_HEIGHT_RATIO);
+    }
+    if (nonAgg.length) {
+      updateCameraYRange(nonAggResources.camera, max / MAX_HEIGHT_RATIO);
+    }
+    setAxisMax(max);
+  }, [rendererRef, modeRangesRef]);
+
   const renderActive = useCallback(() => {
     if (!rendererRef.current) return;
     const { renderer, aggResources, nonAggResources } = rendererRef.current;
     const visibleRange = store.get(visibleRangeAtom);
     if (!visibleRange) return;
 
-    if (isAggregate(visibleRange)) {
+    applyAxisMax();
+
+    if (!modeRangesRef.current.nonAgg.length) {
       // renderer will replace scene, so clear last draw info
       nonAggResources.lastDrawInfo = undefined;
-      // clear highlight so it won't reappear when we return to non-agg
+      // clear highlight so it won't reappear when non agg is drawn again
       drawHoveredShred(nonAggResources, undefined, visibleRange);
       clearHoveredShred();
       renderer.render(aggResources.scene, aggResources.camera);
@@ -254,8 +356,8 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
 
     updateSlotHighlight(nonAggResources.highlight, renderer.domElement.width);
     updateSlotMeshes(nonAggResources);
-    renderer.render(nonAggResources.scene, nonAggResources.camera);
-  }, [rendererRef]);
+    renderModes(renderer, aggResources, nonAggResources);
+  }, [rendererRef, modeRangesRef, renderModes, applyAxisMax]);
 
   const requestRender = useFrameRender(renderActive);
   useSlotHighlightRender(requestRender);
@@ -263,7 +365,16 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
   useContainerSlotHitTest(containerRef, (clientX, clientY, rect) => {
     const renderer = rendererRef.current;
     const visibleRange = store.get(visibleRangeAtom);
-    if (!renderer || !visibleRange || isAggregate(visibleRange)) return;
+    if (
+      !renderer ||
+      !visibleRange ||
+      !isInRanges(
+        modeRangesRef.current.nonAgg,
+        clientXToMs(clientX, rect, visibleRange),
+      )
+    ) {
+      return;
+    }
 
     return getShredAtPoint(renderer, clientX, clientY, rect, visibleRange)
       ?.slot;
@@ -299,25 +410,45 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
         visibleRange,
       );
 
+      nonAggMaxRef.current = max;
+      applyAxisMax();
       requestRender();
       notifyHover();
-      // keep the last nonzero max so the axis doesn't collapse on an empty draw
-      if (max > 0) setNonAggAxisMax(max);
     },
-    [requestRender, notifyHover, rendererRef],
+    [requestRender, notifyHover, rendererRef, applyAxisMax],
   );
 
-  // Redraw the currently-active view without refetching
-  const redrawActive = useCallback(() => {
+  // Redraw without refetching
+  const redraw = useCallback(() => {
     const visibleRange = store.get(visibleRangeAtom);
     if (!visibleRange) return;
-    if (isAggregate(visibleRange)) {
-      // agg has no size-dependent uniforms, so a plain render suffices
-      requestRender();
-    } else {
+    // agg has no size-dependent uniforms, so only non agg needs a redraw
+    if (modeRangesRef.current.nonAgg.length) {
       moveCameraAndDrawNonAgg(visibleRange);
     }
-  }, [moveCameraAndDrawNonAgg, requestRender]);
+    renderActive();
+  }, [modeRangesRef, moveCameraAndDrawNonAgg, renderActive]);
+
+  /**
+   * Draw the agg mesh for the agg spans
+   */
+  const drawAgg = useCallback(() => {
+    if (!rendererRef.current) return;
+    const aggDraw = startAggDraw();
+    if (!aggDraw) return;
+    isAggDataChangedRef.current = false;
+
+    const max = drawAggShreds(
+      rendererRef.current,
+      aggDraw.referenceNs,
+      aggDraw.visibleRange,
+      store.get(aggShredsAtom),
+      aggDraw.granularity,
+      aggDraw.getDrawTiles,
+    );
+    aggMaxRef.current = max;
+    applyAxisMax();
+  }, [rendererRef, startAggDraw, applyAxisMax]);
 
   /**
    * Update camera and query data for new range
@@ -330,61 +461,61 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
     const visibleRange = store.get(visibleRangeAtom);
     if (referenceNs == null || !visibleRange || !worldRange) return;
 
-    const agg = isAggregate(visibleRange);
-    setIsAgg(agg);
-    if (agg) {
-      // Move camera before querying, because query may trigger immediate draw if data is already available
-      moveAggCamera(rendererRef.current.aggResources, visibleRange);
-      throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
-      requestRender();
-      // axis max follows from the draw (throttledDrawAgg) once data arrives
-    } else {
-      throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
-      // trigger a redraw immediately to hide trailing incomplete slots and prevent extended shreds.
-      moveCameraAndDrawNonAgg(visibleRange);
+    // Move camera before querying, because query may trigger immediate draw if data is already available.
+    moveAggCamera(rendererRef.current.aggResources, visibleRange);
+    throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
+
+    const { agg, nonAgg } = resolveModeRanges();
+    if ((isAggDataChangedRef.current && agg.length) || shouldDrawAgg()) {
+      drawAgg();
     }
+    // trigger a redraw immediately to hide trailing incomplete slots and prevent extended shreds.
+    if (nonAgg.length) moveCameraAndDrawNonAgg(visibleRange);
+    requestRender();
   }, [
+    drawAgg,
     moveCameraAndDrawNonAgg,
     requestRender,
     rendererRef,
+    resolveModeRanges,
+    shouldDrawAgg,
     throttledRelativeTsQuery,
   ]);
 
   const throttledDrawAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
-      const referenceNs = store.get(referenceNsAtom);
-      const visibleRange = store.get(visibleRangeAtom);
-      const aggShreds = store.get(aggShredsAtom);
-      if (!rendererRef.current || !visibleRange || referenceNs == null) return;
-
-      const max = drawAggShreds(
-        rendererRef.current,
-        referenceNs,
-        visibleRange,
-        aggShreds,
-      );
+      const { agg } = resolveModeRanges();
+      // redraw once an agg span is drawn
+      if (!agg.length) {
+        isAggDataChangedRef.current = true;
+        return;
+      }
+      drawAgg();
       requestRender();
       notifyHover();
-      if (max > 0) setAggAxisMax(max);
-    }, [requestRender, notifyHover, rendererRef]),
+    }, [drawAgg, requestRender, resolveModeRanges, notifyHover]),
     50,
     { leading: false, trailing: true },
   );
 
   const throttledDrawNonAgg = useThrottledCallbackIfVisible(
     useCallback(() => {
-      const referenceNs = store.get(referenceNsAtom);
       const visibleRange = store.get(visibleRangeAtom);
-      if (
-        !rendererRef.current ||
-        !visibleRange ||
-        referenceNs == null ||
-        isAggregate(visibleRange)
-      )
-        return;
+      if (!visibleRange) return;
 
-      moveCameraAndDrawNonAgg(visibleRange);
-    }, [moveCameraAndDrawNonAgg, rendererRef]),
+      const { agg, nonAgg } = resolveModeRanges();
+      if (nonAgg.length) moveCameraAndDrawNonAgg(visibleRange);
+      if ((isAggDataChangedRef.current && agg.length) || shouldDrawAgg()) {
+        drawAgg();
+      }
+      requestRender();
+    }, [
+      drawAgg,
+      moveCameraAndDrawNonAgg,
+      requestRender,
+      resolveModeRanges,
+      shouldDrawAgg,
+    ]),
     50,
     { leading: false, trailing: true },
   );
@@ -397,15 +528,6 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
       if (!rendererRef.current) return;
       const visibleRange = store.get(visibleRangeAtom);
       if (!visibleRange) return;
-
-      if (isAggregate(visibleRange)) {
-        drawHoveredShred(
-          rendererRef.current.nonAggResources,
-          undefined,
-          visibleRange,
-        );
-        return;
-      }
 
       drawHoveredShred(
         rendererRef.current.nonAggResources,
@@ -459,10 +581,7 @@ function ShredsTrackBody({ remount, height }: ShredsTrackBodyProps) {
   return (
     <>
       <div ref={containerRef} className={styles.trackCanvasContainer} />
-      <ShredsYAxis
-        maxShreds={isAgg ? aggAxisMax : nonAggAxisMax}
-        height={height}
-      />
+      <ShredsYAxis maxShreds={axisMax} height={height} />
       <TrackControls
         name={trackNames.shreds}
         bucketSize={granularity}

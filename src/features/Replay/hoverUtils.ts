@@ -1,4 +1,5 @@
 import type { HoveredRect } from "./useHoveredPosition.ts";
+import type { TsRange } from "../WebGl/webglUtils.ts";
 
 /**
  * Map a clientY to a camera-space world Y. The camera spans
@@ -12,4 +13,8 @@ export function clientYToWorldY(
 ) {
   const fraction = (clientY - rect.top) / rect.height;
   return cameraTop + fraction * (cameraBottom - cameraTop);
+}
+
+export function isInRanges(ranges: TsRange[], ts: number) {
+  return ranges.some(([startMs, endMs]) => ts >= startMs && ts < endMs);
 }

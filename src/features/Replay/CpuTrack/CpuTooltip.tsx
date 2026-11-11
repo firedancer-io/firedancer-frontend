@@ -12,9 +12,14 @@ import {
   type HoveredAggCpu,
 } from "../atoms";
 import { useAggBucket } from "../useAggBucket";
-import { aggCpuAtom, aggCpuEmitterAtom, cpuRowsAtom } from "./atoms";
+import {
+  aggCpuAtom,
+  aggCpuDrawTilesAtom,
+  aggCpuEmitterAtom,
+  cpuRowsAtom,
+} from "./atoms";
 import { MAX_UTILIZATION } from "./const";
-import { meanRowUtilization } from "./utils";
+import { meanRowUtilization, resampleTilesUtilization } from "./utils";
 
 const MAX_TOOLTIP_ROWS = 20;
 
@@ -41,6 +46,8 @@ function CpuTooltipContent({ hovered }: CpuTooltipContentProps) {
   const tilesUtilization = useAggBucket(
     aggCpuAtom,
     aggCpuEmitterAtom,
+    aggCpuDrawTilesAtom,
+    resampleTilesUtilization,
     granularity,
     bucketIdx,
   );

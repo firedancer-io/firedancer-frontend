@@ -12,6 +12,7 @@ import {
 } from "./consts";
 import {
   buildSlotVotes,
+  clipVotesData,
   countPoints,
   getFadeTs,
   mergeVotesData,
@@ -333,6 +334,42 @@ describe("parseVotes cumulative stake", () => {
       ts: [1],
       frac: [0.1],
     });
+  });
+});
+
+describe("clipVotesData", () => {
+  const rows = [
+    vote(10, VoteKind.Notar, 1, 100),
+    vote(10, VoteKind.Notar, 4, 300),
+    vote(11, VoteKind.Skip, 2, 50),
+    { slot: 10, event: CertKind.Notar, ms: 5 },
+  ];
+
+  it("keeps cumulative stake in range and drops empty slots", () => {
+    const clipped = clipVotesData(
+      parseVotes(response(rows), referenceNs),
+      3,
+      10,
+    );
+
+    expectCurve(clipped.get(10)?.curves[VoteKind.Notar], {
+      ts: [4],
+      frac: [0.4],
+    });
+    expect(clipped.get(10)?.certs.get(CertKind.Notar)).toBe(5);
+    expect(clipped.has(11)).toBe(false);
+  });
+
+  it("merges adjacent ranges back to the unclipped data", () => {
+    const data = parseVotes(response(rows), referenceNs);
+    const merged = buildSlotVotes([
+      clipVotesData(data, 0, 3),
+      clipVotesData(data, 3, 10),
+    ]);
+
+    expectCurve(merged.get(10)?.notar, { ts: [1, 4], frac: [0.1, 0.4] });
+    expectCurve(merged.get(11)?.skipAll, { ts: [2], frac: [0.05] });
+    expect(merged.get(10)?.certs.get(CertKind.Notar)).toBe(5);
   });
 });
 

@@ -1,5 +1,5 @@
 import { getDefaultStore } from "jotai";
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
@@ -11,15 +11,19 @@ import {
   setUpRenderers,
 } from "./utils.ts";
 import { aggTrackHeight, aggTrackOverhang } from "./const.ts";
-import { useAggHeaderQuery } from "./useAggHeaderQuery.ts";
+import type { useAggHeaderQuery } from "./useAggHeaderQuery.ts";
 import { getAggSlotsGranularity } from "../utils.ts";
 import type { AggGranularity } from "../../../api/types.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import clsx from "clsx";
 import styles from "../track.module.css";
-import { aggHeaderEmitterAtom, aggSlotsAtom } from "./aggAtoms.ts";
-import { drawEventType } from "../const.ts";
+import {
+  aggHeaderEmitterAtom,
+  aggSlotsAtom,
+  isAggHeaderVisibleAtom,
+} from "./aggAtoms.ts";
+import { dataChangeEventType, drawEventType } from "../const.ts";
 import TrackControls from "../TrackControls.tsx";
 import EpochMarkers from "../EpochMarkers.tsx";
 import { TimelineEventType } from "../../../api/entities.ts";
@@ -27,16 +31,28 @@ import { epochLabel } from "../../../epochUtils.ts";
 import { Pin } from "../MiniMap/EventsTrack/Pin.tsx";
 import epochPinsStyles from "../epochPins.module.css";
 import { Box } from "@radix-ui/themes";
+import { useModeCoverage } from "../useModeCoverage.ts";
 
-const chartId = "agg-header-track";
 const store = getDefaultStore();
+
+function getTargetGranularity(visibleRange: TsRange): string {
+  return getAggSlotsGranularity(visibleRange[1] - visibleRange[0]);
+}
+
+function isAggDrawn(visibleRange: TsRange) {
+  return isAggregate(visibleRange) || store.get(isAggHeaderVisibleAtom);
+}
 
 interface AggHeaderTrackProps extends WebGlRemountProps {
   className: string;
-  showAgg: () => void;
+  aggQuery: ReturnType<typeof useAggHeaderQuery>;
 }
 
-function AggHeaderTrack({ remount, className, showAgg }: AggHeaderTrackProps) {
+function AggHeaderTrack({
+  remount,
+  className,
+  aggQuery: { query: aggQuery, granularityLevels, pauseStaleRefreshes },
+}: AggHeaderTrackProps) {
   const [granularity, setGranularity] = useState<AggGranularity | undefined>(
     undefined,
   );
@@ -44,10 +60,16 @@ function AggHeaderTrack({ remount, className, showAgg }: AggHeaderTrackProps) {
     remount,
     create: ({ setUpContextListeners, getWasContextLost }) =>
       setUpRenderers(setUpContextListeners, getWasContextLost),
-    onResize: () => renderIfActive(),
+    onResize: () => render(),
   });
 
-  const { query: aggQuery, pauseStaleRefreshes } = useAggHeaderQuery(chartId);
+  const { resolveModeRanges, startAggDraw, shouldDrawAgg } = useModeCoverage({
+    granularityLevels,
+    getTargetGranularity,
+    getAggGranularity: getAggSlotsGranularity,
+  });
+  // whether the agg data changed since the mesh was drawn
+  const isDataChangedRef = useRef(true);
 
   const throttledRelativeTsQuery = useThrottledCallbackIfVisible(
     (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
@@ -67,19 +89,47 @@ function AggHeaderTrack({ remount, className, showAgg }: AggHeaderTrackProps) {
     { leading: true, trailing: true },
   );
 
-  const renderIfActive = useCallback(() => {
-    if (!rendererRef.current) return;
-
-    const visibleRange = store.get(visibleRangeAtom);
-    if (!visibleRange || !isAggregate(visibleRange)) return;
+  /**
+   * Render if agg is shown
+   */
+  const render = useCallback(() => {
+    if (!rendererRef.current || !store.get(isAggHeaderVisibleAtom)) return;
 
     const { renderer, aggResources } = rendererRef.current;
     const { camera, scene } = aggResources;
     renderer.render(scene, camera);
   }, [rendererRef]);
 
+  const drawAgg = useCallback(() => {
+    const aggDraw = startAggDraw();
+    if (!rendererRef.current || !aggDraw) return;
+    isDataChangedRef.current = false;
+
+    drawAggSlots(
+      rendererRef.current,
+      aggDraw.referenceNs,
+      aggDraw.visibleRange,
+      store.get(aggSlotsAtom),
+      aggDraw.getDrawTiles,
+    );
+    render();
+  }, [rendererRef, render, startAggDraw]);
+
+  const throttledDrawAgg = useThrottledCallbackIfVisible(
+    useCallback(() => {
+      const visibleRange = store.get(visibleRangeAtom);
+      if (!visibleRange || !isAggDrawn(visibleRange)) return;
+      resolveModeRanges();
+      // draw events also fire when panning to fetched data
+      if (isDataChangedRef.current || shouldDrawAgg()) drawAgg();
+    }, [drawAgg, resolveModeRanges, shouldDrawAgg]),
+    50,
+    { leading: true, trailing: true },
+  );
+
   /**
-   * Update camera, toggle visibility, and query data for a new range.
+   * Update camera and query data for a new range. Redraw only if the view left
+   * the drawn buckets or the granularity they're drawn from changed.
    */
   const onRangeChange = useCallback(() => {
     if (!rendererRef.current) return;
@@ -87,49 +137,36 @@ function AggHeaderTrack({ remount, className, showAgg }: AggHeaderTrackProps) {
     const referenceNs = store.get(referenceNsAtom);
     const worldRange = store.get(worldRangeAtom);
     const visibleRange = store.get(visibleRangeAtom);
-    if (
-      referenceNs == null ||
-      !visibleRange ||
-      !worldRange ||
-      !isAggregate(visibleRange)
-    ) {
-      return;
-    }
+    if (referenceNs == null || !visibleRange || !worldRange) return;
 
-    // Move camera before querying, because query may trigger immediate draw if data is already available
+    // Move camera before querying, because query may trigger immediate draw if data is already available.
+    // Always move the camera, since agg may stay shown after zooming into non agg
     moveAggCamera(rendererRef.current.aggResources, visibleRange);
     throttledRelativeTsQuery(referenceNs, visibleRange, worldRange);
-    renderIfActive();
-  }, [renderIfActive, rendererRef, throttledRelativeTsQuery]);
-
-  const throttledDrawAgg = useThrottledCallbackIfVisible(
-    useCallback(() => {
-      const referenceNs = store.get(referenceNsAtom);
-      const visibleRange = store.get(visibleRangeAtom);
-      const aggSlots = store.get(aggSlotsAtom);
-      if (
-        !rendererRef.current ||
-        !visibleRange ||
-        referenceNs == null ||
-        !isAggregate(visibleRange)
-      ) {
-        return;
-      }
-
-      drawAggSlots(rendererRef.current, referenceNs, visibleRange, aggSlots);
-      renderIfActive();
-      showAgg();
-    }, [rendererRef, renderIfActive, showAgg]),
-    50,
-    { leading: true, trailing: true },
-  );
+    if (!isAggDrawn(visibleRange)) return;
+    resolveModeRanges();
+    if (isDataChangedRef.current || shouldDrawAgg()) drawAgg();
+    else render();
+  }, [
+    render,
+    drawAgg,
+    rendererRef,
+    resolveModeRanges,
+    shouldDrawAgg,
+    throttledRelativeTsQuery,
+  ]);
 
   // subscribe to range change, to trigger queries
   useLayoutEffect(() => {
     const unsubscribeRange = store.sub(visibleRangeAtom, onRangeChange);
+    const unsubscribeShown = store.sub(isAggHeaderVisibleAtom, render);
 
     // listen for agg slots draw events
     const aggEmitter = store.get(aggHeaderEmitterAtom);
+    const onDataChange = () => {
+      isDataChangedRef.current = true;
+    };
+    aggEmitter.addListener(dataChangeEventType, onDataChange);
     aggEmitter.addListener(drawEventType, throttledDrawAgg);
 
     // trigger initial draw
@@ -137,12 +174,14 @@ function AggHeaderTrack({ remount, className, showAgg }: AggHeaderTrackProps) {
 
     // cleanup
     return () => {
+      aggEmitter.removeListener(dataChangeEventType, onDataChange);
       aggEmitter.removeListener(drawEventType, throttledDrawAgg);
       throttledDrawAgg.cancel();
       throttledRelativeTsQuery.cancel();
+      unsubscribeShown();
       unsubscribeRange();
     };
-  }, [onRangeChange, throttledDrawAgg, throttledRelativeTsQuery]);
+  }, [onRangeChange, render, throttledDrawAgg, throttledRelativeTsQuery]);
 
   const renderEpochPin = useCallback(
     (epochNumber: number | undefined) => (

@@ -11,6 +11,8 @@ import {
 } from "./atoms";
 import { calcAbsoluteNs } from "./utils";
 import { getTileIdx, getTileIdxRangeWithOverscan } from "./utils";
+import type { DataLevel } from "./coverage";
+import { bigIntMax } from "../../mathUtils";
 
 interface TileStates {
   fetched: Set<number>;
@@ -19,6 +21,10 @@ interface TileStates {
    * tiles that include the world end and require refreshing
    */
   stale: Set<number>;
+  // tiles that started before the available start when fetched (are missing data)
+  partial: Set<number>;
+  // latest start of the server's data (tiles ending before it aren't fetched)
+  availableStartNs?: bigint;
 }
 
 /** granularity -> tile states */
@@ -120,6 +126,7 @@ export function createParallelCache<
         fetched: new Set(),
         pending: new Set(),
         stale: new Set(),
+        partial: new Set(),
       };
       tileStates.set(granularity, states);
     }
@@ -165,10 +172,11 @@ export function createParallelCache<
   };
 
   const evictTiles = (granularity: Granularity, tileIdxs: number[]) => {
-    const { fetched, stale } = getTileStates(granularity);
+    const { fetched, stale, partial } = getTileStates(granularity);
     for (const tileIdx of tileIdxs) {
       fetched.delete(tileIdx);
       stale.delete(tileIdx);
+      partial.delete(tileIdx);
     }
     onEvictTiles(granularity, tileIdxs);
   };
@@ -254,6 +262,7 @@ export function createParallelCache<
     granularity: Granularity,
     params: Params,
     onNothingToFetch?: (granularity: Granularity) => void,
+    hasFallbackData?: (tileRangeNs: NsTsRange) => boolean,
   ) => {
     if (visibleEndNs <= visibleStartNs) {
       latestRequest = undefined;
@@ -269,13 +278,23 @@ export function createParallelCache<
       overscanTilesCount,
     );
 
-    const toFetch: { queryId: number; tileIdx: number }[] = [];
+    const toFetch: {
+      queryId: number;
+      tileIdx: number;
+      hasFallback: boolean;
+    }[] = [];
+
+    const { availableStartNs } = getTileStates(granularity);
 
     const isConnected = store.get(isConnectedAtom);
 
     // mark missing tiles as pending
     for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
       const tileEndNs = BigInt(tileIdx + 1) * tileSizeNs;
+      // evicted from the server
+      if (availableStartNs !== undefined && tileEndNs <= availableStartNs) {
+        continue;
+      }
       const isStale = tileEndNs >= worldEndNs;
 
       // while disconnected, don't reserve/query tiles
@@ -283,7 +302,13 @@ export function createParallelCache<
 
       const queryId = getNewQueryId(granularity, tileIdx, isStale);
       if (queryId == null) continue;
-      toFetch.push({ queryId, tileIdx });
+      const tileStartNs = BigInt(tileIdx) * tileSizeNs;
+      toFetch.push({
+        queryId,
+        tileIdx,
+        hasFallback:
+          hasFallbackData?.([tileStartNs, tileStartNs + tileSizeNs]) ?? false,
+      });
     }
 
     latestRequest = {
@@ -298,15 +323,17 @@ export function createParallelCache<
       return;
     }
 
-    // fetch tiles closest to the visible center first
+    // fetch tiles with nothing to draw first, then those closest to the
+    // visible center
     const visibleCenterTile =
       (getTileIdx(visibleStartNs, tileSizeNs, false) +
         getTileIdx(visibleEndNs, tileSizeNs, true)) /
       2;
     toFetch.sort(
       (a, b) =>
+        Number(a.hasFallback) - Number(b.hasFallback) ||
         Math.abs(a.tileIdx - visibleCenterTile) -
-        Math.abs(b.tileIdx - visibleCenterTile),
+          Math.abs(b.tileIdx - visibleCenterTile),
     );
 
     // fetch one tile at a time
@@ -318,7 +345,11 @@ export function createParallelCache<
   /**
    * Mark tile associated with query ID as fetched, and return query info
    */
-  const markQueryComplete = (queryId: number, chunksEndNs?: bigint) => {
+  const markQueryComplete = (
+    queryId: number,
+    chunksEndNs?: bigint,
+    availableStartNs?: bigint | null,
+  ) => {
     const queryInfo = pendingQueries.get(queryId);
     // query id was not found
     if (queryInfo == null) return;
@@ -329,8 +360,19 @@ export function createParallelCache<
     tilesState.pending.delete(tileIdx);
     pendingQueries.delete(queryId);
 
+    const tileSizeNs = getTileSizeNs(granularity);
+    if (availableStartNs != null) {
+      tilesState.availableStartNs = bigIntMax(
+        tilesState.availableStartNs ?? availableStartNs,
+        availableStartNs,
+      );
+      if (BigInt(tileIdx) * tileSizeNs < availableStartNs) {
+        tilesState.partial.add(tileIdx);
+      }
+    }
+
     // a response ending before the tile end leaves it stale
-    const tileEndNs = BigInt(tileIdx + 1) * getTileSizeNs(granularity);
+    const tileEndNs = BigInt(tileIdx + 1) * tileSizeNs;
     if (isStale || (chunksEndNs !== undefined && chunksEndNs < tileEndNs)) {
       tilesState.stale.add(tileIdx);
     } else {
@@ -344,6 +386,43 @@ export function createParallelCache<
     if (evicted.includes(tileIdx)) return;
 
     return queryInfo;
+  };
+
+  /**
+   * Granularity as a data level. A tile has data if it's fetched or stale,
+   * and isn't partial.
+   */
+  const getLevel = (granularity: Granularity, isAgg: boolean): DataLevel => {
+    const tileSizeNs = getTileSizeNs(granularity);
+    return {
+      id: granularity,
+      isAgg,
+      tileSizeNs,
+      isRangeFetched: (rangeNs) => {
+        if (rangeNs[1] <= rangeNs[0]) return true;
+
+        const { fetched, stale, partial, availableStartNs } =
+          getTileStates(granularity);
+        const allowPartial =
+          availableStartNs !== undefined && rangeNs[1] > availableStartNs;
+        const startNs = allowPartial
+          ? bigIntMax(rangeNs[0], availableStartNs)
+          : rangeNs[0];
+
+        const firstTile = getTileIdx(startNs, tileSizeNs, false);
+        const lastTile = getTileIdx(rangeNs[1], tileSizeNs, true);
+
+        if (lastTile - firstTile + 1 > fetched.size + stale.size) {
+          return false;
+        }
+
+        for (let tileIdx = firstTile; tileIdx <= lastTile; tileIdx++) {
+          if (!fetched.has(tileIdx) && !stale.has(tileIdx)) return false;
+          if (!allowPartial && partial.has(tileIdx)) return false;
+        }
+        return true;
+      },
+    };
   };
 
   const refreshStaleTiles = () => {
@@ -448,6 +527,7 @@ export function createParallelCache<
     clearCache,
     init,
     clearPending,
+    getLevel,
   };
 }
 

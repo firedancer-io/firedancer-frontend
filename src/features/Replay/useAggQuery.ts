@@ -1,12 +1,32 @@
 import { useCallback, useLayoutEffect, useMemo } from "react";
-import { useAtomValue, useSetAtom, type Atom, type WritableAtom } from "jotai";
+import {
+  getDefaultStore,
+  useAtomValue,
+  useSetAtom,
+  type Atom,
+  type PrimitiveAtom,
+  type WritableAtom,
+} from "jotai";
 import { useWebSocketSend } from "../../api/ws/utils";
 import type { AggGranularity } from "../../api/types";
 import type { NsTsRange, TsRange } from "../WebGl/webglUtils";
-import { calcAbsoluteNs, useTimelineServerMessage } from "./utils";
+import { calcAbsoluteNsRange, useTimelineServerMessage } from "./utils";
 import { createParallelCache } from "./parallelQueriesCache";
-import { drawEventType, nsBucketSizes, type DrawEmitter } from "./const";
-import type { TimelineQueryKey } from "./atoms";
+import {
+  ascBucketGranularities,
+  drawEventType,
+  nsBucketSizes,
+  type DrawEmitter,
+} from "./const";
+import {
+  referenceNsAtom,
+  worldRangeAtom,
+  type TimelineQueryKey,
+} from "./atoms";
+import { hasFallbackData, type DataLevel } from "./coverage";
+import { getCoverageDrawTiles, type GetDrawTiles } from "./aggDraw";
+
+const store = getDefaultStore();
 
 /**
  * Number of current granularity buckets per fetch tile.
@@ -34,6 +54,7 @@ interface UseAggQueryOpts<TValue, TParams extends object> {
   addAtom: AddAtom<TValue>;
   deleteBucketsAtom: DeleteBucketsAtom;
   emitterAtom: Atom<DrawEmitter>;
+  drawTilesAtom?: PrimitiveAtom<GetDrawTiles | undefined>;
   params?: TParams;
   overscanTilesCount?: number;
 }
@@ -44,6 +65,7 @@ export function useAggQuery<TValue, TParams extends object = object>({
   addAtom,
   deleteBucketsAtom,
   emitterAtom,
+  drawTilesAtom,
   params,
   overscanTilesCount = OVERSCAN_TILES_COUNT,
 }: UseAggQueryOpts<TValue, TParams>) {
@@ -104,8 +126,13 @@ export function useAggQuery<TValue, TParams extends object = object>({
       }),
     [chartId, overscanTilesCount, queryKey, sendQuery, onEvictTiles],
   );
-  const { queryRange, markQueryComplete, pauseStaleRefreshes, clearCache } =
-    cache;
+  const {
+    queryRange,
+    markQueryComplete,
+    pauseStaleRefreshes,
+    clearCache,
+    getLevel,
+  } = cache;
 
   useLayoutEffect(() => {
     const unsub = cache.init();
@@ -126,32 +153,79 @@ export function useAggQuery<TValue, TParams extends object = object>({
     emitter.emit(drawEventType);
   }, [emitter]);
 
+  // Agg granularities ordered from coarsest to finest
+  const granularityLevels = useMemo(
+    () =>
+      [...ascBucketGranularities]
+        .reverse()
+        .map((granularity) => getLevel(granularity, true)),
+    [getLevel],
+  );
+
   const query = useCallback(
     (
       referenceNs: bigint,
       visibleRange: TsRange,
       worldRange: TsRange,
       granularity: AggGranularity,
+      fallbackLevels: DataLevel[] = granularityLevels,
     ) => {
-      const visibleRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, visibleRange[0]),
-        calcAbsoluteNs(referenceNs, visibleRange[1]),
-      ];
-
-      const worldRangeNs: NsTsRange = [
-        calcAbsoluteNs(referenceNs, worldRange[0]),
-        calcAbsoluteNs(referenceNs, worldRange[1]),
-      ];
+      const visibleRangeNs: NsTsRange = calcAbsoluteNsRange(
+        referenceNs,
+        visibleRange,
+      );
+      const worldRangeNs: NsTsRange = calcAbsoluteNsRange(
+        referenceNs,
+        worldRange,
+      );
       queryRange(
         visibleRangeNs,
         worldRangeNs,
         granularity,
         params,
         onNothingToFetch,
+        (tileRangeNs) =>
+          hasFallbackData(
+            fallbackLevels,
+            granularity,
+            tileRangeNs,
+            worldRangeNs,
+          ),
       );
     },
-    [onNothingToFetch, queryRange, params],
+    [granularityLevels, onNothingToFetch, queryRange, params],
   );
 
-  return { query, pauseStaleRefreshes, clearCache };
+  /** Agg granularity to draw each span from, or a fallback if not loaded */
+  const getDrawTiles: GetDrawTiles = useCallback(
+    (drawGranularity, firstBucketIdx, lastBucketIdx) => {
+      const referenceNs = store.get(referenceNsAtom);
+      const worldRange = store.get(worldRangeAtom);
+      return getCoverageDrawTiles(
+        granularityLevels,
+        drawGranularity,
+        referenceNs != null && worldRange
+          ? calcAbsoluteNsRange(referenceNs, worldRange)
+          : undefined,
+        drawGranularity,
+        firstBucketIdx,
+        lastBucketIdx,
+      );
+    },
+    [granularityLevels],
+  );
+
+  useLayoutEffect(() => {
+    if (!drawTilesAtom) return;
+    store.set(drawTilesAtom, () => getDrawTiles);
+    return () => store.set(drawTilesAtom, undefined);
+  }, [drawTilesAtom, getDrawTiles]);
+
+  return {
+    query,
+    granularityLevels,
+    getDrawTiles,
+    pauseStaleRefreshes,
+    clearCache,
+  };
 }
