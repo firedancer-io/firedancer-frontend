@@ -36,16 +36,12 @@ import {
   getBucketIdx,
 } from "../utils";
 import {
+  epochSkippedSlotColor,
   headerMineGroupBorderColor,
   replayAggHeaderBackgroundColor,
   replayMiniMapSkippedColor,
 } from "../../../colors";
-import {
-  blendColors,
-  BucketColorState,
-  type ColorInfo,
-  getBucketColor,
-} from "../slotUtils";
+import { BucketColorState, type ColorInfo, getBucketColor } from "../slotUtils";
 
 const minY = 0;
 const maxY = 1;
@@ -53,11 +49,7 @@ const maxY = 1;
 const backgroundColor = convertToWebGlColor(replayAggHeaderBackgroundColor);
 const skippedColor = convertToWebGlColor(replayMiniMapSkippedColor);
 const mineColor = convertToWebGlColor(headerMineGroupBorderColor);
-const mineSkippedColor =
-  blendColors([
-    [skippedColor, 1],
-    [mineColor, 1],
-  ]) ?? mineColor;
+const mineSkippedColor = convertToWebGlColor(epochSkippedSlotColor);
 
 const bucketColors: Record<BucketColorState, ColorInfo> = {
   [BucketColorState.MyNotSkipped]: {

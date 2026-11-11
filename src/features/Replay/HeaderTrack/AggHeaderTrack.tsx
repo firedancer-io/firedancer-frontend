@@ -1,5 +1,11 @@
 import { getDefaultStore } from "jotai";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
@@ -25,15 +31,52 @@ import {
 } from "./aggAtoms.ts";
 import { dataChangeEventType, drawEventType } from "../const.ts";
 import TrackControls from "../TrackControls.tsx";
-import EpochMarkers from "../EpochMarkers.tsx";
+import TrackEventMarkers, {
+  EPOCH_LABEL_WIDTH_PX,
+} from "../TrackEventMarkers.tsx";
 import { TimelineEventType } from "../../../api/entities.ts";
-import { epochLabel } from "../../../epochUtils.ts";
-import { Pin } from "../MiniMap/EventsTrack/Pin.tsx";
-import epochPinsStyles from "../epochPins.module.css";
+import { epochLabel, useGetEpochForSlot } from "../../../epochUtils.ts";
+import {
+  Pin,
+  PIN_TRIANGLE_HEIGHT_PX,
+  PIN_TRIANGLE_PATH,
+  PIN_TRIANGLE_WIDTH_PX,
+} from "../MiniMap/EventsTrack/Pin.tsx";
+import trackEventPinsStyles from "../trackEventPins.module.css";
 import { Box } from "@radix-ui/themes";
+import { epochSkippedSlotColor } from "../../../colors.ts";
 import { useModeCoverage } from "../useModeCoverage.ts";
 
 const store = getDefaultStore();
+
+// half the 10px pin icon, centered on its ts
+const PIN_RADIUS_PX = 5;
+const skippedPinCullMarginPx = { left: PIN_RADIUS_PX, right: PIN_RADIUS_PX };
+const epochPinCullMarginPx = {
+  left: EPOCH_LABEL_WIDTH_PX,
+  right: PIN_RADIUS_PX,
+};
+
+const pinIconStyle = {
+  // 1px into the header's top margin
+  top: -(aggTrackOverhang + 1),
+  // ends at the track bottom
+  height: `calc(100% + ${aggTrackOverhang + 1}px)`,
+};
+
+// The same pin as epoch starts, without a label, drawn by one element (styled by
+// skipped-pin) instead of Pin's 8. The triangle is Pin's svg.
+const skippedPinTriangleSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PIN_TRIANGLE_WIDTH_PX}" height="${PIN_TRIANGLE_HEIGHT_PX}" viewBox="0 0 ${PIN_TRIANGLE_WIDTH_PX} ${PIN_TRIANGLE_HEIGHT_PX}" fill="none"><path d="${PIN_TRIANGLE_PATH}" fill="${epochSkippedSlotColor}" stroke="black"/></svg>`;
+const skippedPinVars = {
+  "--skipped-pin-overhang": `${aggTrackOverhang + 1}px`,
+  "--skipped-pin-background": [
+    `url("data:image/svg+xml,${encodeURIComponent(skippedPinTriangleSvg)}") no-repeat 0 0 / ${PIN_TRIANGLE_WIDTH_PX}px ${PIN_TRIANGLE_HEIGHT_PX}px`,
+    // a 2px bar centered under the triangle
+    `linear-gradient(${epochSkippedSlotColor}, ${epochSkippedSlotColor}) no-repeat ${PIN_TRIANGLE_WIDTH_PX / 2 - 1}px ${PIN_TRIANGLE_HEIGHT_PX}px / 2px calc(100% - ${PIN_TRIANGLE_HEIGHT_PX}px)`,
+  ].join(", "),
+} as CSSProperties;
+
+const renderNothing = () => null;
 
 function getTargetGranularity(visibleRange: TsRange): string {
   return getAggSlotsGranularity(visibleRange[1] - visibleRange[0]);
@@ -183,37 +226,43 @@ function AggHeaderTrack({
     };
   }, [onRangeChange, render, throttledDrawAgg, throttledRelativeTsQuery]);
 
+  const getEpochForSlot = useGetEpochForSlot();
   const renderEpochPin = useCallback(
-    (epochNumber: number | undefined) => (
-      <div className={epochPinsStyles.pinContent}>
-        <div
-          className={epochPinsStyles.pinIcon}
-          style={{
-            // 1px into the header's top margin
-            top: -(aggTrackOverhang + 1),
-            // ends at the track bottom
-            height: `calc(100% + ${aggTrackOverhang + 1}px)`,
-          }}
-        >
+    (slot: number) => (
+      <div className={trackEventPinsStyles.pinContent}>
+        <div className={trackEventPinsStyles.pinIcon} style={pinIconStyle}>
           <Pin eventType={TimelineEventType.EpochStart} fullHeightBar />
         </div>
-        <span className={epochPinsStyles.pinLabel}>
-          {epochLabel(epochNumber)}
+        <span className={trackEventPinsStyles.pinLabel}>
+          {epochLabel(getEpochForSlot?.(slot))}
         </span>
       </div>
     ),
-    [],
+    [getEpochForSlot],
   );
 
   return (
     <Box
       height={`${aggTrackHeight}px`}
       className={clsx(className, styles.trackContainer)}
+      style={skippedPinVars}
     >
       <div ref={containerRef} className={styles.trackCanvasContainer} />
-      <EpochMarkers
-        rootClassName={epochPinsStyles.root}
-        markerParentClassName={epochPinsStyles.pin}
+      {/* my skipped slots, under the epoch pins */}
+      <TrackEventMarkers
+        eventType={TimelineEventType.LeaderSkip}
+        showIn="agg"
+        rootClassName={trackEventPinsStyles.root}
+        markerParentClassName={trackEventPinsStyles.skippedPin}
+        cullMarginPx={skippedPinCullMarginPx}
+        renderMarker={renderNothing}
+      />
+      <TrackEventMarkers
+        eventType={TimelineEventType.EpochStart}
+        showIn="agg"
+        rootClassName={trackEventPinsStyles.root}
+        markerParentClassName={trackEventPinsStyles.pin}
+        cullMarginPx={epochPinCullMarginPx}
         renderMarker={renderEpochPin}
       />
       <TrackControls name="Slots" bucketSize={granularity} />

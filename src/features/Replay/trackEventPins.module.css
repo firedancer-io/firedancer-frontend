@@ -31,12 +31,26 @@
   transform: translateX(-50%);
 }
 
+/*
+ * A skipped slot pin as a single element, as there can be thousands in view.
+ * The header sets its overhang and background (the pin's triangle and bar).
+ */
+.skipped-pin {
+  position: absolute;
+  top: calc(-1 * var(--skipped-pin-overhang));
+  bottom: 0;
+  /* centered on its ts */
+  left: -5px;
+  width: 10px;
+  background: var(--skipped-pin-background);
+}
+
 .pin-label {
   align-self: center;
-  margin-left: -2px;
+  margin-left: -6px;
   white-space: nowrap;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1;
   color: var(--epoch-line-text-color);
 }

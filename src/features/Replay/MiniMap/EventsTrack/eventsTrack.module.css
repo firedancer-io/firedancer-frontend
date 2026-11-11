@@ -22,7 +22,7 @@
     cursor: default;
   }
 
-  .pin-positioner:has(.pin-epoch-start) {
+  .pin-positioner:has(.pin-triangle) {
     position: relative;
     top: -1px;
   }
@@ -113,7 +113,7 @@
 }
 
 .pin-epoch-start {
-  --pin-color: var(--epoch-line-text-color);
+  --pin-color: var(--epoch-pin-color);
 }
 
 .pin-boot {
