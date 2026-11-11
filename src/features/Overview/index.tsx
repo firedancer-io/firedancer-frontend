@@ -32,9 +32,9 @@ export default function Overview() {
         {!isFrankendancer && <AccountsCard className={styles.accountsCard} />}
         <TransactionsCard className={styles.txnsCard} />
       </Grid>
-      {!isFrankendancer && <ResourcesCard />}
       <ShredsProgression />
       <SlotPerformance />
+      {!isFrankendancer && <ResourcesCard />}
       <LiveNetworkMetrics />
       <LiveTileMetrics />
     </Flex>
