@@ -33,6 +33,9 @@ export interface ExecrpViewOpts {
   idleWeight: number;
 }
 
+// dense sub-px txns shimmer as they move unless smoothed
+const EXECRP_SMOOTH_PX = 1;
+
 const idleWeightGlsl = /* glsl */ `
   uniform float uIdleWeight; // idle time's weight against the busy states
 `;
@@ -68,6 +71,7 @@ const createHeatmapFragmentShader = (stateCount: number) =>
         color = linearToSrgb((busyColor + uBackgroundLinear * idleWeight) / total);
       }
     `,
+    EXECRP_SMOOTH_PX,
   );
 
 /**
@@ -88,6 +92,7 @@ const createStackedFragmentShader = (stateCount: number) =>
         }
       }
     `,
+    EXECRP_SMOOTH_PX,
   );
 
 const ERROR_STATE_PALETTE = Object.values(errorStateColors).map(
