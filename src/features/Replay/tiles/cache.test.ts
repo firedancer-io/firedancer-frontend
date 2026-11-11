@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
 import { socketStateAtom } from "../../../api/ws/atoms";
 import { SocketState } from "../../../api/ws/types";
@@ -99,6 +99,10 @@ describe("tile cache with partial responses", () => {
       smoothedNowNsAtom as PrimitiveAtom<bigint | undefined>,
       undefined,
     );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("keeps a fully fetched tile as complete returns it", async () => {
@@ -202,6 +206,76 @@ describe("tile cache with partial responses", () => {
     for (const respond of heldResponses) respond();
     await vi.waitFor(() => expect(cache.getTiles()).toHaveLength(3));
     expect(fetchedWindows).toHaveLength(6);
+  });
+
+  it("refetches a paused view's tiles after a reconnect drops their requests", async () => {
+    finalEndNs = 20n * tileNs;
+    heldResponses = [];
+    const cache = createCache({
+      failPendingRequests: () => {
+        const held = heldResponses ?? [];
+        heldResponses = [];
+        for (const respond of held) respond("fail_all_pending");
+      },
+    });
+    const unsubscribe = cache.init();
+
+    cache.requestRange([2n * tileNs, 3n * tileNs - 1n], 20n * tileNs);
+    // the view's tile and one overscan tile on each side
+    const viewTileCount = 1 + 2;
+    expect(fetchedWindows).toHaveLength(viewTileCount);
+    getDefaultStore().set(socketStateAtom, SocketState.Disconnected);
+    await flush();
+    getDefaultStore().set(socketStateAtom, SocketState.Connected);
+    expect(fetchedWindows).toHaveLength(2 * viewTileCount);
+
+    for (const respond of heldResponses) respond();
+    await vi.waitFor(() =>
+      expect(cache.getTiles()).toHaveLength(viewTileCount),
+    );
+    unsubscribe();
+  });
+
+  it("keeps following live after a listener throws", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const uncaught: unknown[] = [];
+    const realSetTimeout = globalThis.setTimeout;
+    vi.spyOn(globalThis, "setTimeout").mockImplementation(((
+      callback: () => void,
+      delayMs?: number,
+    ) =>
+      realSetTimeout(() => {
+        try {
+          callback();
+        } catch (e) {
+          uncaught.push(e);
+        }
+      }, delayMs)) as typeof setTimeout);
+    const listenerError = new Error("listener error");
+    const cache = createCache();
+    const viewNs: [bigint, bigint] = [0n, tileNs - 1n];
+    const liveDeltas = () =>
+      deltas.filter(
+        (delta) => delta.kind === "live" && delta.tile.startNs === 0n,
+      );
+    let hasThrown = false;
+    cache.subscribe((delta) => {
+      if (delta.kind !== "live" || hasThrown) return;
+      hasThrown = true;
+      throw listenerError;
+    });
+
+    finalEndNs = 400n * msNs;
+    cache.requestRange(viewNs, 750n * msNs);
+    await vi.waitFor(() => expect(liveDeltas()).toHaveLength(1));
+    expect(hasThrown).toBe(true);
+    expect(console.error).toHaveBeenCalled();
+
+    finalEndNs = 900n * msNs;
+    advanceQueryThrottle();
+    cache.requestRange(viewNs, 950n * msNs);
+    await vi.waitFor(() => expect(liveDeltas()).toHaveLength(2));
+    expect(uncaught).toEqual([listenerError]);
   });
 
   it("fetches the tile before the world end live when it may not be final", async () => {

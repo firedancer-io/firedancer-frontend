@@ -4,6 +4,7 @@ import { isConnectedAtom, socketStateAtom } from "../../../api/ws/atoms";
 import { SocketState } from "../../../api/ws/types";
 import { smoothedNowNsAtom } from "../../../nowAtoms";
 import { bigIntMax, bigIntMin } from "../../../mathUtils";
+import { logError } from "../../../logger";
 import type { NsTsRange } from "../../WebGl/webglUtils";
 import { getSortedInsertIdx } from "../utils";
 import { splitFetch, type FetchResult, type Interval } from "./splitFetch";
@@ -140,7 +141,17 @@ export function createTileCache<TData, TMeta>({
   }
 
   function publish(delta: TileCacheDelta<TData, TMeta>): void {
-    for (const listener of listeners) listener(delta);
+    for (const listener of listeners) {
+      try {
+        listener(delta);
+      } catch (e) {
+        logError("TileCache", "Error in delta listener:", delta.kind, e);
+        // still surface it as uncaught, without stopping the other listeners
+        setTimeout(() => {
+          throw e;
+        });
+      }
+    }
   }
 
   function getTiles(): Tile<TData, TMeta>[] {
@@ -464,11 +475,21 @@ export function createTileCache<TData, TMeta>({
   }
 
   function init(): () => void {
-    return store.sub(socketStateAtom, () => {
+    const unsubSocketState = store.sub(socketStateAtom, () => {
       if (store.get(socketStateAtom) === SocketState.Disconnected) {
         failPendingRequests();
       }
     });
+    // refetch tiles whose requests the disconnect dropped
+    const unsubConnected = store.sub(isConnectedAtom, () => {
+      if (!store.get(isConnectedAtom)) return;
+      requestedTilesForView.clear();
+      fetchMissingTiles();
+    });
+    return () => {
+      unsubSocketState();
+      unsubConnected();
+    };
   }
 
   function reset(): void {
