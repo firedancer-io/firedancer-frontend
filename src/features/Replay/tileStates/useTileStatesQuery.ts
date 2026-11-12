@@ -1,12 +1,9 @@
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
-import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
+import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { tilesAtom } from "../../../api/atoms.ts";
-import type {
-  AggGranularity,
-  TileStatesGranularity,
-} from "../../../api/types.ts";
+import type { AggGranularity } from "../../../api/types.ts";
 import { TileStatesGranularityEnum } from "../../../api/entities.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import { useTileCacheQuery } from "../tiles/useTileCache.ts";
@@ -18,7 +15,7 @@ import {
 } from "./tileStatesCache.ts";
 import { getTileStatesGranularity, isAggregate } from "./consts.ts";
 import { syncAggTileStatesTilesAtom } from "./aggAtoms.ts";
-import { isUsableAggFallback, type DataLevel } from "../coverage.ts";
+import type { DataLevel } from "../coverage.ts";
 import {
   getAggGranularity,
   type AggTileStatesQuery,
@@ -43,34 +40,10 @@ export function useTileStatesQuery({
     [aggLevels],
   );
 
-  const getHasFallbackData = useCallback(
-    (granularity: TileStatesGranularity) => (tileRangeNs: NsTsRange) => {
-      if (hasFallbackData[granularity](tileRangeNs)) return true;
-      const visibleRange = store.get(visibleRangeAtom);
-      if (!visibleRange) return false;
-      const viewAggId = getAggGranularity(visibleRange[1] - visibleRange[0], {
-        ignoreMinimum: true,
-      });
-      return aggLevels.some(
-        (level, idx) =>
-          isUsableAggFallback(aggLevels, idx, viewAggId) &&
-          level.isRangeFetched(tileRangeNs, false),
-      );
-    },
-    [aggLevels],
-  );
-  const hasTxnFallback = useMemo(
-    () => getHasFallbackData(TileStatesGranularityEnum.txn),
-    [getHasFallbackData],
-  );
-  const hasBatchFallback = useMemo(
-    () => getHasFallbackData(TileStatesGranularityEnum.txn_batch),
-    [getHasFallbackData],
-  );
-  const queryTxn = useTileCacheQuery(tileStatesCaches.txn, hasTxnFallback);
+  const queryTxn = useTileCacheQuery(tileStatesCaches.txn, hasFallbackData.txn);
   const queryBatch = useTileCacheQuery(
     tileStatesCaches.txn_batch,
-    hasBatchFallback,
+    hasFallbackData.txn_batch,
   );
 
   const query = useThrottledCallback(

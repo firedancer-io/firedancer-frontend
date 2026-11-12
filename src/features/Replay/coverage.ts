@@ -17,31 +17,16 @@ export interface DataLevel {
   getAvailableStartNs?: () => bigint | undefined;
 }
 
-// viewAggLevelId: the agg level the view would use without the query's finest
-// granularity; agg levels over one level coarser than it draw as blocks
-export function isUsableAggFallback(
-  granularityLevels: DataLevel[],
-  levelIdx: number,
-  viewAggLevelId: string,
-) {
-  const viewAggIdx = granularityLevels.findIndex(
-    ({ id }) => id === viewAggLevelId,
-  );
-  return levelIdx >= viewAggIdx - 1;
-}
-
-/** Levels are coarsest to finest */
+// non agg targets skip agg levels, which draw far coarser than their data
 function isUsableFallback(
   granularityLevels: DataLevel[],
   targetLevelIdx: number,
   levelIdx: number,
-  viewAggLevelId: string,
 ) {
-  return (
-    levelIdx >= targetLevelIdx ||
-    !granularityLevels[levelIdx].isAgg ||
-    isUsableAggFallback(granularityLevels, levelIdx, viewAggLevelId)
-  );
+  if (!granularityLevels[targetLevelIdx].isAgg) {
+    return !granularityLevels[levelIdx].isAgg;
+  }
+  return levelIdx >= targetLevelIdx - 1;
 }
 
 /**
@@ -64,7 +49,6 @@ export function resolveCoverage(
   granularityLevels: DataLevel[],
   targetLevelId: string,
   rangeNs: NsTsRange,
-  viewAggLevelId: string,
   worldRangeNs?: NsTsRange,
 ): CoverageSpan[] {
   const targetLevelIdx = granularityLevels.findIndex(
@@ -83,7 +67,6 @@ export function resolveCoverage(
       granularityLevels,
       targetLevelIdx,
       granularityLevels.indexOf(level),
-      viewAggLevelId,
     ),
   );
   // prefer the target's mode since each switch between modes adds a render pass
@@ -138,7 +121,6 @@ export function hasFallbackData(
   granularityLevels: DataLevel[],
   targetLevelId: string,
   rangeNs: NsTsRange,
-  viewAggLevelId: string,
   worldRangeNs?: NsTsRange,
 ): boolean {
   const fetchRangeNs: NsTsRange = worldRangeNs
@@ -153,12 +135,7 @@ export function hasFallbackData(
   return granularityLevels.some(
     (level, idx) =>
       idx !== targetLevelIdx &&
-      isUsableFallback(
-        granularityLevels,
-        targetLevelIdx,
-        idx,
-        viewAggLevelId,
-      ) &&
+      isUsableFallback(granularityLevels, targetLevelIdx, idx) &&
       level.isRangeFetched(fetchRangeNs, idx > targetLevelIdx),
   );
 }
@@ -170,14 +147,12 @@ export function isRangeCovered(
   granularityLevels: DataLevel[],
   targetLevelId: string,
   rangeNs: NsTsRange,
-  viewAggLevelId: string,
   worldRangeNs?: NsTsRange,
 ): boolean {
   return resolveCoverage(
     granularityLevels,
     targetLevelId,
     rangeNs,
-    viewAggLevelId,
     worldRangeNs,
   ).every(({ level }) => level !== undefined);
 }

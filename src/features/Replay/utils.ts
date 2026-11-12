@@ -279,16 +279,6 @@ export function insertSorted<T>(
   return true;
 }
 
-export interface AggGranularityOpts {
-  // the level the window would use if the query had no finest granularity
-  ignoreMinimum?: boolean;
-}
-
-export type GetAggGranularity = (
-  windowSizeMs: number,
-  opts?: AggGranularityOpts,
-) => AggGranularity;
-
 /**
  * Gets the finest granularity allowed for a query that shows at most
  * `bucketCountThreshold` buckets in the window
@@ -297,11 +287,8 @@ export function getAggGranularityForQuery(
   queryKey: TimelineAggQueryKey,
   windowSizeMs: number,
   bucketCountThreshold: number,
-  { ignoreMinimum = false }: AggGranularityOpts = {},
 ) {
-  const minMs = ignoreMinimum
-    ? 0
-    : msBucketSizes[minAggGranularities[queryKey]];
+  const minMs = msBucketSizes[minAggGranularities[queryKey]];
   return (
     ascBucketGranularities.find((g) => {
       return (
@@ -312,14 +299,10 @@ export function getAggGranularityForQuery(
   );
 }
 
-export function getAggSlotsGranularity(
-  windowSizeMs: number,
-  opts?: AggGranularityOpts,
-) {
+export function getAggSlotsGranularity(windowSizeMs: number) {
   return getAggGranularityForQuery(
     AGG_SLOTS_QUERY_KEY,
     windowSizeMs,
     AGG_BUCKET_COUNT_THRESHOLD,
-    opts,
   );
 }

@@ -1,4 +1,4 @@
-import { getAggGranularityForQuery, type AggGranularityOpts } from "../utils";
+import { getAggGranularityForQuery } from "../utils";
 import type { AggRevenue } from "../../../api/types";
 import { useAggQuery } from "../useAggQuery";
 import type { TimelineQueryKey } from "../atoms";
@@ -16,15 +16,11 @@ const chartId = "revenue-track";
  * At most, how many buckets should be visible
  */
 export const AGG_REVENUE_BUCKET_COUNT_THRESHOLD = 2200;
-export function getGranularity(
-  windowSizeMs: number,
-  opts?: AggGranularityOpts,
-) {
+export function getGranularity(windowSizeMs: number) {
   return getAggGranularityForQuery(
     QUERY_KEY,
     windowSizeMs,
     AGG_REVENUE_BUCKET_COUNT_THRESHOLD,
-    opts,
   );
 }
 

@@ -5,19 +5,19 @@ import { SocketState } from "../../api/ws/types";
 import { createParallelCache } from "./parallelQueriesCache";
 import { hasFallbackData, resolveCoverage, type DataLevel } from "./coverage";
 import type { NsTsRange } from "../WebGl/webglUtils";
-import { getAggGranularityForQuery } from "./utils";
 
 vi.mock("../../nowAtoms", () => ({
   smoothedNowNsAtom: atom<bigint | undefined>(undefined),
 }));
 
-type Granularity = "top" | "coarse" | "mid" | "fine";
+type Granularity = "top" | "coarse" | "mid" | "batch" | "fine";
 
 const store = getDefaultStore();
 const tileSizesNs: Record<Granularity, bigint> = {
   top: 64_000n,
   coarse: 32_000n,
   mid: 16_000n,
+  batch: 4_000n,
   fine: 1_000n,
 };
 
@@ -44,25 +44,24 @@ function makeLevels() {
     cache.queryRange(rangeNs, worldRangeNs, granularity, undefined);
     for (const id of sentIds) cache.markQueryComplete(id);
   };
-  // fine stands in for a zoomed-in (non-agg) level
+  // batch and fine stand in for zoomed-in (non-agg) levels
   const levels = [
     cache.getLevel("top", true),
     cache.getLevel("coarse", true),
     cache.getLevel("mid", true),
+    cache.getLevel("batch", false),
     cache.getLevel("fine", false),
   ];
   return { load, levels };
 }
 
-// viewAgg: the agg level the view would use
 const levelIdAt = (
-  levels: ReturnType<typeof makeLevels>["levels"],
-  target: Granularity,
-  viewAgg: Granularity,
+  levels: DataLevel[],
+  target: string,
   rangeNs: NsTsRange,
   worldRangeNs: NsTsRange,
 ) =>
-  resolveCoverage(levels, target, rangeNs, viewAgg, worldRangeNs).map(
+  resolveCoverage(levels, target, rangeNs, worldRangeNs).map(
     ({ level }) => level?.id,
   );
 
@@ -74,97 +73,110 @@ describe("coverage fallback", () => {
   it("doesn't fall back to a coarser level's stale tail", () => {
     const { load, levels } = makeLevels();
     const worldRangeNs: NsTsRange = [0n, 10_500n];
-    load("mid", [0n, 10_500n], worldRangeNs);
+    load("batch", [0n, 10_500n], worldRangeNs);
 
     // the fine tile at the world end hasn't loaded
+    expect(levelIdAt(levels, "fine", [10_000n, 10_500n], worldRangeNs)).toEqual(
+      [undefined],
+    );
     expect(
-      levelIdAt(levels, "fine", "mid", [10_000n, 10_500n], worldRangeNs),
-    ).toEqual([undefined]);
-    expect(
-      hasFallbackData(levels, "fine", [10_000n, 11_000n], "mid", worldRangeNs),
+      hasFallbackData(levels, "fine", [10_000n, 11_000n], worldRangeNs),
     ).toBe(false);
   });
 
-  it("falls back to a coarser level's settled tiles", () => {
+  it("falls back to a coarser non agg level's settled tiles", () => {
     const { load, levels } = makeLevels();
-    load("mid", [0n, 16_000n], [0n, 20_000n]);
+    const worldRangeNs: NsTsRange = [0n, 20_000n];
+    load("batch", [0n, 16_000n], worldRangeNs);
 
+    expect(levelIdAt(levels, "fine", [5_000n, 6_000n], worldRangeNs)).toEqual([
+      "batch",
+    ]);
     expect(
-      levelIdAt(levels, "fine", "mid", [5_000n, 6_000n], [0n, 20_000n]),
-    ).toEqual(["mid"]);
+      hasFallbackData(levels, "fine", [5_000n, 6_000n], worldRangeNs),
+    ).toBe(true);
   });
 
   it("falls back to a finer level's stale tail and draws the target's own", () => {
     const { load, levels } = makeLevels();
     const worldRangeNs: NsTsRange = [0n, 10_500n];
     load("fine", [0n, 10_500n], worldRangeNs);
-    expect(
-      levelIdAt(levels, "mid", "mid", [10_000n, 10_500n], worldRangeNs),
-    ).toEqual(["fine"]);
+    expect(levelIdAt(levels, "mid", [10_000n, 10_500n], worldRangeNs)).toEqual([
+      "fine",
+    ]);
 
     load("mid", [0n, 10_500n], worldRangeNs);
-    expect(
-      levelIdAt(levels, "mid", "mid", [10_000n, 10_500n], worldRangeNs),
-    ).toEqual(["mid"]);
+    expect(levelIdAt(levels, "mid", [10_000n, 10_500n], worldRangeNs)).toEqual([
+      "mid",
+    ]);
   });
 
-  it("falls back to agg levels at most one coarser than the view's agg level", () => {
+  it("never falls back to agg levels for a non agg target", () => {
     const worldRangeNs: NsTsRange = [0n, 100_000n];
-    for (const target of ["mid", "fine"] as const) {
-      const { load, levels } = makeLevels();
-      load("coarse", [0n, 32_000n], worldRangeNs);
-      expect(
-        new Set(levelIdAt(levels, target, "mid", [0n, 16_000n], worldRangeNs)),
-      ).toEqual(new Set(["coarse"]));
-      expect(
-        hasFallbackData(levels, target, [0n, 16_000n], "mid", worldRangeNs),
-      ).toBe(true);
-
-      const other = makeLevels();
-      other.load("top", [0n, 64_000n], worldRangeNs);
-      expect(
-        new Set(
-          levelIdAt(other.levels, target, "mid", [0n, 16_000n], worldRangeNs),
-        ),
-      ).toEqual(new Set([undefined]));
-      expect(
-        hasFallbackData(
-          other.levels,
-          target,
-          [0n, 16_000n],
-          "mid",
-          worldRangeNs,
-        ),
-      ).toBe(false);
+    for (const agg of ["top", "coarse", "mid"] as const) {
+      for (const target of ["batch", "fine"] as const) {
+        const { load, levels } = makeLevels();
+        load(agg, [0n, 64_000n], worldRangeNs);
+        expect(levelIdAt(levels, target, [0n, 4_000n], worldRangeNs)).toEqual(
+          Array(Number(4_000n / tileSizesNs[target])).fill(undefined),
+        );
+        expect(
+          hasFallbackData(levels, target, [0n, 4_000n], worldRangeNs),
+        ).toBe(false);
+      }
     }
   });
 
-  it("falls back to no coarser agg level when the target is clamped", () => {
-    // the view's agg level is finer than the target, the query's finest
+  it("never falls back to an agg level finer than a non agg target", () => {
+    const fetched = () => true;
+    const levels: DataLevel[] = [
+      {
+        id: "batch",
+        isAgg: false,
+        tileSizeNs: 10n,
+        isRangeFetched: () => false,
+      },
+      { id: "agg", isAgg: true, tileSizeNs: 10n, isRangeFetched: fetched },
+    ];
+    expect(levelIdAt(levels, "batch", [0n, 10n], [0n, 10n])).toEqual([
+      undefined,
+    ]);
+    expect(hasFallbackData(levels, "batch", [0n, 10n], [0n, 10n])).toBe(false);
+  });
+
+  it("falls back to only the next coarser agg level for an agg target", () => {
     const worldRangeNs: NsTsRange = [0n, 100_000n];
-    const { load, levels } = makeLevels();
-    load("top", [0n, 64_000n], worldRangeNs);
+    const next = makeLevels();
+    next.load("coarse", [0n, 32_000n], worldRangeNs);
+    expect(levelIdAt(next.levels, "mid", [0n, 16_000n], worldRangeNs)).toEqual([
+      "coarse",
+    ]);
     expect(
-      levelIdAt(levels, "coarse", "mid", [0n, 32_000n], worldRangeNs),
+      hasFallbackData(next.levels, "mid", [0n, 16_000n], worldRangeNs),
+    ).toBe(true);
+
+    const twoCoarser = makeLevels();
+    twoCoarser.load("top", [0n, 64_000n], worldRangeNs);
+    expect(
+      levelIdAt(twoCoarser.levels, "mid", [0n, 16_000n], worldRangeNs),
     ).toEqual([undefined]);
     expect(
-      hasFallbackData(levels, "coarse", [0n, 32_000n], "mid", worldRangeNs),
+      hasFallbackData(twoCoarser.levels, "mid", [0n, 16_000n], worldRangeNs),
     ).toBe(false);
-
-    load("mid", [0n, 32_000n], worldRangeNs);
     expect(
-      levelIdAt(levels, "coarse", "mid", [0n, 32_000n], worldRangeNs),
-    ).toEqual(["mid"]);
+      levelIdAt(twoCoarser.levels, "coarse", [0n, 32_000n], worldRangeNs),
+    ).toEqual(["top"]);
   });
 
   it("always draws the target", () => {
-    const { load, levels } = makeLevels();
     const worldRangeNs: NsTsRange = [0n, 100_000n];
-    load("top", [0n, 64_000n], worldRangeNs);
-
-    expect(
-      levelIdAt(levels, "top", "top", [0n, 64_000n], worldRangeNs),
-    ).toEqual(["top"]);
+    for (const target of ["top", "mid", "batch", "fine"] as const) {
+      const { load, levels } = makeLevels();
+      load(target, [0n, 64_000n], worldRangeNs);
+      expect(
+        new Set(levelIdAt(levels, target, [0n, 16_000n], worldRangeNs)),
+      ).toEqual(new Set([target]));
+    }
   });
 });
 
@@ -184,11 +196,12 @@ function makeAvailableLevel(
 }
 
 describe("coverage before the available start", () => {
-  const agg = makeAvailableLevel("agg", true, () => true);
+  const batch = makeAvailableLevel("batch", false, () => true);
   const levelIds = (levels: DataLevel[], target: string, rangeNs: NsTsRange) =>
-    resolveCoverage(levels, target, rangeNs, "agg").map(
-      ({ rangeNs, level }) => [rangeNs, level?.id],
-    );
+    resolveCoverage(levels, target, rangeNs).map(({ rangeNs, level }) => [
+      rangeNs,
+      level?.id,
+    ]);
 
   it("draws the target without falling back before its available start", () => {
     // the server's data starts at 25, so tiles ending before it aren't fetched
@@ -198,7 +211,7 @@ describe("coverage before the available start", () => {
       ([startNs]) => startNs >= 20n,
       25n,
     );
-    expect(levelIds([agg, txn], "txn", [0n, 40n])).toEqual([
+    expect(levelIds([batch, txn], "txn", [0n, 40n])).toEqual([
       [[0n, 10n], "txn"],
       [[10n, 20n], "txn"],
       [[20n, 25n], "txn"],
@@ -209,26 +222,24 @@ describe("coverage before the available start", () => {
 
   it("draws the target for a span before the available start whose tile hasn't loaded", () => {
     const txn = makeAvailableLevel("txn", false, () => false, 25n);
-    expect(levelIds([agg, txn], "txn", [20n, 24n])).toEqual([
+    expect(levelIds([batch, txn], "txn", [20n, 24n])).toEqual([
       [[20n, 24n], "txn"],
     ]);
   });
 
   it("only falls back after the available start in a tile straddling it", () => {
     const txn = makeAvailableLevel("txn", false, () => false, 25n);
-    expect(levelIds([agg, txn], "txn", [20n, 30n])).toEqual([
+    expect(levelIds([batch, txn], "txn", [20n, 30n])).toEqual([
       [[20n, 25n], "txn"],
-      [[25n, 30n], "agg"],
+      [[25n, 30n], "batch"],
     ]);
   });
 
   it("falls back while the target's available start is unknown", () => {
     const txn = makeAvailableLevel("txn", false, ([startNs]) => startNs >= 20n);
-    expect(levelIds([agg, txn], "txn", [0n, 30n]).map(([, id]) => id)).toEqual([
-      "agg",
-      "agg",
-      "txn",
-    ]);
+    expect(
+      levelIds([batch, txn], "txn", [0n, 30n]).map(([, id]) => id),
+    ).toEqual(["batch", "batch", "txn"]);
   });
 
   it("falls back after the available start while the target loads", () => {
@@ -238,38 +249,18 @@ describe("coverage before the available start", () => {
       ([startNs]) => startNs < 20n,
       5n,
     );
-    expect(levelIds([agg, txn], "txn", [0n, 30n])).toEqual([
+    expect(levelIds([batch, txn], "txn", [0n, 30n])).toEqual([
       [[0n, 5n], "txn"],
       [[5n, 10n], "txn"],
       [[10n, 20n], "txn"],
-      [[20n, 30n], "agg"],
+      [[20n, 30n], "batch"],
     ]);
   });
 
   it("only uses the target's available start", () => {
     const txn = makeAvailableLevel("txn", false, () => false, 25n);
-    expect(levelIds([agg, txn], "agg", [0n, 20n]).map(([, id]) => id)).toEqual([
-      "agg",
-      "agg",
-    ]);
-  });
-});
-
-describe("the agg level a view would use", () => {
-  it("ignores the query's finest granularity when asked", () => {
-    // shreds' finest agg granularity is 250ms
-    expect(getAggGranularityForQuery("query_agg_shreds", 12_000, 2000)).toBe(
-      "250ms",
-    );
     expect(
-      getAggGranularityForQuery("query_agg_shreds", 12_000, 2000, {
-        ignoreMinimum: true,
-      }),
-    ).toBe("25ms");
-    expect(
-      getAggGranularityForQuery("query_agg_shreds", 900_000, 2000, {
-        ignoreMinimum: true,
-      }),
-    ).toBe("500ms");
+      levelIds([batch, txn], "batch", [0n, 20n]).map(([, id]) => id),
+    ).toEqual(["batch", "batch"]);
   });
 });
