@@ -22,11 +22,26 @@ export interface DataLevel {
 // fewer buckets in view draw as blocks that look nothing like the data
 const MIN_FALLBACK_BUCKETS_IN_VIEW = 60n;
 
-export function isTooCoarseFallback(level: DataLevel, windowNs: bigint) {
+export function hasTooFewBucketsInView(level: DataLevel, windowNs: bigint) {
   return (
     level.bucketSizeNs !== undefined &&
     level.bucketSizeNs * MIN_FALLBACK_BUCKETS_IN_VIEW > windowNs
   );
+}
+
+/** Levels are coarsest to finest */
+function isUsableFallback(
+  granularityLevels: DataLevel[],
+  targetLevelIdx: number,
+  levelIdx: number,
+  windowNs: bigint,
+) {
+  if (levelIdx >= targetLevelIdx) return true;
+  // agg targets only fall back to the next coarser level, at most 2.5x coarser
+  if (granularityLevels[targetLevelIdx].isAgg) {
+    return levelIdx === targetLevelIdx - 1;
+  }
+  return !hasTooFewBucketsInView(granularityLevels[levelIdx], windowNs);
 }
 
 /**
@@ -63,9 +78,13 @@ export function resolveCoverage(
     ...granularityLevels.slice(targetLevelIdx),
     ...granularityLevels.slice(0, targetLevelIdx).reverse(),
   ];
-  const usable = byDist.filter(
-    (level) =>
-      level.id === targetLevelId || !isTooCoarseFallback(level, windowNs),
+  const usable = byDist.filter((level) =>
+    isUsableFallback(
+      granularityLevels,
+      targetLevelIdx,
+      granularityLevels.indexOf(level),
+      windowNs,
+    ),
   );
   // prefer the target's mode since each switch between modes adds a render pass
   const candidates = [
@@ -134,7 +153,7 @@ export function hasFallbackData(
   return granularityLevels.some(
     (level, idx) =>
       idx !== targetLevelIdx &&
-      !isTooCoarseFallback(level, windowNs) &&
+      isUsableFallback(granularityLevels, targetLevelIdx, idx, windowNs) &&
       level.isRangeFetched(fetchRangeNs, idx > targetLevelIdx),
   );
 }
