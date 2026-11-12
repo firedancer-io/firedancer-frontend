@@ -3,7 +3,7 @@ import { atom, getDefaultStore } from "jotai";
 import { socketStateAtom } from "../../api/ws/atoms";
 import { SocketState } from "../../api/ws/types";
 import { createParallelCache } from "./parallelQueriesCache";
-import { hasFallbackData, resolveCoverage } from "./coverage";
+import { hasFallbackData, resolveCoverage, type DataLevel } from "./coverage";
 import type { NsTsRange } from "../WebGl/webglUtils";
 
 vi.mock("../../nowAtoms", () => ({
@@ -142,5 +142,92 @@ describe("coverage fallback", () => {
     expect(
       levelIdAt(levels, "coarse", [0n, 32_000n], worldRangeNs, 1_000n),
     ).toEqual(["coarse"]);
+  });
+});
+
+function makeAvailableLevel(
+  id: string,
+  isAgg: boolean,
+  isFetched: (rangeNs: NsTsRange) => boolean,
+  availableStartNs?: bigint,
+): DataLevel {
+  return {
+    id,
+    isAgg,
+    tileSizeNs: 10n,
+    isRangeFetched: isFetched,
+    getAvailableStartNs: () => availableStartNs,
+  };
+}
+
+describe("coverage before the available start", () => {
+  const agg = makeAvailableLevel("agg", true, () => true);
+  const levelIds = (levels: DataLevel[], target: string, rangeNs: NsTsRange) =>
+    resolveCoverage(levels, target, rangeNs, wideWindowNs).map(
+      ({ rangeNs, level }) => [rangeNs, level?.id],
+    );
+
+  it("draws the target without falling back before its available start", () => {
+    // the server's data starts at 25, so tiles ending before it aren't fetched
+    const txn = makeAvailableLevel(
+      "txn",
+      false,
+      ([startNs]) => startNs >= 20n,
+      25n,
+    );
+    expect(levelIds([agg, txn], "txn", [0n, 40n])).toEqual([
+      [[0n, 10n], "txn"],
+      [[10n, 20n], "txn"],
+      [[20n, 25n], "txn"],
+      [[25n, 30n], "txn"],
+      [[30n, 40n], "txn"],
+    ]);
+  });
+
+  it("draws the target for a span before the available start whose tile hasn't loaded", () => {
+    const txn = makeAvailableLevel("txn", false, () => false, 25n);
+    expect(levelIds([agg, txn], "txn", [20n, 24n])).toEqual([
+      [[20n, 24n], "txn"],
+    ]);
+  });
+
+  it("only falls back after the available start in a tile straddling it", () => {
+    const txn = makeAvailableLevel("txn", false, () => false, 25n);
+    expect(levelIds([agg, txn], "txn", [20n, 30n])).toEqual([
+      [[20n, 25n], "txn"],
+      [[25n, 30n], "agg"],
+    ]);
+  });
+
+  it("falls back while the target's available start is unknown", () => {
+    const txn = makeAvailableLevel("txn", false, ([startNs]) => startNs >= 20n);
+    expect(levelIds([agg, txn], "txn", [0n, 30n]).map(([, id]) => id)).toEqual([
+      "agg",
+      "agg",
+      "txn",
+    ]);
+  });
+
+  it("falls back after the available start while the target loads", () => {
+    const txn = makeAvailableLevel(
+      "txn",
+      false,
+      ([startNs]) => startNs < 20n,
+      5n,
+    );
+    expect(levelIds([agg, txn], "txn", [0n, 30n])).toEqual([
+      [[0n, 5n], "txn"],
+      [[5n, 10n], "txn"],
+      [[10n, 20n], "txn"],
+      [[20n, 30n], "agg"],
+    ]);
+  });
+
+  it("only uses the target's available start", () => {
+    const txn = makeAvailableLevel("txn", false, () => false, 25n);
+    expect(levelIds([agg, txn], "agg", [0n, 20n]).map(([, id]) => id)).toEqual([
+      "agg",
+      "agg",
+    ]);
   });
 });

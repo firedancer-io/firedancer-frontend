@@ -69,7 +69,6 @@ import {
   getFallbackDataTiles,
   getFallbackRangeNs,
   hasFallbackData,
-  isSlotVotesRangeLoaded,
   slotVotesLevel,
   votesCaches,
   type VotesCacheDelta,
@@ -201,7 +200,7 @@ function VotesTrackBody({
       prevView !== "curves" &&
       referenceNs != null &&
       !!worldRangeMs &&
-      !isSlotVotesRangeLoaded(
+      !slotVotesLevel.isRangeFetched(
         getVisibleWorldRangeNs(referenceNs, visibleRangeMs, worldRangeMs),
       );
     const shownView = isHeld ? prevView : targetView;

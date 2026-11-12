@@ -10,6 +10,7 @@ import {
 import { createParallelCache } from "../parallelQueriesCache";
 import { SLOTS_QUERY_KEY, useSlotsQuery } from "../useSlotsQuery";
 import { nsPerMs } from "../../../consts";
+import { bigIntMax } from "../../../mathUtils";
 import {
   addTimelineSlotsAtom,
   deleteTimelineSlotTilesAtom,
@@ -78,7 +79,11 @@ export function useNonAggHeaderQuery(chartId: string) {
   useTimelineServerMessage(
     SLOTS_QUERY_KEY,
     (message: { id: number; value: TimelineSlots }) => {
-      const tileIdx = markQueryComplete(message.id)?.tileIdx;
+      const tileIdx = markQueryComplete(
+        message.id,
+        undefined,
+        message.value.available_start_ns,
+      )?.tileIdx;
       if (tileIdx == null) return;
 
       addTimelineSlots(tileIdx, message.value);
@@ -106,13 +111,25 @@ export function useNonAggHeaderQuery(chartId: string) {
   const level = useMemo(() => getLevel(granularity, false), [getLevel]);
 
   /**
-   * Whether every in world visible tile has loaded
+   * Whether every in world visible tile has loaded. The server has no slots
+   * before the available start, so only the rest of the range needs to load.
    */
   const isVisibleFetched = useCallback(
-    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) =>
-      level.isRangeFetched(
-        getVisibleWorldRangeNs(referenceNs, visibleRange, worldRange),
-      ),
+    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
+      const [startNs, endNs] = getVisibleWorldRangeNs(
+        referenceNs,
+        visibleRange,
+        worldRange,
+      );
+      const availableStartNs = level.getAvailableStartNs?.();
+      const fetchStartNs =
+        availableStartNs === undefined
+          ? startNs
+          : bigIntMax(startNs, availableStartNs);
+      return (
+        fetchStartNs >= endNs || level.isRangeFetched([fetchStartNs, endNs])
+      );
+    },
     [level],
   );
 

@@ -57,6 +57,7 @@ function fetchVotes(granularity: VotesGranularity) {
           : parseVotes(result.value, referenceNs),
       // not chunked, so the server's newest retained vote bounds what was fetched
       chunksEndNs: result.value.available_end_ns ?? end + 1n,
+      availableStartNs: result.value.available_start_ns,
     };
   };
 }
@@ -187,13 +188,26 @@ export function getFallbackDataTiles(
   return fallbacks;
 }
 
+function getSlotVotesAvailableStartNs(): bigint | undefined {
+  const [first, ...rest] = [
+    votesCaches.vote.getAvailableStartNs(),
+    votesCaches.vote_batch.getAvailableStartNs(),
+  ].filter((ns) => ns !== undefined);
+  return first === undefined ? undefined : bigIntMin(first, ...rest);
+}
+
 export const slotVotesLevel: DataLevel = {
   id: "slot",
   isAgg: false,
   tileSizeNs: VOTES_TILE_NS.vote_batch,
   isRangeFetched: (rangeNs) => {
+    const availableStartNs = getSlotVotesAvailableStartNs();
+    const startNs =
+      availableStartNs === undefined
+        ? rangeNs[0]
+        : bigIntMax(rangeNs[0], availableStartNs);
     for (
-      let voteStartNs = (rangeNs[0] / VOTES_TILE_NS.vote) * VOTES_TILE_NS.vote;
+      let voteStartNs = (startNs / VOTES_TILE_NS.vote) * VOTES_TILE_NS.vote;
       voteStartNs < rangeNs[1];
       voteStartNs += VOTES_TILE_NS.vote
     ) {
@@ -210,23 +224,5 @@ export const slotVotesLevel: DataLevel = {
     }
     return true;
   },
+  getAvailableStartNs: getSlotVotesAvailableStartNs,
 };
-
-/**
- * Whether the range's slot votes have loaded, except before the server's
- * retention start, which has none to load
- */
-export function isSlotVotesRangeLoaded(rangeNs: NsTsRange): boolean {
-  const [first, ...rest] = [
-    votesCaches.vote.getAvailableStartNs(),
-    votesCaches.vote_batch.getAvailableStartNs(),
-  ].filter((ns) => ns !== undefined);
-  const startNs =
-    first === undefined
-      ? rangeNs[0]
-      : bigIntMax(rangeNs[0], bigIntMin(first, ...rest));
-  return (
-    startNs >= rangeNs[1] ||
-    slotVotesLevel.isRangeFetched([startNs, rangeNs[1]])
-  );
-}
