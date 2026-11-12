@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
-import { startupTimeAtom } from "../../../api/atoms";
 import { containerElAtom } from "../../../atoms";
 import { markGestureSurface } from "../gestureUtils";
 import type * as NonAggAtoms from "./nonAggAtoms";
@@ -27,6 +26,7 @@ const {
   visibleRangeAtom,
 } = await import("../atoms");
 const { timelineSlotsAtom } = await import("./nonAggAtoms");
+const { setStartupTimeAtom } = await import("../resetReplayState");
 const { default: OverlapTooltip } = await import("./OverlapTooltip");
 
 const store = getDefaultStore();
@@ -88,7 +88,7 @@ beforeEach(() => {
   store.set(containerElAtom, portalEl);
 
   // referenceNs = 0 so a slot's relative ms maps straight into the tile math
-  store.set(startupTimeAtom, { startupTimeNanos: 0n });
+  store.set(setStartupTimeAtom, 0n);
   store.set(visibleRangeAtom, [0, 10_000]);
   const slots = new Map([
     [100, slot(100)],
