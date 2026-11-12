@@ -1,9 +1,7 @@
-import { Box, Flex, IconButton } from "@radix-ui/themes";
-import { EnterFullScreenIcon, ExitFullScreenIcon } from "@radix-ui/react-icons";
+import { Box, Flex } from "@radix-ui/themes";
 import Chart from "./Chart";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useMeasure } from "react-use";
-import { useHotkey } from "../../hooks/useHotkey";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isWebgl2SupportedAtom } from "../WebGl/atoms";
 import {
@@ -11,7 +9,7 @@ import {
   miniMapPopoverBoundaryElAtom,
   miniMapPopoverBoundaryWidthAtom,
 } from "./atoms";
-import PlaybackControls from "./PlaybackControls";
+import ReplayControls from "./ReplayControls";
 import { useDismissSelection, useHoveredSlotClearDelay } from "./slotHighlight";
 
 export default function Replay() {
@@ -23,31 +21,18 @@ export default function Replay() {
 
   useEffect(() => () => setIsFullScreen(false), [setIsFullScreen]);
 
-  const toggleFullScreen = () => setIsFullScreen((v) => !v);
-
-  useHotkey("f", toggleFullScreen);
-
   return (
     <Flex
       ref={replayRef}
       direction="column"
       gap="3px"
+      // keep the controls off the top edge of the screen in full screen
+      pt={isFullScreen ? "3px" : undefined}
       flexGrow="1"
       minHeight="0"
     >
       <Flex align="center" gap="2">
-        {document.fullscreenEnabled && (
-          <IconButton
-            size="1"
-            variant="soft"
-            color="gray"
-            aria-label={isFullScreen ? "Exit full screen" : "Full screen"}
-            onClick={toggleFullScreen}
-          >
-            {isFullScreen ? <ExitFullScreenIcon /> : <EnterFullScreenIcon />}
-          </IconButton>
-        )}
-        {isWebGl2Supported && <PlaybackControls />}
+        <ReplayControls />
         <MiniMapPopoverBoundary />
       </Flex>
       {isWebGl2Supported ? <Chart /> : <div>WebGL2 support required</div>}
