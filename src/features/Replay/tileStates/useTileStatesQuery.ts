@@ -18,7 +18,7 @@ import {
 } from "./tileStatesCache.ts";
 import { getTileStatesGranularity, isAggregate } from "./consts.ts";
 import { syncAggTileStatesTilesAtom } from "./aggAtoms.ts";
-import { isTooCoarseFallback, type DataLevel } from "../coverage.ts";
+import { hasTooFewBucketsInView, type DataLevel } from "../coverage.ts";
 import {
   getAggGranularity,
   type AggTileStatesQuery,
@@ -51,7 +51,7 @@ export function useTileStatesQuery({
       const windowNs = getWindowNs(visibleRange);
       return aggLevels.some(
         (level) =>
-          !isTooCoarseFallback(level, windowNs) &&
+          !hasTooFewBucketsInView(level, windowNs) &&
           level.isRangeFetched(tileRangeNs, false),
       );
     },

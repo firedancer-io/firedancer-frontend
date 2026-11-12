@@ -10,10 +10,11 @@ vi.mock("../../nowAtoms", () => ({
   smoothedNowNsAtom: atom<bigint | undefined>(undefined),
 }));
 
-type Granularity = "coarse" | "mid" | "fine";
+type Granularity = "top" | "coarse" | "mid" | "fine";
 
 const store = getDefaultStore();
 const tileSizesNs: Record<Granularity, bigint> = {
+  top: 64_000n,
   coarse: 32_000n,
   mid: 16_000n,
   fine: 1_000n,
@@ -44,6 +45,7 @@ function makeLevels() {
   };
   // fine stands in for a zoomed-in level, which has no buckets
   const levels = [
+    { ...cache.getLevel("top", true), bucketSizeNs: 6_400n },
     { ...cache.getLevel("coarse", true), bucketSizeNs: 3_200n },
     { ...cache.getLevel("mid", true), bucketSizeNs: 1_600n },
     cache.getLevel("fine", false),
@@ -113,7 +115,7 @@ describe("coverage fallback", () => {
     ]);
   });
 
-  it("falls back only to levels with 60+ buckets in view", () => {
+  it("falls back from a non-agg target only to levels with 60+ buckets in view", () => {
     const { load, levels } = makeLevels();
     const worldRangeNs: NsTsRange = [0n, 100_000n];
     load("coarse", [0n, 32_000n], worldRangeNs);
@@ -142,6 +144,30 @@ describe("coverage fallback", () => {
     expect(
       levelIdAt(levels, "coarse", [0n, 32_000n], worldRangeNs, 1_000n),
     ).toEqual(["coarse"]);
+  });
+
+  it("falls back from an agg target only to the next coarser level", () => {
+    const { load, levels } = makeLevels();
+    const worldRangeNs: NsTsRange = [0n, 100_000n];
+    load("coarse", [0n, 32_000n], worldRangeNs);
+    expect(
+      levelIdAt(levels, "mid", [0n, 16_000n], worldRangeNs, 1_000n),
+    ).toEqual(["coarse"]);
+
+    const other = makeLevels();
+    other.load("top", [0n, 64_000n], worldRangeNs);
+    expect(levelIdAt(other.levels, "mid", [0n, 16_000n], worldRangeNs)).toEqual(
+      [undefined],
+    );
+    expect(
+      hasFallbackData(
+        other.levels,
+        "mid",
+        [0n, 16_000n],
+        wideWindowNs,
+        worldRangeNs,
+      ),
+    ).toBe(false);
   });
 });
 
