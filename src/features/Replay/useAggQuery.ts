@@ -12,8 +12,8 @@ import type { AggGranularity } from "../../api/types";
 import type { NsTsRange, TsRange } from "../WebGl/webglUtils";
 import {
   calcAbsoluteNsRange,
-  getWindowNs,
   useTimelineServerMessage,
+  type GetAggGranularity,
 } from "./utils";
 import { createParallelCache } from "./parallelQueriesCache";
 import { registerPrefetcher } from "./prefetchQueue";
@@ -61,7 +61,7 @@ interface UseAggQueryOpts<TValue, TParams extends object> {
   deleteBucketsAtom: DeleteBucketsAtom;
   emitterAtom: Atom<DrawEmitter>;
   drawTilesAtom?: PrimitiveAtom<GetDrawTiles | undefined>;
-  getGranularity: (windowSizeMs: number) => AggGranularity;
+  getGranularity: GetAggGranularity;
   params?: TParams;
   overscanTilesCount?: number;
 }
@@ -180,10 +180,9 @@ export function useAggQuery<TValue, TParams extends object = object>({
   // Agg granularities ordered from coarsest to finest
   const granularityLevels = useMemo(
     () =>
-      [...ascBucketGranularities].reverse().map((granularity) => ({
-        ...getLevel(granularity, true),
-        bucketSizeNs: nsBucketSizes[granularity],
-      })),
+      [...ascBucketGranularities]
+        .reverse()
+        .map((granularity) => getLevel(granularity, true)),
     [getLevel],
   );
 
@@ -203,6 +202,10 @@ export function useAggQuery<TValue, TParams extends object = object>({
         referenceNs,
         worldRange,
       );
+      const viewAggGranularity = getGranularity(
+        visibleRange[1] - visibleRange[0],
+        { ignoreMinimum: true },
+      );
       queryRange(
         visibleRangeNs,
         worldRangeNs,
@@ -214,12 +217,12 @@ export function useAggQuery<TValue, TParams extends object = object>({
             fallbackLevels,
             granularity,
             tileRangeNs,
-            visibleRangeNs[1] - visibleRangeNs[0],
+            viewAggGranularity,
             worldRangeNs,
           ),
       );
     },
-    [granularityLevels, onNothingToFetch, queryRange, params],
+    [granularityLevels, onNothingToFetch, queryRange, params, getGranularity],
   );
 
   useLayoutEffect(() => registerPrefetcher(prefetch), [prefetch]);
@@ -233,7 +236,11 @@ export function useAggQuery<TValue, TParams extends object = object>({
       return getCoverageDrawTiles(
         granularityLevels,
         drawGranularity,
-        visibleRange ? getWindowNs(visibleRange) : 0n,
+        visibleRange
+          ? getGranularity(visibleRange[1] - visibleRange[0], {
+              ignoreMinimum: true,
+            })
+          : drawGranularity,
         referenceNs != null && worldRange
           ? calcAbsoluteNsRange(referenceNs, worldRange)
           : undefined,
@@ -242,7 +249,7 @@ export function useAggQuery<TValue, TParams extends object = object>({
         lastBucketIdx,
       );
     },
-    [granularityLevels],
+    [granularityLevels, getGranularity],
   );
 
   useLayoutEffect(() => {

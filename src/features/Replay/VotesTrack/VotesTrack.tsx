@@ -23,11 +23,7 @@ import {
   updateSlotHighlight,
   useSlotHighlightRender,
 } from "../slotHighlight.ts";
-import {
-  calcAbsoluteNsRange,
-  getVisibleWorldRangeNs,
-  getWindowNs,
-} from "../utils.ts";
+import { calcAbsoluteNsRange, getVisibleWorldRangeNs } from "../utils.ts";
 import { resolveCoverage, type DataLevel } from "../coverage.ts";
 import { getVisibleYLabels } from "./yLabels.ts";
 import TrackControls, { type LegendItem } from "../TrackControls.tsx";
@@ -158,17 +154,18 @@ function VotesTrackBody({
       const worldRangeMs = store.get(worldRangeAtom);
       if (referenceNs == null || !worldRangeMs) return emptySeries;
 
+      const windowSizeMs = getWindowSizeMs(visibleRangeMs);
       const targetId =
         view === "slotLatency"
           ? slotVotesLevel.id
-          : getAggVotesGranularity(getWindowSizeMs(visibleRangeMs));
+          : getAggVotesGranularity(windowSizeMs);
       const targetLevel = granularityLevels.find(({ id }) => id === targetId);
       if (!targetLevel) return emptySeries;
       const spans = resolveCoverage(
         granularityLevels,
         targetId,
         calcAbsoluteNsRange(referenceNs, visibleRangeMs),
-        getWindowNs(visibleRangeMs),
+        getAggVotesGranularity(windowSizeMs, { ignoreMinimum: true }),
         calcAbsoluteNsRange(referenceNs, worldRangeMs),
       );
       return getCoverageLatencySeries(

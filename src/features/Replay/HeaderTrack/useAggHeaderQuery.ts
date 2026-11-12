@@ -3,7 +3,6 @@ import {
   calcAbsoluteNsRange,
   getAggSlotsGranularity,
   getVisibleWorldRangeNs,
-  getWindowNs,
 } from "../utils";
 import type { AggSlots } from "../../../api/types";
 import type { TsRange } from "../../WebGl/webglUtils";
@@ -33,14 +32,20 @@ export function useAggHeaderQuery(chartId: string) {
    * Whether every in world visible tile can be drawn from some granularity
    */
   const isVisibleDrawable = useCallback(
-    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) =>
-      isRangeCovered(
+    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
+      const granularity = getAggSlotsGranularity(
+        visibleRange[1] - visibleRange[0],
+      );
+      return isRangeCovered(
         granularityLevels,
-        getAggSlotsGranularity(visibleRange[1] - visibleRange[0]),
+        granularity,
         getVisibleWorldRangeNs(referenceNs, visibleRange, worldRange),
-        getWindowNs(visibleRange),
+        getAggSlotsGranularity(visibleRange[1] - visibleRange[0], {
+          ignoreMinimum: true,
+        }),
         calcAbsoluteNsRange(referenceNs, worldRange),
-      ),
+      );
+    },
     [granularityLevels],
   );
 

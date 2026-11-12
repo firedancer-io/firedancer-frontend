@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useAtomValue } from "jotai";
-import { getAggGranularityForQuery } from "../utils";
+import { getAggGranularityForQuery, type AggGranularityOpts } from "../utils";
 import type { AggCpu } from "../../../api/types";
 import { useAggQuery } from "../useAggQuery";
 import type { TimelineQueryKey } from "../atoms";
@@ -18,11 +18,15 @@ const QUERY_KEY = "query_agg_cpu" satisfies TimelineQueryKey;
  * At most, how many buckets should be visible
  */
 const BUCKET_COUNT_THRESHOLD = 1000;
-export function getAggGranularity(windowSizeMs: number) {
+export function getAggGranularity(
+  windowSizeMs: number,
+  opts?: AggGranularityOpts,
+) {
   return getAggGranularityForQuery(
     QUERY_KEY,
     windowSizeMs,
     BUCKET_COUNT_THRESHOLD,
+    opts,
   );
 }
 

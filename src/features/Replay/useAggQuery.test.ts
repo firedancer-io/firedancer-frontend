@@ -8,7 +8,6 @@ import { smoothedNowNsAtom } from "../../nowAtoms";
 import { nsPerMs } from "../../consts";
 import { useAggShredsQuery } from "./ShredsTrack/useAggShredsQuery";
 import { setStartupTimeAtom } from "./resetReplayState";
-import { nsBucketSizes } from "./const";
 
 vi.mock("../../nowAtoms", () => ({
   smoothedNowNsAtom: atom<bigint | undefined>(undefined),
@@ -119,14 +118,5 @@ describe("useAggQuery world prefetch", () => {
     setNowMs(100_010);
     vi.advanceTimersByTime(100);
     expect(sentTileIdxs()).toEqual([0]);
-  });
-
-  it("gives each agg level its bucket size", () => {
-    const { result } = renderHook(() => useAggShredsQuery("bucket-sizes"));
-    for (const level of result.current.granularityLevels) {
-      expect(level.bucketSizeNs).toBe(
-        nsBucketSizes[level.id as keyof typeof nsBucketSizes],
-      );
-    }
   });
 });
