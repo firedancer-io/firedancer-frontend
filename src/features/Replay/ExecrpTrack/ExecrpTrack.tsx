@@ -15,13 +15,20 @@ import {
 } from "./execrpComposite.ts";
 import { useTileStatesRenderer } from "../tileStates/useTileStatesRenderer.ts";
 import { tileStatesCaches } from "../tileStates/tileStatesCache.ts";
-import { findExecrpHoverAtCursor } from "../tileStates/hoverUtils.ts";
+import {
+  findBatchSlotAtCursor,
+  findExecrpHoverAtCursor,
+  type TrackPoint,
+} from "../tileStates/hoverUtils.ts";
 import type { RendererObj } from "../tileStates/utils.ts";
 import { useTileCacheSubscription } from "../tiles/useTileCache.ts";
 import {
+  hoveredExecrpBatchSlotAtom,
   hoveredExecrpLthashAtom,
   hoveredExecrpTxnAtom,
   visibleRangeAtom,
+  type HoveredExecrpLthash,
+  type HoveredExecrpTxn,
 } from "../atoms.ts";
 import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
 import { isInRanges } from "../hoverUtils.ts";
@@ -52,27 +59,40 @@ const execrpViewOptsAtom = atom<ExecrpViewOpts>({
   idleWeight: 0.05,
 });
 
-function getHoverAtPoint(
+interface HoveredExecrp {
+  txn: HoveredExecrpTxn | undefined;
+  lthash: HoveredExecrpLthash | undefined;
+  batchSlot: number | undefined;
+}
+
+function getHoveredAtPoint(
   renderer: RendererObj,
   clientX: number,
   clientY: number,
   rect: HoveredRect,
-) {
+): HoveredExecrp | undefined {
   const visibleRange = store.get(visibleRangeAtom);
   if (!visibleRange || !rect.width || !rect.height) return;
   const ms = clientXToMs(clientX, rect, visibleRange);
   if (!isInRanges(renderer.modeRanges.nonAgg, ms)) return;
 
-  return findExecrpHoverAtCursor(renderer, visibleRange, {
+  const point: TrackPoint = {
     fracX: (clientX - rect.left) / rect.width,
     fracY: (clientY - rect.top) / rect.height,
     widthPx: rect.width,
-  });
+  };
+  const hovered = findExecrpHoverAtCursor(renderer, visibleRange, point);
+  return {
+    txn: hovered?.txn,
+    lthash: hovered?.lthash,
+    batchSlot: findBatchSlotAtCursor(renderer, visibleRange, point),
+  };
 }
 
-function clearHoveredExecrp() {
-  store.set(hoveredExecrpTxnAtom, undefined);
-  store.set(hoveredExecrpLthashAtom, undefined);
+function setHoveredExecrp(hovered: HoveredExecrp | undefined) {
+  store.set(hoveredExecrpTxnAtom, hovered?.txn);
+  store.set(hoveredExecrpLthashAtom, hovered?.lthash);
+  store.set(hoveredExecrpBatchSlotAtom, hovered?.batchSlot);
 }
 
 const granularityLabels: Record<TileStatesGranularity, string> = {
@@ -121,17 +141,16 @@ function ExecrpTrack({ height, aggQuery, remount }: ExecrpTrackProps) {
   const throttledResolveHover = useThrottledCallback(
     (clientX: number, clientY: number, rect: HoveredRect) => {
       const renderer = rendererRef.current;
-      const hovered =
-        renderer && getHoverAtPoint(renderer, clientX, clientY, rect);
-      store.set(hoveredExecrpTxnAtom, hovered?.txn);
-      store.set(hoveredExecrpLthashAtom, hovered?.lthash);
+      setHoveredExecrp(
+        renderer && getHoveredAtPoint(renderer, clientX, clientY, rect),
+      );
     },
     30,
   );
 
   const onHoverLeave = useCallback(() => {
     throttledResolveHover.cancel();
-    clearHoveredExecrp();
+    setHoveredExecrp(undefined);
   }, [throttledResolveHover]);
 
   const { setContainer: setHoverContainer, notifyChange: notifyHover } =
@@ -148,15 +167,16 @@ function ExecrpTrack({ height, aggQuery, remount }: ExecrpTrackProps) {
     };
   }, [containerRef, setHoverContainer, onHoverLeave]);
 
-  // new txn data can change the txn under a still cursor
+  // new data can change the txn or batch under a still cursor
   useTileCacheSubscription(tileStatesCaches.txn, notifyHover);
+  useTileCacheSubscription(tileStatesCaches.txn_batch, notifyHover);
 
   useContainerSlotHitTest(containerRef, (clientX, clientY, rect) => {
     const renderer = rendererRef.current;
     if (!renderer) return;
 
-    const hovered = getHoverAtPoint(renderer, clientX, clientY, rect);
-    return hovered?.txn?.slot ?? hovered?.lthash?.slot;
+    const hovered = getHoveredAtPoint(renderer, clientX, clientY, rect);
+    return hovered?.txn?.slot ?? hovered?.lthash?.slot ?? hovered?.batchSlot;
   });
 
   return (
