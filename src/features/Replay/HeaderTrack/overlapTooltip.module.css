@@ -30,6 +30,12 @@
   flex-direction: column;
   max-height: 240px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--replay-popover-border-color) transparent;
+
+  &:hover {
+    scrollbar-color: var(--replay-dropdown-secondary-text-color) transparent;
+  }
 }
 
 .row {
