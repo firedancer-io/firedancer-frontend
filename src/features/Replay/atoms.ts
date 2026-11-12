@@ -1051,3 +1051,6 @@ export const dismissPinnedAtom = atom(null, (_get, set) => {
   set(_pinnedTooltipAtom, undefined);
   set(_pinnedSpotlightSlotAtom, undefined);
 });
+
+export const miniMapPopoverBoundaryElAtom = atom<HTMLDivElement | null>(null);
+export const miniMapPopoverBoundaryWidthAtom = atom(0);

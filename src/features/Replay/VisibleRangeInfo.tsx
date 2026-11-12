@@ -1,12 +1,15 @@
 import { Flex } from "@radix-ui/themes";
 import { DateTime } from "luxon";
 import { memo, useMemo } from "react";
+import { useMeasure } from "react-use";
+import clsx from "clsx";
 import { nsPerMs } from "../../consts";
 import { msToNs } from "../../numUtils";
 import { useAtomValue } from "jotai";
 import {
   isLiveAtom,
   isPlayingAtom,
+  miniMapPopoverBoundaryWidthAtom,
   playbackRateAtom,
   referenceNsAtom,
   visibleRangeAtom,
@@ -15,11 +18,18 @@ import {
 import { calcAbsoluteNs } from "./utils";
 import { replayLiveTextColor, replayPauseIconColor } from "../../colors";
 import styles from "./replay.module.css";
+import {
+  chooseLayout,
+  formatRanges,
+  type Range,
+} from "./visibleRangeInfoUtils";
 
-/** Below this minimap width, drop the years from the date range to save space. */
-const DROP_YEARS_WIDTH_PX = 480;
+const MIN_BEHIND_TEXT_WIDTH_PX = 40;
+const GAP_PX = 6;
 
 const DURATION_UNITS: [label: string, ns: bigint][] = [
+  ["mo", 2_592_000_000_000_000n],
+  ["d", 86_400_000_000_000n],
   ["h", 3_600_000_000_000n],
   ["m", 60_000_000_000n],
   ["s", 1_000_000_000n],
@@ -52,54 +62,16 @@ interface FormatDurationOptions {
   minUnitNs?: bigint;
 }
 
-/**
- * Format a visible-window date range:
- * - same calendar day:   "Oct 11, 2026"
- * - same year:           "Oct 11 - Oct 13, 2026"
- * - different years:     "Oct 11 2025 - Oct 13 2026"
- *
- * When `dropYears` is set (not enough horizontal room), years are omitted:
- * - same calendar day:   "Oct 11"
- * - otherwise:           "Oct 11 - Oct 13"
- */
-const formatDateRange = (
-  startDt: DateTime,
-  endDt: DateTime,
-  dropYears = false,
-) => {
-  const startDay = startDt.toFormat("LLL d");
-  const endDay = endDt.toFormat("LLL d");
-  const startYear = startDt.toFormat("yyyy");
-  const endYear = endDt.toFormat("yyyy");
-
-  if (startDt.hasSame(endDt, "day")) {
-    return dropYears ? endDay : `${endDay}, ${endYear}`;
-  }
-  if (dropYears) {
-    return `${startDay} - ${endDay}`;
-  }
-  if (startYear === endYear) {
-    return `${startDay} - ${endDay}, ${endYear}`;
-  }
-  return `${startDay} ${startYear} - ${endDay} ${endYear}`;
-};
-
-/**
- * Format a visible-window time range:
- * - same meridiem: "11:49:01 - 11:49:21 AM"
- * - different meridiem: "11:49:01 PM - 11:49:21 AM"
- */
-const formatTimeRange = (startDt: DateTime, endDt: DateTime) => {
-  const startTime = startDt.toFormat("h:mm:ss");
-  const endTime = endDt.toFormat("h:mm:ss");
-  const startMeridiem = startDt.toFormat("a");
-  const endMeridiem = endDt.toFormat("a");
-
-  if (startMeridiem === endMeridiem) {
-    return `${startTime} - ${endTime} ${endMeridiem}`;
-  }
-  return `${startTime} ${startMeridiem} - ${endTime} ${endMeridiem}`;
-};
+function RangeText({ range }: { range: Range }) {
+  return (
+    <>
+      <span className={styles.dateText}>{range.startDay} </span>
+      <span className={styles.timeText}>{range.startTime} - </span>
+      {range.endDay && <span className={styles.dateText}>{range.endDay} </span>}
+      <span className={styles.timeText}>{range.endTime}</span>
+    </>
+  );
+}
 
 const toDateTime = (referenceNs: bigint, relativeMs: number) =>
   DateTime.fromMillis(
@@ -144,17 +116,48 @@ const LiveIcon = memo(function LiveIcon() {
   );
 });
 
-export default memo(function VisibleRangeInfo({ width }: { width: number }) {
+export default memo(function VisibleRangeInfo() {
   const visibleRange = useAtomValue(visibleRangeAtom);
   const referenceNs = useAtomValue(referenceNsAtom);
   const worldRange = useAtomValue(worldRangeAtom);
   const isLive = useAtomValue(isLiveAtom);
   const isPlaying = useAtomValue(isPlayingAtom);
   const playbackRate = useAtomValue(playbackRateAtom);
+  const boundaryWidth = useAtomValue(miniMapPopoverBoundaryWidthAtom);
 
   const start = visibleRange?.[0];
   const end = visibleRange?.[1];
   const worldEnd = worldRange?.[1];
+
+  const [popoverRef, { width: popoverWidth }] = useMeasure<HTMLDivElement>();
+  const [statusTextRef, { width: statusTextWidth }] =
+    useMeasure<HTMLSpanElement>();
+  const [fullStatusTextRef, { width: fullStatusTextWidth }] =
+    useMeasure<HTMLSpanElement>();
+  const [rangeRef, { width: rangeWidth }] = useMeasure<HTMLSpanElement>();
+  const [yearRangeRef, { width: yearRangeWidth }] =
+    useMeasure<HTMLSpanElement>();
+  const [secondsRangeRef, { width: secondsRangeWidth }] =
+    useMeasure<HTMLSpanElement>();
+  const [minutesRangeRef, { width: minutesRangeWidth }] =
+    useMeasure<HTMLSpanElement>();
+
+  const layout = chooseLayout({
+    boundaryWidth,
+    baseWidth:
+      popoverWidth - (statusTextWidth && statusTextWidth + GAP_PX) - rangeWidth,
+    statusWidth: fullStatusTextWidth,
+    statusMinWidth: isLive
+      ? fullStatusTextWidth
+      : Math.min(fullStatusTextWidth, MIN_BEHIND_TEXT_WIDTH_PX),
+    gap: GAP_PX,
+    rangeWidths: {
+      year: yearRangeWidth,
+      seconds: secondsRangeWidth,
+      minutes: minutesRangeWidth,
+    },
+    canShowHours: start != null && end != null && end - start >= 3_600_000,
+  });
 
   const behindText = useMemo(() => {
     if (end == null || worldEnd == null) return;
@@ -177,45 +180,62 @@ export default memo(function VisibleRangeInfo({ width }: { width: number }) {
     ] as const;
   }, [start, end, referenceNs]);
 
-  const dateRangeText = useMemo(() => {
-    if (!dateTimes) return;
-    return formatDateRange(
-      dateTimes[0],
-      dateTimes[1],
-      width < DROP_YEARS_WIDTH_PX,
-    );
-  }, [dateTimes, width]);
+  const statusText = isLive
+    ? "Live"
+    : isPlaying
+      ? `${playbackRate}× · ${behindText}`
+      : behindText;
+  const statusClassName = isLive ? styles.liveText : styles.behindText;
 
-  const timeRangeText = useMemo(() => {
-    if (!dateTimes) return;
-    return formatTimeRange(dateTimes[0], dateTimes[1]);
-  }, [dateTimes]);
+  const ranges = useMemo(
+    () => dateTimes && formatRanges(...dateTimes, DateTime.now()),
+    [dateTimes],
+  );
 
   return (
-    <Flex height="100%" align="center" gap="6px">
-      {isLive ? (
-        <>
-          <LiveIcon />
-          <span className={styles.liveText}>Live</span>
-        </>
-      ) : isPlaying ? (
-        <>
-          <PlayIcon />
-          <span className={styles.behindText}>
-            {playbackRate}× · {behindText}
+    <div className={styles.popoverClip}>
+      <div ref={popoverRef} className={styles.popoverContent}>
+        <Flex
+          className={styles.visibleRangeInfo}
+          align="center"
+          gap={`${GAP_PX}px`}
+        >
+          {isLive ? <LiveIcon /> : isPlaying ? <PlayIcon /> : <PauseIcon />}
+          <span
+            ref={statusTextRef}
+            className={statusClassName}
+            style={{ maxWidth: layout.statusMaxWidth }}
+            hidden={!layout.showStatusText}
+          >
+            {statusText}
           </span>
-        </>
-      ) : (
-        <>
-          <PauseIcon />
-          <span className={styles.behindText}>{behindText}</span>
-        </>
-      )}
-      <div className={styles.divider} />
-      <span className={styles.windowSizeText}>{windowSizeText}</span>
-      <div className={styles.divider} />
-      <span className={styles.dateRangeText}>{dateRangeText}</span>
-      <span className={styles.timeRangeText}>{timeRangeText}</span>
-    </Flex>
+          <span
+            ref={fullStatusTextRef}
+            className={clsx(statusClassName, styles.measure)}
+          >
+            {statusText}
+          </span>
+          <div className={styles.divider} />
+          <span className={styles.windowSizeText}>{windowSizeText}</span>
+          <div className={styles.divider} />
+          {ranges && (
+            <>
+              <span ref={rangeRef}>
+                <RangeText range={ranges[layout.range]} />
+              </span>
+              <span ref={yearRangeRef} className={styles.measure}>
+                <RangeText range={ranges.year} />
+              </span>
+              <span ref={secondsRangeRef} className={styles.measure}>
+                <RangeText range={ranges.seconds} />
+              </span>
+              <span ref={minutesRangeRef} className={styles.measure}>
+                <RangeText range={ranges.minutes} />
+              </span>
+            </>
+          )}
+        </Flex>
+      </div>
+    </div>
   );
 });
