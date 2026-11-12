@@ -12,7 +12,12 @@ import styles from "./miniMap.module.css";
 import clsx from "clsx";
 import { Box } from "@radix-ui/themes";
 import { Popover } from "radix-ui";
-import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
+import {
+  miniMapPopoverBoundaryElAtom,
+  referenceNsAtom,
+  visibleRangeAtom,
+  worldRangeAtom,
+} from "../atoms.ts";
 import VisibleRangeInfo from "../VisibleRangeInfo.tsx";
 import { containerElAtom } from "../../../atoms.ts";
 import { getDefaultStore, useAtomValue } from "jotai";
@@ -33,6 +38,7 @@ interface MiniMapProps extends WebGlRemountProps {
 
 function MiniMap({ remount, setUpMiniMap, width, panToTs }: MiniMapProps) {
   const popoverContainerEl = useAtomValue(containerElAtom);
+  const popoverBoundaryEl = useAtomValue(miniMapPopoverBoundaryElAtom);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const visibleRangeElRef = useRef<HTMLDivElement>(null);
@@ -170,14 +176,16 @@ function MiniMap({ remount, setUpMiniMap, width, panToTs }: MiniMapProps) {
             className={styles.miniMapPopover}
             side="top"
             sideOffset={4}
-            collisionPadding={{ top: -9999, left: 0, right: 0, bottom: 8 }}
+            collisionBoundary={popoverBoundaryEl}
+            collisionPadding={{ top: -9999, bottom: 8 }}
+            sticky="always"
             arrowPadding={0}
             tabIndex={undefined}
             // permanently-open, don't steal focus or trap it
             onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => e.preventDefault()}
           >
-            <VisibleRangeInfo width={width} />
+            <VisibleRangeInfo />
             <PopoverBottomArrow />
           </Popover.Content>
         </Popover.Portal>

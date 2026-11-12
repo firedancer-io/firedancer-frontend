@@ -60,12 +60,7 @@
 .mini-map-popover {
   z-index: 1;
   pointer-events: none;
-  box-sizing: border-box;
-  height: 20px;
-  padding: 0 8px;
-  border-radius: 6px;
-  border: 1px solid var(--replay-popover-border-color);
-  background: var(--replay-popover-background-color);
+  max-width: var(--radix-popover-content-available-width);
 
   .mini-map-popover-arrow {
     /* move up to cover bottom border of popover */
