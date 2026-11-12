@@ -2,7 +2,6 @@ import { getAggGranularityForQuery } from "../utils";
 import type { AggShreds } from "../../../api/types";
 import { useAggQuery } from "../useAggQuery";
 import type { TimelineQueryKey } from "../atoms";
-import { AGG_BUCKET_COUNT_THRESHOLD } from "../const";
 import {
   addAggShredsAtom,
   deleteAggShredsBucketsAtom,
@@ -12,11 +11,16 @@ import {
 
 const QUERY_KEY = "query_agg_shreds" satisfies TimelineQueryKey;
 
+/**
+ * At most, how many buckets should be visible
+ */
+const AGG_SHREDS_BUCKET_COUNT_THRESHOLD = 2000;
+
 export function getAggGranularity(windowSizeMs: number) {
   return getAggGranularityForQuery(
     QUERY_KEY,
     windowSizeMs,
-    AGG_BUCKET_COUNT_THRESHOLD,
+    AGG_SHREDS_BUCKET_COUNT_THRESHOLD,
   );
 }
 
