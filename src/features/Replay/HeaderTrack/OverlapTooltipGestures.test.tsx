@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, renderHook } from "@testing-library/react";
 import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
-import { startupTimeAtom } from "../../../api/atoms";
 import { containerElAtom } from "../../../atoms";
 import { smoothedNowNsAtom } from "../../../nowAtoms";
 import { CHART_NOW_DELAY_MS } from "../const";
@@ -36,6 +35,7 @@ const {
   visibleRangeAtom,
 } = await import("../atoms");
 const { timelineSlotsAtom } = await import("./nonAggAtoms");
+const { setStartupTimeAtom } = await import("../resetReplayState");
 const { default: OverlapTooltip } = await import("./OverlapTooltip");
 const { useExplorableChart } = await import("../useExplorableChart");
 
@@ -152,7 +152,7 @@ beforeEach(() => {
     },
   );
 
-  store.set(startupTimeAtom, { startupTimeNanos: 0n });
+  store.set(setStartupTimeAtom, 0n);
   store.set(
     smoothedNowNsAtom as PrimitiveAtom<bigint | undefined>,
     BigInt((WORLD_END_MS + CHART_NOW_DELAY_MS) * 1_000_000),
