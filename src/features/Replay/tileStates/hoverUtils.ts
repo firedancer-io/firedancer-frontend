@@ -2,6 +2,7 @@ import { getDefaultStore } from "jotai";
 import { tilesAtom } from "../../../api/atoms.ts";
 import { TileState, TileStatesGranularityEnum } from "../../../api/entities.ts";
 import type { TileStatesGranularity } from "../../../api/types.ts";
+import { nsPerMs } from "../../../consts.ts";
 import type { TsRange } from "../../WebGl/webglUtils.ts";
 import { referenceNsAtom } from "../atoms.ts";
 import type { HoveredExecrpLthash, HoveredExecrpTxn } from "../atoms.ts";
@@ -131,6 +132,7 @@ interface StateInterval {
   state: TileState;
   startMs: number;
   endMs: number;
+  slot: number;
 }
 
 /** A tile row's states overlapping a range, in ms from the reference */
@@ -144,7 +146,7 @@ function getRowStateIntervals(
   const level = data.levels.execrp[0];
   if (row === undefined || !level) return [];
   const states = trackStates.execrp[granularity];
-  const { edges, bar, count } = level;
+  const { edges, bar, slot, count } = level;
   const stride = MAX_COVERAGE_STATES + 1;
   const intervals: StateInterval[] = [];
   for (let i = 0; i < count; i++) {
@@ -166,6 +168,7 @@ function getRowStateIntervals(
       state: states[stateIdx],
       startMs: stateStartMs,
       endMs: stateEndMs,
+      slot: data.referenceSlot + slot[i],
     });
   }
   return intervals;
@@ -267,6 +270,39 @@ export function findExecrpHoverAtCursor(
     return { lthash: lthash.lthash };
   }
   if (txn) return { txn: txn.txn };
+}
+
+export function findBatchSlotAtCursor(
+  rendererObj: RendererObj,
+  visibleRangeMs: TsRange,
+  point: TrackPoint,
+): number | undefined {
+  if (rendererObj.config.kind !== "execrp") return;
+  const granularity = rendererObj.renderedGranularity;
+  if (granularity !== TileStatesGranularityEnum.txn_batch) return;
+  const row = findTileRowAtCursor(rendererObj, visibleRangeMs, point);
+  if (!row) return;
+
+  const { tileIdx, ms, toleranceMs } = row;
+  const tileMs = Number(tileStatesTileNs[granularity]) / nsPerMs;
+  let best: { slot: number; distMs: number } | undefined;
+  for (const tile of getDataTilesInRange(
+    granularity,
+    ms - toleranceMs,
+    ms + toleranceMs + tileMs,
+  )) {
+    for (const { slot, startMs: start, endMs: end } of getRowStateIntervals(
+      tile,
+      tileIdx,
+      ms - toleranceMs,
+      ms + toleranceMs,
+    )) {
+      if (Number.isNaN(slot)) continue;
+      const distMs = ms < start ? start - ms : ms > end ? ms - end : 0;
+      if (!best || distMs < best.distMs) best = { slot, distMs };
+    }
+  }
+  return best?.slot;
 }
 
 function getStateIntervals(

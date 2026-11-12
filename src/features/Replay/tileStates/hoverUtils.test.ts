@@ -10,7 +10,11 @@ import { TileState, TileStatesGranularityEnum } from "../../../api/entities";
 import type { TimelineTileStates } from "../../../api/types";
 import { tileStatesCaches, tileStatesRequests } from "./tileStatesCache";
 import { getTileRows, tileStatesTileNs } from "./consts";
-import { findExecrpHoverAtCursor, getTxnStateDurations } from "./hoverUtils";
+import {
+  findBatchSlotAtCursor,
+  findExecrpHoverAtCursor,
+  getTxnStateDurations,
+} from "./hoverUtils";
 import {
   createRandom,
   createResponse,
@@ -510,5 +514,108 @@ describe("findExecrpHoverAtCursor on LtHash tasks", () => {
     expect(lthash?.slot).toBe(SLOT + 3);
     expect(lthash?.startMs).toBeCloseTo(TILE_MS - 0.5, 6);
     expect(lthash?.endMs).toBeCloseTo(TILE_MS + 0.5, 6);
+  });
+});
+
+describe("findBatchSlotAtCursor", () => {
+  const batchCache = tileStatesCaches.txn_batch;
+  const BATCH_TILE_NS = tileStatesTileNs.txn_batch;
+
+  afterEach(() => batchCache.reset());
+
+  /** A batch data tile with back to back [state, startMs, endMs, slot] */
+  function batchResponse(
+    states: [TileState, number, number, number][],
+    tileStartNs = 0n,
+  ): TimelineTileStates {
+    const firstMs = states[0][1] - Number(tileStartNs) / ms;
+    return {
+      granularity: TileStatesGranularityEnum.txn_batch,
+      available_start_ns: 0n,
+      available_end_ns: 100n * BATCH_TILE_NS,
+      chunks: [
+        {
+          chunk_ts: tileStartNs,
+          chunk_dur: BATCH_TILE_NS,
+          start_ts: tileStartNs,
+          tile_start_ts_delta: Float64Array.from([Math.round(firstMs * ms)]),
+          reference_slot: SLOT,
+          tile: [TILE],
+          state_cnt: Int32Array.from([states.length]),
+          state: Int32Array.from(states.map(([state]) => state)),
+          dur: Float64Array.from(
+            states.map(([, startMs, endMs]) =>
+              Math.round((endMs - startMs) * ms),
+            ),
+          ),
+          slot_state_lo: Int32Array.from(states.map((_, i) => i)),
+          slot_state_cnt: Int32Array.from(states.map(() => 1)),
+          slot_delta: Int32Array.from(
+            states.map(([, , , slot]) => slot - SLOT),
+          ),
+          txn_state_lo: new Int32Array(0),
+          txn_state_cnt: new Int32Array(0),
+          txn_slot_delta: new Int32Array(0),
+          txn_idx: new Int32Array(0),
+          txn_error_code: new Float64Array(0),
+          lthash_state_lo: new Int32Array(0),
+          lthash_slot_delta: new Int32Array(0),
+        },
+      ],
+    };
+  }
+
+  function hoverAt(cursorMs: number) {
+    const rendererObj = createTestRendererObj("execrp", "txn_batch");
+    rendererObj.renderedGranularity = "txn_batch";
+    const rows = getTileRows(testTiles, "execrp");
+    const row = rows.findIndex(({ tileIdx }) => tileIdx === TILE);
+    return findBatchSlotAtCursor(rendererObj, [cursorMs - 50, cursorMs + 50], {
+      fracX: 0.5,
+      fracY: (row + 0.95) / rows.length,
+      widthPx: 2800,
+    });
+  }
+
+  it("finds the slot of the batch under the cursor, not the slot at its ms", async () => {
+    batchCache.requestRange([0n, BATCH_TILE_NS - 1n], 100n * BATCH_TILE_NS);
+    // replaying older slots while newer ones overlap them in time
+    await respondTo(
+      0n,
+      batchResponse([
+        [TileState.ExecBatch, 10, 20, SLOT + 5],
+        [TileState.ExecBatch, 20, 30, SLOT + 2],
+        [TileState.LthashBatch, 30, 40, SLOT + 7],
+      ]),
+    );
+    await vi.waitFor(() => expect(batchCache.getTiles()).toHaveLength(1));
+
+    expect(hoverAt(15)).toBe(SLOT + 5);
+    expect(hoverAt(25)).toBe(SLOT + 2);
+    expect(hoverAt(35)).toBe(SLOT + 7);
+    // beyond the hover tolerance of any batch
+    expect(hoverAt(500)).toBeUndefined();
+  });
+
+  it("finds a batch starting before the data tile that owns it", async () => {
+    const tileStartNs = BATCH_TILE_NS;
+    const tileStartMs = Number(tileStartNs) / ms;
+    batchCache.requestRange(
+      [tileStartNs, tileStartNs + BATCH_TILE_NS - 1n],
+      100n * BATCH_TILE_NS,
+    );
+    await respondTo(
+      tileStartNs,
+      batchResponse(
+        [[TileState.ExecBatch, tileStartMs - 100, tileStartMs + 100, SLOT + 4]],
+        tileStartNs,
+      ),
+    );
+    await vi.waitFor(() => expect(batchCache.getTiles()).toHaveLength(1));
+
+    // the previous data tile isn't cached
+    expect(hoverAt(tileStartMs - 50)).toBe(SLOT + 4);
+    expect(hoverAt(tileStartMs + 50)).toBe(SLOT + 4);
+    expect(hoverAt(tileStartMs - 500)).toBeUndefined();
   });
 });

@@ -337,11 +337,9 @@ export function render(rendererObj: RendererObj) {
     tileStatesTarget.scissorTest = false;
   }
 
-  // batch and agg data have no slots, so composites highlight them by time
+  // agg data has no slots, so composites highlight it by time
   const drawSlotCoverage =
-    !isAggOnly &&
-    rendererObj.renderedGranularity === TileStatesGranularityEnum.txn &&
-    highlight.uniforms.uHighlightActive.value > 0.5;
+    !isAggOnly && highlight.uniforms.uHighlightActive.value > 0.5;
   if (drawSlotCoverage) {
     if (
       slotCoverageTarget.width !== width ||

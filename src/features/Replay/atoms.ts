@@ -448,7 +448,8 @@ export const [
     const hoveredShredSlot = get(hoveredShredAtom)?.slot;
     if (hoveredShredSlot != null) return hoveredShredSlot;
 
-    const hoveredExecrpSlot = get(hoveredExecrpTxnAtom)?.slot;
+    const hoveredExecrpSlot =
+      get(hoveredExecrpTxnAtom)?.slot ?? get(hoveredExecrpBatchSlotAtom);
     if (hoveredExecrpSlot != null) return hoveredExecrpSlot;
 
     const hoveredLthashSlot = get(hoveredExecrpLthashAtom)?.slot;
@@ -749,6 +750,8 @@ function isSameHoveredExecrpLthash(
 export const hoveredExecrpLthashAtom = atomWithIsSameCheck<HoveredExecrpLthash>(
   isSameHoveredExecrpLthash,
 );
+
+export const hoveredExecrpBatchSlotAtom = atom<number | undefined>(undefined);
 
 export interface HoveredAggShreds {
   bucketIdx: number;
