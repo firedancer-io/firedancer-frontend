@@ -154,18 +154,16 @@ function VotesTrackBody({
       const worldRangeMs = store.get(worldRangeAtom);
       if (referenceNs == null || !worldRangeMs) return emptySeries;
 
-      const windowSizeMs = getWindowSizeMs(visibleRangeMs);
       const targetId =
         view === "slotLatency"
           ? slotVotesLevel.id
-          : getAggVotesGranularity(windowSizeMs);
+          : getAggVotesGranularity(getWindowSizeMs(visibleRangeMs));
       const targetLevel = granularityLevels.find(({ id }) => id === targetId);
       if (!targetLevel) return emptySeries;
       const spans = resolveCoverage(
         granularityLevels,
         targetId,
         calcAbsoluteNsRange(referenceNs, visibleRangeMs),
-        getAggVotesGranularity(windowSizeMs, { ignoreMinimum: true }),
         calcAbsoluteNsRange(referenceNs, worldRangeMs),
       );
       return getCoverageLatencySeries(

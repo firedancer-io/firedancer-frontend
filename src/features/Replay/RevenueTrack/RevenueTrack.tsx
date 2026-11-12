@@ -34,7 +34,7 @@ import useAggRevenueQuery, {
   type AggRevenueQuery,
 } from "./useAggRevenueQuery.ts";
 import type { AggGranularity } from "../../../api/types.ts";
-import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
+import type { TsRange } from "../../WebGl/webglUtils.ts";
 import {
   hoveredAggRevenueAtom,
   hoveredRevenueTxnAtom,
@@ -71,7 +71,7 @@ import {
   useSlotHighlightRender,
   useContainerSlotHitTest,
 } from "../slotHighlight.ts";
-import { isUsableAggFallback, type DataLevel } from "../coverage.ts";
+import type { DataLevel } from "../coverage.ts";
 import { useModeCoverage } from "../useModeCoverage.ts";
 import { getDrawnBucket } from "../aggDraw.ts";
 
@@ -150,22 +150,7 @@ function RevenueTrackBody({
     [referenceNs],
   );
 
-  const hasAggData = useCallback(
-    (tileRangeNs: NsTsRange) => {
-      const visibleRange = store.get(visibleRangeAtom);
-      if (!visibleRange) return false;
-      const viewAggId = getGranularity(visibleRange[1] - visibleRange[0], {
-        ignoreMinimum: true,
-      });
-      return aggLevels.some(
-        (level, idx) =>
-          isUsableAggFallback(aggLevels, idx, viewAggId) &&
-          level.isRangeFetched(tileRangeNs, false),
-      );
-    },
-    [aggLevels],
-  );
-  const txnMetaQuery = useTileCacheQuery(txnMetaCache, hasAggData);
+  const txnMetaQuery = useTileCacheQuery(txnMetaCache);
   const execrpCount = useAtomValue(tileCountAtom).execrp;
   const numRows = getNumRows(opts.splitByRow, execrpCount);
 

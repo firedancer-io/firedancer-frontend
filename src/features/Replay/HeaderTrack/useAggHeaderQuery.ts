@@ -32,20 +32,13 @@ export function useAggHeaderQuery(chartId: string) {
    * Whether every in world visible tile can be drawn from some granularity
    */
   const isVisibleDrawable = useCallback(
-    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) => {
-      const granularity = getAggSlotsGranularity(
-        visibleRange[1] - visibleRange[0],
-      );
-      return isRangeCovered(
+    (referenceNs: bigint, visibleRange: TsRange, worldRange: TsRange) =>
+      isRangeCovered(
         granularityLevels,
-        granularity,
+        getAggSlotsGranularity(visibleRange[1] - visibleRange[0]),
         getVisibleWorldRangeNs(referenceNs, visibleRange, worldRange),
-        getAggSlotsGranularity(visibleRange[1] - visibleRange[0], {
-          ignoreMinimum: true,
-        }),
         calcAbsoluteNsRange(referenceNs, worldRange),
-      );
-    },
+      ),
     [granularityLevels],
   );
 

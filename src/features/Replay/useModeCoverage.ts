@@ -18,7 +18,7 @@ import {
   type GetDrawTiles,
 } from "./aggDraw";
 import { msBucketSizes } from "./const";
-import { calcAbsoluteNsRange, type GetAggGranularity } from "./utils";
+import { calcAbsoluteNsRange } from "./utils";
 
 const store = getDefaultStore();
 
@@ -43,7 +43,7 @@ interface UseModeCoverageOpts {
   /** Granularity the visible range should be drawn at */
   getTargetGranularity: (visibleRange: TsRange) => string;
   /** Granularity the agg mesh is drawn at for a visible window size */
-  getAggGranularity: GetAggGranularity;
+  getAggGranularity: (windowSizeMs: number) => AggGranularity;
 }
 
 /** Visible ranges each mode draws falling back to the other mode's data */
@@ -77,9 +77,6 @@ export function useModeCoverage({
       granularityLevels,
       targetGranularity,
       visibleRangeNs,
-      getAggGranularity(visibleRange[1] - visibleRange[0], {
-        ignoreMinimum: true,
-      }),
       worldRangeNs,
     );
     modeRangesRef.current = getModeRanges(
@@ -88,7 +85,7 @@ export function useModeCoverage({
       referenceNs,
     );
     return modeRangesRef.current;
-  }, [getAggGranularity, getTargetGranularity, granularityLevels, isTargetAgg]);
+  }, [getTargetGranularity, granularityLevels, isTargetAgg]);
 
   const startAggDraw = useCallback(() => {
     const referenceNs = store.get(referenceNsAtom);
@@ -99,10 +96,6 @@ export function useModeCoverage({
     const granularity = getAggGranularity(visibleRange[1] - visibleRange[0]);
     const worldRangeNs = calcAbsoluteNsRange(referenceNs, worldRange);
     const targetGranularity = getTargetGranularity(visibleRange);
-    const viewAggGranularity = getAggGranularity(
-      visibleRange[1] - visibleRange[0],
-      { ignoreMinimum: true },
-    );
     const overscanMs = OVERSCAN_BUCKETS * msBucketSizes[granularity];
     const drawn: DrawnAgg = {
       granularity,
@@ -117,7 +110,6 @@ export function useModeCoverage({
       const tiles = getCoverageDrawTiles(
         granularityLevels,
         targetGranularity,
-        viewAggGranularity,
         worldRangeNs,
         drawGranularity,
         firstBucketIdx,
@@ -159,9 +151,6 @@ export function useModeCoverage({
       getCoverageDrawTiles(
         granularityLevels,
         getTargetGranularity(visibleRange),
-        getAggGranularity(visibleRange[1] - visibleRange[0], {
-          ignoreMinimum: true,
-        }),
         calcAbsoluteNsRange(referenceNs, worldRange),
         drawn.granularity,
         firstBucketIdx,

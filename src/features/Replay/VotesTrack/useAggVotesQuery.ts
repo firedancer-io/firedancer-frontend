@@ -1,7 +1,7 @@
 import type { AggVotes } from "../../../api/types";
 import type { TimelineQueryKey } from "../atoms";
 import { useAggQuery } from "../useAggQuery";
-import { getAggGranularityForQuery, type AggGranularityOpts } from "../utils";
+import { getAggGranularityForQuery } from "../utils";
 import {
   addAggVotesAtom,
   aggVotesEmitterAtom,
@@ -12,15 +12,11 @@ const QUERY_KEY = "query_agg_votes" satisfies TimelineQueryKey;
 
 const MAX_VISIBLE_BUCKETS = 1000;
 
-export function getAggVotesGranularity(
-  windowSizeMs: number,
-  opts?: AggGranularityOpts,
-) {
+export function getAggVotesGranularity(windowSizeMs: number) {
   return getAggGranularityForQuery(
     QUERY_KEY,
     windowSizeMs,
     MAX_VISIBLE_BUCKETS,
-    opts,
   );
 }
 
