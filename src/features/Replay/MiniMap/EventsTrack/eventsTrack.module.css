@@ -48,6 +48,11 @@
     * {
       cursor: pointer;
     }
+
+    &:focus,
+    &:focus-visible {
+      outline: none;
+    }
   }
 
   .pin-flag {
