@@ -23,7 +23,7 @@ export type PlaybackRate = (typeof playbackRates)[number];
 /**
  * At most, how many agg slot buckets should be visible
  */
-export const AGG_BUCKET_COUNT_THRESHOLD = 1000;
+export const AGG_BUCKET_COUNT_THRESHOLD = 2000;
 
 export const msBucketSizes: Record<AggGranularity, number> = {
   "25ms": 25,
