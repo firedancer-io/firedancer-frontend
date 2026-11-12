@@ -4,7 +4,7 @@ import { socketStateAtom } from "../../../api/ws/atoms";
 import { SocketState } from "../../../api/ws/types";
 import type { TimelineVotes, VotesGranularity } from "../../../api/types";
 import { timelineVotesSchema } from "../../../api/entities";
-import { votesCaches, votesRequests } from "./votesCache";
+import { slotVotesLevel, votesCaches, votesRequests } from "./votesCache";
 import { setStartupTimeAtom } from "../resetReplayState";
 
 interface SentMessage {
@@ -23,10 +23,11 @@ function response(
   startNs: bigint,
   availableEndNs: bigint,
   cumulativeStake = 500,
+  availableStartNs = 0n,
 ): TimelineVotes {
   return timelineVotesSchema.parse({
     granularity: "vote_batch",
-    available_start_ns: 0n,
+    available_start_ns: availableStartNs,
     available_end_ns: availableEndNs,
     reference_slot: 100,
     reference_ts: startNs + sNs,
@@ -49,6 +50,7 @@ describe("votes batch cache", () => {
     const store = getDefaultStore();
     store.set(socketStateAtom, SocketState.Connected);
     store.set(setStartupTimeAtom, 0n);
+    votesCaches.vote.reset();
     cache.reset();
     sent.length = 0;
   });
@@ -102,5 +104,19 @@ describe("votes batch cache", () => {
       expect(liveTile?.data.get(100)?.curves[0].frac).toEqual([0.3, 0.7]),
     );
     unsubscribe();
+  });
+
+  it("has the slot votes of a tile straddling the available start once it loads", async () => {
+    cache.requestRange([32n * sNs, 64n * sNs - 1n], 600n * sNs);
+    await vi.waitFor(() => expect(sent).toHaveLength(3));
+    // the server's votes start partway into the view tile
+    for (const { id, params } of sent) {
+      votesRequests.resolve(id, {
+        value: response(BigInt(params.start_ns), 590n * sNs, 500, 40n * sNs),
+      });
+    }
+    await vi.waitFor(() => expect(cache.getTiles()).toHaveLength(3));
+
+    expect(slotVotesLevel.isRangeFetched([32n * sNs, 64n * sNs])).toBe(true);
   });
 });

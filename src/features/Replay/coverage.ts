@@ -16,6 +16,7 @@ export interface DataLevel {
    * only have data up to their last refresh.
    */
   isRangeFetched: (rangeNs: NsTsRange, includeStale?: boolean) => boolean;
+  getAvailableStartNs?: () => bigint | undefined;
 }
 
 // fewer buckets in view draw as blocks that look nothing like the data
@@ -41,7 +42,8 @@ export interface CoverageSpan {
  * draw each span from: the target if its tile has loaded, otherwise another
  * level that has the tile's data. Other levels of the target's mode (agg or
  * non agg) are preferred, then finer levels over coarser ones, then closer
- * ones.
+ * ones. Spans are also split at the target's available start, and the part
+ * before it is drawn from the target, so it shows nothing.
  */
 export function resolveCoverage(
   granularityLevels: DataLevel[],
@@ -53,7 +55,9 @@ export function resolveCoverage(
   const targetLevelIdx = granularityLevels.findIndex(
     ({ id }) => id === targetLevelId,
   );
-  const { isAgg, tileSizeNs } = granularityLevels[targetLevelIdx];
+  const targetLevel = granularityLevels[targetLevelIdx];
+  const { isAgg, tileSizeNs } = targetLevel;
+  const availableStartNs = targetLevel.getAvailableStartNs?.();
   // target, then finer levels, then coarser ones ordered by nearness to target
   const byDist = [
     ...granularityLevels.slice(targetLevelIdx),
@@ -79,17 +83,26 @@ export function resolveCoverage(
     tileStartNs += tileSizeNs
   ) {
     const tileEndNs = tileStartNs + tileSizeNs;
-    const fetchRangeNs: NsTsRange = worldRangeNs
-      ? [
-          bigIntMax(tileStartNs, worldRangeNs[0]),
-          bigIntMin(tileEndNs, worldRangeNs[1]),
-        ]
-      : [tileStartNs, tileEndNs];
+    let spanStartNs = bigIntMax(tileStartNs, rangeNs[0]);
+    const spanEndNs = bigIntMin(tileEndNs, rangeNs[1]);
+    let fetchStartNs = worldRangeNs
+      ? bigIntMax(tileStartNs, worldRangeNs[0])
+      : tileStartNs;
+    const fetchEndNs = worldRangeNs
+      ? bigIntMin(tileEndNs, worldRangeNs[1])
+      : tileEndNs;
+
+    if (availableStartNs !== undefined && spanStartNs < availableStartNs) {
+      const targetEndNs = bigIntMin(spanEndNs, availableStartNs);
+      spans.push({ rangeNs: [spanStartNs, targetEndNs], level: targetLevel });
+      if (targetEndNs === spanEndNs) continue;
+      spanStartNs = targetEndNs;
+      fetchStartNs = bigIntMax(fetchStartNs, availableStartNs);
+    }
+
+    const fetchRangeNs: NsTsRange = [fetchStartNs, fetchEndNs];
     spans.push({
-      rangeNs: [
-        bigIntMax(tileStartNs, rangeNs[0]),
-        bigIntMin(tileEndNs, rangeNs[1]),
-      ],
+      rangeNs: [spanStartNs, spanEndNs],
       level: candidates.find((level) =>
         level.isRangeFetched(fetchRangeNs, !coarserLevels.has(level)),
       ),

@@ -279,4 +279,5 @@ export const tileStatesLevels: DataLevel[] = [
   tileSizeNs: tileStatesTileNs[granularity],
   isRangeFetched: (rangeNs) =>
     tileStatesCaches[granularity].isRangeFetched(rangeNs),
+  getAvailableStartNs: tileStatesCaches[granularity].getAvailableStartNs,
 }));

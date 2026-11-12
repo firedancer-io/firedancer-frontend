@@ -504,6 +504,7 @@ export function createParallelCache<
         }
         return true;
       },
+      getAvailableStartNs: () => getTileStates(granularity).availableStartNs,
     };
   };
 

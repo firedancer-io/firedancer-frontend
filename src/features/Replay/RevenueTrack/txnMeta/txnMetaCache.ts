@@ -237,4 +237,5 @@ export const txnMetaLevel: DataLevel = {
   isAgg: false,
   tileSizeNs: TILE_NS,
   isRangeFetched: txnMetaCache.isRangeFetched,
+  getAvailableStartNs: txnMetaCache.getAvailableStartNs,
 };
