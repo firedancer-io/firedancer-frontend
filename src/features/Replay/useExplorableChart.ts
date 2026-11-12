@@ -142,7 +142,6 @@ export function useExplorableChart() {
   const resizeEdgeRef = useRef<"start" | "end">();
   // track rect captured at resize start, to avoid a layout reflow per move
   const resizeRectRef = useRef<DOMRect>();
-  const hasPendingClickPan = useRef(false);
   const lastTapRef = useRef<{ time: number; x: number; y: number }>();
   const gestureOwnerRef = useRef<GestureOwner>();
   // Identifier of the touch that started the active gesture. A pan is ended by
@@ -734,7 +733,7 @@ export function useExplorableChart() {
 
       const {
         ownsGesture,
-        endDrag: _endDrag,
+        endDrag,
         clearStaleTouchLock,
         onMouseDown,
         onMouseMove,
@@ -792,21 +791,12 @@ export function useExplorableChart() {
 
       const endResize = () => {
         if (!resizeEdgeRef.current) return;
-        hasPendingClickPan.current = false;
         resizeEdgeRef.current = undefined;
         resizeRectRef.current = undefined;
         gestureOwnerRef.current = undefined;
         activeTouchIdRef.current = undefined;
         repositionListeners.detach();
         refreshCursor();
-      };
-
-      const endDrag = () => {
-        if (!ownsGesture()) return;
-        if (isPanningRef.current) {
-          hasPendingClickPan.current = false;
-        }
-        _endDrag();
       };
 
       let isTouchGestureActive = false;
@@ -922,16 +912,14 @@ export function useExplorableChart() {
         if (ownsGesture()) windowMouseListeners.attach();
       };
 
-      const panToCursorPoint = (clientX: number) => {
-        const worldRange = store.get(worldRangeAtom);
-        if (!worldRange) return;
-
-        const cursorTs = clientXToMs(
-          clientX,
-          trackEl.getBoundingClientRect(),
-          worldRange,
-        );
-        panToTs(cursorTs);
+      // a press outside the bar pans there, then drags the bar
+      const panToPressPoint = (target: EventTarget | null) => {
+        const press = dragStartRef.current;
+        if (!press) return;
+        if (target instanceof Node && visibleRangeEl.contains(target)) return;
+        panToTs(press.ts);
+        const visibleRange = store.get(visibleRangeAtom);
+        if (visibleRange) press.startVisibleRange = [...visibleRange];
       };
 
       const onHandleMouseDown = (edge: "start" | "end") => (e: MouseEvent) => {
@@ -942,9 +930,11 @@ export function useExplorableChart() {
         e.preventDefault();
       };
 
-      // visibleRange mouse pan start
-      const onVisibleRangeMouseDown = (e: MouseEvent) => {
+      // track mouse pan start
+      const onTrackMouseDown = (e: MouseEvent) => {
+        const hadActiveGesture = gestureOwnerRef.current != null;
         onMouseDown(e);
+        if (!hadActiveGesture && ownsGesture()) panToPressPoint(e.target);
         attachMouseGesture();
       };
       const onHandleTouchStart = (edge: "start" | "end") => (e: TouchEvent) => {
@@ -963,24 +953,18 @@ export function useExplorableChart() {
         e.preventDefault();
       };
 
-      // visibleRange pan start
-      const onVisibleRangeTouchStart = (e: TouchEvent) => {
+      // track touch pan start
+      const onTrackTouchStart = (e: TouchEvent) => {
+        // clear a stale lock first, so it doesn't count as an active gesture
+        clearStaleTouchLock(e.touches);
+        const hadActiveGesture = gestureOwnerRef.current != null;
         onTouchStart(e);
+        if (!hadActiveGesture && ownsGesture()) panToPressPoint(e.target);
         beginTouchGesture();
       };
 
       const cleanups = [
         markGestureSurface(trackEl),
-        addListener(
-          trackEl,
-          "pointerdown",
-          (e) => {
-            if (isExcludedTarget(e.target)) return;
-            // track if action is for zoom / drag to pan, or a click to pan
-            hasPendingClickPan.current = true;
-          },
-          { capture: true },
-        ),
         addListener(leftHandleEl, "mousedown", onHandleMouseDown("start")),
         addListener(rightHandleEl, "mousedown", onHandleMouseDown("end")),
         addListener(leftHandleEl, "touchstart", onHandleTouchStart("start"), {
@@ -990,18 +974,9 @@ export function useExplorableChart() {
           passive: false,
         }),
 
-        addListener(visibleRangeEl, "mousedown", onVisibleRangeMouseDown),
-        addListener(visibleRangeEl, "touchstart", onVisibleRangeTouchStart, {
+        addListener(trackEl, "mousedown", onTrackMouseDown),
+        addListener(trackEl, "touchstart", onTrackTouchStart, {
           passive: false,
-        }),
-        addListener(visibleRangeEl, "click", (e) =>
-          // prevent track click
-          e.stopPropagation(),
-        ),
-        addListener(trackEl, "click", (e) => {
-          if (isExcludedTarget(e.target)) return;
-          if (!hasPendingClickPan.current) return;
-          panToCursorPoint(e.clientX);
         }),
 
         addListener(trackEl, "wheel", onWheel, { passive: false }),
