@@ -71,7 +71,7 @@ import {
   useSlotHighlightRender,
   useContainerSlotHitTest,
 } from "../slotHighlight.ts";
-import type { DataLevel } from "../coverage.ts";
+import { isUsableAggFallback, type DataLevel } from "../coverage.ts";
 import { useModeCoverage } from "../useModeCoverage.ts";
 import { getDrawnBucket } from "../aggDraw.ts";
 
@@ -151,8 +151,18 @@ function RevenueTrackBody({
   );
 
   const hasAggData = useCallback(
-    (tileRangeNs: NsTsRange) =>
-      aggLevels.some((level) => level.isRangeFetched(tileRangeNs)),
+    (tileRangeNs: NsTsRange) => {
+      const visibleRange = store.get(visibleRangeAtom);
+      if (!visibleRange) return false;
+      const viewAggId = getGranularity(visibleRange[1] - visibleRange[0], {
+        ignoreMinimum: true,
+      });
+      return aggLevels.some(
+        (level, idx) =>
+          isUsableAggFallback(aggLevels, idx, viewAggId) &&
+          level.isRangeFetched(tileRangeNs, false),
+      );
+    },
     [aggLevels],
   );
   const txnMetaQuery = useTileCacheQuery(txnMetaCache, hasAggData);

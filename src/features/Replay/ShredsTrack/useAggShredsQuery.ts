@@ -1,4 +1,4 @@
-import { getAggGranularityForQuery } from "../utils";
+import { getAggGranularityForQuery, type AggGranularityOpts } from "../utils";
 import type { AggShreds } from "../../../api/types";
 import { useAggQuery } from "../useAggQuery";
 import type { TimelineQueryKey } from "../atoms";
@@ -16,11 +16,15 @@ const QUERY_KEY = "query_agg_shreds" satisfies TimelineQueryKey;
  */
 const AGG_SHREDS_BUCKET_COUNT_THRESHOLD = 2000;
 
-export function getAggGranularity(windowSizeMs: number) {
+export function getAggGranularity(
+  windowSizeMs: number,
+  opts?: AggGranularityOpts,
+) {
   return getAggGranularityForQuery(
     QUERY_KEY,
     windowSizeMs,
     AGG_SHREDS_BUCKET_COUNT_THRESHOLD,
+    opts,
   );
 }
 

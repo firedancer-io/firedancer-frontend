@@ -10,7 +10,7 @@ import type {
 import { TileStatesGranularityEnum } from "../../../api/entities.ts";
 import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
 import { useTileCacheQuery } from "../tiles/useTileCache.ts";
-import { getTileKey, getWindowNs } from "../utils.ts";
+import { getTileKey } from "../utils.ts";
 import {
   hasFallbackData,
   tileStatesCaches,
@@ -18,7 +18,7 @@ import {
 } from "./tileStatesCache.ts";
 import { getTileStatesGranularity, isAggregate } from "./consts.ts";
 import { syncAggTileStatesTilesAtom } from "./aggAtoms.ts";
-import { hasTooFewBucketsInView, type DataLevel } from "../coverage.ts";
+import { isUsableAggFallback, type DataLevel } from "../coverage.ts";
 import {
   getAggGranularity,
   type AggTileStatesQuery,
@@ -48,10 +48,12 @@ export function useTileStatesQuery({
       if (hasFallbackData[granularity](tileRangeNs)) return true;
       const visibleRange = store.get(visibleRangeAtom);
       if (!visibleRange) return false;
-      const windowNs = getWindowNs(visibleRange);
+      const viewAggId = getAggGranularity(visibleRange[1] - visibleRange[0], {
+        ignoreMinimum: true,
+      });
       return aggLevels.some(
-        (level) =>
-          !hasTooFewBucketsInView(level, windowNs) &&
+        (level, idx) =>
+          isUsableAggFallback(aggLevels, idx, viewAggId) &&
           level.isRangeFetched(tileRangeNs, false),
       );
     },

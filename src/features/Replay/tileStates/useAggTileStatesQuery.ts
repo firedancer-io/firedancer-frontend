@@ -1,4 +1,4 @@
-import { getAggGranularityForQuery } from "../utils";
+import { getAggGranularityForQuery, type AggGranularityOpts } from "../utils";
 import type { AggTileStates } from "../../../api/types";
 import { BUCKETS_PER_TILE, useAggQuery } from "../useAggQuery";
 import type { TimelineQueryKey } from "../atoms";
@@ -19,11 +19,15 @@ export const OVERSCAN_BUCKETS = BUCKETS_PER_TILE * OVERSCAN_TILES_COUNT;
  * At most, how many buckets should be visible
  */
 const BUCKET_COUNT_THRESHOLD = 1000;
-export function getAggGranularity(windowSizeMs: number) {
+export function getAggGranularity(
+  windowSizeMs: number,
+  opts?: AggGranularityOpts,
+) {
   return getAggGranularityForQuery(
     QUERY_KEY,
     windowSizeMs,
     BUCKET_COUNT_THRESHOLD,
+    opts,
   );
 }
 

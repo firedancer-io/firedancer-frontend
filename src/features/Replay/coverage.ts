@@ -9,8 +9,6 @@ export interface DataLevel {
   id: string;
   isAgg: boolean;
   tileSizeNs: bigint;
-  // agg levels only
-  bucketSizeNs?: bigint;
   /**
    * Returns whether every tile overlapping the range has data. Stale tiles
    * only have data up to their last refresh.
@@ -19,14 +17,17 @@ export interface DataLevel {
   getAvailableStartNs?: () => bigint | undefined;
 }
 
-// fewer buckets in view draw as blocks that look nothing like the data
-const MIN_FALLBACK_BUCKETS_IN_VIEW = 60n;
-
-export function hasTooFewBucketsInView(level: DataLevel, windowNs: bigint) {
-  return (
-    level.bucketSizeNs !== undefined &&
-    level.bucketSizeNs * MIN_FALLBACK_BUCKETS_IN_VIEW > windowNs
+// viewAggLevelId: the agg level the view would use without the query's finest
+// granularity; agg levels over one level coarser than it draw as blocks
+export function isUsableAggFallback(
+  granularityLevels: DataLevel[],
+  levelIdx: number,
+  viewAggLevelId: string,
+) {
+  const viewAggIdx = granularityLevels.findIndex(
+    ({ id }) => id === viewAggLevelId,
   );
+  return levelIdx >= viewAggIdx - 1;
 }
 
 /** Levels are coarsest to finest */
@@ -34,14 +35,13 @@ function isUsableFallback(
   granularityLevels: DataLevel[],
   targetLevelIdx: number,
   levelIdx: number,
-  windowNs: bigint,
+  viewAggLevelId: string,
 ) {
-  if (levelIdx >= targetLevelIdx) return true;
-  // agg targets only fall back to the next coarser level, at most 2.5x coarser
-  if (granularityLevels[targetLevelIdx].isAgg) {
-    return levelIdx === targetLevelIdx - 1;
-  }
-  return !hasTooFewBucketsInView(granularityLevels[levelIdx], windowNs);
+  return (
+    levelIdx >= targetLevelIdx ||
+    !granularityLevels[levelIdx].isAgg ||
+    isUsableAggFallback(granularityLevels, levelIdx, viewAggLevelId)
+  );
 }
 
 /**
@@ -64,7 +64,7 @@ export function resolveCoverage(
   granularityLevels: DataLevel[],
   targetLevelId: string,
   rangeNs: NsTsRange,
-  windowNs: bigint,
+  viewAggLevelId: string,
   worldRangeNs?: NsTsRange,
 ): CoverageSpan[] {
   const targetLevelIdx = granularityLevels.findIndex(
@@ -83,7 +83,7 @@ export function resolveCoverage(
       granularityLevels,
       targetLevelIdx,
       granularityLevels.indexOf(level),
-      windowNs,
+      viewAggLevelId,
     ),
   );
   // prefer the target's mode since each switch between modes adds a render pass
@@ -138,7 +138,7 @@ export function hasFallbackData(
   granularityLevels: DataLevel[],
   targetLevelId: string,
   rangeNs: NsTsRange,
-  windowNs: bigint,
+  viewAggLevelId: string,
   worldRangeNs?: NsTsRange,
 ): boolean {
   const fetchRangeNs: NsTsRange = worldRangeNs
@@ -153,7 +153,12 @@ export function hasFallbackData(
   return granularityLevels.some(
     (level, idx) =>
       idx !== targetLevelIdx &&
-      isUsableFallback(granularityLevels, targetLevelIdx, idx, windowNs) &&
+      isUsableFallback(
+        granularityLevels,
+        targetLevelIdx,
+        idx,
+        viewAggLevelId,
+      ) &&
       level.isRangeFetched(fetchRangeNs, idx > targetLevelIdx),
   );
 }
@@ -165,14 +170,14 @@ export function isRangeCovered(
   granularityLevels: DataLevel[],
   targetLevelId: string,
   rangeNs: NsTsRange,
-  windowNs: bigint,
+  viewAggLevelId: string,
   worldRangeNs?: NsTsRange,
 ): boolean {
   return resolveCoverage(
     granularityLevels,
     targetLevelId,
     rangeNs,
-    windowNs,
+    viewAggLevelId,
     worldRangeNs,
   ).every(({ level }) => level !== undefined);
 }

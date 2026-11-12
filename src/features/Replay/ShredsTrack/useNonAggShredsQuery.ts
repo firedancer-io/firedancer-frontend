@@ -14,6 +14,7 @@ import { drawEventType } from "../const";
 import { nsPerMs } from "../../../consts";
 import { createParallelCache } from "../parallelQueriesCache";
 import { hasFallbackData, type DataLevel } from "../coverage";
+import { getAggGranularity } from "./useAggShredsQuery";
 import type { TimelineQueryKey } from "../atoms";
 
 const QUERY_KEY = "query_shreds" satisfies TimelineQueryKey;
@@ -168,7 +169,9 @@ export function useNonAggShredsQuery(
             fallbackLevels,
             granularity,
             tileRangeNs,
-            visibleRangeNs[1] - visibleRangeNs[0],
+            getAggGranularity(visibleRange[1] - visibleRange[0], {
+              ignoreMinimum: true,
+            }),
             worldRangeNs,
           ),
       );

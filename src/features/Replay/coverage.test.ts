@@ -5,6 +5,7 @@ import { SocketState } from "../../api/ws/types";
 import { createParallelCache } from "./parallelQueriesCache";
 import { hasFallbackData, resolveCoverage, type DataLevel } from "./coverage";
 import type { NsTsRange } from "../WebGl/webglUtils";
+import { getAggGranularityForQuery } from "./utils";
 
 vi.mock("../../nowAtoms", () => ({
   smoothedNowNsAtom: atom<bigint | undefined>(undefined),
@@ -43,27 +44,25 @@ function makeLevels() {
     cache.queryRange(rangeNs, worldRangeNs, granularity, undefined);
     for (const id of sentIds) cache.markQueryComplete(id);
   };
-  // fine stands in for a zoomed-in level, which has no buckets
+  // fine stands in for a zoomed-in (non-agg) level
   const levels = [
-    { ...cache.getLevel("top", true), bucketSizeNs: 6_400n },
-    { ...cache.getLevel("coarse", true), bucketSizeNs: 3_200n },
-    { ...cache.getLevel("mid", true), bucketSizeNs: 1_600n },
+    cache.getLevel("top", true),
+    cache.getLevel("coarse", true),
+    cache.getLevel("mid", true),
     cache.getLevel("fine", false),
   ];
   return { load, levels };
 }
 
-// wide enough for 60+ buckets of every level
-const wideWindowNs = 1_000_000n;
-
+// viewAgg: the agg level the view would use
 const levelIdAt = (
   levels: ReturnType<typeof makeLevels>["levels"],
   target: Granularity,
+  viewAgg: Granularity,
   rangeNs: NsTsRange,
   worldRangeNs: NsTsRange,
-  windowNs = wideWindowNs,
 ) =>
-  resolveCoverage(levels, target, rangeNs, windowNs, worldRangeNs).map(
+  resolveCoverage(levels, target, rangeNs, viewAgg, worldRangeNs).map(
     ({ level }) => level?.id,
   );
 
@@ -78,17 +77,11 @@ describe("coverage fallback", () => {
     load("mid", [0n, 10_500n], worldRangeNs);
 
     // the fine tile at the world end hasn't loaded
-    expect(levelIdAt(levels, "fine", [10_000n, 10_500n], worldRangeNs)).toEqual(
-      [undefined],
-    );
     expect(
-      hasFallbackData(
-        levels,
-        "fine",
-        [10_000n, 11_000n],
-        wideWindowNs,
-        worldRangeNs,
-      ),
+      levelIdAt(levels, "fine", "mid", [10_000n, 10_500n], worldRangeNs),
+    ).toEqual([undefined]);
+    expect(
+      hasFallbackData(levels, "fine", [10_000n, 11_000n], "mid", worldRangeNs),
     ).toBe(false);
   });
 
@@ -96,78 +89,82 @@ describe("coverage fallback", () => {
     const { load, levels } = makeLevels();
     load("mid", [0n, 16_000n], [0n, 20_000n]);
 
-    expect(levelIdAt(levels, "fine", [5_000n, 6_000n], [0n, 20_000n])).toEqual([
-      "mid",
-    ]);
+    expect(
+      levelIdAt(levels, "fine", "mid", [5_000n, 6_000n], [0n, 20_000n]),
+    ).toEqual(["mid"]);
   });
 
   it("falls back to a finer level's stale tail and draws the target's own", () => {
     const { load, levels } = makeLevels();
     const worldRangeNs: NsTsRange = [0n, 10_500n];
     load("fine", [0n, 10_500n], worldRangeNs);
-    expect(levelIdAt(levels, "mid", [10_000n, 10_500n], worldRangeNs)).toEqual([
-      "fine",
-    ]);
+    expect(
+      levelIdAt(levels, "mid", "mid", [10_000n, 10_500n], worldRangeNs),
+    ).toEqual(["fine"]);
 
     load("mid", [0n, 10_500n], worldRangeNs);
-    expect(levelIdAt(levels, "mid", [10_000n, 10_500n], worldRangeNs)).toEqual([
-      "mid",
-    ]);
+    expect(
+      levelIdAt(levels, "mid", "mid", [10_000n, 10_500n], worldRangeNs),
+    ).toEqual(["mid"]);
   });
 
-  it("falls back from a non-agg target only to levels with 60+ buckets in view", () => {
-    const { load, levels } = makeLevels();
+  it("falls back to agg levels at most one coarser than the view's agg level", () => {
     const worldRangeNs: NsTsRange = [0n, 100_000n];
-    load("coarse", [0n, 32_000n], worldRangeNs);
+    for (const target of ["mid", "fine"] as const) {
+      const { load, levels } = makeLevels();
+      load("coarse", [0n, 32_000n], worldRangeNs);
+      expect(
+        new Set(levelIdAt(levels, target, "mid", [0n, 16_000n], worldRangeNs)),
+      ).toEqual(new Set(["coarse"]));
+      expect(
+        hasFallbackData(levels, target, [0n, 16_000n], "mid", worldRangeNs),
+      ).toBe(true);
 
-    // 60 coarse buckets need 192_000ns of view
+      const other = makeLevels();
+      other.load("top", [0n, 64_000n], worldRangeNs);
+      expect(
+        new Set(
+          levelIdAt(other.levels, target, "mid", [0n, 16_000n], worldRangeNs),
+        ),
+      ).toEqual(new Set([undefined]));
+      expect(
+        hasFallbackData(
+          other.levels,
+          target,
+          [0n, 16_000n],
+          "mid",
+          worldRangeNs,
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("falls back to no coarser agg level when the target is clamped", () => {
+    // the view's agg level is finer than the target, the query's finest
+    const worldRangeNs: NsTsRange = [0n, 100_000n];
+    const { load, levels } = makeLevels();
+    load("top", [0n, 64_000n], worldRangeNs);
     expect(
-      levelIdAt(levels, "fine", [5_000n, 6_000n], worldRangeNs, 191_999n),
+      levelIdAt(levels, "coarse", "mid", [0n, 32_000n], worldRangeNs),
     ).toEqual([undefined]);
     expect(
-      hasFallbackData(levels, "fine", [5_000n, 6_000n], 191_999n, worldRangeNs),
+      hasFallbackData(levels, "coarse", [0n, 32_000n], "mid", worldRangeNs),
     ).toBe(false);
 
+    load("mid", [0n, 32_000n], worldRangeNs);
     expect(
-      levelIdAt(levels, "fine", [5_000n, 6_000n], worldRangeNs, 192_000n),
-    ).toEqual(["coarse"]);
-    expect(
-      hasFallbackData(levels, "fine", [5_000n, 6_000n], 192_000n, worldRangeNs),
-    ).toBe(true);
+      levelIdAt(levels, "coarse", "mid", [0n, 32_000n], worldRangeNs),
+    ).toEqual(["mid"]);
   });
 
-  it("always draws the target, however few of its buckets are in view", () => {
+  it("always draws the target", () => {
     const { load, levels } = makeLevels();
     const worldRangeNs: NsTsRange = [0n, 100_000n];
-    load("coarse", [0n, 32_000n], worldRangeNs);
+    load("top", [0n, 64_000n], worldRangeNs);
 
     expect(
-      levelIdAt(levels, "coarse", [0n, 32_000n], worldRangeNs, 1_000n),
-    ).toEqual(["coarse"]);
-  });
-
-  it("falls back from an agg target only to the next coarser level", () => {
-    const { load, levels } = makeLevels();
-    const worldRangeNs: NsTsRange = [0n, 100_000n];
-    load("coarse", [0n, 32_000n], worldRangeNs);
-    expect(
-      levelIdAt(levels, "mid", [0n, 16_000n], worldRangeNs, 1_000n),
-    ).toEqual(["coarse"]);
-
-    const other = makeLevels();
-    other.load("top", [0n, 64_000n], worldRangeNs);
-    expect(levelIdAt(other.levels, "mid", [0n, 16_000n], worldRangeNs)).toEqual(
-      [undefined],
-    );
-    expect(
-      hasFallbackData(
-        other.levels,
-        "mid",
-        [0n, 16_000n],
-        wideWindowNs,
-        worldRangeNs,
-      ),
-    ).toBe(false);
+      levelIdAt(levels, "top", "top", [0n, 64_000n], worldRangeNs),
+    ).toEqual(["top"]);
   });
 });
 
@@ -189,7 +186,7 @@ function makeAvailableLevel(
 describe("coverage before the available start", () => {
   const agg = makeAvailableLevel("agg", true, () => true);
   const levelIds = (levels: DataLevel[], target: string, rangeNs: NsTsRange) =>
-    resolveCoverage(levels, target, rangeNs, wideWindowNs).map(
+    resolveCoverage(levels, target, rangeNs, "agg").map(
       ({ rangeNs, level }) => [rangeNs, level?.id],
     );
 
@@ -255,5 +252,24 @@ describe("coverage before the available start", () => {
       "agg",
       "agg",
     ]);
+  });
+});
+
+describe("the agg level a view would use", () => {
+  it("ignores the query's finest granularity when asked", () => {
+    // shreds' finest agg granularity is 250ms
+    expect(getAggGranularityForQuery("query_agg_shreds", 12_000, 2000)).toBe(
+      "250ms",
+    );
+    expect(
+      getAggGranularityForQuery("query_agg_shreds", 12_000, 2000, {
+        ignoreMinimum: true,
+      }),
+    ).toBe("25ms");
+    expect(
+      getAggGranularityForQuery("query_agg_shreds", 900_000, 2000, {
+        ignoreMinimum: true,
+      }),
+    ).toBe("500ms");
   });
 });
