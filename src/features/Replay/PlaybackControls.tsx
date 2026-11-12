@@ -1,5 +1,5 @@
-import { Flex, IconButton, Select, Tooltip } from "@radix-ui/themes";
-import { PauseIcon, PlayIcon } from "@radix-ui/react-icons";
+import { DropdownMenu, Tooltip } from "@radix-ui/themes";
+import clsx from "clsx";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useUnmount } from "react-use";
 import {
@@ -12,6 +12,8 @@ import {
 } from "./atoms";
 import { playbackRates, type PlaybackRate } from "./const";
 import { useHotkey } from "../../hooks/useHotkey";
+import { CaretDownIcon, PauseIcon, PlayIcon } from "./controlIcons";
+import styles from "./replayControls.module.css";
 
 export default function PlaybackControls() {
   const isLive = useAtomValue(isLiveAtom);
@@ -28,44 +30,50 @@ export default function PlaybackControls() {
   useHotkey(" ", () => togglePlayback());
 
   const isRunning = isLive || isPlaying;
+  const PlaybackIcon = isRunning ? PauseIcon : PlayIcon;
 
   return (
-    <Flex align="center" gap="2">
+    <>
       <Tooltip content={isRunning ? "Pause (Space)" : "Play (Space)"}>
-        <IconButton
-          size="1"
-          variant="soft"
-          color="gray"
+        <button
+          type="button"
+          className={clsx(styles.button, styles.iconButton)}
           aria-label={isRunning ? "Pause" : "Play"}
           onClick={() => togglePlayback()}
         >
-          {isRunning ? <PauseIcon /> : <PlayIcon />}
-        </IconButton>
+          <PlaybackIcon />
+        </button>
       </Tooltip>
-      <Select.Root
-        size="1"
-        value={String(playbackRate)}
-        onValueChange={(value) =>
-          setPlaybackRate(Number(value) as PlaybackRate)
-        }
-      >
-        <Select.Trigger
-          variant="soft"
-          color="gray"
-          aria-label="Playback speed"
-        />
-        <Select.Content>
-          {playbackRates.map((rate) => (
-            <Select.Item
-              key={rate}
-              value={String(rate)}
-              disabled={isLive && rate > 1}
-            >
-              {rate}×
-            </Select.Item>
-          ))}
-        </Select.Content>
-      </Select.Root>
-    </Flex>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger>
+          <button
+            type="button"
+            className={clsx(styles.button, styles.speedButton)}
+            aria-label="Playback speed"
+          >
+            {playbackRate}×
+            <CaretDownIcon className={styles.caret} />
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content size="1">
+          <DropdownMenu.RadioGroup
+            value={String(playbackRate)}
+            onValueChange={(value) =>
+              setPlaybackRate(Number(value) as PlaybackRate)
+            }
+          >
+            {playbackRates.map((rate) => (
+              <DropdownMenu.RadioItem
+                key={rate}
+                value={String(rate)}
+                disabled={isLive && rate > 1}
+              >
+                {rate}×
+              </DropdownMenu.RadioItem>
+            ))}
+          </DropdownMenu.RadioGroup>
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
+    </>
   );
 }

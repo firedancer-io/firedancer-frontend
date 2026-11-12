@@ -1,0 +1,66 @@
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  box-sizing: border-box;
+  height: 20px;
+  border: 1px solid var(--replay-popover-border-color);
+  border-radius: 6px;
+  background: var(--replay-popover-background-color);
+  /* round the outer buttons' hover backgrounds */
+  overflow: hidden;
+
+  .button {
+    appearance: none;
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 18px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font: inherit;
+    color: var(--replay-pause-icon-color);
+    cursor: var(--cursor-button);
+
+    &:hover,
+    &[data-state="open"] {
+      background: var(--gray-a3);
+      color: var(--gray-12);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--focus-8);
+      outline-offset: -1px;
+    }
+
+    & + .button::before {
+      content: "";
+      position: absolute;
+      left: -1px;
+      top: 4px;
+      width: 1px;
+      height: 10px;
+      background: var(--replay-popover-border-color);
+    }
+  }
+
+  .icon-button {
+    width: 22px;
+  }
+
+  .speed-button {
+    gap: 4px;
+    padding: 0 6px 0 7px;
+    color: var(--dropdown-button-text-color);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .caret {
+    color: var(--replay-primary-text-color);
+  }
+}

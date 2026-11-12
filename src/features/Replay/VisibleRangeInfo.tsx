@@ -16,7 +16,8 @@ import {
   worldRangeAtom,
 } from "./atoms";
 import { calcAbsoluteNs } from "./utils";
-import { replayLiveTextColor, replayPauseIconColor } from "../../colors";
+import { replayLiveTextColor } from "../../colors";
+import { PauseIcon, PlayIcon } from "./controlIcons";
 import styles from "./replay.module.css";
 import {
   chooseLayout,
@@ -77,29 +78,6 @@ const toDateTime = (referenceNs: bigint, relativeMs: number) =>
   DateTime.fromMillis(
     Number(calcAbsoluteNs(referenceNs, relativeMs) / BigInt(nsPerMs)),
   );
-
-const PauseIcon = memo(function PauseIcon() {
-  return (
-    <div className={styles.pauseIcon}>
-      <div className={styles.pauseIconBar} />
-      <div className={styles.pauseIconBar} />
-    </div>
-  );
-});
-
-const PlayIcon = memo(function PlayIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="8"
-      height="9"
-      viewBox="0 0 8 9"
-      fill="none"
-    >
-      <path d="M0 0L8 4.5L0 9Z" fill={replayPauseIconColor} />
-    </svg>
-  );
-});
 
 const LiveIcon = memo(function LiveIcon() {
   return (
@@ -200,7 +178,13 @@ export default memo(function VisibleRangeInfo() {
           align="center"
           gap={`${GAP_PX}px`}
         >
-          {isLive ? <LiveIcon /> : isPlaying ? <PlayIcon /> : <PauseIcon />}
+          {isLive ? (
+            <LiveIcon />
+          ) : isPlaying ? (
+            <PlayIcon className={styles.playbackIcon} />
+          ) : (
+            <PauseIcon className={styles.playbackIcon} />
+          )}
           <span
             ref={statusTextRef}
             className={statusClassName}

@@ -62,16 +62,8 @@
   background: var(--replay-popover-border-color);
 }
 
-.pause-icon {
-  display: flex;
-  gap: 2px;
-}
-
-.pause-icon-bar {
-  width: 3px;
-  height: 9px;
-  border-radius: 1px;
-  background: var(--replay-pause-icon-color);
+.playback-icon {
+  color: var(--replay-pause-icon-color);
 }
 
 .live-icon {
