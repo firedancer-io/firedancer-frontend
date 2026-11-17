@@ -4,7 +4,7 @@ import {
   shredReceivedRepairColor,
   shredReceivedTurbineColor,
   shredRepairRequestedColor,
-  shredReplayedNothingColor,
+  shredReconstructedColor,
   shredReplayedRepairColor,
   shredReplayedTurbineColor,
   shredSkippedColor,
@@ -26,6 +26,6 @@ export const colors = {
   receivedRepair: convertToWebGlColor(shredReceivedRepairColor),
   replayedRepair: convertToWebGlColor(shredReplayedRepairColor),
   replayedTurbine: convertToWebGlColor(shredReplayedTurbineColor),
-  replayedNothing: convertToWebGlColor(shredReplayedNothingColor),
+  reconstructed: convertToWebGlColor(shredReconstructedColor),
   published: convertToWebGlColor(shredPublishedColor),
 };

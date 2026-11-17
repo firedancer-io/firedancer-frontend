@@ -10,7 +10,7 @@ import {
   shredReceivedRepairColor,
   shredReceivedTurbineColor,
   shredRepairRequestedColor,
-  shredReplayedNothingColor,
+  shredReconstructedColor,
   shredReplayedRepairColor,
   shredReplayedTurbineColor,
   shredSkippedColor,
@@ -91,8 +91,8 @@ export const aggShredEvents = [
   {
     type: AggShredEventType.Reconstructed,
     label: "Reconstructed",
-    color: shredReplayedNothingColor,
-    webGlColor: shredWebGlColors.replayedNothing,
+    color: shredReconstructedColor,
+    webGlColor: shredWebGlColors.reconstructed,
   },
   {
     type: AggShredEventType.Turbine,
@@ -119,7 +119,7 @@ export const shredLegend = [
   { label: "Received Repair", color: shredReceivedRepairColor },
   { label: "Replayed Turbine", color: shredReplayedTurbineColor },
   { label: "Replayed Repair", color: shredReplayedRepairColor },
-  { label: "Replayed Nothing", color: shredReplayedNothingColor },
+  { label: "Replayed Reconstructed", color: shredReconstructedColor },
   { label: "Skipped", color: shredSkippedColor },
   { label: "Published", color: shredPublishedColor },
 ];

@@ -16,7 +16,7 @@ import {
   shredReceivedRepairColor,
   shredReceivedTurbineColor,
   shredRepairRequestedColor,
-  shredReplayedNothingColor,
+  shredReconstructedColor,
   shredReplayedRepairColor,
   shredReplayedTurbineColor,
   shredSkippedColor,
@@ -392,7 +392,7 @@ function addEventsForRow({
         } else if (eventPositions.has(ShredEvent.shred_received_turbine)) {
           addEventPosition(shredReplayedTurbineColor, position);
         } else {
-          addEventPosition(shredReplayedNothingColor, position);
+          addEventPosition(shredReconstructedColor, position);
         }
         break;
       }
