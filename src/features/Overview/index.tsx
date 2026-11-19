@@ -7,6 +7,7 @@ import ShredsProgression from "./ShredsProgression";
 import LiveNetworkMetrics from "./LiveNetworkMetrics";
 import LiveTileMetrics from "./LiveTileMetrics";
 import SlotTimeline from "./SlotTimeline";
+import SnapshotProgressBanner from "./SnapshotProgressBanner";
 import ProgramCacheCard from "./ProgramCacheCard";
 import AccountsCard from "./AccountsCard";
 import ResourcesCard from "./ResourcesCard";
@@ -17,6 +18,7 @@ import clsx from "clsx";
 export default function Overview() {
   return (
     <Flex direction="column" gap="4" flexGrow="1">
+      <SnapshotProgressBanner />
       <Grid
         className={clsx(styles.cards, {
           [styles.frankendancer]: isFrankendancer,

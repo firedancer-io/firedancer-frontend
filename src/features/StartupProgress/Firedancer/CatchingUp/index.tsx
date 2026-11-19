@@ -22,7 +22,12 @@ import { useMemo } from "react";
 import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
 import { clamp } from "lodash";
 
-export default function CatchingUp() {
+interface CatchingUpProps {
+  /** Set when shown below the snapshot phase, which has its own header */
+  hideHeader?: boolean;
+}
+
+export default function CatchingUp({ hideHeader = false }: CatchingUpProps) {
   const setContainerEl = useSetAtom(catchingUpContainerElAtom);
   const hasCatchingUpData = useAtomValue(hasCatchingUpDataAtom);
   const catchingUpRatesRef = useEstimateTotalSlots();
@@ -53,11 +58,13 @@ export default function CatchingUp() {
 
   return (
     <>
-      <PhaseHeader
-        phaseCompleteFraction={phaseCompleteFraction}
-        overallCompleteFraction={overallCompleteFraction}
-        remainingSeconds={catchingUpRatesRef.current.remainingSeconds}
-      />
+      {!hideHeader && (
+        <PhaseHeader
+          phaseCompleteFraction={phaseCompleteFraction}
+          overallCompleteFraction={overallCompleteFraction}
+          remainingSeconds={catchingUpRatesRef.current.remainingSeconds}
+        />
+      )}
       <Flex
         direction="column"
         mt="8px"

@@ -7,6 +7,7 @@ import {
   tileCountAtom,
   liveSnapshotTimersAtom,
 } from "../../../Overview/SlotPerformance/atoms";
+import { bootProgressAtom } from "../../../../api/atoms";
 import TileBusy from "../../../Overview/SlotPerformance/TileBusy";
 import { Sparkline } from "../../../Overview/SlotPerformance/TileSparkLine";
 import TileSparkLineExpandedContainer from "../../../Overview/SlotPerformance/TileSparkLineExpandedContainer";
@@ -39,6 +40,8 @@ export default function SnapshotSparklineCard({
 
   const tileCounts = useAtomValue(tileCountAtom);
   const timers = useAtomValue(liveSnapshotTimersAtom);
+  const streamTileCount =
+    useAtomValue(bootProgressAtom)?.fast_boot_stream_tile_count ?? 0;
 
   const {
     avgBusy: currentAvgBusy,
@@ -47,7 +50,7 @@ export default function SnapshotSparklineCard({
     busy,
   } = useTileSparkline({
     isLive: true,
-    tileCount: tileCounts[tileType],
+    tileCount: Math.max(0, tileCounts[tileType] - streamTileCount),
     liveIdlePerTile: timers?.[tileType],
   });
   const lastDefinedAvgBusy = useLastDefinedValue(currentAvgBusy);

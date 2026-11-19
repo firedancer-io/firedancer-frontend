@@ -1,6 +1,7 @@
 import { atom } from "jotai";
 import { atomWithImmer } from "jotai-immer";
 import { showStartupProgressAtom, snapshotSlotAtom } from "../../atoms";
+import { firstProcessedSlotAtom } from "../../../../atoms";
 
 export const catchingUpContainerElAtom = atom<HTMLDivElement | null>(null);
 
@@ -15,6 +16,11 @@ export interface CatchingUpData {
 
 export const catchingUpStartSlotAtom = atom<number | null | undefined>(
   (get) => {
+    /* The first replayed slot, once known.  A fast boot replays from a
+       stream slot far past the snapshots it is still loading. */
+    const firstReplaySlot = get(firstProcessedSlotAtom);
+    if (firstReplaySlot != null) return firstReplaySlot;
+
     /* Snapshots represent end-of-slot state; the first slot we replay 
        from live shreds is (incr or full)+1 */
     const snapshotSlot = get(snapshotSlotAtom);

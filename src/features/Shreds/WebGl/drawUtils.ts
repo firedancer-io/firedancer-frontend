@@ -4,7 +4,7 @@ import { ShredEvent } from "../../../api/entities";
 import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import type { ShredEventTsDeltas } from "../../../api/worker/cache/shreds/types";
 import { smoothedNowMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
-import { showStartupProgressAtom } from "../../StartupProgress/atoms";
+import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
 import {
   shredsAtoms,
   liveShredsPostStartupRangeAtom,
@@ -57,14 +57,14 @@ export function draw(
   const rangeAfterStartup = store.get(liveShredsPostStartupRangeAtom);
   const smoothedNow = store.get(smoothedNowMsAtom);
 
-  // if startup is running, prevent drawing non-startup screen chart
+  // while the startup screen is showing, its own chart draws instead
   // Sometimes we've missed the completion event for the first slots
   // depending on connection time. Ignore those slots, and only draw slots
   // from min completed.
   if (
     !liveShreds ||
     !slotRange ||
-    store.get(showStartupProgressAtom) ||
+    store.get(isStartupProgressVisibleAtom) ||
     minCompletedSlot == null ||
     !rangeAfterStartup ||
     smoothedNow == null

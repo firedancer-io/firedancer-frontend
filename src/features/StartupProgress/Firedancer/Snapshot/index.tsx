@@ -4,7 +4,6 @@ import { useMedia } from "react-use";
 import { useAtomValue } from "jotai";
 import { bootProgressAtom } from "../../../../api/atoms";
 import { BootPhaseEnum } from "../../../../api/entities";
-import type { BootProgress } from "../../../../api/types";
 import SnapshotSparklineCard from "./SnapshotSparklineCard";
 import { SnapshotReadingCard } from "./SnapshotReadingCard";
 import { SnapshotDecompressingCard } from "./SnapshotDecompressingCard";
@@ -13,84 +12,10 @@ import PhaseHeader from "../PhaseHeader";
 import { useEffect } from "react";
 import { useEma } from "../../../../hooks/useEma";
 import { useOverallCompleteFraction } from "../useOverallCompleteFraction";
+import { getSnapshotValues } from "./utils";
 
 const rowGap = "5";
 const columnGap = "26px";
-
-function getSnapshotValues(bootProgress: BootProgress) {
-  const {
-    loading_full_snapshot_total_bytes_compressed,
-    loading_full_snapshot_read_bytes_compressed,
-    loading_full_snapshot_decompress_bytes_compressed,
-    loading_full_snapshot_decompress_bytes_decompressed,
-    loading_full_snapshot_insert_bytes_decompressed,
-    loading_full_snapshot_read_path,
-    loading_full_snapshot_insert_accounts,
-
-    loading_incremental_snapshot_total_bytes_compressed,
-    loading_incremental_snapshot_read_bytes_compressed,
-    loading_incremental_snapshot_decompress_bytes_compressed,
-    loading_incremental_snapshot_decompress_bytes_decompressed,
-    loading_incremental_snapshot_insert_bytes_decompressed,
-    loading_incremental_snapshot_read_path,
-    loading_incremental_snapshot_insert_accounts,
-
-    accounts_database_path,
-  } = bootProgress;
-
-  const values =
-    bootProgress.phase === BootPhaseEnum.loading_full_snapshot ||
-    !loading_incremental_snapshot_total_bytes_compressed
-      ? {
-          totalCompressedBytes: loading_full_snapshot_total_bytes_compressed,
-          readCompressedBytes: loading_full_snapshot_read_bytes_compressed,
-          readPath: loading_full_snapshot_read_path,
-          decompressCompressedBytes:
-            loading_full_snapshot_decompress_bytes_compressed,
-          decompressDecompressedBytes:
-            loading_full_snapshot_decompress_bytes_decompressed,
-          insertDecompressedBytes:
-            loading_full_snapshot_insert_bytes_decompressed,
-          insertAccounts: loading_full_snapshot_insert_accounts,
-        }
-      : {
-          totalCompressedBytes:
-            loading_incremental_snapshot_total_bytes_compressed,
-          readCompressedBytes:
-            loading_incremental_snapshot_read_bytes_compressed,
-          readPath: loading_incremental_snapshot_read_path,
-          decompressCompressedBytes:
-            loading_incremental_snapshot_decompress_bytes_compressed,
-          decompressDecompressedBytes:
-            loading_incremental_snapshot_decompress_bytes_decompressed,
-          insertDecompressedBytes:
-            loading_incremental_snapshot_insert_bytes_decompressed,
-          insertAccounts: loading_incremental_snapshot_insert_accounts,
-        };
-
-  const insertCompressedBytes =
-    values.insertDecompressedBytes &&
-    values.decompressCompressedBytes &&
-    values.decompressDecompressedBytes
-      ? values.insertDecompressedBytes *
-        (values.decompressCompressedBytes / values.decompressDecompressedBytes)
-      : 0;
-
-  const totalDecompressedBytes =
-    values.totalCompressedBytes &&
-    values.decompressCompressedBytes &&
-    values.decompressDecompressedBytes
-      ? (values.totalCompressedBytes * values.decompressDecompressedBytes) /
-        values.decompressCompressedBytes
-      : 0;
-
-  return {
-    ...values,
-    insertCompressedBytes,
-    totalDecompressedBytes,
-    accountsDatabasePath: accounts_database_path,
-  };
-}
 
 export default function Snapshot() {
   const bootProgress = useAtomValue(bootProgressAtom);
@@ -107,10 +32,15 @@ export default function Snapshot() {
   const { ema: decompressedInputThroughput, reset: resetInsertThroughput } =
     useEma(snapshotValues?.insertDecompressedBytes);
 
+  const { ema: writtenThroughput, reset: resetWrittenThroughput } = useEma(
+    snapshotValues?.insertBytesWritten,
+  );
+
   useEffect(() => {
     // reset throughput history on phase change
     resetInsertThroughput();
-  }, [bootProgress?.phase, resetInsertThroughput]);
+    resetWrittenThroughput();
+  }, [bootProgress?.phase, resetInsertThroughput, resetWrittenThroughput]);
 
   const {
     totalCompressedBytes,
@@ -204,6 +134,7 @@ export default function Snapshot() {
             decompressedCompleted={insertDecompressedBytes}
             decompressedTotal={totalDecompressedBytes}
             cumulativeAccounts={insertAccounts}
+            emaWrittenThroughput={writtenThroughput}
             path={accountsDatabasePath}
           />
           <SnapshotSparklineCard

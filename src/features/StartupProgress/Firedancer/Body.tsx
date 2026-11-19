@@ -1,8 +1,9 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import styles from "./body.module.css";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   bootProgressPhaseAtom,
+  expandStartupProgressElAtom,
   isStartupProgressExpandedAtom,
   showStartupProgressAtom,
 } from "../atoms";
@@ -10,7 +11,11 @@ import { Box, Flex } from "@radix-ui/themes";
 import clsx from "clsx";
 import Header from "../../Header/index";
 import { BootPhaseEnum } from "../../../api/entities";
-import { bootProgressContainerElAtom } from "../../../atoms";
+import {
+  bootProgressContainerElAtom,
+  firstProcessedSlotAtom,
+} from "../../../atoms";
+import { slotCaughtUpAtom } from "../../../api/atoms";
 import type { BootPhase } from "../../../api/types";
 import { MLogo } from "./Logo";
 import { appMaxWidth } from "../../../consts";
@@ -36,6 +41,46 @@ export default function Body() {
     setShowStartupProgress(phase !== "running");
   }, [setShowStartupProgress, phase]);
 
+  // A fast boot replays while the snapshots are still loading. Once
+  // replay has caught up, collapse the startup screen the way the close
+  // button does; the snapshot progress stays behind the header timer icon.
+  const slotCaughtUp = useAtomValue(slotCaughtUpAtom);
+  const setIsStartupProgressExpanded = useSetAtom(
+    isStartupProgressExpandedAtom,
+  );
+  const expandStartupProgressEl = useAtomValue(expandStartupProgressElAtom);
+  const containerEl = useAtomValue(bootProgressContainerElAtom);
+  const autoCollapsedRef = useRef(false);
+  useEffect(() => {
+    if (slotCaughtUp == null) {
+      autoCollapsedRef.current = false;
+      return;
+    }
+    if (autoCollapsedRef.current) return;
+    if (
+      phase !== BootPhaseEnum.loading_full_snapshot &&
+      phase !== BootPhaseEnum.loading_incremental_snapshot
+    )
+      return;
+
+    if (expandStartupProgressEl && containerEl) {
+      const { bottom, left, width, height } =
+        expandStartupProgressEl.getBoundingClientRect();
+      containerEl.style.setProperty(
+        "--transform-origin",
+        `${Math.round(left + width / 2)}px ${Math.round(bottom - height / 2)}px`,
+      );
+    }
+    autoCollapsedRef.current = true;
+    setIsStartupProgressExpanded(false);
+  }, [
+    slotCaughtUp,
+    phase,
+    expandStartupProgressEl,
+    containerEl,
+    setIsStartupProgressExpanded,
+  ]);
+
   return (
     <>
       {phase && <BootProgressContent phase={phase} />}
@@ -55,6 +100,12 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
   const phaseClass = phase ? classNames[phase] : "";
 
   const isNarrow = useMedia("(max-width: 750px)");
+
+  const isLoadingSnapshot =
+    phase === BootPhaseEnum.loading_full_snapshot ||
+    phase === BootPhaseEnum.loading_incremental_snapshot;
+  // A fast boot replays while the snapshots are still loading
+  const replayStarted = useAtomValue(firstProcessedSlotAtom) != null;
 
   return (
     <Flex
@@ -76,8 +127,8 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
         mx="auto"
         px={isNarrow ? "20px" : "89px"}
       >
-        {(phase === BootPhaseEnum.loading_full_snapshot ||
-          phase === BootPhaseEnum.loading_incremental_snapshot) && <Snapshot />}
+        {isLoadingSnapshot && <Snapshot />}
+        {isLoadingSnapshot && replayStarted && <CatchingUp hideHeader />}
         {phase === BootPhaseEnum.catching_up && <CatchingUp />}
         {phase === BootPhaseEnum.waiting_for_supermajority && <Supermajority />}
 
