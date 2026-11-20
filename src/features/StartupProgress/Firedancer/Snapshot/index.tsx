@@ -26,6 +26,7 @@ function getSnapshotValues(bootProgress: BootProgress) {
     loading_full_snapshot_insert_bytes_decompressed,
     loading_full_snapshot_read_path,
     loading_full_snapshot_insert_accounts,
+    loading_full_snapshot_insert_bytes_written,
 
     loading_incremental_snapshot_total_bytes_compressed,
     loading_incremental_snapshot_read_bytes_compressed,
@@ -34,6 +35,7 @@ function getSnapshotValues(bootProgress: BootProgress) {
     loading_incremental_snapshot_insert_bytes_decompressed,
     loading_incremental_snapshot_read_path,
     loading_incremental_snapshot_insert_accounts,
+    loading_incremental_snapshot_insert_bytes_written,
 
     accounts_database_path,
   } = bootProgress;
@@ -52,6 +54,7 @@ function getSnapshotValues(bootProgress: BootProgress) {
           insertDecompressedBytes:
             loading_full_snapshot_insert_bytes_decompressed,
           insertAccounts: loading_full_snapshot_insert_accounts,
+          insertBytesWritten: loading_full_snapshot_insert_bytes_written,
         }
       : {
           totalCompressedBytes:
@@ -66,6 +69,7 @@ function getSnapshotValues(bootProgress: BootProgress) {
           insertDecompressedBytes:
             loading_incremental_snapshot_insert_bytes_decompressed,
           insertAccounts: loading_incremental_snapshot_insert_accounts,
+          insertBytesWritten: loading_incremental_snapshot_insert_bytes_written,
         };
 
   const insertCompressedBytes =
@@ -107,10 +111,15 @@ export default function Snapshot() {
   const { ema: decompressedInputThroughput, reset: resetInsertThroughput } =
     useEma(snapshotValues?.insertDecompressedBytes);
 
+  const { ema: writtenThroughput, reset: resetWrittenThroughput } = useEma(
+    snapshotValues?.insertBytesWritten,
+  );
+
   useEffect(() => {
     // reset throughput history on phase change
     resetInsertThroughput();
-  }, [bootProgress?.phase, resetInsertThroughput]);
+    resetWrittenThroughput();
+  }, [bootProgress?.phase, resetInsertThroughput, resetWrittenThroughput]);
 
   const {
     totalCompressedBytes,
@@ -204,6 +213,7 @@ export default function Snapshot() {
             decompressedCompleted={insertDecompressedBytes}
             decompressedTotal={totalDecompressedBytes}
             cumulativeAccounts={insertAccounts}
+            emaWrittenThroughput={writtenThroughput}
             path={accountsDatabasePath}
           />
           <SnapshotSparklineCard

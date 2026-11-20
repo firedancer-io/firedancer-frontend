@@ -1,3 +1,4 @@
+import { Flex } from "@radix-ui/themes";
 import {
   AccountsRate,
   SnapshotBarsCard,
@@ -10,6 +11,7 @@ interface SnapshotInsertingCardProps {
   decompressedCompleted?: number | null;
   decompressedTotal?: number | null;
   cumulativeAccounts?: number | null;
+  emaWrittenThroughput?: number;
   path?: string | null;
 }
 export function SnapshotInsertingCard({
@@ -17,6 +19,7 @@ export function SnapshotInsertingCard({
   decompressedCompleted,
   decompressedTotal,
   cumulativeAccounts,
+  emaWrittenThroughput,
   path,
 }: SnapshotInsertingCardProps) {
   const { isComplete, progressPct } = getProgress(
@@ -26,6 +29,10 @@ export function SnapshotInsertingCard({
   const throughput = getThroughputCompleteCorrected(
     isComplete,
     emaDecompressedThroughput,
+  );
+  const writtenThroughput = getThroughputCompleteCorrected(
+    isComplete,
+    emaWrittenThroughput,
   );
 
   return (
@@ -37,13 +44,13 @@ export function SnapshotInsertingCard({
       barsThroughput={throughput}
       maxThroughput={3_500_000_000}
       headerRightContent={
-        <>
+        <Flex direction="column">
           <AccountsRate
             isComplete={isComplete}
             cumulativeAccounts={cumulativeAccounts}
           />
-          <SnapshotThroughput throughput={throughput} />
-        </>
+          <SnapshotThroughput prefix="Writing" throughput={writtenThroughput} />
+        </Flex>
       }
       footerText={path}
     />

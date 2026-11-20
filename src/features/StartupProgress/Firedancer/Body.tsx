@@ -10,7 +10,11 @@ import { Box, Flex } from "@radix-ui/themes";
 import clsx from "clsx";
 import Header from "../../Header/index";
 import { BootPhaseEnum } from "../../../api/entities";
-import { bootProgressContainerElAtom } from "../../../atoms";
+import {
+  bootProgressContainerElAtom,
+  firstProcessedSlotAtom,
+} from "../../../atoms";
+import { slotCaughtUpAtom } from "../../../api/atoms";
 import type { BootPhase } from "../../../api/types";
 import { MLogo } from "./Logo";
 import { appMaxWidth } from "../../../consts";
@@ -36,6 +40,16 @@ export default function Body() {
     setShowStartupProgress(phase !== "running");
   }, [setShowStartupProgress, phase]);
 
+  // A fast boot replays while the snapshots are still loading. Once
+  // replay has caught up, collapse the startup screen.
+  const isCaughtUp = useAtomValue(slotCaughtUpAtom) != null;
+  const setIsStartupProgressExpanded = useSetAtom(
+    isStartupProgressExpandedAtom,
+  );
+  useEffect(() => {
+    setIsStartupProgressExpanded(!isCaughtUp);
+  }, [setIsStartupProgressExpanded, isCaughtUp]);
+
   return (
     <>
       {phase && <BootProgressContent phase={phase} />}
@@ -55,6 +69,12 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
   const phaseClass = phase ? classNames[phase] : "";
 
   const isNarrow = useMedia("(max-width: 750px)");
+
+  const isLoadingSnapshot =
+    phase === BootPhaseEnum.loading_full_snapshot ||
+    phase === BootPhaseEnum.loading_incremental_snapshot;
+  // A fast boot replays while the snapshots are still loading
+  const replayStarted = useAtomValue(firstProcessedSlotAtom) != null;
 
   return (
     <Flex
@@ -76,8 +96,8 @@ function BootProgressContent({ phase }: BootProgressContentProps) {
         mx="auto"
         px={isNarrow ? "20px" : "89px"}
       >
-        {(phase === BootPhaseEnum.loading_full_snapshot ||
-          phase === BootPhaseEnum.loading_incremental_snapshot) && <Snapshot />}
+        {isLoadingSnapshot && <Snapshot />}
+        {isLoadingSnapshot && replayStarted && <CatchingUp hideHeader />}
         {phase === BootPhaseEnum.catching_up && <CatchingUp />}
         {phase === BootPhaseEnum.waiting_for_supermajority && <Supermajority />}
 

@@ -9,7 +9,7 @@ import {
   rowShredEventDescPriorities,
   shredEventDescPriorities,
 } from "../../Shreds/const";
-import { showStartupProgressAtom } from "../../StartupProgress/atoms";
+import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
 import {
   gridLineColor,
   shredPublishedColor,
@@ -98,7 +98,7 @@ export function shredsProgressionPlugin(
 
           if (!isOnStartupScreen) {
             // if startup is running, prevent drawing non-startup screen chart
-            if (store.get(showStartupProgressAtom)) return;
+            if (store.get(isStartupProgressVisibleAtom)) return;
             // Sometimes we've missed the completion event for the first slots
             // depending on connection time. Ignore those slots, and only draw slots
             // from min completed.

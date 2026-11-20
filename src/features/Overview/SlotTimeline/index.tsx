@@ -1,13 +1,13 @@
 import { useAtomValue } from "jotai";
 import Card from "../../../components/Card";
-import { showStartupProgressAtom } from "../../StartupProgress/atoms";
+import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
 import SlotLanes from "./SlotLanes";
 
 interface SlotTimelineProps {
   className: string;
 }
 export default function SlotTimeline({ className }: SlotTimelineProps) {
-  const isStartupRunning = useAtomValue(showStartupProgressAtom);
+  const isStartupRunning = useAtomValue(isStartupProgressVisibleAtom);
   if (isStartupRunning) return;
 
   return (
