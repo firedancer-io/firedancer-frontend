@@ -97,7 +97,7 @@ export function shredsProgressionPlugin(
           }
 
           if (!isOnStartupScreen) {
-            // while the startup screen is showing, its own chart draws instead
+            // if startup is running, prevent drawing non-startup screen chart
             if (store.get(isStartupProgressVisibleAtom)) return;
             // Sometimes we've missed the completion event for the first slots
             // depending on connection time. Ignore those slots, and only draw slots

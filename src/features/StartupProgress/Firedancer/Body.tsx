@@ -1,9 +1,8 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import styles from "./body.module.css";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import {
   bootProgressPhaseAtom,
-  expandStartupProgressElAtom,
   isStartupProgressExpandedAtom,
   showStartupProgressAtom,
 } from "../atoms";
@@ -42,44 +41,14 @@ export default function Body() {
   }, [setShowStartupProgress, phase]);
 
   // A fast boot replays while the snapshots are still loading. Once
-  // replay has caught up, collapse the startup screen the way the close
-  // button does; the snapshot progress stays behind the header timer icon.
-  const slotCaughtUp = useAtomValue(slotCaughtUpAtom);
+  // replay has caught up, collapse the startup screen.
+  const isCaughtUp = useAtomValue(slotCaughtUpAtom) != null;
   const setIsStartupProgressExpanded = useSetAtom(
     isStartupProgressExpandedAtom,
   );
-  const expandStartupProgressEl = useAtomValue(expandStartupProgressElAtom);
-  const containerEl = useAtomValue(bootProgressContainerElAtom);
-  const autoCollapsedRef = useRef(false);
   useEffect(() => {
-    if (slotCaughtUp == null) {
-      autoCollapsedRef.current = false;
-      return;
-    }
-    if (autoCollapsedRef.current) return;
-    if (
-      phase !== BootPhaseEnum.loading_full_snapshot &&
-      phase !== BootPhaseEnum.loading_incremental_snapshot
-    )
-      return;
-
-    if (expandStartupProgressEl && containerEl) {
-      const { bottom, left, width, height } =
-        expandStartupProgressEl.getBoundingClientRect();
-      containerEl.style.setProperty(
-        "--transform-origin",
-        `${Math.round(left + width / 2)}px ${Math.round(bottom - height / 2)}px`,
-      );
-    }
-    autoCollapsedRef.current = true;
-    setIsStartupProgressExpanded(false);
-  }, [
-    slotCaughtUp,
-    phase,
-    expandStartupProgressEl,
-    containerEl,
-    setIsStartupProgressExpanded,
-  ]);
+    setIsStartupProgressExpanded(!isCaughtUp);
+  }, [setIsStartupProgressExpanded, isCaughtUp]);
 
   return (
     <>

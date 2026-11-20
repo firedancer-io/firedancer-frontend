@@ -57,7 +57,7 @@ export function draw(
   const rangeAfterStartup = store.get(liveShredsPostStartupRangeAtom);
   const smoothedNow = store.get(smoothedNowMsAtom);
 
-  // while the startup screen is showing, its own chart draws instead
+  // if startup is running, prevent drawing non-startup screen chart
   // Sometimes we've missed the completion event for the first slots
   // depending on connection time. Ignore those slots, and only draw slots
   // from min completed.

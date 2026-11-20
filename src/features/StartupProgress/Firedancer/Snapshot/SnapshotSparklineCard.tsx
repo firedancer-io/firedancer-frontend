@@ -3,11 +3,7 @@ import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { useState, type CSSProperties } from "react";
 import type { TileType } from "../../../../api/types";
-import {
-  tileCountAtom,
-  liveSnapshotTimersAtom,
-} from "../../../Overview/SlotPerformance/atoms";
-import { bootProgressAtom } from "../../../../api/atoms";
+import { liveSnapshotTimersAtom } from "../../../Overview/SlotPerformance/atoms";
 import TileBusy from "../../../Overview/SlotPerformance/TileBusy";
 import { Sparkline } from "../../../Overview/SlotPerformance/TileSparkLine";
 import TileSparkLineExpandedContainer from "../../../Overview/SlotPerformance/TileSparkLineExpandedContainer";
@@ -38,10 +34,7 @@ export default function SnapshotSparklineCard({
 }: SnapshotSparklineCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const tileCounts = useAtomValue(tileCountAtom);
   const timers = useAtomValue(liveSnapshotTimersAtom);
-  const streamTileCount =
-    useAtomValue(bootProgressAtom)?.fast_boot_stream_tile_count ?? 0;
 
   const {
     avgBusy: currentAvgBusy,
@@ -50,7 +43,7 @@ export default function SnapshotSparklineCard({
     busy,
   } = useTileSparkline({
     isLive: true,
-    tileCount: Math.max(0, tileCounts[tileType] - streamTileCount),
+    tileCount: timers?.[tileType]?.length ?? 0,
     liveIdlePerTile: timers?.[tileType],
   });
   const lastDefinedAvgBusy = useLastDefinedValue(currentAvgBusy);

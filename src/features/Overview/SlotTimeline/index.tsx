@@ -7,8 +7,8 @@ interface SlotTimelineProps {
   className: string;
 }
 export default function SlotTimeline({ className }: SlotTimelineProps) {
-  const isStartupVisible = useAtomValue(isStartupProgressVisibleAtom);
-  if (isStartupVisible) return;
+  const isStartupRunning = useAtomValue(isStartupProgressVisibleAtom);
+  if (isStartupRunning) return;
 
   return (
     <Card className={className}>
