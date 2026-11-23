@@ -43,7 +43,9 @@ function RevenueTxnTooltipContent({ info }: { info: HoveredRevenueTxn }) {
       <RowSeparator />
       <TooltipRow label="Slot" value={slot} />
       <SlotLeaderRow slot={slot} />
-      <TooltipRow label="Bank" value={meta.execIdx} />
+      <TooltipRow label="Txn Idx" value={meta.txnIdx} />
+      <TooltipRow label="Execrp" value={meta.execIdx} />
+      <TooltipRow label="Txn Sig" value={meta.signature} truncateValue />
 
       <RowSeparator />
       <TooltipRow
