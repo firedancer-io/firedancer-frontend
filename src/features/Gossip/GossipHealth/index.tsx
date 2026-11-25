@@ -61,6 +61,11 @@ function Section({ title, children }: PropsWithChildren<SectionProps>) {
   );
 }
 
+function formatPct(pct: number) {
+  if (Number.isNaN(pct)) return "-";
+  return `${compactSingleDecimalFormatter.format(pct * 100)}%`;
+}
+
 interface LabelValueDisplayProps {
   label: string;
   value: number;
@@ -78,9 +83,7 @@ export function LabelValueDisplay({
     <Flex direction="column">
       <Flex gap="2">
         <Text style={{ color: "var(--gray-11)" }}>{label}</Text>
-        <Text style={{ color: "var(--gray-10)" }}>
-          {compactSingleDecimalFormatter.format(pct * 100)}%
-        </Text>
+        <Text style={{ color: "var(--gray-10)" }}>{formatPct(pct)}</Text>
       </Flex>
       <Text style={{ color: valueColor }} size="8">
         {Math.round(value).toLocaleString()}
@@ -112,7 +115,7 @@ export function VerticalLabelValueDisplay({
       </Text>
       {pct !== undefined && (
         <Text style={{ color: "var(--gray-10)" }} size="2">
-          {compactSingleDecimalFormatter.format(pct * 100)}%
+          {formatPct(pct)}
         </Text>
       )}
     </Flex>
