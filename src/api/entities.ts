@@ -1516,6 +1516,7 @@ const txnMetaChunkSchema = z.object({
   txn_idx: int32ArraySchema,
   txn_exec_idx: int32ArraySchema,
   txn_sigverify_exec_idx: nullableFloat64ArraySchema,
+  txn_signature: z.string().array(),
   txn_transaction_fee: bigInt64ArraySchema,
   txn_priority_fee: bigInt64ArraySchema,
   txn_tips: bigInt64ArraySchema,

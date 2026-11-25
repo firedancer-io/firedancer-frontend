@@ -130,6 +130,7 @@ interface TooltipRowProps {
   unit?: string;
   valueColorClassName?: string;
   valueColor?: string;
+  truncateValue?: boolean;
 }
 
 export const TooltipRow = memo(function TooltipRow({
@@ -138,13 +139,17 @@ export const TooltipRow = memo(function TooltipRow({
   unit,
   valueColorClassName,
   valueColor,
+  truncateValue,
 }: TooltipRowProps) {
   const isMissing = value == null;
   return (
     <div className={styles.row}>
       <span className={styles.label}>{label}</span>
       <span
-        className={valueColorClassName ?? styles.defaultValueColor}
+        className={clsx(
+          valueColorClassName ?? styles.defaultValueColor,
+          truncateValue && styles.truncatedValue,
+        )}
         style={{ color: valueColor }}
       >
         {isMissing ? "—" : value}

@@ -28,7 +28,9 @@ type TxnMetaMaxima = Record<RevenueSeries, bigint> & {
 
 export interface TxnMetaColumns {
   slots: number[];
+  txn_idx: number[];
   txn_exec_idx: number[];
+  txn_signature: string[];
   txn_transaction_fee: bigint[];
   txn_priority_fee: bigint[];
   txn_tips: bigint[];
@@ -47,7 +49,9 @@ const ALL_REVENUE_COLUMNS = Object.values(REVENUE_COLUMN);
 function emptyTxnColumns(): TxnMetaColumns {
   return {
     slots: [],
+    txn_idx: [],
     txn_exec_idx: [],
+    txn_signature: [],
     txn_transaction_fee: [],
     txn_priority_fee: [],
     txn_tips: [],
@@ -69,7 +73,9 @@ function parseTxnMeta(meta: TimelineTxnMetaChunk | undefined): TxnMetaColumns {
 
   const numTxns = meta.slot_delta.length;
   const slots = new Array<number>(numTxns);
+  const txn_idx = new Array<number>(numTxns);
   const txn_exec_idx = new Array<number>(numTxns);
+  const txn_signature = new Array<string>(numTxns);
   const txn_transaction_fee = new Array<bigint>(numTxns);
   const txn_priority_fee = new Array<bigint>(numTxns);
   const txn_tips = new Array<bigint>(numTxns);
@@ -77,7 +83,9 @@ function parseTxnMeta(meta: TimelineTxnMetaChunk | undefined): TxnMetaColumns {
   const txn_commit_end_ms = new Array<number>(numTxns);
   for (let i = 0; i < numTxns; i++) {
     slots[i] = refSlot + meta.slot_delta[i];
+    txn_idx[i] = meta.txn_idx[i];
     txn_exec_idx[i] = meta.txn_exec_idx[i];
+    txn_signature[i] = meta.txn_signature[i];
     txn_transaction_fee[i] = meta.txn_transaction_fee[i];
     txn_priority_fee[i] = meta.txn_priority_fee[i];
     txn_tips[i] = meta.txn_tips[i];
@@ -93,7 +101,9 @@ function parseTxnMeta(meta: TimelineTxnMetaChunk | undefined): TxnMetaColumns {
 
   return {
     slots,
+    txn_idx,
     txn_exec_idx,
+    txn_signature,
     txn_transaction_fee,
     txn_priority_fee,
     txn_tips,
@@ -111,7 +121,9 @@ function parseChunks(res: TimelineTxnMeta): TxnMetaColumns {
 function appendColumns(acc: TxnMetaColumns, src: TxnMetaColumns): void {
   for (let i = 0; i < src.txn_exec_idx.length; i++) {
     acc.slots.push(src.slots[i]);
+    acc.txn_idx.push(src.txn_idx[i]);
     acc.txn_exec_idx.push(src.txn_exec_idx[i]);
+    acc.txn_signature.push(src.txn_signature[i]);
     acc.txn_transaction_fee.push(src.txn_transaction_fee[i]);
     acc.txn_priority_fee.push(src.txn_priority_fee[i]);
     acc.txn_tips.push(src.txn_tips[i]);
@@ -143,7 +155,9 @@ function filterOwned(
     const txnEnd = txnEnds[i];
     if (startMs > txnEnd || txnEnd > endMs) continue;
     owned.slots.push(txns.slots[i]);
+    owned.txn_idx.push(txns.txn_idx[i]);
     owned.txn_exec_idx.push(txns.txn_exec_idx[i]);
+    owned.txn_signature.push(txns.txn_signature[i]);
     owned.txn_transaction_fee.push(txns.txn_transaction_fee[i]);
     owned.txn_priority_fee.push(txns.txn_priority_fee[i]);
     owned.txn_tips.push(txns.txn_tips[i]);

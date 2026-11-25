@@ -42,7 +42,7 @@ export default function ExecrpTxnTooltip() {
 
 function ExecrpTxnTooltipContent({ hovered }: { hovered: HoveredExecrpTxn }) {
   const tiles = useAtomValue(tilesAtom);
-  const { slot, state, states } = hovered;
+  const { slot, txnIdx, state, states } = hovered;
   const { exec, sigverify } = states;
   // the hovered segment, else whichever is loaded
   const segment =
@@ -60,6 +60,7 @@ function ExecrpTxnTooltipContent({ hovered }: { hovered: HoveredExecrpTxn }) {
       <RowSeparator />
       <TooltipRow label="Slot" value={slot} />
       <SlotLeaderRow slot={slot} />
+      <TooltipRow label="Txn Idx" value={txnIdx} />
       <TooltipRow
         label="Execrp"
         value={segment && tiles?.[segment.tileIdx]?.kind_id}

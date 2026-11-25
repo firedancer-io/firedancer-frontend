@@ -101,7 +101,9 @@ export function findHighestTxnAtPoint(
 
 function extractTxnMeta(data: TxnMetaColumns, i: number): TxnMetaDetails {
   return {
+    txnIdx: data.txn_idx[i],
     execIdx: data.txn_exec_idx[i],
+    signature: data.txn_signature[i],
     transactionFee: data.txn_transaction_fee[i],
     priorityFee: data.txn_priority_fee[i],
     tips: data.txn_tips[i],

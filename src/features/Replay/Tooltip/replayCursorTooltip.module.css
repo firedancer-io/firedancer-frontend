@@ -53,3 +53,11 @@
 .defaultValueColor {
   color: var(--replay-slot-tooltip-value-color);
 }
+
+.truncated-value {
+  flex-grow: 1;
+  width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}

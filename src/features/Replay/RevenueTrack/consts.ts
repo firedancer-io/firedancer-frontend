@@ -38,7 +38,9 @@ export enum RevenueSeries {
 }
 
 export interface TxnMetaDetails {
+  txnIdx: number;
   execIdx: number;
+  signature: string;
   transactionFee: bigint;
   priorityFee: bigint;
   tips: bigint;
