@@ -3,11 +3,14 @@ import { nsPerMs, solDecimals } from "../../../consts";
 import { getDurationWithUnits } from "../../Overview/SlotPerformance/TransactionBarsCard/chartUtils";
 import { formatNumberLamports } from "../../Overview/ValidatorsCard/formatAmt";
 
-/** format an absolute ns timestamp as a tooltip time (h:mm:ss.SSS) */
+/** format an absolute ns timestamp as a tooltip time (h:mm:ss.SSSSSSSSS) */
 export function formatTooltipTime(absNs: bigint) {
-  return DateTime.fromMillis(Number(absNs / BigInt(nsPerMs))).toFormat(
-    "h:mm:ss.SSS",
+  const nsPerS = BigInt(nsPerMs) * 1000n;
+  const subSecondNs = (absNs % nsPerS).toString().padStart(9, "0");
+  const time = DateTime.fromMillis(Number(absNs / nsPerS) * 1000).toFormat(
+    "h:mm:ss",
   );
+  return `${time}.${subSecondNs}`;
 }
 
 /** add two nullable lamport amounts; undefined if both are missing */
