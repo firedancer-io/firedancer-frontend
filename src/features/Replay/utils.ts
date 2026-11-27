@@ -10,7 +10,7 @@ import {
 import { AGG_SLOTS_QUERY_KEY } from "./useSlotsQuery.ts";
 import { clamp } from "../../uplotReact/utils.ts";
 import type { NsTsRange, TsRange } from "../WebGl/webglUtils.ts";
-import { convertToNsTimestamp } from "../../mathUtils.ts";
+import { bigIntMin, convertToNsTimestamp } from "../../mathUtils.ts";
 import { getDefaultStore } from "jotai";
 import { useServerMessages } from "../../api/ws/utils.ts";
 import type { WsEntity, WsError } from "../../api/worker/types.ts";
@@ -172,6 +172,19 @@ export function getBucketIdx(
     return Number(idx) - 1;
   }
   return Number(idx);
+}
+
+/**
+ * Get max stable data ts
+ */
+export function getStableDataNs(
+  chunks: { chunk_ts: bigint; chunk_dur: bigint }[],
+  availableEndNs: bigint | null,
+): bigint | null {
+  const chunksEndNs = getChunksEndNs(chunks);
+  if (chunksEndNs === undefined) return availableEndNs;
+  if (availableEndNs == null) return chunksEndNs;
+  return bigIntMin(chunksEndNs, availableEndNs);
 }
 
 /** Exclusive end of the window a chunked response covers */

@@ -1436,7 +1436,7 @@ const availableRangeSchema = z.object({
   available_end_ns: z.coerce.bigint().nullable(),
 });
 
-const aggSchema = z.object({
+const aggSchema = availableRangeSchema.extend({
   granularity: aggGranularitySchema,
   reference_ts_ns: z.coerce.bigint(),
 });
@@ -1634,10 +1634,8 @@ export const timelineShredsSchema = chunkedSchema(
 
 export const votesGranularitySchema = z.enum(["vote", "vote_batch"]);
 export const VotesGranularityEnum = votesGranularitySchema.enum;
-export const timelineVotesSchema = z.object({
+export const timelineVotesSchema = availableRangeSchema.extend({
   granularity: votesGranularitySchema,
-  available_start_ns: z.coerce.bigint().nullable(),
-  available_end_ns: z.coerce.bigint().nullable(),
   reference_slot: z.number().nullable(),
   reference_ts: z.coerce.bigint().nullable(),
   slot_delta: int32ArraySchema,
@@ -1700,7 +1698,6 @@ function isKnownTimelineEventType(event: number): event is TimelineEventType {
 
 export const timelineEventsSchema = availableRangeSchema
   .extend({
-    // TODO: mark data availability
     event: z.array(z.number()),
     slot: z.array(z.number()),
     ts: z.array(z.coerce.bigint()),

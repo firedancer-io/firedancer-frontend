@@ -259,7 +259,10 @@ describe("setStartupTimeAtom", () => {
     store.set(socketStateAtom, SocketState.Connected);
     const parallel = createTestParallelCache();
     parallel.queryFirstTile();
-    parallel.cache.markQueryComplete(parallel.queryIds[0]);
+    parallel.cache.markQueryComplete(
+      parallel.queryIds[0],
+      STARTUP_NS + 60_000n * msNs,
+    );
     parallel.queryFirstTile();
     // the fetched tile isn't requested again
     expect(parallel.requestedTiles).toHaveLength(1);
