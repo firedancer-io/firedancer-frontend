@@ -415,6 +415,10 @@ export const bootProgressSchema = z.object({
     .nullable()
     .optional(),
   loading_full_snapshot_insert_accounts: z.number().nullable().optional(),
+  loading_full_snapshot_insert_bytes_written: z.coerce
+    .number()
+    .nullable()
+    .optional(),
 
   loading_incremental_snapshot_elapsed_seconds: z
     .number()
@@ -447,8 +451,13 @@ export const bootProgressSchema = z.object({
     .number()
     .nullable()
     .optional(),
+  loading_incremental_snapshot_insert_bytes_written: z.coerce
+    .number()
+    .nullable()
+    .optional(),
 
   accounts_database_path: z.string().nullable().optional(),
+  fast_boot_stream_tile_count: z.number().nullable().optional(),
 
   wait_for_supermajority_bank_hash: z.string().nullable().optional(),
   wait_for_supermajority_shred_version: z.string().nullable().optional(),

@@ -4,7 +4,7 @@ import { ShredEvent } from "../../../api/entities";
 import { delayMs, xRangeMs } from "../../../api/worker/cache/shreds/shredsCalc";
 import type { ShredEventTsDeltas } from "../../../api/worker/cache/shreds/types";
 import { smoothedNowMsAtom, skippedClusterSlotsAtom } from "../../../atoms";
-import { showStartupProgressAtom } from "../../StartupProgress/atoms";
+import { isStartupProgressVisibleAtom } from "../../StartupProgress/atoms";
 import {
   shredsAtoms,
   liveShredsPostStartupRangeAtom,
@@ -64,7 +64,7 @@ export function draw(
   if (
     !liveShreds ||
     !slotRange ||
-    store.get(showStartupProgressAtom) ||
+    store.get(isStartupProgressVisibleAtom) ||
     minCompletedSlot == null ||
     !rangeAfterStartup ||
     smoothedNow == null

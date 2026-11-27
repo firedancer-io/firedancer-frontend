@@ -1,6 +1,7 @@
 import { atom } from "jotai";
 import { atomFamily, selectAtom } from "jotai/utils";
 import {
+  bootProgressAtom,
   liveTxnWaterfallAtom,
   tilesAtom,
   tileTimerAtom,
@@ -138,12 +139,20 @@ export const snapshotTimerIndicesAtom = atom(
   (get): [TileType, number[]][] | undefined => {
     const tiles = get(tilesAtom);
     const tileTypes: TileType[] = ["snapld", "snapdc", "snapin"];
+    // the first tiles of each kind serve the fast boot stream, not the
+    // snapshots
+    const streamTileCount =
+      get(bootProgressAtom)?.fast_boot_stream_tile_count ?? 0;
 
     if (!tiles) return;
 
     const grouped = tiles.reduce((acc, tile, i) => {
       const parsedTileKind = tileTypeSchema.safeParse(tile.kind);
-      if (parsedTileKind.error || !tileTypes.includes(parsedTileKind.data)) {
+      if (
+        parsedTileKind.error ||
+        !tileTypes.includes(parsedTileKind.data) ||
+        tile.kind_id < streamTileCount
+      ) {
         return acc;
       }
 

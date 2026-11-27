@@ -1,5 +1,6 @@
 import { useAtomValue } from "jotai";
 import {
+  bootProgressAtom,
   clusterAtom,
   versionAtom,
   commitHashAtom,
@@ -7,7 +8,7 @@ import {
 } from "../../api/atoms";
 import { Text, Tooltip, Flex } from "@radix-ui/themes";
 import styles from "./cluster.module.css";
-import { ScheduleStrategyEnum } from "../../api/entities";
+import { BootPhaseEnum, ScheduleStrategyEnum } from "../../api/entities";
 import { ScheduleStrategyIcon } from "../../components/ScheduleStrategyIcon";
 import { clusterIndicatorHeight, slotsListWidth } from "../../consts";
 import { getClusterColor } from "../../utils";
@@ -61,11 +62,28 @@ export function Cluster() {
 export function CluserIndicator() {
   const cluster = useAtomValue(clusterAtom);
   const color = getClusterColor(cluster);
+  const bootProgress = useAtomValue(bootProgressAtom);
+
+  // While a snapshot loads, the bar fills up with the load's progress
+  const isFull = bootProgress?.phase === BootPhaseEnum.loading_full_snapshot;
+  const isIncr =
+    bootProgress?.phase === BootPhaseEnum.loading_incremental_snapshot;
+  const read = isIncr
+    ? bootProgress.loading_incremental_snapshot_read_bytes_compressed
+    : bootProgress?.loading_full_snapshot_read_bytes_compressed;
+  const total = isIncr
+    ? bootProgress.loading_incremental_snapshot_total_bytes_compressed
+    : bootProgress?.loading_full_snapshot_total_bytes_compressed;
+  const percent = total ? Math.min(100, (100 * (read ?? 0)) / total) : 0;
+  const background =
+    isFull || isIncr
+      ? `linear-gradient(to right, ${color} ${percent}%, var(--gray-5) ${percent}%)`
+      : color;
 
   return (
     <div
       style={{
-        background: color,
+        background,
         height: clusterIndicatorHeight,
         width: "100%",
       }}
