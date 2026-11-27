@@ -6,6 +6,7 @@ import {
   FADED_ALPHA,
   VOTE_KIND_COUNT,
   VoteKind,
+  type VotesView,
 } from "./consts";
 import {
   buildSlotVotes,
@@ -20,6 +21,7 @@ import {
   createVotesScene,
   drawVotesCurves,
   drawVotesLatency,
+  getVotesGeometriesAt,
   isLatencyDrawn,
   moveVotesCamera,
   resizeVotesScene,
@@ -66,6 +68,7 @@ function partial(ts: number[]) {
     certs: new Map([[CertKind.Notar, ts[0]]]),
     ownVotes: new Map(),
     parentReadyTs: undefined,
+    rewardAckTs: undefined,
   };
 }
 
@@ -169,6 +172,43 @@ function getSegmentStarts(votesScene: Scene) {
       : [],
   );
 }
+
+describe("getVotesGeometriesAt", () => {
+  const slotsAt = (votesScene: Scene, ms: number, view: VotesView = "curves") =>
+    getVotesGeometriesAt(votesScene, view, ms, 10).flatMap(({ strokes }) =>
+      strokes.flatMap(({ slots }) => slots),
+    );
+
+  it("returns the geometry of the tiles drawn around ms", () => {
+    const votesScene = createDrawnScene();
+    expect(new Set(slotsAt(votesScene, 5_050))).toEqual(new Set([3]));
+    expect(slotsAt(votesScene, 7_000)).toEqual([]);
+  });
+
+  it("keeps a stale tile's last geometry until it's rebuilt", () => {
+    const tiles = createTiles();
+    const votesScene = createDrawnScene(tiles);
+    tiles[1] = tile(4_000, [
+      [2, [4_100]],
+      [3, [5_000, 5_100, 5_200]],
+    ]);
+    // marks the tile stale and hides it, without the rebuild before render
+    syncVotesTiles(
+      votesScene,
+      tiles,
+      buildSlotVotes(tiles.map(({ data }) => data)),
+      [tiles[1].startNs],
+    );
+    expect(getMeshes(votesScene, tiles[1].startNs)?.group.visible).toBe(false);
+    expect(new Set(slotsAt(votesScene, 5_050))).toEqual(new Set([3]));
+  });
+
+  it("returns the latency geometry for the latency views", () => {
+    const votesScene = createDrawnScene();
+    // nothing drawn for latency yet, and the curves aren't used
+    expect(slotsAt(votesScene, 5_050, "slotLatency")).toEqual([]);
+  });
+});
 
 describe("syncVotesTiles", () => {
   it("draws each slot once, in the first tile holding its votes", () => {

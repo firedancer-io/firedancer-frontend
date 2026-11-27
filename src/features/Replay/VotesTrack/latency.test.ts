@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CertKind } from "./consts";
-import { getSlotLatencies } from "./latency";
+import { getSlotLatencies, getSlotStartTs } from "./latency";
 import type { SlotVotes } from "./votesData";
 
 const empty = { ts: [], frac: [] };
@@ -13,10 +13,11 @@ function slot(
     notar: empty,
     notarFallback: null,
     finalize: empty,
-    skipAll: empty,
+    skip: empty,
     certs: new Map(certs),
     ownVotes: new Map(),
     parentReadyTs,
+    rewardAckTs: undefined,
   };
 }
 
@@ -98,5 +99,23 @@ describe("getSlotLatencies", () => {
       200,
     );
     expect(latencies.notarized).toEqual([]);
+  });
+});
+
+describe("getSlotStartTs", () => {
+  // window 8-11 became ParentReady at 1000
+  const slotVotes = slotMap([
+    [8, slot([], 1000)],
+    [10, slot([])],
+  ]);
+
+  it("adds the slot's offset in the window to the window's ParentReady", () => {
+    expect(getSlotStartTs(slotVotes, 8, 200)).toBe(1000);
+    expect(getSlotStartTs(slotVotes, 10, 200)).toBe(1400);
+    expect(getSlotStartTs(slotVotes, 11, 200)).toBe(1600);
+  });
+
+  it("is undefined without the window's ParentReady", () => {
+    expect(getSlotStartTs(slotVotes, 12, 200)).toBeUndefined();
   });
 });

@@ -22,12 +22,14 @@ import { socketStateAtom } from "../../api/ws/atoms";
 import { SocketState } from "../../api/ws/types";
 import {
   hoveredAggCpuAtom,
+  hoveredAggVotesAtom,
   hoveredAggRevenueAtom,
   hoveredAggShredsAtom,
   hoveredExecrpTxnAtom,
   hoveredMsAtom,
   hoveredRevenueTxnAtom,
   hoveredShredAtom,
+  hoveredVotesAtom,
   isLiveAtom,
   openOrUpdateOverlapAtom,
   pauseAtom,
@@ -84,6 +86,8 @@ const hoveredAtoms: WritableAtom<unknown, [undefined], void>[] = [
   hoveredAggShredsAtom,
   hoveredAggRevenueAtom,
   hoveredAggCpuAtom,
+  hoveredAggVotesAtom,
+  hoveredVotesAtom,
   hoveredRevenueTxnAtom,
 ];
 

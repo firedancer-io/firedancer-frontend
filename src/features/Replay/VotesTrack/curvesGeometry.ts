@@ -20,8 +20,8 @@ import {
   OWN_VOTE_LINE_ALPHA,
   OWN_VOTE_TRIANGLE_PX,
   PLOT_BOTTOM_PAD_PX,
-  VoteKind,
   lineCertKinds,
+  ourVoteMarkers,
   voteLineColors,
   voteLineDashPx,
   voteLineDrawOrder,
@@ -131,13 +131,6 @@ const certIconByKind: Record<CertKind, CertIcon> = {
   [CertKind.Skip]: "skipNotarized",
 };
 
-const lineCurveKeys = {
-  notar: "notar",
-  notarFallback: "notarFallback",
-  skip: "skipAll",
-  finalize: "finalize",
-} as const satisfies Record<VoteLine, keyof SlotVotes>;
-
 function createLineStrokes(alpha: number): Record<VoteLine, Stroke> {
   const stroke = (line: VoteLine): Stroke => ({
     color: voteLineColors[line],
@@ -186,7 +179,7 @@ export function buildVotes({
     const fadeTs = getFadeTs(certs);
 
     for (const line of voteLineDrawOrder) {
-      const curve = votes[lineCurveKeys[line]];
+      const curve = votes[line];
       if (!curve?.ts.length) continue;
 
       for (const cert of lineCertKinds[line]) {
@@ -231,18 +224,14 @@ export function buildVotes({
   };
 }
 
-const ownVoteColors: [VoteKind, string][] = [
-  [VoteKind.Notar, voteLineColors.notar],
-  [VoteKind.Finalize, voteLineColors.finalize],
-];
-
 function getOwnVotes(
   { topPx, bottomPx }: VotesPlotLayout,
   slotVotes: SlotVotes[],
 ) {
   const strokes: Stroke[] = [];
   const triangles: Marker[] = [];
-  for (const [kind, color] of ownVoteColors) {
+  for (const { kind, line } of ourVoteMarkers) {
+    const color = voteLineColors[line];
     const stroke: Stroke = {
       color,
       alpha: OWN_VOTE_LINE_ALPHA,

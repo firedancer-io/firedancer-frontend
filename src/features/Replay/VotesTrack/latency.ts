@@ -1,5 +1,5 @@
 import { getSlotGroupLeader } from "../../../utils";
-import { CertKind } from "./consts";
+import { CertKind, latencyLines, type LatencyLine } from "./consts";
 import type { SlotVotes } from "./votesData";
 
 export interface LatencyPoint {
@@ -14,7 +14,37 @@ export interface SlotLatencies {
   slow: LatencyPoint[];
 }
 
-// matches query_agg_votes: from the window's ParentReady plus the slot offset
+export function getSlotStartTs(
+  slotVotes: ReadonlyMap<number, SlotVotes>,
+  slot: number,
+  targetSlotMs: number,
+) {
+  const windowStartSlot = getSlotGroupLeader(slot);
+  const parentReadyTs = slotVotes.get(windowStartSlot)?.parentReadyTs;
+  if (parentReadyTs === undefined) return;
+  return parentReadyTs + (slot - windowStartSlot) * targetSlotMs;
+}
+
+function getLatencyCertTs(
+  certs: ReadonlyMap<CertKind, number>,
+): Record<LatencyLine, number | undefined> {
+  const notarTs = certs.get(CertKind.Notar);
+  const fastTs = certs.get(CertKind.FastFinalize);
+  const notarizedTs =
+    notarTs === undefined || fastTs === undefined
+      ? (notarTs ?? fastTs)
+      : Math.min(notarTs, fastTs);
+  const finalizeTs = certs.get(CertKind.Finalize);
+  return {
+    notarized: notarizedTs,
+    fast: fastTs,
+    slow:
+      finalizeTs === undefined || notarizedTs === undefined
+        ? finalizeTs
+        : Math.max(finalizeTs, notarizedTs),
+  };
+}
+
 export function getSlotLatencies(
   slotVotes: ReadonlyMap<number, SlotVotes>,
   targetSlotMs: number,
@@ -26,32 +56,15 @@ export function getSlotLatencies(
   };
 
   for (const [slot, { certs }] of slotVotes) {
-    const windowStart = getSlotGroupLeader(slot);
-    const parentReadyTs = slotVotes.get(windowStart)?.parentReadyTs;
-    if (parentReadyTs === undefined) continue;
+    const slotStartTs = getSlotStartTs(slotVotes, slot, targetSlotMs);
+    if (slotStartTs === undefined) continue;
 
-    const slotStartTs = parentReadyTs + (slot - windowStart) * targetSlotMs;
-    const add = (line: keyof SlotLatencies, ts: number | undefined) => {
-      if (ts === undefined) return;
+    const certTs = getLatencyCertTs(certs);
+    for (const line of latencyLines) {
+      const ts = certTs[line];
+      if (ts === undefined) continue;
       latencies[line].push({ slot, ts, latencyMs: ts - slotStartTs });
-    };
-
-    const notarTs = certs.get(CertKind.Notar);
-    const fastTs = certs.get(CertKind.FastFinalize);
-    const notarizedTs =
-      notarTs === undefined || fastTs === undefined
-        ? (notarTs ?? fastTs)
-        : Math.min(notarTs, fastTs);
-    const finalizeTs = certs.get(CertKind.Finalize);
-
-    add("notarized", notarizedTs);
-    add("fast", fastTs);
-    add(
-      "slow",
-      finalizeTs === undefined || notarizedTs === undefined
-        ? finalizeTs
-        : Math.max(finalizeTs, notarizedTs),
-    );
+    }
   }
 
   const { notarized, fast, slow } = latencies;

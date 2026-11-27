@@ -1,7 +1,6 @@
 import type { PropsWithChildren, ReactNode } from "react";
 import { memo, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import clsx from "clsx";
 import { getDefaultStore, useAtomValue } from "jotai";
 import MonoText from "../../../components/MonoText";
 import { useSlotInfo } from "../../../hooks/useSlotInfo";
@@ -81,20 +80,15 @@ export default function ReplayCursorTooltip({ children }: PropsWithChildren) {
 }
 
 interface TooltipHeaderProps {
-  colorClassName?: string;
+  color?: string;
 }
 
 export const TooltipHeader = memo(function TooltipHeader({
   children,
-  colorClassName,
+  color,
 }: PropsWithChildren<TooltipHeaderProps>) {
   return (
-    <div
-      className={clsx(
-        styles.header,
-        colorClassName ?? styles.defaultHeaderColor,
-      )}
-    >
+    <div className={styles.header} style={{ color }}>
       {children}
     </div>
   );

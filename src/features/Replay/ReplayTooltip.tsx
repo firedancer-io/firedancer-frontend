@@ -8,6 +8,8 @@ import RevenueTxnTooltip from "./RevenueTrack/RevenueTxnTooltip";
 import CpuTooltip from "./CpuTrack/CpuTooltip";
 import ReplaySlotTooltip from "./HeaderTrack/ReplaySlotTooltip";
 import AggHeaderTooltip from "./HeaderTrack/AggHeaderTooltip";
+import VotesTooltip from "./VotesTrack/VotesTooltip";
+import AggVotesTooltip from "./VotesTrack/AggVotesTooltip";
 import {
   isReplayTooltipPinnedAtom,
   tooltipTypeAtom,
@@ -37,6 +39,10 @@ export default function ReplayTooltip() {
       return <RevenueTxnTooltip />;
     case TooltipType.AggCpu:
       return <CpuTooltip />;
+    case TooltipType.AggVotes:
+      return <AggVotesTooltip />;
+    case TooltipType.Votes:
+      return <VotesTooltip />;
     case TooltipType.Slot:
       return <ReplaySlotTooltip />;
     case TooltipType.AggHeader:

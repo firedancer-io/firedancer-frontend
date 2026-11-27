@@ -1,6 +1,7 @@
 import { useAtomValue } from "jotai";
 import { startCase } from "lodash";
 import RowSeparator from "../../../components/RowSeparator";
+import { headerSkippedSlotBorderColor } from "../../../colors";
 import ReplayCursorTooltip, {
   TooltipHeader,
   TooltipRow,
@@ -86,7 +87,9 @@ export function SlotTooltipContent({
 
   return (
     <>
-      <TooltipHeader colorClassName={isSkipped ? styles.skipped : undefined}>
+      <TooltipHeader
+        color={isSkipped ? headerSkippedSlotBorderColor : undefined}
+      >
         Slot {slot}
       </TooltipHeader>
 

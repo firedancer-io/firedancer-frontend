@@ -4,6 +4,13 @@ import { useSlotInfo } from "../../../hooks/useSlotInfo";
 import type { ShredEventTsDeltas } from "../../Shreds/types";
 import { SHREDS_PER_FEC_SET } from "../../Shreds/const";
 import RowSeparator from "../../../components/RowSeparator";
+import {
+  replayPrimaryTextColor,
+  shredPublishedColor,
+  shredReceivedRepairColor,
+  shredReceivedTurbineColor,
+  shredSkippedColor,
+} from "../../../colors";
 import ReplayCursorTooltip, {
   TooltipHeader,
   TooltipRow,
@@ -89,20 +96,20 @@ const eventTypeInfo: Record<
 };
 
 /** Header color matching how the shreds track paints the event type. */
-function getHeaderColorClassName(
+function getHeaderColor(
   eventType: MainEventType | undefined,
   skipped: boolean,
 ): string | undefined {
-  if (skipped) return styles.skippedColor;
+  if (skipped) return shredSkippedColor;
   switch (eventType) {
     case "published":
-      return styles.publishedColor;
+      return shredPublishedColor;
     case "repair":
-      return styles.receivedRepairColor;
+      return shredReceivedRepairColor;
     case "turbine":
-      return styles.receivedTurbineColor;
+      return shredReceivedTurbineColor;
     case "reconstructed":
-      return styles.reconstructedTextColor;
+      return replayPrimaryTextColor;
     case undefined:
       // use the default header color
       return undefined;
@@ -153,9 +160,7 @@ function ShredTooltipContent({ hovered }: ShredTooltipContentProps) {
 
   return (
     <>
-      <TooltipHeader
-        colorClassName={getHeaderColorClassName(eventType, skipped)}
-      >
+      <TooltipHeader color={getHeaderColor(eventType, skipped)}>
         {headerLabel}
       </TooltipHeader>
 

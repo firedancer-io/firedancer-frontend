@@ -5,7 +5,9 @@ import {
   clearSelectedSlotAtom,
   dismissPinnedAtom,
   hoveredAggCpuAtom,
+  hoveredAggVotesAtom,
   hoveredAggRevenueAtom,
+  hoveredVotesAtom,
   hoveredAggShredsAtom,
   hoveredExecrpTxnAtom,
   hoveredRevenueTxnAtom,
@@ -56,6 +58,8 @@ const clearReplayDataAtom = atom(null, (_get, set) => {
   set(hoveredAggShredsAtom, undefined);
   set(hoveredAggRevenueAtom, undefined);
   set(hoveredAggCpuAtom, undefined);
+  set(hoveredAggVotesAtom, undefined);
+  set(hoveredVotesAtom, undefined);
   set(hoveredRevenueTxnAtom, undefined);
 });
 

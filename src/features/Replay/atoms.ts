@@ -459,6 +459,9 @@ export const [
     const hoveredRevenueTxnSlot = get(hoveredRevenueTxnAtom)?.slot;
     if (hoveredRevenueTxnSlot != null) return hoveredRevenueTxnSlot;
 
+    const hoveredVotesSlot = get(hoveredVotesAtom)?.slot;
+    if (hoveredVotesSlot != null) return hoveredVotesSlot;
+
     const cursorMs = get(hoveredMsAtom);
     if (cursorMs == null) return;
     // keep hover highlight consistent with the drawn-on-top slot and with what a
@@ -800,6 +803,23 @@ export const hoveredAggCpuAtom = atomWithIsSameCheck<HoveredAggCpu>(
   (a, b) => a.bucketIdx === b.bucketIdx && a.granularity === b.granularity,
 );
 
+interface HoveredVotes {
+  slot: number;
+}
+
+export const hoveredVotesAtom = atomWithIsSameCheck<HoveredVotes>(
+  (a, b) => a.slot === b.slot,
+);
+
+export interface HoveredAggVotes {
+  bucketIdx: number;
+  granularity: AggGranularity;
+}
+
+export const hoveredAggVotesAtom = atomWithIsSameCheck<HoveredAggVotes>(
+  (a, b) => a.bucketIdx === b.bucketIdx && a.granularity === b.granularity,
+);
+
 export interface HoveredRevenueTxn {
   slot: number;
   series: RevenueSeries;
@@ -832,6 +852,8 @@ export enum TooltipType {
   AggShred,
   AggRevenue,
   AggCpu,
+  AggVotes,
+  Votes,
   RevenueTxn,
   Slot,
   AggHeader,
@@ -846,6 +868,8 @@ export const tooltipTypeAtom = atom<TooltipType | null>((get) => {
   if (get(hoveredAggShredsAtom) != null) return TooltipType.AggShred;
   if (get(hoveredAggRevenueAtom) != null) return TooltipType.AggRevenue;
   if (get(hoveredAggCpuAtom) != null) return TooltipType.AggCpu;
+  if (get(hoveredAggVotesAtom) != null) return TooltipType.AggVotes;
+  if (get(hoveredVotesAtom) != null) return TooltipType.Votes;
 
   // fallback non-agg tooltip
   if (get(hoveredRevenueTxnAtom) != null) return TooltipType.RevenueTxn;

@@ -21,7 +21,3 @@
 .published-color {
   color: var(--shred-published-color);
 }
-
-.skipped-color {
-  color: var(--shred-skipped-color);
-}

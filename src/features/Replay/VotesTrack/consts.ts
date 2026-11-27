@@ -15,6 +15,7 @@ export enum VoteKind {
 }
 export const VOTE_KIND_COUNT = 5;
 export const OWN_VOTE_EVENT_OFFSET = 10;
+export const REWARD_ACK_EVENT_OFFSET = 15;
 export const VOTE_BATCH_EVENT_OFFSET = 21;
 export const PARENT_READY_EVENT = 20;
 
@@ -78,6 +79,35 @@ export const voteLineColors: Record<VoteLine, string> = {
   notarFallback: votesNotarColor,
   skip: votesSkippedColor,
   finalize: votesColor,
+};
+
+export const ownVoteLabels: Record<VoteKind, string> = {
+  [VoteKind.Notar]: "Our notar vote",
+  [VoteKind.NotarFallback]: "Our notar fallback vote",
+  [VoteKind.Skip]: "Our skip vote",
+  [VoteKind.SkipFallback]: "Our skip fallback vote",
+  [VoteKind.Finalize]: "Our finalize vote",
+};
+
+export const ourVoteMarkers: {
+  kind: VoteKind;
+  line: VoteLine;
+  label: string;
+}[] = [
+  { kind: VoteKind.Notar, line: "notar", label: ownVoteLabels[VoteKind.Notar] },
+  {
+    kind: VoteKind.Finalize,
+    line: "finalize",
+    label: ownVoteLabels[VoteKind.Finalize],
+  },
+];
+
+export type LatencyLine = "notarized" | "fast" | "slow";
+export const latencyLines: LatencyLine[] = ["notarized", "fast", "slow"];
+export const latencyLineLabels: Record<LatencyLine, string> = {
+  notarized: "Notarized (60%)",
+  fast: "Fast finalized (80%)",
+  slow: "Finalized (60% of finalize votes)",
 };
 
 export const lineCertKinds: Record<VoteLine, CertKind[]> = {

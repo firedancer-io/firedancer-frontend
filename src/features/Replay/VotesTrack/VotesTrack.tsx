@@ -3,13 +3,13 @@ import { getDefaultStore } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useThrottledCallback } from "use-debounce";
-import { nsPerMs } from "../../../consts.ts";
+import { useThrottledCallbackIfVisible } from "../../../api/useDebounceIfVisible.ts";
+import { targetSlotMsAtom } from "../../../atoms.ts";
 import {
   votesColor,
   votesFastFinalizeColor,
   votesNotarColor,
 } from "../../../colors.ts";
-import { epochAtom } from "../../../atoms.ts";
 import type { NsTsRange, TsRange } from "../../WebGl/webglUtils.ts";
 import type { WebGlRemountProps } from "../../WebGl/withWebGlRemount.tsx";
 import withWebGlRemount from "../../WebGl/withWebGlRemount.tsx";
@@ -17,14 +17,34 @@ import { useWebGlRenderer } from "../../WebGl/useWebGlRenderer.ts";
 import { useFrameRender } from "../../WebGl/useFrameRender.ts";
 import type { AggGranularity, VotesGranularity } from "../../../api/types.ts";
 import { VotesGranularityEnum } from "../../../api/entities.ts";
-import { referenceNsAtom, visibleRangeAtom, worldRangeAtom } from "../atoms.ts";
+import {
+  hoveredAggVotesAtom,
+  hoveredVotesAtom,
+  referenceNsAtom,
+  visibleRangeAtom,
+  worldRangeAtom,
+} from "../atoms.ts";
 import { trackNames } from "../layout.ts";
 import {
   updateSlotHighlight,
+  useContainerSlotHitTest,
   useSlotHighlightRender,
 } from "../slotHighlight.ts";
-import { calcAbsoluteNsRange, getVisibleWorldRangeNs } from "../utils.ts";
-import { resolveCoverage, type DataLevel } from "../coverage.ts";
+import {
+  calcAbsoluteNs,
+  calcAbsoluteNsRange,
+  clientXToMs,
+  getBucketIdx,
+  getVisibleWorldRangeNs,
+} from "../utils.ts";
+import { useHoveredPosition, type HoveredRect } from "../useHoveredPosition.ts";
+import {
+  getModeRanges,
+  resolveCoverage,
+  type DataLevel,
+  type ModeRanges,
+} from "../coverage.ts";
+import { isInRanges } from "../hoverUtils.ts";
 import { getVisibleYLabels } from "./yLabels.ts";
 import TrackControls, { type LegendItem } from "../TrackControls.tsx";
 import {
@@ -56,6 +76,8 @@ import { getSlotLatencies } from "./latency.ts";
 import { applyVotesDelta, type LiveTiles } from "./liveTiles.ts";
 import { getCoverageLatencySeries, getSlotLatencySeries } from "./series.ts";
 import { aggVotesAtom, aggVotesEmitterAtom } from "./aggAtoms.ts";
+import { HOVER_TOLERANCE_PX, getDrawnSlotAtPoint } from "./votesHover.ts";
+import { slotVotesAtom } from "./atoms.ts";
 import { drawEventType } from "../const.ts";
 import {
   getAggVotesGranularity,
@@ -69,15 +91,12 @@ import {
   votesCaches,
   type VotesCacheDelta,
 } from "./votesCache.ts";
-import {
-  buildSlotVotes,
-  type SlotVotes,
-  type VotesDataTile,
-} from "./votesData.ts";
+import { buildSlotVotes, type VotesDataTile } from "./votesData.ts";
 import {
   showNearVotesTiles,
   drawVotesCurves,
   drawVotesLatency,
+  getVotesGeometriesAt,
   getRendererSize,
   isLatencyDrawn,
   moveVotesCamera,
@@ -90,8 +109,12 @@ import {
 
 const store = getDefaultStore();
 
+function clearVotesHover() {
+  store.set(hoveredVotesAtom, undefined);
+  store.set(hoveredAggVotesAtom, undefined);
+}
+
 const AGG_VOTES_CHART_ID = "votes-agg";
-const DEFAULT_TARGET_SLOT_MS = 400;
 const latencyLegend: LegendItem[] = [
   { label: "Notarized", color: votesNotarColor },
   { label: "Fast finalized", color: votesFastFinalizeColor },
@@ -104,13 +127,14 @@ const emptySeries: LatencyChartSeries = {
   slow: [],
 };
 
+const emptyModeRanges: ModeRanges = { agg: [], nonAgg: [] };
+const emptyLatencyInput = {
+  series: emptySeries,
+  modeRanges: emptyModeRanges,
+};
+
 function getWindowSizeMs([start, end]: TsRange) {
   return end - start;
-}
-
-function getTargetSlotMs() {
-  const targetNs = store.get(epochAtom)?.target_slot_duration_nanos;
-  return targetNs ? targetNs / nsPerMs : DEFAULT_TARGET_SLOT_MS;
 }
 
 interface VotesTrackProps {
@@ -135,44 +159,158 @@ function VotesTrackBody({
   const [aggGranularity, setAggGranularity] = useState<AggGranularity>();
   const [latencyTicks, setLatencyTicks] = useState<number[]>([]);
 
-  const slotVotesRef = useRef(new Map<number, SlotVotes>());
   const dataTilesRef = useRef<VotesDataTile[]>([]);
   const slotLatencySeriesRef = useRef(emptySeries);
   const granularityRef = useRef<VotesGranularity>(VotesGranularityEnum.vote);
   const liveTilesRef = useRef<LiveTiles>({ vote: null, vote_batch: null });
   const shownViewRef = useRef<VotesView>();
   const fallbackRangeNsRef = useRef<NsTsRange>();
+  const modeRangesRef = useRef<ModeRanges>(emptyModeRanges);
 
   const granularityLevels = useMemo<DataLevel[]>(
     () => [...aggLevels, slotVotesLevel],
     [aggLevels],
   );
 
+  const { containerRef, rendererRef } = useWebGlRenderer({
+    remount,
+    create: ({ setUpContextListeners, getWasContextLost }) =>
+      setUpRenderer(setUpContextListeners, getWasContextLost, requestRender),
+    onResize: (rendererObj) => {
+      const { x: widthPx, y: heightPx } = getRendererSize(rendererObj);
+      resizeVotesScene(
+        rendererObj,
+        widthPx,
+        heightPx,
+        rendererObj.renderer.getPixelRatio(),
+      );
+      const visibleRangeMs = store.get(visibleRangeAtom);
+      if (visibleRangeMs) moveVotesCamera(rendererObj, visibleRangeMs);
+      renderFrame();
+    },
+  });
+
+  const getSlotAtPoint = useCallback(
+    (clientX: number, clientY: number, rect: HoveredRect) => {
+      const rendererObj = rendererRef.current;
+      const visibleRangeMs = store.get(visibleRangeAtom);
+      if (!rendererObj || !visibleRangeMs) return;
+
+      const windowSizeMs = getWindowSizeMs(visibleRangeMs);
+      const view = shownViewRef.current ?? getVotesView(windowSizeMs);
+      const point = {
+        ms: clientXToMs(clientX, rect, visibleRangeMs),
+        y: clientY - rect.top,
+        pxPerMs: rect.width / windowSizeMs,
+      };
+      const geometries = getVotesGeometriesAt(
+        rendererObj,
+        view,
+        point.ms,
+        HOVER_TOLERANCE_PX / point.pxPerMs,
+      );
+      return getDrawnSlotAtPoint(geometries, point);
+    },
+    [rendererRef],
+  );
+
+  const throttledResolveHoveredVotes = useThrottledCallbackIfVisible(
+    useCallback(
+      (clientX: number, clientY: number, rect: HoveredRect) => {
+        const slot = getSlotAtPoint(clientX, clientY, rect);
+        store.set(hoveredVotesAtom, slot === undefined ? undefined : { slot });
+      },
+      [getSlotAtPoint],
+    ),
+    30,
+  );
+
+  const throttledResolveAggVotes = useThrottledCallbackIfVisible(
+    useCallback((clientX: number, _clientY: number, rect: HoveredRect) => {
+      const referenceNs = store.get(referenceNsAtom);
+      const visibleRangeMs = store.get(visibleRangeAtom);
+      if (referenceNs == null || !visibleRangeMs) {
+        store.set(hoveredAggVotesAtom, undefined);
+        return;
+      }
+
+      const granularity = getAggVotesGranularity(
+        getWindowSizeMs(visibleRangeMs),
+      );
+      const bucketIdx = getBucketIdx(
+        calcAbsoluteNs(referenceNs, clientXToMs(clientX, rect, visibleRangeMs)),
+        granularity,
+        false,
+      );
+      store.set(hoveredAggVotesAtom, { bucketIdx, granularity });
+    }, []),
+    30,
+  );
+
+  const onHoverLeave = useCallback(() => {
+    throttledResolveHoveredVotes.cancel();
+    throttledResolveAggVotes.cancel();
+    clearVotesHover();
+  }, [throttledResolveAggVotes, throttledResolveHoveredVotes]);
+
+  const onHoverChange = useCallback(
+    (clientX: number, clientY: number, rect: HoveredRect) => {
+      const visibleRangeMs = store.get(visibleRangeAtom);
+      if (!visibleRangeMs) {
+        onHoverLeave();
+        return;
+      }
+
+      // show the tooltip of the mode drawn under the cursor
+      const ts = clientXToMs(clientX, rect, visibleRangeMs);
+      if (!isInRanges(modeRangesRef.current.agg, ts)) {
+        throttledResolveAggVotes.cancel();
+        store.set(hoveredAggVotesAtom, undefined);
+        throttledResolveHoveredVotes(clientX, clientY, rect);
+        return;
+      }
+
+      throttledResolveHoveredVotes.cancel();
+      store.set(hoveredVotesAtom, undefined);
+      throttledResolveAggVotes(clientX, clientY, rect);
+    },
+    [onHoverLeave, throttledResolveAggVotes, throttledResolveHoveredVotes],
+  );
+
+  const { setContainer: setHoverContainer, notifyChange: notifyHover } =
+    useHoveredPosition({
+      onHoverChange,
+      onHoverLeave,
+    });
+
   const getLatencySeries = useCallback(
     (view: VotesView, visibleRangeMs: TsRange) => {
       const referenceNs = store.get(referenceNsAtom);
       const worldRangeMs = store.get(worldRangeAtom);
-      if (referenceNs == null || !worldRangeMs) return emptySeries;
+      if (referenceNs == null || !worldRangeMs) return emptyLatencyInput;
 
       const targetId =
         view === "slotLatency"
           ? slotVotesLevel.id
           : getAggVotesGranularity(getWindowSizeMs(visibleRangeMs));
       const targetLevel = granularityLevels.find(({ id }) => id === targetId);
-      if (!targetLevel) return emptySeries;
+      if (!targetLevel) return emptyLatencyInput;
       const spans = resolveCoverage(
         granularityLevels,
         targetId,
         calcAbsoluteNsRange(referenceNs, visibleRangeMs),
         calcAbsoluteNsRange(referenceNs, worldRangeMs),
       );
-      return getCoverageLatencySeries(
-        spans,
-        targetLevel,
-        store.get(aggVotesAtom),
-        slotLatencySeriesRef.current,
-        referenceNs,
-      );
+      return {
+        series: getCoverageLatencySeries(
+          spans,
+          targetLevel,
+          store.get(aggVotesAtom),
+          slotLatencySeriesRef.current,
+          referenceNs,
+        ),
+        modeRanges: getModeRanges(spans, targetLevel.isAgg, referenceNs),
+      };
     },
     [granularityLevels],
   );
@@ -202,8 +340,9 @@ function VotesTrackBody({
     if (shownView === prevView) return false;
     shownViewRef.current = shownView;
     setView(shownView);
+    notifyHover();
     return true;
-  }, []);
+  }, [notifyHover]);
 
   const getDrawInput = useCallback(
     (visibleRangeMs: TsRange) => {
@@ -216,53 +355,39 @@ function VotesTrackBody({
       };
       if (view === "curves") {
         const layout: VotesLayout = { ...base, ticks: [] };
-        return { layout, series: emptySeries };
+        return { layout, ...emptyLatencyInput };
       }
-      const series = getLatencySeries(view, visibleRangeMs);
+      const { series, modeRanges } = getLatencySeries(view, visibleRangeMs);
       const ticks = getLatencyTicks(
         getVisibleMaxLatency(series, visibleRangeMs),
       );
       const layout: VotesLayout = { ...base, ticks };
-      return { layout, series };
+      return { layout, series, modeRanges };
     },
     [getLatencySeries],
   );
 
-  const { containerRef, rendererRef } = useWebGlRenderer({
-    remount,
-    create: ({ setUpContextListeners, getWasContextLost }) =>
-      setUpRenderer(setUpContextListeners, getWasContextLost, requestRender),
-    onResize: (rendererObj) => {
-      const { x: widthPx, y: heightPx } = getRendererSize(rendererObj);
-      resizeVotesScene(
-        rendererObj,
-        widthPx,
-        heightPx,
-        rendererObj.renderer.getPixelRatio(),
-      );
-      const visibleRangeMs = store.get(visibleRangeAtom);
-      if (visibleRangeMs) moveVotesCamera(rendererObj, visibleRangeMs);
-      renderFrame();
-    },
-  });
+  useContainerSlotHitTest(containerRef, getSlotAtPoint);
 
   const renderFrame = useCallback(() => {
     const rendererObj = rendererRef.current;
     const visibleRangeMs = store.get(visibleRangeAtom);
     if (!rendererObj || !visibleRangeMs) return;
 
-    const { layout, series } = getDrawInput(visibleRangeMs);
+    const { layout, series, modeRanges } = getDrawInput(visibleRangeMs);
+    modeRangesRef.current = modeRanges;
     showVotesView(rendererObj, layout.view);
     if (layout.view === "curves") {
       if (!isEqual(rendererObj.curves.layout, layout)) {
         drawVotesCurves(
           rendererObj,
           dataTilesRef.current,
-          slotVotesRef.current,
+          store.get(slotVotesAtom),
           layout,
         );
       }
-      showNearVotesTiles(rendererObj);
+      // rebuilt tiles can change what is drawn under a still cursor
+      if (showNearVotesTiles(rendererObj)) notifyHover();
     } else if (!isLatencyDrawn(rendererObj, layout, series)) {
       const { y: heightPx } = getRendererSize(rendererObj);
       const geometry = buildLatency({
@@ -271,13 +396,14 @@ function VotesTrackBody({
         ticks: layout.ticks,
       });
       drawVotesLatency(rendererObj, geometry, layout, series);
+      notifyHover();
       setLatencyTicks((prev) =>
         isEqual(prev, layout.ticks) ? prev : layout.ticks,
       );
     }
     updateSlotHighlight(rendererObj.highlight, rendererObj.renderer);
     rendererObj.renderer.render(rendererObj.scene, rendererObj.camera);
-  }, [rendererRef, getDrawInput]);
+  }, [rendererRef, getDrawInput, notifyHover]);
   const requestRender = useFrameRender(renderFrame);
   useSlotHighlightRender(requestRender);
 
@@ -301,13 +427,16 @@ function VotesTrackBody({
     ];
     const live = liveTilesRef.current[granularity];
     dataTilesRef.current = live ? [...tiles, live] : tiles;
-    slotVotesRef.current = buildSlotVotes(
+    const slotVotes = buildSlotVotes(
       dataTilesRef.current.map(({ data }) => data),
     );
+    store.set(slotVotesAtom, slotVotes);
+    const targetSlotMs = store.get(targetSlotMsAtom);
     slotLatencySeriesRef.current = getSlotLatencySeries(
-      getSlotLatencies(slotVotesRef.current, getTargetSlotMs()),
+      getSlotLatencies(slotVotes, targetSlotMs),
     );
-  }, []);
+    notifyHover();
+  }, [notifyHover]);
 
   const syncDataTiles = useCallback(
     (changedStartNs: bigint[]) => {
@@ -317,13 +446,14 @@ function VotesTrackBody({
         syncVotesTiles(
           rendererObj,
           dataTilesRef.current,
-          slotVotesRef.current,
+          store.get(slotVotesAtom),
           changedStartNs,
         );
+        notifyHover();
       }
       requestRender();
     },
-    [rebuildSlotVotes, rendererRef, requestRender],
+    [rebuildSlotVotes, rendererRef, requestRender, notifyHover],
   );
 
   const queryVote = useTileCacheQuery(votesCaches.vote, hasFallbackData.vote);
@@ -400,6 +530,11 @@ function VotesTrackBody({
       moveCamera();
     });
     const unsubWorld = store.sub(worldRangeAtom, requestRange);
+    const unsubTargetSlotMs = store.sub(targetSlotMsAtom, () => {
+      rebuildSlotVotes();
+      requestRender();
+    });
+    setHoverContainer(containerRef.current);
     requestRange();
     moveCamera();
 
@@ -407,7 +542,11 @@ function VotesTrackBody({
       aggEmitter.removeListener(drawEventType, requestRender);
       unsubVisible();
       unsubWorld();
+      unsubTargetSlotMs();
       throttledQuery.cancel();
+      setHoverContainer(null);
+      onHoverLeave();
+      store.set(slotVotesAtom, new Map());
     };
   }, [
     rebuildSlotVotes,
@@ -415,6 +554,9 @@ function VotesTrackBody({
     moveCamera,
     requestRender,
     throttledQuery,
+    setHoverContainer,
+    onHoverLeave,
+    containerRef,
   ]);
 
   const handleDelta = useCallback(
