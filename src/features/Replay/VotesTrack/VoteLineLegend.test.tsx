@@ -6,9 +6,10 @@ afterEach(cleanup);
 
 describe("VoteLineLegend", () => {
   it("lists our votes only while they are drawn", () => {
-    expect(
-      render(<VoteLineLegend showOwnVotes />).queryByText("Our notar vote"),
-    ).not.toBeNull();
+    const shown = render(<VoteLineLegend showOwnVotes />);
+    for (const label of ["Our notar vote", "Our finalize vote"]) {
+      expect(shown.queryByText(label)).not.toBeNull();
+    }
     cleanup();
     expect(
       render(<VoteLineLegend showOwnVotes={false} />).queryByText(

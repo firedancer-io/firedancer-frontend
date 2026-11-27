@@ -35,3 +35,8 @@ export function msToDurationUnits(durationMs: number | undefined): {
   if (durationMs === undefined) return { value: undefined };
   return getDurationWithUnits(durationMs * nsPerMs);
 }
+
+export function formatSignedMs(ms: number) {
+  const rounded = Math.round(ms);
+  return `${rounded >= 0 ? "+" : ""}${rounded}`;
+}

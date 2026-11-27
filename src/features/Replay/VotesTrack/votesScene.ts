@@ -393,6 +393,7 @@ interface GeometryMeshes {
   markers: InstancedMesh<keyof typeof markerItemSizes>;
   // x is stored relative to the camera reference when built
   referenceMs: number;
+  geometry: VotesGeometry | undefined;
 }
 
 interface VotesTile {
@@ -426,7 +427,14 @@ function createGeometryMeshes(resources: Resources): GeometryMeshes {
   );
   const group = new THREE.Group();
   group.add(lines.mesh, triangles.mesh, markers.mesh);
-  return { group, lines, triangles, markers, referenceMs: 0 };
+  return {
+    group,
+    lines,
+    triangles,
+    markers,
+    referenceMs: 0,
+    geometry: undefined,
+  };
 }
 
 function disposeGeometryMeshes({ lines, triangles, markers }: GeometryMeshes) {
@@ -440,10 +448,12 @@ function disposeGeometryMeshes({ lines, triangles, markers }: GeometryMeshes) {
 
 function setGeometry(
   meshes: GeometryMeshes,
-  { strokes, markers, triangles }: VotesGeometry,
+  geometry: VotesGeometry,
   cameraReferenceMs: number,
   highlight: SlotHighlight,
 ) {
+  const { strokes, markers, triangles } = geometry;
+  meshes.geometry = geometry;
   meshes.referenceMs = cameraReferenceMs;
   meshes.group.position.x = 0;
   // guides take layer 0
@@ -724,7 +734,7 @@ function getDrawnRangeMs(
       votes.notar,
       votes.notarFallback,
       votes.finalize,
-      votes.skipAll,
+      votes.skip,
     ]) {
       if (!curve?.ts.length) continue;
       include(curve.ts[0]);
@@ -843,10 +853,12 @@ export function drawVotesCurves(
 }
 
 // call before each render so no stale tile is in view
+// returns whether any tile was rebuilt
 export function showNearVotesTiles(votesScene: VotesScene) {
   const { curves, camera, cameraReferenceMs } = votesScene;
   const { layout } = curves;
-  if (!layout) return;
+  if (!layout) return false;
+  let isRebuilt = false;
   const overscanMs =
     (OVERSCAN_DRAW_TILES_COUNT * Number(VOTES_TILE_NS[layout.granularity])) /
     nsPerMs;
@@ -862,10 +874,36 @@ export function showNearVotesTiles(votesScene: VotesScene) {
       if (tile.meshes) tile.meshes.group.visible = isNear;
     } else if (isNear) {
       buildTile(votesScene, tile, layout);
+      isRebuilt = true;
     } else {
       releaseMeshes(votesScene, tile);
     }
   }
+  return isRebuilt;
+}
+
+export function getVotesGeometriesAt(
+  { curves, latency }: VotesScene,
+  view: VotesView,
+  ms: number,
+  toleranceMs: number,
+): VotesGeometry[] {
+  if (view !== "curves") {
+    return latency.meshes.geometry ? [latency.meshes.geometry] : [];
+  }
+  const geometries: VotesGeometry[] = [];
+  for (const { rangeMs, meshes } of curves.tiles.values()) {
+    if (
+      !meshes?.geometry ||
+      !rangeMs ||
+      ms < rangeMs[0] - toleranceMs ||
+      ms > rangeMs[1] + toleranceMs
+    ) {
+      continue;
+    }
+    geometries.push(meshes.geometry);
+  }
+  return geometries;
 }
 
 export function isLatencyDrawn(

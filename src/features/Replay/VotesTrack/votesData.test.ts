@@ -7,6 +7,7 @@ import {
   MIN_STEP_FRAC,
   OWN_VOTE_EVENT_OFFSET,
   PARENT_READY_EVENT,
+  REWARD_ACK_EVENT_OFFSET,
   VOTE_BATCH_EVENT_OFFSET,
   VoteKind,
 } from "./consts";
@@ -238,6 +239,36 @@ describe("parseVotes parent ready", () => {
   });
 });
 
+describe("parseVotes reward ack", () => {
+  it("keeps the earliest ack of our notar or skip reward vote", () => {
+    const tileA = parseVotes(
+      response([
+        { slot: 8, event: REWARD_ACK_EVENT_OFFSET + VoteKind.Notar, ms: 5 },
+      ]),
+      referenceNs,
+    );
+    const tileB = parseVotes(
+      response([
+        { slot: 8, event: REWARD_ACK_EVENT_OFFSET + VoteKind.Skip, ms: 3 },
+      ]),
+      referenceNs,
+    );
+    expect(buildSlotVotes([tileA]).get(8)?.rewardAckTs).toBe(5);
+    expect(buildSlotVotes([tileA, tileB]).get(8)?.rewardAckTs).toBe(3);
+  });
+
+  it("keeps the ack when clipping to its range", () => {
+    const data = parseVotes(
+      response([
+        { slot: 8, event: REWARD_ACK_EVENT_OFFSET + VoteKind.Notar, ms: 5 },
+      ]),
+      referenceNs,
+    );
+    expect(clipVotesData(data, 0, 10).get(8)?.rewardAckTs).toBe(5);
+    expect(clipVotesData(data, 6, 10).has(8)).toBe(false);
+  });
+});
+
 describe("parseVotes own votes", () => {
   it("keeps when this validator cast each vote kind, across tiles", () => {
     const tileA = parseVotes(
@@ -368,7 +399,7 @@ describe("clipVotesData", () => {
     ]);
 
     expectCurve(merged.get(10)?.notar, { ts: [1, 4], frac: [0.1, 0.4] });
-    expectCurve(merged.get(11)?.skipAll, { ts: [2], frac: [0.05] });
+    expectCurve(merged.get(11)?.skip, { ts: [2], frac: [0.05] });
     expect(merged.get(10)?.certs.get(CertKind.Notar)).toBe(5);
   });
 });
@@ -449,7 +480,7 @@ describe("buildSlotVotes merging windows", () => {
       for (const [slot, votes] of slotVotes) {
         for (const [kind, curve] of [
           [VoteKind.Notar, votes.notar],
-          [VoteKind.Skip, votes.skipAll],
+          [VoteKind.Skip, votes.skip],
         ] as const) {
           for (const { ms } of rows.filter(
             (r) => r.slot === slot && r.event % 21 === kind,
@@ -482,7 +513,7 @@ describe("buildSlotVotes", () => {
     const slot = buildSlotVotes([tileA, tileB]).get(10);
     expectCurve(slot?.notar, { ts: [1, 2], frac: [0.1, 0.4] });
     expectCurve(slot?.finalize, { ts: [3], frac: [0.6] });
-    expectCurve(slot?.skipAll, { ts: [1, 3], frac: [0.1, 0.3] });
+    expectCurve(slot?.skip, { ts: [1, 3], frac: [0.1, 0.3] });
     expect(slot?.certs.get(CertKind.Finalize)).toBe(3);
   });
 });

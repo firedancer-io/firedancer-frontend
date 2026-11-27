@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { resolveClientId, slotsPerLeader } from "./consts";
+import { nsPerMs, resolveClientId, slotsPerLeader } from "./consts";
 import { atomWithImmer } from "jotai-immer";
 import {
   bootProgressAtom,
@@ -74,6 +74,13 @@ export const epochAtom = atom(
     });
   },
 );
+
+const defaultTargetSlotMs = 400;
+
+export const targetSlotMsAtom = atom((get) => {
+  const targetNs = get(epochAtom)?.target_slot_duration_nanos;
+  return targetNs ? targetNs / nsPerMs : defaultTargetSlotMs;
+});
 
 export const epochScheduleAtom = atom(
   (get) =>

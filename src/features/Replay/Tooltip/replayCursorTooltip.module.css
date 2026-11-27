@@ -18,9 +18,6 @@
 .header {
   font-weight: 700;
   margin-bottom: 2px;
-}
-
-.defaultHeaderColor {
   color: var(--replay-slot-tooltip-value-color);
 }
 

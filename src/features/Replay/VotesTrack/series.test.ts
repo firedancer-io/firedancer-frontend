@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { nsBucketSizes } from "../const";
 import type { AggVotesByGranularity } from "./aggAtoms";
 import type { DataLevel } from "../coverage";
-import { getCoverageLatencySeries, getSlotLatencySeries } from "./series";
+import {
+  getCoverageLatencySeries,
+  getSlotLatencySeries,
+  resampleAggVotes,
+} from "./series";
 
 describe("getSlotLatencySeries", () => {
   it("breaks lines across slots without a sample", () => {
@@ -282,5 +286,36 @@ describe("getCoverageLatencySeries", () => {
     );
 
     expect(series.notarized.map(({ ts }) => ts)).toEqual([0, 4000, 8000]);
+  });
+});
+
+describe("resampleAggVotes", () => {
+  it("averages each line by overlap, skipping missing values", () => {
+    expect(
+      resampleAggVotes([
+        {
+          value: { notarized: 100, fast: null, slow: 300 },
+          overlapMs: 1,
+          bucketMs: 4,
+        },
+        {
+          value: { notarized: 200, fast: 400, slow: null },
+          overlapMs: 3,
+          bucketMs: 4,
+        },
+      ]),
+    ).toEqual({ notarized: 175, fast: 400, slow: 300 });
+  });
+
+  it("is null for a line without values", () => {
+    expect(
+      resampleAggVotes([
+        {
+          value: { notarized: null, fast: null, slow: null },
+          overlapMs: 2,
+          bucketMs: 2,
+        },
+      ]),
+    ).toEqual({ notarized: null, fast: null, slow: null });
   });
 });

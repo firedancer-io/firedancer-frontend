@@ -6,6 +6,7 @@ import {
   MIN_STEP_FRAC,
   OWN_VOTE_EVENT_OFFSET,
   PARENT_READY_EVENT,
+  REWARD_ACK_EVENT_OFFSET,
   VOTE_BATCH_EVENT_OFFSET,
   VOTE_KIND_COUNT,
   VoteKind,
@@ -22,6 +23,7 @@ interface SlotPartial {
   ownVotes: Map<VoteKind, number>;
   // set on a leader window's first slot
   parentReadyTs: number | undefined;
+  rewardAckTs: number | undefined;
 }
 
 export type VotesData = Map<number, SlotPartial>;
@@ -37,10 +39,12 @@ export interface SlotVotes {
   // null without notar fallback votes
   notarFallback: StepCurve | null;
   finalize: StepCurve;
-  skipAll: StepCurve;
+  // skip + skip fallback
+  skip: StepCurve;
   certs: Map<CertKind, number>;
   ownVotes: Map<VoteKind, number>;
   parentReadyTs: number | undefined;
+  rewardAckTs: number | undefined;
 }
 
 function emptyCurve(): StepCurve {
@@ -53,6 +57,7 @@ function emptyPartial(): SlotPartial {
     certs: new Map(),
     ownVotes: new Map(),
     parentReadyTs: undefined,
+    rewardAckTs: undefined,
   };
 }
 
@@ -99,9 +104,13 @@ export function parseVotes(res: TimelineVotes, referenceNs: bigint): VotesData {
     const isVote = event < VOTE_KIND_COUNT;
     const isParentReady = event === PARENT_READY_EVENT;
     const ownVoteKind = getOwnVoteKind(event);
+    const isRewardAck =
+      event >= REWARD_ACK_EVENT_OFFSET &&
+      event < REWARD_ACK_EVENT_OFFSET + VOTE_KIND_COUNT;
     if (
       !isVote &&
       !isParentReady &&
+      !isRewardAck &&
       ownVoteKind === undefined &&
       !isCertKind(event)
     ) {
@@ -129,6 +138,10 @@ export function parseVotes(res: TimelineVotes, referenceNs: bigint): VotesData {
 
     if (isParentReady) {
       acc.partial.parentReadyTs = minTs(acc.partial.parentReadyTs, ts);
+      continue;
+    }
+    if (isRewardAck) {
+      acc.partial.rewardAckTs = minTs(acc.partial.rewardAckTs, ts);
       continue;
     }
     if (ownVoteKind !== undefined) {
@@ -204,6 +217,7 @@ function mergePartial(existing: SlotPartial, partial: SlotPartial) {
     );
   }
   existing.parentReadyTs = minTs(existing.parentReadyTs, partial.parentReadyTs);
+  existing.rewardAckTs = minTs(existing.rewardAckTs, partial.rewardAckTs);
   for (const [cert, ts] of partial.certs) {
     setEarliest(existing.certs, cert, ts);
   }
@@ -236,12 +250,16 @@ export function clipVotesData(
     if (partial.parentReadyTs !== undefined && inRange(partial.parentReadyTs)) {
       out.parentReadyTs = partial.parentReadyTs;
     }
+    if (partial.rewardAckTs !== undefined && inRange(partial.rewardAckTs)) {
+      out.rewardAckTs = partial.rewardAckTs;
+    }
 
     if (
       out.curves.some(({ ts }) => ts.length) ||
       out.certs.size ||
       out.ownVotes.size ||
-      out.parentReadyTs !== undefined
+      out.parentReadyTs !== undefined ||
+      out.rewardAckTs !== undefined
     ) {
       clipped.set(slot, out);
     }
@@ -281,7 +299,10 @@ export function buildSlotVotes(tiles: VotesData[]): Map<number, SlotVotes> {
   }
 
   const slotVotes = new Map<number, SlotVotes>();
-  for (const [slot, { curves, certs, ownVotes, parentReadyTs }] of merged) {
+  for (const [
+    slot,
+    { curves, certs, ownVotes, parentReadyTs, rewardAckTs },
+  ] of merged) {
     slotVotes.set(slot, {
       slot,
       notar: curves[VoteKind.Notar],
@@ -289,10 +310,11 @@ export function buildSlotVotes(tiles: VotesData[]): Map<number, SlotVotes> {
         ? sumCurves(curves[VoteKind.Notar], curves[VoteKind.NotarFallback])
         : null,
       finalize: curves[VoteKind.Finalize],
-      skipAll: sumCurves(curves[VoteKind.Skip], curves[VoteKind.SkipFallback]),
+      skip: sumCurves(curves[VoteKind.Skip], curves[VoteKind.SkipFallback]),
       certs,
       ownVotes,
       parentReadyTs,
+      rewardAckTs,
     });
   }
   return slotVotes;
@@ -303,12 +325,14 @@ function copyPartial({
   certs,
   ownVotes,
   parentReadyTs,
+  rewardAckTs,
 }: SlotPartial): SlotPartial {
   return {
     curves: [...curves],
     certs: new Map(certs),
     ownVotes: new Map(ownVotes),
     parentReadyTs,
+    rewardAckTs,
   };
 }
 

@@ -7,6 +7,7 @@ import {
   OWN_VOTE_TRIANGLE_PX,
   DASH_PERIOD_PX,
   voteLineColors,
+  ourVoteMarkers,
   voteLineDashPx,
   type VoteLine,
 } from "./consts";
@@ -16,11 +17,6 @@ const items: { line: VoteLine; label: string }[] = [
   { line: "notarFallback", label: "Notar + fallback" },
   { line: "skip", label: "Skip + fallback" },
   { line: "finalize", label: "Finalize" },
-];
-
-const ownVoteItems: { line: VoteLine; label: string }[] = [
-  { line: "notar", label: "Our notar vote" },
-  { line: "finalize", label: "Our finalize vote" },
 ];
 
 const SAMPLE_WIDTH_PX = 22;
@@ -59,7 +55,7 @@ export default function VoteLineLegend({ showOwnVotes }: VoteLineLegendProps) {
           </div>
         ))}
         {showOwnVotes &&
-          ownVoteItems.map(({ line, label }) => {
+          ourVoteMarkers.map(({ line, label }) => {
             const centerPx = SAMPLE_WIDTH_PX / 2;
             const halfPx = OWN_VOTE_TRIANGLE_PX / 2;
             return (

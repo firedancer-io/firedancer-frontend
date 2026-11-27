@@ -4,6 +4,7 @@ import { useAggQuery } from "../useAggQuery";
 import { getAggGranularityForQuery } from "../utils";
 import {
   addAggVotesAtom,
+  aggVotesDrawTilesAtom,
   aggVotesEmitterAtom,
   deleteAggVotesBucketsAtom,
 } from "./aggAtoms";
@@ -28,5 +29,6 @@ export function useAggVotesQuery(chartId: string) {
     deleteBucketsAtom: deleteAggVotesBucketsAtom,
     getGranularity: getAggVotesGranularity,
     emitterAtom: aggVotesEmitterAtom,
+    drawTilesAtom: aggVotesDrawTilesAtom,
   });
 }

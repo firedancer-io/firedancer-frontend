@@ -2,7 +2,9 @@ import type { AggGranularity } from "../../../api/types";
 import { msBucketSizes, nsBucketSizes } from "../const";
 import type { CoverageSpan, DataLevel } from "../coverage";
 import { calcRelativeMs, getBucketIdx } from "../utils";
-import type { AggVotesByGranularity } from "./aggAtoms";
+import type { BucketOverlap } from "../aggDraw";
+import type { AggVotesBucket, AggVotesByGranularity } from "./aggAtoms";
+import { latencyLines, type LatencyLine } from "./consts";
 import type { LatencyChartPoint, LatencyChartSeries } from "./latencyGeometry";
 import type { LatencyPoint, SlotLatencies } from "./latency";
 
@@ -58,7 +60,6 @@ export function getCoverageLatencySeries(
     fast: [],
     slow: [],
   };
-  const lines = ["notarized", "fast", "slow"] as const;
   const broken = { notarized: true, fast: true, slow: true };
 
   spans.forEach(({ rangeNs, level = targetLevel }, i) => {
@@ -68,7 +69,7 @@ export function getCoverageLatencySeries(
     const spanEndMs = calcRelativeMs(referenceNs, rangeNs[1]);
 
     if (!level.isAgg) {
-      for (const line of lines) {
+      for (const line of latencyLines) {
         const points = slotSeries[line];
         // one point past the outer spans' edges so lines reach the edges
         let startIdx = firstPointAtOrAfter(points, spanStartMs);
@@ -112,11 +113,7 @@ export function getCoverageLatencySeries(
     const prevTs = { notarized: NaN, fast: NaN, slow: NaN };
     const prevLatencyMs = { notarized: NaN, fast: NaN, slow: NaN };
     const hasPoints = { notarized: false, fast: false, slow: false };
-    const push = (
-      line: (typeof lines)[number],
-      ts: number,
-      latencyMs: number,
-    ) => {
+    const push = (line: LatencyLine, ts: number, latencyMs: number) => {
       series[line].push({
         slot: undefined,
         ts,
@@ -131,7 +128,7 @@ export function getCoverageLatencySeries(
       const ts = firstTs + (idx - firstIdx) * bucketMs;
       const isInSpan = ts >= startMs && ts <= endMs;
       const bucket = buckets?.get(idx);
-      for (const line of lines) {
+      for (const line of latencyLines) {
         const latencyMs = bucket?.[line];
         if (latencyMs == null) {
           if (isInSpan) broken[line] = true;
@@ -167,10 +164,29 @@ export function getCoverageLatencySeries(
         prevLatencyMs[line] = latencyMs;
       }
     }
-    for (const line of lines) {
+    for (const line of latencyLines) {
       // no samples in the span, so don't connect across it
       if (!hasPoints[line]) broken[line] = true;
     }
   });
   return series;
+}
+
+/** Average each latency line, weighted by overlap, skipping missing values */
+export function resampleAggVotes(
+  overlaps: BucketOverlap<AggVotesBucket>[],
+): AggVotesBucket {
+  const resampled: AggVotesBucket = { notarized: null, fast: null, slow: null };
+  for (const line of latencyLines) {
+    let sum = 0;
+    let weight = 0;
+    for (const { value, overlapMs } of overlaps) {
+      const latencyMs = value[line];
+      if (latencyMs == null) continue;
+      sum += latencyMs * overlapMs;
+      weight += overlapMs;
+    }
+    if (weight) resampled[line] = sum / weight;
+  }
+  return resampled;
 }

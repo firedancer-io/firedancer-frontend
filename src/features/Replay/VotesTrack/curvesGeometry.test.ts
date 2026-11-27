@@ -54,20 +54,21 @@ const sparseCurve = { ts: [20, 60], frac: [0.1, 0.9] };
 function slot(
   curve: StepCurve,
   certs: [CertKind, number][],
-  skipAll: StepCurve = { ts: [], frac: [] },
+  skip: StepCurve = { ts: [], frac: [] },
 ): SlotVotes {
   return {
     slot: 1,
     notar: curve,
     notarFallback: null,
     finalize: { ts: [], frac: [] },
-    skipAll,
+    skip,
     certs: new Map(certs),
     ownVotes: new Map([
       [VoteKind.Notar, 20],
       [VoteKind.Finalize, 30],
     ]),
     parentReadyTs: 0,
+    rewardAckTs: undefined,
   };
 }
 

@@ -5,6 +5,7 @@ import { nsPerMs } from "../../../consts";
 import { getBucketIdx } from "../utils";
 import { createClearAggAtom } from "../clearAggAtom";
 import { drawEventType, type DrawEmitter } from "../const";
+import type { GetDrawTiles } from "../aggDraw";
 
 // ms from the slot's scheduled start
 export interface AggVotesBucket {
@@ -67,3 +68,5 @@ export const [
     createClearAggAtom(_aggVotesAtom, emitterAtom),
   ] as const;
 })();
+
+export const aggVotesDrawTilesAtom = atom<GetDrawTiles | undefined>(undefined);
