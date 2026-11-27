@@ -56,6 +56,8 @@ const answerAll = () => {
       value: {
         granularity: "250ms",
         reference_ts_ns: 0n,
+        available_start_ns: null,
+        available_end_ns: store.get(smoothedNowNsAtom) ?? null,
         turbine: [],
         repair: [],
         reconstructed: [],

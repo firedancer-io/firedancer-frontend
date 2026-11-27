@@ -42,7 +42,7 @@ function makeLevels() {
   ) => {
     sentIds = [];
     cache.queryRange(rangeNs, worldRangeNs, granularity, undefined);
-    for (const id of sentIds) cache.markQueryComplete(id);
+    for (const id of sentIds) cache.markQueryComplete(id, worldRangeNs[1]);
   };
   // batch and fine stand in for zoomed-in (non-agg) levels
   const levels = [

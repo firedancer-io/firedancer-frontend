@@ -6,6 +6,7 @@ import { selectAtom } from "jotai/utils";
 import { CHART_NOW_DELAY_MS, type PlaybackRate } from "./const";
 import {
   calcAbsoluteNs,
+  calcAbsoluteNsRange,
   calcRelativeMs,
   clampToWorld,
   getAggSlotsGranularity,
@@ -80,6 +81,7 @@ export const {
   setPlaybackRateAtom,
   visibleRangeAtom,
   worldRangeAtom,
+  worldRangeNsAtom,
 } = (function getReplayChartAtoms() {
   const referenceNsAtom = atom((get) => get(startupTimeAtom)?.startupTimeNanos);
   const playbackAtom = atom<Playback | undefined>(undefined);
@@ -99,6 +101,14 @@ export const {
     if (worldEnd <= 0) return;
 
     return [0, worldEnd] satisfies TsRange;
+  });
+
+  /** World range in absolute ns */
+  const worldRangeNsAtom = atom((get) => {
+    const referenceNs = get(referenceNsAtom);
+    const worldRange = get(worldRangeAtom);
+    if (referenceNs == null || !worldRange) return;
+    return calcAbsoluteNsRange(referenceNs, worldRange);
   });
 
   const isInitializedAtom = atom((get) => {
@@ -252,6 +262,7 @@ export const {
     isInitializedAtom,
     referenceNsAtom,
     worldRangeAtom,
+    worldRangeNsAtom,
     initializeVisibleRangeAtom,
     // start over at the default live range, e.g. after a validator restart
     restartPlaybackAtom: atom(null, (_get, set) => {

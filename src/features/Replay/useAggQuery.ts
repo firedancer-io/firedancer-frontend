@@ -22,6 +22,7 @@ import {
 import {
   referenceNsAtom,
   worldRangeAtom,
+  worldRangeNsAtom,
   type TimelineQueryKey,
 } from "./atoms";
 import { hasFallbackData, type DataLevel } from "./coverage";
@@ -148,13 +149,13 @@ export function useAggQuery<TValue, TParams extends object = object>({
 
   // so zooming all the way out doesn't wait on the network
   const prefetch = useCallback(() => {
-    const referenceNs = store.get(referenceNsAtom);
     const worldRange = store.get(worldRangeAtom);
-    if (referenceNs == null || !worldRange) return false;
+    const worldRangeNs = store.get(worldRangeNsAtom);
+    if (!worldRange || !worldRangeNs) return false;
 
     const worldGranularity = getGranularity(worldRange[1] - worldRange[0]);
     return prefetchWorld(
-      calcAbsoluteNsRange(referenceNs, worldRange),
+      worldRangeNs,
       worldGranularity,
       nsBucketSizes[worldGranularity],
       params,
@@ -162,7 +163,10 @@ export function useAggQuery<TValue, TParams extends object = object>({
   }, [prefetchWorld, getGranularity, params]);
 
   useTimelineServerMessage(queryKey, (message) => {
-    if (!markQueryComplete(message.id)) return;
+    const { available_start_ns, available_end_ns } = message.value;
+    if (!markQueryComplete(message.id, available_end_ns, available_start_ns)) {
+      return;
+    }
 
     addValue(message.value as TValue);
   });

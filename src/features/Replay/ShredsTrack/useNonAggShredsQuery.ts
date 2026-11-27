@@ -6,7 +6,7 @@ import type { TimelineShreds, ShredsGranularity } from "../../../api/types";
 import { ShredsGranularityEnum } from "../../../api/entities";
 import {
   calcAbsoluteNsRange,
-  getChunksEndNs,
+  getStableDataNs,
   useTimelineServerMessage,
 } from "../utils";
 import { getNonAggAtoms } from "./atoms";
@@ -93,6 +93,7 @@ export function useNonAggShredsQuery(
         getTileEvictionHighWatermark,
         getTileEvictionLowWatermark,
         onEvictTiles,
+        fetchPartialStaleTile: true,
       }),
     [chartId, sendQuery, onEvictTiles],
   );
@@ -111,10 +112,11 @@ export function useNonAggShredsQuery(
     QUERY_KEY,
     useCallback(
       (message: { id: number; value: TimelineShreds }) => {
-        const { granularity, chunks, available_start_ns } = message.value;
+        const { granularity, chunks, available_start_ns, available_end_ns } =
+          message.value;
         const queryInfo = markQueryComplete(
           message.id,
-          getChunksEndNs(chunks) ?? 0n,
+          getStableDataNs(chunks, available_end_ns),
           available_start_ns,
         );
         if (queryInfo == null) return;

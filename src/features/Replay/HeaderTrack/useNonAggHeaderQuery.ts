@@ -81,7 +81,7 @@ export function useNonAggHeaderQuery(chartId: string) {
     (message: { id: number; value: TimelineSlots }) => {
       const tileIdx = markQueryComplete(
         message.id,
-        undefined,
+        message.value.available_end_ns,
         message.value.available_start_ns,
       )?.tileIdx;
       if (tileIdx == null) return;
