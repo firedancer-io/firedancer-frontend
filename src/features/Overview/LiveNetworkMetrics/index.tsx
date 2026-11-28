@@ -3,6 +3,7 @@ import {
   liveNetworkMetricsAtom,
   networkMetricsEmaEgressAtom,
   networkMetricsEmaIngressAtom,
+  tilesAtom,
 } from "../../../api/atoms";
 import Card from "../../../components/Card";
 import { Flex, Table, Text } from "@radix-ui/themes";
@@ -60,6 +61,9 @@ function NetworkMetricsCard({
   history,
   type,
 }: NetworkMetricsCardProps) {
+  const tiles = useAtomValue(tilesAtom);
+  const hasSnapsv = tiles?.some(({ kind }) => kind === "snapsv") ?? false;
+
   return (
     <Card style={{ flexGrow: 1 }}>
       <Flex direction="column" height="100%" gap={headerGap}>
@@ -111,6 +115,9 @@ function NetworkMetricsCard({
                   protocol === "repair" ||
                   protocol === "rserve")
               ) {
+                return;
+              }
+              if (protocol === "snapsv" && !hasSnapsv) {
                 return;
               }
               return (

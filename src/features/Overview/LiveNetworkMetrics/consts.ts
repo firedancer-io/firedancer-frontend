@@ -8,4 +8,5 @@ export const networkProtocols = [
   "rserve",
   "metrics",
   "votor",
+  "snapsv",
 ] as const;
